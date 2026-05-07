@@ -7,8 +7,8 @@ import {
   SyncState,
   UnknownError,
 } from '@livestore/common'
-import { StreamEventsOptionsFields } from '@livestore/common/leader-thread'
-import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
+import { CommandPushResultSchema, StreamEventsOptionsFields } from '@livestore/common/leader-thread'
+import { CommandInstanceSchema, EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
 export const WorkerArgv = Schema.parseJson(
@@ -132,6 +132,19 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
   },
 ) {}
 
+export class LeaderWorkerInnerPushCommandToLeader extends Schema.TaggedRequest<LeaderWorkerInnerPushCommandToLeader>()(
+  'PushCommandToLeader',
+  {
+    payload: {
+      command: CommandInstanceSchema,
+      clientId: Schema.String,
+      sessionId: Schema.String,
+    },
+    success: CommandPushResultSchema,
+    failure: UnknownError,
+  },
+) {}
+
 export class LeaderWorkerInnerExport extends Schema.TaggedRequest<LeaderWorkerInnerExport>()('Export', {
   payload: {},
   success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
@@ -227,6 +240,7 @@ export const LeaderWorkerInnerRequest = Schema.Union(
   LeaderWorkerInnerPullStream,
   LeaderWorkerInnerStreamEvents,
   LeaderWorkerInnerPushToLeader,
+  LeaderWorkerInnerPushCommandToLeader,
   LeaderWorkerInnerExport,
   LeaderWorkerInnerGetRecreateSnapshot,
   LeaderWorkerInnerExportEventlog,

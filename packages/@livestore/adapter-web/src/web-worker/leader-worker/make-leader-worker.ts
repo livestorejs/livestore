@@ -229,6 +229,10 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           { waitForProcessing: true },
         ),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-web:worker:PushToLeader')),
+    PushCommandToLeader: ({ command, clientId, sessionId }) =>
+      Effect.andThen(LeaderThreadCtx, ({ syncProcessor }) =>
+        syncProcessor.pushCommand({ command, clientId, sessionId }),
+      ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-web:worker:PushCommandToLeader')),
     StreamEvents: (options) =>
       LeaderThreadCtx.pipe(
         Effect.map(({ dbEventlog, syncProcessor }) => {

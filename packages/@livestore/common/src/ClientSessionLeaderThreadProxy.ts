@@ -3,7 +3,9 @@ import type { Effect, Stream, Subscribable } from '@livestore/utils/effect'
 import type { StorageMode } from './adapter-types.ts'
 import type { MigrationsReport } from './defs.ts'
 import type * as Devtools from './devtools/mod.ts'
-import type { StreamEventsOptions } from './leader-thread/types.ts'
+import type { UnknownError } from './errors.ts'
+import type { CommandPushResult, StreamEventsOptions } from './leader-thread/types.ts'
+import type { CommandInstance } from './schema/command/command-instance.ts'
 import type * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
 import type { LiveStoreEvent } from './schema/mod.ts'
 import type { RejectedPushError } from './leader-thread/RejectedPushError.ts'
@@ -19,6 +21,10 @@ export interface ClientSessionLeaderThreadProxy {
     push(batch: ReadonlyArray<LiveStoreEvent.Client.Encoded>): Effect.Effect<void, RejectedPushError>
     /** Stream events with filtering */
     stream(options: StreamEventsOptions): Stream.Stream<LiveStoreEvent.Client.Encoded>
+  }
+  commands: {
+    /** Push a command to the leader for execution. Returns the result synchronously once the leader has processed it. */
+    push(command: CommandInstance): Effect.Effect<CommandPushResult, UnknownError>
   }
   /** The initial state after the leader thread has booted */
   readonly initialState: {

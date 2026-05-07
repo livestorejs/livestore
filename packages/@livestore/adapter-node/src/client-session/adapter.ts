@@ -266,6 +266,7 @@ const makeAdapterImpl = ({
           ? yield* makeLocalLeaderThread({
               storeId,
               clientId,
+              sessionId,
               schema,
               makeSqliteDb,
               devtools: devtoolsOptions,
@@ -354,6 +355,7 @@ const resetNodePersistence = ({
 const makeLocalLeaderThread = ({
   storeId,
   clientId,
+  sessionId,
   schema,
   makeSqliteDb,
   syncOptions,
@@ -365,6 +367,7 @@ const makeLocalLeaderThread = ({
 }: {
   storeId: string
   clientId: string
+  sessionId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions | undefined
@@ -413,6 +416,9 @@ const makeLocalLeaderThread = ({
                 syncState: syncProcessor.syncState,
                 options,
               }),
+          },
+          commands: {
+            push: (command) => syncProcessor.pushCommand({ command, clientId, sessionId }),
           },
           initialState: {
             leaderHead: initialLeaderHead,
@@ -543,6 +549,14 @@ const makeWorkerLeaderThread = ({
             runInWorkerStream(new WorkerSchema.LeaderWorkerInnerStreamEvents(options)).pipe(
               Stream.withSpan('@livestore/adapter-node:client-session:streamEvents'),
               Stream.orDie,
+            ),
+        },
+        commands: {
+          push: (command) =>
+            runInWorker(new WorkerSchema.LeaderWorkerInnerPushCommandToLeader({ command, clientId, sessionId })).pipe(
+              Effect.withSpan('@livestore/adapter-node:client-session:pushCommandToLeader', {
+                attributes: { commandName: command.name },
+              }),
             ),
         },
         initialState: {

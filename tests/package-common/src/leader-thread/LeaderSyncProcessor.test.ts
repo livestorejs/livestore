@@ -1,5 +1,7 @@
 import {
   BackendIdMismatchError,
+  type BootStatus,
+  CommandExecutionError,
   type IntentionalShutdownCause,
   type MockSyncBackend,
   type MockSyncBackendOptions,
@@ -12,9 +14,17 @@ import {
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
-import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
-import { LeaderThreadCtx, makeLeaderThreadLayer, ShutdownChannel as Shutdown } from '@livestore/common/leader-thread'
-import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
+import type { CommandPushResult, MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
+import {
+  CommandJournal,
+  Eventlog,
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  makeMaterializeEvent,
+  recreateDb,
+  ShutdownChannel as Shutdown,
+} from '@livestore/common/leader-thread'
+import { EventSequenceNumber, LiveStoreEvent, makeCommandInstance } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
@@ -29,7 +39,9 @@ import {
   Layer,
   Logger,
   LogLevel,
+  Option,
   Queue,
+  Schema,
   type Scope,
   Stream,
   WebChannel,
@@ -38,7 +50,7 @@ import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect, assert } from 'vitest'
 
-import { events, schema, tables } from './fixture.ts'
+import { commands, events, schema, tables } from './fixture.ts'
 
 /*
 TODO:
@@ -73,6 +85,10 @@ const withTestCtx = (
   })
 
 const makeEventFactory = EventFactory.makeFactory(events)
+const withPlatformCtx = Vitest.makeWithTestCtx({
+  makeLayer: () => Layer.merge(PlatformNode.NodeFileSystem.layer, Logger.minimumLogLevel(LogLevel.Debug)),
+  forceOtel: true,
+})
 
 const seedPaginatedBackendTodos = (mockBackend: MockSyncBackend) => {
   const backendFactory = makeEventFactory({
@@ -802,6 +818,325 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       withTestCtx({ syncOptions: { onBackendIdMismatch: 'reset', livePull: true }, captureShutdown: true })(test),
     ),
   )
+
+  Vitest.describe('command processing', () => {
+    Vitest.scopedLive('executes command and materializes events', (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+
+        const result = yield* testContext.pushCommand(commands.createTodo({ id: 'todo-1', text: 'Buy milk' }))
+
+        expect(result._tag).toBe('ok')
+
+        const rows = leaderThreadCtx.dbState.select<{ id: string; text: string; completed: number }>(
+          `SELECT id, text, completed FROM todos WHERE id = 'todo-1'`,
+        )
+        expect(rows).toHaveLength(1)
+        expect(rows[0]).toEqual({ id: 'todo-1', text: 'Buy milk', completed: 0 })
+
+        // Verify the pull queue received an upstream-advance with the new event
+        const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
+        expect(queueResults.length).toBeGreaterThanOrEqual(1)
+        const lastPayload = queueResults.at(-1)!.payload
+        expect(lastPayload._tag).toBe('upstream-advance')
+      }).pipe(withTestCtx()(test)),
+    )
+
+    Vitest.scopedLive('returns error for recoverable handler failures', (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+
+        const result = yield* testContext.pushCommand(commands.createTodo({ id: 'todo-1', text: '   ' }))
+
+        expect(result._tag).toBe('error')
+        assert(result._tag === 'error')
+        expect(result.error).toMatchObject({ _tag: 'TodoTextEmpty' })
+
+        // State DB should be unchanged
+        const rows = leaderThreadCtx.dbState.select(`SELECT id FROM todos WHERE id = 'todo-1'`)
+        expect(rows).toHaveLength(0)
+      }).pipe(withTestCtx()(test)),
+    )
+
+    Vitest.scopedLive('returns threw when handler throws', (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+
+        const result = yield* testContext.pushCommand(commands.completeTodo({ id: 'non-existent' }))
+
+        expect(result._tag).toBe('threw')
+        assert(result._tag === 'threw')
+        expect(result.cause).toBeInstanceOf(CommandExecutionError)
+        expect((result.cause as CommandExecutionError).reason).toBe('CommandHandlerThrew')
+
+        // State DB should be unchanged (transaction rolled back)
+        const rows = leaderThreadCtx.dbState.select(`SELECT id FROM todos WHERE id = 'non-existent'`)
+        expect(rows).toHaveLength(0)
+      }).pipe(withTestCtx()(test)),
+    )
+
+    Vitest.scopedLive('returns threw with CommandNotFound for unknown command', (test) =>
+      Effect.gen(function* () {
+        const testContext = yield* TestContext
+
+        const fakeCommand = makeCommandInstance({ name: 'Bogus', args: {} })
+        const result = yield* testContext.pushCommand(fakeCommand)
+
+        expect(result._tag).toBe('threw')
+        assert(result._tag === 'threw')
+        expect(result.cause).toBeInstanceOf(CommandExecutionError)
+        expect((result.cause as CommandExecutionError).reason).toBe('CommandNotFound')
+      }).pipe(withTestCtx()(test)),
+    )
+
+    Vitest.scopedLive('returns threw with NoEventProduced for empty handler result', (test) =>
+      Effect.gen(function* () {
+        const testContext = yield* TestContext
+
+        const result = yield* testContext.pushCommand(commands.emptyCommand({}))
+
+        expect(result._tag).toBe('threw')
+        assert(result._tag === 'threw')
+        expect(result.cause).toBeInstanceOf(CommandExecutionError)
+        expect((result.cause as CommandExecutionError).reason).toBe('NoEventProduced')
+      }).pipe(withTestCtx()(test)),
+    )
+
+    Vitest.scopedLive('journals command on successful execution', (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+
+        const result = yield* testContext.pushCommand(commands.createTodo({ id: 'todo-1', text: 'Buy milk' }))
+        expect(result._tag).toBe('ok')
+
+        const journalRows = leaderThreadCtx.dbEventlog.select<{ id: string; name: string }>(
+          `SELECT id, name FROM __livestore_command_journal`,
+        )
+        expect(journalRows).toHaveLength(1)
+        expect(journalRows[0]!.name).toBe('CreateTodo')
+      }).pipe(withTestCtx()(test)),
+    )
+
+    Vitest.scopedLive('does not journal command on failure', (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+
+        const result = yield* testContext.pushCommand(commands.createTodo({ id: 'todo-1', text: '   ' }))
+        expect(result._tag).toBe('error')
+
+        const journalRows = leaderThreadCtx.dbEventlog.select<{ id: string }>(
+          `SELECT id FROM __livestore_command_journal`,
+        )
+        expect(journalRows).toHaveLength(0)
+      }).pipe(withTestCtx()(test)),
+    )
+  })
+
+  Vitest.describe('command journal lifecycle', () => {
+    Vitest.scopedLive('journal entry removed on advance confirmation', (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+
+        const result = yield* testContext.pushCommand(commands.createTodo({ id: 'todo-1', text: 'Buy milk' }))
+        expect(result._tag).toBe('ok')
+
+        const journalBefore = leaderThreadCtx.dbEventlog.select<{ id: string }>(
+          `SELECT id FROM __livestore_command_journal`,
+        )
+        expect(journalBefore).toHaveLength(1)
+
+        yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
+        yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+          Stream.takeUntil((_) => _.upstreamHead.global >= 1),
+          Stream.runDrain,
+        )
+
+        const journalAfter = leaderThreadCtx.dbEventlog.select<{ id: string }>(
+          `SELECT id FROM __livestore_command_journal`,
+        )
+        expect(journalAfter).toHaveLength(0)
+      }).pipe(withTestCtx()(test)),
+    )
+
+    Vitest.scopedLive('journal entry removed during rebase', (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+
+        yield* testContext.mockSyncBackend.disconnect
+
+        const result = yield* testContext.pushCommand(commands.createTodo({ id: 'todo-1', text: 'Buy milk' }))
+        expect(result._tag).toBe('ok')
+
+        const journalBefore = leaderThreadCtx.dbEventlog.select<{ id: string }>(
+          `SELECT id FROM __livestore_command_journal`,
+        )
+        expect(journalBefore).toHaveLength(1)
+
+        const backendFactory = makeEventFactory({
+          client: EventFactory.clientIdentity('other-client', 'other-session'),
+        })
+        yield* testContext.mockSyncBackend.advance(
+          backendFactory.todoCreated.next({ id: 'todo-2', text: 'From other client', completed: false }),
+        )
+
+        yield* testContext.mockSyncBackend.connect
+        yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
+        yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+          Stream.takeUntil((_) => _.upstreamHead.global >= 2),
+          Stream.runDrain,
+        )
+
+        const journalAfter = leaderThreadCtx.dbEventlog.select<{ id: string }>(
+          `SELECT id FROM __livestore_command_journal`,
+        )
+        expect(journalAfter).toHaveLength(0)
+      }).pipe(withTestCtx()(test)),
+    )
+
+    Vitest.scopedLive('journal entry removed on replay conflict', (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+
+        yield* testContext.mockSyncBackend.disconnect
+
+        const result = yield* testContext.pushCommand(
+          commands.createTodoUnique({ id: 'todo-1', text: 'Mine' }),
+        )
+        expect(result._tag).toBe('ok')
+
+        // Verify journal has an entry
+        const journalBefore = leaderThreadCtx.dbEventlog.select<{ id: string }>(
+          `SELECT id FROM __livestore_command_journal`,
+        )
+        expect(journalBefore).toHaveLength(1)
+
+        // Inject an external event that creates todo-1, causing the replay to conflict
+        const backendFactory = makeEventFactory({
+          client: EventFactory.clientIdentity('other-client', 'other-session'),
+        })
+        yield* testContext.mockSyncBackend.advance(
+          backendFactory.todoCreated.next({ id: 'todo-1', text: 'Theirs', completed: false }),
+        )
+
+        yield* testContext.mockSyncBackend.connect
+
+        // Wait for rebase to complete
+        yield* Effect.sleep(Duration.millis(500))
+
+        // Journal should be cleaned up (conflict removes the command)
+        const journalAfter = leaderThreadCtx.dbEventlog.select<{ id: string }>(
+          `SELECT id FROM __livestore_command_journal`,
+        )
+        expect(journalAfter).toHaveLength(0)
+
+        // Verify the pullQueue received an upstream-rebase with a conflict
+        const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
+        const rebasePayload = queueResults.find((_) => _.payload._tag === 'upstream-rebase')
+        assert(rebasePayload !== undefined, 'Expected an upstream-rebase payload')
+        assert(rebasePayload.payload._tag === 'upstream-rebase')
+        expect(rebasePayload.payload.conflicts.length).toBeGreaterThanOrEqual(1)
+      }).pipe(withTestCtx()(test)),
+    )
+
+    Vitest.scopedLive('restart rehydrates pending commandIds for replay conflict cleanup', (test) =>
+      Effect.gen(function* () {
+        const mockSyncBackend = yield* makeMockSyncBackend()
+        const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(
+          Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),
+        )
+        const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
+        const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
+        const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
+
+        const localEventFactory = makeEventFactory({
+          client: EventFactory.clientIdentity('test', 'static-session-id'),
+        })
+        const backendEventFactory = makeEventFactory({
+          client: EventFactory.clientIdentity('other-client', 'other-session'),
+        })
+
+        const pendingCommand = commands.createTodoUnique({ id: 'todo-1', text: 'Mine' })
+        const pendingEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
+          ...LiveStoreEvent.Global.toClientEncoded(
+            localEventFactory.todoCreated.next({ id: 'todo-1', text: 'Mine', completed: false }),
+          ),
+        })
+        pendingEvent.meta.commandId = Option.some(pendingCommand.id)
+
+        yield* Eventlog.initEventlogDb(dbEventlog)
+        yield* Eventlog.insertIntoEventlog(
+          pendingEvent,
+          dbEventlog,
+          Schema.hash(events.todoCreated.schema),
+          pendingEvent.clientId,
+          pendingEvent.sessionId,
+        )
+
+        yield* CommandJournal.make(dbEventlog).write(pendingCommand).pipe(Effect.orDie)
+
+        const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
+        const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
+        yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
+
+        yield* mockSyncBackend.advance(
+          backendEventFactory.todoCreated.next({
+            id: 'todo-1',
+            text: 'From other client',
+            completed: false,
+          }),
+        )
+
+        const shutdownChannel = yield* WebChannel.noopChannel<any, any>()
+        const leaderContextLayer = makeLeaderThreadLayer({
+          schema,
+          storeId: 'test',
+          clientId: 'test',
+          syncPayloadEncoded: undefined,
+          syncPayloadSchema: undefined,
+          makeSqliteDb,
+          syncOptions: { backend: () => mockSyncBackend.makeSyncBackend },
+          dbState,
+          dbEventlog,
+          devtoolsOptions: { enabled: false },
+          shutdownChannel,
+        }).pipe(Layer.provide(FetchHttpClient.layer))
+
+        const syncStateAfterRebase = yield* Effect.gen(function* () {
+          const leaderThreadCtx = yield* LeaderThreadCtx
+          const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+          if (syncState.upstreamHead.global >= 1) return syncState
+
+          yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+            Stream.filter((state) => state.upstreamHead.global >= 1),
+            Stream.take(1),
+            Stream.runDrain,
+          )
+
+          return yield* leaderThreadCtx.syncProcessor.syncState.get
+        }).pipe(Effect.provide(leaderContextLayer), Effect.timeout('2 seconds'), Effect.orDie)
+
+        expect(syncStateAfterRebase.pending).toHaveLength(0)
+
+        const journalAfter = dbEventlog.select<{ id: string }>(
+          `SELECT id FROM __livestore_command_journal`,
+        )
+        expect(journalAfter).toHaveLength(0)
+
+        const rows = dbState.select<{ id: string; text: string; completed: number }>(
+          `SELECT id, text, completed FROM todos ORDER BY id`,
+        )
+        expect(rows).toEqual([{ id: 'todo-1', text: 'From other client', completed: 0 }])
+      }).pipe(withPlatformCtx(test)),
+    )
+  })
 })
 
 type LeaderEventFactory = ReturnType<typeof makeEventFactory>
@@ -817,6 +1152,10 @@ class TestContext extends Context.Tag('TestContext')<
     pushEncoded: (
       ...events: ReadonlyArray<LiveStoreEvent.Global.Encoded>
     ) => Effect.Effect<void, RejectedPushError, Scope.Scope | LeaderThreadCtx>
+    /** Push a command to the leader for execution */
+    pushCommand: (
+      command: ReturnType<typeof makeCommandInstance>,
+    ) => Effect.Effect<CommandPushResult, UnknownError, LeaderThreadCtx>
   }
 >() {}
 
@@ -911,12 +1250,20 @@ const LeaderThreadCtxLive = ({
         )
       }
 
+      const pushCommand = (command: ReturnType<typeof makeCommandInstance>) =>
+        leaderThreadCtx.syncProcessor.pushCommand({
+          command,
+          clientId: leaderThreadCtx.clientId,
+          sessionId: 'static-session-id',
+        })
+
       return Layer.succeed(TestContext, {
         mockSyncBackend,
         shutdownDeferred,
         pullQueue,
         eventFactory,
         pushEncoded,
+        pushCommand,
       })
     }).pipe(Layer.unwrapScoped, Layer.provide(leaderContextLayer))
 

@@ -75,3 +75,29 @@ export class MaterializeError extends Schema.TaggedError<MaterializeError>('~@li
   cause: Schema.Union(MaterializerHashMismatchError, SqliteError, UnknownEventError),
   note: Schema.optional(Schema.String),
 }) {}
+
+/**
+ * Error thrown when a command fails during execution.
+ *
+ * @remarks
+ * This is an unexpected, non-recoverable error; distinct
+ * from command-handler-returned errors which are expected and recoverable.
+ */
+export class CommandExecutionError extends Schema.TaggedError<CommandExecutionError>('@livestore/common/CommandExecutionError')(
+  'LiveStore.CommandExecutionError', {
+    /** The command that failed. */
+    command: Schema.Struct({ name: Schema.String, id: Schema.String }),
+    /** The execution phase when the error occurred. */
+    phase: Schema.Literal('initial', 'replay'),
+    /** Why the command failed. */
+    reason: Schema.Literal('CommandNotFound', 'CommandHandlerThrew', 'NoEventProduced'),
+    /** Optional additional context. */
+    description: Schema.optional(Schema.String),
+    /** The underlying error, if any. */
+    cause: Schema.optional(Schema.Defect),
+  }) {
+  override get message(): string {
+    const base = `${this.reason}: ${this.command.name} (${this.command.id})`
+    return this.description !== undefined ? `${base}: ${this.description}` : base
+  }
+}

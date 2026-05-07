@@ -1,15 +1,15 @@
 import type React from 'react'
-import { useMemo } from 'react'
 
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
 
-import { useMailboxStore } from '../stores/mailbox/index.ts'
+import { useMailboxStore } from '../stores/mailbox'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
-import { threadStoreOptions } from '../stores/thread/index.ts'
+import { threadStoreOptions } from '../stores/thread'
 import { threadTables } from '../stores/thread/schema.ts'
 import { Message } from './Message.tsx'
 import { ThreadActions } from './ThreadActions.tsx'
+import { ThreadLoading } from './ThreadLoading.tsx'
 
 type ThreadViewProps = {
   threadId: string
@@ -37,20 +37,21 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
   const messages = threadStore.useQuery(messagesQuery)
   const threadLabels = threadStore.useQuery(threadLabelsQuery)
 
+  // Workaround: useQuery doesn't support Suspense yet, so the thread table can be empty
+  // while sync data is still in flight. Guard against undefined to avoid a runtime crash.
+  // See https://github.com/livestorejs/livestore/issues/822
+  if (!thread) return <ThreadLoading />
+
   const isLabelApplied = (labelId: string) => threadLabels.some((tl) => tl.labelId === labelId)
   const threadUserLabels = userLabels.filter((l) => isLabelApplied(l.id))
-  const threadUserLabelStyles = useMemo(
-    () =>
-      new Map(
-        threadUserLabels.map((label) => [
-          label.id,
-          {
-            backgroundColor: label.color ? `${label.color}20` : undefined,
-            color: label.color ?? undefined,
-          },
-        ]),
-      ),
-    [threadUserLabels],
+  const threadUserLabelStyles = new Map(
+    threadUserLabels.map((label) => [
+      label.id,
+      {
+        backgroundColor: label.color ? `${label.color}20` : undefined,
+        color: label.color ?? undefined,
+      },
+    ]),
   )
   const participants: string[] = JSON.parse(thread.participants)
 

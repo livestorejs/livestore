@@ -8,11 +8,10 @@ import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
 import { LabelSidebar } from './LabelSidebar.tsx'
 import { ThreadList } from './ThreadList.tsx'
+import { ThreadLoading } from './ThreadLoading.tsx'
 import { ThreadView } from './ThreadView.tsx'
 
 const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
-const threadErrorFallback = <ThreadError />
-const threadLoadingFallback = <ThreadLoading />
 
 export const AppLayout: React.FC = () => {
   const mailboxStore = useMailboxStore()
@@ -40,8 +39,8 @@ export const AppLayout: React.FC = () => {
         {/* Main Content */}
         <main className="flex-1 overflow-hidden">
           {uiState.selectedThreadId ? (
-            <ErrorBoundary fallback={threadErrorFallback}>
-              <Suspense fallback={threadLoadingFallback}>
+            <ErrorBoundary fallback={<ThreadError />}>
+              <Suspense fallback={<ThreadLoading />}>
                 <ThreadView threadId={uiState.selectedThreadId} />
               </Suspense>
             </ErrorBoundary>
@@ -66,8 +65,3 @@ const ThreadError: React.FC = () => (
   </div>
 )
 
-const ThreadLoading: React.FC = () => (
-  <div className="grid place-items-center h-full">
-    <p className="text-gray-500">Loading thread...</p>
-  </div>
-)

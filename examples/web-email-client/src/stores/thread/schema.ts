@@ -1,4 +1,4 @@
-import { Events, makeSchema, Schema, State } from '@livestore/livestore'
+import { defineCommand, Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 export const threadTables = {
   thread: State.SQLite.table({
@@ -117,4 +117,60 @@ export const materializers = State.SQLite.materializers(threadEvents, {
 
 const state = State.SQLite.makeState({ tables: threadTables, materializers })
 
-export const schema = makeSchema({ events: threadEvents, state, devtools: { alias: 'thread' } })
+export class LabelAlreadyApplied extends Schema.TaggedError<LabelAlreadyApplied>()('LabelAlreadyApplied', {}) {}
+export class LabelNotOnThread extends Schema.TaggedError<LabelNotOnThread>()('LabelNotOnThread', {}) {}
+
+export const threadCommands = {
+  applyLabel: defineCommand({
+    name: 'ApplyLabel',
+    schema: Schema.Struct({
+      threadId: Schema.String,
+      labelId: Schema.String,
+      appliedAt: Schema.Date, // Passed in rather than generated, so replayed commands preserve the original timestamp
+    }),
+    handler: ({ threadId, labelId, appliedAt }, ctx) => {
+      const existing = ctx.query(threadTables.threadLabels.where({ threadId, labelId }).first())
+      if (existing) return new LabelAlreadyApplied()
+      return threadEvents.threadLabelApplied({ threadId, labelId, appliedAt })
+    },
+  }),
+
+  removeLabel: defineCommand({
+    name: 'RemoveLabel',
+    schema: Schema.Struct({
+      threadId: Schema.String,
+      labelId: Schema.String,
+      removedAt: Schema.Date, // Passed in rather than generated, so replayed commands preserve the original timestamp
+    }),
+    handler: ({ threadId, labelId, removedAt }, ctx) => {
+      const existing = ctx.query(threadTables.threadLabels.where({ threadId, labelId }).first())
+      if (!existing) return new LabelNotOnThread()
+      return threadEvents.threadLabelRemoved({ threadId, labelId, removedAt })
+    },
+  }),
+
+  replaceLabel: defineCommand({
+    name: 'ReplaceLabel',
+    schema: Schema.Struct({
+      threadId: Schema.String,
+      currentLabelId: Schema.String,
+      targetLabelId: Schema.String,
+      replacedAt: Schema.Date, // Passed in rather than generated, so replayed commands preserve the original timestamp
+    }),
+    handler: ({ threadId, currentLabelId, targetLabelId, replacedAt }, ctx) => {
+      const threadLabels = ctx.query(threadTables.threadLabels.where({ threadId }))
+
+      const currentLabel = threadLabels.find((tl) => tl.labelId === currentLabelId)
+      if (!currentLabel) return new LabelNotOnThread()
+
+      if (currentLabel.labelId === targetLabelId) return new LabelAlreadyApplied()
+
+      return [
+        threadEvents.threadLabelRemoved({ threadId, labelId: currentLabel.labelId, removedAt: replacedAt }),
+        threadEvents.threadLabelApplied({ threadId, labelId: targetLabelId, appliedAt: replacedAt }),
+      ]
+    },
+  }),
+}
+
+export const schema = makeSchema({ events: threadEvents, state, commands: threadCommands, devtools: { alias: 'thread' } })

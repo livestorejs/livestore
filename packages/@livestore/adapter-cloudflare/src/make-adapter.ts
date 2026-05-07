@@ -124,6 +124,9 @@ export const makeAdapter =
                   options,
                 }),
             },
+            commands: {
+              push: (command) => syncProcessor.pushCommand({ command, clientId, sessionId }),
+            },
             initialState: {
               leaderHead: initialLeaderHead,
               migrationsReport: initialState.migrationsReport,

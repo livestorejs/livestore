@@ -1,6 +1,7 @@
 import {
   type Bindable,
   type ClientSession,
+  CommandExecutionError,
   Devtools,
   getExecStatementsFromMaterializer,
   getResultSchema,
@@ -17,11 +18,19 @@ import {
   replaceSessionIdSymbol,
   type StorageMode,
   type SyncState,
-  UnknownError,
+  UnknownError, type QueryBuilder,
 } from '@livestore/common'
-import type { StreamEventsOptions } from '@livestore/common/leader-thread'
-import type { LiveStoreSchema } from '@livestore/common/schema'
-import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
+import type { CommandPushResult, StreamEventsOptions } from '@livestore/common/leader-thread'
+import {
+  type CommandDef,
+  type CommandInstance,
+  EventSequenceNumber,
+  LiveStoreEvent,
+  type LiveStoreSchema,
+  executeCommandHandler,
+  resolveEventDef,
+  SystemTables,
+} from '@livestore/common/schema'
 import { assertNever, isDevEnv, objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
@@ -35,6 +44,7 @@ import {
   Runtime,
   Schema,
   Stream,
+  Match
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
@@ -52,6 +62,8 @@ import {
   type RefreshReason,
   type StoreCommitOptions,
   type StoreConstructorParams,
+  type StoreExecuteOptions,
+  type ExecuteResult,
   type StoreEventsOptions,
   type StoreInternals,
   StoreInternalsSymbol,
@@ -311,6 +323,22 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         }
         reactivityGraph.setRefs(tablesToUpdate)
       },
+      resolveCommandConfirmation: (commandId, result) => {
+        const handlers = this[StoreInternalsSymbol].pendingCommandConfirmations.get(commandId)
+        if (handlers === undefined) return
+
+        if (result._tag === 'reject') {
+          handlers.reject(result.error)
+        } else if (result._tag === 'conflict') {
+          handlers.resolve(result)
+        } else if (result._tag === 'confirmed') {
+          handlers.resolve(result)
+        } else {
+          shouldNeverHappen('Invalid command confirmation result', result)
+        }
+
+        this[StoreInternalsSymbol].pendingCommandConfirmations.delete(commandId)
+      },
       params: {
         ...omitUndefineds({
           leaderPushBatchSize: params.leaderPushBatchSize,
@@ -320,14 +348,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           : {}),
       },
       confirmUnsavedChanges,
-    }).pipe(Runtime.runSync(effectContext.runtime))
+    })
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     const tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> } = {}
     const activeQueries = new ReferenceCountedSet<LiveQuery<any>>()
 
-    const commitsSpan = otelOptions.tracer.startSpan('LiveStore:commits', {}, otelOptions.rootSpanContext)
-    const otelMuationsSpanContext = otel.trace.setSpan(otel.context.active(), commitsSpan)
+    const mutationsSpan = otelOptions.tracer.startSpan('LiveStore:mutations', {}, otelOptions.rootSpanContext)
+    const mutationsSpanContext = otel.trace.setSpan(otel.context.active(), mutationsSpan)
 
     const queriesSpan = otelOptions.tracer.startSpan('LiveStore:queries', {}, otelOptions.rootSpanContext)
     const otelQueriesSpanContext = otel.trace.setSpan(otel.context.active(), queriesSpan)
@@ -343,7 +371,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const otelObj: StoreOtel = {
       tracer: otelOptions.tracer,
       rootSpanContext: otelOptions.rootSpanContext,
-      commitsSpanContext: otelMuationsSpanContext,
+      mutationsSpanContext: mutationsSpanContext,
       queriesSpanContext: otelQueriesSpanContext,
     }
 
@@ -373,6 +401,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const boot = Effect.gen(this, function* () {
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
+          for (const handlers of this[StoreInternalsSymbol].pendingCommandConfirmations.values()) {
+            handlers.reject(new UnknownError({ cause: 'Store shutdown before command confirmation' }))
+          }
+          this[StoreInternalsSymbol].pendingCommandConfirmations.clear()
+
           // Remove all table refs from the reactivity graph
           for (const tableRef of Object.values(tableRefs)) {
             for (const superComp of tableRef.super) {
@@ -381,7 +414,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           }
 
           // End the otel spans
-          commitsSpan.end()
+          mutationsSpan.end()
           queriesSpan.end()
         }),
       )
@@ -406,6 +439,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       tableRefs,
       activeQueries,
       syncProcessor,
+      pendingCommandConfirmations: new Map(),
       boot,
       isShutdown: false,
     }
@@ -788,17 +822,25 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
 
-    Effect.gen(this, function* () {
-      const commitsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.commitsSpanContext)
-      commitsSpan?.addEvent('commit')
-      const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
-      commitsSpan?.addLink({ context: currentSpan.spanContext() })
+    const parentSpanContext = options?.otelContext !== undefined
+      ? otel.trace.getSpanContext(options.otelContext)
+      : undefined
 
+    Effect.gen(this, function* () {
+      const mutationsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.mutationsSpanContext)
+      mutationsSpan?.addEvent('commit')
+      const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+      mutationsSpan?.addLink({ context: currentSpan.spanContext() })
+
+      if (events.length === 0) return
+
+      // Client document schemas are defined statically at module level, before the store boots and a session ID
+      // is assigned. To let users reference their own session without threading the ID manually, schemas use
+      // `SessionIdSymbol` as a placeholder. Here we resolve those placeholders to the real session ID right
+      // before the events are materialized (materializers will throw if any symbol remains unresolved).
       for (const event of events) {
         replaceSessionIdSymbol(event.args, this[StoreInternalsSymbol].clientSession.sessionId)
       }
-
-      if (events.length === 0) return
 
       const localRuntime = yield* Effect.runtime()
 
@@ -839,16 +881,20 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       })
     }).pipe(
       Effect.withSpan('LiveStore:commit', {
-        root: true,
+        // When `options.otelContext` carries a parent span, the "LiveStore:commit" span becomes
+        // a child of that span. Otherwise, it's a root span with its own trace.
+        ...(parentSpanContext !== undefined
+          ? { parent: OtelTracer.makeExternalSpan(parentSpanContext) }
+          : { root: true }),
         attributes: {
           'livestore.eventsCount': events.length,
           'livestore.eventTags': events.map((_) => _.name),
           ...(options?.label && { 'livestore.commitLabel': options.label }),
         },
         links: [
-          // Span link to LiveStore:commits
+          // Span link to LiveStore:mutations
           OtelTracer.makeSpanLink({
-            context: otel.trace.getSpanContext(this[StoreInternalsSymbol].otel.commitsSpanContext)!,
+            context: otel.trace.getSpanContext(this[StoreInternalsSymbol].otel.mutationsSpanContext)!,
           }),
           // User-provided span links
           ...(options?.spanLinks?.map(OtelTracer.makeSpanLink) ?? []),
@@ -860,6 +906,222 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     )
   }
   //#endregion commit
+
+  //#region execute
+  /**
+   * Execute a command against the current state.
+   *
+   * @remarks
+   * Commands encode user intentions that can be validated against the current state
+   * and re-evaluated during sync.
+   *
+   * @param command - The command instance to execute (created by calling a {@link CommandDef})
+   * @param options - Configuration for the command execution
+   * @returns An {@link ExecuteResult} — either {@link ExecuteResultFailed} or {@link ExecuteResultPending}
+   *
+   * @example
+   * ```ts
+   * const result = store.execute(commands.checkInGuest({ roomId, guestId }))
+   *
+   * if (result._tag === 'failed') {
+   *   switch (result.error._tag) {
+   *     case 'RoomAtCapacity':
+   *       console.error('Room is full:', result.error)
+   *       break
+   *     case 'GuestNotFound':
+   *       console.error('Guest not found:', result.error)
+   *       break
+   *     default:
+   *       console.error('Could not check in guest:', result.error)
+   *       break
+   *   }
+   *   return
+   * }
+   *
+   * // Command succeeded initial execution - events are materialized but pending confirmation
+   * const guest = store.query(tables.guests.get(guestId))
+   * console.log('Checked in:', guest)
+   *
+   * // Optionally await server confirmation
+   * const confirmation = await result.confirmation
+   * if (confirmation._tag === 'conflict' && confirmation.error._tag === 'RoomAtCapacity') {
+   *   console.error('Check-in rolled back: room is full')
+   * }
+   * ```
+   */
+  execute = <TName extends string, TArgs, TError>(
+    command: CommandInstance<TName, TArgs, TError>,
+    options?: StoreExecuteOptions,
+  ): ExecuteResult<TError> => {
+    this.checkShutdown('execute')
+
+    const parentSpanContext = options?.otelContext !== undefined
+      ? otel.trace.getSpanContext(options.otelContext)
+      : undefined
+
+    const exit = Effect.gen(this, function* () {
+      // Reverse link: attach "LiveStore:execute" span to the "LiveStore:mutations" collector span
+      const mutationsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.mutationsSpanContext)
+      mutationsSpan?.addEvent('execute')
+      const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+      mutationsSpan?.addLink({ context: currentSpan.spanContext() })
+
+      const commandDef = this.schema.commandDefsMap.get(command.name)
+      if (commandDef === undefined) {
+        return yield* Effect.die(
+          new CommandExecutionError({
+            command: { name: command.name, id: command.id },
+            reason: 'CommandNotFound',
+            phase: 'initial',
+          }),
+        )
+      }
+
+      const executionResult = executeCommandHandler<TError>({
+        handler: commandDef.handler,
+        commandArgs: command.args,
+        db: this[StoreInternalsSymbol].sqliteDbWrapper,
+        phaseTag: 'initial',
+      })
+
+      return yield* Match.value(executionResult).pipe(
+        Match.tagsExhaustive({
+          threw: (r) =>
+            Effect.die(
+              new CommandExecutionError({
+                command: { name: command.name, id: command.id },
+                reason: 'CommandHandlerThrew',
+                phase: 'initial',
+                cause: r.cause,
+              }),
+            ),
+
+          error: (r) => {
+            const confirmation = Promise.reject(r.error)
+            // Mark as handled to avoid unhandled-rejection warnings when callers branch on `_tag`
+            // and intentionally skip awaiting `.confirmation` for failed initial execution.
+            void confirmation.catch(() => {})
+            return Effect.succeed({ _tag: 'failed' as const, error: r.error, confirmation })
+          },
+
+          ok: (r) => {
+            if (r.events.length === 0) {
+              return Effect.die(
+                new CommandExecutionError({
+                  command: { name: command.name, id: command.id },
+                  reason: 'NoEventProduced',
+                  phase: 'initial',
+                  description:
+                    'Command handlers must return one event, an array with at least one event, or a recoverable error value.',
+                }),
+              )
+            }
+
+            return Effect.gen(this, function* () {
+              // Optimistically materialize events on the session and push the command to the leader
+              const { writeTables, pushResult } = yield* this[StoreInternalsSymbol].syncProcessor.pushCommand({
+                events: r.events,
+                command,
+              })
+
+              // Refresh reactive tables (same pattern as commit)
+              const tablesToUpdate: [Ref<null, ReactivityGraphContext, RefreshReason>, null][] = []
+              for (const tableName of writeTables) {
+                const tableRef = this[StoreInternalsSymbol].tableRefs[tableName]
+                assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
+                tablesToUpdate.push([tableRef!, null])
+              }
+
+              const debugRefreshReason: RefreshReason = {
+                _tag: 'execute',
+                command,
+                events: r.events,
+                writeTables: Array.from(writeTables),
+              }
+              const skipRefresh = options?.skipRefresh ?? false
+              const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+
+              this[StoreInternalsSymbol].reactivityGraph.setRefs(tablesToUpdate, {
+                debugRefreshReason,
+                skipRefresh,
+                otelContext: otel.trace.setSpan(otel.context.active(), currentSpan),
+              })
+
+              // Register for sync confirmation tracking immediately, before the leader processes the
+              // command, to avoid a race where the pull handler resolves the command (via rebase)
+              // before the pushResult callback registers the handler.
+              type Confirmation = { readonly _tag: 'confirmed' } | { readonly _tag: 'conflict'; readonly error: TError }
+              const syncConfirmation = new Promise<Confirmation>((resolve, reject) => {
+                this[StoreInternalsSymbol].pendingCommandConfirmations.set(command.id, {
+                  resolve: resolve as (value: { _tag: 'confirmed' } | { _tag: 'conflict'; error: unknown }) => void,
+                  reject,
+                })
+              })
+              // Mark as handled to avoid unhandled-rejection warnings
+              void syncConfirmation.catch(() => {})
+
+              // Wire the confirmation promise: wait for leader to accept, then wait for backend confirmation.
+              // Race pushResult against syncConfirmation so that if the push fiber is interrupted
+              // during a rebase (losing the command deferred), the confirmation still resolves when
+              // the leader confirms the command via advance confirmedCommandIds or rebase.
+              const pushPath = pushResult.then((result: CommandPushResult): Confirmation | Promise<Confirmation> => {
+                if (result._tag === 'ok') {
+                  // Command handler returned events on leader — wait for backend-level confirmation (resolved by the pull handler)
+                  return syncConfirmation
+                } else if (result._tag === 'error') {
+                  // Command handler returned a recoverable error on leader
+                  this[StoreInternalsSymbol].pendingCommandConfirmations.delete(command.id)
+                  return { _tag: 'conflict' as const, error: result.error as TError }
+                } else if (result._tag === 'threw') {
+                  // An unrecoverable, unexpected error occurred during command execution on leader
+                  this[StoreInternalsSymbol].pendingCommandConfirmations.delete(command.id)
+                  throw result.cause
+                } else {
+                  return shouldNeverHappen('Unexpected CommandPushResult', result)
+                }
+              })
+              // Prevent unhandled rejection if syncConfirmation wins the race
+              void pushPath.catch(() => {})
+              const confirmation: Promise<Confirmation> = Promise.race([pushPath, syncConfirmation])
+              // Mark as handled to avoid unhandled-rejection warnings when the store shuts down
+              // before callers await `.confirmation` (e.g. fire-and-forget command execution).
+              void confirmation.catch(() => {})
+
+              return { _tag: 'pending' as const, confirmation }
+            })
+          },
+        }),
+      )
+    }).pipe(
+      Effect.withSpan('LiveStore:execute', {
+        // When `options.otelContext` carries a parent span, the "LiveStore:execute" span becomes a child
+        // of that span. Otherwise, it's a root span with its own trace.
+        ...(parentSpanContext !== undefined
+          ? { parent: OtelTracer.makeExternalSpan(parentSpanContext) }
+          : { root: true }),
+        attributes: {
+          'livestore.commandName': command.name,
+          'livestore.commandId': command.id,
+          ...(options?.label && { 'livestore.executeLabel': options.label }),
+        },
+        links: [
+          // Span link to LiveStore:mutations
+          OtelTracer.makeSpanLink({
+            context: otel.trace.getSpanContext(this[StoreInternalsSymbol].otel.mutationsSpanContext)!,
+          }),
+          // User-provided span links
+          ...(options?.spanLinks?.map(OtelTracer.makeSpanLink) ?? []),
+        ],
+      }),
+      Effect.exit,
+      Runtime.runSync(this[StoreInternalsSymbol].effectContext.runtime),
+    )
+
+    if (exit._tag === 'Success') return exit.value
+
+    throw Cause.squash(exit.cause)
+  }
+  //#endregion execute
 
   /**
    * Returns an async iterable of events from the eventlog.
@@ -1058,7 +1320,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this[StoreInternalsSymbol].otel.tracer.startActiveSpan(
       'LiveStore:manualRefresh',
       { attributes: { 'livestore.manualRefreshLabel': label } },
-      this[StoreInternalsSymbol].otel.commitsSpanContext,
+      this[StoreInternalsSymbol].otel.mutationsSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
         this[StoreInternalsSymbol].reactivityGraph.runDeferredEffects({ otelContext })

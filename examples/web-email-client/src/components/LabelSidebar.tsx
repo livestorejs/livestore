@@ -1,9 +1,8 @@
 import type React from 'react'
-import { useCallback, useMemo } from 'react'
 
 import { queryDb } from '@livestore/livestore'
 
-import { useMailboxStore } from '../stores/mailbox/index.ts'
+import { useMailboxStore } from '../stores/mailbox'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
 
 const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
@@ -23,31 +22,10 @@ export const LabelSidebar: React.FC = () => {
   const [uiState, setUiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
   const labels = mailboxStore.useQuery(labelsQuery)
 
-  const selectLabel = useCallback(
-    (labelId: string) => {
-      setUiState({ selectedLabelId: labelId, selectedThreadId: null })
-    },
-    [setUiState],
-  )
-
-  const handleSelectLabel = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      const labelId = e.currentTarget.dataset.labelId
-      if (labelId !== undefined) {
-        selectLabel(labelId)
-      }
-    },
-    [selectLabel],
-  )
-
-  const labelColorStyles = useMemo(
-    () =>
-      new Map(
-        labels
-          .filter((label) => label.color !== null)
-          .map((label) => [label.id, { backgroundColor: label.color }] as const),
-      ),
-    [labels],
+  const labelColorStyles = new Map(
+    labels
+      .filter((label) => label.color !== null)
+      .map((label) => [label.id, { backgroundColor: label.color ?? 'gray' }] as const),
   )
 
   return (
@@ -60,7 +38,11 @@ export const LabelSidebar: React.FC = () => {
             key={label.id}
             type="button"
             data-label-id={label.id}
-            onClick={handleSelectLabel}
+            onClick={(e) => {
+              const labelId = e.currentTarget.dataset.labelId
+              if (labelId === undefined) throw new Error('No label ID found')
+              setUiState({ selectedLabelId: labelId, selectedThreadId: null })
+            }}
             className={`w-full text-left px-3 py-2 rounded text-sm font-medium flex items-center text-gray-700 justify-between ${isActive ? 'bg-gray-200' : ' hover:bg-gray-100'}`}
           >
             <div className="flex items-center gap-2">

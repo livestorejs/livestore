@@ -1,12 +1,11 @@
 import type React from 'react'
-import { useCallback } from 'react'
 
 import { queryDb } from '@livestore/livestore'
 import { useStoreRegistry } from '@livestore/react'
 
-import { useMailboxStore } from '../stores/mailbox/index.ts'
+import { useMailboxStore } from '../stores/mailbox'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
-import { threadStoreOptions } from '../stores/thread/index.ts'
+import { threadStoreOptions } from '../stores/thread'
 
 const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
 const threadIndexQuery = queryDb(mailboxTables.threadIndex.where({}), { label: 'threadIndex' })
@@ -41,39 +40,17 @@ export const ThreadList: React.FC = () => {
         .filter((t): t is NonNullable<typeof t> => t !== undefined)
     : undefined
 
-  const selectThread = useCallback(
-    (threadId: string) => {
-      setUiState({ selectedThreadId: threadId })
-    },
-    [setUiState],
-  )
+  const handlePreloadThreadStore = (e: { currentTarget: HTMLButtonElement }) => {
+    const threadId = e.currentTarget.dataset.threadId
+    if (threadId === undefined) throw new Error('No thread ID found')
+    void storeRegistry.preload(threadStoreOptions(threadId))
+  }
 
-  const preloadThreadStore = useCallback(
-    (threadId: string) => {
-      void storeRegistry.preload(threadStoreOptions(threadId))
-    },
-    [storeRegistry],
-  )
-
-  const handlePreloadThreadStore = useCallback(
-    (e: { currentTarget: HTMLButtonElement }) => {
-      const threadId = e.currentTarget.dataset.threadId
-      if (threadId !== undefined) {
-        preloadThreadStore(threadId)
-      }
-    },
-    [preloadThreadStore],
-  )
-
-  const handleSelectThread = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      const threadId = e.currentTarget.dataset.threadId
-      if (threadId !== undefined) {
-        selectThread(threadId)
-      }
-    },
-    [selectThread],
-  )
+  const handleSelectThread = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const threadId = e.currentTarget.dataset.threadId
+    if (threadId === undefined) throw new Error('No thread ID found')
+    setUiState({ selectedThreadId: threadId })
+  }
 
   if (!threadsForSelectedLabel || threadsForSelectedLabel.length === 0) {
     return (

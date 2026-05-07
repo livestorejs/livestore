@@ -1,3 +1,4 @@
+export * from './command/mod.ts'
 export * from './EventDef/mod.ts'
 export * as EventSequenceNumber from './EventSequenceNumber/mod.ts'
 export * as Events from './events.ts'

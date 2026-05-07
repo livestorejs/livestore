@@ -7,7 +7,7 @@ import { table } from '../table-def.ts'
 /**
  * EVENTLOG DATABASE SYSTEM TABLES
  *
- * ⚠️  CRITICAL: NEVER modify eventlog schemas without bumping `liveStoreStorageFormatVersion`!
+ * ⚠️ CRITICAL: NEVER modify eventlog schemas without bumping `liveStoreStorageFormatVersion`!
  * Eventlog is the source of truth - schema changes cause permanent data loss.
  *
  * TODO: Implement proper eventlog versioning system to prevent accidental data loss
@@ -33,6 +33,8 @@ export const eventlogMetaTable = table({
     argsJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Any) }),
     clientId: SqliteDsl.text({}),
     sessionId: SqliteDsl.text({}),
+    /** The command instance ID that produced this event, if any. */
+    commandId: SqliteDsl.text({ nullable: true }),
     schemaHash: SqliteDsl.integer({}),
     syncMetadataJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Option(Schema.JsonValue)) }),
   },
@@ -61,4 +63,28 @@ export const syncStatusTable = table({
 
 export type SyncStatusRow = typeof syncStatusTable.Type
 
-export const eventlogSystemTables = [eventlogMetaTable, syncStatusTable] as const
+export const COMMAND_JOURNAL_TABLE = '__livestore_command_journal'
+
+/**
+ * Append-only journal that records locally-executed commands for later replay.
+ *
+ * Commands are journaled after successful initial execution and removed when their resulting events are confirmed
+ * or when the command fails during replay. If a row exists, the command is pending.
+ */
+export const commandJournalTable = table({
+  name: COMMAND_JOURNAL_TABLE,
+  columns: {
+    /** Unique identifier for the command instance. */
+    id: SqliteDsl.text({ primaryKey: true }),
+
+    /** The command type’s name (e.g., 'CheckInGuest'). */
+    name: SqliteDsl.text({ nullable: false }),
+
+    /** Serialized command arguments. */
+    args: SqliteDsl.json({ nullable: false }),
+  },
+})
+
+export type CommandJournalRow = typeof commandJournalTable.Type
+
+export const eventlogSystemTables = [eventlogMetaTable, syncStatusTable, commandJournalTable] as const

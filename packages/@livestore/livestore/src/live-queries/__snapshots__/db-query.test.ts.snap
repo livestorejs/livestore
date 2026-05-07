@@ -44,7 +44,7 @@ exports[`otel > QueryBuilder subscription - async iterator 1`] = `
       ],
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -142,7 +142,7 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1
       ],
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -240,7 +240,7 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
       ],
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -384,7 +384,7 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
       ],
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -528,7 +528,7 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
       ],
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -679,7 +679,7 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
       ],
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -889,7 +889,7 @@ exports[`otel > otel 3`] = `
       ],
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -1016,6 +1016,23 @@ exports[`otel > with thunks 1`] = `
       "sub": [],
       "super": [],
     },
+    {
+      "_tag": "ref",
+      "id": "node-3",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:highlights",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
   ],
   "deferredEffects": [],
   "effects": [],
@@ -1048,6 +1065,23 @@ exports[`otel > with thunks 3`] = `
       "isDestroyed": false,
       "isDirty": false,
       "label": "tableRef:app",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-3",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:highlights",
       "meta": {
         "liveStoreRefType": "table",
       },
@@ -1102,6 +1136,23 @@ exports[`otel > with thunks 4`] = `
       "sub": [],
       "super": [],
     },
+    {
+      "_tag": "ref",
+      "id": "node-3",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:highlights",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
   ],
   "deferredEffects": [],
   "effects": [],
@@ -1134,6 +1185,23 @@ exports[`otel > with thunks 6`] = `
       "isDestroyed": false,
       "isDirty": false,
       "label": "tableRef:app",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-3",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:highlights",
       "meta": {
         "liveStoreRefType": "table",
       },
@@ -1195,7 +1263,7 @@ exports[`otel > with thunks 7`] = `
       ],
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -1335,7 +1403,7 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       ],
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",

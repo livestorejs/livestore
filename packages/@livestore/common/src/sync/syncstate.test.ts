@@ -142,7 +142,7 @@ Vitest.describe('syncstate', () => {
             upstreamHead: EventSequenceNumber.Client.ROOT,
             localHead: e1_0.seqNum,
           })
-          const exit = yield* merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_1, e1_0] } }).pipe(
+          const exit = yield* merge({ syncState, payload: { _tag: 'upstream-advance', confirmedCommandIds: [], newEvents: [e1_1, e1_0] } }).pipe(
             Effect.exit,
           )
           assert(Exit.isFailure(exit))
@@ -157,7 +157,7 @@ Vitest.describe('syncstate', () => {
             upstreamHead: EventSequenceNumber.Client.ROOT,
             localHead: e1_0.seqNum,
           })
-          const exit = yield* merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e2_0, e1_0] } }).pipe(
+          const exit = yield* merge({ syncState, payload: { _tag: 'upstream-advance', confirmedCommandIds: [], newEvents: [e2_0, e1_0] } }).pipe(
             Effect.exit,
           )
           assert(Exit.isFailure(exit))
@@ -172,7 +172,7 @@ Vitest.describe('syncstate', () => {
             upstreamHead: e2_0.seqNum,
             localHead: e2_0.seqNum,
           })
-          const exit = yield* merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] } }).pipe(
+          const exit = yield* merge({ syncState, payload: { _tag: 'upstream-advance', confirmedCommandIds: [], newEvents: [e1_0] } }).pipe(
             Effect.exit,
           )
           assert(Exit.isFailure(exit))
@@ -187,7 +187,7 @@ Vitest.describe('syncstate', () => {
             upstreamHead: e2_0.seqNum,
             localHead: e2_0.seqNum,
           })
-          const exit = yield* merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e2_0] } }).pipe(
+          const exit = yield* merge({ syncState, payload: { _tag: 'upstream-advance', confirmedCommandIds: [], newEvents: [e2_0] } }).pipe(
             Effect.exit,
           )
           assert(Exit.isFailure(exit))
@@ -202,7 +202,7 @@ Vitest.describe('syncstate', () => {
             upstreamHead: EventSequenceNumber.Client.ROOT,
             localHead: e1_0.seqNum,
           })
-          const result = yield* merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] } })
+          const result = yield* merge({ syncState, payload: { _tag: 'upstream-advance', confirmedCommandIds: [], newEvents: [e1_0] } })
 
           expectAdvance(result)
           expectEventArraysEqual(result.newSyncState.pending, [])
@@ -220,7 +220,7 @@ Vitest.describe('syncstate', () => {
             upstreamHead: EventSequenceNumber.Client.ROOT,
             localHead: e2_0.seqNum,
           })
-          const result = yield* merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] } })
+          const result = yield* merge({ syncState, payload: { _tag: 'upstream-advance', confirmedCommandIds: [], newEvents: [e1_0] } })
 
           expectAdvance(result)
           expectEventArraysEqual(result.newSyncState.pending, [e2_0])
@@ -240,7 +240,7 @@ Vitest.describe('syncstate', () => {
           })
           const result = yield* merge({
             syncState,
-            payload: { _tag: 'upstream-advance', newEvents: [e1_0, e1_1] },
+            payload: { _tag: 'upstream-advance', confirmedCommandIds: [], newEvents: [e1_0, e1_1] },
           })
 
           expectAdvance(result)
@@ -261,7 +261,7 @@ Vitest.describe('syncstate', () => {
           })
           const result = yield* merge({
             syncState,
-            payload: { _tag: 'upstream-advance', newEvents: [e1_1, e1_2, e1_3, e2_0, e2_1] },
+            payload: { _tag: 'upstream-advance', confirmedCommandIds: [], newEvents: [e1_1, e1_2, e1_3, e2_0, e2_1] },
           })
 
           expectAdvance(result)
@@ -282,7 +282,7 @@ Vitest.describe('syncstate', () => {
           })
           const result = yield* merge({
             syncState,
-            payload: { _tag: 'upstream-advance', newEvents: [e1_0] },
+            payload: { _tag: 'upstream-advance', confirmedCommandIds: [], newEvents: [e1_0] },
           })
 
           expectAdvance(result)
@@ -303,7 +303,7 @@ Vitest.describe('syncstate', () => {
           })
           const result = yield* merge({
             syncState,
-            payload: { _tag: 'upstream-advance', newEvents: [e1_0] },
+            payload: { _tag: 'upstream-advance', confirmedCommandIds: [], newEvents: [e1_0] },
             ignoreClientEvents: true,
           })
           expectAdvance(result)
@@ -324,7 +324,7 @@ Vitest.describe('syncstate', () => {
           })
           const result = yield* merge({
             syncState,
-            payload: { _tag: 'upstream-advance', newEvents: [e1_0] },
+            payload: { _tag: 'upstream-advance', confirmedCommandIds: [], newEvents: [e1_0] },
             ignoreClientEvents: true,
           })
           expectAdvance(result)
@@ -345,7 +345,7 @@ Vitest.describe('syncstate', () => {
           })
           const result = yield* merge({
             syncState,
-            payload: { _tag: 'upstream-advance', newEvents: [e1_0, e2_0] },
+            payload: { _tag: 'upstream-advance', confirmedCommandIds: [], newEvents: [e1_0, e2_0] },
             ignoreClientEvents: true,
           })
 
@@ -365,7 +365,7 @@ Vitest.describe('syncstate', () => {
             upstreamHead: e2_0.seqNum,
             localHead: e2_0.seqNum,
           })
-          const exit = yield* merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] } }).pipe(
+          const exit = yield* merge({ syncState, payload: { _tag: 'upstream-advance', confirmedCommandIds: [], newEvents: [e1_0] } }).pipe(
             Effect.exit,
           )
           assert(Exit.isFailure(exit))

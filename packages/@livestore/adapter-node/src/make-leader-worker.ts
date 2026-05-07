@@ -80,6 +80,10 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
           { waitForProcessing: true },
         ),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-node:worker:PushToLeader')),
+    PushCommandToLeader: ({ command, clientId, sessionId }) =>
+      Effect.andThen(LeaderThreadCtx, ({ syncProcessor }) =>
+        syncProcessor.pushCommand({ command, clientId, sessionId }),
+      ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-node:worker:PushCommandToLeader')),
     BootStatusStream: () =>
       Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
     PullStream: ({ cursor }) =>

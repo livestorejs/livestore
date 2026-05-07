@@ -1130,6 +1130,9 @@ importers:
       '@livestore/adapter-web':
         specifier: 0.4.0-dev.22
         version: link:../../packages/@livestore/adapter-web
+      '@livestore/common':
+        specifier: 0.4.0-dev.22
+        version: link:../../packages/@livestore/common
       '@livestore/livestore':
         specifier: 0.4.0-dev.22
         version: link:../../packages/@livestore/livestore

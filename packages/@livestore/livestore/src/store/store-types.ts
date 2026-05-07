@@ -13,7 +13,7 @@ import {
   type UnknownError,
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
-import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
+import type { CommandInstance, LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import type { Effect, Runtime, Schema, Scope } from '@livestore/utils/effect'
 import { Deferred, Predicate } from '@livestore/utils/effect'
 
@@ -75,6 +75,154 @@ export type LiveStoreContextRunning<TSchema extends LiveStoreSchema = LiveStoreS
   stage: 'running'
   store: Store<TSchema>
 }
+
+//#region execute-result
+/**
+ * Result of confirmation after sync.
+ *
+ * @remarks
+ *
+ * Used as the resolution type of {@link ExecuteResultPending.confirmation} so
+ * consumers can pattern-match on confirmed vs. conflict:
+ *
+ * - `'confirmed'`: Command's event(s) were pushed and confirmed by the sync backend
+ * - `'conflict'`: Command's handler returned an error during command replay
+ *
+ * @example
+ * ```ts
+ * const confirmation = await result.confirmation
+ * if (confirmation._tag === 'conflict') {
+ *   console.error('Conflict:', confirmation.error)
+ *   return
+ * }
+ *
+ * console.log('Command confirmed')
+ * ```
+ */
+export type CommandConfirmation<TError = unknown> =
+  | { readonly _tag: 'confirmed' }
+  | { readonly _tag: 'conflict'; readonly error: TError }
+
+/**
+ * Result of a failed initial command execution.
+ *
+ * @remarks
+ *
+ * Returned when the command handler returns an error during initial execution.
+ */
+export interface ExecuteResultFailed<TError = unknown> {
+  /** Type discriminator for a failed result. */
+  readonly _tag: 'failed'
+
+  /** The error returned by the command handler. */
+  readonly error: TError
+
+  /**
+   * Promise that rejects with the error.
+   *
+   * Allows callers who don't need to handle initial execution failures to
+   * access `.confirmation` directly without narrowing `_tag` first.
+   *
+   * It rejects when the command handler returns an error during initial
+   * execution since awaiting `.confirmation` directly implies we aren't expecting
+   * initial execution failures.
+   */
+  readonly confirmation: Promise<CommandConfirmation<TError>>
+}
+
+/**
+ * Result of a successful initial command execution.
+ *
+ * @remarks
+ *
+ * Returned when the command handler successfully returns events during
+ * initial execution. The events are materialized locally but may still
+ * not be confirmed due to conflicts or errors during sync.
+ */
+export interface ExecuteResultPending<TError = never> {
+  /** Type discriminator for pending result. */
+  readonly _tag: 'pending'
+
+  /**
+   * Promise that resolves when the command's event(s) are confirmed by the sync backend
+   * or an error is returned by the command handler during command replay. It rejects
+   * when the command handler throws (unexpected and non-recoverable) an error after
+   * initial execution.
+   *
+   * @example Only handle conflicts (skip initial execution failures)
+   * ```ts
+   * const confirmation = await store.execute(commands.toggleTodo({ id })).confirmation
+   * if (confirmation._tag === 'conflict' && confirmation.error._tag === 'TodoDoesNotExist') {
+   *   console.error('Todo was deleted:', confirmation.error)
+   *   return
+   * }
+   *
+   * console.log('Todo toggled')
+   * ```
+   *
+   * @example Handle initial execution failures and conflicts
+   * ```ts
+   * const result = store.execute(commands.createTodo({ id, text }))
+   * if (result._tag === 'failed' && result.error._tag === 'TodoTextEmpty') {
+   *   console.error('Todo text cannot be empty:', result.error)
+   *   return
+   * }
+   *
+   * const confirmation = await result.confirmation
+   * if (confirmation._tag === 'conflict') {
+   *   console.error('Todo rolled back:', confirmation.error)
+   *   return
+   * }
+   *
+   * console.log('Todo confirmed')
+   * ```
+   */
+  readonly confirmation: Promise<CommandConfirmation<TError>>
+}
+
+/**
+ * Result of a command execution.
+ *
+ * @remarks
+ *
+ * Commands either fail during initial execution (`failed`)
+ * or succeed with pending confirmation (`pending`).
+ *
+ * Both variants expose a `confirmation` promise so callers can await confirmation
+ * without handling initial execution failures. For each variant, the promise:
+ * - `pending`: resolves to {@link CommandConfirmation} when sync completes
+ * - `failed`: rejects with an error during initial execution (for callers who skip initial execution failures)
+ *
+ * @example Only handle conflicts (skip initial execution failures)
+ * ```ts
+ * const confirmation = await store.execute(commands.toggleTodo({ id })).confirmation
+ * if (confirmation._tag === 'conflict' && confirmation.error._tag === 'TodoDoesNotExist') {
+ *   console.error('Todo was deleted:', confirmation.error)
+ *   return
+ * }
+ *
+ * console.log('Todo toggled')
+ * ```
+ *
+ * @example Handle initial execution failures and conflicts
+ * ```ts
+ * const result = store.execute(commands.createTodo({ id, text }))
+ * if (result._tag === 'failed' && result.error._tag === 'TodoTextEmpty') {
+ *   console.error('Todo text cannot be empty:', result.error)
+ *   return
+ * }
+ *
+ * const confirmation = await result.confirmation
+ * if (confirmation._tag === 'conflict') {
+ *   console.error('Todo rolled back:', confirmation.error)
+ *   return
+ * }
+ *
+ * console.log('Todo confirmed')
+ * ```
+ */
+export type ExecuteResult<TError = unknown> = ExecuteResultFailed<TError> | ExecuteResultPending<TError>
+//#endregion execute-result
 
 export type OtelOptions = {
   tracer: otel.Tracer
@@ -163,6 +311,17 @@ export type StoreInternals = {
   readonly syncProcessor: ClientSessionSyncProcessor
 
   /**
+   * In-flight command confirmations keyed by command id.
+   */
+  readonly pendingCommandConfirmations: Map<
+    string,
+    {
+      resolve: (confirmation: { _tag: 'confirmed' } | { _tag: 'conflict'; error: unknown }) => void
+      reject: (error: unknown) => void
+    }
+  >
+
+  /**
    * Starts background fibers for sync and observation. Must be run exactly
    * once per Store instance. Scoped; installs finalizers to end spans and
    * detach reactive refs.
@@ -221,6 +380,15 @@ export type RefreshReason =
       writeTables: ReadonlyArray<string>
     }
   | {
+      _tag: 'execute'
+      /** The command that was executed */
+      command: CommandInstance
+      /** The events produced by the command */
+      events: ReadonlyArray<LiveStoreEvent.Input.Decoded>
+      /** The tables that were written to by the command's events */
+      writeTables: ReadonlyArray<string>
+    }
+  | {
       // TODO rename to a more appropriate name which is framework-agnostic
       _tag: 'react'
       api: string
@@ -250,7 +418,7 @@ export type QueryDebugInfo = {
 export type StoreOtel = {
   tracer: otel.Tracer
   rootSpanContext: otel.Context
-  commitsSpanContext: otel.Context
+  mutationsSpanContext: otel.Context
   queriesSpanContext: otel.Context
 }
 
@@ -258,6 +426,23 @@ export type StoreCommitOptions = {
   label?: string
   skipRefresh?: boolean
   spanLinks?: otel.Link[]
+  otelContext?: otel.Context
+}
+
+export type StoreExecuteOptions = {
+  /** Human-readable label for tracing and debugging, added as an OpenTelemetry span attribute. */
+  label?: string
+  /**
+   * When `true`, defers reactive query refresh after the command's events are committed.
+   * Call {@link Store.manualRefresh} afterward to flush updates in a single pass.
+   */
+  skipRefresh?: boolean
+  /** Additional OpenTelemetry span links attached to the `LiveStore:execute` span. */
+  spanLinks?: otel.Link[]
+  /**
+   * When provided, the `LiveStore:execute` span becomes a child of the span in this context
+   * instead of a root span.
+   */
   otelContext?: otel.Context
 }
 

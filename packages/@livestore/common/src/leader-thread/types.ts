@@ -24,12 +24,33 @@ import type {
   UnknownError,
   UnknownEventError,
 } from '../index.ts'
+import type { CommandInstance } from '../schema/command/command-instance.ts'
 import type { RejectedPushError } from './RejectedPushError.ts'
 import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
+import type { CommandJournal } from './CommandJournal.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 
 export type ShutdownState = 'running' | 'shutting-down'
+
+/**
+ * Result of pushing a command to the leader for execution.
+ *
+ * - `ok`: Handler succeeded; events will arrive through the pull stream.
+ * - `error`: Handler returned a recoverable error; no events were committed.
+ * - `threw`: Handler threw an unexpected error; no events were committed.
+ */
+export type CommandPushResult =
+  | { readonly _tag: 'ok' }
+  | { readonly _tag: 'error'; readonly error: unknown }
+  | { readonly _tag: 'threw'; readonly cause: unknown }
+
+/** Schema for {@link CommandPushResult}, used in worker communication. */
+export const CommandPushResultSchema = Schema.Union(
+  Schema.Struct({ _tag: Schema.Literal('ok') }),
+  Schema.Struct({ _tag: Schema.Literal('error'), error: Schema.Unknown }),
+  Schema.Struct({ _tag: Schema.Literal('threw'), cause: Schema.Unknown }),
+)
 
 export const InitialSyncOptionsSkip = Schema.TaggedStruct('Skip', {})
 export type InitialSyncOptionsSkip = typeof InitialSyncOptionsSkip.Type
@@ -207,6 +228,13 @@ export interface LeaderSyncProcessor {
     },
   ) => Effect.Effect<void, RejectedPushError>
 
+  /** Used by client sessions to push a command to the leader for execution */
+  pushCommand: (args: {
+    command: CommandInstance
+    clientId: string
+    sessionId: string
+  }) => Effect.Effect<CommandPushResult, UnknownError>
+
   /** Currently only used by devtools which don't provide their own event numbers */
   pushPartial: (args: {
     event: LiveStoreEvent.Input.Encoded
@@ -217,7 +245,7 @@ export interface LeaderSyncProcessor {
   boot: Effect.Effect<
     { initialLeaderHead: EventSequenceNumber.Client.Composite },
     never,
-    LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
+    CommandJournal | LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >
   syncState: Subscribable.Subscribable<SyncState.SyncState>
 }

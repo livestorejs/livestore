@@ -6,10 +6,7 @@ import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
 
 import { AppLayout } from './components/AppLayout.tsx'
-import { mailboxStoreId } from './stores/mailbox/index.ts'
-
-const appErrorFallback = <AppError />
-const appLoadingFallback = <AppLoading />
+import { mailboxStoreId } from './stores/mailbox'
 
 export const App: React.FC = () => {
   const [storeRegistry] = useState(() => new StoreRegistry({ defaultOptions: { batchUpdates } }))
@@ -18,8 +15,8 @@ export const App: React.FC = () => {
 
   return (
     <div className="h-dvh bg-gray-100">
-      <ErrorBoundary fallback={appErrorFallback}>
-        <Suspense fallback={appLoadingFallback}>
+      <ErrorBoundary fallback={<AppError />}>
+        <Suspense fallback={<AppLoading />}>
           <StoreRegistryProvider storeRegistry={storeRegistry}>
             <AppLayout />
           </StoreRegistryProvider>

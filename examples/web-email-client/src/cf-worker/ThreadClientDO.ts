@@ -1,26 +1,20 @@
 import { DurableObject } from 'cloudflare:workers'
 
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
-import { nanoid } from '@livestore/livestore'
-import type * as SyncBackend from '@livestore/sync-cf/cf-worker'
+import { nanoid, type Store } from '@livestore/livestore'
+import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 
 import { schema as threadSchema, threadTables } from '../stores/thread/schema.ts'
 import { seedThread } from '../stores/thread/seed.ts'
-import type { Env } from './shared.ts'
+import { encodeThreadEvent, type Env, type ThreadCrossStoreEvent } from './shared.ts'
 
 // Scoped by storeId
 export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
-  private store!: Awaited<ReturnType<typeof createStoreDoPromise>>
+  __DURABLE_OBJECT_BRAND = 'thread-client-do' as never
+  private store!: Store<typeof threadSchema>
   private hasStore = false
-  private threadLabelsSubscription: (() => void) | undefined
-  private threadSubscription: (() => void) | undefined
-  private previousLabels: ReadonlyArray<{
-    readonly threadId: string
-    readonly labelId: string
-    readonly appliedAt: Date
-  }> = [] // labels for the single thread in this store
-  private threadPublished = false // track if we've published the thread creation event
+  private eventsListenerStarted = false
 
   async initialize({ threadId, inboxLabelId }: { threadId: string; inboxLabelId: string }) {
     if (this.hasStore === true) return
@@ -33,7 +27,7 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
       clientId: 'thread-client-do',
       sessionId: nanoid(),
       durableObject: {
-        ctx: this.ctx as SyncBackend.CfTypes.DurableObjectState,
+        ctx: this.ctx as CfTypes.DurableObjectState,
         env: this.env,
         bindingName: 'THREAD_CLIENT_DO',
       },
@@ -47,108 +41,43 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
 
     if (existingThreadCount > 0) {
       console.log('📧 Thread store already seeded with', existingThreadCount, 'thread')
-      await this.subscribeToStore()
+      this.startEventsListener()
       return
     }
 
     seedThread({ store: this.store, threadId, inboxLabelId })
-    await this.subscribeToStore()
+    this.startEventsListener()
   }
 
-  private async subscribeToStore() {
-    if (this.threadLabelsSubscription || this.threadSubscription) return
-
+  /** Listens to the store event stream and publishes cross-store events. */
+  private startEventsListener() {
+    if (this.eventsListenerStarted) return
     if (this.hasStore === false) throw new Error('Store not initialized. Call initialize() first.')
+    this.eventsListenerStarted = true
 
-    // Subscribe to threadLabels table changes to detect label applications/removals
-    this.threadLabelsSubscription = this.store.subscribe(threadTables.threadLabels, this.publishLabelChanges)
-
-    // Subscribe to thread table changes to detect new threads
-    this.threadSubscription = this.store.subscribe(threadTables.thread, this.publishThreadCreated)
-  }
-
-  private publishLabelChanges = async (
-    currentLabels: ReadonlyArray<{ readonly threadId: string; readonly labelId: string; readonly appliedAt: Date }>,
-  ) => {
-    try {
-      // Find removed labels - publish v1.ThreadLabelRemoved
-      for (const { threadId, labelId } of this.previousLabels) {
-        if (!currentLabels.some((curr) => curr.labelId === labelId)) {
-          await this.env.CROSS_STORE_EVENTS_QUEUE.send({
-            name: 'v1.ThreadLabelRemoved',
-            data: {
-              threadId,
-              labelId,
-              removedAt: new Date(),
-            },
-          })
-          console.log(`📤 Published v1.ThreadLabelRemoved: thread=${threadId}, label=${labelId}`)
-        }
-      }
-
-      // Find added labels - publish v1.ThreadLabelApplied
-      for (const { threadId, labelId } of currentLabels) {
-        if (!this.previousLabels.some((prev) => prev.labelId === labelId)) {
-          await this.env.CROSS_STORE_EVENTS_QUEUE.send({
-            name: 'v1.ThreadLabelApplied',
-            data: {
-              threadId,
-              labelId,
-              appliedAt: new Date(),
-            },
-          })
-          console.log(`📤 Published v1.ThreadLabelApplied: thread=${threadId}, label=${labelId}`)
-        }
-      }
-
-      // Store current state for next comparison
-      this.previousLabels = currentLabels
-    } catch (error) {
-      // Log and continue (per user preference)
-      console.error('[ThreadClientDO] Failed to publish label changes:', error)
-    }
-  }
-
-  private publishThreadCreated = async (
-    currentThreads: ReadonlyArray<{
-      readonly id: string
-      readonly subject: string
-      readonly participants: string
-      readonly createdAt: Date
-    }>,
-  ) => {
-    try {
-      // Since this store manages a single thread, we only publish once
-      if (this.threadPublished || currentThreads.length === 0) {
-        return
-      }
-
-      // There should only be one thread in this store, but we'll handle it gracefully
-      const thread = currentThreads[0]
-      await this.env.CROSS_STORE_EVENTS_QUEUE.send({
-        name: 'v1.ThreadCreated',
-        data: {
-          id: thread.id,
-          subject: thread.subject,
-          participants: JSON.parse(thread.participants), // Convert back to array
-          createdAt: thread.createdAt,
-        },
+    const publishEvents = async () => {
+      const eventStream = this.store.events({
+        filter: ['v1.ThreadCreated', 'v1.ThreadLabelApplied', 'v1.ThreadLabelRemoved'],
       })
-      console.log(`📤 Published v1.ThreadCreated: thread=${thread.id}`)
-      this.threadPublished = true
-    } catch (error) {
-      console.error('[ThreadClientDO] Failed to publish thread created:', error)
-    }
-  }
 
-  alarm(): void | Promise<void> {
-    // Re-initialize subscriptions after potential hibernation
-    return this.subscribeToStore()
+      for await (const threadEvent of eventStream) {
+        // The filter above narrows at runtime but doesn't narrow the type of `threadEvent`
+        const crossStoreEvent = encodeThreadEvent(threadEvent as ThreadCrossStoreEvent)
+        await this.env.CROSS_STORE_EVENTS_QUEUE.send(crossStoreEvent)
+        console.log(`📤 Published ${crossStoreEvent.name} cross-store event`)
+      }
+    }
+
+    // Run in the background — the async iterator will keep yielding as new events arrive
+    publishEvents().catch((error) => {
+      console.error('[ThreadClientDO] Events listener failed:', error)
+      this.eventsListenerStarted = false
+    })
   }
 
   async syncUpdateRpc(payload: unknown) {
-    // Make sure to wake up the store before processing the sync update
-    await this.subscribeToStore()
+    // Re-establish the events listener in case the DO hibernated since the last call
+    this.startEventsListener()
     await handleSyncUpdateRpc(payload)
   }
 }

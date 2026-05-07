@@ -1,16 +1,17 @@
 import { DurableObject } from 'cloudflare:workers'
 
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
-import { nanoid } from '@livestore/livestore'
-import type * as SyncBackend from '@livestore/sync-cf/cf-worker'
+import { nanoid, type Store } from '@livestore/livestore'
+import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 
-import { mailboxEvents, schema as mailboxSchema, mailboxTables } from '../stores/mailbox/schema.ts'
+import { schema as mailboxSchema, mailboxTables } from '../stores/mailbox/schema.ts'
 import { seedMailbox } from '../stores/mailbox/seed.ts'
-import type { Env } from './shared.ts'
+import { CrossStoreEventSchema, decodeCrossStoreEvent, type Env } from './shared.ts'
 
 export class MailboxClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
-  private store!: Awaited<ReturnType<typeof createStoreDoPromise>>
+  __DURABLE_OBJECT_BRAND = 'mailbox-client-do' as never
+  private store!: Store<typeof mailboxSchema>
   private hasStore = false
 
   async initialize({ storeId }: { storeId: string }) {
@@ -22,7 +23,7 @@ export class MailboxClientDO extends DurableObject<Env> implements ClientDoWithR
       clientId: 'mailbox-client-do',
       sessionId: nanoid(),
       durableObject: {
-        ctx: this.ctx as SyncBackend.CfTypes.DurableObjectState,
+        ctx: this.ctx as CfTypes.DurableObjectState,
         env: this.env,
         bindingName: 'MAILBOX_CLIENT_DO',
       },
@@ -47,76 +48,12 @@ export class MailboxClientDO extends DurableObject<Env> implements ClientDoWithR
     await threadDoStub.initialize({ threadId, inboxLabelId })
   }
 
-  async addThread({
-    id,
-    subject,
-    participants,
-    createdAt,
-  }: {
-    id: string
-    subject: string
-    participants: string[]
-    createdAt: Date
-  }) {
-    try {
-      if (this.hasStore === false) throw new Error('Store not initialized. Call initialize() first.')
+  async handleCrossStoreEvent(crossStoreEvent: typeof CrossStoreEventSchema.Encoded) {
+    if (this.hasStore === false) throw new Error('Store not initialized. Call initialize() first.')
 
-      // Commit the thread creation event to Mailbox store
-      // The materializer will automatically update threadIndex table
-      this.store.commit(
-        mailboxEvents.threadAdded({
-          id,
-          subject,
-          participants,
-          createdAt,
-        }),
-      )
-
-      console.log(`[MailboxClientDO] Added thread ${id} to threadIndex`)
-    } catch (error) {
-      console.error('[MailboxClientDO] Failed to add thread:', error)
-      throw error
-    }
-  }
-
-  async applyThreadLabel({ threadId, labelId, appliedAt }: { threadId: string; labelId: string; appliedAt: Date }) {
-    try {
-      if (this.hasStore === false) throw new Error('Store not initialized. Call initialize() first.')
-
-      // Commit event - materializer will update threadLabels AND increment count
-      this.store.commit(
-        mailboxEvents.threadLabelApplied({
-          threadId,
-          labelId,
-          appliedAt,
-        }),
-      )
-
-      console.log(`[MailboxClientDO] Applied label ${labelId} to thread ${threadId}`)
-    } catch (error) {
-      console.error('[MailboxClientDO] Failed to apply thread label:', error)
-      throw error
-    }
-  }
-
-  async removeThreadLabel({ threadId, labelId, removedAt }: { threadId: string; labelId: string; removedAt: Date }) {
-    try {
-      if (this.hasStore === false) throw new Error('Store not initialized. Call initialize() first.')
-
-      // Commit event - materializer will remove from threadLabels AND decrement count
-      this.store.commit(
-        mailboxEvents.threadLabelRemoved({
-          threadId,
-          labelId,
-          removedAt,
-        }),
-      )
-
-      console.log(`[MailboxClientDO] Removed label ${labelId} from thread ${threadId}`)
-    } catch (error) {
-      console.error('[MailboxClientDO] Failed to remove thread label:', error)
-      throw error
-    }
+    const mailboxEvent = decodeCrossStoreEvent(crossStoreEvent)
+    this.store.commit(mailboxEvent)
+    console.log(`[MailboxClientDO] Committed ${mailboxEvent.name} event`)
   }
 
   async syncUpdateRpc(payload: unknown) {

@@ -20,6 +20,7 @@ Vitest.describe('EncodedWithMeta', () => {
         syncMetadata: Option.none(),
         materializerHashLeader: Option.none(),
         materializerHashSession: Option.none(),
+        commandId: Option.none(),
       },
     })
 

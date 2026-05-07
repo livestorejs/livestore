@@ -1,6 +1,7 @@
 import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
 
 import type { MigrationOptions } from '../adapter-types.ts'
+import type { CommandDef, CommandDefRecord } from './command/command-def.ts'
 import type { EventDef, EventDefRecord, Materializer } from './EventDef/mod.ts'
 import { tableIsClientDocumentTable } from './state/sqlite/client-document-def.ts'
 import type { SqliteDsl } from './state/sqlite/db-schema/mod.ts'
@@ -17,15 +18,20 @@ export const UNKNOWN_EVENT_SCHEMA_HASH = -1
 export interface LiveStoreSchema<
   TDbSchema extends SqliteDsl.DbSchema = SqliteDsl.DbSchema,
   TEventsDefRecord extends EventDefRecord = EventDefRecord,
+  TCommandDefRecord extends CommandDefRecord = CommandDefRecord,
 > {
   readonly LiveStoreSchemaSymbol: LiveStoreSchemaSymbol
   /** Only used on type-level */
   readonly _DbSchemaType: TDbSchema
   /** Only used on type-level */
   readonly _EventDefMapType: TEventsDefRecord
+  /** Only used on type-level */
+  readonly _CommandDefMapType: TCommandDefRecord
 
   readonly state: InternalState
   readonly eventsDefsMap: Map<string, EventDef.AnyWithoutFn>
+  /** Runtime map of command definitions keyed by command name. Used by {@link Store.execute} to look up handlers. */
+  readonly commandDefsMap: Map<string, CommandDef.AnyWithoutFn>
   readonly unknownEventHandling: UnknownEvents.HandlingConfig
   readonly devtools: {
     /** @default 'default' */
@@ -34,7 +40,7 @@ export interface LiveStoreSchema<
 }
 
 export namespace LiveStoreSchema {
-  export type Any = LiveStoreSchema<any, any>
+  export type Any = LiveStoreSchema<any, any, any>
 }
 
 /**
@@ -44,7 +50,7 @@ export namespace LiveStoreSchema {
  * stable across implementations. It verifies the identifying symbol marker
  * and the presence of core maps/state used at runtime.
  */
-export const isLiveStoreSchema = (value: unknown): value is LiveStoreSchema<any, any> => {
+export const isLiveStoreSchema = (value: unknown): value is LiveStoreSchema<any, any, any> => {
   if (typeof value !== 'object' || value === null) return false
 
   const v: any = value
@@ -54,12 +60,14 @@ export const isLiveStoreSchema = (value: unknown): value is LiveStoreSchema<any,
 
   // Core structures used at runtime
   const hasEventsMap = v.eventsDefsMap instanceof Map
+  const hasCommandsMap = v.commandDefsMap instanceof Map
   const hasStateSqliteTables = v.state?.sqlite?.tables instanceof Map
   const hasStateMaterializers = v.state?.materializers instanceof Map
   const hasDevtoolsAlias = typeof v.devtools?.alias === 'string'
 
   return (
     hasEventsMap === true &&
+    hasCommandsMap === true &&
     hasStateSqliteTables === true &&
     hasStateMaterializers === true &&
     hasDevtoolsAlias === true
@@ -80,6 +88,15 @@ export interface InternalState {
 export interface InputSchema {
   readonly events: ReadonlyArray<EventDef.AnyWithoutFn> | Record<string, EventDef.AnyWithoutFn>
   readonly state: InternalState
+  /**
+   * Optional record or array of command definitions.
+   *
+   * When provided, commands can be executed via {@link Store.execute} and will be replayed
+   * during sync reconciliation to re-validate pending changes.
+   *
+   * @see {@link CommandDef}
+   */
+  readonly commands?: ReadonlyArray<CommandDef.AnyWithoutFn> | Record<string, CommandDef.AnyWithoutFn>
   readonly devtools?: {
     /**
      * This alias value is used to disambiguate between multiple schemas in the devtools.
@@ -106,20 +123,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     tables.set(tableDef.sqliteDef.name, tableDef)
   }
 
-  const eventsDefsMap = new Map<string, EventDef.AnyWithoutFn>()
-
-  if (isReadonlyArray(inputSchema.events) === true) {
-    for (const eventDef of inputSchema.events) {
-      eventsDefsMap.set(eventDef.name, eventDef)
-    }
-  } else {
-    for (const eventDef of Object.values(inputSchema.events ?? {})) {
-      if (eventsDefsMap.has(eventDef.name) === true) {
-        shouldNeverHappen(`Duplicate event name: ${eventDef.name}. Please use unique names for events.`)
-      }
-      eventsDefsMap.set(eventDef.name, eventDef)
-    }
-  }
+  const eventsDefsMap = toNamedMap(inputSchema.events, 'event')
 
   for (const tableDef of tables.values()) {
     if (tableIsClientDocumentTable(tableDef) === true && eventsDefsMap.has(tableDef.set.name) === false) {
@@ -127,14 +131,20 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     }
   }
 
+  const commandDefsMap = inputSchema.commands !== undefined
+    ? toNamedMap(inputSchema.commands, 'command')
+    : new Map<string, CommandDef.AnyWithoutFn>()
+
   const unknownEventHandling = normalizeUnknownEventHandling(inputSchema.unknownEventHandling)
 
   return {
     LiveStoreSchemaSymbol,
     _DbSchemaType: Symbol.for('livestore.DbSchemaType') as any,
     _EventDefMapType: Symbol.for('livestore.EventDefMapType') as any,
+    _CommandDefMapType: Symbol.for('livestore.CommandDefMapType') as any,
     state,
     eventsDefsMap,
+    commandDefsMap,
     unknownEventHandling,
     devtools: {
       alias: inputSchema.devtools?.alias ?? 'default',
@@ -163,7 +173,8 @@ export const getEventDef = <TSchema extends LiveStoreSchema>(
 export namespace FromInputSchema {
   export type DeriveSchema<TInputSchema extends InputSchema> = LiveStoreSchema<
     DbSchemaFromInputSchemaTables<TInputSchema['state']['sqlite']['tables']>,
-    EventDefRecordFromInputSchemaEvents<TInputSchema['events']>
+    EventDefRecordFromInputSchemaEvents<TInputSchema['events']>,
+    CommandDefRecordFromInputSchemaCommands<TInputSchema['commands']>
   >
 
   /**
@@ -184,4 +195,27 @@ export namespace FromInputSchema {
       : TEvents extends { [name: string]: EventDef.Any }
         ? { [K in keyof TEvents as TEvents[K]['name']]: TEvents[K] }
         : never
+
+  type CommandDefRecordFromInputSchemaCommands<TCommands extends InputSchema['commands']> =
+    TCommands extends ReadonlyArray<CommandDef.Any>
+      ? { [K in TCommands[number] as K['name']]: K }
+      : TCommands extends { [name: string]: CommandDef.Any }
+        ? { [K in keyof TCommands as TCommands[K]['name']]: TCommands[K] }
+        : CommandDefRecord
+}
+
+/** Converts an array-or-record of named items into a Map, checking for duplicate names. */
+const toNamedMap = <T extends { readonly name: string }>(
+  input: ReadonlyArray<T> | Record<string, T>,
+  label: string,
+): Map<string, T> => {
+  const map = new Map<string, T>()
+  const items = isReadonlyArray(input) === true ? input : Object.values(input)
+  for (const item of items) {
+    if (map.has(item.name) === true) {
+      shouldNeverHappen(`Duplicate ${label} name: ${item.name}. Please use unique names for ${label}s.`)
+    }
+    map.set(item.name, item)
+  }
+  return map
 }

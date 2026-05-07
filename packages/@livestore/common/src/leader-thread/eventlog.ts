@@ -94,6 +94,7 @@ export const getEventsSince = ({
           syncMetadata: eventlogEvent.syncMetadataJson,
           materializerHashLeader: Option.none(),
           materializerHashSession: Option.none(),
+          commandId: Option.fromNullable(eventlogEvent.commandId),
         },
       })
     })
@@ -248,6 +249,7 @@ export const insertIntoEventlog = (
           argsJson: eventEncoded.args ?? {},
           clientId,
           sessionId,
+          commandId: Option.getOrUndefined(eventEncoded.meta.commandId) ?? null,
           schemaHash: eventDefSchemaHash,
           syncMetadataJson: eventEncoded.meta.syncMetadata,
         },
