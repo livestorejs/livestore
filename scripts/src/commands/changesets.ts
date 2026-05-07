@@ -101,9 +101,19 @@ const changedPublicPackageFiles = (files: ReadonlyArray<string>) => {
 
 const isPrereleaseNpmTag = (npmTag: string) => npmTag !== 'latest'
 
+const isGeneratedReleaseBranch = () => {
+  const branchName = process.env.GITHUB_BRANCH_NAME ?? process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME
+  return branchName?.startsWith('automation/release-') === true
+}
+
 const checkPr = (flags: Map<string, string | true>) => {
   if (process.env.LIVESTORE_CHANGESET_CHECK_ALLOW_MISSING === '1') {
     console.log('Changeset PR check skipped by LIVESTORE_CHANGESET_CHECK_ALLOW_MISSING=1')
+    return
+  }
+
+  if (isGeneratedReleaseBranch() === true) {
+    console.log('Generated release PR; package version changes are covered by the release plan.')
     return
   }
 
