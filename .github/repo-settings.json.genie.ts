@@ -15,7 +15,7 @@ export default githubRuleset({
     {
       type: 'pull_request',
       parameters: {
-        required_approving_review_count: 1,
+        required_approving_review_count: 0,
         dismiss_stale_reviews_on_push: false,
         require_code_owner_review: true,
         require_last_push_approval: false,
@@ -33,11 +33,5 @@ export default githubRuleset({
     { type: 'non_fast_forward' },
     { type: 'deletion' },
   ],
-  bypass_actors: [
-    {
-      actor_id: 4,
-      actor_type: 'RepositoryRole',
-      bypass_mode: 'always',
-    },
-  ],
+  bypass_actors: [],
 })
