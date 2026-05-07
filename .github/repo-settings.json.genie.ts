@@ -35,7 +35,7 @@ export default githubRuleset({
   ],
   bypass_actors: [
     {
-      actor_id: 5,
+      actor_id: 4,
       actor_type: 'RepositoryRole',
       bypass_mode: 'always',
     },

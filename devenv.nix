@@ -392,7 +392,7 @@ in
       '
 
       jq "$jq_normalize" "$ruleset_file" > "$tmp_dir/desired.json"
-      gh api "repos/livestorejs/livestore/rulesets/$ruleset_id" | jq "$jq_normalize" > "$tmp_dir/live.json"
+      gh api "repos/livestorejs/livestore/rulesets/$ruleset_id" --jq "$jq_normalize" > "$tmp_dir/live.json"
 
       if [ "$viewer_permission" != "ADMIN" ]; then
         jq 'del(.bypass_actors)' "$tmp_dir/desired.json" > "$tmp_dir/desired.visible.json"
