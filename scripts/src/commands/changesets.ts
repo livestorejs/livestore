@@ -74,6 +74,8 @@ const publicLivestorePackages = () =>
     })
     .sort((left, right) => left.name.localeCompare(right.name))
 
+const fileIsWithinDir = (file: string, dir: string) => file === dir || file.startsWith(`${dir}/`)
+
 const changedFiles = (base: string) => {
   const result = spawnSync('git', ['diff', '--name-only', `${base}...HEAD`], {
     encoding: 'utf8',
@@ -88,6 +90,14 @@ const changedFiles = (base: string) => {
 
 const isChangesetMarkdown = (file: string) =>
   file.startsWith('.changeset/') && file.endsWith('.md') && path.basename(file) !== 'README.md'
+
+const changedPublicPackageFiles = (files: ReadonlyArray<string>) => {
+  const packages = publicLivestorePackages()
+  return files.flatMap((file) => {
+    const pkg = packages.find((candidate) => fileIsWithinDir(file, candidate.dir))
+    return pkg === undefined ? [] : [{ file, packageName: pkg.name }]
+  })
+}
 
 const isPrereleaseNpmTag = (npmTag: string) => npmTag !== 'latest'
 
@@ -104,11 +114,18 @@ const checkPr = (flags: Map<string, string | true>) => {
     return
   }
 
+  const packageFiles = changedPublicPackageFiles(files)
+  if (packageFiles.length === 0) {
+    console.log('This PR does not change files in the public LiveStore package graph; no changeset required.')
+    return
+  }
+
   throw new Error(
     [
-      'This PR does not add or modify a changeset.',
+      'This PR changes public LiveStore package files but does not add or modify a changeset.',
+      ...packageFiles.map(({ file, packageName }) => `- ${packageName}: ${file}`),
       'Run `pnpm exec changeset` for a release-impacting change.',
-      'Run `pnpm exec changeset add --empty` when the package change does not need release notes.',
+      'Run `pnpm exec changeset add --empty` when the package change intentionally does not need release notes.',
     ].join('\n'),
   )
 }

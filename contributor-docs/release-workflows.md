@@ -16,7 +16,8 @@ generated release notes replace it. Maintainers fold PR-level changeset
 information into the handcrafted changelog structure before cutting a stable
 release.
 
-Every PR must include one of:
+Every PR that touches files in the public LiveStore package graph must include
+one of:
 
 - A regular `.changeset/*.md` file for release-impacting changes.
 - An empty changeset for changes that do not need release notes.
@@ -25,6 +26,11 @@ Every PR must include one of:
 pnpm exec changeset
 pnpm exec changeset add --empty
 ```
+
+The PR changeset check derives that package graph from the public `@livestore/*`
+workspace packages. Infrastructure, documentation, generated workflow, and
+release-control-plane changes that do not touch those package directories do
+not need an empty changeset.
 
 The baseline `.changeset/livestore-0-4-0-baseline.md` mirrors the existing
 handcrafted `CHANGELOG.md` 0.4.0 unreleased section. Keep both in sync until the

@@ -519,7 +519,7 @@ jobs:
           retention-days: 14
   ruleset-drift-check:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    if: (github.event_name == 'workflow_dispatch' && !startsWith(github.ref_name, 'automation/release-')) || github.ref == 'refs/heads/main'
     defaults:
       run:
         shell: bash

@@ -33,7 +33,7 @@ The changelog should meet the goals of an application developer as follows:
 ## Active Release Workflow
 
 1. Add a changeset for every public package change. Use an empty changeset only
-   when the change has no release-note impact.
+   when a public package change intentionally has no release-note impact.
 2. Keep an "Upcoming" (or next-version) section at the top of the changelog.
 3. Fold release-impacting changesets into the upcoming section as features,
    fixes, or documentation updates land.

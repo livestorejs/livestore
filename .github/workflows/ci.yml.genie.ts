@@ -125,7 +125,7 @@ export default githubWorkflow({
     }),
 
     'ruleset-drift-check': standardCIJob({
-      if: "github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'",
+      if: "(github.event_name == 'workflow_dispatch' && !startsWith(github.ref_name, 'automation/release-')) || github.ref == 'refs/heads/main'",
       steps: [
         ...livestoreSetupSteps,
         {
