@@ -2015,7 +2015,7 @@ importers:
         specifier: 5.1.2
         version: 5.1.2(vite@7.3.1(@types/node@24.12.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       postgres:
-        specifier: ^3.4.7
+        specifier: 3.4.7
         version: 3.4.7
       typescript:
         specifier: 5.9.3
