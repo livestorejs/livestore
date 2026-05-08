@@ -687,7 +687,7 @@ importers:
         specifier: ^2.3.8
         version: 2.4.10
       '@cloudflare/vite-plugin':
-        specifier: ^1.13.12
+        specifier: 1.13.12
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
@@ -757,7 +757,7 @@ importers:
         specifier: ^2.3.8
         version: 2.4.10
       '@cloudflare/vite-plugin':
-        specifier: ^1.13.12
+        specifier: 1.13.12
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
@@ -1287,7 +1287,7 @@ importers:
         version: 1.8.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     devDependencies:
       '@cloudflare/vite-plugin':
-        specifier: ^1.13.12
+        specifier: 1.13.12
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
@@ -1445,7 +1445,7 @@ importers:
         version: 2.4.3
     devDependencies:
       '@cloudflare/vite-plugin':
-        specifier: ^1.13.12
+        specifier: 1.13.12
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@cloudflare/workers-types':
         specifier: 4.20251118.0
@@ -1503,7 +1503,7 @@ importers:
         version: 2.4.3
     devDependencies:
       '@cloudflare/vite-plugin':
-        specifier: ^1.13.12
+        specifier: 1.13.12
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@cloudflare/workers-types':
         specifier: 4.20251118.0
@@ -1576,7 +1576,7 @@ importers:
         version: 2.4.3
     devDependencies:
       '@cloudflare/vite-plugin':
-        specifier: ^1.13.12
+        specifier: 1.13.12
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@cloudflare/workers-types':
         specifier: 4.20251118.0
@@ -1704,7 +1704,7 @@ importers:
         version: 2.4.3
     devDependencies:
       '@cloudflare/vite-plugin':
-        specifier: ^1.13.12
+        specifier: 1.13.12
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@cloudflare/workers-types':
         specifier: 4.20251118.0
@@ -1750,7 +1750,7 @@ importers:
         version: link:../../packages/@livestore/wa-sqlite
     devDependencies:
       '@cloudflare/vite-plugin':
-        specifier: ^1.13.12
+        specifier: 1.13.12
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@cloudflare/workers-types':
         specifier: 4.20251118.0
@@ -1799,7 +1799,7 @@ importers:
         version: 11.1.0
     devDependencies:
       '@cloudflare/vite-plugin':
-        specifier: ^1.13.12
+        specifier: 1.13.12
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@cloudflare/workers-types':
         specifier: 4.20251118.0
@@ -1854,7 +1854,7 @@ importers:
         version: 11.1.0
     devDependencies:
       '@cloudflare/vite-plugin':
-        specifier: ^1.13.12
+        specifier: 1.13.12
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@cloudflare/workers-types':
         specifier: 4.20251118.0
@@ -1915,7 +1915,7 @@ importers:
         version: 2.4.3
     devDependencies:
       '@cloudflare/vite-plugin':
-        specifier: ^1.13.12
+        specifier: 1.13.12
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@cloudflare/workers-types':
         specifier: 4.20251118.0

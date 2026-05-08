@@ -39,7 +39,7 @@
     "react-window": "1.8.11"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.13.12",
+    "@cloudflare/vite-plugin": "1.13.12",
     "@livestore/devtools-vite": "0.4.0-dev.22",
     "@playwright/test": "1.59.1",
     "@svgr/plugin-jsx": "^8.1.0",
