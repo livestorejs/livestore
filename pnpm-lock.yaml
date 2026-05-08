@@ -693,7 +693,7 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(8d22fcfc6cd2670eb3a4ebb76d042427)
       '@playwright/test':
-        specifier: ^1.59.1
+        specifier: 1.59.1
         version: 1.59.1
       '@tailwindcss/vite':
         specifier: 4.1.18
@@ -763,7 +763,7 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(8d22fcfc6cd2670eb3a4ebb76d042427)
       '@playwright/test':
-        specifier: ^1.59.1
+        specifier: 1.59.1
         version: 1.59.1
       '@tailwindcss/vite':
         specifier: 4.1.18
@@ -1293,7 +1293,7 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(8d22fcfc6cd2670eb3a4ebb76d042427)
       '@playwright/test':
-        specifier: ^1.59.1
+        specifier: 1.59.1
         version: 1.59.1
       '@svgr/plugin-jsx':
         specifier: ^8.1.0
@@ -1454,7 +1454,7 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(8d22fcfc6cd2670eb3a4ebb76d042427)
       '@playwright/test':
-        specifier: ^1.59.1
+        specifier: 1.59.1
         version: 1.59.1
       '@types/react':
         specifier: 19.2.7
@@ -1512,7 +1512,7 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(8d22fcfc6cd2670eb3a4ebb76d042427)
       '@playwright/test':
-        specifier: ^1.59.1
+        specifier: 1.59.1
         version: 1.59.1
       '@tailwindcss/vite':
         specifier: 4.1.18
@@ -1585,7 +1585,7 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(8d22fcfc6cd2670eb3a4ebb76d042427)
       '@playwright/test':
-        specifier: ^1.59.1
+        specifier: 1.59.1
         version: 1.59.1
       '@types/react':
         specifier: 19.2.7
@@ -1646,7 +1646,7 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(8d22fcfc6cd2670eb3a4ebb76d042427)
       '@playwright/test':
-        specifier: ^1.59.1
+        specifier: 1.59.1
         version: 1.59.1
       '@types/react':
         specifier: 19.2.7
@@ -1710,7 +1710,7 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@playwright/test':
-        specifier: ^1.59.1
+        specifier: 1.59.1
         version: 1.59.1
       '@types/node':
         specifier: 25.3.3
@@ -1759,7 +1759,7 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(8d22fcfc6cd2670eb3a4ebb76d042427)
       '@playwright/test':
-        specifier: ^1.59.1
+        specifier: 1.59.1
         version: 1.59.1
       typescript:
         specifier: 5.9.3
@@ -1808,7 +1808,7 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(8d22fcfc6cd2670eb3a4ebb76d042427)
       '@playwright/test':
-        specifier: ^1.59.1
+        specifier: 1.59.1
         version: 1.59.1
       solid-devtools:
         specifier: ^0.34.3
@@ -1863,7 +1863,7 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(8d22fcfc6cd2670eb3a4ebb76d042427)
       '@playwright/test':
-        specifier: ^1.59.1
+        specifier: 1.59.1
         version: 1.59.1
       '@sveltejs/vite-plugin-svelte':
         specifier: ^6.2.1
@@ -1924,7 +1924,7 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(8d22fcfc6cd2670eb3a4ebb76d042427)
       '@playwright/test':
-        specifier: ^1.59.1
+        specifier: 1.59.1
         version: 1.59.1
       '@types/react':
         specifier: 19.2.7
@@ -1991,7 +1991,7 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(8d22fcfc6cd2670eb3a4ebb76d042427)
       '@playwright/test':
-        specifier: ^1.59.1
+        specifier: 1.59.1
         version: 1.59.1
       '@tanstack/react-router':
         specifier: 1.145.7
@@ -2076,7 +2076,7 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(8d22fcfc6cd2670eb3a4ebb76d042427)
       '@playwright/test':
-        specifier: ^1.59.1
+        specifier: 1.59.1
         version: 1.59.1
       '@tanstack/react-router':
         specifier: 1.145.7
