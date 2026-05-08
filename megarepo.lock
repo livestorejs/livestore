@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "350d1b98baa943dcae63412eeffded7b5160bc8a",
-      "pinned": false,
-      "lockedAt": "2026-04-29T07:40:48.682Z"
+      "ref": "schickling-assistant/2026-05-08-genie-repo-context",
+      "commit": "c8a6b0f39a42208cc239a772f5fd5a393c1ccfa7",
+      "pinned": true,
+      "lockedAt": "2026-05-08T13:54:58.651Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
