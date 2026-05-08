@@ -46,9 +46,6 @@ const runtimeDeps = catalog.compose({
         'react',
         'react-dom',
         'solid-js',
-        '@types/node',
-        '@types/react',
-        '@types/react-dom',
         'vite',
         '@livestore/devtools-vite',
       ),
@@ -68,6 +65,9 @@ const runtimeDeps = catalog.compose({
       'vite-plugin-vue-devtools': '7.7.9',
       'vue-livestore': '0.2.3',
     },
+  },
+  devDependencies: {
+    external: catalog.pick('@types/node', '@types/react', '@types/react-dom'),
   },
   gvsTypeExtensions: {
     'react-error-boundary': catalog.pick('@types/react', '@types/react-dom'),

@@ -48,9 +48,6 @@
     "@opentelemetry/sdk-trace-web": "2.2.0",
     "@standard-schema/spec": "1.1.0",
     "@tanstack/react-router": "1.139.14",
-    "@types/node": "25.3.3",
-    "@types/react": "19.2.7",
-    "@types/react-dom": "19.2.3",
     "@vitejs/plugin-vue": "6.0.0",
     "effect": "3.21.2",
     "expo": "54.0.12",
@@ -68,6 +65,11 @@
     "vite": "7.3.1",
     "vite-plugin-vue-devtools": "7.7.9",
     "vue-livestore": "0.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "25.3.3",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3"
   },
   "$genie": {
     "source": "package.json.genie.ts",
