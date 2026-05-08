@@ -53,7 +53,7 @@ const runtimeDeps = catalog.compose({
         'wrangler',
       ),
       'react-error-boundary': '6.1.1',
-      'todomvc-app-css': '^2.4.3',
+      'todomvc-app-css': '2.4.3',
     },
   },
   gvsTypeExtensions: {

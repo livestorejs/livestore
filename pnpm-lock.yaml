@@ -4651,7 +4651,7 @@ importers:
         specifier: 6.1.1
         version: 6.1.1(react@19.2.3)
       todomvc-app-css:
-        specifier: ^2.4.3
+        specifier: 2.4.3
         version: 2.4.3
       vite:
         specifier: 7.3.1
