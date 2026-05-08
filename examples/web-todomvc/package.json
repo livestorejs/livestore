@@ -12,7 +12,7 @@
     "@overengineering/fps-meter": "0.2.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-error-boundary": "6.0.0",
+    "react-error-boundary": "6.1.1",
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
