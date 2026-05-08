@@ -46,7 +46,7 @@
     "@svgr/plugin-svgo": "^8.1.0",
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "4.1.18",
-    "@tanstack/router-plugin": "1.139.14",
+    "@tanstack/router-plugin": "1.145.10",
     "@types/node": "25.3.3",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
