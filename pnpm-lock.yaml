@@ -778,7 +778,7 @@ importers:
         specifier: 7.3.1
         version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
       vite-plugin-solid:
-        specifier: ^2.11.10
+        specifier: 2.11.10
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       wrangler:
         specifier: 4.42.2
@@ -1320,7 +1320,7 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       '@types/react-window':
-        specifier: ^1.8.8
+        specifier: 1.8.8
         version: 1.8.8
       '@vitejs/plugin-react':
         specifier: 5.1.2
@@ -1820,7 +1820,7 @@ importers:
         specifier: 7.3.1
         version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
       vite-plugin-solid:
-        specifier: ^2.11.10
+        specifier: 2.11.10
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       wrangler:
         specifier: 4.42.2
@@ -1866,7 +1866,7 @@ importers:
         specifier: 1.59.1
         version: 1.59.1
       '@sveltejs/vite-plugin-svelte':
-        specifier: ^6.2.1
+        specifier: 6.2.1
         version: 6.2.1(svelte@5.43.14)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       typescript:
         specifier: 5.9.3
