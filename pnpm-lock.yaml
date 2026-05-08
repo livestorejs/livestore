@@ -711,7 +711,7 @@ importers:
         specifier: 4.1.18
         version: 4.1.18
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -772,7 +772,7 @@ importers:
         specifier: 4.1.18
         version: 4.1.18
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -954,7 +954,7 @@ importers:
         specifier: ^3.4.14
         version: 3.4.19(tsx@4.21.0)(yaml@2.8.3)
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
 
   examples/expo-todomvc-sync-cf:
@@ -1030,7 +1030,7 @@ importers:
         specifier: ^16.19.3
         version: 16.32.0(@types/node@25.3.3)(typescript@5.9.3)
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       wrangler:
         specifier: ^4.42.2
@@ -1058,7 +1058,7 @@ importers:
         specifier: 0.4.0-dev.24
         version: link:../../packages/@livestore/utils-dev
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
 
   examples/node-todomvc-sync-cf:
@@ -1077,7 +1077,7 @@ importers:
         specifier: ^24.9.2
         version: 24.12.0
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
 
   examples/tutorial-starter:
@@ -1111,7 +1111,7 @@ importers:
         specifier: 4.1.18
         version: 4.1.18
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -1175,7 +1175,7 @@ importers:
         specifier: 4.1.18
         version: 4.1.18
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -1332,7 +1332,7 @@ importers:
         specifier: 4.1.18
         version: 4.1.18
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -1399,7 +1399,7 @@ importers:
         specifier: ^5.0.3
         version: 5.1.2(vite@7.3.1(@types/node@24.12.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -1466,7 +1466,7 @@ importers:
         specifier: ^5.0.3
         version: 5.1.2(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -1530,7 +1530,7 @@ importers:
         specifier: 4.1.18
         version: 4.1.18
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -1597,7 +1597,7 @@ importers:
         specifier: ^5.0.3
         version: 5.1.2(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -1658,7 +1658,7 @@ importers:
         specifier: ^5.0.3
         version: 5.1.2(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -1722,7 +1722,7 @@ importers:
         specifier: ^19.1.9
         version: 19.2.3(@types/react@19.2.7)
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -1762,7 +1762,7 @@ importers:
         specifier: ^1.59.1
         version: 1.59.1
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -1814,7 +1814,7 @@ importers:
         specifier: ^0.34.3
         version: 0.34.5(solid-js@1.9.10)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -1869,7 +1869,7 @@ importers:
         specifier: ^6.2.1
         version: 6.2.1(svelte@5.43.14)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -1936,7 +1936,7 @@ importers:
         specifier: ^5.0.3
         version: 5.1.2(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -2018,7 +2018,7 @@ importers:
         specifier: ^3.4.7
         version: 3.4.7
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
@@ -2100,7 +2100,7 @@ importers:
         specifier: ^5.0.3
         version: 5.1.2(vite@7.3.1(@types/node@24.12.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       typescript:
-        specifier: ^5.9.2
+        specifier: 5.9.3
         version: 5.9.3
       vite:
         specifier: ^7.2.4
