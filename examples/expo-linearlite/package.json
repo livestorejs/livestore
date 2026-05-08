@@ -33,7 +33,6 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.81.4",
-    "react-native-css-interop": "0.1.22",
     "react-native-gesture-handler": "2.28.0",
     "react-native-reanimated": "4.1.1",
     "react-native-safe-area-context": "5.6.0",
@@ -52,7 +51,6 @@
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "prettier": "^3.6.2",
     "react-test-renderer": "^19.1.0",
-    "tailwindcss": "^3.4.14",
     "typescript": "5.9.3"
   },
   "engines": {
