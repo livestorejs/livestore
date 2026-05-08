@@ -6,6 +6,7 @@ import semver from 'semver'
 
 const usage = `Usage:
   bun scripts/src/commands/changesets.ts check-pr [--base <ref>]
+  bun scripts/src/commands/changesets.ts restore-prerelease-changesets
   bun scripts/src/commands/changesets.ts sync-version-source
   bun scripts/src/commands/changesets.ts sync-standalone-consumers
   bun scripts/src/commands/changesets.ts write-release-plan [--npm-tag <tag>]
@@ -73,6 +74,8 @@ const publicLivestorePackages = () =>
     })
     .sort((left, right) => left.name.localeCompare(right.name))
 
+const fileIsWithinDir = (file: string, dir: string) => file === dir || file.startsWith(`${dir}/`)
+
 const changedFiles = (base: string) => {
   const result = spawnSync('git', ['diff', '--name-only', `${base}...HEAD`], {
     encoding: 'utf8',
@@ -88,9 +91,29 @@ const changedFiles = (base: string) => {
 const isChangesetMarkdown = (file: string) =>
   file.startsWith('.changeset/') && file.endsWith('.md') && path.basename(file) !== 'README.md'
 
+const changedPublicPackageFiles = (files: ReadonlyArray<string>) => {
+  const packages = publicLivestorePackages()
+  return files.flatMap((file) => {
+    const pkg = packages.find((candidate) => fileIsWithinDir(file, candidate.dir))
+    return pkg === undefined ? [] : [{ file, packageName: pkg.name }]
+  })
+}
+
+const isPrereleaseNpmTag = (npmTag: string) => npmTag !== 'latest'
+
+const isGeneratedReleaseBranch = () => {
+  const branchName = process.env.GITHUB_BRANCH_NAME ?? process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME
+  return branchName?.startsWith('automation/release-') === true
+}
+
 const checkPr = (flags: Map<string, string | true>) => {
   if (process.env.LIVESTORE_CHANGESET_CHECK_ALLOW_MISSING === '1') {
     console.log('Changeset PR check skipped by LIVESTORE_CHANGESET_CHECK_ALLOW_MISSING=1')
+    return
+  }
+
+  if (isGeneratedReleaseBranch() === true) {
+    console.log('Generated release PR; package version changes are covered by the release plan.')
     return
   }
 
@@ -101,16 +124,43 @@ const checkPr = (flags: Map<string, string | true>) => {
     return
   }
 
+  const packageFiles = changedPublicPackageFiles(files)
+  if (packageFiles.length === 0) {
+    console.log('This PR does not change files in the public LiveStore package graph; no changeset required.')
+    return
+  }
+
   throw new Error(
     [
-      'This PR does not add or modify a changeset.',
+      'This PR changes public LiveStore package files but does not add or modify a changeset.',
+      ...packageFiles.map(({ file, packageName }) => `- ${packageName}: ${file}`),
       'Run `pnpm exec changeset` for a release-impacting change.',
-      'Run `pnpm exec changeset add --empty` when the package change does not need release notes.',
+      'Run `pnpm exec changeset add --empty` when the package change intentionally does not need release notes.',
     ].join('\n'),
   )
 }
 
 const readReleaseVersion = () => readJson<{ version: string }>('release/version.json').version
+
+const deletedChangesetFiles = () =>
+  runCapture(['git', 'diff', '--name-only', '--diff-filter=D', '--', '.changeset'])
+    .split('\n')
+    .filter((file) => file.length > 0 && isChangesetMarkdown(file) === true)
+
+const restorePrereleaseChangesets = () => {
+  const npmTag = process.env.LIVESTORE_NPM_TAG ?? 'latest'
+  if (isPrereleaseNpmTag(npmTag) === false) {
+    console.log(`Keeping consumed changesets for ${npmTag} release`)
+    return
+  }
+
+  const restored = deletedChangesetFiles()
+  for (const file of restored) {
+    writeFileSync(file, runCapture(['git', 'show', `HEAD:${file}`]))
+  }
+
+  console.log(`Restored ${restored.length} pending changesets for ${npmTag} prerelease`)
+}
 
 type DependencySection = Record<string, string>
 
@@ -251,6 +301,7 @@ const main = () => {
     return
   }
   if (command === 'check-pr') return checkPr(flags)
+  if (command === 'restore-prerelease-changesets') return restorePrereleaseChangesets()
   if (command === 'sync-version-source') return syncVersionSource()
   if (command === 'sync-standalone-consumers') return syncStandaloneConsumers()
   if (command === 'write-release-plan') return writeReleasePlan(flags)

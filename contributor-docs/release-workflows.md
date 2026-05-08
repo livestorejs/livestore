@@ -16,7 +16,8 @@ generated release notes replace it. Maintainers fold PR-level changeset
 information into the handcrafted changelog structure before cutting a stable
 release.
 
-Every PR must include one of:
+Every PR that touches files in the public LiveStore package graph must include
+one of:
 
 - A regular `.changeset/*.md` file for release-impacting changes.
 - An empty changeset for changes that do not need release notes.
@@ -25,6 +26,11 @@ Every PR must include one of:
 pnpm exec changeset
 pnpm exec changeset add --empty
 ```
+
+The PR changeset check derives that package graph from the public `@livestore/*`
+workspace packages. Infrastructure, documentation, generated workflow, and
+release-control-plane changes that do not touch those package directories do
+not need an empty changeset.
 
 The baseline `.changeset/livestore-0-4-0-baseline.md` mirrors the existing
 handcrafted `CHANGELOG.md` 0.4.0 unreleased section. Keep both in sync until the
@@ -87,6 +93,12 @@ For `dev` releases, the release PR generator derives the next prerelease from
 the current npm `dev` dist-tag for `@livestore/common`. For example, if the
 dist-tag points at `0.4.0-dev.23`, the next generated dev release is
 `0.4.0-dev.24`.
+
+Dev and other prerelease release PRs do not consume pending changesets. The
+generator temporarily runs Changesets to calculate the fixed-group package
+version, then restores pending `.changeset/*.md` files before opening the PR.
+This keeps prereleases as publish rehearsals and reserves release-intent
+consumption for the supervised stable `latest` release.
 
 After Genie regenerates the fixed public package versions, the release PR
 generator also syncs standalone examples and other non-workspace consumers to

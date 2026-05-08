@@ -208,6 +208,7 @@ in
     })
     # Local task: mono command wrappers for uniform dt interface
     ./nix/devenv-modules/tasks/local/mono-wrappers.nix
+    ./nix/devenv-modules/tasks/local/github-rulesets.nix
   ];
 
   packages = [
@@ -322,7 +323,7 @@ in
   };
 
   tasks."release:changeset:version" = {
-    description = "Consume changesets, sync Genie release version source, regenerate manifests, and write release plan";
+    description = "Prepare a Changesets release plan, regenerate manifests, and preserve prerelease intent when needed";
     exec = ''
       set -euo pipefail
       cd "$DEVENV_ROOT"
@@ -331,6 +332,7 @@ in
       # them from release/version.json.
       git ls-files '*package.json' | xargs chmod u+w
       DT_PASSTHROUGH=1 pnpm exec changeset version
+      bun scripts/src/commands/changesets.ts restore-prerelease-changesets
       bun scripts/src/commands/changesets.ts sync-version-source
       DT_PASSTHROUGH=1 genie
       bun scripts/src/commands/changesets.ts sync-standalone-consumers
@@ -348,16 +350,6 @@ in
       cd "$DEVENV_ROOT"
 
       bun scripts/src/commands/changesets.ts verify-baseline-changelog
-    '';
-  };
-
-  tasks."github:rulesets:check" = {
-    description = "Check live GitHub repository rulesets against generated source files";
-    exec = ''
-      set -euo pipefail
-      cd "$DEVENV_ROOT"
-
-      mono github rulesets check
     '';
   };
 

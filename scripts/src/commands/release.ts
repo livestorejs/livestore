@@ -353,18 +353,17 @@ const publishReleasePackages = ({
       const publishArgs = ['pnpm', 'publish', `--tag=${npmTag}`, '--access=public', '--no-git-checks']
       if (isCI === true) publishArgs.push('--provenance')
       if (dryRun === true) publishArgs.push('--dry-run')
+      const versionIsVisible = cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
+        Effect.provide(cwdLayer),
+        Effect.as(true),
+        Effect.catchTag('CmdError', () => Effect.succeed(false)),
+      )
       yield* cmd(`DT_PASSTHROUGH=1 ${publishArgs.join(' ')}`, { shell: true }).pipe(
         Effect.provide(cwdLayer),
         Effect.catchTag('CmdError', (error) => {
           if (isCI === false || dryRun === true || isSnapshotVersion(version) === false) return Effect.fail(error)
 
-          const alreadyVisible = cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
-            Effect.provide(cwdLayer),
-            Effect.as(true),
-            Effect.catchTag('CmdError', () => Effect.succeed(false)),
-          )
-
-          return alreadyVisible.pipe(
+          return versionIsVisible.pipe(
             Effect.flatMap((isVisible) => {
               if (isVisible === true) {
                 return Effect.logWarning(
@@ -377,7 +376,20 @@ const publishReleasePackages = ({
                 `Retrying ${pkg}@${version} snapshot publish without provenance after provenance publish failed`,
               ).pipe(
                 Effect.zipRight(
-                  cmd(`DT_PASSTHROUGH=1 ${fallbackArgs.join(' ')}`, { shell: true }).pipe(Effect.provide(cwdLayer)),
+                  cmd(`DT_PASSTHROUGH=1 ${fallbackArgs.join(' ')}`, { shell: true }).pipe(
+                    Effect.provide(cwdLayer),
+                    Effect.catchTag('CmdError', (fallbackError) =>
+                      versionIsVisible.pipe(
+                        Effect.flatMap((isVisibleAfterFallback) =>
+                          isVisibleAfterFallback === true
+                            ? Effect.logWarning(
+                                `${pkg}@${version} became visible after the fallback publish failed; continuing`,
+                              )
+                            : Effect.fail(fallbackError),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               )
             }),
