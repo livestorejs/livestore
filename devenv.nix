@@ -413,7 +413,14 @@ in
     export PATH="$WORKSPACE_ROOT/scripts/bin:$WORKSPACE_ROOT/scripts/node_modules/.bin:$PATH"
 
     if [ "$(uname)" = "Darwin" ]; then
-      export PATH="/usr/bin:/bin:$PATH"
+      # Prepend /usr/bin so Apple's xcrun/xcodebuild/xcode-select win for
+      # Expo/iOS native builds — the Nix `xcbuild` shim's xcrun is incomplete
+      # and breaks pod install / Expo prebuild. Do NOT prepend /bin: that
+      # would put Bash 3.2 ahead of the Nix bash, and devenv task bodies
+      # (e.g. effect-utils' run_pnpm_install) trip on empty array expansion
+      # under `set -u` in Bash 3.2. /usr/bin/bash doesn't exist on macOS,
+      # so prepending only /usr/bin keeps Nix bash in front.
+      export PATH="/usr/bin:$PATH"
       unset DEVELOPER_DIR
     fi
 
