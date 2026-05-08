@@ -680,8 +680,8 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
       react-error-boundary:
-        specifier: 6.0.0
-        version: 6.0.0(react@19.2.3)
+        specifier: 6.1.1
+        version: 6.1.1(react@19.2.3)
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.3.8
@@ -1153,8 +1153,8 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
       react-error-boundary:
-        specifier: 6.0.0
-        version: 6.0.0(react@19.2.3)
+        specifier: 6.1.1
+        version: 6.1.1(react@19.2.3)
     devDependencies:
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
@@ -1380,8 +1380,8 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
       react-error-boundary:
-        specifier: 6.0.0
-        version: 6.0.0(react@19.2.3)
+        specifier: 6.1.1
+        version: 6.1.1(react@19.2.3)
     devDependencies:
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
@@ -1438,8 +1438,8 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
       react-error-boundary:
-        specifier: 6.0.0
-        version: 6.0.0(react@19.2.3)
+        specifier: 6.1.1
+        version: 6.1.1(react@19.2.3)
       todomvc-app-css:
         specifier: 2.4.3
         version: 2.4.3
@@ -1569,8 +1569,8 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
       react-error-boundary:
-        specifier: 6.0.0
-        version: 6.0.0(react@19.2.3)
+        specifier: 6.1.1
+        version: 6.1.1(react@19.2.3)
       todomvc-app-css:
         specifier: 2.4.3
         version: 2.4.3
@@ -1908,8 +1908,8 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
       react-error-boundary:
-        specifier: 6.0.0
-        version: 6.0.0(react@19.2.3)
+        specifier: 6.1.1
+        version: 6.1.1(react@19.2.3)
       todomvc-app-css:
         specifier: 2.4.3
         version: 2.4.3
@@ -4648,7 +4648,7 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
       react-error-boundary:
-        specifier: ^6.1.1
+        specifier: 6.1.1
         version: 6.1.1(react@19.2.3)
       todomvc-app-css:
         specifier: ^2.4.3
@@ -16357,11 +16357,6 @@ packages:
 
   react-dom@19.2.3:
     resolution: {integrity: sha512-yELu4WmLPw5Mr/lmeEpox5rw3RETacE++JgHqQzd2dg+YbJuat3jH4ingc+WPZhxaoFzdv9y33G+F7Nl5O0GBg==}
-    peerDependencies:
-      react: 19.2.3
-
-  react-error-boundary@6.0.0:
-    resolution: {integrity: sha512-gdlJjD7NWr0IfkPlaREN2d9uUZUlksrfOx7SX62VRerwXbMY6ftGCIZua1VG1aXFNOimhISsTq+Owp725b9SiA==}
     peerDependencies:
       react: 19.2.3
 
@@ -33758,13 +33753,6 @@ snapshots:
     dependencies:
       react: 19.2.3
       scheduler: 0.27.0
-
-  react-error-boundary@6.0.0(react@19.2.3):
-    dependencies:
-      '@babel/runtime': 7.29.2
-      '@types/react': 19.2.7
-      '@types/react-dom': 19.2.3(@types/react@19.2.7)
-      react: 19.2.3
 
   react-error-boundary@6.1.1(react@19.2.3):
     dependencies:
