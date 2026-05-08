@@ -3,11 +3,6 @@ name: Publish Fourbytwo fork packages
 on:
   workflow_dispatch:
     inputs:
-      ref:
-        description: Git ref to check out and publish.
-        required: true
-        default: effect-v4-migration
-        type: string
       version:
         description: Optional package version. Defaults to <livestore version>.fourbytwo.<short sha>.
         required: false
@@ -32,8 +27,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -63,4 +56,4 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             args=(--dry-run)
           fi
-          FORK_SOURCE_SHA="$(git rev-parse HEAD)" node scripts/publish-fourbytwo-fork-packages.mjs "${args[@]}"
+          node scripts/publish-fourbytwo-fork-packages.mjs "${args[@]}"
