@@ -121,6 +121,16 @@ const runCapture = (command: ReadonlyArray<string>, options: { readonly cwd?: st
   return result.stdout
 }
 
+const runCaptureOptional = (command: ReadonlyArray<string>, options: { readonly cwd?: string } = {}) => {
+  const result = spawnSync(command[0]!, command.slice(1), {
+    cwd: options.cwd,
+    env: process.env,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  return result.status === 0 ? result.stdout.trim() : undefined
+}
+
 const sha256 = (file: string) => createHash('sha256').update(readFileSync(file)).digest('hex')
 const integrity = (file: string) => `sha512-${createHash('sha512').update(readFileSync(file)).digest('base64')}`
 
@@ -137,13 +147,8 @@ const publishTagForVersion = (version: string) => {
 
 const isSnapshotVersion = (version: string) => version.includes('-snapshot-')
 
-const packageVersionExists = (packageName: string, version: string) => {
-  const result = spawnSync('npm', ['view', `${packageName}@${version}`, 'version'], {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-  return result.status === 0
-}
+const packageVersionExists = (packageName: string, version: string) =>
+  runCaptureOptional(['npm', 'view', `${packageName}@${version}`, 'version']) === version
 
 const downloadToFile = async (source: string, target: string, redirects = 0): Promise<void> => {
   if (redirects > 5) throw new Error(`Too many redirects while fetching ${source}`)
@@ -376,11 +381,15 @@ const verifyArtifact = async (flags: Map<string, string | true>) => {
   return { metadata, tarballPath, chromeZipPath, workDir }
 }
 
-const publishChromeZipReleaseAsset = (version: string, chromeZipPath: string, workDir: string) => {
-  const repo = process.env.GITHUB_REPOSITORY ?? 'livestorejs/livestore'
-  const tag = `v${version}`
+const materializeChromeZipAsset = (version: string, chromeZipPath: string, workDir: string) => {
   const assetPath = path.join(workDir, `livestore-devtools-chrome-${version}.zip`)
   writeFileSync(assetPath, readFileSync(chromeZipPath))
+  return assetPath
+}
+
+const publishChromeZipReleaseAsset = (version: string, assetPath: string) => {
+  const repo = process.env.GITHUB_REPOSITORY ?? 'livestorejs/livestore'
+  const tag = `v${version}`
 
   const releaseExists = spawnSync('gh', ['release', 'view', tag, '--repo', repo], {
     encoding: 'utf8',
@@ -449,7 +458,7 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
     run(['npm', 'publish', '--dry-run', '--tag', publishTag, repackedPath], { cwd: workDir })
   }
   if (hasFlag(flags, 'publish') === true) {
-    const alreadyPublished = isSnapshotVersion(version) === true && packageVersionExists(metadata.packageName, version)
+    const alreadyPublished = packageVersionExists(metadata.packageName, version)
     const publishArgs = ['npm', 'publish', '--tag', publishTag, '--access', 'public']
     if (process.env.GITHUB_ACTIONS === 'true') publishArgs.push('--provenance')
     publishArgs.push(repackedPath)
@@ -459,14 +468,19 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
       try {
         run(publishArgs, { cwd: workDir })
       } catch (error) {
-        if (isSnapshotVersion(version) === false || packageVersionExists(metadata.packageName, version) === false) {
+        if (packageVersionExists(metadata.packageName, version) === false) {
           throw error
         }
         console.warn(`${metadata.packageName}@${version} became visible after npm publish failed; continuing`)
       }
     }
     if (chromeZipPath !== undefined) {
-      publishChromeZipReleaseAsset(version, chromeZipPath, workDir)
+      const chromeZipAssetPath = materializeChromeZipAsset(version, chromeZipPath, workDir)
+      if (isSnapshotVersion(version) === true) {
+        console.log(`Snapshot Chrome zip prepared for workflow artifact upload: ${chromeZipAssetPath}`)
+      } else {
+        publishChromeZipReleaseAsset(version, chromeZipAssetPath)
+      }
     }
   }
 
