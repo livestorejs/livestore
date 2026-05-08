@@ -10,7 +10,10 @@ const publishRoot = join(repoRoot, ".tmp", "fourbytwo-fork-packages")
 const scope = nonEmpty(process.env.FORK_NPM_SCOPE) ?? "@raymonddaikon"
 const registry = nonEmpty(process.env.FORK_NPM_REGISTRY) ?? "https://npm.pkg.github.com"
 const npmTag = nonEmpty(process.env.FORK_NPM_TAG) ?? "fourbytwo"
-const commitSha = (process.env.GITHUB_SHA ?? spawn("git", ["rev-parse", "HEAD"]).stdout.trim()).slice(0, 7)
+const commitSha = (process.env.FORK_SOURCE_SHA ?? process.env.GITHUB_SHA ?? spawn("git", ["rev-parse", "HEAD"]).stdout.trim()).slice(
+  0,
+  7,
+)
 const publish = process.argv.includes("--publish")
 const dryRun = process.argv.includes("--dry-run")
 
