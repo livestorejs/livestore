@@ -15,9 +15,6 @@ const runtimeDeps = catalog.compose({
       '@opentelemetry/sdk-trace-base',
       '@opentelemetry/sdk-trace-web',
       '@playwright/test',
-      '@types/node',
-      '@types/react',
-      '@types/react-dom',
       '@vitejs/plugin-react',
       'react',
       'react-dom',
@@ -26,7 +23,7 @@ const runtimeDeps = catalog.compose({
     ),
   },
   devDependencies: {
-    external: effectDevDeps(),
+    external: effectDevDeps('@types/node', '@types/react', '@types/react-dom'),
   },
 })
 

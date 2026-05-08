@@ -353,7 +353,20 @@ printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.np
         {
           name: 'Publish DevTools artifact snapshot',
           run: runDevenvTasksBefore('release:devtools-artifact:publish'),
-          env: { LIVESTORE_RELEASE_VERSION: `0.0.0-snapshot-${PR_HEAD_SHA}` },
+          env: {
+            LIVESTORE_DEVTOOLS_OUT_DIR: '${{ runner.temp }}/livestore-devtools-snapshot',
+            LIVESTORE_RELEASE_VERSION: `0.0.0-snapshot-${PR_HEAD_SHA}`,
+          },
+        },
+        {
+          name: 'Upload DevTools Chrome snapshot artifact',
+          uses: 'actions/upload-artifact@v4',
+          with: {
+            name: `livestore-devtools-chrome-0.0.0-snapshot-${PR_HEAD_SHA}`,
+            path: '${{ runner.temp }}/livestore-devtools-snapshot/livestore-devtools-chrome-0.0.0-snapshot-${{ github.event.pull_request.head.sha || github.sha }}.zip',
+            'if-no-files-found': 'error',
+            'retention-days': 14,
+          },
         },
       ]),
     },

@@ -26,6 +26,11 @@ that the exact commit under test can publish snapshot packages and that users
 can create projects from those snapshots. Forked PRs skip jobs that require
 repository secrets or publishing permissions.
 
+Snapshot DevTools Chrome ZIPs are uploaded as short-lived workflow artifacts,
+not GitHub Releases. Public GitHub Releases are reserved for dev/stable release
+versions so the releases page remains a user-facing release history rather than
+a CI snapshot log.
+
 Manual `workflow_dispatch` is used by the release workflow for generated release
 PR branches. GitHub does not recursively trigger PR workflows from branches
 pushed with `GITHUB_TOKEN`, so release automation explicitly dispatches CI for

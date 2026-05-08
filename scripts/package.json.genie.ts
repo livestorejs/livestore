@@ -25,7 +25,7 @@ const composition = catalog.compose({
     ],
     external: {
       ...effectDevDeps('@types/node', 'vitest'),
-      '@types/bun': '1.3.5',
+      '@types/bun': '1.3.10',
       '@types/semver': '^7.7.0',
       madge: '^8.0.0',
       semver: '^7.7.3',

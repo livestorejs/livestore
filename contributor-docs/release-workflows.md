@@ -126,6 +126,12 @@ After merge to `main`, the push-triggered workflow runs:
 - For stable `latest` releases only: `docs:deploy:prod`,
   `examples:deploy:prod`, and the production docs search sync.
 
+CI snapshot publishing still republishes the public DevTools npm package for
+the exact snapshot version. Snapshot Chrome ZIPs are retained as workflow
+artifacts for short-term debugging; they are not published as GitHub Releases.
+GitHub Releases are reserved for dev and stable release versions that users may
+need to download directly.
+
 Normal CI deploys docs/examples to the dev surfaces. Production docs, examples,
 and search are only updated by an explicit stable release publish so regular
 `main` integration work cannot accidentally update the public latest surfaces.

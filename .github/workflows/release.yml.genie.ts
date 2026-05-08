@@ -230,6 +230,7 @@ fi`,
         'id-token': 'write',
       },
       env: {
+        GH_TOKEN: '${{ github.token }}',
         NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
       },
       defaults: bashShellDefaults,
