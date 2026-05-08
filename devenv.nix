@@ -413,7 +413,12 @@ in
     export PATH="$WORKSPACE_ROOT/scripts/bin:$WORKSPACE_ROOT/scripts/node_modules/.bin:$PATH"
 
     if [ "$(uname)" = "Darwin" ]; then
-      export PATH="/usr/bin:/bin:$PATH"
+      # Append (not prepend) Apple's tool dirs so Xcode-only commands
+      # (xcrun, xcodebuild, xcode-select) remain discoverable for Expo/iOS
+      # builds without shadowing Nix-store binaries. Prepending /bin pulled
+      # in Bash 3.2, which breaks devenv task scripts that expand empty
+      # arrays under `set -u` (e.g. effect-utils' run_pnpm_install).
+      export PATH="$PATH:/usr/bin:/bin"
       unset DEVELOPER_DIR
     fi
 
