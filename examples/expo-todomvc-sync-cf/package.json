@@ -25,7 +25,7 @@
     "@babel/core": "^7.28.0",
     "@babel/plugin-syntax-import-attributes": "^7.27.1",
     "@babel/runtime": "^7.28.2",
-    "@types/react": "^19.1.13",
+    "@types/react": "19.2.7",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "eas-cli": "^16.19.3",
     "typescript": "5.9.3",

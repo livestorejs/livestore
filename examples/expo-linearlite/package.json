@@ -47,7 +47,7 @@
     "@babel/plugin-syntax-import-attributes": "^7.27.1",
     "@babel/runtime": "^7.28.2",
     "@faker-js/faker": "^9.9.0",
-    "@types/react": "^19.1.13",
+    "@types/react": "19.2.7",
     "@types/react-test-renderer": "^19.1.0",
     "babel-plugin-transform-vite-meta-env": "^1.0.3",
     "prettier": "^3.6.2",

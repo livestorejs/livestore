@@ -699,10 +699,10 @@ importers:
         specifier: 4.1.18
         version: 4.1.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       '@types/react':
-        specifier: ^19.1.13
+        specifier: 19.2.7
         version: 19.2.7
       '@types/react-dom':
-        specifier: ^19.1.9
+        specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       '@vitejs/plugin-react':
         specifier: ^5.0.3
@@ -936,7 +936,7 @@ importers:
         specifier: ^9.9.0
         version: 9.9.0
       '@types/react':
-        specifier: ^19.1.13
+        specifier: 19.2.7
         version: 19.2.7
       '@types/react-test-renderer':
         specifier: ^19.1.0
@@ -1021,7 +1021,7 @@ importers:
         specifier: ^7.28.2
         version: 7.29.2
       '@types/react':
-        specifier: ^19.1.13
+        specifier: 19.2.7
         version: 19.2.7
       babel-plugin-transform-vite-meta-env:
         specifier: ^1.0.3
@@ -1099,10 +1099,10 @@ importers:
         specifier: ^24.9.2
         version: 24.12.0
       '@types/react':
-        specifier: ^19.1.13
+        specifier: 19.2.7
         version: 19.2.7
       '@types/react-dom':
-        specifier: ^19.1.9
+        specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       '@vitejs/plugin-react':
         specifier: ^5.0.3
@@ -1163,10 +1163,10 @@ importers:
         specifier: 4.1.18
         version: 4.1.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       '@types/react':
-        specifier: ^19.1.13
+        specifier: 19.2.7
         version: 19.2.7
       '@types/react-dom':
-        specifier: ^19.1.9
+        specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       '@vitejs/plugin-react':
         specifier: ^5.0.3
@@ -1314,10 +1314,10 @@ importers:
         specifier: ^24.9.2
         version: 24.12.0
       '@types/react':
-        specifier: ^19.1.13
+        specifier: 19.2.7
         version: 19.2.7
       '@types/react-dom':
-        specifier: ^19.1.9
+        specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       '@types/react-window':
         specifier: ^1.8.8
@@ -1390,10 +1390,10 @@ importers:
         specifier: ^24.9.2
         version: 24.12.0
       '@types/react':
-        specifier: ^19.1.13
+        specifier: 19.2.7
         version: 19.2.7
       '@types/react-dom':
-        specifier: ^19.1.9
+        specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       '@vitejs/plugin-react':
         specifier: ^5.0.3
@@ -1457,10 +1457,10 @@ importers:
         specifier: ^1.59.1
         version: 1.59.1
       '@types/react':
-        specifier: ^19.1.13
+        specifier: 19.2.7
         version: 19.2.7
       '@types/react-dom':
-        specifier: ^19.1.9
+        specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       '@vitejs/plugin-react':
         specifier: ^5.0.3
@@ -1518,10 +1518,10 @@ importers:
         specifier: 4.1.18
         version: 4.1.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       '@types/react':
-        specifier: ^19.1.13
+        specifier: 19.2.7
         version: 19.2.7
       '@types/react-dom':
-        specifier: ^19.1.9
+        specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       '@vitejs/plugin-react':
         specifier: ^5.0.3
@@ -1588,10 +1588,10 @@ importers:
         specifier: ^1.59.1
         version: 1.59.1
       '@types/react':
-        specifier: ^19.1.13
+        specifier: 19.2.7
         version: 19.2.7
       '@types/react-dom':
-        specifier: ^19.1.9
+        specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       '@vitejs/plugin-react':
         specifier: ^5.0.3
@@ -1649,10 +1649,10 @@ importers:
         specifier: ^1.59.1
         version: 1.59.1
       '@types/react':
-        specifier: ^19.1.13
+        specifier: 19.2.7
         version: 19.2.7
       '@types/react-dom':
-        specifier: ^19.1.9
+        specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       '@vitejs/plugin-react':
         specifier: ^5.0.3
@@ -1716,10 +1716,10 @@ importers:
         specifier: ^24.9.2
         version: 24.12.0
       '@types/react':
-        specifier: ^19.1.13
+        specifier: 19.2.7
         version: 19.2.7
       '@types/react-dom':
-        specifier: ^19.1.9
+        specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       typescript:
         specifier: 5.9.3
@@ -1927,10 +1927,10 @@ importers:
         specifier: ^1.59.1
         version: 1.59.1
       '@types/react':
-        specifier: ^19.1.13
+        specifier: 19.2.7
         version: 19.2.7
       '@types/react-dom':
-        specifier: ^19.1.9
+        specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       '@vitejs/plugin-react':
         specifier: ^5.0.3
@@ -2006,10 +2006,10 @@ importers:
         specifier: ^24.9.2
         version: 24.12.0
       '@types/react':
-        specifier: ^19.1.13
+        specifier: 19.2.7
         version: 19.2.7
       '@types/react-dom':
-        specifier: ^19.1.9
+        specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       '@vitejs/plugin-react':
         specifier: ^5.0.3
@@ -2091,10 +2091,10 @@ importers:
         specifier: ^24.9.2
         version: 24.12.0
       '@types/react':
-        specifier: ^19.1.13
+        specifier: 19.2.7
         version: 19.2.7
       '@types/react-dom':
-        specifier: ^19.1.9
+        specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       '@vitejs/plugin-react':
         specifier: ^5.0.3
