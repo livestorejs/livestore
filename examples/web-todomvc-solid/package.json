@@ -23,7 +23,7 @@
     "typescript": "5.9.3",
     "vite": "7.3.1",
     "vite-plugin-solid": "^2.11.10",
-    "wrangler": "^4.42.2"
+    "wrangler": "4.42.2"
   },
   "engines": {
     "node": ">=24.0.0"

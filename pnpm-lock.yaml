@@ -717,7 +717,7 @@ importers:
         specifier: 7.3.1
         version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
       wrangler:
-        specifier: ^4.42.2
+        specifier: 4.42.2
         version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
 
   examples/cf-chat-solid:
@@ -781,7 +781,7 @@ importers:
         specifier: ^2.11.10
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       wrangler:
-        specifier: ^4.42.2
+        specifier: 4.42.2
         version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
 
   examples/cloudflare-todomvc:
@@ -803,7 +803,7 @@ importers:
         version: link:../../packages/@livestore/sync-cf
     devDependencies:
       wrangler:
-        specifier: ^4.42.2
+        specifier: 4.42.2
         version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
 
   examples/expo-linearlite:
@@ -1033,7 +1033,7 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
       wrangler:
-        specifier: ^4.42.2
+        specifier: 4.42.2
         version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
 
   examples/node-effect-cli:
@@ -1181,7 +1181,7 @@ importers:
         specifier: 7.3.1
         version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
       wrangler:
-        specifier: ^4.42.2
+        specifier: 4.42.2
         version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
 
   examples/web-linearlite:
@@ -1344,7 +1344,7 @@ importers:
         specifier: ^4.3.0
         version: 4.5.0(rollup@4.49.0)(typescript@5.9.3)(vite@7.3.1(@types/node@24.12.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       wrangler:
-        specifier: ^4.42.2
+        specifier: 4.42.2
         version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
 
   examples/web-multi-store:
@@ -1472,7 +1472,7 @@ importers:
         specifier: 7.3.1
         version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
       wrangler:
-        specifier: ^4.42.2
+        specifier: 4.42.2
         version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
 
   examples/web-todomvc-custom-elements:
@@ -1536,7 +1536,7 @@ importers:
         specifier: 7.3.1
         version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
       wrangler:
-        specifier: ^4.42.2
+        specifier: 4.42.2
         version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
 
   examples/web-todomvc-experimental:
@@ -1603,7 +1603,7 @@ importers:
         specifier: 7.3.1
         version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
       wrangler:
-        specifier: ^4.42.2
+        specifier: 4.42.2
         version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
 
   examples/web-todomvc-react-router:
@@ -1728,7 +1728,7 @@ importers:
         specifier: 7.3.1
         version: 7.3.1(@types/node@24.12.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
       wrangler:
-        specifier: ^4.42.2
+        specifier: 4.42.2
         version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
 
   examples/web-todomvc-script:
@@ -1768,7 +1768,7 @@ importers:
         specifier: 7.3.1
         version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
       wrangler:
-        specifier: ^4.42.2
+        specifier: 4.42.2
         version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
 
   examples/web-todomvc-solid:
@@ -1823,7 +1823,7 @@ importers:
         specifier: ^2.11.10
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.10)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       wrangler:
-        specifier: ^4.42.2
+        specifier: 4.42.2
         version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
 
   examples/web-todomvc-svelte:
@@ -1875,7 +1875,7 @@ importers:
         specifier: 7.3.1
         version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
       wrangler:
-        specifier: ^4.42.2
+        specifier: 4.42.2
         version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
 
   examples/web-todomvc-sync-cf:
@@ -1942,7 +1942,7 @@ importers:
         specifier: 7.3.1
         version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
       wrangler:
-        specifier: ^4.42.2
+        specifier: 4.42.2
         version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
 
   examples/web-todomvc-sync-electric:
