@@ -43,7 +43,8 @@ import {
   type WorkspacePackageLike,
 } from '#mr/effect-utils/genie/external.ts'
 import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from '#mr/effect-utils/genie/oxfmt-base.ts'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { livestoreOnlyCatalog, livestoreWorkspaceCatalog } from './external.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
@@ -92,7 +93,13 @@ export const packageTsconfigCompilerOptions = {
  * build time instead of being committed as package-local pnpm-workspace files.
  */
 
-const releaseVersion = JSON.parse(readFileSync('release/version.json', 'utf8')) as {
+const releaseVersionPath = ['release/version.json', join('repos/livestore', 'release/version.json')].find((candidate) =>
+  existsSync(candidate),
+)
+if (releaseVersionPath === undefined) {
+  throw new Error('Could not find LiveStore release/version.json')
+}
+const releaseVersion = JSON.parse(readFileSync(releaseVersionPath, 'utf8')) as {
   readonly version: string
 }
 
