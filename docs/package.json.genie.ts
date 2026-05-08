@@ -47,7 +47,6 @@ const runtimeDeps = catalog.compose({
         'typedoc',
         'react',
         'react-dom',
-        '@types/react',
         'tailwindcss',
       ),
       ...catalog.pick('@livestore/devtools-vite'),
@@ -79,7 +78,7 @@ const runtimeDeps = catalog.compose({
     },
   },
   devDependencies: {
-    external: catalog.pick('@playwright/test', '@types/react-dom', '@types/hast', 'vitest'),
+    external: catalog.pick('@playwright/test', '@types/react', '@types/react-dom', '@types/hast', 'vitest'),
   },
   mode: 'install',
 })
