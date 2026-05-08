@@ -10,7 +10,7 @@
     "@livestore/peer-deps": "0.4.0-dev.24",
     "@livestore/react": "0.4.0-dev.24",
     "@livestore/wa-sqlite": "0.4.0-dev.24",
-    "@tanstack/react-router": "1.139.14",
+    "@tanstack/react-router": "1.145.7",
     "@tanstack/react-start": "1.139.14",
     "react": "19.2.3",
     "react-dom": "19.2.3",

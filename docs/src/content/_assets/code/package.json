@@ -47,7 +47,7 @@
     "@opentelemetry/sdk-trace-base": "2.2.0",
     "@opentelemetry/sdk-trace-web": "2.2.0",
     "@standard-schema/spec": "1.1.0",
-    "@tanstack/react-router": "1.139.14",
+    "@tanstack/react-router": "1.145.7",
     "@vitejs/plugin-vue": "6.0.0",
     "effect": "3.21.2",
     "expo": "54.0.12",
