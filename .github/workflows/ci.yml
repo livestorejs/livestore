@@ -90,12 +90,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
             exit 1
-          fi
           fi
 
           resolve_devenv() {
@@ -336,12 +334,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
             exit 1
-          fi
           fi
 
           resolve_devenv() {
@@ -586,12 +582,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
             exit 1
-          fi
           fi
 
           resolve_devenv() {
@@ -833,12 +827,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
             exit 1
-          fi
           fi
 
           resolve_devenv() {
@@ -1078,12 +1070,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
             exit 1
-          fi
           fi
 
           resolve_devenv() {
@@ -1323,12 +1313,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
             exit 1
-          fi
           fi
 
           resolve_devenv() {
@@ -1612,12 +1600,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
             exit 1
-          fi
           fi
 
           resolve_devenv() {
@@ -1887,12 +1873,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
             exit 1
-          fi
           fi
 
           resolve_devenv() {
@@ -2267,12 +2251,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
             exit 1
-          fi
           fi
 
           resolve_devenv() {
@@ -2526,12 +2508,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
             exit 1
-          fi
           fi
 
           resolve_devenv() {
@@ -2903,12 +2883,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
             exit 1
-          fi
           fi
 
           resolve_devenv() {
@@ -3276,12 +3254,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
             exit 1
-          fi
           fi
 
           resolve_devenv() {
@@ -3855,12 +3831,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
             exit 1
-          fi
           fi
 
           resolve_devenv() {

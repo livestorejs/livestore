@@ -8,9 +8,9 @@
   },
   "files": [
     "dist",
+    "docs",
     "package.json",
-    "src",
-    "docs"
+    "src"
   ],
   "type": "module",
   "sideEffects": false,
