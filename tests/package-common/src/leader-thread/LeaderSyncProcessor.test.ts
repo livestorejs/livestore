@@ -524,23 +524,26 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       const backendFactory = makeEventFactory({
         client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
       })
+      const backendPushAttempted = yield* Deferred.make<void>()
 
       // Cause the next push to fail with ServerAheadError so the pushing fiber parks (Effect.never)
       yield* testContext.mockSyncBackend.failNextPushes(
         1,
         () =>
-          Effect.fail(new ServerAheadError({
-            minimumExpectedNum: EventSequenceNumber.Global.make(2),
-            providedNum: EventSequenceNumber.Global.make(1),
-          })),
+          Deferred.succeed(backendPushAttempted, void 0).pipe(
+            Effect.andThen(
+              Effect.fail(new ServerAheadError({
+                minimumExpectedNum: EventSequenceNumber.Global.make(2),
+                providedNum: EventSequenceNumber.Global.make(1),
+              })),
+            ),
+          ),
       )
 
       // Enqueue one local event which will attempt a push and hit the simulated error
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: 'stall', text: 'stall', completed: false }))
 
-      // Waiting a bit to make sure we've already attempted to push to the backend
-      // TODO replace this sleep with a an API that allows us to wait until the push was processed by the sync backend
-      yield* Effect.sleep(50)
+      yield* Deferred.await(backendPushAttempted).pipe(Effect.timeout(5000))
 
       // Sync protocol requires that the sync backend emits a new pull chunk alongside the ServerAheadError
       yield* testContext.mockSyncBackend.advance(

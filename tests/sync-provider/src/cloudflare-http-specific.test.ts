@@ -15,6 +15,7 @@ import {
   Logger,
   LogLevel,
   ManagedRuntime,
+  Scope,
 } from '@livestore/utils/effect'
 
 import * as CloudflareHttpProvider from './providers/cloudflare-http-rpc.ts'
@@ -33,6 +34,7 @@ Vitest.describe.each(cloudflareHttpProviders)('$name HTTP response headers', { t
     runtime = ManagedRuntime.make(
       layer.pipe(
         Layer.provideMerge(FetchHttpClient.layer),
+        Layer.provideMerge(Layer.effect(Scope.Scope)(Scope.make())),
         Layer.provide(OtelLiveHttp({ rootSpanName: 'beforeAll', serviceName: 'vitest-runner', skipLogUrl: false })),
         Layer.provide(Logger.prettyWithThread('test-runner')),
         Layer.orDie,

@@ -17,6 +17,7 @@ import {
   LogLevel,
   ManagedRuntime,
   Option,
+  Scope,
   Stream,
 } from '@livestore/utils/effect'
 
@@ -41,6 +42,7 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
     runtime = ManagedRuntime.make(
       ElectricProvider.layer.pipe(
         Layer.provideMerge(FetchHttpClient.layer),
+        Layer.provideMerge(Layer.effect(Scope.Scope)(Scope.make())),
         Layer.provide(OtelLiveHttp({ rootSpanName: 'beforeAll', serviceName: 'vitest-runner', skipLogUrl: false })),
         Layer.provide(Logger.prettyWithThread('test-runner')),
         Layer.orDie,

@@ -170,6 +170,7 @@ export const setupDurableObjectWebSocketRpc = ({
 
       const ProtocolLive = layerRpcServerWebsocket({
         ws,
+        scope,
         incomingQueue,
         ...omitUndefineds({ onMessage }),
       }).pipe(Layer.provide(RpcSerialization.layerJson))
@@ -233,6 +234,7 @@ export const setupDurableObjectWebSocketRpc = ({
  */
 export interface WsRpcServerArgs {
   ws: CfTypes.WebSocket
+  scope: Scope.Scope
   onMessage?: (message: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
   /** Mailbox queue for receiving incoming messages from the WebSocket */
   incomingQueue: Mailbox.Mailbox<Uint8Array | string>
@@ -266,7 +268,7 @@ export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
  *
  * @internal Used internally by `layerRpcServerWebsocket`
  */
-const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =>
+const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServerArgs) =>
   Effect.gen(function* () {
     const serialization = yield* RpcSerialization.RpcSerialization
     const disconnects = yield* Queue.unbounded<number>()
@@ -304,6 +306,9 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
               while: () => i < decoded.length,
               body: () => {
                 const request = decoded[i++]!
+                if (request._tag === 'Ping') {
+                  return write(RpcMessage.constPong)
+                }
                 if (onMessage !== undefined) {
                   onMessage(request, ws)
                 }
@@ -317,7 +322,7 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
         }),
         Stream.runDrain,
         Effect.tapCauseLogPretty,
-        Effect.forkChild,
+        Effect.forkIn(scope),
       )
 
       // Start the message processing

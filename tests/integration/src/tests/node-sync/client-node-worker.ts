@@ -14,13 +14,12 @@ import {
   Deferred,
   Effect,
   Layer,
-  Logger,
-  LogLevel,
   OtelTracer,
   pipe,
   ReadonlyArray,
+  RpcServer,
+  Schema,
   Stream,
-  WorkerRunner,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessRunner, OtelLiveDummy } from '@livestore/utils/node'
@@ -37,9 +36,18 @@ class WorkerContext extends Context.Service<
   }
 >()('WorkerContext') {}
 
-const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
-  InitialMessage: ({ storeId, clientId, adapterType, storageType, params, syncUrl }) =>
-    Effect.gen(function* () {
+const clientId = process.argv[2]!
+
+const WorkerContextLive = Layer.unwrapScoped(
+  Effect.gen(function* () {
+    const protocol = yield* RpcServer.Protocol
+    const { storeId, clientId, adapterType, storageType, params, syncUrl } = yield* protocol.initialMessage.pipe(
+      Effect.flatMap((option) => option.asEffect()),
+      Effect.flatMap(Schema.decodeUnknownEffect(Schema.toCodecJson(WorkerSchema.InitialMessage))),
+      Effect.orDie,
+    )
+
+    return yield* Effect.gen(function* () {
       const storage =
         storageType === 'fs'
           ? {
@@ -83,13 +91,16 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       globalThis.store = store
 
       return Layer.succeed(WorkerContext, { store, shutdownDeferred })
-    }).pipe(
-      Effect.orDie,
-      Effect.annotateLogs({ clientId }),
-      Effect.annotateSpans({ clientId }),
-      Effect.withSpan(`@livestore/adapter-node-sync:test:init-${clientId}`),
-      Layer.unwrapScoped,
-    ),
+    })
+  }).pipe(
+    Effect.orDie,
+    Effect.annotateLogs({ clientId }),
+    Effect.annotateSpans({ clientId }),
+    Effect.withSpan(`@livestore/adapter-node-sync:test:init-${clientId}`),
+  ),
+)
+
+const runner = WorkerSchema.Rpcs.toLayer({
   CreateTodos: ({ count, commitBatchSize = 1 }) =>
     Effect.gen(function* () {
       // TODO check sync connection status
@@ -117,16 +128,17 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
   }),
 })
 
-const clientId = process.argv[2]!
-
 const serviceName = `node-sync-test:${clientId}`
 
-WorkerRunner.launch(
-  runner.pipe(
-    Layer.provide(NodeServices.layer),
-    Layer.provide(ChildProcessRunner.layer),
-  ) as Layer.Layer<any, any, any>,
-).pipe(
+RpcServer.make(WorkerSchema.Rpcs).pipe(
+  Effect.provide(
+    runner.pipe(
+      Layer.provide(WorkerContextLive),
+      Layer.provideMerge(RpcServer.layerProtocolWorkerRunner),
+      Layer.provide(NodeServices.layer),
+      Layer.provide(ChildProcessRunner.layer),
+    ),
+  ),
   // TODO this parent span is currently missing in the trace
   Effect.withSpan(`@livestore/adapter-node-sync:run-worker-${clientId}`),
   Effect.provide(IS_CI === true ? OtelLiveDummy : OtelLiveHttp({ serviceName, skipLogUrl: true })),

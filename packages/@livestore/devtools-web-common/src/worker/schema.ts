@@ -1,13 +1,13 @@
-import { Schema, Transferable } from '@livestore/utils/effect'
+import { Rpc, RpcGroup, Schema, Transferable } from '@livestore/utils/effect'
 
-export class CreateConnection extends Schema.TaggedRequest<CreateConnection>()('DevtoolsWebCommon.CreateConnection', {
+export const CreateConnection = Rpc.make('CreateConnection', {
   payload: {
     from: Schema.String,
     port: Transferable.MessagePort,
   },
   success: Schema.Struct({}),
-  failure: Schema.Never,
-}) {}
+  stream: true,
+})
 
-export const Request = Schema.Union([CreateConnection as any]) as any
-export type Request = typeof Request.Type
+export const Rpcs = RpcGroup.make(CreateConnection)
+export type Request = Rpc.Payload<RpcGroup.Rpcs<typeof Rpcs>>

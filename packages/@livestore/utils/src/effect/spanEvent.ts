@@ -1,4 +1,4 @@
-import { Effect } from 'effect'
+import { Clock, Effect } from 'effect'
 
 /**
  * Emits a span event on the current Effect span via the tracer logger.
@@ -10,4 +10,8 @@ import { Effect } from 'effect'
  * is in context, the call is a no-op.
  */
 export const spanEvent = (message: any, attributes?: Record<string, unknown>) =>
-  Effect.log(message).pipe(Effect.annotateLogs(attributes ?? {}))
+  Effect.gen(function* () {
+    const span = yield* Effect.currentSpan
+    const now = yield* Clock.currentTimeNanos
+    span.event(String(message), now, attributes)
+  }).pipe(Effect.catchTag('NoSuchElementError', () => Effect.void))

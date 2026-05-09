@@ -10,12 +10,14 @@ import { makeWranglerDevServerLayer, WranglerDevServerService } from '@livestore
 import {
   Duration,
   Effect,
+  EffectRpcClient,
+  FastCheck,
   FetchHttpClient,
   Layer,
   Logger,
+  RpcWorker,
   Schema,
   Stream,
-  Worker,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessWorker } from '@livestore/utils/node'
@@ -70,9 +72,9 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
           { concurrency: 'unbounded' },
         )
 
-        yield* clientA.executeEffect(WorkerSchema.CreateTodos.make({ count: todoCount }))
+        yield* clientA.CreateTodos({ count: todoCount })
 
-        const result = yield* clientB.execute(WorkerSchema.StreamTodos.make()).pipe(
+        const result = yield* clientB.StreamTodos(undefined).pipe(
           Stream.filter((_) => _.length === todoCount),
           Stream.runHead,
           Effect.andThen((option) => option._tag === 'Some' ? Effect.succeed(option.value) : Effect.die('no todos emitted')),
@@ -84,9 +86,18 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   )
 
   // Warning: A high CreateCount coupled with high simulation params can lead to very long test runs since those get multiplied with the number of todos.
-  const CreateCount = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 400 }))
-  const CommitBatchSize = Schema.Literals([1, 2, 10, 100])
-  const LEADER_PUSH_BATCH_SIZE = Schema.Literals([1, 2, 10, 100])
+  const CreateCount = FastCheck.integer({ min: 1, max: 400 })
+  const CommitBatchSize = FastCheck.constantFrom(1, 2, 10, 100)
+  const LEADER_PUSH_BATCH_SIZE = FastCheck.constantFrom(1, 2, 10, 100)
+  const SimulationParams = FastCheck.record({
+    pull: FastCheck.record({
+      '1_before_leader_push_fiber_interrupt': FastCheck.integer({ min: 0, max: 15 }),
+      '2_before_leader_push_queue_clear': FastCheck.integer({ min: 0, max: 15 }),
+      '3_before_rebase_rollback': FastCheck.integer({ min: 0, max: 15 }),
+      '4_before_leader_push_queue_offer': FastCheck.integer({ min: 0, max: 15 }),
+      '5_before_leader_push_fiber_run': FastCheck.integer({ min: 0, max: 15 }),
+    }),
+  })
   // TODO introduce random delays in async operations as part of prop testing
 
   // TODO investigate why stoping this test in VSC Vitest UI often doesn't stop the test runs
@@ -114,14 +125,14 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
           }),
         }
       : {
-          storageType: WorkerSchema.StorageType,
-          adapterType: WorkerSchema.AdapterType,
+          storageType: FastCheck.constantFrom('in-memory' as const, 'fs' as const),
+          adapterType: FastCheck.constantFrom('single-threaded' as const, 'worker' as const),
           todoCountA: CreateCount,
           todoCountB: CreateCount,
           commitBatchSize: CommitBatchSize,
           leaderPushBatchSize: LEADER_PUSH_BATCH_SIZE,
           // TODO extend simulation tests to cover all parts of the client session and leader sync processor
-          simulationParams: ClientSessionSyncProcessorSimulationParams,
+          simulationParams: SimulationParams,
         },
     (
       { storageType, adapterType, todoCountA, todoCountB, commitBatchSize, leaderPushBatchSize, simulationParams },
@@ -161,22 +172,18 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         )
 
         // TODO also alternate the order and delay of todo creation as part of prop testing
-        yield* clientA
-          .executeEffect(WorkerSchema.CreateTodos.make({ count: todoCountA, commitBatchSize }))
-          .pipe(Effect.forkChild)
+        yield* clientA.CreateTodos({ count: todoCountA, commitBatchSize }).pipe(Effect.forkChild)
 
-        yield* clientB
-          .executeEffect(WorkerSchema.CreateTodos.make({ count: todoCountB, commitBatchSize }))
-          .pipe(Effect.forkChild)
+        yield* clientB.CreateTodos({ count: todoCountB, commitBatchSize }).pipe(Effect.forkChild)
 
         const exec = Effect.all(
           [
-            clientA.execute(WorkerSchema.StreamTodos.make()).pipe(
+            clientA.StreamTodos(undefined).pipe(
               Stream.filter((_) => _.length === totalCount),
               Stream.runHead,
               Effect.andThen((option) => option._tag === 'Some' ? Effect.succeed(option.value) : Effect.die('client-a todos not emitted')),
             ),
-            clientB.execute(WorkerSchema.StreamTodos.make()).pipe(
+            clientB.StreamTodos(undefined).pipe(
               Stream.filter((_) => _.length === totalCount),
               Stream.runHead,
               Effect.andThen((option) => option._tag === 'Some' ? Effect.succeed(option.value) : Effect.die('client-b todos not emitted')),
@@ -186,8 +193,8 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         )
 
         const onShutdown = Effect.raceFirst(
-          clientA.executeEffect(WorkerSchema.OnShutdown.make()),
-          clientB.executeEffect(WorkerSchema.OnShutdown.make()),
+          clientA.OnShutdown(undefined),
+          clientB.OnShutdown(undefined),
         )
 
         yield* Effect.raceFirst(exec, onShutdown)
@@ -225,25 +232,33 @@ const makeWorker = ({
   params?: WorkerSchema.Params
 }) =>
   Effect.gen(function* () {
+    const server = yield* WranglerDevServerService
     // Warning: we need to build the layer here eagerly to tie it to the scope
-    const childProcessWorkerContext = yield* Layer.build(
-      ChildProcessWorker.layer(() =>
-        ChildProcess.fork(
-          new URL('./client-node-worker.ts', import.meta.url),
-          // TODO get rid of this once passing args to the worker parent span is supported (wait for Tim Smart)
-          [clientId],
+    const workerLayer = EffectRpcClient.layerProtocolWorker({ size: 1, concurrency: 100 }).pipe(
+      Layer.provide(
+        RpcWorker.layerInitialMessage(
+          WorkerSchema.InitialMessage,
+          Effect.succeed(
+            new WorkerSchema.InitialMessage({ storeId, clientId, adapterType, storageType, params, syncUrl: server.url }),
+          ),
+        ),
+      ),
+      Layer.provide(
+        ChildProcessWorker.layer(() =>
+          ChildProcess.fork(
+            new URL('./client-node-worker.ts', import.meta.url),
+            // TODO get rid of this once passing args to the worker parent span is supported (wait for Tim Smart)
+            [clientId],
+          ),
         ),
       ),
     )
 
-    const server = yield* WranglerDevServerService
-    const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.Request.Type>({
-      size: 1,
-      concurrency: 100,
-      initialMessage: () =>
-        WorkerSchema.InitialMessage.make({ storeId, clientId, adapterType, storageType, params, syncUrl: server.url }),
+    const worker = yield* Effect.gen(function* () {
+      const scope = yield* Effect.scope
+      const protocolContext = yield* Layer.buildWithScope(workerLayer, scope)
+      return yield* EffectRpcClient.make(WorkerSchema.Rpcs).pipe(Effect.provide(protocolContext))
     }).pipe(
-      Effect.provide(childProcessWorkerContext),
       Effect.tapCauseLogPretty,
       Effect.withSpan(`@livestore/adapter-node-sync:test:boot-worker-${clientId}`),
     )

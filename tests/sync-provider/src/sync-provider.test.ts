@@ -22,6 +22,7 @@ import {
   Option,
   Schedule,
   Schema,
+  Scope,
   Stream,
   SubscriptionRef,
 } from '@livestore/utils/effect'
@@ -64,6 +65,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     runtime = ManagedRuntime.make(
       layer.pipe(
         Layer.provideMerge(FetchHttpClient.layer),
+        Layer.provideMerge(Layer.effect(Scope.Scope)(Scope.make())),
         Layer.provide(OtelLiveHttp({ rootSpanName: 'beforeAll', serviceName: 'vitest-runner', skipLogUrl: false })),
         Layer.provide(Logger.prettyWithThread('test-runner')),
         Layer.orDie,

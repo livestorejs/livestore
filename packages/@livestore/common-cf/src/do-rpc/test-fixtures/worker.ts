@@ -76,7 +76,7 @@ export default {
       const url = new URL(request.url)
 
       // Handle HTTP RPC endpoint
-      if (url.pathname === '/rpc') {
+      if (url.pathname === '/rpc' || url.pathname === '/rpc/') {
         // Get the test server DO instance
         const doId = env.TEST_RPC_DO.idFromName('test-server')
         const serverDO = env.TEST_RPC_DO.get(doId)

@@ -1,6 +1,6 @@
 import { ClientSessionSyncProcessorSimulationParams } from '@livestore/common'
 import { ShutdownChannel } from '@livestore/common/leader-thread'
-import { Schema } from '@livestore/utils/effect'
+import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
 
 import { tables } from './schema.ts'
 
@@ -14,39 +14,32 @@ export const Params = Schema.Struct({
 
 export type Params = typeof Params.Type
 
-export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('InitialMessage', {
-  payload: {
-    storeId: Schema.String,
-    clientId: Schema.String,
-    adapterType: AdapterType,
-    storageType: StorageType,
-    syncUrl: Schema.String,
-    params: Params.pipe(Schema.optional),
-  },
-  success: Schema.Void,
-  failure: Schema.Never,
+export class InitialMessage extends Schema.Class<InitialMessage>('InitialMessage')({
+  storeId: Schema.String,
+  clientId: Schema.String,
+  adapterType: AdapterType,
+  storageType: StorageType,
+  syncUrl: Schema.String,
+  params: Params.pipe(Schema.optional),
 }) {}
 
-export class CreateTodos extends Schema.TaggedRequest<CreateTodos>()('CreateTodos', {
+export const CreateTodos = Rpc.make('CreateTodos', {
   payload: {
     count: Schema.Number,
     commitBatchSize: Schema.optional(Schema.Number),
   },
   success: Schema.Void,
-  failure: Schema.Never,
-}) {}
+})
 
-export class StreamTodos extends Schema.TaggedRequest<StreamTodos>()('StreamTodos', {
-  payload: {},
+export const StreamTodos = Rpc.make('StreamTodos', {
   success: Schema.Array(tables.todo.rowSchema),
-  failure: Schema.Never,
-}) {}
+  stream: true,
+})
 
-export class OnShutdown extends Schema.TaggedRequest<OnShutdown>()('OnShutdown', {
-  payload: {},
+export const OnShutdown = Rpc.make('OnShutdown', {
   success: Schema.Void,
-  failure: ShutdownChannel.All,
-}) {}
+  error: ShutdownChannel.All,
+})
 
-export const Request = Schema.Union([InitialMessage, CreateTodos, StreamTodos, OnShutdown])
-export type Request = typeof Request.Type
+export const Rpcs = RpcGroup.make(CreateTodos, StreamTodos, OnShutdown)
+export type Request = Rpc.Payload<RpcGroup.Rpcs<typeof Rpcs>>

@@ -142,7 +142,7 @@ export class DockerComposeService extends Context.Service<DockerComposeService, 
 
         const command = yield* spawner.spawn(ChildProcess.make(startArgs[0]!, startArgs.slice(1), {
           cwd,
-          env: options.env ?? {},
+          ...omitUndefineds({ env: options.env }),
           stderr: 'inherit',
           stdout: 'inherit',
         })).pipe(
@@ -249,7 +249,7 @@ export class DockerComposeService extends Context.Service<DockerComposeService, 
 
         const downCommand = ChildProcess.make(downArgs[0]!, downArgs.slice(1), {
           cwd,
-          env: options?.env ?? {},
+          ...omitUndefineds({ env: options?.env }),
         })
 
         yield* spawner.exitCode(downCommand).pipe(

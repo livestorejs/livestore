@@ -27,6 +27,7 @@ import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
   Cause,
+  EffectRpcClient,
   Effect,
   Exit,
   Fiber,
@@ -37,7 +38,7 @@ import {
   Stream,
   Subscribable,
   SubscriptionRef,
-  Worker,
+  RpcWorker,
 } from '@livestore/utils/effect'
 import { BrowserWorker, Opfs, WebError } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -212,10 +213,25 @@ export const makeSingleTabAdapter =
       const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker-${storeId}-${sessionId}` })
 
       // Set up communication with the dedicated worker via the outer protocol
-      const _dedicatedWorkerFiber = yield* Worker.makeSerialized<WorkerSchema.LeaderWorkerOuterRequest>({
-        initialMessage: () => new WorkerSchema.LeaderWorkerOuterInitialMessage({ port: mc.port1, storeId, clientId }),
+      const outerWorkerLayer = EffectRpcClient.layerProtocolWorker({ size: 1, concurrency: 1 }).pipe(
+        Layer.provide(
+          RpcWorker.layerInitialMessage(
+            WorkerSchema.LeaderWorkerOuterInitialMessage,
+            Effect.succeed(new WorkerSchema.LeaderWorkerOuterInitialMessage({ port: mc.port1, storeId, clientId })),
+          ),
+        ),
+        Layer.provide(BrowserWorker.layer(() => worker)),
+      )
+
+      const _dedicatedWorkerFiber = yield* Effect.gen(function* () {
+        const scope = yield* Effect.scope
+        const protocolContext = yield* Layer.buildWithScope(outerWorkerLayer, scope)
+        const outerWorker = yield* EffectRpcClient.make(WorkerSchema.LeaderWorkerOuterRpcs).pipe(
+          Effect.provide(protocolContext),
+        )
+        yield* outerWorker.Ready(undefined)
+        return yield* Effect.never
       }).pipe(
-        Effect.provide(BrowserWorker.layer(() => worker)),
         UnknownError.mapToUnknownError,
         Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
         Effect.withSpan('@livestore/adapter-web:single-tab:setupDedicatedWorker'),
@@ -225,22 +241,31 @@ export const makeSingleTabAdapter =
 
       // Set up the inner worker communication via port2 (like SharedWorker would do)
       // BrowserWorker.layer accepts a MessagePort as well as a Worker
-      const innerWorkerContext = yield* Layer.build(BrowserWorker.layer(() => mc.port2 as unknown as globalThis.Worker))
-      const innerWorkerFiber = yield* Worker.makePoolSerialized<WorkerSchema.LeaderWorkerInnerRequest>({
-        size: 1,
-        concurrency: 100,
-        initialMessage: () =>
-          new WorkerSchema.LeaderWorkerInnerInitialMessage({
-            storageOptions,
-            storeId,
-            clientId,
-            // Devtools disabled in single-tab mode (requires SharedWorker)
-            devtoolsEnabled: false,
-            debugInstanceId: adapterArgs.debugInstanceId,
-            syncPayloadEncoded,
-          }),
+      const innerWorkerLayer = EffectRpcClient.layerProtocolWorker({ size: 1, concurrency: 100 }).pipe(
+        Layer.provide(
+          RpcWorker.layerInitialMessage(
+            WorkerSchema.LeaderWorkerInnerInitialMessage,
+            Effect.succeed(
+              new WorkerSchema.LeaderWorkerInnerInitialMessage({
+                storageOptions,
+                storeId,
+                clientId,
+                // Devtools disabled in single-tab mode (requires SharedWorker)
+                devtoolsEnabled: false,
+                debugInstanceId: adapterArgs.debugInstanceId,
+                syncPayloadEncoded,
+              }),
+            ),
+          ),
+        ),
+        Layer.provide(BrowserWorker.layer(() => mc.port2 as unknown as globalThis.Worker)),
+      )
+
+      const innerWorkerFiber = yield* Effect.gen(function* () {
+        const scope = yield* Effect.scope
+        const protocolContext = yield* Layer.buildWithScope(innerWorkerLayer, scope)
+        return yield* EffectRpcClient.make(WorkerSchema.LeaderWorkerInnerRpcs).pipe(Effect.provide(protocolContext))
       }).pipe(
-        Effect.provide(innerWorkerContext),
         Effect.tapCauseLogPretty,
         Effect.orDie,
         Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
@@ -249,28 +274,29 @@ export const makeSingleTabAdapter =
       )
 
       // Helper to run requests against the worker
-      const runInWorker = (req: WorkerSchema.LeaderWorkerInnerRequest): Effect.Effect<any, never, never> =>
+      const runInWorker = <A, E>(tag: string, effect: Effect.Effect<A, E, any>): Effect.Effect<A, never, never> =>
         Fiber.join(innerWorkerFiber).pipe(
-          Effect.flatMap((worker) => worker.executeEffect(req)),
+          Effect.flatMap(() => effect),
           Effect.catchIf(isWorkerTransportError, (e) => Effect.die(e)),
           Effect.logWarnIfTakesLongerThan({
-            label: `@livestore/adapter-web:single-tab:runInWorker:${req._tag}`,
+            label: `@livestore/adapter-web:single-tab:runInWorker:${tag}`,
             duration: 2000,
           }),
-          Effect.withSpan(`@livestore/adapter-web:single-tab:runInWorker:${req._tag}`),
-        ) as Effect.Effect<any, never, never>
+          Effect.withSpan(`@livestore/adapter-web:single-tab:runInWorker:${tag}`),
+        ) as Effect.Effect<A, never, never>
 
-      const runInWorkerStream = (req: WorkerSchema.LeaderWorkerInnerRequest): Stream.Stream<any, never, never> =>
+      const runInWorkerStream = <A, E>(tag: string, stream: Stream.Stream<A, E, any>): Stream.Stream<A, never, never> =>
         Effect.gen(function* () {
-          const innerWorker = yield* Fiber.join(innerWorkerFiber)
-          return innerWorker.execute(req).pipe(
+          yield* Fiber.join(innerWorkerFiber)
+          return stream.pipe(
             Stream.catchIf(isWorkerTransportError, (e) => Stream.die(e)),
-            Stream.withSpan(`@livestore/adapter-web:single-tab:runInWorkerStream:${req._tag}`),
+            Stream.withSpan(`@livestore/adapter-web:single-tab:runInWorkerStream:${tag}`),
           )
-        }).pipe(Stream.unwrap) as Stream.Stream<any, never, never>
+        }).pipe(Stream.unwrap) as Stream.Stream<A, never, never>
 
       // Forward boot status from worker
-      const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
+      const innerWorker = yield* Fiber.join(innerWorkerFiber)
+      const bootStatusFiber = yield* runInWorkerStream('BootStatusStream', innerWorker.BootStatusStream(undefined)).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
         Effect.tapCause((cause) =>
@@ -290,7 +316,7 @@ export const makeSingleTabAdapter =
       // Get initial snapshot (either from fast-path or from worker)
       const initialResult =
         dataFromFile === undefined
-          ? yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()).pipe(
+          ? yield* runInWorker('GetRecreateSnapshot', innerWorker.GetRecreateSnapshot(undefined)).pipe(
               Effect.map(({ snapshot, migrationsReport }) => ({
                 _tag: 'from-leader-worker' as const,
                 snapshot,
@@ -352,22 +378,22 @@ export const makeSingleTabAdapter =
       )
 
       const leaderThread: ClientSession['leaderThread'] = {
-        export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
+        export: runInWorker('Export', innerWorker.Export(undefined)).pipe(
           Effect.timeoutOrDie(10_000),
           Effect.withSpan('@livestore/adapter-web:single-tab:export'),
         ),
 
         events: {
           pull: ({ cursor }) =>
-            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerPullStream({ cursor })).pipe(Stream.orDie),
+            runInWorkerStream('PullStream', innerWorker.PullStream({ cursor })).pipe(Stream.orDie),
           push: (batch) =>
-            runInWorker(new WorkerSchema.LeaderWorkerInnerPushToLeader({ batch })).pipe(
+            runInWorker('PushToLeader', innerWorker.PushToLeader({ batch })).pipe(
               Effect.withSpan('@livestore/adapter-web:single-tab:pushToLeader', {
                 attributes: { batchSize: batch.length },
               }),
             ),
           stream: (options) =>
-            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerStreamEvents(options)).pipe(
+            runInWorkerStream('StreamEvents', innerWorker.StreamEvents(options)).pipe(
               Stream.withSpan('@livestore/adapter-web:single-tab:streamEvents'),
               Stream.orDie,
             ),
@@ -379,16 +405,16 @@ export const makeSingleTabAdapter =
           storageMode: opfsWarning === undefined ? 'persisted' : 'in-memory',
         },
 
-        getEventlogData: runInWorker(new WorkerSchema.LeaderWorkerInnerExportEventlog()).pipe(
+        getEventlogData: runInWorker('ExportEventlog', innerWorker.ExportEventlog(undefined)).pipe(
           Effect.timeoutOrDie(10_000),
           Effect.withSpan('@livestore/adapter-web:single-tab:getEventlogData'),
         ),
 
         syncState: Subscribable.make({
-          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
+          get: runInWorker('GetLeaderSyncState', innerWorker.GetLeaderSyncState(undefined)).pipe(
             Effect.withSpan('@livestore/adapter-web:single-tab:getLeaderSyncState'),
           ),
-          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
+          changes: runInWorkerStream('SyncStateStream', innerWorker.SyncStateStream(undefined)).pipe(Stream.orDie),
         }),
 
         sendDevtoolsMessage: (_message) =>
@@ -396,8 +422,8 @@ export const makeSingleTabAdapter =
           Effect.void,
 
         networkStatus: Subscribable.make({
-          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()).pipe(Effect.orDie),
-          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()).pipe(Stream.orDie),
+          get: runInWorker('GetNetworkStatus', innerWorker.GetNetworkStatus(undefined)).pipe(Effect.orDie),
+          changes: runInWorkerStream('NetworkStatusStream', innerWorker.NetworkStatusStream(undefined)).pipe(Stream.orDie),
         }),
       }
 

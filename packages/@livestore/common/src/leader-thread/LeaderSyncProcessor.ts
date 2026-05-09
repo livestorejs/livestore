@@ -364,7 +364,10 @@ export const makeLeaderSyncProcessor = ({
         syncBackendPushQueue,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         backendPushBatchSize,
-      }).pipe(Effect.catchCause(maybeShutdownOnError))
+      }).pipe(
+        Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
+        Effect.catchCause(maybeShutdownOnError),
+      )
 
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 

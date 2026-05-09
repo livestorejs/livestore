@@ -19,7 +19,7 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
-import { Effect, FetchHttpClient, Layer, OtelTracer, Queue, Schema, Stream, Tracer, WorkerRunner } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, OtelTracer, Queue, RpcServer, Schema, Stream, Tracer } from '@livestore/utils/effect'
 
 import type { TestingOverrides } from './leader-thread-shared.ts'
 import { makeLeaderThread } from './leader-thread-shared.ts'
@@ -57,9 +57,15 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     TracingLive ?? Layer.empty,
   )
 
-  return WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInnerRequest, {
-    InitialMessage: (args) =>
-      Effect.gen(function* () {
+  const LeaderThreadLive = Layer.unwrapScoped(
+    Effect.gen(function* () {
+      const protocol = yield* RpcServer.Protocol
+      const args = yield* protocol.initialMessage.pipe(
+        Effect.flatMap((option) => option.asEffect()),
+        Effect.flatMap(Schema.decodeUnknownEffect(Schema.toCodecJson(WorkerSchema.LeaderWorkerInnerInitialMessage))),
+        Effect.orDie,
+      )
+      return yield* Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(
           Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),
         )
@@ -73,13 +79,16 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
           syncPayloadEncoded: args.syncPayloadEncoded,
           syncPayloadSchema: options.syncPayloadSchema,
         })
-      }).pipe(Layer.unwrapScoped),
+      })
+    }),
+  )
+
+  const WorkerHandlers = WorkerSchema.LeaderWorkerInnerRpcs.toLayer({
     PushToLeader: ({ batch }) =>
       Effect.andThen(LeaderThreadCtx.asEffect(), (_) =>
         _.syncProcessor.push(
           batch.map(
-            (item: (typeof WorkerSchema.LeaderWorkerInnerPushToLeader.Type)['batch'][number]) =>
-              new LiveStoreEvent.Client.EncodedWithMeta(item),
+            (item: typeof LiveStoreEvent.Client.Encoded.Type) => new LiveStoreEvent.Client.EncodedWithMeta(item),
           ),
           // We'll wait in order to keep back pressure on the client session
           { waitForProcessing: true },
@@ -92,11 +101,10 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         const { syncProcessor } = yield* LeaderThreadCtx
         return syncProcessor.pull({ cursor })
       }).pipe(Stream.unwrapScoped),
-    StreamEvents: (options: WorkerSchema.LeaderWorkerInnerStreamEvents) =>
+    StreamEvents: (options) =>
       LeaderThreadCtx.asEffect().pipe(
         Effect.map(({ dbEventlog, syncProcessor }) => {
-          const { _tag: _ignored, ...payload } = options
-          const streamOptions = payload as StreamEventsOptions
+          const streamOptions = options as StreamEventsOptions
           return streamEventsWithSyncState({
             dbEventlog,
             syncState: syncProcessor.syncState,
@@ -162,11 +170,19 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     }),
     ExtraDevtoolsMessage: ({ message }) =>
       Effect.andThen(LeaderThreadCtx.asEffect(), (_) => Queue.offer(_.extraIncomingMessagesQueue, message)).pipe(
+        Effect.asVoid,
         Effect.withSpan('@livestore/adapter-node:worker:ExtraDevtoolsMessage'),
       ),
-  }).pipe(
-    (layer) => Layer.provide(layer as any, NodeWorkerRunner.layer as any) as any,
-    WorkerRunner.launch,
+  })
+
+  const WorkerLive = WorkerHandlers.pipe(
+    Layer.provide(LeaderThreadLive),
+    Layer.provideMerge(RpcServer.layerProtocolWorkerRunner),
+    Layer.provide(NodeWorkerRunner.layer),
+  )
+
+  return RpcServer.make(WorkerSchema.LeaderWorkerInnerRpcs).pipe(
+    Effect.provide(WorkerLive),
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({

@@ -161,13 +161,12 @@ export const layerManager = layerWorker
  * @example
  * ```ts
  * import * as ChildProcess from 'node:child_process'
- * import { Effect, Worker } from 'effect/unstable/workers/Worker'
+ * import { Effect } from 'effect'
+ * import { RpcClient } from 'effect/unstable/rpc'
  * import { ChildProcessWorker } from '@livestore/utils/node'
  *
- * Worker.makePoolSerialized<WorkerMessage>({
- *   size: 1,
- *   initialMessage: () => new InitialMessage({ name: 'test', data: new Uint8Array([1, 2, 3]) }),
- * }).pipe(
+ * RpcClient.make(WorkerRpcs).pipe(
+ *   Effect.provide(RpcClient.layerProtocolWorker({ size: 1 })),
  *   Effect.provide(ChildProcessWorker.layer(() => ChildProcess.fork(new URL('worker.ts', import.meta.url)))),
  * )
  * ```

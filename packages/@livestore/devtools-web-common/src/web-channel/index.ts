@@ -1,6 +1,6 @@
 import { Devtools, UnknownError } from '@livestore/common'
 import { LS_DEV } from '@livestore/utils'
-import type { Scope, Worker } from '@livestore/utils/effect'
+import type { Scope } from '@livestore/utils/effect'
 import { Deferred, Effect, Schema, Stream, WebChannel } from '@livestore/utils/effect'
 import { WebChannelBrowser } from '@livestore/utils/effect/browser'
 import type { MeshNode } from '@livestore/webmesh'
@@ -43,6 +43,10 @@ export const ClientSessionContentscriptMainRes = Schema.TaggedStruct('ClientSess
   tabId: Schema.Number,
 })
 
+export type WorkerClient = {
+  CreateConnection: (payload: { from: string; port: MessagePort }) => Stream.Stream<unknown, any, any>
+}
+
 // Effect.suspend is needed since `window` is not available in the shared worker
 export const makeStaticClientSessionChannel = {
   contentscriptMain: Effect.suspend(() =>
@@ -72,7 +76,7 @@ export const connectViaWorker = ({
 }: {
   node: MeshNode
   target: string
-  worker: Worker.SerializedWorkerPool<typeof WorkerSchema.Request.Type>
+  worker: WorkerClient
 }) =>
   Effect.gen(function* () {
     const mc = new MessageChannel()
@@ -85,7 +89,7 @@ export const connectViaWorker = ({
       )
     }
 
-    yield* worker.execute(WorkerSchema.CreateConnection.make({ from: node.nodeName, port: mc.port1 })).pipe(
+    yield* worker.CreateConnection({ from: node.nodeName, port: mc.port1 }).pipe(
       Stream.tap(() => Deferred.succeed(isConnected, true)),
       Stream.runDrain,
       Effect.tapCauseLogPretty,

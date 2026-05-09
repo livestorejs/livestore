@@ -3,7 +3,6 @@ import { Context, Effect, Layer, Stream, WebChannel } from '@livestore/utils/eff
 import type { MeshNode } from '@livestore/webmesh'
 import { makeMeshNode, WebmeshSchema } from '@livestore/webmesh'
 
-import type * as SharedWorkerSchema from './schema.ts'
 
 export * as Schema from './schema.ts'
 
@@ -21,7 +20,7 @@ export class CacheService extends Context.Service<
     }).pipe(Layer.effect(CacheService))
 }
 
-export const CreateConnection = ({ from, port }: typeof SharedWorkerSchema.CreateConnection.Type) =>
+export const CreateConnection = ({ from, port }: { from: string; port: MessagePort }) =>
   Effect.gen(function* () {
       const { node } = yield* CacheService
 
