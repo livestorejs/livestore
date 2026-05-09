@@ -6,15 +6,15 @@
     "url": "git+https://github.com/livestorejs/livestore.git"
   },
   "files": [
-    "dist/*",
-    "src/FacadeVFS.js",
-    "src/sqlite-api.js",
     "src/sqlite-constants.js",
+    "src/sqlite-api.js",
+    "src/types/*",
+    "src/FacadeVFS.js",
     "src/VFS.js",
     "src/WebLocksMixin.js",
-    "test/*",
     "src/examples/*",
-    "src/types/*"
+    "dist/*",
+    "test/*"
   ],
   "type": "module",
   "main": "src/sqlite-api.js",
