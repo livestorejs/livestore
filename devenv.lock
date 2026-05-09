@@ -33,7 +33,6 @@
       },
       "original": {
         "owner": "overengineeringstudio",
-        "ref": "schickling-assistant/2026-05-08-genie-repo-context",
         "repo": "effect-utils",
         "type": "github"
       }
@@ -200,7 +199,6 @@
       "original": {
         "dir": "nix/playwright-flake",
         "owner": "overengineeringstudio",
-        "ref": "schickling-assistant/2026-05-08-genie-repo-context",
         "repo": "effect-utils",
         "type": "github"
       }

@@ -1,4 +1,4 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils#schickling-assistant/2026-05-08-genie-repo-context"
+    effect-utils "overengineeringstudio/effect-utils"
     effect "effect-ts/effect"
 }

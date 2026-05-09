@@ -3,17 +3,17 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "schickling-assistant/2026-05-08-genie-repo-context",
-      "commit": "c8a6b0f39a42208cc239a772f5fd5a393c1ccfa7",
-      "pinned": true,
-      "lockedAt": "2026-05-08T13:54:58.651Z"
+      "ref": "main",
+      "commit": "8d1810b2c359ae95f245e56329018aab5020f8c0",
+      "pinned": false,
+      "lockedAt": "2026-05-09T01:03:25.757Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
       "ref": "main",
-      "commit": "39c934c1476be389f7469433910fdf30fc4dad82",
+      "commit": "3585f25110fca7af6aeec3f59c3fc05b20c8d316",
       "pinned": false,
-      "lockedAt": "2026-04-23T08:47:24.171Z"
+      "lockedAt": "2026-05-09T01:02:48.989Z"
     }
   }
 }
