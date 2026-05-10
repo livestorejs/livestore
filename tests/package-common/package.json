@@ -31,7 +31,7 @@
     "@effect/sql": "0.51.1",
     "@effect/typeclass": "0.40.0",
     "@effect/vitest": "0.29.0",
-    "@livestore/devtools-vite": "0.4.0-dev.22",
+    "@livestore/devtools-vite": "0.4.0-dev.24",
     "@livestore/utils-dev": "workspace:^",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/resources": "2.2.0",

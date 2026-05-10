@@ -107,19 +107,25 @@ export class EventlogRes extends LSDReqResMessage('LSD.Leader.EventlogRes', {
   eventlog: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
 }) {}
 
-export class Ping extends LSDReqResMessage('LSD.Leader.Ping', {}) {}
+export class Ping extends LSDReqResMessage('LSD.Leader.Ping', {
+  devtoolsProtocolVersion: Schema.optional(Schema.Number),
+}) {}
 
-export class Pong extends LSDReqResMessage('LSD.Leader.Pong', {}) {}
+export class Pong extends LSDReqResMessage('LSD.Leader.Pong', {
+  devtoolsProtocolVersion: Schema.optional(Schema.Number),
+}) {}
 
 /**
- * Sent by the app when DevTools version doesn't match.
- * Contains the app's actual version so DevTools can display a meaningful error.
+ * Sent by the app when the DevTools protocol isn't compatible.
+ * Contains package versions for display and protocol versions for the actual compatibility decision.
  */
 export class VersionMismatch extends LSDReqResMessage('LSD.Leader.VersionMismatch', {
   /** The version running in the app */
   appVersion: Schema.String,
   /** The version that was sent by DevTools (that caused the mismatch) */
   receivedVersion: Schema.String,
+  appDevtoolsProtocolVersion: Schema.Number,
+  receivedDevtoolsProtocolVersion: Schema.optional(Schema.Number),
 }) {}
 
 export class Disconnect extends LSDReqResMessage('LSD.Leader.Disconnect', {}) {}

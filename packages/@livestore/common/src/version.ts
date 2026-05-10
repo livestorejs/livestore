@@ -1,12 +1,23 @@
 import pkg from '../package.json' with { type: 'json' }
 
 /**
- * Current LiveStore version used for DevTools version compatibility checks.
+ * Current LiveStore package version used for display, release assets, and install guidance.
  *
- * Can be overridden at runtime via `globalThis.__LIVESTORE_VERSION_OVERRIDE__` for testing purposes.
- * This allows Playwright tests to simulate version mismatch scenarios without rebuilding.
+ * Can be overridden at runtime via `globalThis.__LIVESTORE_VERSION_OVERRIDE__` for testing display-only version values.
  */
 export const liveStoreVersion: string = (globalThis as any).__LIVESTORE_VERSION_OVERRIDE__ ?? pkg.version
+
+export const devtoolsProtocolVersion: number =
+  (globalThis as any).__LIVESTORE_DEVTOOLS_PROTOCOL_VERSION_OVERRIDE__ ?? 1
+
+export const supportedDevtoolsProtocolVersions: ReadonlyArray<number> = [devtoolsProtocolVersion]
+
+export const resolveDevtoolsProtocolVersion = (version: number | undefined): number => version ?? 1
+
+export const isDevtoolsProtocolVersionSupported = (
+  version: number | undefined,
+  supportedVersions: ReadonlyArray<number> = supportedDevtoolsProtocolVersions,
+): boolean => supportedVersions.includes(resolveDevtoolsProtocolVersion(version))
 
 /**
  * CRITICAL: Increment this version whenever you modify client-side EVENTLOG table schemas.

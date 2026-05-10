@@ -176,21 +176,34 @@ version may appear inside `release-metadata.json` for traceability, but it is
 not the public artifact release identity and it does not decide the LiveStore
 package version.
 
+New artifact metadata should also include a monotonically increasing
+`artifactVersion`, a `devtoolsProtocolVersion`, `builtAt`, and `sourceRevision`.
+`artifactVersion` orders DevTools artifact lineage. `devtoolsProtocolVersion`
+is the runtime compatibility contract between the app and DevTools. LiveStore
+package versions may differ from the source artifact version as long as the
+artifact protocol is supported and `compatibleLivestore` accepts the release
+version.
+
 The LiveStore release workflow only consumes those published artifacts. It must
 not require, copy, log, or publish non-public DevTools source. Artifact
 verification checks the metadata, tarball hash and integrity, package shape, and
 text-like files for common secret or machine-local patterns before repacking.
+Repack validation also rejects artifacts with unsupported DevTools protocol
+versions or incompatible `compatibleLivestore` declarations.
 
 The repacked package writes `dist/release-metadata.json` with both identities:
 
 - `devtoolsArtifact.devtoolsVersion`
 - `devtoolsArtifact.devtoolsBuildId`
+- `devtoolsArtifact.artifactVersion` when provided by the artifact producer
+- `devtoolsArtifact.devtoolsProtocolVersion`
 - `livestoreVersion`
 
 Use `devtoolsArtifact.devtoolsBuildId` to correlate a published LiveStore
 package with the exact public DevTools artifact when investigating failures.
 Use `livestoreVersion` to correlate the republished npm package and GitHub
 Chrome ZIP asset with the LiveStore release group or snapshot.
+Do not use `devtoolsArtifact.devtoolsVersion` for compatibility or ordering.
 
 ## Updating the DevTools artifact manifest
 

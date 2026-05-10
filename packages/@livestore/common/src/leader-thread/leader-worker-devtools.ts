@@ -1,7 +1,15 @@
 import { Effect, FiberMap, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnknownError } from '../index.ts'
+import {
+  Devtools,
+  devtoolsProtocolVersion,
+  IntentionalShutdownCause,
+  isDevtoolsProtocolVersionSupported,
+  liveStoreVersion,
+  resolveDevtoolsProtocolVersion,
+  UnknownError,
+} from '../index.ts'
 import { SystemTables } from '../schema/mod.ts'
 import type { DevtoolsOptions, PersistenceInfoPair } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
@@ -166,18 +174,19 @@ const listenToDevtools = ({
 
           switch (decodedEvent._tag) {
             case 'LSD.Leader.Ping': {
-              // Check version mismatch and respond with VersionMismatch if versions don't match
-              if (decodedEvent.liveStoreVersion !== liveStoreVersion) {
+              if (isDevtoolsProtocolVersionSupported(decodedEvent.devtoolsProtocolVersion) === false) {
                 yield* sendMessage(
                   Devtools.Leader.VersionMismatch.make({
                     ...reqPayload,
                     appVersion: liveStoreVersion,
                     receivedVersion: decodedEvent.liveStoreVersion,
+                    appDevtoolsProtocolVersion: devtoolsProtocolVersion,
+                    receivedDevtoolsProtocolVersion: resolveDevtoolsProtocolVersion(decodedEvent.devtoolsProtocolVersion),
                   }),
                 )
                 return
               }
-              yield* sendMessage(Devtools.Leader.Pong.make({ ...reqPayload }))
+              yield* sendMessage(Devtools.Leader.Pong.make({ ...reqPayload, devtoolsProtocolVersion }))
               return
             }
             case 'LSD.Leader.SnapshotReq': {
@@ -352,10 +361,10 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.Leader.SyncHistoryUnsubscribe': {
-              const { requestId } = decodedEvent
-              console.log('LSD.SyncHistoryUnsubscribe', requestId)
+              const unsubscribeRequestId = decodedEvent.requestId
+              console.log('LSD.SyncHistoryUnsubscribe', unsubscribeRequestId)
 
-              yield* FiberMap.remove(subscriptionFiberMap, requestId)
+              yield* FiberMap.remove(subscriptionFiberMap, unsubscribeRequestId)
 
               return
             }
@@ -408,9 +417,9 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.Leader.NetworkStatusUnsubscribe': {
-              const { requestId } = decodedEvent
+              const unsubscribeRequestId = decodedEvent.requestId
 
-              yield* FiberMap.remove(subscriptionFiberMap, requestId)
+              yield* FiberMap.remove(subscriptionFiberMap, unsubscribeRequestId)
 
               return
             }

@@ -49,11 +49,10 @@ export const livestoreWorkspaceCatalog = {
 /** LiveStore-only versions not provided by effect-utils base catalog. */
 export const livestoreOnlyCatalog = {
   /**
-   * Snapshot releases pin every `@livestore/*` package — including the
-   * externally-published `devtools-vite` from overeng — to the same
-   * `LIVESTORE_RELEASE_VERSION`. Default to the dev tag for normal builds.
+   * LiveStore republishes DevTools artifacts under the LiveStore release version.
+   * The source artifact carries its own metadata for artifact lineage and protocol compatibility.
    */
-  '@livestore/devtools-vite': process.env.LIVESTORE_RELEASE_VERSION ?? '0.4.0-dev.22',
+  '@livestore/devtools-vite': process.env.LIVESTORE_RELEASE_VERSION ?? '0.4.0-dev.24',
   /** Tanstack router sub-packages not in effect-utils catalog (react-router/react-start/router-plugin are there) */
   '@tanstack/router-core': '1.145.7',
   '@tanstack/history': '1.145.7',
