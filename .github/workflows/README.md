@@ -83,6 +83,11 @@ release identity. When LiveStore republishes the artifact, the npm package and
 Chrome ZIP release asset are versioned with the LiveStore release group or
 snapshot version.
 
+Artifact ordering should use artifact metadata such as `artifactVersion` or
+`builtAt`. Runtime compatibility is decided by `devtoolsProtocolVersion`, not by
+matching package versions. The release repack path rejects artifacts whose
+protocol version is unsupported by the LiveStore checkout.
+
 The workflow exists so the LiveStore repository can keep release CI
 self-contained while the DevTools source remains outside this repository.
 
