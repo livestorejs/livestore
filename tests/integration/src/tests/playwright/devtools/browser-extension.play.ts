@@ -23,7 +23,7 @@ import type * as PW from '@playwright/test'
 import { expect, test } from '@playwright/test'
 
 import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.ts'
-import { checkDevtoolsState, checkVersionMismatchOverlay } from './shared.ts'
+import { checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
 
 export class TestError extends Schema.TaggedErrorClass<TestError>()('TestError', {
   message: Schema.String,
@@ -35,9 +35,13 @@ type AdapterKind = 'persisted' | 'inmemory'
 
 /**
  * Creates a tab pair with an app page and a DevTools page (browser extension).
- * @param appVersionOverride - Optional version override to inject via globalThis.__LIVESTORE_VERSION_OVERRIDE__ for testing version mismatch scenarios.
  */
-const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options?: { appVersionOverride?: string }) =>
+const makeTabPair = (
+  url: string,
+  tabName: string,
+  adapter: AdapterKind,
+  options?: { appVersionOverride?: string; appDevtoolsProtocolVersionOverride?: number },
+) =>
   Effect.gen(function* () {
     const { browserContext } = yield* Playwright.BrowserContext
 
@@ -62,10 +66,17 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options
         .filter(isUnused)
         .find((p) => p.url() === 'about:blank') ?? (yield* newPage)
 
-    // Inject version override before page loads (for version mismatch testing)
+    // Inject display version override before page loads for compatibility overlay assertions.
     if (options?.appVersionOverride !== undefined) {
       yield* Effect.tryPromise(() =>
         page.addInitScript(`globalThis.__LIVESTORE_VERSION_OVERRIDE__ = '${options.appVersionOverride}';`),
+      )
+    }
+    if (options?.appDevtoolsProtocolVersionOverride !== undefined) {
+      yield* Effect.tryPromise(() =>
+        page.addInitScript(
+          `globalThis.__LIVESTORE_DEVTOOLS_PROTOCOL_VERSION_OVERRIDE__ = ${options.appDevtoolsProtocolVersionOverride};`,
+        ),
       )
     }
 
@@ -167,7 +178,7 @@ const runTest =
   }
 
 const getExtensionPath = Effect.gen(function* () {
-  const fs = yield* FileSystem.FileSystem
+  const fileSystem = yield* FileSystem.FileSystem
 
   const extensionPathFromEnv = process.env.LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
   if (extensionPathFromEnv !== undefined) {
@@ -176,17 +187,17 @@ const getExtensionPath = Effect.gen(function* () {
   }
 
   const defaultExtensionPath = LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
-  if ((yield* fs.exists(defaultExtensionPath)) === false) {
+  if ((yield* fileSystem.exists(defaultExtensionPath)) === false) {
     yield* Effect.logInfo(`Downloading Chrome extension to ${defaultExtensionPath}`)
     yield* downloadChromeExtension({ targetDir: defaultExtensionPath })
   }
   return defaultExtensionPath
 }).pipe(
-  Effect.tap((path) =>
+  Effect.tap((extensionPath) =>
     Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      if ((yield* fs.exists(path)) === false) {
-        return yield* new TestError({ message: `Chrome extension not found at ${path}` })
+      const fileSystem = yield* FileSystem.FileSystem
+      if ((yield* fileSystem.exists(extensionPath)) === false) {
+        return yield* new TestError({ message: `Chrome extension not found at ${extensionPath}` })
       }
     }),
   ),
@@ -470,28 +481,27 @@ test(
 )
 
 test(
-  'version mismatch overlay',
+  'protocol mismatch overlay',
   runTest(
     Effect.gen(function* () {
       const fakeAppVersion = '0.0.0-fake-version'
 
       const tab1 = yield* makeTabPair(
         `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
-        'tab-version-mismatch',
+        'tab-protocol-mismatch',
         'inmemory',
-        { appVersionOverride: fakeAppVersion },
+        { appDevtoolsProtocolVersionOverride: 999, appVersionOverride: fakeAppVersion },
       )
 
       yield* Effect.tryPromise(async () => {
         // Wait for the app to load
-        const el = tab1.page.locator('.new-todo').describe('tab-version-mismatch:new-todo')
+        const el = tab1.page.locator('.new-todo').describe('tab-protocol-mismatch:new-todo')
         await el.waitFor({ timeout: 10_000 })
 
-        // The browser extension auto-connects to the session, so we just need to wait for the mismatch overlay
-        // Check version mismatch overlay is displayed in the LiveStore DevTools frame
-        await checkVersionMismatchOverlay({
+        // The browser extension auto-connects to the session, so wait for the compatibility overlay.
+        await checkProtocolMismatchOverlay({
           devtools: tab1.liveStoreDevtools,
-          label: 'devtools-version-mismatch',
+          label: 'devtools-protocol-mismatch',
           expect: {
             devtoolsVersion: '0.4', // Partial match for the real DevTools version
             appVersion: fakeAppVersion,

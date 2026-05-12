@@ -17,6 +17,10 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 
+import semver from 'semver'
+
+import { supportedDevtoolsProtocolVersions } from '@livestore/common'
+
 type CompatibleLivestore =
   | { readonly kind: 'range'; readonly range: string }
   | { readonly kind: 'snapshot'; readonly gitSha: string; readonly version: string }
@@ -27,6 +31,10 @@ type ArtifactMetadata = {
   readonly packageName: '@livestore/devtools-vite'
   readonly devtoolsVersion: string
   readonly devtoolsBuildId: string
+  readonly artifactVersion?: number
+  readonly devtoolsProtocolVersion?: number
+  readonly builtAt?: string
+  readonly sourceRevision?: string
   readonly compatibleLivestore: CompatibleLivestore
   readonly files: {
     readonly tarball: {
@@ -133,6 +141,12 @@ const runCaptureOptional = (command: ReadonlyArray<string>, options: { readonly 
 
 const sha256 = (file: string) => createHash('sha256').update(readFileSync(file)).digest('hex')
 const integrity = (file: string) => `sha512-${createHash('sha512').update(readFileSync(file)).digest('base64')}`
+const devtoolsProtocolVersionForArtifact = (metadata: ArtifactMetadata) => metadata.devtoolsProtocolVersion ?? 1
+
+const normalizeArtifactMetadata = (metadata: ArtifactMetadata): ArtifactMetadata => ({
+  ...metadata,
+  devtoolsProtocolVersion: devtoolsProtocolVersionForArtifact(metadata),
+})
 
 const publishTagForVersion = (version: string) => {
   const prerelease = version.split('-')[1]
@@ -255,10 +269,41 @@ const forbiddenPatternName = (pattern: string | RegExp) => (typeof pattern === '
 const containsForbiddenPattern = (content: string, pattern: string | RegExp) =>
   typeof pattern === 'string' ? content.includes(pattern) : pattern.test(content)
 
+const assertSupportedDevtoolsProtocol = (metadata: ArtifactMetadata) => {
+  const protocolVersion = devtoolsProtocolVersionForArtifact(metadata)
+  if (supportedDevtoolsProtocolVersions.includes(protocolVersion) === false) {
+    throw new Error(
+      `Unsupported DevTools protocol version ${protocolVersion}; supported versions: ${supportedDevtoolsProtocolVersions.join(', ')}`,
+    )
+  }
+}
+
+const assertCompatibleLivestoreVersion = (metadata: ArtifactMetadata, version: string) => {
+  const compatibility = metadata.compatibleLivestore
+
+  switch (compatibility.kind) {
+    case 'range': {
+      const validVersion = semver.valid(version)
+      if (validVersion === null) throw new Error(`Invalid LiveStore release version: ${version}`)
+      if (semver.satisfies(validVersion, compatibility.range, { includePrerelease: true }) === false) {
+        throw new Error(`LiveStore ${version} does not satisfy DevTools artifact range ${compatibility.range}`)
+      }
+      return
+    }
+    case 'snapshot': {
+      if (version !== compatibility.version) {
+        throw new Error(`LiveStore ${version} does not match DevTools artifact snapshot ${compatibility.version}`)
+      }
+      return
+    }
+  }
+}
+
 const assertMetadata = (metadata: ArtifactMetadata, tarballPath: string, chromeZipPath: string | undefined) => {
   if (metadata.schemaVersion !== 1) throw new Error('Unsupported metadata schemaVersion')
   if (metadata.artifactName !== 'livestore-devtools-vite') throw new Error('Unexpected artifactName')
   if (metadata.packageName !== '@livestore/devtools-vite') throw new Error('Unexpected packageName')
+  assertSupportedDevtoolsProtocol(metadata)
   if (metadata.files.tarball.sha256 !== sha256(tarballPath)) throw new Error('Tarball SHA-256 mismatch')
   if (metadata.files.tarball.integrity !== integrity(tarballPath)) throw new Error('Tarball integrity mismatch')
   if (metadata.files.chromeZip !== undefined) {
@@ -410,6 +455,7 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
   if (version === undefined) throw new Error('--version is required')
 
   const { metadata, tarballPath, chromeZipPath, workDir } = await verifyArtifact(flags)
+  assertCompatibleLivestoreVersion(metadata, version)
   const unpackDir = path.join(workDir, 'package-src')
   rmSync(unpackDir, { recursive: true, force: true })
   mkdirSync(unpackDir, { recursive: true })
@@ -439,9 +485,10 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
     vite: '*',
   }
   writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`)
+
   writeFileSync(
     path.join(packageDir, 'dist/release-metadata.json'),
-    `${JSON.stringify({ schemaVersion: 1, devtoolsArtifact: metadata, livestoreVersion: version }, null, 2)}\n`,
+    `${JSON.stringify({ schemaVersion: 1, devtoolsArtifact: normalizeArtifactMetadata(metadata), livestoreVersion: version }, null, 2)}\n`,
   )
 
   const packedJson = runCapture(['npm', 'pack', '--json', '--pack-destination', workDir], {

@@ -17,7 +17,7 @@
     "react-error-boundary": "6.1.1"
   },
   "devDependencies": {
-    "@livestore/devtools-vite": "0.4.0-dev.22",
+    "@livestore/devtools-vite": "0.4.0-dev.24",
     "@types/node": "25.3.3",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",

@@ -1,5 +1,12 @@
 import type { DebugInfo, SyncState } from '@livestore/common'
-import { Devtools, liveStoreVersion, UnknownError } from '@livestore/common'
+import {
+  Devtools,
+  devtoolsProtocolVersion,
+  isDevtoolsProtocolVersionSupported,
+  liveStoreVersion,
+  resolveDevtoolsProtocolVersion,
+  UnknownError,
+} from '@livestore/common'
 import { throttle } from '@livestore/utils'
 import type { WebChannel } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
@@ -314,8 +321,7 @@ export const connectDevtoolsToStore = Effect.fn('LSD.devtools.connectStoreToDevt
           break
         }
         case 'LSD.ClientSession.Ping': {
-          // Check version mismatch and respond with VersionMismatch if versions don't match
-          if (decodedMessage.liveStoreVersion !== liveStoreVersion) {
+          if (isDevtoolsProtocolVersionSupported(decodedMessage.devtoolsProtocolVersion) === false) {
             sendToDevtools(
               Devtools.ClientSession.VersionMismatch.make({
                 requestId,
@@ -324,11 +330,21 @@ export const connectDevtoolsToStore = Effect.fn('LSD.devtools.connectStoreToDevt
                 liveStoreVersion,
                 appVersion: liveStoreVersion,
                 receivedVersion: decodedMessage.liveStoreVersion,
+                appDevtoolsProtocolVersion: devtoolsProtocolVersion,
+                receivedDevtoolsProtocolVersion: resolveDevtoolsProtocolVersion(decodedMessage.devtoolsProtocolVersion),
               }),
             )
             break
           }
-          sendToDevtools(Devtools.ClientSession.Pong.make({ requestId, clientId, sessionId, liveStoreVersion }))
+          sendToDevtools(
+            Devtools.ClientSession.Pong.make({
+              requestId,
+              clientId,
+              sessionId,
+              liveStoreVersion,
+              devtoolsProtocolVersion,
+            }),
+          )
           break
         }
         default: {

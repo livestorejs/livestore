@@ -22,6 +22,7 @@ import {
   baseTsconfigCompilerOptions,
   commonPnpmPolicySettings,
   defineCatalog,
+  defineRepoContext,
   domLib,
   githubRuleset,
   githubWorkflow,
@@ -43,7 +44,7 @@ import {
   type WorkspacePackageLike,
 } from '#mr/effect-utils/genie/external.ts'
 import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from '#mr/effect-utils/genie/oxfmt-base.ts'
-import { readFileSync } from 'node:fs'
+
 import { livestoreOnlyCatalog, livestoreWorkspaceCatalog } from './external.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
@@ -92,9 +93,14 @@ export const packageTsconfigCompilerOptions = {
  * build time instead of being committed as package-local pnpm-workspace files.
  */
 
-const releaseVersion = JSON.parse(readFileSync('release/version.json', 'utf8')) as {
+const repo = defineRepoContext({
+  name: 'livestore',
+  importMetaUrl: import.meta.url,
+})
+
+const releaseVersion = repo.readJson<{
   readonly version: string
-}
+}>('release/version.json')
 
 /** Composed catalog - effect-utils base + livestore-specific + workspace packages */
 export const catalog = defineCatalog({
@@ -232,7 +238,13 @@ export const devenvShellDefaults = {
   run: { shell: 'devenv shell bash -- -e {0}' },
 } as const
 export { bashShellDefaults }
-export { defaultActionlintConfig, dispatchAlignmentStep, runDevenvTasksBefore, nixDiagnosticsArtifactStep, savePnpmStateStep }
+export {
+  defaultActionlintConfig,
+  dispatchAlignmentStep,
+  runDevenvTasksBefore,
+  nixDiagnosticsArtifactStep,
+  savePnpmStateStep,
+}
 
 export const namespaceRunner = (runId: string) =>
   namespaceRunnerBase({ profile: 'namespace-profile-linux-x86-64', runId })

@@ -12,7 +12,7 @@ import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
 
-import { checkDevtoolsState, checkVersionMismatchOverlay } from './shared.ts'
+import { checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
 
 const usedPages = new Set<PW.Page>()
 
@@ -20,9 +20,13 @@ type AdapterKind = 'persisted' | 'inmemory'
 
 /**
  * Creates a tab pair with an app page and a DevTools page.
- * @param appVersionOverride - Optional version override to inject via globalThis.__LIVESTORE_VERSION_OVERRIDE__ for testing version mismatch scenarios.
  */
-const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options?: { appVersionOverride?: string }) =>
+const makeTabPair = (
+  url: string,
+  tabName: string,
+  adapter: AdapterKind,
+  options?: { appVersionOverride?: string; appDevtoolsProtocolVersionOverride?: number },
+) =>
   Effect.gen(function* () {
     const { browserContext } = yield* Playwright.BrowserContext
 
@@ -56,10 +60,17 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options
       await page.pause()
     })
 
-    // Inject version override before page loads (for version mismatch testing)
+    // Inject display version override before page loads for compatibility overlay assertions.
     if (options?.appVersionOverride !== undefined) {
       yield* Effect.tryPromise(() =>
         page.addInitScript(`globalThis.__LIVESTORE_VERSION_OVERRIDE__ = '${options.appVersionOverride}';`),
+      )
+    }
+    if (options?.appDevtoolsProtocolVersionOverride !== undefined) {
+      yield* Effect.tryPromise(() =>
+        page.addInitScript(
+          `globalThis.__LIVESTORE_DEVTOOLS_PROTOCOL_VERSION_OVERRIDE__ = ${options.appDevtoolsProtocolVersionOverride};`,
+        ),
       )
     }
 
@@ -77,8 +88,8 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options
       page.goto(`${url}/devtools/todomvc?sessionId=${tabName}&clientId=${tabName}&adapter=${adapter}`),
     )
 
-    // Skip OTel span linking when testing version mismatch (app may not initialize properly)
-    if (options?.appVersionOverride == null) {
+    // Skip OTel span linking when testing DevTools protocol mismatch (app may not initialize properly)
+    if (options?.appDevtoolsProtocolVersionOverride == null) {
       const rootSpanContext = yield* Effect.tryPromise(() =>
         page
           .waitForFunction('window.__debugLiveStore?.default !== undefined')
@@ -312,34 +323,50 @@ const runTest =
   }
 })
 
-const shutdownTab = Effect.fn('shutdown-tab')(function* (tab: PW.Page) {
+const shutdownTab = Effect.fn('shutdown-tab')(function* (tab: PW.Page, options?: { expectStore?: boolean }) {
   // yield* Playwright.withPage(() => tab.pause())
   yield* Effect.sleep(1000)
   yield* Playwright.withPage(() => tab.evaluate('console.log(window.__debugLiveStore)'))
-  yield* Playwright.withPage(() => tab.evaluate('window.__debugLiveStore.default.shutdown()'), {
-    label: 'shutdown',
-  }).pipe(Effect.timeout(1000))
 
-  yield* Playwright.withPage(() => tab.getByText('LiveStore Shutdown').waitFor())
+  const didShutdown = yield* Playwright.withPage(
+    () =>
+      tab.evaluate(() => {
+        const store = (window as any).__debugLiveStore?.default
+        if (store === undefined) return false
+
+        store.shutdown()
+        return true
+      }),
+    { label: 'shutdown' },
+  ).pipe(Effect.timeout(1000))
+
+  if (didShutdown === false && options?.expectStore !== false) {
+    yield* Effect.dieMessage('Expected LiveStore debug store to be available for shutdown')
+  }
+
+  if (didShutdown === true) {
+    yield* Playwright.withPage(() => tab.getByText('LiveStore Shutdown').waitFor())
+  }
 })
 
 test(
-  'version mismatch overlay',
+  'protocol mismatch overlay',
   runTest(
     Effect.gen(function* () {
       const fakeAppVersion = '0.0.0-fake-version'
+      const tabName = 'tab-protocol-mismatch'
 
       const tab1 = yield* makeTabPair(
         `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}`,
-        'tab-version-mismatch',
+        tabName,
         'inmemory',
-        { appVersionOverride: fakeAppVersion },
+        { appDevtoolsProtocolVersionOverride: 999, appVersionOverride: fakeAppVersion },
       )
 
       yield* Effect.gen(function* () {
         yield* Effect.tryPromise(async () => {
           // Wait for the app to load
-          const el = tab1.page.locator('.new-todo').describe('tab-version-mismatch:new-todo')
+          const el = tab1.page.locator('.new-todo').describe('tab-protocol-mismatch:new-todo')
           await el.waitFor({ timeout: 3000 })
 
           // Click on the session in devtools to connect
@@ -348,16 +375,13 @@ test(
           ) as string
           await tab1.devtools.locator(`a:text("${tabChannelId}")`).describe('devtools:click-session').click()
 
-          // Get the DevTools version (the real version since DevTools isn't overridden)
           const devtoolsVersion = await tab1.devtools.evaluate(() => {
-            // The devtools bundles the same liveStoreVersion constant
             return (window as any).__LIVESTORE_DEVTOOLS_VERSION__ ?? 'unknown'
           }) as string
 
-          // Check version mismatch overlay is displayed
-          await checkVersionMismatchOverlay({
+          await checkProtocolMismatchOverlay({
             devtools: tab1.devtools,
-            label: 'devtools-version-mismatch',
+            label: 'devtools-protocol-mismatch',
             expect: {
               devtoolsVersion: devtoolsVersion !== 'unknown' ? devtoolsVersion : '0.4', // Partial match
               appVersion: fakeAppVersion,
@@ -365,7 +389,7 @@ test(
           })
         })
 
-        yield* shutdownTab(tab1.page)
+        yield* shutdownTab(tab1.page, { expectStore: false })
 
         yield* Effect.sleep(500).pipe(Effect.withSpan('wait-for-otel-flush'))
       }).pipe(Effect.raceFirst(Fiber.joinAll([tab1.pageConsoleFiber, tab1.devtoolsConsoleFiber])))

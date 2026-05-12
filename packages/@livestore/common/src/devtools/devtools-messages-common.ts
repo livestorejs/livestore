@@ -6,10 +6,8 @@ export const requestId = Schema.String
 export const clientId = Schema.String
 export const sessionId = Schema.String
 /**
- * Version field for devtools messages.
- * Uses Schema.String to accept messages from any version (backwards/forwards compatible).
- * Version checking happens at the application layer after message parsing succeeds,
- * allowing DevTools to respond with a proper VersionMismatch error instead of silent rejection.
+ * Display/package version field for DevTools messages.
+ * Compatibility is decided by the optional DevTools protocol version carried by handshake messages.
  */
 export const liveStoreVersion = Schema.String
 
