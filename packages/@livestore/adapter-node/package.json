@@ -37,7 +37,7 @@
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
-    "@livestore/devtools-vite": "0.4.0-dev.24",
+    "@livestore/devtools-vite": "0.4.0-dev.25",
     "@rollup/plugin-commonjs": "28.0.6",
     "@rollup/plugin-node-resolve": "16.0.1",
     "@rollup/plugin-terser": "0.4.4",

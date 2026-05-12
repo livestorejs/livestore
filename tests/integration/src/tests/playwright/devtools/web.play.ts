@@ -5,7 +5,7 @@ import path from 'node:path'
 
 import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
-import { test } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 
 import * as Playwright from '@livestore/effect-playwright'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
@@ -125,6 +125,15 @@ const PWLive = Effect.gen(function* () {
 
   return Playwright.browserContextLayer({ persistentContextPath })
 }).pipe(Layer.unwrapEffect)
+
+const waitForLoggedDevtoolsUrl = (page: PW.Page) =>
+  page
+    .waitForEvent('console', {
+      predicate: (message) => message.text().includes('[@livestore/adapter-web] Devtools ready on '),
+      timeout: 10_000,
+    })
+    .then((message) => message.text().match(/Devtools ready on (?<url>http:\/\/[^\s]+)/)?.groups?.url)
+    .then((url) => url ?? Promise.reject(new Error('Could not parse logged LiveStore DevTools URL')))
 
 const runTest =
   <E>(eff: Effect.Effect<void, E, Playwright.BrowserContext | Scope.Scope>) =>
@@ -389,6 +398,62 @@ test(
 
         yield* Effect.sleep(500).pipe(Effect.withSpan('wait-for-otel-flush'))
       }).pipe(Effect.raceFirst(Fiber.joinAll([tab1.pageConsoleFiber, tab1.devtoolsConsoleFiber])))
+    }),
+  ),
+)
+
+test(
+  'logged Vite DevTools URL opens the web session chooser',
+  runTest(
+    Effect.gen(function* () {
+      const { browserContext } = yield* Playwright.BrowserContext
+      browserContext.setDefaultTimeout(10_000)
+
+      const app = yield* Effect.tryPromise(() => browserContext.newPage())
+      const devtools = yield* Effect.tryPromise(() => browserContext.newPage())
+      yield* Effect.addFinalizer(() =>
+        Effect.all(
+          [
+            Effect.tryPromise(() => app.close({ reason: 'test cleanup' })).pipe(Effect.ignore),
+            Effect.tryPromise(() => devtools.close({ reason: 'test cleanup' })).pipe(Effect.ignore),
+          ],
+          { concurrency: 'unbounded' },
+        ),
+      )
+
+      const consoleMessages: string[] = []
+      app.on('console', (message) => consoleMessages.push(message.text()))
+      devtools.on('console', (message) => consoleMessages.push(message.text()))
+
+      yield* Effect.tryPromise(async () => {
+        const baseUrl = `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}`
+        const loggedDevtoolsUrlPromise = waitForLoggedDevtoolsUrl(app)
+
+        await app.goto(`${baseUrl}/devtools/todomvc?sessionId=logged-url&clientId=logged-url&adapter=inmemory`)
+        await app.locator('.new-todo').describe('logged-url:new-todo').waitFor({ timeout: 3000 })
+
+        const loggedDevtoolsUrl = await loggedDevtoolsUrlPromise
+        expect(loggedDevtoolsUrl).toBe(`${baseUrl}/_livestore/web#logged-url`)
+
+        await app.locator('.new-todo').fill('Open the logged DevTools URL')
+        await app.locator('.new-todo').press('Enter')
+        await app.locator('.todo-list li label:text("Open the logged DevTools URL")').waitFor()
+
+        await devtools.goto(loggedDevtoolsUrl)
+
+        await devtools.getByText('Sessions (1)').describe('logged-url-devtools:sessions').waitFor()
+        await devtools
+          .locator('a:text("app-root: logged-url:logged-url (default)")')
+          .describe('logged-url-devtools:session-link')
+          .waitFor()
+
+        const devtoolsText = await devtools.locator('body').innerText()
+        expect(devtoolsText).not.toContain('Loading LiveStore')
+        expect([devtoolsText, ...consoleMessages].join('\n')).not.toMatch(/Version Mismatch|version mismatch/i)
+      })
+
+      yield* shutdownTab(app, { expectStore: false })
+      yield* Effect.sleep(500).pipe(Effect.withSpan('wait-for-otel-flush'))
     }),
   ),
 )

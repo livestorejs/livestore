@@ -300,8 +300,8 @@ importers:
         specifier: workspace:^
         version: link:../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@livestore/livestore':
         specifier: workspace:^
         version: link:../packages/@livestore/livestore
@@ -529,8 +529,8 @@ importers:
         specifier: workspace:^
         version: link:../../../../../packages/@livestore/devtools-expo
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@livestore/livestore':
         specifier: workspace:^
         version: link:../../../../../packages/@livestore/livestore
@@ -690,8 +690,8 @@ importers:
         specifier: 1.13.12
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -760,8 +760,8 @@ importers:
         specifier: 1.13.12
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1151,8 +1151,8 @@ importers:
         version: 6.1.1(react@19.2.3)
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@tailwindcss/vite':
         specifier: 4.1.18
         version: 4.1.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
@@ -1284,8 +1284,8 @@ importers:
         specifier: 1.13.12
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1378,8 +1378,8 @@ importers:
         version: 6.1.1(react@19.2.3)
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@types/node':
         specifier: 25.3.3
         version: 25.3.3
@@ -1445,8 +1445,8 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1503,8 +1503,8 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1576,8 +1576,8 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1637,8 +1637,8 @@ importers:
         version: 2.4.3
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1750,8 +1750,8 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1799,8 +1799,8 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1854,8 +1854,8 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1915,8 +1915,8 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1982,8 +1982,8 @@ importers:
         version: 2.4.3
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -2067,8 +2067,8 @@ importers:
         version: 2.4.3
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -2343,8 +2343,8 @@ importers:
         version: 3.21.2
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@rollup/plugin-commonjs':
         specifier: 28.0.6
         version: 28.0.6(rollup@4.49.0)
@@ -2740,8 +2740,8 @@ importers:
         specifier: workspace:^
         version: link:../adapter-node
       '@livestore/devtools-vite':
-        specifier: ^0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: ^0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@livestore/utils':
         specifier: workspace:^
         version: link:../utils
@@ -4524,8 +4524,8 @@ importers:
         specifier: workspace:^
         version: link:../../packages/@livestore/common-cf
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@livestore/effect-playwright':
         specifier: workspace:^
         version: link:../../packages/@livestore/effect-playwright
@@ -4727,8 +4727,8 @@ importers:
         specifier: 0.29.0
         version: 0.29.0(effect@3.21.2)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@livestore/utils-dev':
         specifier: workspace:^
         version: link:../../packages/@livestore/utils-dev
@@ -4957,8 +4957,8 @@ importers:
         specifier: 0.29.0
         version: 0.29.0(effect@3.21.2)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -5066,8 +5066,8 @@ importers:
         specifier: 0.29.0
         version: 0.29.0(effect@3.21.2)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.24
-        version: 0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)
       '@livestore/utils-dev':
         specifier: workspace:^
         version: link:../../packages/@livestore/utils-dev
@@ -6905,7 +6905,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {node: '>=0.10.0'}
+    engines: {'0': node >=0.10.0}
 
   '@expo/cli@54.0.10':
     resolution: {integrity: sha512-iw9gAnN6+PKWWLIyYmiskY/wzZjuFMctunqGXuC8BGATWgtr/HpzjVqWbcL3KIX/GvEBCCh74Tkckrh+Ylxh5Q==}
@@ -7581,8 +7581,8 @@ packages:
   '@livestore/adapter-web@0.3.1':
     resolution: {integrity: sha512-0ZKTam+C3KeG5qiiTLFOgoMhdUBCENmuaMwxoj7WOtA2c4eKyqIy+P/1zga+az0XqaMJoG5FVszWhWMUMzNjtQ==}
 
-  '@livestore/adapter-web@0.4.0-dev.24':
-    resolution: {integrity: sha512-j4JngwuQt+Q+MFuopqf52U03Z0wn4V7NHvgmih1Ba5zJF+sOvPmmRtRj1SDW98aCNRG3XSlg1Yh+S2yikaZV6w==}
+  '@livestore/adapter-web@0.4.0-dev.25':
+    resolution: {integrity: sha512-IlsKqotB0GmGsTn9fP5NrgpNx1oc+vTnoweaGoImLA4Jty9jGpPfFx8MiKlULXVK0oMRQvBwCzZ5AMeurSDHQg==}
     peerDependencies:
       '@effect/ai': ^0.35.0
       '@effect/cli': 0.75.1
@@ -7604,8 +7604,8 @@ packages:
       '@standard-schema/spec': ^1.1.0
       effect: 3.21.2
 
-  '@livestore/common-cf@0.4.0-dev.24':
-    resolution: {integrity: sha512-5QPrz/SQDLL+o7O8aDhaevyzIdyJrU1saKiyVak4KScbOoIKiN3sa4VkF3MUKgJeJfUUQdWabxBN+fkrsy6pow==}
+  '@livestore/common-cf@0.4.0-dev.25':
+    resolution: {integrity: sha512-a4d3GpHE1HOJV0DuPGJLKs5+H7YldAIAAMBjBZujAmekPbzuU7jdBT+yJVCZB8UZU1NrUQEfDW2N8n85hLA08g==}
     peerDependencies:
       '@effect/ai': ^0.35.0
       '@effect/cli': 0.75.1
@@ -7630,8 +7630,8 @@ packages:
   '@livestore/common@0.3.1':
     resolution: {integrity: sha512-D44ia+zVH8EF0TWGUp0GQnCVvCsGKgKD/ryFl+kx607/l7GDUSagNnWkRmMwhhshJSJblQwouhA9fwjDNTBB2g==}
 
-  '@livestore/common@0.4.0-dev.24':
-    resolution: {integrity: sha512-KE1BVVq0z+0qR6HPb+X5gabgZcOYMYY9e3FGeJGdSvbWYQouGNeeZFaEe+2xQkg/HVBTa5cg0tEeWZq7vpWQ3A==}
+  '@livestore/common@0.4.0-dev.25':
+    resolution: {integrity: sha512-nyBpTydGNcerQfizD3Quu7L/grY7JWX9RyVXVv/Ap7rDwjfAZwVa6dYyzLquY2hirYbv6Xb4cVFn72Ms/w8MzA==}
     peerDependencies:
       '@effect/ai': ^0.35.0
       '@effect/cli': 0.75.1
@@ -7658,16 +7658,16 @@ packages:
     peerDependencies:
       vite: ~6.3.4
 
-  '@livestore/devtools-vite@0.4.0-dev.24':
-    resolution: {integrity: sha512-LaovZMF4yuq3jvEx84WyrpTIXDytnDydCkpgPdNUyckL1V+yKqd9Mbq4eXPlAKl2PX0EcK/RGepR/Ua26WAPDQ==}
+  '@livestore/devtools-vite@0.4.0-dev.25':
+    resolution: {integrity: sha512-Lw+JZYp8T6g4yGkJ0ef57td+upQVYGbhGHOnS/DeulebxY6uQjLgJigsvA8UzMN+BksMc/FsQPLv8+qzOe5AEA==}
     peerDependencies:
       vite: ^7.3.1
 
   '@livestore/devtools-web-common@0.3.1':
     resolution: {integrity: sha512-jU7IvebelTtvSTQ2zKNzSm5qZodwUiPsNsDURsY5Yw0DXpafcfpRobs/WYd+Wd4Q1E4oFaK05hPfWZGbVFdw7Q==}
 
-  '@livestore/devtools-web-common@0.4.0-dev.24':
-    resolution: {integrity: sha512-neWpu9GwHRq872S2U0h2Ib2sdBVZWxSRaGeivLHBHmnSgJVPgeCienEp9qsX+XVPzIAFWr+w9tJkmrt13GGwjA==}
+  '@livestore/devtools-web-common@0.4.0-dev.25':
+    resolution: {integrity: sha512-dEcoDpN4nH8xWG0VVNT9WqDmUt4Nlm0UsSVaNhtUw+XYuRQaNBeLt1h/ARIccdPRzS5V+Sbd9H/8CDlyfOsnSg==}
     peerDependencies:
       '@effect/ai': ^0.35.0
       '@effect/cli': 0.75.1
@@ -7698,8 +7698,8 @@ packages:
   '@livestore/sqlite-wasm@0.3.1':
     resolution: {integrity: sha512-+JLIwpd2N214LmwlUX6arYnJ5IhvSi4Fn3Jk6E6fNfuUU4tczcL1PtgfIX2IoiPhn9QDG0YJVdJBT6KYi1uMyg==}
 
-  '@livestore/sqlite-wasm@0.4.0-dev.24':
-    resolution: {integrity: sha512-ZS0+o4a2ixduSjW20ecHXz//gUdFpnPotwg/eGqMsDJpcNhFV8CvG6jxJhfL2QY58h290MwUW2rrvLqnYDb8dg==}
+  '@livestore/sqlite-wasm@0.4.0-dev.25':
+    resolution: {integrity: sha512-/yAthKdwfLrbw7eAiV9ebEkMKKetwN49iA7XxfjyeHjfnb/sOFWJq1s6Gw7BV6iMKt1TkuRX427WipdnFq3gpQ==}
     peerDependencies:
       '@effect/ai': ^0.35.0
       '@effect/cli': 0.75.1
@@ -7744,8 +7744,8 @@ packages:
       '@opentelemetry/resources': ~2.0.0
       effect: 3.21.2
 
-  '@livestore/utils@0.4.0-dev.24':
-    resolution: {integrity: sha512-Z1cyNk1lnhdgPWceo85mc8uawp9AzupQvhuQXzLWsLxz/RNJsD/N4c/BLnBhbSVJCGaTr8SbtLoh8HykLtOTPw==}
+  '@livestore/utils@0.4.0-dev.25':
+    resolution: {integrity: sha512-o9VHADdO6tIa/d7G4oxT6TDzc7I9JfhJW2282ndLoE6MKr8V2oYD34SoBzrfDtl4brjAvGh/cGTO6J1eOByzMQ==}
     peerDependencies:
       '@effect/ai': ^0.35.0
       '@effect/cli': 0.75.1
@@ -7767,8 +7767,8 @@ packages:
       '@standard-schema/spec': ^1.1.0
       effect: 3.21.2
 
-  '@livestore/wa-sqlite@0.4.0-dev.24':
-    resolution: {integrity: sha512-ot0OnZ+54kIzGeu59Loz+L7C/HtYRlbDw89SgJEA93SlHBZ9Zzm4d6EWmF5v5c5lpwZCpgBU7aa23jJamtYXqw==}
+  '@livestore/wa-sqlite@0.4.0-dev.25':
+    resolution: {integrity: sha512-7nzv8G8gdAWfRDSCKjKv9JCGa/AYJPB1hzVf0/N5oTJNiA28Qc/4JL0R9+OlEoB/UlyUiVY6/l5BhD2yhyHmUA==}
 
   '@livestore/wa-sqlite@1.0.5-dev.2':
     resolution: {integrity: sha512-i7tKFEp0m3+4tGLV9Z5eAr/3RZPuNOyuf4NaQ/ygF2KwzlHc3TnqouPuE2sMH06r3soXIilWYND/x0eT8x6D6Q==}
@@ -7776,8 +7776,8 @@ packages:
   '@livestore/webmesh@0.3.1':
     resolution: {integrity: sha512-JLYFgiOf1r7xqN7SkwdHNZdZ+geQlEdC9rg81DeC839vqqshA5TEhh045dhEkeyVJZqeg44vX5adUX6FOkhTfg==}
 
-  '@livestore/webmesh@0.4.0-dev.24':
-    resolution: {integrity: sha512-Iz6PEKNeqAilaEvaPLkgRrmNv+FmWor8qIyXnCq9jujMG65ghqf++zhpxC5RISkBax71bFXSMzxKX9XmhuGeSw==}
+  '@livestore/webmesh@0.4.0-dev.25':
+    resolution: {integrity: sha512-TGjWLeT7lQG6NrjQqm6QGj2owuAuLBs949wDqtTzAjHupc26GGVVI8/SwPY/uxwUL/xzX8ZMCPgXgXTjL7tmWA==}
     peerDependencies:
       '@effect/ai': ^0.35.0
       '@effect/cli': 0.75.1
@@ -21921,7 +21921,7 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/adapter-web@0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)':
+  '@livestore/adapter-web@0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)':
     dependencies:
       '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
       '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@3.21.2))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@3.21.2))(effect@3.21.2))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
@@ -21938,17 +21938,17 @@ snapshots:
       '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
       '@effect/typeclass': 0.40.0(effect@3.21.2)
       '@effect/vitest': 0.29.0(effect@3.21.2)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
-      '@livestore/common': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
-      '@livestore/devtools-web-common': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
-      '@livestore/sqlite-wasm': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
-      '@livestore/utils': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
-      '@livestore/webmesh': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/common': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/devtools-web-common': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/sqlite-wasm': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/utils': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/webmesh': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@standard-schema/spec': 1.1.0
       effect: 3.21.2
 
-  '@livestore/common-cf@0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)':
+  '@livestore/common-cf@0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)':
     dependencies:
       '@cloudflare/workers-types': 4.20251118.0
       '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
@@ -21966,7 +21966,7 @@ snapshots:
       '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
       '@effect/typeclass': 0.40.0(effect@3.21.2)
       '@effect/vitest': 0.29.0(effect@3.21.2)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
-      '@livestore/utils': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/utils': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@standard-schema/spec': 1.1.0
@@ -21997,7 +21997,7 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/common@0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)':
+  '@livestore/common@0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)':
     dependencies:
       '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
       '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@3.21.2))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@3.21.2))(effect@3.21.2))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
@@ -22014,8 +22014,8 @@ snapshots:
       '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
       '@effect/typeclass': 0.40.0(effect@3.21.2)
       '@effect/vitest': 0.29.0(effect@3.21.2)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
-      '@livestore/utils': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
-      '@livestore/webmesh': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/utils': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/webmesh': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@standard-schema/spec': 1.1.0
@@ -22044,10 +22044,10 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/devtools-vite@0.4.0-dev.24(5a277068ab2fc267bf897432879ebba0)':
+  '@livestore/devtools-vite@0.4.0-dev.25(5a277068ab2fc267bf897432879ebba0)':
     dependencies:
-      '@livestore/adapter-web': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
-      '@livestore/utils': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/adapter-web': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/utils': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
       vite: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3)
     transitivePeerDependencies:
       - '@effect/ai'
@@ -22093,7 +22093,7 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/devtools-web-common@0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)':
+  '@livestore/devtools-web-common@0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)':
     dependencies:
       '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
       '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@3.21.2))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@3.21.2))(effect@3.21.2))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
@@ -22110,9 +22110,9 @@ snapshots:
       '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
       '@effect/typeclass': 0.40.0(effect@3.21.2)
       '@effect/vitest': 0.29.0(effect@3.21.2)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
-      '@livestore/common': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
-      '@livestore/utils': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
-      '@livestore/webmesh': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/common': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/utils': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/webmesh': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@standard-schema/spec': 1.1.0
@@ -22193,7 +22193,7 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/sqlite-wasm@0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)':
+  '@livestore/sqlite-wasm@0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)':
     dependencies:
       '@cloudflare/workers-types': 4.20251118.0
       '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
@@ -22211,10 +22211,10 @@ snapshots:
       '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
       '@effect/typeclass': 0.40.0(effect@3.21.2)
       '@effect/vitest': 0.29.0(effect@3.21.2)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
-      '@livestore/common': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
-      '@livestore/common-cf': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
-      '@livestore/utils': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
-      '@livestore/wa-sqlite': 0.4.0-dev.24
+      '@livestore/common': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/common-cf': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/utils': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/wa-sqlite': 0.4.0-dev.25
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@standard-schema/spec': 1.1.0
@@ -22265,7 +22265,7 @@ snapshots:
       nanoid: 5.1.3
       pretty-bytes: 6.1.1
 
-  '@livestore/utils@0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)':
+  '@livestore/utils@0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)':
     dependencies:
       '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
       '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@3.21.2))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@3.21.2))(effect@3.21.2))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
@@ -22290,7 +22290,7 @@ snapshots:
       pretty-bytes: 7.0.1
       qrcode-generator: 2.0.4
 
-  '@livestore/wa-sqlite@0.4.0-dev.24': {}
+  '@livestore/wa-sqlite@0.4.0-dev.25': {}
 
   '@livestore/wa-sqlite@1.0.5-dev.2': {}
 
@@ -22315,7 +22315,7 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/webmesh@0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)':
+  '@livestore/webmesh@0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)':
     dependencies:
       '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
       '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@3.21.2))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@3.21.2))(effect@3.21.2))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@3.21.2))(effect@3.21.2))(effect@3.21.2)
@@ -22332,7 +22332,7 @@ snapshots:
       '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2))(@effect/platform@0.96.1(effect@3.21.2))(effect@3.21.2)
       '@effect/typeclass': 0.40.0(effect@3.21.2)
       '@effect/vitest': 0.29.0(effect@3.21.2)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.2)(tsx@4.21.0)(yaml@2.8.3))
-      '@livestore/utils': 0.4.0-dev.24(10159e6faafba03ca68ac1a223e3d717)
+      '@livestore/utils': 0.4.0-dev.25(10159e6faafba03ca68ac1a223e3d717)
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@standard-schema/spec': 1.1.0

@@ -7,10 +7,12 @@ import { Effect, Stream } from '@livestore/utils/effect'
 import { WebChannelBrowser } from '@livestore/utils/effect/browser'
 import * as Webmesh from '@livestore/webmesh'
 
+const joinUrlPath = (baseUrl: string, path: string) => `${baseUrl.replace(/\/$/, '')}/${path.replace(/^\//, '')}`
+
 export const logDevtoolsUrl = Effect.fn('@livestore/adapter-web:client-session:devtools:logDevtoolsUrl')(function* ({
-  schema,
-  storeId,
-  clientId,
+  schema: _schema,
+  storeId: _storeId,
+  clientId: _clientId,
   sessionId,
 }: {
   schema: LiveStoreSchema
@@ -27,7 +29,7 @@ export const logDevtoolsUrl = Effect.fn('@livestore/adapter-web:client-session:d
     if (response.ok === true) {
       const text = yield* Effect.promise(() => response.text())
       if (text.includes('<meta name="livestore-devtools" content="true" />') === true) {
-        const url = `${devtoolsBaseUrl}/web/${storeId}/${clientId}/${sessionId}/${schema.devtools.alias}`
+        const url = joinUrlPath(devtoolsBaseUrl, `web#${encodeURIComponent(sessionId)}`)
         yield* Effect.log(`[@livestore/adapter-web] Devtools ready on ${url}`)
       }
 
