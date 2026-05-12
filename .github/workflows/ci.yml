@@ -41,6 +41,12 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v17
         with:
@@ -285,6 +291,12 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v17
         with:
@@ -533,6 +545,12 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v17
         with:
@@ -778,6 +796,12 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v17
         with:
@@ -1021,6 +1045,12 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v17
         with:
@@ -1264,6 +1294,12 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v17
         with:
@@ -1551,6 +1587,12 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v17
         with:
@@ -1824,6 +1866,12 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v17
         with:
@@ -2202,6 +2250,12 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v17
         with:
@@ -2459,6 +2513,12 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v17
         with:
@@ -2834,6 +2894,12 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v17
         with:
@@ -3205,6 +3271,12 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v17
         with:
@@ -3782,6 +3854,12 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v17
         with:
