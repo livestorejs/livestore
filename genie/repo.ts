@@ -229,6 +229,8 @@ export const solidJsx = { jsx: 'preserve' as const, jsxImportSource: 'solid-js' 
 
 import {
   bashShellDefaults,
+  cachixCliBuildStep,
+  cachixStep,
   defaultActionlintConfig,
   dispatchAlignmentStep,
   namespaceRunner as namespaceRunnerBase,
@@ -268,15 +270,11 @@ export const livestoreSetupStepsAfterCheckout = [
     extraConf:
       'extra-substituters = https://cache.nixos.org\nextra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=',
   }),
-  {
-    name: 'Enable Cachix cache',
-    uses: 'cachix/cachix-action@v17',
-    with: {
-      name: 'livestore',
-      authToken: '${{ env.CACHIX_AUTH_TOKEN }}',
-      skipPush: true,
-    },
-  },
+  cachixCliBuildStep,
+  (() => {
+    const base = cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' })
+    return { ...base, with: { ...base.with, skipPush: true } }
+  })(),
   applyMegarepoLockStep(),
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
