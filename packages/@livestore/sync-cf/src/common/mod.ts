@@ -9,7 +9,12 @@ export { OversizeChunkItemError, splitChunkBySize }
 
 export const SearchParamsSchema = Schema.Struct({
   storeId: Schema.String,
-  payload: Schema.UndefinedOr(
+  /**
+   * `Schema.optional` (not `UndefinedOr`) because `UrlParams.fromInput` drops undefined values on
+   * encode, so the URL never carries the `payload` key when no payload is supplied. A required key
+   * (even one that allows `undefined`) would then fail to decode round-trip on the server.
+   */
+  payload: Schema.optional(
     Schema.decodeTo(Schema.fromJsonString(Schema.JsonValue))(Schema.StringFromUriComponent) as any,
   ),
   // NOTE `do-rpc` is handled differently
