@@ -58,15 +58,15 @@
       "workerd"
     ],
     "overrides": {
-      "@effect/opentelemetry": "4.0.0-beta.60",
-      "@effect/platform-browser": "4.0.0-beta.60",
-      "@effect/platform-bun": "4.0.0-beta.60",
-      "@effect/platform-node": "4.0.0-beta.60",
-      "@effect/vitest": "4.0.0-beta.60",
+      "@effect/opentelemetry": "4.0.0-beta.65",
+      "@effect/platform-browser": "4.0.0-beta.65",
+      "@effect/platform-bun": "4.0.0-beta.65",
+      "@effect/platform-node": "4.0.0-beta.65",
+      "@effect/vitest": "4.0.0-beta.65",
       "@opentelemetry/api": "1.9.0",
       "@opentelemetry/resources": "2.2.0",
       "@standard-schema/spec": "1.0.0",
-      "effect": "4.0.0-beta.60"
+      "effect": "4.0.0-beta.65"
     }
   }
 }

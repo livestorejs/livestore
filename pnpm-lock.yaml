@@ -186,15 +186,15 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  effect: 4.0.0-beta.60
-  '@effect/ai-openai': 4.0.0-beta.60
-  '@effect/platform-browser': 4.0.0-beta.60
-  '@effect/platform-bun': 4.0.0-beta.60
-  '@effect/platform-node': 4.0.0-beta.60
-  '@effect/platform-node-shared': 4.0.0-beta.60
-  '@effect/opentelemetry': 4.0.0-beta.60
-  '@effect/sql-sqlite-node': 4.0.0-beta.60
-  '@effect/vitest': 4.0.0-beta.60
+  effect: 4.0.0-beta.65
+  '@effect/ai-openai': 4.0.0-beta.65
+  '@effect/platform-browser': 4.0.0-beta.65
+  '@effect/platform-bun': 4.0.0-beta.65
+  '@effect/platform-node': 4.0.0-beta.65
+  '@effect/platform-node-shared': 4.0.0-beta.65
+  '@effect/opentelemetry': 4.0.0-beta.65
+  '@effect/sql-sqlite-node': 4.0.0-beta.65
+  '@effect/vitest': 4.0.0-beta.65
   react: 19.2.3
   react-dom: 19.2.3
   '@tanstack/router-core': 1.145.7
@@ -237,20 +237,20 @@ importers:
         specifier: 4.0.1
         version: 4.0.1(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.7.4)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)))(tailwindcss@4.1.18)
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@livestore/adapter-cloudflare':
         specifier: workspace:^
         version: link:../packages/@livestore/adapter-cloudflare
@@ -268,7 +268,7 @@ importers:
         version: link:../packages/@livestore/common
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@livestore/livestore':
         specifier: workspace:^
         version: link:../packages/@livestore/livestore
@@ -330,8 +330,8 @@ importers:
         specifier: 0.40.0
         version: 0.40.0
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       expo-application:
         specifier: 7.0.7
         version: 7.0.7(expo@54.0.12)
@@ -428,28 +428,28 @@ importers:
         version: 4.20251118.0
       '@effect-atom/atom':
         specifier: 0.3.0
-        version: 0.3.0(effect@4.0.0-beta.60)
+        version: 0.3.0(effect@4.0.0-beta.65)
       '@effect-atom/atom-livestore':
         specifier: 0.3.0
-        version: 0.3.0(@livestore/livestore@packages+@livestore+livestore)(effect@4.0.0-beta.60)
+        version: 0.3.0(@livestore/livestore@packages+@livestore+livestore)(effect@4.0.0-beta.65)
       '@effect-atom/atom-react':
         specifier: 0.3.0
-        version: 0.3.0(effect@4.0.0-beta.60)(react@19.2.3)(scheduler@0.27.0)
+        version: 0.3.0(effect@4.0.0-beta.65)(react@19.2.3)(scheduler@0.27.0)
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@livestore/adapter-cloudflare':
         specifier: workspace:^
         version: link:../../../../../packages/@livestore/adapter-cloudflare
@@ -467,7 +467,7 @@ importers:
         version: link:../../../../../packages/@livestore/devtools-expo
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@livestore/livestore':
         specifier: workspace:^
         version: link:../../../../../packages/@livestore/livestore
@@ -523,8 +523,8 @@ importers:
         specifier: 6.0.0
         version: 6.0.0(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.31(typescript@5.9.3))
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       expo:
         specifier: 54.0.12
         version: 54.0.12(@babel/core@7.29.0)(@expo/metro-runtime@6.1.2)(expo-router@6.0.10)(graphql@16.11.0)(react-native@0.81.4(@babel/core@7.29.0)(@types/react@19.2.7)(react@19.2.3))(react@19.2.3)
@@ -569,7 +569,7 @@ importers:
         version: 7.7.9(rollup@4.49.0)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(vue@3.5.31(typescript@5.9.3))
       vue-livestore:
         specifier: 0.2.3
-        version: 0.2.3(da50abd8a421c7f2d97336063d1dd530)
+        version: 0.2.3(e5911ce5dc8eae64f9e077ed41ba0046)
     devDependencies:
       '@types/node':
         specifier: 25.3.3
@@ -628,7 +628,7 @@ importers:
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -698,7 +698,7 @@ importers:
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1089,7 +1089,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@tailwindcss/vite':
         specifier: 4.1.18
         version: 4.1.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
@@ -1222,7 +1222,7 @@ importers:
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1316,7 +1316,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@types/node':
         specifier: 25.3.3
         version: 25.3.3
@@ -1383,7 +1383,7 @@ importers:
         version: 4.20251118.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1441,7 +1441,7 @@ importers:
         version: 4.20251118.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1514,7 +1514,7 @@ importers:
         version: 4.20251118.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1575,7 +1575,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1688,7 +1688,7 @@ importers:
         version: 4.20251118.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1737,7 +1737,7 @@ importers:
         version: 4.20251118.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1792,7 +1792,7 @@ importers:
         version: 4.20251118.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1853,7 +1853,7 @@ importers:
         version: 4.20251118.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -1920,7 +1920,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -2005,7 +2005,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -2084,20 +2084,20 @@ importers:
         version: 1.9.0
     devDependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@opentelemetry/resources':
         specifier: 2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
@@ -2108,8 +2108,8 @@ importers:
         specifier: 25.3.3
         version: 25.3.3
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       expo-application:
         specifier: 7.0.7
         version: 7.0.7(expo@54.0.12)
@@ -2139,11 +2139,11 @@ importers:
         version: 1.9.0
     devDependencies:
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@rollup/plugin-commonjs':
         specifier: 28.0.6
         version: 28.0.6(rollup@4.49.0)
@@ -2197,11 +2197,11 @@ importers:
   packages/@livestore/cli:
     dependencies:
       '@effect/ai-openai':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@livestore/adapter-node':
         specifier: workspace:^
         version: link:../adapter-node
@@ -2218,12 +2218,12 @@ importers:
         specifier: workspace:^
         version: link:../utils
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
     devDependencies:
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@livestore/utils-dev':
         specifier: workspace:^
         version: link:../utils-dev
@@ -2250,20 +2250,20 @@ importers:
         version: 1.9.0
     devDependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@livestore/utils-dev':
         specifier: workspace:^
         version: link:../utils-dev
@@ -2274,8 +2274,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       vitest:
         specifier: 3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
@@ -2309,8 +2309,8 @@ importers:
         version: link:../utils
     devDependencies:
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@types/node':
         specifier: 25.3.3
         version: 25.3.3
@@ -2340,20 +2340,20 @@ importers:
         version: link:../utils
     devDependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -2370,8 +2370,8 @@ importers:
         specifier: 25.3.3
         version: 25.3.3
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
 
   packages/@livestore/framework-toolkit:
     dependencies:
@@ -2457,20 +2457,20 @@ importers:
   packages/@livestore/peer-deps:
     dependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -2481,8 +2481,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
 
   packages/@livestore/react:
     dependencies:
@@ -2696,20 +2696,20 @@ importers:
         version: link:../utils
     devDependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -2720,8 +2720,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
 
   packages/@livestore/sync-electric:
     dependencies:
@@ -2733,20 +2733,20 @@ importers:
         version: link:../utils
     devDependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -2757,8 +2757,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
 
   packages/@livestore/sync-s2:
     dependencies:
@@ -2773,20 +2773,20 @@ importers:
         version: link:../utils
     devDependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -2797,8 +2797,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       vitest:
         specifier: 3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
@@ -2806,8 +2806,8 @@ importers:
   packages/@livestore/utils:
     dependencies:
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@standard-schema/spec':
         specifier: 1.1.0
         version: 1.1.0
@@ -2822,17 +2822,17 @@ importers:
         version: 2.0.4
     devDependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -2852,8 +2852,8 @@ importers:
         specifier: 0.0.264
         version: 0.0.264
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       jsdom:
         specifier: 26.1.0
         version: 26.1.0
@@ -2864,11 +2864,11 @@ importers:
   packages/@livestore/utils-dev:
     dependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@iarna/toml':
         specifier: 3.0.0
         version: 3.0.0
@@ -2898,14 +2898,14 @@ importers:
         version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
     devDependencies:
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@opentelemetry/resources':
         specifier: 2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
@@ -2913,8 +2913,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       vitest:
         specifier: 3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
@@ -2964,20 +2964,20 @@ importers:
         version: link:../utils
     devDependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@livestore/utils-dev':
         specifier: workspace:^
         version: link:../utils-dev
@@ -2991,8 +2991,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       vitest:
         specifier: 3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
@@ -3007,20 +3007,20 @@ importers:
         version: link:../../@livestore/utils
     devDependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -3037,8 +3037,8 @@ importers:
         specifier: 5.13.4
         version: 5.13.4(@netlify/blobs@10.7.4)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       vitest:
         specifier: 3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
@@ -3046,8 +3046,8 @@ importers:
   packages/@local/astro-twoslash-code:
     dependencies:
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@livestore/utils':
         specifier: workspace:^
         version: link:../../@livestore/utils
@@ -3074,17 +3074,17 @@ importers:
         specifier: 0.35.2
         version: 0.35.2(astro@5.13.4(@netlify/blobs@10.7.4)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -3104,8 +3104,8 @@ importers:
         specifier: 5.13.4
         version: 5.13.4(@netlify/blobs@10.7.4)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       vitest:
         specifier: 3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
@@ -3135,20 +3135,20 @@ importers:
         version: 0.5.3(@expressive-code/core@0.41.7)(expressive-code@0.41.5)(typescript@5.9.3)
     devDependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -3168,8 +3168,8 @@ importers:
         specifier: 25.3.3
         version: 25.3.3
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       tailwindcss:
         specifier: 4.1.18
         version: 4.1.18
@@ -3186,20 +3186,20 @@ importers:
   scripts:
     devDependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.1))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.1))
       '@livestore/common':
         specifier: workspace:^
         version: link:../packages/@livestore/common
@@ -3243,8 +3243,8 @@ importers:
         specifier: ^7.7.0
         version: 7.7.1
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       madge:
         specifier: ^8.0.0
         version: 8.0.0(typescript@5.9.3)
@@ -3277,7 +3277,7 @@ importers:
         version: link:../../packages/@livestore/common-cf
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@livestore/effect-playwright':
         specifier: workspace:^
         version: link:../../packages/@livestore/effect-playwright
@@ -3304,20 +3304,20 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -3355,8 +3355,8 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       react:
         specifier: 19.2.3
         version: 19.2.3
@@ -3404,23 +3404,23 @@ importers:
         version: 1.9.0
     devDependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@livestore/utils-dev':
         specifier: workspace:^
         version: link:../../packages/@livestore/utils-dev
@@ -3431,8 +3431,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       vitest:
         specifier: 3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
@@ -3486,20 +3486,20 @@ importers:
         version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
     devDependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -3516,8 +3516,8 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
 
   tests/perf-eventlog:
     dependencies:
@@ -3574,23 +3574,23 @@ importers:
         version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
     devDependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -3607,8 +3607,8 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       tsx:
         specifier: ^4.20.0
         version: 4.21.0
@@ -3653,23 +3653,23 @@ importers:
         version: 3.4.7
     devDependencies:
       '@effect/opentelemetry':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
       '@effect/platform-browser':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-bun':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/platform-node':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@effect/vitest':
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)
       '@livestore/utils-dev':
         specifier: workspace:^
         version: link:../../packages/@livestore/utils-dev
@@ -3686,8 +3686,8 @@ importers:
         specifier: 25.3.3
         version: 25.3.3
       effect:
-        specifier: 4.0.0-beta.60
-        version: 4.0.0-beta.60
+        specifier: 4.0.0-beta.65
+        version: 4.0.0-beta.65
       vitest:
         specifier: 3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
@@ -4689,12 +4689,12 @@ packages:
     resolution: {integrity: sha512-0WsGp1vTPInxZBR1CV+mnGKWOm6hWvMZDdhTB5yJvEszdeq6j1I390hWr+WorXAhWj21tZl3W2JHig4A12KbtA==}
     peerDependencies:
       '@livestore/livestore': '*'
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
   '@effect-atom/atom-react@0.3.0':
     resolution: {integrity: sha512-pmn7PJUhX/5oKcYiDOnU9aTs8FcAFuK+1gJYItdjSWWI8Dg68ph9UtCv2kq9xWlgkzGfuqzmFiRNcjtlmVpGwA==}
     peerDependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
       react: 19.2.3
       scheduler: '*'
 
@@ -4704,12 +4704,12 @@ packages:
       '@effect/experimental': ^0.56.0
       '@effect/platform': ^0.92.0
       '@effect/rpc': ^0.71.0
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
-  '@effect/ai-openai@4.0.0-beta.60':
-    resolution: {integrity: sha512-P5Vjieq/6fLPCymE6toFtsgrR3siJQifFU1WtWy3kKM5noGNIz00vlSgn+sDq1DTlB11N8XZXiokvawTKPlS5Q==}
+  '@effect/ai-openai@4.0.0-beta.65':
+    resolution: {integrity: sha512-EKHQEp6ZU2amaR/YeRnsbf2l9tUhNopDiaYHuEBCBmeRLRZ6jyTv9gp6ECfu6rbPaEGd7KknFYsHgFcKPTodpg==}
     peerDependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
   '@effect/cli@0.61.4':
     resolution: {integrity: sha512-MZgeRuV0m6SANHIIXc6fbz69XNbYe79gkyCEN2z3Z6+dSwW/yxzY2pSv5zRAaN5bS/BWYfP1wnThQEkQtwtcxw==}
@@ -4717,13 +4717,13 @@ packages:
       '@effect/platform': ^0.82.4
       '@effect/printer': ^0.43.2
       '@effect/printer-ansi': ^0.43.2
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
   '@effect/experimental@0.46.4':
     resolution: {integrity: sha512-jKym3mkV7Z1fK7Kg+Wuv3XnV/DqjSRBNdWFCAz7NHAn8noGccXp3eWVui5JP/7KOZJ9gXj52ESJzkgk9PBy1rw==}
     peerDependencies:
       '@effect/platform': ^0.82.4
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
       ioredis: ^5
       lmdb: ^3
     peerDependenciesMeta:
@@ -4732,11 +4732,12 @@ packages:
       lmdb:
         optional: true
 
-  '@effect/opentelemetry@4.0.0-beta.60':
-    resolution: {integrity: sha512-yQCo/T6divTcg09VGJpi2/vDOqUNFwxkgGWT1groQdKgy9A/NlHDMk9B75ALhT/NeNzqsYAhhIlu6Xrv+Ghj+A==}
+  '@effect/opentelemetry@4.0.0-beta.65':
+    resolution: {integrity: sha512-0CD2fSsXrDM7FP2WFkbGJO1DwMqWR3UKHh6oBDXPHAPA+RsJSKoh3pLQsbQfldLuKnhOy87Bv0v9r9IdrIHCQw==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       '@opentelemetry/api': ^1.9
+      '@opentelemetry/api-logs': '>=0.203.0 <0.300.0'
       '@opentelemetry/resources': ^2.0.0
       '@opentelemetry/sdk-logs': '>=0.203.0 <0.300.0'
       '@opentelemetry/sdk-metrics': ^2.0.0
@@ -4744,9 +4745,11 @@ packages:
       '@opentelemetry/sdk-trace-node': ^2.0.0
       '@opentelemetry/sdk-trace-web': ^2.0.0
       '@opentelemetry/semantic-conventions': ^1.33.0
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
     peerDependenciesMeta:
       '@opentelemetry/api':
+        optional: true
+      '@opentelemetry/api-logs':
         optional: true
       '@opentelemetry/resources':
         optional: true
@@ -4761,55 +4764,55 @@ packages:
       '@opentelemetry/sdk-trace-web':
         optional: true
 
-  '@effect/platform-browser@4.0.0-beta.60':
-    resolution: {integrity: sha512-trM/3DM5VhVBGZt8KccLG7LA+F34gw6o3APHa70dl8jHXNQ04tZ74WbG5RbCkekUHitj0MFC0sfuhGLNGxDtDg==}
+  '@effect/platform-browser@4.0.0-beta.65':
+    resolution: {integrity: sha512-w+79bFERZIJq2AmjCcnW8Uei1nv3S8q/4gEreUhW7VORuWuCsGZvUrQgjtNrftnzA3bPk78PBvGIJgYrz1IV0g==}
     peerDependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
-  '@effect/platform-bun@4.0.0-beta.60':
-    resolution: {integrity: sha512-UHm4RyigOie5Rk3KvNqJZwNJ/mG/OlDt3Uz7hwAxD3KjgHZL4CouInwI0/VXDD31BMFwUSLgUECDFGk0nojwag==}
+  '@effect/platform-bun@4.0.0-beta.65':
+    resolution: {integrity: sha512-6BgEjVDibeOgGj0pvYRx+mBLSWVBPlvuqa6o4kuyrRIdgn92nbKrbglEiIRe4sn7yYmeKei4N/kd7fRzN3rEwA==}
     peerDependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
-  '@effect/platform-node-shared@4.0.0-beta.60':
-    resolution: {integrity: sha512-I/4g1B9Nb2qeUAJmRiEnd3bFOx2LU3FaBGi3O6iUGlRe+MAReqYP+1JBntLoCBkH8kVUM2viQRZONzopb/8Bzw==}
+  '@effect/platform-node-shared@4.0.0-beta.65':
+    resolution: {integrity: sha512-3rY8F3WLEax6Hj08GI/OvDIH+KqjfxH7RM2bAMfgR75NgRmwDtny1P49PtPkoRjH5dcdtThThtsvE4X9OTZkpQ==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
-  '@effect/platform-node@4.0.0-beta.60':
-    resolution: {integrity: sha512-vA9isPNtPg6riXevAgZS1LXPiijQ7TYAdUFWzZwZL1qAqVtDbBFd3Lvfm9p6UKokAiUSeeFvamndmp6R1hkKFQ==}
+  '@effect/platform-node@4.0.0-beta.65':
+    resolution: {integrity: sha512-QQy3KRcMwP0TngQdfQGl2u1zp03B7k7DuF5SNS8aZhD0dDBpKZpCwFad1ODY5qdY3ycPgMwBwKRRK7y/aw0C9w==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
       ioredis: ^5.7.0
 
   '@effect/platform@0.82.4':
     resolution: {integrity: sha512-og5DIzx4wz7nIXd/loDfenXvV3c/NT+NDG+YJsi3g6a5Xb6xwrNJuX97sDaV2LJ29G3LroeVJCmYUmfdf/h5Vg==}
     peerDependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
   '@effect/printer-ansi@0.43.2':
     resolution: {integrity: sha512-tvMTWwyLAnmTc4RkOc13lEsE+Xw1/GFVQKUmePnOcNupKaYZqz0d777/PDCG9AmLRXZ9ZExGiOHDjXlNdDwWBA==}
     peerDependencies:
       '@effect/typeclass': ^0.34.2
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
   '@effect/printer@0.43.2':
     resolution: {integrity: sha512-1NqSWITRlGOL0k1bMG18KLu/EkavcZru4PM7q6mqLumQrHldp0QCfCwMp+h1u8FyG4C1PuHTkmr6xxBsaNX+ZA==}
     peerDependencies:
       '@effect/typeclass': ^0.34.2
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
   '@effect/typeclass@0.34.2':
     resolution: {integrity: sha512-ZxBux2HoYi4TLDkNAKppUJjceFAS+Q4qAe4lZw80dFFXqqd+61CVzALMyzayK57qTma0IihOQHX7kbyuZ7MMLA==}
     peerDependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
-  '@effect/vitest@4.0.0-beta.60':
-    resolution: {integrity: sha512-taPLD3X5IQnrWsCGOg/VAu3e2o1Ou8YQKAosR00y6vwcXadiqeDrQTyyGPdDByXggODEqB5ygx0gHuptW+hHVA==}
+  '@effect/vitest@4.0.0-beta.65':
+    resolution: {integrity: sha512-dJdZlQhB+AtMlSgrJ0QiprRhDnGVTcKmPe699+f5qkQjCKauogaAKekWV3xEM1envAMntwqeFUD4QHVnE+cFPg==}
     peerDependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
       vitest: ^3.0.0 || ^4.0.0
 
   '@egjs/hammerjs@2.0.17':
@@ -6194,11 +6197,11 @@ packages:
       '@effect/cli': ~0.61.4
       '@effect/cluster': ~0.34.1
       '@effect/experimental': ~0.46.4
-      '@effect/opentelemetry': 4.0.0-beta.60
+      '@effect/opentelemetry': 4.0.0-beta.65
       '@effect/platform': ~0.82.4
-      '@effect/platform-browser': 4.0.0-beta.60
-      '@effect/platform-bun': 4.0.0-beta.60
-      '@effect/platform-node': 4.0.0-beta.60
+      '@effect/platform-browser': 4.0.0-beta.65
+      '@effect/platform-bun': 4.0.0-beta.65
+      '@effect/platform-node': 4.0.0-beta.65
       '@effect/printer': ~0.43.2
       '@effect/printer-ansi': ~0.43.2
       '@effect/rpc': ~0.59.5
@@ -6206,7 +6209,7 @@ packages:
       '@effect/typeclass': ~0.34.2
       '@opentelemetry/api': ~1.9.0
       '@opentelemetry/resources': ~2.0.0
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
   '@livestore/utils@0.4.0-dev.22':
     resolution: {integrity: sha512-5eDFievmIQA9A/KpqNYbfm5hyLahHHyzl4dlkeEe26EefF2cxF5/7EH2Bt5fMzsDgIyAc4WNgxSXtZRp74TftQ==}
@@ -6215,11 +6218,11 @@ packages:
       '@effect/cli': ^0.71.0
       '@effect/cluster': ^0.50.6
       '@effect/experimental': ^0.56.0
-      '@effect/opentelemetry': 4.0.0-beta.60
+      '@effect/opentelemetry': 4.0.0-beta.65
       '@effect/platform': ^0.92.1
-      '@effect/platform-browser': 4.0.0-beta.60
-      '@effect/platform-bun': 4.0.0-beta.60
-      '@effect/platform-node': 4.0.0-beta.60
+      '@effect/platform-browser': 4.0.0-beta.65
+      '@effect/platform-bun': 4.0.0-beta.65
+      '@effect/platform-node': 4.0.0-beta.65
       '@effect/printer': ^0.46.0
       '@effect/printer-ansi': ^0.46.0
       '@effect/rpc': ^0.71.1
@@ -6227,7 +6230,7 @@ packages:
       '@effect/typeclass': ^0.37.0
       '@opentelemetry/api': ^1.9.0
       '@opentelemetry/resources': ^2.0.1
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
   '@livestore/wa-sqlite@0.4.0-dev.22':
     resolution: {integrity: sha512-+Q4JP2SiXRI+CUYQa33KeyWdeUtRJbrSXbJ0acIRNJmnXSdHWA9N1XHZOCtkoR2BY7XCA29/uh3coNklsQOYtA==}
@@ -11061,8 +11064,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@4.0.0-beta.60:
-    resolution: {integrity: sha512-OkrCKT+aBFIti4ryuxKfIozNx2SMxmFZ8uWB53gGzdjQzaJ7RVf0s6nJQ4JubJM//R24DtSYNOdmPRSK+qoRww==}
+  effect@4.0.0-beta.65:
+    resolution: {integrity: sha512-QYKvQPAj3CmtsvWkHQww15wX4KG2gNsszDWEcOO5sZCMknp66u6Si/Opmt3wwWCwsyvRmDAdIg+JIz5qzbbFIw==}
 
   ejs@3.1.10:
     resolution: {integrity: sha512-UeJmFfOrAQS8OJWPZ4qtgHyWExa088/MtK5UEyoJGFH67cDEXkZSviOiKRCZ4Xij0zxI3JECgYs3oKx+AizQBA==}
@@ -18623,20 +18626,20 @@ snapshots:
       gonzales-pe: 4.3.0
       node-source-walk: 7.0.1
 
-  '@effect-atom/atom-livestore@0.3.0(@livestore/livestore@packages+@livestore+livestore)(effect@4.0.0-beta.60)':
+  '@effect-atom/atom-livestore@0.3.0(@livestore/livestore@packages+@livestore+livestore)(effect@4.0.0-beta.65)':
     dependencies:
-      '@effect-atom/atom': 0.3.0(effect@4.0.0-beta.60)
+      '@effect-atom/atom': 0.3.0(effect@4.0.0-beta.65)
       '@livestore/livestore': link:packages/@livestore/livestore
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
     transitivePeerDependencies:
       - '@effect/experimental'
       - '@effect/platform'
       - '@effect/rpc'
 
-  '@effect-atom/atom-react@0.3.0(effect@4.0.0-beta.60)(react@19.2.3)(scheduler@0.27.0)':
+  '@effect-atom/atom-react@0.3.0(effect@4.0.0-beta.65)(react@19.2.3)(scheduler@0.27.0)':
     dependencies:
-      '@effect-atom/atom': 0.3.0(effect@4.0.0-beta.60)
-      effect: 4.0.0-beta.60
+      '@effect-atom/atom': 0.3.0(effect@4.0.0-beta.65)
+      effect: 4.0.0-beta.65
       react: 19.2.3
       scheduler: 0.27.0
     transitivePeerDependencies:
@@ -18644,36 +18647,37 @@ snapshots:
       - '@effect/platform'
       - '@effect/rpc'
 
-  '@effect-atom/atom@0.3.0(effect@4.0.0-beta.60)':
+  '@effect-atom/atom@0.3.0(effect@4.0.0-beta.65)':
     dependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
-  '@effect/ai-openai@4.0.0-beta.60(effect@4.0.0-beta.60)':
+  '@effect/ai-openai@4.0.0-beta.65(effect@4.0.0-beta.65)':
     dependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
-  '@effect/cli@0.61.4(@effect/platform@0.82.4(effect@4.0.0-beta.60))(@effect/printer-ansi@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.60))(effect@4.0.0-beta.60))(@effect/printer@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.60))(effect@4.0.0-beta.60))(effect@4.0.0-beta.60)':
+  '@effect/cli@0.61.4(@effect/platform@0.82.4(effect@4.0.0-beta.65))(@effect/printer-ansi@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.65))(effect@4.0.0-beta.65))(@effect/printer@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.65))(effect@4.0.0-beta.65))(effect@4.0.0-beta.65)':
     dependencies:
-      '@effect/platform': 0.82.4(effect@4.0.0-beta.60)
-      '@effect/printer': 0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.60))(effect@4.0.0-beta.60)
-      '@effect/printer-ansi': 0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.60))(effect@4.0.0-beta.60)
-      effect: 4.0.0-beta.60
+      '@effect/platform': 0.82.4(effect@4.0.0-beta.65)
+      '@effect/printer': 0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.65))(effect@4.0.0-beta.65)
+      '@effect/printer-ansi': 0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.65))(effect@4.0.0-beta.65)
+      effect: 4.0.0-beta.65
       ini: 4.1.3
       toml: 3.0.0
       yaml: 2.8.1
 
-  '@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@4.0.0-beta.60))(effect@4.0.0-beta.60)':
+  '@effect/experimental@0.46.4(@effect/platform@0.82.4(effect@4.0.0-beta.65))(effect@4.0.0-beta.65)':
     dependencies:
-      '@effect/platform': 0.82.4(effect@4.0.0-beta.60)
-      effect: 4.0.0-beta.60
+      '@effect/platform': 0.82.4(effect@4.0.0-beta.65)
+      effect: 4.0.0-beta.65
       uuid: 11.1.0
 
-  '@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)':
+  '@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)':
     dependencies:
       '@opentelemetry/semantic-conventions': 1.40.0
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
+      '@opentelemetry/api-logs': 0.208.0
       '@opentelemetry/resources': 2.0.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-logs': 0.208.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-metrics': 2.2.0(@opentelemetry/api@1.9.0)
@@ -18681,12 +18685,13 @@ snapshots:
       '@opentelemetry/sdk-trace-node': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-web': 2.2.0(@opentelemetry/api@1.9.0)
 
-  '@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)':
+  '@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)':
     dependencies:
       '@opentelemetry/semantic-conventions': 1.40.0
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
+      '@opentelemetry/api-logs': 0.208.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-logs': 0.208.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-metrics': 2.2.0(@opentelemetry/api@1.9.0)
@@ -18694,68 +18699,68 @@ snapshots:
       '@opentelemetry/sdk-trace-node': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-web': 2.2.0(@opentelemetry/api@1.9.0)
 
-  '@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60)':
+  '@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65)':
     dependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
       multipasta: 0.2.7
 
-  '@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60)':
+  '@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65)':
     dependencies:
-      '@effect/platform-node-shared': 4.0.0-beta.60(effect@4.0.0-beta.60)
-      effect: 4.0.0-beta.60
+      '@effect/platform-node-shared': 4.0.0-beta.65(effect@4.0.0-beta.65)
+      effect: 4.0.0-beta.65
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@effect/platform-node-shared@4.0.0-beta.60(effect@4.0.0-beta.60)':
+  '@effect/platform-node-shared@4.0.0-beta.65(effect@4.0.0-beta.65)':
     dependencies:
       '@types/ws': 8.18.1
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
       ws: 8.20.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60)':
+  '@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65)':
     dependencies:
-      '@effect/platform-node-shared': 4.0.0-beta.60(effect@4.0.0-beta.60)
-      effect: 4.0.0-beta.60
+      '@effect/platform-node-shared': 4.0.0-beta.65(effect@4.0.0-beta.65)
+      effect: 4.0.0-beta.65
       mime: 4.1.0
       undici: 8.2.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@effect/platform@0.82.4(effect@4.0.0-beta.60)':
+  '@effect/platform@0.82.4(effect@4.0.0-beta.65)':
     dependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
       find-my-way-ts: 0.1.6
       msgpackr: 1.11.10
       multipasta: 0.2.7
 
-  '@effect/printer-ansi@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.60))(effect@4.0.0-beta.60)':
+  '@effect/printer-ansi@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.65))(effect@4.0.0-beta.65)':
     dependencies:
-      '@effect/printer': 0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.60))(effect@4.0.0-beta.60)
-      '@effect/typeclass': 0.34.2(effect@4.0.0-beta.60)
-      effect: 4.0.0-beta.60
+      '@effect/printer': 0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.65))(effect@4.0.0-beta.65)
+      '@effect/typeclass': 0.34.2(effect@4.0.0-beta.65)
+      effect: 4.0.0-beta.65
 
-  '@effect/printer@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.60))(effect@4.0.0-beta.60)':
+  '@effect/printer@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.65))(effect@4.0.0-beta.65)':
     dependencies:
-      '@effect/typeclass': 0.34.2(effect@4.0.0-beta.60)
-      effect: 4.0.0-beta.60
+      '@effect/typeclass': 0.34.2(effect@4.0.0-beta.65)
+      effect: 4.0.0-beta.65
 
-  '@effect/typeclass@0.34.2(effect@4.0.0-beta.60)':
+  '@effect/typeclass@0.34.2(effect@4.0.0-beta.65)':
     dependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
 
-  '@effect/vitest@4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.1))':
+  '@effect/vitest@4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.1))':
     dependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
       vitest: 3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.1)
 
-  '@effect/vitest@4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))':
+  '@effect/vitest@4.0.0-beta.65(effect@4.0.0-beta.65)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
       vitest: 3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
 
   '@egjs/hammerjs@2.0.17':
@@ -20081,13 +20086,13 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@livestore/adapter-web@0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)':
+  '@livestore/adapter-web@0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)':
     dependencies:
-      '@livestore/common': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
-      '@livestore/devtools-web-common': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
-      '@livestore/sqlite-wasm': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
-      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
-      '@livestore/webmesh': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
+      '@livestore/common': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
+      '@livestore/devtools-web-common': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
+      '@livestore/sqlite-wasm': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
+      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
+      '@livestore/webmesh': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
       '@opentelemetry/api': 1.9.0
     transitivePeerDependencies:
       - '@effect/cli'
@@ -20106,13 +20111,13 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/adapter-web@0.4.0-dev.22(e9e22493d0eb7e530110ca056d568426)':
+  '@livestore/adapter-web@0.4.0-dev.22(5ba87e1a26790c5fbefcf50027746743)':
     dependencies:
-      '@livestore/common': 0.4.0-dev.22(e9e22493d0eb7e530110ca056d568426)
-      '@livestore/devtools-web-common': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
-      '@livestore/sqlite-wasm': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
-      '@livestore/utils': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
-      '@livestore/webmesh': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
+      '@livestore/common': 0.4.0-dev.22(5ba87e1a26790c5fbefcf50027746743)
+      '@livestore/devtools-web-common': 0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)
+      '@livestore/sqlite-wasm': 0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)
+      '@livestore/utils': 0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)
+      '@livestore/webmesh': 0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)
       '@opentelemetry/api': 1.9.0
     transitivePeerDependencies:
       - '@effect/ai'
@@ -20132,11 +20137,11 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/common-cf@0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)':
+  '@livestore/common-cf@0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)':
     dependencies:
       '@cloudflare/workers-types': 4.20251118.0
-      '@livestore/common': 0.4.0-dev.22(e9e22493d0eb7e530110ca056d568426)
-      '@livestore/utils': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
+      '@livestore/common': 0.4.0-dev.22(5ba87e1a26790c5fbefcf50027746743)
+      '@livestore/utils': 0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)
     transitivePeerDependencies:
       - '@effect/ai'
       - '@effect/cli'
@@ -20156,10 +20161,10 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/common@0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)':
+  '@livestore/common@0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)':
     dependencies:
-      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
-      '@livestore/webmesh': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
+      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
+      '@livestore/webmesh': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
       '@opentelemetry/api': 1.9.0
       graphology: 0.26.0-alpha1(graphology-types@0.24.8)
       graphology-dag: 0.4.1(graphology-types@0.24.8)
@@ -20181,10 +20186,10 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/common@0.4.0-dev.22(e9e22493d0eb7e530110ca056d568426)':
+  '@livestore/common@0.4.0-dev.22(5ba87e1a26790c5fbefcf50027746743)':
     dependencies:
-      '@livestore/utils': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
-      '@livestore/webmesh': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
+      '@livestore/utils': 0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)
+      '@livestore/webmesh': 0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)
       '@opentelemetry/api': 1.9.0
     transitivePeerDependencies:
       - '@effect/ai'
@@ -20204,10 +20209,10 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/devtools-vite@0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))':
+  '@livestore/devtools-vite@0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))':
     dependencies:
-      '@livestore/adapter-web': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
-      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
+      '@livestore/adapter-web': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
+      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
       vite: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
     transitivePeerDependencies:
       - '@effect/cli'
@@ -20227,10 +20232,10 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/devtools-vite@0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)':
+  '@livestore/devtools-vite@0.4.0-dev.22(00a99da882e78baae6ea98f3560a521f)':
     dependencies:
-      '@livestore/adapter-web': 0.4.0-dev.22(e9e22493d0eb7e530110ca056d568426)
-      '@livestore/utils': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
+      '@livestore/adapter-web': 0.4.0-dev.22(5ba87e1a26790c5fbefcf50027746743)
+      '@livestore/utils': 0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)
       vite: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
     transitivePeerDependencies:
       - '@effect/ai'
@@ -20262,11 +20267,11 @@ snapshots:
       - tsx
       - yaml
 
-  '@livestore/devtools-web-common@0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)':
+  '@livestore/devtools-web-common@0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)':
     dependencies:
-      '@livestore/common': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
-      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
-      '@livestore/webmesh': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
+      '@livestore/common': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
+      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
+      '@livestore/webmesh': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
     transitivePeerDependencies:
       - '@effect/cli'
       - '@effect/cluster'
@@ -20285,11 +20290,11 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/devtools-web-common@0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)':
+  '@livestore/devtools-web-common@0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)':
     dependencies:
-      '@livestore/common': 0.4.0-dev.22(e9e22493d0eb7e530110ca056d568426)
-      '@livestore/utils': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
-      '@livestore/webmesh': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
+      '@livestore/common': 0.4.0-dev.22(5ba87e1a26790c5fbefcf50027746743)
+      '@livestore/utils': 0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)
+      '@livestore/webmesh': 0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)
     transitivePeerDependencies:
       - '@effect/ai'
       - '@effect/cli'
@@ -20309,10 +20314,10 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/livestore@0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)':
+  '@livestore/livestore@0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)':
     dependencies:
-      '@livestore/common': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
-      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
+      '@livestore/common': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
+      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
       '@opentelemetry/api': 1.9.0
     transitivePeerDependencies:
       - '@effect/cli'
@@ -20331,22 +20336,23 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/peer-deps@0.3.1(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)':
+  '@livestore/peer-deps@0.3.1(@opentelemetry/api-logs@0.208.0)(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)':
     dependencies:
-      '@effect/cli': 0.61.4(@effect/platform@0.82.4(effect@4.0.0-beta.60))(@effect/printer-ansi@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.60))(effect@4.0.0-beta.60))(@effect/printer@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.60))(effect@4.0.0-beta.60))(effect@4.0.0-beta.60)
-      '@effect/experimental': 0.46.4(@effect/platform@0.82.4(effect@4.0.0-beta.60))(effect@4.0.0-beta.60)
-      '@effect/opentelemetry': 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
-      '@effect/platform': 0.82.4(effect@4.0.0-beta.60)
-      '@effect/platform-browser': 4.0.0-beta.60(effect@4.0.0-beta.60)
-      '@effect/platform-bun': 4.0.0-beta.60(effect@4.0.0-beta.60)
-      '@effect/platform-node': 4.0.0-beta.60(effect@4.0.0-beta.60)
-      '@effect/printer': 0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.60))(effect@4.0.0-beta.60)
-      '@effect/printer-ansi': 0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.60))(effect@4.0.0-beta.60)
-      '@effect/typeclass': 0.34.2(effect@4.0.0-beta.60)
+      '@effect/cli': 0.61.4(@effect/platform@0.82.4(effect@4.0.0-beta.65))(@effect/printer-ansi@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.65))(effect@4.0.0-beta.65))(@effect/printer@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.65))(effect@4.0.0-beta.65))(effect@4.0.0-beta.65)
+      '@effect/experimental': 0.46.4(@effect/platform@0.82.4(effect@4.0.0-beta.65))(effect@4.0.0-beta.65)
+      '@effect/opentelemetry': 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.0.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
+      '@effect/platform': 0.82.4(effect@4.0.0-beta.65)
+      '@effect/platform-browser': 4.0.0-beta.65(effect@4.0.0-beta.65)
+      '@effect/platform-bun': 4.0.0-beta.65(effect@4.0.0-beta.65)
+      '@effect/platform-node': 4.0.0-beta.65(effect@4.0.0-beta.65)
+      '@effect/printer': 0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.65))(effect@4.0.0-beta.65)
+      '@effect/printer-ansi': 0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.65))(effect@4.0.0-beta.65)
+      '@effect/typeclass': 0.34.2(effect@4.0.0-beta.65)
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.0.0(@opentelemetry/api@1.9.0)
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
     transitivePeerDependencies:
+      - '@opentelemetry/api-logs'
       - '@opentelemetry/sdk-logs'
       - '@opentelemetry/sdk-metrics'
       - '@opentelemetry/sdk-trace-base'
@@ -20358,10 +20364,10 @@ snapshots:
       - lmdb
       - utf-8-validate
 
-  '@livestore/sqlite-wasm@0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)':
+  '@livestore/sqlite-wasm@0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)':
     dependencies:
-      '@livestore/common': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
-      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
+      '@livestore/common': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
+      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
       '@livestore/wa-sqlite': 1.0.5-dev.2
     transitivePeerDependencies:
       - '@effect/cli'
@@ -20381,12 +20387,12 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/sqlite-wasm@0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)':
+  '@livestore/sqlite-wasm@0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)':
     dependencies:
       '@cloudflare/workers-types': 4.20251118.0
-      '@livestore/common': 0.4.0-dev.22(e9e22493d0eb7e530110ca056d568426)
-      '@livestore/common-cf': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
-      '@livestore/utils': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
+      '@livestore/common': 0.4.0-dev.22(5ba87e1a26790c5fbefcf50027746743)
+      '@livestore/common-cf': 0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)
+      '@livestore/utils': 0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)
       '@livestore/wa-sqlite': 0.4.0-dev.22
     transitivePeerDependencies:
       - '@effect/ai'
@@ -20407,10 +20413,10 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/sync-cf@0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)':
+  '@livestore/sync-cf@0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)':
     dependencies:
-      '@livestore/common': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
-      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
+      '@livestore/common': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
+      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
     transitivePeerDependencies:
       - '@effect/cli'
       - '@effect/cluster'
@@ -20429,36 +20435,36 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/utils@0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)':
+  '@livestore/utils@0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)':
     dependencies:
-      '@effect/opentelemetry': 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
-      '@effect/platform-browser': 4.0.0-beta.60(effect@4.0.0-beta.60)
-      '@effect/platform-bun': 4.0.0-beta.60(effect@4.0.0-beta.60)
-      '@effect/platform-node': 4.0.0-beta.60(effect@4.0.0-beta.60)
+      '@effect/opentelemetry': 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
+      '@effect/platform-browser': 4.0.0-beta.65(effect@4.0.0-beta.65)
+      '@effect/platform-bun': 4.0.0-beta.65(effect@4.0.0-beta.65)
+      '@effect/platform-node': 4.0.0-beta.65(effect@4.0.0-beta.65)
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@standard-schema/spec': 1.0.0
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
       msgpackr: 1.11.2
       nanoid: 5.1.3
       pretty-bytes: 6.1.1
 
-  '@livestore/utils@0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)':
+  '@livestore/utils@0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)':
     dependencies:
-      '@effect/cli': 0.61.4(@effect/platform@0.82.4(effect@4.0.0-beta.60))(@effect/printer-ansi@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.60))(effect@4.0.0-beta.60))(@effect/printer@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.60))(effect@4.0.0-beta.60))(effect@4.0.0-beta.60)
-      '@effect/experimental': 0.46.4(@effect/platform@0.82.4(effect@4.0.0-beta.60))(effect@4.0.0-beta.60)
-      '@effect/opentelemetry': 4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60)
-      '@effect/platform': 0.82.4(effect@4.0.0-beta.60)
-      '@effect/platform-browser': 4.0.0-beta.60(effect@4.0.0-beta.60)
-      '@effect/platform-bun': 4.0.0-beta.60(effect@4.0.0-beta.60)
-      '@effect/platform-node': 4.0.0-beta.60(effect@4.0.0-beta.60)
-      '@effect/printer': 0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.60))(effect@4.0.0-beta.60)
-      '@effect/printer-ansi': 0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.60))(effect@4.0.0-beta.60)
-      '@effect/typeclass': 0.34.2(effect@4.0.0-beta.60)
+      '@effect/cli': 0.61.4(@effect/platform@0.82.4(effect@4.0.0-beta.65))(@effect/printer-ansi@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.65))(effect@4.0.0-beta.65))(@effect/printer@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.65))(effect@4.0.0-beta.65))(effect@4.0.0-beta.65)
+      '@effect/experimental': 0.46.4(@effect/platform@0.82.4(effect@4.0.0-beta.65))(effect@4.0.0-beta.65)
+      '@effect/opentelemetry': 4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65)
+      '@effect/platform': 0.82.4(effect@4.0.0-beta.65)
+      '@effect/platform-browser': 4.0.0-beta.65(effect@4.0.0-beta.65)
+      '@effect/platform-bun': 4.0.0-beta.65(effect@4.0.0-beta.65)
+      '@effect/platform-node': 4.0.0-beta.65(effect@4.0.0-beta.65)
+      '@effect/printer': 0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.65))(effect@4.0.0-beta.65)
+      '@effect/printer-ansi': 0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.65))(effect@4.0.0-beta.65)
+      '@effect/typeclass': 0.34.2(effect@4.0.0-beta.65)
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@standard-schema/spec': 1.0.0
-      effect: 4.0.0-beta.60
+      effect: 4.0.0-beta.65
       nanoid: 5.1.5
       pretty-bytes: 7.0.1
       qrcode-generator: 2.0.4
@@ -20467,9 +20473,9 @@ snapshots:
 
   '@livestore/wa-sqlite@1.0.5-dev.2': {}
 
-  '@livestore/webmesh@0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)':
+  '@livestore/webmesh@0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)':
     dependencies:
-      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
+      '@livestore/utils': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
     transitivePeerDependencies:
       - '@effect/cli'
       - '@effect/cluster'
@@ -20488,9 +20494,9 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/webmesh@0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)':
+  '@livestore/webmesh@0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)':
     dependencies:
-      '@livestore/utils': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
+      '@livestore/utils': 0.4.0-dev.22(abed988e27e69051d1c8f81f7df11160)
     transitivePeerDependencies:
       - '@effect/ai'
       - '@effect/cli'
@@ -26940,7 +26946,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@4.0.0-beta.60:
+  effect@4.0.0-beta.65:
     dependencies:
       '@standard-schema/spec': 1.1.0
       fast-check: 4.7.0
@@ -34356,13 +34362,13 @@ snapshots:
 
   vscode-uri@3.1.0: {}
 
-  vue-livestore@0.2.3(da50abd8a421c7f2d97336063d1dd530):
+  vue-livestore@0.2.3(e5911ce5dc8eae64f9e077ed41ba0046):
     dependencies:
-      '@livestore/adapter-web': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
-      '@livestore/devtools-vite': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
-      '@livestore/livestore': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
-      '@livestore/peer-deps': 0.3.1(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)
-      '@livestore/sync-cf': 0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)
+      '@livestore/adapter-web': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
+      '@livestore/devtools-vite': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
+      '@livestore/livestore': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
+      '@livestore/peer-deps': 0.3.1(@opentelemetry/api-logs@0.208.0)(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)
+      '@livestore/sync-cf': 0.3.1(@effect/opentelemetry@4.0.0-beta.65(@opentelemetry/api-logs@0.208.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.65))(@effect/platform-browser@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-bun@4.0.0-beta.65(effect@4.0.0-beta.65))(@effect/platform-node@4.0.0-beta.65(effect@4.0.0-beta.65))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.65)
       '@livestore/wa-sqlite': 1.0.5-dev.2
       vue: 3.5.31(typescript@5.9.3)
     transitivePeerDependencies:
@@ -34380,6 +34386,7 @@ snapshots:
       - '@effect/sql'
       - '@effect/typeclass'
       - '@opentelemetry/api'
+      - '@opentelemetry/api-logs'
       - '@opentelemetry/resources'
       - '@opentelemetry/sdk-logs'
       - '@opentelemetry/sdk-metrics'
