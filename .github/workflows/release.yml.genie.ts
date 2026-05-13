@@ -157,7 +157,13 @@ fi
 gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$branch"
 gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$branch" \\
   -f mode=validate-release-plan \\
-  -f npm_tag="$LIVESTORE_NPM_TAG"`,
+  -f npm_tag="$LIVESTORE_NPM_TAG"
+
+if gh pr view "$branch" --repo "$GITHUB_REPOSITORY" --json autoMergeRequest --jq '.autoMergeRequest != null' | grep -qx true; then
+  echo "Auto-merge already enabled for $branch."
+else
+  gh pr merge "$branch" --repo "$GITHUB_REPOSITORY" --auto --merge
+fi`,
         },
       ],
     },
