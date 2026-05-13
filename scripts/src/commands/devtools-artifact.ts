@@ -66,13 +66,13 @@ type DevtoolsArtifactCertification = {
   readonly evidence?: string
 }
 
-type DevtoolsArtifactCiSnapshotCertification = {
+type DevtoolsArtifactEphemeralCertification = {
   readonly livestoreVersion: string
   readonly devtoolsBuildId: string
   readonly devtoolsProtocolVersion: number
-  readonly status: 'ci-snapshot'
+  readonly status: 'ci-snapshot' | 'ci-release-validation'
   readonly testSuite: 'artifact-integrity-and-protocol-gate'
-  readonly scenarios: ReadonlyArray<'ci-snapshot-repack'>
+  readonly scenarios: ReadonlyArray<'ci-snapshot-repack' | 'ci-release-validation-repack'>
 }
 
 type ArtifactManifestV1 = {
@@ -187,6 +187,8 @@ const publishTagForVersion = (version: string) => {
 }
 
 const isSnapshotVersion = (version: string) => version.includes('-snapshot-')
+
+const isCiReleaseValidationVersion = (version: string) => version.includes('-ci.release-validation.')
 
 const packageVersionExists = (packageName: string, version: string) =>
   runCaptureOptional(['npm', 'view', `${packageName}@${version}`, 'version']) === version
@@ -332,23 +334,26 @@ export const assertCertifiedDevtoolsArtifactForLivestore = ({
     )
   }
 
+  // Ephemeral CI versions cannot be pre-certified in a checked-in manifest:
+  // snapshot versions are produced by the snapshot publisher, and
+  // ci.release-validation versions are synthetic PR-only release-plan probes.
+  // They still require the LiveStore-owned manifest pointer and pass through
+  // artifact checksums, package-shape audit, secret scan, and protocol
+  // validation; dev/stable release-channel packages below fail closed unless
+  // LiveStore records an exact passed e2e certification.
+  if (isSnapshotVersion(version) === true || isCiReleaseValidationVersion(version) === true) {
+    return {
+      livestoreVersion: version,
+      devtoolsBuildId: metadata.devtoolsBuildId,
+      devtoolsProtocolVersion: protocolVersion,
+      status: isSnapshotVersion(version) === true ? 'ci-snapshot' : 'ci-release-validation',
+      testSuite: 'artifact-integrity-and-protocol-gate',
+      scenarios: isSnapshotVersion(version) === true ? ['ci-snapshot-repack'] : ['ci-release-validation-repack'],
+    } satisfies DevtoolsArtifactEphemeralCertification
+  }
+
   const certification = manifest.certification
   if (certification === undefined) {
-    // Snapshot packages are per-commit CI artifacts whose version contains the
-    // PR/head SHA, so they cannot be pre-certified in a checked-in manifest.
-    // They still pass through artifact checksums, package-shape audit, secret
-    // scan, and protocol validation; dev/stable release-channel packages below
-    // fail closed unless LiveStore records an exact passed e2e certification.
-    if (isSnapshotVersion(version) === true) {
-      return {
-        livestoreVersion: version,
-        devtoolsBuildId: metadata.devtoolsBuildId,
-        devtoolsProtocolVersion: protocolVersion,
-        status: 'ci-snapshot',
-        testSuite: 'artifact-integrity-and-protocol-gate',
-        scenarios: ['ci-snapshot-repack'],
-      } satisfies DevtoolsArtifactCiSnapshotCertification
-    }
     throw new Error('DevTools repack requires a LiveStore-owned certification entry in the artifact manifest')
   }
   if (certification.status !== 'passed') {

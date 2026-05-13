@@ -491,13 +491,14 @@ jobs:
           fi
 
           mkdir -p release
-          version="$(jq -r '.version' packages/@livestore/common/package.json)"
-          npm_tag="latest"
-          if [[ "$version" == *"-dev."* ]]; then
-            npm_tag="dev"
-          elif [[ "$version" == *"-"* ]]; then
-            npm_tag="next"
-          fi
+          # PRs that touch release machinery but do not carry an actual release plan still
+          # need to exercise package publishing and DevTools repacking. Use a unique,
+          # unpublished prerelease instead of the checked-in package version: current dev
+          # versions can already exist on npm, while snapshot versions intentionally
+          # belong to the separate snapshot publisher.
+          short_sha="${GITHUB_SHA:0:12}"
+          version="0.0.0-ci.release-validation.$short_sha"
+          npm_tag="next"
           jq -n \
             --arg version "$version" \
             --arg npmTag "$npm_tag" \

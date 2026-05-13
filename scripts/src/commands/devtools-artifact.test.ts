@@ -112,6 +112,21 @@ describe('assertCertifiedDevtoolsArtifactForLivestore', () => {
     })
   })
 
+  it('allows synthetic CI release validation repack without exact release certification', () => {
+    expect(
+      assertCertifiedDevtoolsArtifactForLivestore({
+        manifest: manifest(),
+        metadata,
+        version: '0.0.0-ci.release-validation.abc123',
+      }),
+    ).toMatchObject({
+      livestoreVersion: '0.0.0-ci.release-validation.abc123',
+      status: 'ci-release-validation',
+      testSuite: 'artifact-integrity-and-protocol-gate',
+      scenarios: ['ci-release-validation-repack'],
+    })
+  })
+
   it('rejects certification for a different LiveStore release or DevTools build', () => {
     expect(() =>
       assertCertifiedDevtoolsArtifactForLivestore({
