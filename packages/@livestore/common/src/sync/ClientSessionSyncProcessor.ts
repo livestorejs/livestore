@@ -306,25 +306,32 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
   const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(
     function* (encodedEvents) {
-      const mergeResult = yield* SyncState.merge({
-        syncState: yield* SubscriptionRef.get(syncState),
-        payload: { _tag: 'local-push', newEvents: encodedEvents },
-        isClientEvent,
-        isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-      }).pipe(Effect.filterOrDieMessage((r) => r._tag === 'advance', 'Expected advance from local-push merge'))
+      yield* SubscriptionRef.updateEffect(syncState, (currentSyncState) =>
+        Effect.gen(function* () {
+          const mergeResult = yield* SyncState.merge({
+            syncState: currentSyncState,
+            payload: { _tag: 'local-push', newEvents: encodedEvents },
+            isClientEvent,
+            isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+          }).pipe(
+            Effect.filterOrDieMessage((r) => r._tag === 'advance', 'Expected advance from local-push merge'),
+          )
 
-      yield* Effect.annotateCurrentSpan({
-        batchSize: encodedEvents.length,
-        mergeResultTag: mergeResult._tag,
-        eventCounts: encodedEvents.reduce<Record<string, number>>((acc, event) => {
-          acc[event.name] = (acc[event.name] ?? 0) + 1
-          return acc
-        }, {}),
-        ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
-      })
+          yield* Effect.annotateCurrentSpan({
+            batchSize: encodedEvents.length,
+            mergeResultTag: mergeResult._tag,
+            eventCounts: encodedEvents.reduce<Record<string, number>>((acc, event) => {
+              acc[event.name] = (acc[event.name] ?? 0) + 1
+              return acc
+            }, {}),
+            ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+          })
 
-      yield* SubscriptionRef.set(syncState, mergeResult.newSyncState)
-      yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
+          yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
+
+          return mergeResult.newSyncState
+        }),
+      )
     },
   )
 
