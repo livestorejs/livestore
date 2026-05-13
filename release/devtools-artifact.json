@@ -8,7 +8,7 @@
     "chromeZipSha256": "f1feead7eb67f620a119ce92d35f84238274128cc480e3a851f1cc20785e2ed2"
   },
   "certification": {
-    "livestoreVersion": "0.4.0-dev.25",
+    "livestoreVersion": "0.4.0-dev.26",
     "devtoolsBuildId": "dt-20260513-27179788",
     "devtoolsProtocolVersion": 1,
     "status": "passed",
@@ -17,6 +17,6 @@
       "direct web session loads and stays connected past heartbeat window",
       "node adapter session loads through Vite and stays connected past 35 seconds"
     ],
-    "evidence": "Verified locally on 2026-05-13 against exact artifact tarball from https://github.com/livestorejs/livestore-devtools-artifacts/releases/tag/devtools-artifact-dt-20260513-27179788."
+    "evidence": "Verified locally on 2026-05-13 for the 0.4.0-dev.26 release branch against exact artifact tarball from https://github.com/livestorejs/livestore-devtools-artifacts/releases/tag/devtools-artifact-dt-20260513-27179788."
   }
 }
