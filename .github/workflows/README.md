@@ -76,6 +76,13 @@ It can be triggered by `repository_dispatch` from the artifact-producing system
 or manually with public artifact URLs and a SHA-256 checksum. It verifies the
 manifest and opens a PR that only changes the public artifact metadata.
 
+The manifest separates artifact identity from release certification. The
+artifact-producing workflow may update URLs and checksums, but it must not mark
+the artifact as shippable for a LiveStore release. Repack and publish require a
+schemaVersion 2 certification entry, owned by the LiveStore release process,
+that names the exact LiveStore version, DevTools build id, protocol version, and
+e2e scenarios that passed.
+
 Artifact URLs should point at build-id-only release tags such as
 `devtools-artifact-dt-20260505-398c5feb`. The DevTools implementation version
 may appear in public metadata for traceability, but it is not the artifact
@@ -84,9 +91,11 @@ Chrome ZIP release asset are versioned with the LiveStore release group or
 snapshot version.
 
 Artifact ordering should use artifact metadata such as `artifactVersion` or
-`builtAt`. Runtime compatibility is decided by `devtoolsProtocolVersion`, not by
-matching package versions. The release repack path rejects artifacts whose
-protocol version is unsupported by the LiveStore checkout.
+`builtAt`. Runtime protocol compatibility is decided by
+`devtoolsProtocolVersion`, not by matching package versions. Shipping
+compatibility is decided by the LiveStore-owned certification entry, so stale
+artifacts with broad self-declared compatibility cannot be republished as a new
+LiveStore DevTools package.
 
 The workflow exists so the LiveStore repository can keep release CI
 self-contained while the DevTools source remains outside this repository.

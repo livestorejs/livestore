@@ -180,16 +180,22 @@ New artifact metadata should also include a monotonically increasing
 `artifactVersion`, a `devtoolsProtocolVersion`, `builtAt`, and `sourceRevision`.
 `artifactVersion` orders DevTools artifact lineage. `devtoolsProtocolVersion`
 is the runtime compatibility contract between the app and DevTools. LiveStore
-package versions may differ from the source artifact version as long as the
-artifact protocol is supported and `compatibleLivestore` accepts the release
-version.
+package versions may differ from the source artifact version. For dev and
+stable release-channel packages, shipping compatibility is decided by the
+LiveStore-owned certification entry in `release/devtools-artifact.json`, not by
+artifact-owned package versions or broad self-declared compatibility ranges.
 
 The LiveStore release workflow only consumes those published artifacts. It must
 not require, copy, log, or publish non-public DevTools source. Artifact
 verification checks the metadata, tarball hash and integrity, package shape, and
 text-like files for common secret or machine-local patterns before repacking.
 Repack validation also rejects artifacts with unsupported DevTools protocol
-versions or incompatible `compatibleLivestore` declarations.
+versions. For dev and stable release versions, repack also requires a
+schemaVersion 2 manifest certification with `status: passed`, the exact
+LiveStore version, exact DevTools build id, protocol version, and the e2e
+scenarios that passed. CI snapshot packages are per-commit artifacts and cannot
+be pre-certified in the checked-in manifest; they still pass through artifact
+integrity, package-shape, secret-scan, and protocol validation.
 
 The repacked package writes `dist/release-metadata.json` with both identities:
 
@@ -198,6 +204,7 @@ The repacked package writes `dist/release-metadata.json` with both identities:
 - `devtoolsArtifact.artifactVersion` when provided by the artifact producer
 - `devtoolsArtifact.devtoolsProtocolVersion`
 - `livestoreVersion`
+- `livestoreCertification`
 
 Use `devtoolsArtifact.devtoolsBuildId` to correlate a published LiveStore
 package with the exact public DevTools artifact when investigating failures.
@@ -214,7 +221,11 @@ release:
    tarball URLs.
 2. Include the tarball SHA-256 when available.
 3. Run `CI=1 dt release:devtools-artifact:verify`.
-4. Open a PR with only the manifest change unless release tooling also changed.
+4. Run the release e2e scenarios against the exact LiveStore version and
+   DevTools build id.
+5. Add the schemaVersion 2 certification entry only after e2e passes.
+6. Open a PR with only the manifest and certification change unless release
+   tooling also changed.
 
 The release PR will then dry-run the repack using that manifest. When the
 release-plan PR merges to `main`, the publish job repackages and publishes the

@@ -52,7 +52,7 @@ export const livestoreOnlyCatalog = {
    * LiveStore republishes DevTools artifacts under the LiveStore release version.
    * The source artifact carries its own metadata for artifact lineage and protocol compatibility.
    */
-  '@livestore/devtools-vite': process.env.LIVESTORE_RELEASE_VERSION ?? '0.4.0-dev.24',
+  '@livestore/devtools-vite': process.env.LIVESTORE_RELEASE_VERSION ?? '0.4.0-dev.25',
   /** Tanstack router sub-packages not in effect-utils catalog (react-router/react-start/router-plugin are there) */
   '@tanstack/router-core': '1.145.7',
   '@tanstack/history': '1.145.7',
