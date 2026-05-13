@@ -188,7 +188,7 @@ fi
 
 mkdir -p release
 jq -n \\
-  --arg version "0.0.0-release-workflow-test-\${GITHUB_SHA}" \\
+  --arg version "0.0.0-snapshot-release-workflow-test-\${GITHUB_SHA}" \\
   --arg npmTag "next" \\
   '{
     schemaVersion: 1,
