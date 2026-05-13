@@ -6,11 +6,11 @@ import {
   Exit,
   FiberHandle,
   Option,
-  Queue,
   Schema,
   type Scope,
   Stream,
   Subscribable,
+  SubscriptionRef,
 } from '@livestore/utils/effect'
 
 import type { ClientSession } from '../adapter-types.ts'
@@ -83,18 +83,15 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     key2: keyof ClientSessionSyncProcessorSimulationParams[TKey],
   ) => Effect.sleep((params.simulation?.[key]?.[key2] ?? 0) as number)
 
-  const syncStateRef = {
-    // The initial state is identical to the leader's initial state
-    current: new SyncState.SyncState({
+  // Initial state matches the leader's head; no pending events at boot since
+  // we're starting from the leader's snapshot.
+  const syncState = yield* SubscriptionRef.make(
+    new SyncState.SyncState({
       localHead: clientSession.leaderThread.initialState.leaderHead,
       upstreamHead: clientSession.leaderThread.initialState.leaderHead,
-      // Given we're starting with the leader's snapshot, we don't have any pending events intially
       pending: [],
     }),
-  }
-
-  /** Only used for debugging / observability / testing, it's not relied upon for correctness of the sync processor. */
-  const syncStateUpdateQueue = yield* Queue.unbounded<SyncState.SyncState>()
+  )
   const isClientEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
@@ -108,7 +105,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       typeof window.addEventListener === 'function'
     ) {
       const onBeforeUnload = (event: BeforeUnloadEvent) => {
-        if (syncStateRef.current.pending.length > 0) {
+        // TODO: Replace with `SubscriptionRef.getUnsafe(syncStateSref)` after upgrading to Effect v4
+        if (Effect.runSync(SubscriptionRef.get(syncState)).pending.length > 0) {
           // Trigger the default browser dialog
           event.preventDefault()
         }
@@ -139,10 +137,9 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
 
-    // NOTE We need to lazily call `.pull` as we want the cursor to be updated
-    yield* Stream.suspend(() =>
-      clientSession.leaderThread.events.pull({ cursor: syncStateRef.current.upstreamHead }),
-    ).pipe(
+    yield* SubscriptionRef.get(syncState).pipe(
+      Effect.map((syncState) => clientSession.leaderThread.events.pull({ cursor: syncState.upstreamHead })),
+      Stream.unwrap,
       Stream.tap(({ payload }) =>
         Effect.gen(function* () {
           // yield* Effect.logDebug('ClientSessionSyncProcessor:pull', payload)
@@ -151,104 +148,100 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
             yield* clientSession.devtools.pullLatch.await
           }
 
-          const mergeResult = yield* SyncState.merge({
-            syncState: syncStateRef.current,
-            payload,
-            isClientEvent,
-            isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-          }).pipe(
-            Effect.filterOrDieMessage(
-              (r) => r._tag !== 'reject',
-              'Unexpected reject in client-session-sync-processor',
-            ),
-          )
-
-          syncStateRef.current = mergeResult.newSyncState
-
-          if (mergeResult._tag === 'rebase') {
-            yield* Effect.spanEvent('merge:pull:rebase', {
-              payloadTag: payload._tag,
-              ...(TRACE_VERBOSE === true ? { payload: jsonStringify(payload) } : {}),
-              newEventsCount: mergeResult.newEvents.length,
-              rollbackCount: mergeResult.rollbackEvents.length,
-              ...(TRACE_VERBOSE === true ? { res: jsonStringify(mergeResult) } : {}),
-            })
-
-            debugInfo.rebaseCount++
-
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
-
-            yield* FiberHandle.clear(leaderPushingFiberHandle)
-
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '2_before_leader_push_queue_clear')
-
-            // Reset the leader push queue since we're rebasing and will push again
-            yield* BucketQueue.clear(leaderPushQueue)
-
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '3_before_rebase_rollback')
-
-            if (LS_DEV === true) {
-              yield* Effect.logDebug(
-                'merge:pull:rebase: rollback',
-                mergeResult.rollbackEvents.length,
-                ...mergeResult.rollbackEvents.slice(0, 10).map((_) => _.toJSON()),
+          yield* SubscriptionRef.updateEffect(syncState, (currentSyncState) =>
+            Effect.gen(function* () {
+              const mergeResult = yield* SyncState.merge({
+                syncState: currentSyncState,
+                payload,
+                isClientEvent,
+                isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+              }).pipe(
+                Effect.filterOrDieMessage(
+                  (r) => r._tag !== 'reject',
+                  'Unexpected reject in client-session-sync-processor',
+                ),
               )
-            }
 
-            for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
-              const event = mergeResult.rollbackEvents[i]!
-              if (event.meta.sessionChangeset._tag !== 'no-op' && event.meta.sessionChangeset._tag !== 'unset') {
-                rollback(event.meta.sessionChangeset.data)
-                event.meta.sessionChangeset = { _tag: 'unset' }
+              if (mergeResult._tag === 'rebase') {
+                yield* Effect.spanEvent('merge:pull:rebase', {
+                  payloadTag: payload._tag,
+                  ...(TRACE_VERBOSE === true ? { payload: jsonStringify(payload) } : {}),
+                  newEventsCount: mergeResult.newEvents.length,
+                  rollbackCount: mergeResult.rollbackEvents.length,
+                  ...(TRACE_VERBOSE === true ? { res: jsonStringify(mergeResult) } : {}),
+                })
+
+                debugInfo.rebaseCount++
+
+                if (SIMULATION_ENABLED === true) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
+
+                yield* FiberHandle.clear(leaderPushingFiberHandle)
+
+                if (SIMULATION_ENABLED === true) yield* simSleep('pull', '2_before_leader_push_queue_clear')
+
+                // Reset the leader push queue since we're rebasing and will push again
+                yield* BucketQueue.clear(leaderPushQueue)
+
+                if (SIMULATION_ENABLED === true) yield* simSleep('pull', '3_before_rebase_rollback')
+
+                if (LS_DEV === true) {
+                  yield* Effect.logDebug(
+                    'merge:pull:rebase: rollback',
+                    mergeResult.rollbackEvents.length,
+                    ...mergeResult.rollbackEvents.slice(0, 10).map((_) => _.toJSON()),
+                  )
+                }
+
+                for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
+                  const event = mergeResult.rollbackEvents[i]!
+                  if (event.meta.sessionChangeset._tag !== 'no-op' && event.meta.sessionChangeset._tag !== 'unset') {
+                    rollback(event.meta.sessionChangeset.data)
+                    event.meta.sessionChangeset = { _tag: 'unset' }
+                  }
+                }
+
+                if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
+
+                yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
+
+                if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
+
+                yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+              } else {
+                yield* Effect.spanEvent('merge:pull:advance', {
+                  payloadTag: payload._tag,
+                  ...(TRACE_VERBOSE === true ? { payload: jsonStringify(payload) } : {}),
+                  newEventsCount: mergeResult.newEvents.length,
+                  ...(TRACE_VERBOSE === true ? { res: jsonStringify(mergeResult) } : {}),
+                })
+
+                debugInfo.advanceCount++
               }
-            }
 
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
+              if (mergeResult.newEvents.length === 0) return mergeResult.newSyncState
 
-            yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
+              const writeTables = new Set<string>()
+              for (const event of mergeResult.newEvents) {
+                const {
+                  writeTables: newWriteTables,
+                  sessionChangeset,
+                  materializerHash,
+                } = yield* materializeEvent(event, {
+                  withChangeset: true,
+                  materializerHashLeader: event.meta.materializerHashLeader,
+                })
+                for (const table of newWriteTables) {
+                  writeTables.add(table)
+                }
 
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
+                event.meta.sessionChangeset = sessionChangeset
+                event.meta.materializerHashSession = materializerHash
+              }
 
-            yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
-          } else {
-            yield* Effect.spanEvent('merge:pull:advance', {
-              payloadTag: payload._tag,
-              ...(TRACE_VERBOSE === true ? { payload: jsonStringify(payload) } : {}),
-              newEventsCount: mergeResult.newEvents.length,
-              ...(TRACE_VERBOSE === true ? { res: jsonStringify(mergeResult) } : {}),
-            })
-
-            debugInfo.advanceCount++
-          }
-
-          if (mergeResult.newEvents.length === 0) {
-            // If there are no new events, we need to update the sync state as well
-            yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
-            return
-          }
-
-          const writeTables = new Set<string>()
-          for (const event of mergeResult.newEvents) {
-            const {
-              writeTables: newWriteTables,
-              sessionChangeset,
-              materializerHash,
-            } = yield* materializeEvent(event, {
-              withChangeset: true,
-              materializerHashLeader: event.meta.materializerHashLeader,
-            })
-            for (const table of newWriteTables) {
-              writeTables.add(table)
-            }
-
-            event.meta.sessionChangeset = sessionChangeset
-            event.meta.materializerHashSession = materializerHash
-          }
-
-          refreshTables(writeTables)
-
-          // We're only triggering the sync state update after all events have been materialized
-          yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+              refreshTables(writeTables)
+              return mergeResult.newSyncState
+            }),
+          )
         }).pipe(
           Effect.tapCauseLogPretty,
           Effect.catchAllCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
@@ -263,10 +256,10 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     )
   })()
 
-  const encodeEvents: ClientSessionSyncProcessor['encodeEvents'] = Effect.fn('client-session-sync-processor:encode-events')(function* (
-    events,
-  ) {
-    let baseEventSequenceNumber = syncStateRef.current.localHead
+  const encodeEvents: ClientSessionSyncProcessor['encodeEvents'] = Effect.fn(
+    'client-session-sync-processor:encode-events',
+  )(function* (events) {
+    let baseEventSequenceNumber = (yield* SubscriptionRef.get(syncState)).localHead
     return yield* Effect.forEach(events, ({ name, args }) =>
       Effect.gen(function* () {
         const eventDef = yield* Effect.fromNullable(schema.eventsDefsMap.get(name)).pipe(Effect.orDieDebugger)
@@ -289,9 +282,9 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     )
   })
 
-  const materializeEvents: ClientSessionSyncProcessor['materializeEvents'] = Effect.fn('client-session-sync-processor:materialize-events')(function* (
-    events,
-  ) {
+  const materializeEvents: ClientSessionSyncProcessor['materializeEvents'] = Effect.fn(
+    'client-session-sync-processor:materialize-events',
+  )(function* (events) {
     const writeTables = new Set<string>()
     for (const event of events) {
       const {
@@ -311,35 +304,29 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     return { writeTables }
   })
 
-  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (
-    encodedEvents,
-  ) {
-    const mergeResult = yield* SyncState.merge({
-      syncState: syncStateRef.current,
-      payload: { _tag: 'local-push', newEvents: encodedEvents },
-      isClientEvent,
-      isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-    }).pipe(
-      Effect.filterOrDieMessage(
-        (r) => r._tag === 'advance',
-        'Expected advance from local-push merge',
-      ),
-    )
+  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(
+    function* (encodedEvents) {
+      const mergeResult = yield* SyncState.merge({
+        syncState: yield* SubscriptionRef.get(syncState),
+        payload: { _tag: 'local-push', newEvents: encodedEvents },
+        isClientEvent,
+        isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+      }).pipe(Effect.filterOrDieMessage((r) => r._tag === 'advance', 'Expected advance from local-push merge'))
 
-    yield* Effect.annotateCurrentSpan({
-      batchSize: encodedEvents.length,
-      mergeResultTag: mergeResult._tag,
-      eventCounts: encodedEvents.reduce<Record<string, number>>((acc, event) => {
-        acc[event.name] = (acc[event.name] ?? 0) + 1
-        return acc
-      }, {}),
-      ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
-    })
+      yield* Effect.annotateCurrentSpan({
+        batchSize: encodedEvents.length,
+        mergeResultTag: mergeResult._tag,
+        eventCounts: encodedEvents.reduce<Record<string, number>>((acc, event) => {
+          acc[event.name] = (acc[event.name] ?? 0) + 1
+          return acc
+        }, {}),
+        ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+      })
 
-    syncStateRef.current = mergeResult.newSyncState
-    yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
-    yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
-  })
+      yield* SubscriptionRef.set(syncState, mergeResult.newSyncState)
+      yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
+    },
+  )
 
   const debugInfo = {
     rebaseCount: 0,
@@ -352,15 +339,12 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     encodeEvents,
     materializeEvents,
     push,
-    syncState: Subscribable.make({
-      get: Effect.sync(() => syncStateRef.current),
-      changes: Stream.fromQueue(syncStateUpdateQueue),
-    }),
+    syncState,
     debug: {
       print: () =>
         Effect.gen(function* () {
           console.log('debugInfo', debugInfo)
-          console.log('syncState', syncStateRef.current)
+          console.log('syncState', yield* SubscriptionRef.get(syncState))
           const pushQueueSize = yield* BucketQueue.size(leaderPushQueue)
           console.log('pushQueueSize', pushQueueSize)
           const pushQueueItems = yield* BucketQueue.peekAll(leaderPushQueue)
@@ -379,16 +363,14 @@ export interface ClientSessionSyncProcessor {
   encodeEvents: (
     events: ReadonlyArray<LiveStoreEvent.Input.Decoded>,
   ) => Effect.Effect<ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>>
-  push: (
-    events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
-  ) => Effect.Effect<void>
+  push: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
   materializeEvents: (
     events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
   ) => Effect.Effect<{ writeTables: Set<string> }, MaterializeError>
   /**
    * Only used for debugging / observability.
    */
-  syncState: Subscribable.Subscribable<SyncState.SyncState>
+  syncState: SubscriptionRef.SubscriptionRef<SyncState.SyncState>
   debug: {
     print: () => void
     debugInfo: () => {

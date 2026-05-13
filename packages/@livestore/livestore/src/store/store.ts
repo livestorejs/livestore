@@ -807,10 +807,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       const { writeTables } = yield* Effect.try({
         try: () => {
           const materialize = () =>
-            this[StoreInternalsSymbol].syncProcessor.materializeEvents(encodedEvents).pipe(Runtime.runSync(localRuntime))
-          return events.length > 1
-            ? this[StoreInternalsSymbol].sqliteDbWrapper.txn(materialize)
-            : materialize()
+            this[StoreInternalsSymbol].syncProcessor
+              .materializeEvents(encodedEvents)
+              .pipe(Runtime.runSync(localRuntime))
+          return events.length > 1 ? this[StoreInternalsSymbol].sqliteDbWrapper.txn(materialize) : materialize()
         },
         catch: (cause) => UnknownError.make({ cause }),
       })
@@ -990,14 +990,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * )
    * ```
    */
-  syncStatusStream = (): Stream.Stream<SyncStatus> => {
-    const syncStateSubscribable = this[StoreInternalsSymbol].syncProcessor.syncState
-
-    return Stream.concat(
-      Stream.fromEffect(syncStateSubscribable.pipe(Effect.map(this.makeSyncStatus))),
-      syncStateSubscribable.changes.pipe(Stream.map(this.makeSyncStatus)),
-    )
-  }
+  syncStatusStream = (): Stream.Stream<SyncStatus> =>
+    this[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(Stream.map(this.makeSyncStatus))
 
   /**
    * Subscribes to sync status changes.
