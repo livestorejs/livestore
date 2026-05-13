@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
   assertCertifiedDevtoolsArtifactForLivestore,
+  containsForbiddenPattern,
   type ArtifactManifest,
   type ArtifactMetadata,
+  forbiddenPatterns,
 } from './devtools-artifact.ts'
 
 const metadata: ArtifactMetadata = {
@@ -144,5 +146,16 @@ describe('assertCertifiedDevtoolsArtifactForLivestore', () => {
         version: '0.4.0-dev.25',
       }),
     ).toThrow(/missing scenarios/)
+  })
+})
+
+describe('artifact forbidden text patterns', () => {
+  const containsForbiddenText = (content: string) =>
+    forbiddenPatterns.some((pattern) => containsForbiddenPattern(content, pattern))
+
+  it('allows Emscripten virtual home paths but rejects host home paths', () => {
+    expect(containsForbiddenText('HOME: "/home/web_user"')).toBe(false)
+    expect(containsForbiddenText('source: "/home/alice/project/src/file.ts"')).toBe(true)
+    expect(containsForbiddenText('source: "/Users/alice/project/src/file.ts"')).toBe(true)
   })
 })

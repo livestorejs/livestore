@@ -1,10 +1,22 @@
 {
   "schemaVersion": 2,
   "artifact": {
-    "metadataUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260505-398c5feb/release-metadata.json",
-    "tarballUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260505-398c5feb/livestore-devtools-vite.tgz",
-    "sha256": "6c5fb9ddc7d8c3cc55b5e04f67064dd65aa20b6a6a1eb89a5651cd74642ad83f",
-    "chromeZipUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260505-398c5feb/livestore-devtools-chrome.zip",
-    "chromeZipSha256": "92505c851d29276a3ee00230bfd2c395af41545ab70ff396ef4c40a8f6dd2077"
+    "metadataUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260513-27179788/release-metadata.json",
+    "tarballUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260513-27179788/livestore-devtools-vite.tgz",
+    "sha256": "1e766d5b1e0226c3c70c29c0dff24ee4da0ff8593b813c4b5fd29e852696f3f0",
+    "chromeZipUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260513-27179788/livestore-devtools-chrome.zip",
+    "chromeZipSha256": "f1feead7eb67f620a119ce92d35f84238274128cc480e3a851f1cc20785e2ed2"
+  },
+  "certification": {
+    "livestoreVersion": "0.4.0-dev.25",
+    "devtoolsBuildId": "dt-20260513-27179788",
+    "devtoolsProtocolVersion": 1,
+    "status": "passed",
+    "testSuite": "tests/integration/src/tests/playwright/devtools",
+    "scenarios": [
+      "direct web session loads and stays connected past heartbeat window",
+      "node adapter session loads through Vite and stays connected past 35 seconds"
+    ],
+    "evidence": "Verified locally on 2026-05-13 against exact artifact tarball from https://github.com/livestorejs/livestore-devtools-artifacts/releases/tag/devtools-artifact-dt-20260513-27179788."
   }
 }

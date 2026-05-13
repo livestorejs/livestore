@@ -283,8 +283,10 @@ const prepareInputs = async (flags: Map<string, string | true>) => {
   return { workDir, metadata, metadataPath, tarballPath, chromeZipPath, manifest }
 }
 
-const forbiddenPatterns: ReadonlyArray<string | RegExp> = [
-  '/home/',
+export const forbiddenPatterns: ReadonlyArray<string | RegExp> = [
+  // Reject real host home paths without blocking Emscripten's browser-only
+  // virtual filesystem defaults such as /home/web_user.
+  /\/home\/(?!web_user(?:\/|["'`]|$))[A-Za-z0-9._-]+\//,
   '/Users/',
   'op://',
   /npm_[A-Za-z0-9]{20,}/,
@@ -296,7 +298,7 @@ const forbiddenPatterns: ReadonlyArray<string | RegExp> = [
 
 const forbiddenPatternName = (pattern: string | RegExp) => (typeof pattern === 'string' ? pattern : pattern.source)
 
-const containsForbiddenPattern = (content: string, pattern: string | RegExp) =>
+export const containsForbiddenPattern = (content: string, pattern: string | RegExp) =>
   typeof pattern === 'string' ? content.includes(pattern) : pattern.test(content)
 
 const assertSupportedDevtoolsProtocol = (metadata: ArtifactMetadata) => {
