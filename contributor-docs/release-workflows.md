@@ -105,6 +105,13 @@ generator also syncs standalone examples and other non-workspace consumers to
 the exact release version. This keeps `pnpm install --lockfile-only` validating
 the same package graph that the release will publish.
 
+The release PR generator also updates the LiveStore-owned DevTools artifact
+certification in `release/devtools-artifact.json` to the generated release
+version and stages that manifest in the release PR. This keeps the checked-in
+release data self-contained: the DevTools artifact identity remains the
+artifact build id, while the LiveStore package version is assigned by release
+automation and then validated by CI before auto-merge.
+
 Release plans are validated against the npm dist-tag before dry-run or publish:
 
 - `latest` only accepts stable versions such as `0.4.0`.
@@ -193,9 +200,13 @@ Repack validation also rejects artifacts with unsupported DevTools protocol
 versions. For dev and stable release versions, repack also requires a
 schemaVersion 2 manifest certification with `status: passed`, the exact
 LiveStore version, exact DevTools build id, protocol version, and the e2e
-scenarios that passed. CI snapshot packages are per-commit artifacts and cannot
-be pre-certified in the checked-in manifest; they still pass through artifact
-integrity, package-shape, secret-scan, and protocol validation.
+scenarios that passed. The release PR generator rewrites only the
+`livestoreVersion` and evidence text for an already-passed certification so the
+manifest matches the generated release plan; it does not change the DevTools
+artifact build, protocol, or scenario list. CI snapshot packages are per-commit
+artifacts and cannot be pre-certified in the checked-in manifest; they still
+pass through artifact integrity, package-shape, secret-scan, and protocol
+validation.
 
 The repacked package writes `dist/release-metadata.json` with both identities:
 
@@ -221,13 +232,14 @@ release:
    tarball URLs.
 2. Include the tarball SHA-256 when available.
 3. Run `CI=1 dt release:devtools-artifact:verify`.
-4. Run the release e2e scenarios against the exact LiveStore version and
+4. Run the release e2e scenarios against the current LiveStore branch and
    DevTools build id.
 5. Add the schemaVersion 2 certification entry only after e2e passes.
 6. Open a PR with only the manifest and certification change unless release
    tooling also changed.
 
-The release PR will then dry-run the repack using that manifest. When the
+The release PR generator will assign that passed certification to the generated
+release version and dry-run the repack using the resulting manifest. When the
 release-plan PR merges to `main`, the publish job repackages and publishes the
 artifact as `@livestore/devtools-vite@<livestore-version>`.
 

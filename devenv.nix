@@ -332,6 +332,7 @@ in
       DT_PASSTHROUGH=1 pnpm exec changeset version
       bun scripts/src/commands/changesets.ts restore-prerelease-changesets
       bun scripts/src/commands/changesets.ts sync-version-source
+      bun scripts/src/commands/changesets.ts sync-devtools-artifact-certification
       DT_PASSTHROUGH=1 genie
       bun scripts/src/commands/changesets.ts sync-standalone-consumers
       DT_PASSTHROUGH=1 pnpm install --lockfile-only --no-frozen-lockfile
