@@ -187,9 +187,16 @@ if [ "$use_synthetic_plan" = "false" ]; then
 fi
 
 mkdir -p release
+version="$(jq -r '.version' packages/@livestore/common/package.json)"
+npm_tag="latest"
+if [[ "$version" == *"-dev."* ]]; then
+  npm_tag="dev"
+elif [[ "$version" == *"-"* ]]; then
+  npm_tag="next"
+fi
 jq -n \\
-  --arg version "0.0.0-snapshot-release-workflow-test-\${GITHUB_SHA}" \\
-  --arg npmTag "next" \\
+  --arg version "$version" \\
+  --arg npmTag "$npm_tag" \\
   '{
     schemaVersion: 1,
     version: $version,
