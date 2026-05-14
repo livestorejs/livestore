@@ -116,6 +116,7 @@ git add \\
   .changeset \\
   package.json \\
   pnpm-lock.yaml \\
+  release/devtools-artifact.json \\
   release/release-plan.json \\
   release/version.json \\
   docs/package.json \\

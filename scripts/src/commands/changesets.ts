@@ -8,6 +8,7 @@ const usage = `Usage:
   bun scripts/src/commands/changesets.ts check-pr [--base <ref>]
   bun scripts/src/commands/changesets.ts restore-prerelease-changesets
   bun scripts/src/commands/changesets.ts sync-version-source
+  bun scripts/src/commands/changesets.ts sync-devtools-artifact-certification
   bun scripts/src/commands/changesets.ts sync-standalone-consumers
   bun scripts/src/commands/changesets.ts write-release-plan [--npm-tag <tag>]
   bun scripts/src/commands/changesets.ts assert-fixed-versions
@@ -256,6 +257,59 @@ const syncVersionSource = () => {
   console.log(`Synced release/version.json to ${version}`)
 }
 
+type DevtoolsArtifactManifest = {
+  readonly schemaVersion?: number
+  readonly artifact?: {
+    readonly metadataUrl?: string
+  }
+  readonly certification?: {
+    readonly livestoreVersion?: string
+    readonly status?: string
+    readonly testSuite?: string
+    readonly evidence?: string
+  }
+}
+
+const syncDevtoolsArtifactCertification = () => {
+  const file = 'release/devtools-artifact.json'
+  if (existsSync(file) === false) {
+    console.log('No release/devtools-artifact.json to sync')
+    return
+  }
+
+  const version = readReleaseVersion()
+  const manifest = readJson<DevtoolsArtifactManifest>(file)
+  if (manifest.schemaVersion !== 2 || manifest.certification === undefined) {
+    console.log('DevTools artifact manifest has no LiveStore-owned certification to sync')
+    return
+  }
+  if (manifest.certification.status !== 'passed') {
+    console.log(`DevTools artifact certification is ${manifest.certification.status}; leaving it unchanged`)
+    return
+  }
+  if (manifest.certification.livestoreVersion === version) {
+    console.log(`DevTools artifact certification already targets ${version}`)
+    return
+  }
+
+  // The artifact build stays the same; the release PR only assigns it to the
+  // generated LiveStore release-group version. Release PR CI must still pass
+  // before auto-merge, and publish re-runs the same repack gate from main.
+  const nextManifest = {
+    ...manifest,
+    certification: {
+      ...manifest.certification,
+      livestoreVersion: version,
+      evidence:
+        `Release automation assigned this passed DevTools artifact certification to LiveStore ${version}. ` +
+        `The release PR must pass CI, including ${manifest.certification.testSuite ?? 'the DevTools repack gate'}, ` +
+        `before auto-merge. Artifact metadata: ${manifest.artifact?.metadataUrl ?? file}.`,
+    },
+  }
+  writeJson(file, nextManifest)
+  console.log(`Synced DevTools artifact certification to ${version}`)
+}
+
 const writeReleasePlan = (flags: Map<string, string | true>) => {
   const version = readReleaseVersion()
   const npmTag = readFlag(flags, 'npm-tag') ?? process.env.LIVESTORE_NPM_TAG ?? 'latest'
@@ -303,6 +357,7 @@ const main = () => {
   if (command === 'check-pr') return checkPr(flags)
   if (command === 'restore-prerelease-changesets') return restorePrereleaseChangesets()
   if (command === 'sync-version-source') return syncVersionSource()
+  if (command === 'sync-devtools-artifact-certification') return syncDevtoolsArtifactCertification()
   if (command === 'sync-standalone-consumers') return syncStandaloneConsumers()
   if (command === 'write-release-plan') return writeReleasePlan(flags)
   if (command === 'assert-fixed-versions') return assertFixedVersions()
