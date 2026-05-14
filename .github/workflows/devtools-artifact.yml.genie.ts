@@ -97,6 +97,10 @@ if [ -n "\${ARTIFACT_CHROME_ZIP_URL:-}" ] && [ -z "\${ARTIFACT_CHROME_ZIP_SHA256
 fi
 
 mkdir -p release
+# This workflow only records the public artifact identity. It must not
+# synthesize LiveStore certification: certification belongs to the LiveStore
+# release e2e gate, which proves one exact DevTools build against one exact
+# LiveStore release before repack/publish may run.
 jq -n \\
   --arg metadataUrl "$ARTIFACT_METADATA_URL" \\
   --arg tarballUrl "$ARTIFACT_TARBALL_URL" \\
@@ -104,7 +108,7 @@ jq -n \\
   --arg chromeZipUrl "\${ARTIFACT_CHROME_ZIP_URL:-}" \\
   --arg chromeZipSha256 "\${ARTIFACT_CHROME_ZIP_SHA256:-}" \\
   '{
-    schemaVersion: 1,
+    schemaVersion: 2,
     artifact: {
       metadataUrl: $metadataUrl,
       tarballUrl: $tarballUrl,
@@ -149,7 +153,7 @@ title="Update LiveStore DevTools artifact manifest"
 body="$(cat <<'BODY'
 Updates the public DevTools artifact manifest from a sanitized artifact release.
 
-This PR only changes public artifact URLs and checksums. The workflow verifies the tarball before opening the PR.
+This PR only changes public artifact URLs and checksums. The workflow verifies the tarball before opening the PR; LiveStore release certification is added separately after e2e passes.
 BODY
 )"
 

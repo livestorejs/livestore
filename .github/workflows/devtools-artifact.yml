@@ -78,6 +78,12 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v17
         with:
@@ -196,6 +202,10 @@ jobs:
           fi
 
           mkdir -p release
+          # This workflow only records the public artifact identity. It must not
+          # synthesize LiveStore certification: certification belongs to the LiveStore
+          # release e2e gate, which proves one exact DevTools build against one exact
+          # LiveStore release before repack/publish may run.
           jq -n \
             --arg metadataUrl "$ARTIFACT_METADATA_URL" \
             --arg tarballUrl "$ARTIFACT_TARBALL_URL" \
@@ -203,7 +213,7 @@ jobs:
             --arg chromeZipUrl "${ARTIFACT_CHROME_ZIP_URL:-}" \
             --arg chromeZipSha256 "${ARTIFACT_CHROME_ZIP_SHA256:-}" \
             '{
-              schemaVersion: 1,
+              schemaVersion: 2,
               artifact: {
                 metadataUrl: $metadataUrl,
                 tarballUrl: $tarballUrl,
@@ -244,7 +254,7 @@ jobs:
           body="$(cat <<'BODY'
           Updates the public DevTools artifact manifest from a sanitized artifact release.
 
-          This PR only changes public artifact URLs and checksums. The workflow verifies the tarball before opening the PR.
+          This PR only changes public artifact URLs and checksums. The workflow verifies the tarball before opening the PR; LiveStore release certification is added separately after e2e passes.
           BODY
           )"
 

@@ -157,7 +157,13 @@ fi
 gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$branch"
 gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$branch" \\
   -f mode=validate-release-plan \\
-  -f npm_tag="$LIVESTORE_NPM_TAG"`,
+  -f npm_tag="$LIVESTORE_NPM_TAG"
+
+if gh pr view "$branch" --repo "$GITHUB_REPOSITORY" --json autoMergeRequest --jq '.autoMergeRequest != null' | grep -qx true; then
+  echo "Auto-merge already enabled for $branch."
+else
+  gh pr merge "$branch" --repo "$GITHUB_REPOSITORY" --auto --merge
+fi`,
         },
       ],
     },
@@ -187,9 +193,17 @@ if [ "$use_synthetic_plan" = "false" ]; then
 fi
 
 mkdir -p release
+# PRs that touch release machinery but do not carry an actual release plan still
+# need to exercise package publishing and DevTools repacking. Use a unique,
+# unpublished prerelease instead of the checked-in package version: current dev
+# versions can already exist on npm, while snapshot versions intentionally
+# belong to the separate snapshot publisher.
+short_sha="\${GITHUB_SHA:0:12}"
+version="0.0.0-ci.release-validation.$short_sha"
+npm_tag="next"
 jq -n \\
-  --arg version "0.0.0-release-workflow-test-\${GITHUB_SHA}" \\
-  --arg npmTag "next" \\
+  --arg version "$version" \\
+  --arg npmTag "$npm_tag" \\
   '{
     schemaVersion: 1,
     version: $version,

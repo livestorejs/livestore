@@ -12,7 +12,7 @@ import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
 
-import { checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
+import { checkConnectionRemainsActive, checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
 
 const usedPages = new Set<PW.Page>()
 
@@ -25,7 +25,12 @@ const makeTabPair = (
   url: string,
   tabName: string,
   adapter: AdapterKind,
-  options?: { appVersionOverride?: string; appDevtoolsProtocolVersionOverride?: number },
+  options?: {
+    appVersionOverride?: string
+    appDevtoolsProtocolVersionOverride?: number
+    devtoolsRoute?: 'session-list' | 'direct-session'
+    skipOtelSpanLink?: boolean
+  },
 ) =>
   Effect.gen(function* () {
     const { browserContext } = yield* Playwright.BrowserContext
@@ -89,7 +94,7 @@ const makeTabPair = (
     )
 
     // Skip OTel span linking when testing DevTools protocol mismatch (app may not initialize properly)
-    if (options?.appDevtoolsProtocolVersionOverride == null) {
+    if (options?.appDevtoolsProtocolVersionOverride == null && options?.skipOtelSpanLink !== true) {
       const rootSpanContext = yield* Effect.tryPromise(() =>
         page
           .waitForFunction('window.__debugLiveStore?.default !== undefined')
@@ -114,7 +119,12 @@ const makeTabPair = (
       shouldEvaluateArgs: false,
     }).pipe(Effect.forkScoped)
 
-    yield* Effect.tryPromise(() => devtools.goto(`${url}/_livestore/web#${tabName}`))
+    const devtoolsRoute =
+      options?.devtoolsRoute === 'direct-session'
+        ? `/_livestore/web/app-root/${tabName}/${tabName}/default`
+        : `/_livestore/web#${tabName}`
+
+    yield* Effect.tryPromise(() => devtools.goto(`${url}${devtoolsRoute}`))
 
     usedPages.add(devtools)
 
@@ -322,6 +332,43 @@ const runTest =
     )
   }
 })
+
+test(
+  'direct web session stays connected past heartbeat window',
+  runTest(
+    Effect.gen(function* () {
+      const tab1 = yield* makeTabPair(
+        `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}`,
+        'tab-direct-session',
+        'inmemory',
+        { devtoolsRoute: 'direct-session', skipOtelSpanLink: true },
+      )
+
+      yield* Effect.gen(function* () {
+        yield* Effect.tryPromise(async () => {
+          await checkDevtoolsState({
+            devtools: tab1.devtools,
+            label: 'devtools-direct-session',
+            expect: { leader: true, alreadyLoaded: false, tables: ['uiState (1)', 'todos (0)'] },
+          })
+
+          // The web direct transport previously reused one Ping request id. The app
+          // dedupes request ids, so the second heartbeat was ignored and this page
+          // reported "Connection to app lost" after roughly 15 seconds.
+          await checkConnectionRemainsActive({
+            devtools: tab1.devtools,
+            label: 'devtools-direct-session',
+            durationMs: 22_000,
+          })
+        })
+
+        yield* shutdownTab(tab1.page, { expectStore: false })
+
+        yield* Effect.sleep(500).pipe(Effect.withSpan('wait-for-otel-flush'))
+      }).pipe(Effect.raceFirst(Fiber.joinAll([tab1.pageConsoleFiber, tab1.devtoolsConsoleFiber])))
+    }),
+  ),
+)
 
 const shutdownTab = Effect.fn('shutdown-tab')(function* (tab: PW.Page, options?: { expectStore?: boolean }) {
   // yield* Playwright.withPage(() => tab.pause())

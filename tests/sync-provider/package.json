@@ -31,7 +31,7 @@
     "@effect/platform-bun": "4.0.0-beta.65",
     "@effect/platform-node": "4.0.0-beta.65",
     "@effect/vitest": "4.0.0-beta.65",
-    "@livestore/devtools-vite": "0.4.0-dev.24",
+    "@livestore/devtools-vite": "0.4.0-dev.25",
     "@livestore/utils-dev": "workspace:^",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/resources": "2.2.0",

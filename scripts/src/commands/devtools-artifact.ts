@@ -17,25 +17,23 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 
-import semver from 'semver'
-
 import { supportedDevtoolsProtocolVersions } from '@livestore/common'
 
 type CompatibleLivestore =
   | { readonly kind: 'range'; readonly range: string }
   | { readonly kind: 'snapshot'; readonly gitSha: string; readonly version: string }
 
-type ArtifactMetadata = {
+export type ArtifactMetadata = {
   readonly schemaVersion: 1
   readonly artifactName: 'livestore-devtools-vite'
   readonly packageName: '@livestore/devtools-vite'
-  readonly devtoolsVersion: string
+  readonly devtoolsVersion?: string
   readonly devtoolsBuildId: string
   readonly artifactVersion?: number
   readonly devtoolsProtocolVersion?: number
   readonly builtAt?: string
   readonly sourceRevision?: string
-  readonly compatibleLivestore: CompatibleLivestore
+  readonly compatibleLivestore?: CompatibleLivestore
   readonly files: {
     readonly tarball: {
       readonly name: string
@@ -50,23 +48,52 @@ type ArtifactMetadata = {
   }
 }
 
-type ArtifactManifest = {
-  readonly schemaVersion: 1
-  readonly artifact: {
-    readonly metadataUrl: string
-    readonly tarballUrl: string
-    readonly sha256?: string
-    readonly chromeZipUrl?: string
-    readonly chromeZipSha256?: string
-  }
+type ArtifactSource = {
+  readonly metadataUrl: string
+  readonly tarballUrl: string
+  readonly sha256?: string
+  readonly chromeZipUrl?: string
+  readonly chromeZipSha256?: string
 }
+
+type DevtoolsArtifactCertification = {
+  readonly livestoreVersion: string
+  readonly devtoolsBuildId: string
+  readonly devtoolsProtocolVersion: number
+  readonly status: 'pending' | 'passed' | 'failed'
+  readonly testSuite: string
+  readonly scenarios: ReadonlyArray<string>
+  readonly evidence?: string
+}
+
+type DevtoolsArtifactEphemeralCertification = {
+  readonly livestoreVersion: string
+  readonly devtoolsBuildId: string
+  readonly devtoolsProtocolVersion: number
+  readonly status: 'ci-snapshot' | 'ci-release-validation'
+  readonly testSuite: 'artifact-integrity-and-protocol-gate'
+  readonly scenarios: ReadonlyArray<'ci-snapshot-repack' | 'ci-release-validation-repack'>
+}
+
+type ArtifactManifestV1 = {
+  readonly schemaVersion: 1
+  readonly artifact: ArtifactSource
+}
+
+type ArtifactManifestV2 = {
+  readonly schemaVersion: 2
+  readonly artifact: ArtifactSource
+  readonly certification?: DevtoolsArtifactCertification
+}
+
+export type ArtifactManifest = ArtifactManifestV1 | ArtifactManifestV2
 
 const usage = `Usage:
   bun scripts/src/commands/devtools-artifact.ts verify (--manifest <file> | --metadata <url-or-file> --tarball <url-or-file>)
-  bun scripts/src/commands/devtools-artifact.ts repack (--manifest <file> | --metadata <url-or-file> --tarball <url-or-file>) --version <version> [--dry-run|--publish]
+  bun scripts/src/commands/devtools-artifact.ts repack --manifest <file> --version <version> [--dry-run|--publish]
 
 Options:
-  --manifest <file>        Checked-in public artifact manifest
+  --manifest <file>        Checked-in public artifact manifest. Repack requires schemaVersion 2 with passed certification.
   --metadata <url-or-file>  Public release-metadata.json URL or local path
   --tarball <url-or-file>   Public artifact tarball URL or local path
   --chrome-zip <url-or-file> Public Chrome extension ZIP URL or local path
@@ -161,6 +188,8 @@ const publishTagForVersion = (version: string) => {
 
 const isSnapshotVersion = (version: string) => version.includes('-snapshot-')
 
+const isCiReleaseValidationVersion = (version: string) => version.includes('-ci.release-validation.')
+
 const packageVersionExists = (packageName: string, version: string) =>
   runCaptureOptional(['npm', 'view', `${packageName}@${version}`, 'version']) === version
 
@@ -204,6 +233,7 @@ const fetchToFile = async (source: string, target: string) => {
 
 const prepareInputs = async (flags: Map<string, string | true>) => {
   const manifestSource = readFlag(flags, 'manifest')
+  let manifest: ArtifactManifest | undefined
   let metadataSource = readFlag(flags, 'metadata')
   let tarballSource = readFlag(flags, 'tarball')
   let chromeZipSource = readFlag(flags, 'chrome-zip')
@@ -214,8 +244,10 @@ const prepareInputs = async (flags: Map<string, string | true>) => {
     if (metadataSource !== undefined || tarballSource !== undefined || chromeZipSource !== undefined) {
       throw new Error('--manifest cannot be combined with --metadata, --tarball, or --chrome-zip')
     }
-    const manifest = JSON.parse(readFileSync(path.resolve(manifestSource), 'utf8')) as ArtifactManifest
-    if (manifest.schemaVersion !== 1) throw new Error('Unsupported artifact manifest schemaVersion')
+    manifest = JSON.parse(readFileSync(path.resolve(manifestSource), 'utf8')) as ArtifactManifest
+    if (manifest.schemaVersion !== 1 && manifest.schemaVersion !== 2) {
+      throw new Error('Unsupported artifact manifest schemaVersion')
+    }
     metadataSource = manifest.artifact.metadataUrl
     tarballSource = manifest.artifact.tarballUrl
     chromeZipSource = manifest.artifact.chromeZipUrl
@@ -250,11 +282,13 @@ const prepareInputs = async (flags: Map<string, string | true>) => {
   }
 
   const metadata = JSON.parse(readFileSync(metadataPath, 'utf8')) as ArtifactMetadata
-  return { workDir, metadata, metadataPath, tarballPath, chromeZipPath }
+  return { workDir, metadata, metadataPath, tarballPath, chromeZipPath, manifest }
 }
 
-const forbiddenPatterns: ReadonlyArray<string | RegExp> = [
-  '/home/',
+export const forbiddenPatterns: ReadonlyArray<string | RegExp> = [
+  // Reject real host home paths without blocking Emscripten's browser-only
+  // virtual filesystem defaults such as /home/web_user.
+  /\/home\/(?!web_user(?:\/|["'`]|$))[A-Za-z0-9._-]+\//,
   '/Users/',
   'op://',
   /npm_[A-Za-z0-9]{20,}/,
@@ -266,7 +300,7 @@ const forbiddenPatterns: ReadonlyArray<string | RegExp> = [
 
 const forbiddenPatternName = (pattern: string | RegExp) => (typeof pattern === 'string' ? pattern : pattern.source)
 
-const containsForbiddenPattern = (content: string, pattern: string | RegExp) =>
+export const containsForbiddenPattern = (content: string, pattern: string | RegExp) =>
   typeof pattern === 'string' ? content.includes(pattern) : pattern.test(content)
 
 const assertSupportedDevtoolsProtocol = (metadata: ArtifactMetadata) => {
@@ -278,25 +312,74 @@ const assertSupportedDevtoolsProtocol = (metadata: ArtifactMetadata) => {
   }
 }
 
-const assertCompatibleLivestoreVersion = (metadata: ArtifactMetadata, version: string) => {
-  const compatibility = metadata.compatibleLivestore
+export const assertCertifiedDevtoolsArtifactForLivestore = ({
+  manifest,
+  metadata,
+  version,
+}: {
+  readonly manifest: ArtifactManifest | undefined
+  readonly metadata: ArtifactMetadata
+  readonly version: string
+}) => {
+  const protocolVersion = devtoolsProtocolVersionForArtifact(metadata)
 
-  switch (compatibility.kind) {
-    case 'range': {
-      const validVersion = semver.valid(version)
-      if (validVersion === null) throw new Error(`Invalid LiveStore release version: ${version}`)
-      if (semver.satisfies(validVersion, compatibility.range, { includePrerelease: true }) === false) {
-        throw new Error(`LiveStore ${version} does not satisfy DevTools artifact range ${compatibility.range}`)
-      }
-      return
-    }
-    case 'snapshot': {
-      if (version !== compatibility.version) {
-        throw new Error(`LiveStore ${version} does not match DevTools artifact snapshot ${compatibility.version}`)
-      }
-      return
-    }
+  if (manifest === undefined) {
+    throw new Error(
+      'DevTools repack requires --manifest because LiveStore-owned certification is checked in release/devtools-artifact.json',
+    )
   }
+  if (manifest.schemaVersion !== 2) {
+    throw new Error(
+      'DevTools repack requires release/devtools-artifact.json schemaVersion 2 with LiveStore-owned certification',
+    )
+  }
+
+  // Ephemeral CI versions cannot be pre-certified in a checked-in manifest:
+  // snapshot versions are produced by the snapshot publisher, and
+  // ci.release-validation versions are synthetic PR-only release-plan probes.
+  // They still require the LiveStore-owned manifest pointer and pass through
+  // artifact checksums, package-shape audit, secret scan, and protocol
+  // validation; dev/stable release-channel packages below fail closed unless
+  // LiveStore records an exact passed e2e certification.
+  if (isSnapshotVersion(version) === true || isCiReleaseValidationVersion(version) === true) {
+    return {
+      livestoreVersion: version,
+      devtoolsBuildId: metadata.devtoolsBuildId,
+      devtoolsProtocolVersion: protocolVersion,
+      status: isSnapshotVersion(version) === true ? 'ci-snapshot' : 'ci-release-validation',
+      testSuite: 'artifact-integrity-and-protocol-gate',
+      scenarios: isSnapshotVersion(version) === true ? ['ci-snapshot-repack'] : ['ci-release-validation-repack'],
+    } satisfies DevtoolsArtifactEphemeralCertification
+  }
+
+  const certification = manifest.certification
+  if (certification === undefined) {
+    throw new Error('DevTools repack requires a LiveStore-owned certification entry in the artifact manifest')
+  }
+  if (certification.status !== 'passed') {
+    throw new Error(`DevTools artifact certification is ${certification.status}; expected passed`)
+  }
+  if (certification.livestoreVersion !== version) {
+    throw new Error(
+      `DevTools artifact is certified for LiveStore ${certification.livestoreVersion}, not release ${version}`,
+    )
+  }
+  if (certification.devtoolsBuildId !== metadata.devtoolsBuildId) {
+    throw new Error(
+      `DevTools artifact certification build ${certification.devtoolsBuildId} does not match metadata build ${metadata.devtoolsBuildId}`,
+    )
+  }
+
+  if (certification.devtoolsProtocolVersion !== protocolVersion) {
+    throw new Error(
+      `DevTools artifact certification protocol ${certification.devtoolsProtocolVersion} does not match metadata protocol ${protocolVersion}`,
+    )
+  }
+  if (certification.testSuite.trim().length === 0)
+    throw new Error('DevTools artifact certification is missing testSuite')
+  if (certification.scenarios.length === 0) throw new Error('DevTools artifact certification is missing scenarios')
+
+  return certification
 }
 
 const assertMetadata = (metadata: ArtifactMetadata, tarballPath: string, chromeZipPath: string | undefined) => {
@@ -415,7 +498,7 @@ const assertNoForbiddenZipText = async (chromeZipPath: string) => {
 }
 
 const verifyArtifact = async (flags: Map<string, string | true>) => {
-  const { metadata, tarballPath, chromeZipPath, workDir } = await prepareInputs(flags)
+  const { metadata, tarballPath, chromeZipPath, workDir, manifest } = await prepareInputs(flags)
   assertMetadata(metadata, tarballPath, chromeZipPath)
   assertTarballEntries(tarballPath)
   await assertNoForbiddenText(tarballPath)
@@ -423,7 +506,7 @@ const verifyArtifact = async (flags: Map<string, string | true>) => {
     assertChromeZipEntries(chromeZipPath)
     await assertNoForbiddenZipText(chromeZipPath)
   }
-  return { metadata, tarballPath, chromeZipPath, workDir }
+  return { metadata, tarballPath, chromeZipPath, workDir, manifest }
 }
 
 const materializeChromeZipAsset = (version: string, chromeZipPath: string, workDir: string) => {
@@ -454,8 +537,14 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
   const version = readFlag(flags, 'version')
   if (version === undefined) throw new Error('--version is required')
 
-  const { metadata, tarballPath, chromeZipPath, workDir } = await verifyArtifact(flags)
-  assertCompatibleLivestoreVersion(metadata, version)
+  const { metadata, tarballPath, chromeZipPath, workDir, manifest } = await verifyArtifact(flags)
+  // The public DevTools artifact describes what was built; it does not decide which
+  // LiveStore releases may ship it. LiveStore releases much more frequently than
+  // DevTools artifacts, so repack/publish requires this repo to certify the exact
+  // build id and protocol against the exact release version after the release e2e
+  // suite has passed. This prevents stale artifacts with broad compatibility
+  // metadata, such as "*", from being republished as if they were current.
+  const livestoreCertification = assertCertifiedDevtoolsArtifactForLivestore({ manifest, metadata, version })
   const unpackDir = path.join(workDir, 'package-src')
   rmSync(unpackDir, { recursive: true, force: true })
   mkdirSync(unpackDir, { recursive: true })
@@ -488,7 +577,16 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
 
   writeFileSync(
     path.join(packageDir, 'dist/release-metadata.json'),
-    `${JSON.stringify({ schemaVersion: 1, devtoolsArtifact: normalizeArtifactMetadata(metadata), livestoreVersion: version }, null, 2)}\n`,
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        devtoolsArtifact: normalizeArtifactMetadata(metadata),
+        livestoreVersion: version,
+        livestoreCertification,
+      },
+      null,
+      2,
+    )}\n`,
   )
 
   const packedJson = runCapture(['npm', 'pack', '--json', '--pack-destination', workDir], {
@@ -552,7 +650,9 @@ const main = async () => {
   throw new Error(`Unknown command: ${command}\n\n${usage}`)
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error)
-  process.exit(1)
-})
+if (import.meta.main === true) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error)
+    process.exit(1)
+  })
+}
