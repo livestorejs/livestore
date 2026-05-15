@@ -1,17 +1,19 @@
+/** biome-ignore-all lint/a11y: test */
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
+import { provideOtel } from '@livestore/common'
+import * as LiveStore from '@livestore/livestore'
+import { createStore, queryDb, StoreInternalsSymbol, signal } from '@livestore/livestore'
+import { RG } from '@livestore/livestore/internal/testing-utils'
+import { Effect, Schema } from '@livestore/utils/effect'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as ReactTesting from '@testing-library/react'
 import React from 'react'
 import * as ReactWindow from 'react-window'
 import { expect } from 'vitest'
 
-/** biome-ignore-all lint/a11y: test */
-import * as LiveStore from '@livestore/livestore'
-import { queryDb, StoreInternalsSymbol, signal } from '@livestore/livestore'
-import { RG } from '@livestore/livestore/internal/testing-utils'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect, Schema } from '@livestore/utils/effect'
-
-import { events, makeTodoMvcReact, tables } from './__tests__/fixture.tsx'
+import { events, makeTodoMvcReact, schema, tables } from './__tests__/fixture.tsx'
 import { __resetUseRcResourceCache } from './useRcResource.ts'
+import { withReactApi } from './useStore.ts'
 
 Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
   'useQuery (strictMode=%s)',
@@ -210,6 +212,39 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
         })
 
         expect(result.current).toEqual(['t1'])
+      }),
+    )
+
+    Vitest.scopedLive('derives a fresh LiveQuery per Store instance', () =>
+      Effect.gen(function* () {
+        const makeStore = () =>
+          createStore({
+            schema,
+            storeId: 'reset-test',
+            adapter: makeInMemoryAdapter({ clientId: 'stable-client', sessionId: 'stable-session' }),
+            debug: { instanceId: 'test' },
+          }).pipe(provideOtel({}))
+
+        const storeA = withReactApi(yield* makeStore())
+        const storeB = withReactApi(yield* makeStore())
+
+        const allTodos$ = queryDb({ query: `select * from todos`, schema: Schema.Array(tables.todos.rowSchema) })
+
+        const MaybeStrictMode = strictMode === true ? React.StrictMode : React.Fragment
+        const wrapper = ({ children }: any) => <MaybeStrictMode>{children}</MaybeStrictMode>
+
+        storeA.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
+
+        const { result, rerender } = ReactTesting.renderHook(
+          ({ store }: { store: typeof storeA }) => store.useQuery(allTodos$).length,
+          { wrapper, initialProps: { store: storeA } },
+        )
+
+        expect(result.current).toBe(1)
+
+        rerender({ store: storeB })
+
+        expect(result.current).toBe(0)
       }),
     )
 
