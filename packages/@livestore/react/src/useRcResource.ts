@@ -25,10 +25,10 @@ import * as React from 'react'
  * - Upon component unmount, the reference count is decremented, leading to disposal (via the `dispose` function)
  *   if the reference count drops to zero. An unmount is either detected via React's `useEffect` callback or
  *   in the useMemo hook when the key changes.
- * 
+ *
  * Why this is needed in LiveStore:
  * Let's first take a look at the "trivial implementation":
- * 
+ *
  * ```ts
  * const useSimpleResource = <T>(create: () => T, dispose: (resource: T) => void) => {
  *     const val = React.useMemo(() => create(), [create])
@@ -42,7 +42,7 @@ import * as React from 'react'
  *     return val
  * }
  * ```
- * 
+ *
  * LiveStore uses this hook to create LiveQuery instances which are stateful and must not be leaked.
  * The simple implementation above would leak the LiveQuery instance if the component is unmounted or props change.
  *
@@ -72,12 +72,14 @@ import * as React from 'react'
  * @returns The stateful entity corresponding to the provided key.
  */
 export const useRcResource = <T>(
+  scope: object,
   key: string,
   create: () => T,
   dispose: (resource: NoInfer<T>) => void,
   _options?: { debugPrint?: (resource: NoInfer<T>) => ReadonlyArray<any> },
 ): T => {
   const keyRef = React.useRef<string | undefined>(undefined)
+  const scopeRef = React.useRef<object | undefined>(undefined)
   const didDisposeInMemo = React.useRef(false)
   const createRef = React.useRef(create)
   const disposeRef = React.useRef(dispose)
@@ -85,79 +87,72 @@ export const useRcResource = <T>(
   createRef.current = create
   disposeRef.current = dispose
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Dependency is deliberately limited to `key` to avoid unintended re-creations.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Dependencies are deliberately limited to `scope` and `key` to avoid unintended re-creations.
   const resource = React.useMemo(() => {
-    // console.debug('useMemo', key)
+    const bucket = getBucket(scope)
+
     if (didDisposeInMemo.current === true) {
-      // console.debug('useMemo', key, 'skip')
-      const cachedItem = cache.get(key)
+      const cachedItem = bucket.get(key)
       if (cachedItem !== undefined && cachedItem._tag === 'active') {
         return cachedItem.resource
       }
     }
 
-    // Check if the key has changed (or is undefined)
-    if (keyRef.current !== undefined && keyRef.current !== key) {
-      // If the key has changed, decrement the reference on the previous key
+    // Check if the (scope, key) pair has changed (or is undefined)
+    if (keyRef.current !== undefined && (keyRef.current !== key || scopeRef.current !== scope)) {
       const previousKey = keyRef.current
-      const cachedItemForPreviousKey = cache.get(previousKey)
+      // scopeRef.current is set together with keyRef.current below, so it's defined here.
+      const previousBucket = getBucket(scopeRef.current!)
+      const cachedItemForPreviousKey = previousBucket.get(previousKey)
       if (cachedItemForPreviousKey !== undefined && cachedItemForPreviousKey._tag === 'active') {
-        // previousKeyRef.current = previousKey
         cachedItemForPreviousKey.rc--
-
-        // console.debug('useMemo', key, 'rc--', previousKey, cachedItemForPreviousKey.rc)
 
         if (cachedItemForPreviousKey.rc === 0) {
           // Clean up the stateful resource if no longer referenced
           disposeRef.current(cachedItemForPreviousKey.resource)
-          cache.set(previousKey, { _tag: 'destroyed' })
+          previousBucket.set(previousKey, { _tag: 'destroyed' })
           didDisposeInMemo.current = true
         }
       }
     }
 
-    const cachedItem = cache.get(key)
+    const cachedItem = bucket.get(key)
     if (cachedItem !== undefined && cachedItem._tag === 'active') {
       // In React Strict Mode, the `useMemo` hook is called multiple times,
       // so we only increment the reference from the first call for this component.
       cachedItem.rc++
-      // console.debug('rc++', cachedItem.rc, ...(_options?.debugPrint?.(cachedItem.resource) ?? []))
-
       return cachedItem.resource
     }
 
     // Create a new stateful resource if not cached
     const resource = createRef.current()
-    cache.set(key, { _tag: 'active', rc: 1, resource })
+    bucket.set(key, { _tag: 'active', rc: 1, resource })
     return resource
-  }, [key])
+  }, [scope, key])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: We assume the `dispose` function is stable and won't change across renders
   React.useEffect(() => {
     return () => {
       if (didDisposeInMemo.current === true) {
-        // console.debug('unmount', keyRef.current, 'skip')
         didDisposeInMemo.current = false
         return
       }
 
-      // console.debug('unmount', keyRef.current)
-      const cachedItem = cache.get(key)
-      // If the stateful resource is already cleaned up, do nothing.
+      const bucket = getBucket(scope)
+      const cachedItem = bucket.get(key)
       if (cachedItem === undefined || cachedItem._tag === 'destroyed') return
 
       cachedItem.rc--
 
-      // console.debug('rc--', cachedItem.rc, ...(_options?.debugPrint?.(cachedItem.resource) ?? []))
-
       if (cachedItem.rc === 0) {
         disposeRef.current(cachedItem.resource)
-        cache.delete(key)
+        bucket.delete(key)
       }
     }
-  }, [key])
+  }, [scope, key])
 
   keyRef.current = key
+  scopeRef.current = scope
 
   return resource
 }
@@ -166,8 +161,7 @@ export const useRcResource = <T>(
 // we are using this cache to avoid starting multiple queries/spans for the same component.
 // This is somewhat against some recommended React best practices, but it should be fine in our case below.
 // Please definitely open an issue if you see or run into any problems with this approach!
-const cache = new Map<
-  string,
+type Entry =
   | {
       _tag: 'active'
       rc: number
@@ -176,8 +170,23 @@ const cache = new Map<
   | {
       _tag: 'destroyed'
     }
->()
+
+type Bucket = Map<string, Entry>
+
+// Per-scope buckets. Keying by the scope object (e.g. a Store instance) ensures that
+// when the scope is replaced (store dispose/recreate), the new scope gets a fresh bucket
+// and stale entries from the disposed scope become GC-eligible. See issue #1186.
+let scopedBuckets = new WeakMap<object, Bucket>()
+
+const getBucket = (scope: object): Bucket => {
+  let bucket = scopedBuckets.get(scope)
+  if (bucket === undefined) {
+    bucket = new Map()
+    scopedBuckets.set(scope, bucket)
+  }
+  return bucket
+}
 
 export const __resetUseRcResourceCache = () => {
-  cache.clear()
+  scopedBuckets = new WeakMap()
 }

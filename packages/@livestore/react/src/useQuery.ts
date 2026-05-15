@@ -82,6 +82,7 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
   const stackInfo = React.useMemo(() => captureStackInfo(), [])
 
   const { queryRcRef, span, otelContext } = useRcResource(
+    store,
     rcRefKey,
     () =>
       createQueryResource(store, normalized, stackInfo, {
@@ -134,6 +135,7 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
   }, [stackInfo, query$, setValue, store, valueRef, otelContext, span, options?.otelSpanName])
 
   useRcResource(
+    store,
     rcRefKey,
     () => ({ queryRcRef, span }),
     ({ queryRcRef, span }) => {
