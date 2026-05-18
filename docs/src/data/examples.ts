@@ -1,3 +1,5 @@
+import { getExampleDeployment } from '@local/shared'
+
 import { getBranchName, IS_MAIN_BRANCH } from './data.ts'
 
 // Hosted assets - To upload new assets:
@@ -37,6 +39,11 @@ export const getExampleDemoLinks = (example: Example) => {
 
 const branch = getBranchName()
 
+const webTodomvcDeployment = getExampleDeployment('web-todomvc')
+const webLinearliteDeployment = getExampleDeployment('web-linearlite')
+const webTodomvcSyncCfDeployment = getExampleDeployment('web-todomvc-sync-cf')
+const cfChatDeployment = getExampleDeployment('cf-chat')
+
 export const examples: Example[] = [
   // Web Adapter Examples
   {
@@ -50,8 +57,8 @@ export const examples: Example[] = [
       width: 1000,
       height: 700,
     },
-    demoUrl: 'https://example-web-todomvc.livestore.workers.dev',
-    devDemoUrl: 'https://example-web-todomvc-dev.livestore.workers.dev',
+    demoUrl: webTodomvcDeployment.endpoints.prod.url,
+    devDemoUrl: webTodomvcDeployment.endpoints.dev.url,
     sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc`,
     status: 'available',
   },
@@ -66,8 +73,8 @@ export const examples: Example[] = [
       width: 1000,
       height: 700,
     },
-    demoUrl: 'https://example-web-linearlite.livestore.workers.dev',
-    devDemoUrl: 'https://example-web-linearlite-dev.livestore.workers.dev',
+    demoUrl: webLinearliteDeployment.endpoints.prod.url,
+    devDemoUrl: webLinearliteDeployment.endpoints.dev.url,
     sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-linearlite`,
     status: 'available',
   },
@@ -83,8 +90,8 @@ export const examples: Example[] = [
       width: 1000,
       height: 700,
     },
-    demoUrl: 'https://example-web-todomvc-sync-cf.livestore.workers.dev',
-    devDemoUrl: 'https://example-web-todomvc-sync-cf-dev.livestore.workers.dev',
+    demoUrl: webTodomvcSyncCfDeployment.endpoints.prod.url,
+    devDemoUrl: webTodomvcSyncCfDeployment.endpoints.dev.url,
     sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc-sync-cf`,
     status: 'available',
   },
@@ -162,8 +169,8 @@ export const examples: Example[] = [
       width: 1000,
       height: 700,
     },
-    demoUrl: 'https://example-cf-chat.livestore.workers.dev',
-    devDemoUrl: 'https://example-cf-chat-dev.livestore.workers.dev',
+    demoUrl: cfChatDeployment.endpoints.prod.url,
+    devDemoUrl: cfChatDeployment.endpoints.dev.url,
     sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/cf-chat`,
     status: 'available',
   },

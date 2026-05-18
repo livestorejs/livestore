@@ -27,9 +27,10 @@ The script uses the directory name inside `/examples` as the `<slug>` (for examp
 direnv exec . mono examples deploy              # build + deploy all configured examples
 direnv exec . mono examples deploy --example-filter web-
 direnv exec . mono examples deploy --prod       # stable release versions only
+direnv exec . mono examples validate-links      # verify published prod/dev demo URLs
 ```
 
-The command builds examples in parallel (three at a time) and retries Worker uploads twice. Preview Workers are accessible exclusively via their Workers.dev host names.
+The deploy command builds examples in parallel (three at a time) and retries Worker uploads twice. Preview Workers are accessible exclusively via their Workers.dev host names. The validation command checks the repo-owned public deployment metadata in `packages/@local/shared/src/example-deployments.ts` without following redirects, so intentional route redirects such as LinearLite remain visible.
 
 ## Creating a New Example Worker
 
@@ -38,10 +39,11 @@ The command builds examples in parallel (three at a time) and retries Worker upl
 3. Add `[env.prod]`, `[env.preview]`, and `[env.dev]` sections in `wrangler.toml`; duplicate any bindings (Durable Objects, D1, queues, secrets, etc.) inside each environment block because Wrangler does not inherit them automatically.
 4. Provision Cloudflare resources if needed (Durable Objects, D1, secrets) via `wrangler`. Update the manifest with any required metadata.
 5. Run `direnv exec . mono examples deploy --example-filter <slug>` locally to verify the Worker deploys.
-6. Update `docs/src/data/examples.ts` with the new production/dev URLs so the documentation links point to the Cloudflare deployment.
+6. Add the public prod/dev URL contract to `packages/@local/shared/src/example-deployments.ts` when the example should be linked from docs.
+7. Update `docs/src/data/examples.ts` to consume the shared deployment entry instead of hard-coding URLs.
+8. Run `direnv exec . mono examples validate-links --example-filter <slug>` to verify the public demo endpoints.
 
 ## Troubleshooting
 
 - `wrangler deploy` fails with `Not logged in`: re-run `direnv exec . bunx wrangler login`.
-- Preview Worker unavailable: ensure the deploy succeeded and visit `https://example-<slug>-preview.livestore.workers.dev`. Check `wrangler deployments list --name <worker-name>` for status.
 - Preview Worker unavailable: the worker is deployed at `https://<worker-name>.livestore.workers.dev`. Check `wrangler deployments list --name <worker-name>` for status.
