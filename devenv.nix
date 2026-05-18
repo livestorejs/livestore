@@ -155,6 +155,7 @@ let
       FORCE_PLAYWRIGHT_VIA_CLI=1 \
       PLAYWRIGHT_SUITE=devtools \
       PLAYWRIGHT_HEADLESS="''${PLAYWRIGHT_HEADLESS:-1}" \
+      LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
       DT_PASSTHROUGH=1 \
       pnpm --dir tests/integration exec playwright test \
         src/tests/playwright/devtools/node-adapter-timeout.play.ts \

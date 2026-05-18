@@ -118,6 +118,13 @@ workspace build. The Node adapter scenario must replace every workspace
 transitive package under `@livestore/adapter-node`; replacing only the test
 package's top-level `node_modules` entry is not sufficient proof.
 
+The liveness scenarios must also be independent of developer-machine sponsor
+activation state. Public DevTools artifacts enforce the sponsor/license gate by
+default, but release certification runs with the explicit
+`LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false` test override so CI verifies
+connectivity and protocol compatibility rather than a maintainer's local
+license cache.
+
 ## Simplification
 
 The durable state is intentionally limited to immutable artifact identity:

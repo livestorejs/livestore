@@ -98,6 +98,9 @@ artifact-producing workflow may update URLs and checksums, but it must not mark
 the artifact as shippable for a LiveStore release. Release validation produces
 an ephemeral release-candidate certification after exact-artifact liveness
 passes; repack and publish require that CI proof for release-channel versions.
+The exact-artifact liveness gate disables DevTools license enforcement
+explicitly via `LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false`; relying on a
+maintainer's local sponsor activation would make the gate non-hermetic.
 
 This workflow must not become a hidden prerequisite for ordinary LiveStore
 releases. It is used when the selected DevTools artifact changes. Release PRs
