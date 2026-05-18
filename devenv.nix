@@ -118,6 +118,13 @@ let
       exit 1
     fi
 
+    playwright_bin="tests/integration/node_modules/.bin/playwright"
+    if [ ! -x "$playwright_bin" ]; then
+      echo "Expected Playwright binary not found: $playwright_bin" >&2
+      echo "Run release:devtools-artifact:certify-liveness instead of the no-install variant when dependencies are not installed yet." >&2
+      exit 1
+    fi
+
     backup_dir="$(mktemp -d)"
     package_links=(
       "tests/integration/node_modules/@livestore/devtools-vite"
@@ -151,15 +158,26 @@ let
     done
     rm -rf "$unpack_dir"
 
-    CI=true \
-      FORCE_PLAYWRIGHT_VIA_CLI=1 \
-      PLAYWRIGHT_SUITE=devtools \
-      PLAYWRIGHT_HEADLESS="''${PLAYWRIGHT_HEADLESS:-1}" \
-      LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
-      DT_PASSTHROUGH=1 \
-      pnpm --dir tests/integration exec playwright test \
-        src/tests/playwright/devtools/node-adapter-timeout.play.ts \
-        --reporter=line
+    for package_link in "''${package_links[@]}"; do
+      package_version="$(bun -e "console.log(require('./$package_link/package.json').version)")"
+      if [ "$package_version" != "$LIVESTORE_RELEASE_VERSION" ]; then
+        echo "Expected $package_link to contain exact DevTools artifact version $LIVESTORE_RELEASE_VERSION, found $package_version" >&2
+        exit 1
+      fi
+    done
+
+    (
+      cd tests/integration
+      CI=true \
+        FORCE_PLAYWRIGHT_VIA_CLI=1 \
+        PLAYWRIGHT_SUITE=devtools \
+        PLAYWRIGHT_HEADLESS="''${PLAYWRIGHT_HEADLESS:-1}" \
+        LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
+        DT_PASSTHROUGH=1 \
+        ./node_modules/.bin/playwright test \
+          src/tests/playwright/devtools/node-adapter-timeout.play.ts \
+          --reporter=line
+    )
 
     certification_path="''${LIVESTORE_DEVTOOLS_CERTIFICATION:-release/devtools-artifact.certification.json}"
     evidence="DevTools exact-artifact liveness passed for $LIVESTORE_RELEASE_VERSION"
