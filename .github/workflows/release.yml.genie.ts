@@ -279,8 +279,12 @@ echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"`,
           name: 'Configure npm token fallback',
           run: `set -euo pipefail
 : "\${NODE_AUTH_TOKEN:?Missing NPM_TOKEN secret}"
-printf '%s\\n' "always-auth=true" > "$HOME/.npmrc"
-printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.npmrc"`,
+npmrc="$HOME/.npmrc"
+printf '%s\\n' "always-auth=true" > "$npmrc"
+printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$npmrc"
+printf '%s\\n' "NPM_CONFIG_USERCONFIG=$npmrc" >> "$GITHUB_ENV"
+printf '%s\\n' "NPM_CONFIG_REGISTRY=https://registry.npmjs.org/" >> "$GITHUB_ENV"
+NPM_CONFIG_USERCONFIG="$npmrc" NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ npm whoami >/dev/null`,
         },
         {
           name: 'Publish stable package release',
