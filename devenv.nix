@@ -118,25 +118,37 @@ let
       exit 1
     fi
 
-    package_link="tests/integration/node_modules/@livestore/devtools-vite"
-    if [ ! -e "$package_link" ]; then
-      echo "Expected installed @livestore/devtools-vite package link not found: $package_link" >&2
-      exit 1
-    fi
-
     backup_dir="$(mktemp -d)"
-    cp -a "$package_link" "$backup_dir/devtools-vite"
+    package_links=(
+      "tests/integration/node_modules/@livestore/devtools-vite"
+      "packages/@livestore/adapter-node/node_modules/@livestore/devtools-vite"
+    )
+
+    for index in "''${!package_links[@]}"; do
+      package_link="''${package_links[$index]}"
+      if [ ! -e "$package_link" ]; then
+        echo "Expected installed @livestore/devtools-vite package link not found: $package_link" >&2
+        exit 1
+      fi
+      cp -a "$package_link" "$backup_dir/devtools-vite-$index"
+    done
+
     restore_node_modules() {
-      rm -rf "$package_link"
-      cp -a "$backup_dir/devtools-vite" "$package_link"
+      for index in "''${!package_links[@]}"; do
+        package_link="''${package_links[$index]}"
+        rm -rf "$package_link"
+        cp -a "$backup_dir/devtools-vite-$index" "$package_link"
+      done
       rm -rf "$backup_dir"
     }
     trap restore_node_modules EXIT
 
     unpack_dir="$(mktemp -d)"
     tar -xzf "$repacked_tarball" -C "$unpack_dir"
-    rm -rf "$package_link"
-    mv "$unpack_dir/package" "$package_link"
+    for package_link in "''${package_links[@]}"; do
+      rm -rf "$package_link"
+      cp -a "$unpack_dir/package" "$package_link"
+    done
     rm -rf "$unpack_dir"
 
     CI=true \

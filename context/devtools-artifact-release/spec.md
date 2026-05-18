@@ -113,7 +113,10 @@ LiveStore release CI must verify:
 - node adapter direct-route liveness survives the heartbeat window
 
 The liveness scenarios must use the exact downloaded artifact, not a local
-workspace build.
+workspace build. The Node adapter scenario must replace every workspace
+`@livestore/devtools-vite` resolution path used by the fixture, including the
+transitive package under `@livestore/adapter-node`; replacing only the test
+package's top-level `node_modules` entry is not sufficient proof.
 
 ## Simplification
 

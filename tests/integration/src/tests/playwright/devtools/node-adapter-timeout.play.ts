@@ -26,7 +26,7 @@ import { checkConnectionRemainsActive } from './shared.ts'
 
 const FIXTURE_DIR = path.join(import.meta.dirname, '../fixtures/devtools/node-adapter-timeout')
 const TIMEOUT_WAIT_MS = 35_000 // 35 seconds, to exceed the 30 second timeout
-const CONNECTED_STATUS_TIMEOUT_MS = 60_000
+const DEVTOOLS_READY_TIMEOUT_MS = 60_000
 
 let nodeProcess: ChildProcess | undefined
 let devtoolsPort: number
@@ -140,11 +140,6 @@ test.describe('Node adapter devtools timeout', () => {
     // watch starts.
     test.setTimeout(180_000)
 
-    let connectedStatusResolve: () => void = () => {}
-    const connectedStatus = new Promise<void>((resolve) => {
-      connectedStatusResolve = resolve
-    })
-
     // Capture browser console output to debug what's being loaded
     page.on('console', (msg) => {
       const text = msg.text()
@@ -156,6 +151,7 @@ test.describe('Node adapter devtools timeout', () => {
         text.includes('runPingPong') === true ||
         text.includes('devtools-api') === true ||
         text.includes('mesh-node') === true ||
+        text.includes('devtools heartbeat') === true ||
         text.includes('ProxyChannel') === true ||
         text.includes('Pong') === true ||
         text.includes('Ping') === true ||
@@ -166,12 +162,6 @@ test.describe('Node adapter devtools timeout', () => {
         console.log(`[browser console] ${text}`)
       }
 
-      if (
-        text.includes('message=status') === true &&
-        (text.includes('"_tag": "connected"') === true || text.includes('\\"_tag\\": \\"connected\\"') === true)
-      ) {
-        connectedStatusResolve()
-      }
     })
     page.on('pageerror', (error) => console.log(`[browser pageerror] ${error.message}`))
     page.on('requestfailed', (request) => {
@@ -198,12 +188,10 @@ test.describe('Node adapter devtools timeout', () => {
     }
 
     await expect(page).toHaveURL(/\/_livestore\/node\/test-store-/, { timeout: 10_000 })
-    await Promise.race([
-      connectedStatus,
-      page.waitForTimeout(CONNECTED_STATUS_TIMEOUT_MS).then(() => {
-        throw new Error(`DevTools did not report connected status within ${CONNECTED_STATUS_TIMEOUT_MS}ms`)
-      }),
-    ])
+    await page
+      .getByRole('tab', { name: 'Database' })
+      .describe('node-devtools:Database')
+      .waitFor({ state: 'attached', timeout: DEVTOOLS_READY_TIMEOUT_MS })
     console.log('Devtools connected to session')
 
     console.log(`Watching connection for ${TIMEOUT_WAIT_MS / 1000} seconds...`)
