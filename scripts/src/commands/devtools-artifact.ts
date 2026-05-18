@@ -56,7 +56,7 @@ type ArtifactSource = {
   readonly chromeZipSha256?: string
 }
 
-type DevtoolsArtifactCertification = {
+export type DevtoolsArtifactCertification = {
   readonly livestoreVersion: string
   readonly devtoolsBuildId: string
   readonly devtoolsProtocolVersion: number
@@ -70,9 +70,9 @@ type DevtoolsArtifactEphemeralCertification = {
   readonly livestoreVersion: string
   readonly devtoolsBuildId: string
   readonly devtoolsProtocolVersion: number
-  readonly status: 'ci-snapshot' | 'ci-release-validation'
+  readonly status: 'ci-snapshot' | 'ci-release-validation' | 'ci-uncertified-repack'
   readonly testSuite: 'artifact-integrity-and-protocol-gate'
-  readonly scenarios: ReadonlyArray<'ci-snapshot-repack' | 'ci-release-validation-repack'>
+  readonly scenarios: ReadonlyArray<'ci-snapshot-repack' | 'ci-release-validation-repack' | 'ci-uncertified-repack'>
 }
 
 const requiredReleaseCertificationScenarios = [
@@ -88,22 +88,24 @@ type ArtifactManifestV1 = {
 type ArtifactManifestV2 = {
   readonly schemaVersion: 2
   readonly artifact: ArtifactSource
-  readonly certification?: DevtoolsArtifactCertification
 }
 
 export type ArtifactManifest = ArtifactManifestV1 | ArtifactManifestV2
 
 const usage = `Usage:
   bun scripts/src/commands/devtools-artifact.ts verify (--manifest <file> | --metadata <url-or-file> --tarball <url-or-file>)
-  bun scripts/src/commands/devtools-artifact.ts repack --manifest <file> --version <version> [--dry-run|--publish]
+  bun scripts/src/commands/devtools-artifact.ts certify --manifest <file> --version <version> --out <file> [--evidence <text>]
+  bun scripts/src/commands/devtools-artifact.ts repack --manifest <file> --version <version> [--certification <file>|--allow-uncertified] [--dry-run|--publish]
 
 Options:
-  --manifest <file>        Checked-in public artifact manifest. Repack requires schemaVersion 2 with passed certification.
+  --manifest <file>        Checked-in public artifact manifest.
   --metadata <url-or-file>  Public release-metadata.json URL or local path
   --tarball <url-or-file>   Public artifact tarball URL or local path
   --chrome-zip <url-or-file> Public Chrome extension ZIP URL or local path
   --version <version>       LiveStore release-group package version for repack
+  --certification <file>    Ephemeral release-candidate certification produced by the liveness gate
   --out-dir <dir>           Output directory for verified/repacked artifacts
+  --out <file>              Certification output path for the certify command
   --dry-run                 Run npm publish dry-run for the repacked package
   --publish                 Publish the repacked package to npm
 `
@@ -321,31 +323,31 @@ export const assertCertifiedDevtoolsArtifactForLivestore = ({
   manifest,
   metadata,
   version,
+  certification,
+  allowUncertified,
 }: {
   readonly manifest: ArtifactManifest | undefined
   readonly metadata: ArtifactMetadata
   readonly version: string
+  readonly certification?: DevtoolsArtifactCertification
+  readonly allowUncertified?: boolean
 }) => {
   const protocolVersion = devtoolsProtocolVersionForArtifact(metadata)
 
   if (manifest === undefined) {
     throw new Error(
-      'DevTools repack requires --manifest because LiveStore-owned certification is checked in release/devtools-artifact.json',
+      'DevTools repack requires --manifest so release-candidate certification is bound to the checked-in artifact pointer',
     )
   }
-  if (manifest.schemaVersion !== 2) {
-    throw new Error(
-      'DevTools repack requires release/devtools-artifact.json schemaVersion 2 with LiveStore-owned certification',
-    )
-  }
+  if (manifest.schemaVersion !== 1 && manifest.schemaVersion !== 2) throw new Error('Unsupported artifact manifest')
 
   // Ephemeral CI versions cannot be pre-certified in a checked-in manifest:
   // snapshot versions are produced by the snapshot publisher, and
   // ci.release-validation versions are synthetic PR-only release-plan probes.
-  // They still require the LiveStore-owned manifest pointer and pass through
+  // They still require the LiveStore-owned artifact pointer and pass through
   // artifact checksums, package-shape audit, secret scan, and protocol
   // validation; dev/stable release-channel packages below fail closed unless
-  // LiveStore records an exact passed e2e certification.
+  // LiveStore CI records an exact passed e2e certification for the release candidate.
   if (isSnapshotVersion(version) === true || isCiReleaseValidationVersion(version) === true) {
     return {
       livestoreVersion: version,
@@ -357,39 +359,53 @@ export const assertCertifiedDevtoolsArtifactForLivestore = ({
     } satisfies DevtoolsArtifactEphemeralCertification
   }
 
-  const certification = manifest.certification
-  if (certification === undefined) {
-    throw new Error('DevTools repack requires a LiveStore-owned certification entry in the artifact manifest')
+  if (allowUncertified === true) {
+    return {
+      livestoreVersion: version,
+      devtoolsBuildId: metadata.devtoolsBuildId,
+      devtoolsProtocolVersion: protocolVersion,
+      status: 'ci-uncertified-repack',
+      testSuite: 'artifact-integrity-and-protocol-gate',
+      scenarios: ['ci-uncertified-repack'],
+    } satisfies DevtoolsArtifactEphemeralCertification
   }
-  if (certification.status !== 'passed') {
-    throw new Error(`DevTools artifact certification is ${certification.status}; expected passed`)
-  }
-  if (certification.livestoreVersion !== version) {
+
+  const releaseCertification = certification
+  if (releaseCertification === undefined) {
     throw new Error(
-      `DevTools artifact is certified for LiveStore ${certification.livestoreVersion}, not release ${version}`,
+      'DevTools repack requires release-candidate certification from release:devtools-artifact:certify-liveness',
     )
   }
-  if (certification.devtoolsBuildId !== metadata.devtoolsBuildId) {
+  if (releaseCertification.status !== 'passed') {
+    throw new Error(`DevTools artifact certification is ${releaseCertification.status}; expected passed`)
+  }
+  if (releaseCertification.livestoreVersion !== version) {
     throw new Error(
-      `DevTools artifact certification build ${certification.devtoolsBuildId} does not match metadata build ${metadata.devtoolsBuildId}`,
+      `DevTools artifact is certified for LiveStore ${releaseCertification.livestoreVersion}, not release ${version}`,
+    )
+  }
+  if (releaseCertification.devtoolsBuildId !== metadata.devtoolsBuildId) {
+    throw new Error(
+      `DevTools artifact certification build ${releaseCertification.devtoolsBuildId} does not match metadata build ${metadata.devtoolsBuildId}`,
     )
   }
 
-  if (certification.devtoolsProtocolVersion !== protocolVersion) {
+  if (releaseCertification.devtoolsProtocolVersion !== protocolVersion) {
     throw new Error(
-      `DevTools artifact certification protocol ${certification.devtoolsProtocolVersion} does not match metadata protocol ${protocolVersion}`,
+      `DevTools artifact certification protocol ${releaseCertification.devtoolsProtocolVersion} does not match metadata protocol ${protocolVersion}`,
     )
   }
-  if (certification.testSuite.trim().length === 0)
+  if (releaseCertification.testSuite.trim().length === 0)
     throw new Error('DevTools artifact certification is missing testSuite')
-  if (certification.scenarios.length === 0) throw new Error('DevTools artifact certification is missing scenarios')
+  if (releaseCertification.scenarios.length === 0)
+    throw new Error('DevTools artifact certification is missing scenarios')
   for (const scenario of requiredReleaseCertificationScenarios) {
-    if (certification.scenarios.includes(scenario) === false) {
+    if (releaseCertification.scenarios.includes(scenario) === false) {
       throw new Error(`DevTools artifact certification is missing required scenario: ${scenario}`)
     }
   }
 
-  return certification
+  return releaseCertification
 }
 
 const assertMetadata = (metadata: ArtifactMetadata, tarballPath: string, chromeZipPath: string | undefined) => {
@@ -519,6 +535,36 @@ const verifyArtifact = async (flags: Map<string, string | true>) => {
   return { metadata, tarballPath, chromeZipPath, workDir, manifest }
 }
 
+const readCertification = (flags: Map<string, string | true>) => {
+  const certificationPath = readFlag(flags, 'certification')
+  if (certificationPath === undefined) return undefined
+  return JSON.parse(readFileSync(path.resolve(certificationPath), 'utf8')) as DevtoolsArtifactCertification
+}
+
+const certifyArtifact = async (flags: Map<string, string | true>) => {
+  const version = readFlag(flags, 'version')
+  if (version === undefined) throw new Error('--version is required')
+  const out = readFlag(flags, 'out')
+  if (out === undefined) throw new Error('--out is required')
+
+  const { metadata } = await verifyArtifact(flags)
+  const protocolVersion = devtoolsProtocolVersionForArtifact(metadata)
+  const evidence = readFlag(flags, 'evidence')
+  const certification = {
+    livestoreVersion: version,
+    devtoolsBuildId: metadata.devtoolsBuildId,
+    devtoolsProtocolVersion: protocolVersion,
+    status: 'passed',
+    testSuite: 'tests/integration/src/tests/playwright/devtools',
+    scenarios: requiredReleaseCertificationScenarios,
+    ...(evidence === undefined ? {} : { evidence }),
+  } satisfies DevtoolsArtifactCertification
+
+  mkdirSync(path.dirname(path.resolve(out)), { recursive: true })
+  writeFileSync(path.resolve(out), `${JSON.stringify(certification, null, 2)}\n`)
+  console.log(JSON.stringify({ certificationPath: path.resolve(out), certification }, null, 2))
+}
+
 const materializeChromeZipAsset = (version: string, chromeZipPath: string, workDir: string) => {
   const assetPath = path.join(workDir, `livestore-devtools-chrome-${version}.zip`)
   writeFileSync(assetPath, readFileSync(chromeZipPath))
@@ -550,11 +596,18 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
   const { metadata, tarballPath, chromeZipPath, workDir, manifest } = await verifyArtifact(flags)
   // The public DevTools artifact describes what was built; it does not decide which
   // LiveStore releases may ship it. LiveStore releases much more frequently than
-  // DevTools artifacts, so repack/publish requires this repo to certify the exact
-  // build id and protocol against the exact release version after the release e2e
-  // suite has passed. This prevents stale artifacts with broad compatibility
-  // metadata, such as "*", from being republished as if they were current.
-  const livestoreCertification = assertCertifiedDevtoolsArtifactForLivestore({ manifest, metadata, version })
+  // DevTools artifacts, so release-channel repack/publish requires a CI proof
+  // that binds the exact build id and protocol to the exact release candidate
+  // after the release e2e suite has passed. This prevents stale artifacts with
+  // broad compatibility metadata, such as "*", from being republished as current.
+  const certification = readCertification(flags)
+  const livestoreCertification = assertCertifiedDevtoolsArtifactForLivestore({
+    manifest,
+    metadata,
+    version,
+    ...(certification === undefined ? {} : { certification }),
+    allowUncertified: hasFlag(flags, 'allow-uncertified'),
+  })
   const unpackDir = path.join(workDir, 'package-src')
   rmSync(unpackDir, { recursive: true, force: true })
   mkdirSync(unpackDir, { recursive: true })
@@ -651,6 +704,10 @@ const main = async () => {
   if (command === 'verify') {
     const result = await verifyArtifact(flags)
     console.log(JSON.stringify({ devtoolsBuildId: result.metadata.devtoolsBuildId, workDir: result.workDir }, null, 2))
+    return
+  }
+  if (command === 'certify') {
+    await certifyArtifact(flags)
     return
   }
   if (command === 'repack') {

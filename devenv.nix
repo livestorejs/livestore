@@ -79,9 +79,16 @@ let
     : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
     artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
     if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" || -n "''${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
-      echo "release:devtools-artifact repack requires LIVESTORE_DEVTOOLS_MANIFEST so LiveStore-owned certification is available." >&2
+      echo "release:devtools-artifact repack requires LIVESTORE_DEVTOOLS_MANIFEST so release-candidate certification can bind to the selected artifact." >&2
       echo "Use release:devtools-artifact:verify for direct metadata/tarball integrity checks." >&2
       exit 1
+    fi
+    certification_path="''${LIVESTORE_DEVTOOLS_CERTIFICATION:-release/devtools-artifact.certification.json}"
+    if [[ -f "$certification_path" ]]; then
+      artifact_args+=(--certification "$certification_path")
+    fi
+    if [[ "''${LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK:-}" = "1" ]]; then
+      artifact_args+=(--allow-uncertified)
     fi
 
     bun scripts/src/commands/devtools-artifact.ts repack \
@@ -101,7 +108,9 @@ let
     mkdir -p "$out_dir"
     export LIVESTORE_DEVTOOLS_OUT_DIR="$out_dir"
 
+    export LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK=1
     ${devtoolsArtifactRepackExec "--dry-run"}
+    unset LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK
 
     repacked_tarball="$out_dir/livestore-devtools-vite-$LIVESTORE_RELEASE_VERSION.tgz"
     if [ ! -f "$repacked_tarball" ]; then
@@ -138,6 +147,20 @@ let
       pnpm --dir tests/integration exec playwright test \
         src/tests/playwright/devtools/node-adapter-timeout.play.ts \
         --reporter=line
+
+    certification_path="''${LIVESTORE_DEVTOOLS_CERTIFICATION:-release/devtools-artifact.certification.json}"
+    evidence="DevTools exact-artifact liveness passed for $LIVESTORE_RELEASE_VERSION"
+    if [[ -n "''${GITHUB_SERVER_URL:-}" && -n "''${GITHUB_REPOSITORY:-}" && -n "''${GITHUB_RUN_ID:-}" ]]; then
+      evidence="$evidence in $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+    fi
+    bun scripts/src/commands/devtools-artifact.ts certify \
+      --manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}" \
+      --version "$LIVESTORE_RELEASE_VERSION" \
+      --out "$certification_path" \
+      --evidence "$evidence"
+    if [[ -n "''${GITHUB_ENV:-}" ]]; then
+      echo "LIVESTORE_DEVTOOLS_CERTIFICATION=$certification_path" >> "$GITHUB_ENV"
+    fi
   '';
 
   devtoolsArtifactRepackTask =
@@ -392,7 +415,6 @@ in
       DT_PASSTHROUGH=1 pnpm exec changeset version
       bun scripts/src/commands/changesets.ts restore-prerelease-changesets
       bun scripts/src/commands/changesets.ts sync-version-source
-      bun scripts/src/commands/changesets.ts sync-devtools-artifact-certification
       DT_PASSTHROUGH=1 genie
       bun scripts/src/commands/changesets.ts sync-standalone-consumers
       DT_PASSTHROUGH=1 pnpm install --lockfile-only --no-frozen-lockfile

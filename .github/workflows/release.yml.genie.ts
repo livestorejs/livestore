@@ -274,6 +274,10 @@ printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.np
           run: runDevenvTasksBefore('release:stable:publish'),
         },
         {
+          name: 'Certify DevTools artifact liveness',
+          run: runDevenvTasksBefore('release:devtools-artifact:certify-liveness:no-install'),
+        },
+        {
           name: 'Publish DevTools artifact release',
           run: runDevenvTasksBefore('release:devtools-artifact:publish:no-install'),
         },
