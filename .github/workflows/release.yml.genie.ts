@@ -14,6 +14,18 @@ const withNixDiagnosticsOnFailure = (steps: unknown[]) => [
   nixDiagnosticsArtifactStep(),
 ]
 
+const devtoolsCertificationArtifactsStep = {
+  uses: 'actions/upload-artifact@v4',
+  if: '${{ !cancelled() }}',
+  with: {
+    name: 'devtools-certification-playwright-artifacts-${{ github.job }}',
+    path: `tests/integration/playwright-report/
+tests/integration/test-results/devtools/`,
+    'retention-days': 30,
+    'if-no-files-found': 'ignore',
+  },
+}
+
 const releasePlanPaths = [
   '.github/workflows/release.yml',
   '.github/workflows/release.yml.genie.ts',
@@ -234,6 +246,7 @@ fi`,
           name: 'Certify DevTools artifact liveness',
           run: runDevenvTasksBefore('release:devtools-artifact:certify-liveness:no-install'),
         },
+        devtoolsCertificationArtifactsStep,
         {
           name: 'Dry-run DevTools artifact repack',
           run: runDevenvTasksBefore('release:devtools-artifact:repack-dryrun:no-install'),
@@ -277,6 +290,7 @@ printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.np
           name: 'Certify DevTools artifact liveness',
           run: runDevenvTasksBefore('release:devtools-artifact:certify-liveness:no-install'),
         },
+        devtoolsCertificationArtifactsStep,
         {
           name: 'Publish DevTools artifact release',
           run: runDevenvTasksBefore('release:devtools-artifact:publish:no-install'),

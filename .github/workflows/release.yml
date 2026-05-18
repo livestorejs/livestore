@@ -760,6 +760,15 @@ jobs:
           . "$__nix_gc_retry_helper"
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:certify-liveness:no-install --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:certify-liveness:no-install --mode before'
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: 'devtools-certification-playwright-artifacts-${{ github.job }}'
+          path: |
+            tests/integration/playwright-report/
+            tests/integration/test-results/devtools/
+          retention-days: 30
+          if-no-files-found: ignore
       - name: Dry-run DevTools artifact repack
         run: |
           __nix_gc_retry_helper=$(mktemp)
@@ -1254,6 +1263,15 @@ jobs:
           . "$__nix_gc_retry_helper"
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:certify-liveness:no-install --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:certify-liveness:no-install --mode before'
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: 'devtools-certification-playwright-artifacts-${{ github.job }}'
+          path: |
+            tests/integration/playwright-report/
+            tests/integration/test-results/devtools/
+          retention-days: 30
+          if-no-files-found: ignore
       - name: Publish DevTools artifact release
         run: |
           __nix_gc_retry_helper=$(mktemp)

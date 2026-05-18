@@ -26,7 +26,7 @@ import { checkConnectionRemainsActive } from './shared.ts'
 
 const FIXTURE_DIR = path.join(import.meta.dirname, '../fixtures/devtools/node-adapter-timeout')
 const TIMEOUT_WAIT_MS = 35_000 // 35 seconds, to exceed the 30 second timeout
-const DEVTOOLS_READY_TIMEOUT_MS = 60_000
+const DEVTOOLS_READY_TIMEOUT_MS = 120_000
 
 let nodeProcess: ChildProcess | undefined
 let devtoolsPort: number
@@ -126,6 +126,7 @@ const stopNodeApp = (): void => {
 test.describe('Node adapter devtools timeout', () => {
   // Run tests serially since each test needs its own Node process
   test.describe.configure({ mode: 'serial' })
+  test.setTimeout(240_000)
 
   test.beforeEach(async () => {
     await startNodeApp()
@@ -136,10 +137,6 @@ test.describe('Node adapter devtools timeout', () => {
   })
 
   test('should maintain connection to devtools after 30+ seconds', async ({ page }) => {
-    // Cold CI artifact loading can take time before the 35 second heartbeat
-    // watch starts.
-    test.setTimeout(180_000)
-
     // Capture browser console output to debug what's being loaded
     page.on('console', (msg) => {
       const text = msg.text()
@@ -157,15 +154,22 @@ test.describe('Node adapter devtools timeout', () => {
         text.includes('Ping') === true ||
         text.includes('message=status') === true ||
         text.includes('recv') === true ||
-        text.includes('listenQueue') === true
+        text.includes('listenQueue') === true ||
+        msg.type() === 'error' ||
+        msg.type() === 'warning'
       ) {
-        console.log(`[browser console] ${text}`)
+        console.log(`[browser console:${msg.type()}] ${text}`)
       }
 
     })
     page.on('pageerror', (error) => console.log(`[browser pageerror] ${error.message}`))
     page.on('requestfailed', (request) => {
       console.log(`[browser requestfailed] ${request.url()} ${request.failure()?.errorText ?? 'unknown error'}`)
+    })
+    page.on('response', (response) => {
+      if (response.status() >= 400) {
+        console.log(`[browser response] ${response.status()} ${response.url()}`)
+      }
     })
 
     const devtoolsUrl = `http://localhost:${devtoolsPort}/_livestore/node/${storeId}/test-client/static/${schema.devtools.alias}`
@@ -188,10 +192,18 @@ test.describe('Node adapter devtools timeout', () => {
     }
 
     await expect(page).toHaveURL(/\/_livestore\/node\/test-store-/, { timeout: 10_000 })
-    await page
-      .getByRole('tab', { name: 'Database' })
-      .describe('node-devtools:Database')
-      .waitFor({ state: 'attached', timeout: DEVTOOLS_READY_TIMEOUT_MS })
+    try {
+      await page
+        .getByRole('tab', { name: 'Database' })
+        .describe('node-devtools:Database')
+        .waitFor({ state: 'attached', timeout: DEVTOOLS_READY_TIMEOUT_MS })
+    } catch (error) {
+      console.log(`[devtools diagnostics] url=${page.url()}`)
+      console.log(`[devtools diagnostics] title=${await page.title().catch(() => '<unavailable>')}`)
+      const bodyText = await page.locator('body').innerText({ timeout: 1000 }).catch(() => '<unavailable>')
+      console.log(`[devtools diagnostics] body=${bodyText.slice(0, 2000)}`)
+      throw error
+    }
     console.log('Devtools connected to session')
 
     console.log(`Watching connection for ${TIMEOUT_WAIT_MS / 1000} seconds...`)
