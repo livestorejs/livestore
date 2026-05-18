@@ -30,7 +30,7 @@
     "@livestore/adapter-node": "workspace:^",
     "@livestore/adapter-web": "workspace:^",
     "@livestore/devtools-expo": "workspace:^",
-    "@livestore/devtools-vite": "0.4.0-dev.22",
+    "@livestore/devtools-vite": "0.4.0-dev.25",
     "@livestore/livestore": "workspace:^",
     "@livestore/react": "workspace:^",
     "@livestore/solid": "workspace:^",
@@ -47,10 +47,7 @@
     "@opentelemetry/sdk-trace-base": "2.2.0",
     "@opentelemetry/sdk-trace-web": "2.2.0",
     "@standard-schema/spec": "1.1.0",
-    "@tanstack/react-router": "1.139.14",
-    "@types/node": "25.3.3",
-    "@types/react": "19.2.7",
-    "@types/react-dom": "19.2.3",
+    "@tanstack/react-router": "1.145.7",
     "@vitejs/plugin-vue": "6.0.0",
     "effect": "3.21.2",
     "expo": "54.0.12",
@@ -68,6 +65,11 @@
     "vite": "7.3.1",
     "vite-plugin-vue-devtools": "7.7.9",
     "vue-livestore": "0.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "25.3.3",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3"
   },
   "$genie": {
     "source": "package.json.genie.ts",

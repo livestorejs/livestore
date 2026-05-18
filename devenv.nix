@@ -78,15 +78,16 @@ let
 
     : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
     artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
-    if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" ]]; then
-      : "''${LIVESTORE_DEVTOOLS_METADATA:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
-      : "''${LIVESTORE_DEVTOOLS_TARBALL:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
-      artifact_args=(--metadata "$LIVESTORE_DEVTOOLS_METADATA" --tarball "$LIVESTORE_DEVTOOLS_TARBALL")
+    if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" || -n "''${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
+      echo "release:devtools-artifact repack requires LIVESTORE_DEVTOOLS_MANIFEST so LiveStore-owned certification is available." >&2
+      echo "Use release:devtools-artifact:verify for direct metadata/tarball integrity checks." >&2
+      exit 1
     fi
 
     bun scripts/src/commands/devtools-artifact.ts repack \
       "''${artifact_args[@]}" \
       --version "$LIVESTORE_RELEASE_VERSION" \
+      --out-dir "''${LIVESTORE_DEVTOOLS_OUT_DIR:-$(mktemp -d)}" \
       ${publishFlag}
   '';
 
@@ -205,6 +206,7 @@ in
     })
     # Local task: mono command wrappers for uniform dt interface
     ./nix/devenv-modules/tasks/local/mono-wrappers.nix
+    ./nix/devenv-modules/tasks/local/github-rulesets.nix
   ];
 
   packages = [
@@ -261,10 +263,13 @@ in
       cd "$DEVENV_ROOT"
 
       artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
-      if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" ]]; then
+      if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" || -n "''${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
         : "''${LIVESTORE_DEVTOOLS_METADATA:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
         : "''${LIVESTORE_DEVTOOLS_TARBALL:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
         artifact_args=(--metadata "$LIVESTORE_DEVTOOLS_METADATA" --tarball "$LIVESTORE_DEVTOOLS_TARBALL")
+        if [[ -n "''${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
+          artifact_args+=(--chrome-zip "$LIVESTORE_DEVTOOLS_CHROME_ZIP")
+        fi
       fi
 
       bun scripts/src/commands/devtools-artifact.ts verify "''${artifact_args[@]}"
@@ -316,7 +321,7 @@ in
   };
 
   tasks."release:changeset:version" = {
-    description = "Consume changesets, sync Genie release version source, regenerate manifests, and write release plan";
+    description = "Prepare a Changesets release plan, regenerate manifests, and preserve prerelease intent when needed";
     exec = ''
       set -euo pipefail
       cd "$DEVENV_ROOT"
@@ -325,8 +330,11 @@ in
       # them from release/version.json.
       git ls-files '*package.json' | xargs chmod u+w
       DT_PASSTHROUGH=1 pnpm exec changeset version
+      bun scripts/src/commands/changesets.ts restore-prerelease-changesets
       bun scripts/src/commands/changesets.ts sync-version-source
+      bun scripts/src/commands/changesets.ts sync-devtools-artifact-certification
       DT_PASSTHROUGH=1 genie
+      bun scripts/src/commands/changesets.ts sync-standalone-consumers
       DT_PASSTHROUGH=1 pnpm install --lockfile-only --no-frozen-lockfile
       bun scripts/src/commands/changesets.ts assert-fixed-versions
       bun scripts/src/commands/changesets.ts write-release-plan --npm-tag "''${LIVESTORE_NPM_TAG:-latest}"
@@ -403,7 +411,14 @@ in
     export PATH="$WORKSPACE_ROOT/scripts/bin:$WORKSPACE_ROOT/scripts/node_modules/.bin:$PATH"
 
     if [ "$(uname)" = "Darwin" ]; then
-      export PATH="/usr/bin:/bin:$PATH"
+      # Prepend /usr/bin so Apple's xcrun/xcodebuild/xcode-select win for
+      # Expo/iOS native builds — the Nix `xcbuild` shim's xcrun is incomplete
+      # and breaks pod install / Expo prebuild. Do NOT prepend /bin: that
+      # would put Bash 3.2 ahead of the Nix bash, and devenv task bodies
+      # (e.g. effect-utils' run_pnpm_install) trip on empty array expansion
+      # under `set -u` in Bash 3.2. /usr/bin/bash doesn't exist on macOS,
+      # so prepending only /usr/bin keeps Nix bash in front.
+      export PATH="/usr/bin:$PATH"
       unset DEVELOPER_DIR
     fi
 

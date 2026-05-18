@@ -1,8 +1,22 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "artifact": {
-    "metadataUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-0.4.0-dev.22-dt-20260428-05ca43eb/release-metadata.json",
-    "tarballUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-0.4.0-dev.22-dt-20260428-05ca43eb/livestore-devtools-vite.tgz",
-    "sha256": "37552cd2670decb442a124c7695221eca673ac5186ad6b5384ee24d434a16f6c"
+    "metadataUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260513-27179788/release-metadata.json",
+    "tarballUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260513-27179788/livestore-devtools-vite.tgz",
+    "sha256": "1e766d5b1e0226c3c70c29c0dff24ee4da0ff8593b813c4b5fd29e852696f3f0",
+    "chromeZipUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260513-27179788/livestore-devtools-chrome.zip",
+    "chromeZipSha256": "f1feead7eb67f620a119ce92d35f84238274128cc480e3a851f1cc20785e2ed2"
+  },
+  "certification": {
+    "livestoreVersion": "0.4.0-dev.26",
+    "devtoolsBuildId": "dt-20260513-27179788",
+    "devtoolsProtocolVersion": 1,
+    "status": "passed",
+    "testSuite": "tests/integration/src/tests/playwright/devtools",
+    "scenarios": [
+      "direct web session loads and stays connected past heartbeat window",
+      "node adapter session loads through Vite and stays connected past 35 seconds"
+    ],
+    "evidence": "Verified locally on 2026-05-13 for the 0.4.0-dev.26 release branch against exact artifact tarball from https://github.com/livestorejs/livestore-devtools-artifacts/releases/tag/devtools-artifact-dt-20260513-27179788."
   }
 }

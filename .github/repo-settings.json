@@ -1,10 +1,10 @@
 {
-  "name": "dev-branch-rules",
+  "name": "main-branch-rules",
   "enforcement": "active",
   "target": "branch",
   "conditions": {
     "ref_name": {
-      "include": ["refs/heads/dev"],
+      "include": ["refs/heads/main"],
       "exclude": []
     }
   },
@@ -12,9 +12,9 @@
     {
       "type": "pull_request",
       "parameters": {
-        "required_approving_review_count": 1,
+        "required_approving_review_count": 0,
         "dismiss_stale_reviews_on_push": false,
-        "require_code_owner_review": false,
+        "require_code_owner_review": true,
         "require_last_push_approval": false,
         "required_review_thread_resolution": true
       }
@@ -22,7 +22,7 @@
     {
       "type": "required_status_checks",
       "parameters": {
-        "strict_required_status_checks_policy": true,
+        "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
           {
@@ -89,11 +89,5 @@
       "type": "deletion"
     }
   ],
-  "bypass_actors": [
-    {
-      "actor_id": 5,
-      "actor_type": "RepositoryRole",
-      "bypass_mode": "always"
-    }
-  ]
+  "bypass_actors": []
 }

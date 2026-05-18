@@ -35,11 +35,11 @@ const branch = getBranchName()
 const domain =
   process.env.DEPLOY_PRIME_URL !== undefined
     ? new URL(process.env.DEPLOY_PRIME_URL).hostname
-    : process.env.NODE_ENV === 'production'
-      ? branch === 'main'
-        ? 'docs.livestore.dev'
-        : 'dev.docs.livestore.dev'
-      : `localhost:${port}`
+    : process.env.LIVESTORE_DOCS_SITE_URL !== undefined
+      ? new URL(process.env.LIVESTORE_DOCS_SITE_URL).hostname
+      : process.env.NODE_ENV === 'production'
+        ? 'dev.docs.livestore.dev'
+        : `localhost:${port}`
 
 const site = `https://${domain}`
 

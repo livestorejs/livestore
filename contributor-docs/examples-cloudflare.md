@@ -4,9 +4,9 @@ LiveStore examples ship via Cloudflare Workers using the `mono examples deploy` 
 
 ## Branch Behaviour
 
-- `main` → builds production artifacts and deploys the Worker named `example-<slug>`, served at `https://example-<slug>.livestore.workers.dev`.
-- `dev` → deploys `example-<slug>-dev`, served at `https://example-<slug>-dev.livestore.workers.dev`.
-- Any other branch → builds the shared preview Worker named `example-<slug>-preview`, available at `https://example-<slug>-preview.livestore.workers.dev`. Use `--prod` to force a production publish when working on a feature branch.
+- `main` → deploys the dev Worker named `example-<slug>-dev`, served at `https://example-<slug>-dev.livestore.workers.dev`.
+- Pull requests and feature branches → build the shared preview Worker named `example-<slug>-preview`, available at `https://example-<slug>-preview.livestore.workers.dev`.
+- Stable release publishing → passes `--prod`, deploys the Worker named `example-<slug>`, and serves it at `https://example-<slug>.livestore.workers.dev`.
 
 The script uses the directory name inside `/examples` as the `<slug>` (for example `web-todomvc`).
 
@@ -26,7 +26,7 @@ The script uses the directory name inside `/examples` as the `<slug>` (for examp
 ```bash
 direnv exec . mono examples deploy              # build + deploy all configured examples
 direnv exec . mono examples deploy --example-filter web-
-direnv exec . mono examples deploy --prod       # force a prod push regardless of branch
+direnv exec . mono examples deploy --prod       # stable release versions only
 ```
 
 The command builds examples in parallel (three at a time) and retries Worker uploads twice. Preview Workers are accessible exclusively via their Workers.dev host names.

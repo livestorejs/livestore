@@ -1,10 +1,10 @@
 import type * as PW from '@playwright/test'
-import { expect } from '@playwright/test'
+import { errors, expect } from '@playwright/test'
 
 /**
- * Checks that the version mismatch overlay is displayed with correct content.
+ * Checks that the DevTools compatibility overlay is displayed with correct content.
  */
-export const checkVersionMismatchOverlay = async (options: {
+export const checkProtocolMismatchOverlay = async (options: {
   devtools: PW.Frame | PW.Page
   label: string
   expect: {
@@ -13,25 +13,51 @@ export const checkVersionMismatchOverlay = async (options: {
   }
 }) => {
   const overlay = options.devtools.locator('[data-testid="version-mismatch-overlay"]')
-  await overlay.describe(`${options.label}:version-mismatch-overlay`).waitFor({ state: 'attached', timeout: 5000 })
+  await overlay.describe(`${options.label}:protocol-mismatch-overlay`).waitFor({ state: 'attached', timeout: 5000 })
 
-  // Check for version mismatch text
   await expect(
     options.devtools
       .getByText('Version Mismatch', { exact: false })
-      .describe(`${options.label}:version-mismatch-title`),
+      .describe(`${options.label}:protocol-mismatch-title`),
   ).toBeVisible()
 
-  // Check that the versions are displayed
   await expect(
     options.devtools
-      .getByText(options.expect.devtoolsVersion, { exact: false })
+      .locator('code')
+      .filter({ hasText: options.expect.devtoolsVersion })
       .describe(`${options.label}:devtools-version`),
   ).toBeVisible()
 
   await expect(
-    options.devtools.getByText(options.expect.appVersion, { exact: false }).describe(`${options.label}:app-version`),
+    options.devtools
+      .locator('code')
+      .filter({ hasText: options.expect.appVersion })
+      .describe(`${options.label}:app-version`),
   ).toBeVisible()
+}
+
+export const checkConnectionRemainsActive = async (options: {
+  devtools: PW.Frame | PW.Page
+  label: string
+  durationMs: number
+}) => {
+  await expect(
+    options.devtools
+      .getByText('Connection to app lost', { exact: false })
+      .describe(`${options.label}:connection-lost`),
+  ).not.toBeVisible()
+
+  try {
+    await options.devtools
+      .getByText('Connection to app lost', { exact: false })
+      .describe(`${options.label}:connection-lost-during-watch`)
+      .waitFor({ state: 'visible', timeout: options.durationMs })
+  } catch (error) {
+    if (error instanceof errors.TimeoutError) return
+    throw error
+  }
+
+  throw new Error(`DevTools lost its app connection during ${options.label}`)
 }
 
 const checkDevtoolsState_ = async (options: {

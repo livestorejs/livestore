@@ -187,6 +187,14 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
 /**
  * Structural equality check for client events. Compares seqNum (global + client),
  * name, clientId, sessionId, and args. The `meta` field is ignored.
+ *
+ * Args are compared in their JSON-canonical form: locally-encoded events with
+ * `Schema.UndefinedOr` (or loose `Schema.optional`) fields produce
+ * `{ ..., flag: undefined }`, but JSON wire transport drops the key. Without
+ * canonicalizing, the local pending event compares unequal to its
+ * wire-roundtripped counterpart and the sync merge falsely takes the rebase
+ * path, surfacing as `MaterializerHashMismatchError` for state-dependent
+ * materializers.
  */
 export const isEqualEncoded = (a: Encoded, b: Encoded) =>
   a.seqNum.global === b.seqNum.global &&
@@ -194,7 +202,10 @@ export const isEqualEncoded = (a: Encoded, b: Encoded) =>
   a.name === b.name &&
   a.clientId === b.clientId &&
   a.sessionId === b.sessionId &&
-  deepEqual(a.args, b.args) // TODO use schema equality here
+  deepEqual(canonicalizeArgs(a.args), canonicalizeArgs(b.args)) // TODO use schema equality here
+
+const canonicalizeArgs = (args: unknown): unknown =>
+  args === undefined ? args : JSON.parse(JSON.stringify(args))
 
 /**
  * Creates an Effect Schema union for all event types in a schema (with composite sequence numbers).

@@ -2,6 +2,15 @@ name: Sync docs to Mixedbread Vector Store
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: 'Docs search target to sync'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
   push:
     branches: [main]
     paths:
@@ -19,18 +28,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.0-rc.5
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-
-      - name: Install Mixedbread CLI
-        run: npm i -g @mixedbread/cli
 
       - name: Sync vector store
         shell: bash
         working-directory: ./docs
         env:
           MXBAI_API_KEY: ${{ secrets.MXBAI_API_KEY }}
-          MXBAI_VECTOR_STORE_ID: ${{ secrets.MXBAI_VECTOR_STORE_ID }}
-        run: mxbai vs sync "${MXBAI_VECTOR_STORE_ID}" "./src/content/**/*.mdx" "./src/content/**/*.md" --yes --strategy fast
+          MXBAI_VECTOR_STORE_ID_DEV: ${{ secrets.MXBAI_VECTOR_STORE_ID_DEV }}
+          MXBAI_VECTOR_STORE_ID_PROD: ${{ secrets.MXBAI_VECTOR_STORE_ID_PROD }}
+          MXBAI_VECTOR_STORE_ID_LEGACY: ${{ secrets.MXBAI_VECTOR_STORE_ID }}
+          SYNC_TARGET: ${{ github.event_name == 'workflow_dispatch' && inputs.target || 'dev' }}
+        run: |
+          set -euo pipefail
+          : "${MXBAI_API_KEY:?Missing MXBAI_API_KEY secret}"
+
+          if [ "$SYNC_TARGET" = "prod" ]; then
+            vector_store_id="${MXBAI_VECTOR_STORE_ID_PROD:-}"
+          else
+            vector_store_id="${MXBAI_VECTOR_STORE_ID_DEV:-${MXBAI_VECTOR_STORE_ID_LEGACY:-}}"
+          fi
+
+          : "${vector_store_id:?Missing Mixedbread vector store id for target ${SYNC_TARGET}}"
+          pnpm dlx @mixedbread/cli@2.3.2 store sync "$vector_store_id" "./src/content/**/*.mdx" "./src/content/**/*.md" --yes --strategy fast

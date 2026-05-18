@@ -49,11 +49,10 @@ export const livestoreWorkspaceCatalog = {
 /** LiveStore-only versions not provided by effect-utils base catalog. */
 export const livestoreOnlyCatalog = {
   /**
-   * Snapshot releases pin every `@livestore/*` package — including the
-   * externally-published `devtools-vite` from overeng — to the same
-   * `LIVESTORE_RELEASE_VERSION`. Default to the dev tag for normal builds.
+   * LiveStore republishes DevTools artifacts under the LiveStore release version.
+   * The source artifact carries its own metadata for artifact lineage and protocol compatibility.
    */
-  '@livestore/devtools-vite': process.env.LIVESTORE_RELEASE_VERSION ?? '0.4.0-dev.22',
+  '@livestore/devtools-vite': process.env.LIVESTORE_RELEASE_VERSION ?? '0.4.0-dev.25',
   /** Tanstack router sub-packages not in effect-utils catalog (react-router/react-start/router-plugin are there) */
   '@tanstack/router-core': '1.145.7',
   '@tanstack/history': '1.145.7',
@@ -102,7 +101,7 @@ export const livestoreOnlyCatalog = {
   'monaco-editor': '0.34.1',
   nanoid: '5.0.9',
   'pretty-bytes': '7.0.1',
-  'qrcode-generator': '1.4.4',
+  'qrcode-generator': '2.0.4',
   '@iarna/toml': '3.0.0',
   '@graphql-typed-document-node/core': '3.2.0',
   'astro-expressive-code': '0.41.5',

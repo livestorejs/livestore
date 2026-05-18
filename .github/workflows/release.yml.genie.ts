@@ -116,6 +116,7 @@ git add \\
   .changeset \\
   package.json \\
   pnpm-lock.yaml \\
+  release/devtools-artifact.json \\
   release/release-plan.json \\
   release/version.json \\
   docs/package.json \\
@@ -157,7 +158,13 @@ fi
 gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$branch"
 gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$branch" \\
   -f mode=validate-release-plan \\
-  -f npm_tag="$LIVESTORE_NPM_TAG"`,
+  -f npm_tag="$LIVESTORE_NPM_TAG"
+
+if gh pr view "$branch" --repo "$GITHUB_REPOSITORY" --json autoMergeRequest --jq '.autoMergeRequest != null' | grep -qx true; then
+  echo "Auto-merge already enabled for $branch."
+else
+  gh pr merge "$branch" --repo "$GITHUB_REPOSITORY" --auto --merge
+fi`,
         },
       ],
     },
@@ -187,9 +194,17 @@ if [ "$use_synthetic_plan" = "false" ]; then
 fi
 
 mkdir -p release
+# PRs that touch release machinery but do not carry an actual release plan still
+# need to exercise package publishing and DevTools repacking. Use a unique,
+# unpublished prerelease instead of the checked-in package version: current dev
+# versions can already exist on npm, while snapshot versions intentionally
+# belong to the separate snapshot publisher.
+short_sha="\${GITHUB_SHA:0:12}"
+version="0.0.0-ci.release-validation.$short_sha"
+npm_tag="next"
 jq -n \\
-  --arg version "0.0.0-release-workflow-test-\${GITHUB_SHA}" \\
-  --arg npmTag "next" \\
+  --arg version "$version" \\
+  --arg npmTag "$npm_tag" \\
   '{
     schemaVersion: 1,
     version: $version,
@@ -204,8 +219,16 @@ jq -n \\
           name: 'Read release plan',
           run: `set -euo pipefail
 release_version="$(jq -r '.version' release/release-plan.json)"
+npm_tag="$(jq -r '.npmTag' release/release-plan.json)"
 : "\${release_version:?Missing release version}"
-echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"`,
+: "\${npm_tag:?Missing npm tag}"
+echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
+echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
+if [ "$npm_tag" = "latest" ]; then
+  echo "LIVESTORE_RELEASE_DEPLOY_TARGET=prod" >> "$GITHUB_ENV"
+else
+  echo "LIVESTORE_RELEASE_DEPLOY_TARGET=dev" >> "$GITHUB_ENV"
+fi`,
         },
         {
           name: 'Dry-run DevTools artifact repack',
@@ -218,10 +241,11 @@ echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"`,
       if: "github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'publish-release')",
       'runs-on': 'ubuntu-24.04',
       permissions: {
-        contents: 'read',
+        contents: 'write',
         'id-token': 'write',
       },
       env: {
+        GH_TOKEN: '${{ github.token }}',
         NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
       },
       defaults: bashShellDefaults,
@@ -248,6 +272,35 @@ printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.np
         {
           name: 'Publish DevTools artifact release',
           run: runDevenvTasksBefore('release:devtools-artifact:publish:no-install'),
+        },
+        {
+          name: 'Deploy production docs',
+          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          run: runDevenvTasksBefore('docs:deploy:prod'),
+          env: {
+            NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
+          },
+        },
+        {
+          name: 'Deploy production examples',
+          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          run: runDevenvTasksBefore('examples:deploy:prod'),
+          env: {
+            CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
+            CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
+          },
+        },
+        {
+          name: 'Sync production docs search',
+          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          run: `set -euo pipefail
+: "\${MXBAI_API_KEY:?Missing MXBAI_API_KEY secret}"
+: "\${MXBAI_VECTOR_STORE_ID_PROD:?Missing MXBAI_VECTOR_STORE_ID_PROD secret}"
+pnpm --dir docs exec mxbai store sync "$MXBAI_VECTOR_STORE_ID_PROD" "./src/content/**/*.mdx" "./src/content/**/*.md" --yes --strategy fast`,
+          env: {
+            MXBAI_API_KEY: '${{ secrets.MXBAI_API_KEY }}',
+            MXBAI_VECTOR_STORE_ID_PROD: '${{ secrets.MXBAI_VECTOR_STORE_ID_PROD }}',
+          },
         },
       ]),
     },

@@ -1,6 +1,6 @@
 {
   "name": "@livestore/devtools-expo",
-  "version": "0.4.0-dev.22",
+  "version": "0.4.0-dev.26",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -48,7 +48,7 @@
     "@effect/sql": "^0.51.1",
     "@effect/typeclass": "^0.40.0",
     "@effect/vitest": "^0.29.0",
-    "@livestore/devtools-vite": "^0.4.0-dev.22",
+    "@livestore/devtools-vite": "^0.4.0-dev.25",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/resources": "^2.2.0",
     "@standard-schema/spec": "^1.1.0",

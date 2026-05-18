@@ -1,5 +1,5 @@
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Cause, Effect, Exit } from '@livestore/utils/effect'
+import { Cause, Effect, Exit, Schema } from '@livestore/utils/effect'
 import { assert, expect } from 'vitest'
 
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
@@ -370,6 +370,48 @@ Vitest.describe('syncstate', () => {
           )
           assert(Exit.isFailure(exit))
           expect(Cause.isDie(exit.cause)).toBe(true)
+        }),
+      )
+
+      Vitest.it.effect('should advance (not rebase) when pending event has undefined-valued key dropped by JSON wire round-trip', () =>
+        Effect.gen(function* () {
+          const argsSchema = Schema.Struct({
+            id: Schema.String,
+            flag: Schema.UndefinedOr(Schema.Boolean),
+          })
+          const localArgs = Schema.encodeUnknownSync(argsSchema)({ id: 'abc' } as any)
+          const wireArgs = JSON.parse(JSON.stringify(localArgs))
+
+          const localPending = new TestEvent({
+            seqNum: e1_0.seqNum,
+            parentSeqNum: e1_0.parentSeqNum,
+            name: e1_0.name,
+            args: localArgs,
+            clientId: e1_0.clientId,
+            sessionId: e1_0.sessionId,
+          })
+          const fromUpstream = new TestEvent({
+            seqNum: e1_0.seqNum,
+            parentSeqNum: e1_0.parentSeqNum,
+            name: e1_0.name,
+            args: wireArgs,
+            clientId: e1_0.clientId,
+            sessionId: e1_0.sessionId,
+          })
+
+          const syncState = new SyncState.SyncState({
+            pending: [localPending],
+            upstreamHead: EventSequenceNumber.Client.ROOT,
+            localHead: localPending.seqNum,
+          })
+          const result = yield* merge({
+            syncState,
+            payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [fromUpstream] }),
+          })
+
+          expectAdvance(result)
+          expect(result.confirmedEvents).toHaveLength(1)
+          expect(result.newSyncState.pending).toHaveLength(0)
         }),
       )
     })
