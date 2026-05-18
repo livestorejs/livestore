@@ -231,6 +231,10 @@ else
 fi`,
         },
         {
+          name: 'Certify DevTools artifact liveness',
+          run: runDevenvTasksBefore('release:devtools-artifact:certify-liveness:no-install'),
+        },
+        {
           name: 'Dry-run DevTools artifact repack',
           run: runDevenvTasksBefore('release:devtools-artifact:repack-dryrun:no-install'),
         },

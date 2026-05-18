@@ -37,8 +37,11 @@ const manifest = (
       devtoolsBuildId: 'dt-test-build',
       devtoolsProtocolVersion: 1,
       status: 'passed',
-      testSuite: 'devtools-direct-connect-e2e',
-      scenarios: ['direct-url-connects-and-stays-connected'],
+      testSuite: 'tests/integration/src/tests/playwright/devtools',
+      scenarios: [
+        'direct web session loads and stays connected past heartbeat window',
+        'node adapter session loads through Vite and stays connected past 35 seconds',
+      ],
       ...overrides,
     },
   }) satisfies ArtifactManifest
@@ -161,6 +164,14 @@ describe('assertCertifiedDevtoolsArtifactForLivestore', () => {
         version: '0.4.0-dev.25',
       }),
     ).toThrow(/missing scenarios/)
+
+    expect(() =>
+      assertCertifiedDevtoolsArtifactForLivestore({
+        manifest: manifest({ scenarios: ['direct web session loads and stays connected past heartbeat window'] }),
+        metadata,
+        version: '0.4.0-dev.25',
+      }),
+    ).toThrow(/missing required scenario: node adapter session loads through Vite/)
   })
 })
 

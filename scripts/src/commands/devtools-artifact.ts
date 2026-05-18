@@ -75,6 +75,11 @@ type DevtoolsArtifactEphemeralCertification = {
   readonly scenarios: ReadonlyArray<'ci-snapshot-repack' | 'ci-release-validation-repack'>
 }
 
+const requiredReleaseCertificationScenarios = [
+  'direct web session loads and stays connected past heartbeat window',
+  'node adapter session loads through Vite and stays connected past 35 seconds',
+] as const
+
 type ArtifactManifestV1 = {
   readonly schemaVersion: 1
   readonly artifact: ArtifactSource
@@ -378,6 +383,11 @@ export const assertCertifiedDevtoolsArtifactForLivestore = ({
   if (certification.testSuite.trim().length === 0)
     throw new Error('DevTools artifact certification is missing testSuite')
   if (certification.scenarios.length === 0) throw new Error('DevTools artifact certification is missing scenarios')
+  for (const scenario of requiredReleaseCertificationScenarios) {
+    if (certification.scenarios.includes(scenario) === false) {
+      throw new Error(`DevTools artifact certification is missing required scenario: ${scenario}`)
+    }
+  }
 
   return certification
 }

@@ -91,6 +91,55 @@ let
       ${publishFlag}
   '';
 
+  devtoolsArtifactCertifyLivenessExec = ''
+    set -euo pipefail
+    cd "$DEVENV_ROOT"
+
+    : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
+
+    out_dir="''${LIVESTORE_DEVTOOLS_OUT_DIR:-$(mktemp -d)}"
+    mkdir -p "$out_dir"
+    export LIVESTORE_DEVTOOLS_OUT_DIR="$out_dir"
+
+    ${devtoolsArtifactRepackExec "--dry-run"}
+
+    repacked_tarball="$out_dir/livestore-devtools-vite-$LIVESTORE_RELEASE_VERSION.tgz"
+    if [ ! -f "$repacked_tarball" ]; then
+      echo "Expected repacked DevTools tarball not found: $repacked_tarball" >&2
+      exit 1
+    fi
+
+    package_link="tests/integration/node_modules/@livestore/devtools-vite"
+    if [ ! -e "$package_link" ]; then
+      echo "Expected installed @livestore/devtools-vite package link not found: $package_link" >&2
+      exit 1
+    fi
+
+    backup_dir="$(mktemp -d)"
+    cp -a "$package_link" "$backup_dir/devtools-vite"
+    restore_node_modules() {
+      rm -rf "$package_link"
+      cp -a "$backup_dir/devtools-vite" "$package_link"
+      rm -rf "$backup_dir"
+    }
+    trap restore_node_modules EXIT
+
+    unpack_dir="$(mktemp -d)"
+    tar -xzf "$repacked_tarball" -C "$unpack_dir"
+    rm -rf "$package_link"
+    mv "$unpack_dir/package" "$package_link"
+    rm -rf "$unpack_dir"
+
+    CI=true \
+      FORCE_PLAYWRIGHT_VIA_CLI=1 \
+      PLAYWRIGHT_SUITE=devtools \
+      PLAYWRIGHT_HEADLESS="''${PLAYWRIGHT_HEADLESS:-1}" \
+      DT_PASSTHROUGH=1 \
+      pnpm --dir tests/integration exec playwright test \
+        src/tests/playwright/devtools/node-adapter-timeout.play.ts \
+        --reporter=line
+  '';
+
   devtoolsArtifactRepackTask =
     {
       description,
@@ -286,6 +335,17 @@ in
     description = "Verify and repack a public LiveStore DevTools artifact after release setup has already run";
     publishFlag = "--dry-run";
     withInstall = false;
+  };
+
+  tasks."release:devtools-artifact:certify-liveness" = {
+    description = "Repack the public DevTools artifact and run the strict Playwright liveness certification";
+    exec = devtoolsArtifactCertifyLivenessExec;
+    after = [ "pnpm:install" ];
+  };
+
+  tasks."release:devtools-artifact:certify-liveness:no-install" = {
+    description = "Run the strict DevTools artifact liveness certification after release setup has already run";
+    exec = devtoolsArtifactCertifyLivenessExec;
   };
 
   tasks."release:devtools-artifact:publish" = devtoolsArtifactRepackTask {
