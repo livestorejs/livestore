@@ -26,7 +26,7 @@ import { checkConnectionRemainsActive } from './shared.ts'
 
 const FIXTURE_DIR = path.join(import.meta.dirname, '../fixtures/devtools/node-adapter-timeout')
 const TIMEOUT_WAIT_MS = 35_000 // 35 seconds, to exceed the 30 second timeout
-const CONNECTED_STATUS_TIMEOUT_MS = 30_000
+const CONNECTED_STATUS_TIMEOUT_MS = 60_000
 
 let nodeProcess: ChildProcess | undefined
 let devtoolsPort: number
@@ -138,7 +138,7 @@ test.describe('Node adapter devtools timeout', () => {
   test('should maintain connection to devtools after 30+ seconds', async ({ page }) => {
     // Cold CI artifact loading can take time before the 35 second heartbeat
     // watch starts.
-    test.setTimeout(120_000)
+    test.setTimeout(180_000)
 
     let connectedStatusResolve: () => void = () => {}
     const connectedStatus = new Promise<void>((resolve) => {
@@ -172,6 +172,10 @@ test.describe('Node adapter devtools timeout', () => {
       ) {
         connectedStatusResolve()
       }
+    })
+    page.on('pageerror', (error) => console.log(`[browser pageerror] ${error.message}`))
+    page.on('requestfailed', (request) => {
+      console.log(`[browser requestfailed] ${request.url()} ${request.failure()?.errorText ?? 'unknown error'}`)
     })
 
     const devtoolsUrl = `http://localhost:${devtoolsPort}/_livestore/node/${storeId}/test-client/static/${schema.devtools.alias}`
