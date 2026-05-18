@@ -2933,6 +2933,8 @@ jobs:
     permissions:
       contents: write
       id-token: write
+    outputs:
+      npm_snapshot_published: ${{ steps.publish-snapshot.outcome == 'success' && '1' || '0' }}
     needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
     env:
       GH_TOKEN: ${{ github.token }}
@@ -3063,7 +3065,8 @@ jobs:
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - name: Publish snapshot version
+      - id: publish-snapshot
+        name: Publish snapshot version
         run: |
           __nix_gc_retry_helper=$(mktemp)
           cat > "$__nix_gc_retry_helper" <<'EOF'
@@ -4717,7 +4720,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   build-example-create:
-    if: github.event.pull_request.head.repo.fork != true
+    if: github.event.pull_request.head.repo.fork != true && needs.publish-snapshot-version.outputs.npm_snapshot_published == '1'
     needs: publish-snapshot-version
     strategy:
       matrix:
