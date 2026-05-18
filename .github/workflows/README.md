@@ -1,0 +1,121 @@
+# GitHub Workflows
+
+Most workflow YAML files in this directory are generated from sibling
+`.genie.ts` files. Edit the `.genie.ts` source and run `genie`; do not edit the
+generated YAML directly. `sync-docs.yml` is currently handwritten.
+
+## `ci.yml`
+
+Primary validation workflow for pull requests, `main` pushes, and manual
+workflow-dispatch runs. `main` is the canonical default and release branch.
+
+It runs the normal repository quality gates: linting, Changesets release-intent
+checks, TypeScript builds, unit tests, integration tests, Playwright tests,
+performance tests, docs/examples builds, dev docs/examples deploys, snapshot publishing, DevTools artifact
+snapshot publishing, and create-example smoke tests.
+
+Docs deployment uses `mono docs deploy`. Normal `main` pushes update the dev
+Netlify site, pull requests publish sticky and commit-specific aliases on the
+dev site, and stable release publishing is the only workflow path that updates
+the production docs domain. Use `mono docs deploy --plan` when changing deploy
+routing logic; it prints the resolved site and target without building or
+deploying.
+
+The snapshot and create-example jobs are intentionally part of CI. They verify
+that the exact commit under test can publish snapshot packages and that users
+can create projects from those snapshots. Forked PRs skip jobs that require
+repository secrets or publishing permissions.
+
+Snapshot DevTools Chrome ZIPs are uploaded as short-lived workflow artifacts,
+not GitHub Releases. Public GitHub Releases are reserved for dev/stable release
+versions so the releases page remains a user-facing release history rather than
+a CI snapshot log.
+
+Manual `workflow_dispatch` is used by the release workflow for generated release
+PR branches. GitHub does not recursively trigger PR workflows from branches
+pushed with `GITHUB_TOKEN`, so release automation explicitly dispatches CI for
+the generated release branch.
+
+## `release.yml`
+
+Release orchestration workflow for the PR-driven release process.
+
+Manual dispatch with `mode=create-release-pr` runs Changesets versioning on
+`main`, writes `release/release-plan.json`, updates package versions and the
+lockfile, and opens or updates a draft release PR such as
+`automation/release-0.4.0`. The generated PR is the human review gate. Keep it
+as draft until the release is intentionally ready to publish.
+
+Manual dispatch with `mode=validate-release-plan`, or a PR that touches release
+pipeline files, dry-runs the package publisher and public DevTools artifact
+repack path. This checks the stable release machinery without publishing a
+stable release.
+
+On push to `main` when `release/release-plan.json` changes, the workflow publishes
+the release group and the matching public DevTools artifact package. For stable
+`latest` releases it then deploys the production docs, production examples, and
+production docs search index. In normal operation this happens when the
+supervised release PR is merged.
+
+Manual dispatch with `mode=publish-release` reruns the publish job for the
+checked-in release plan. Use it only after confirming the current `main` release
+plan is still the intended release; the publisher is idempotent for already
+published packages, but production deploys still reflect the checked-in release
+state.
+
+The publish job uses the repository `NPM_TOKEN` secret. Snapshot publishing uses
+npm trusted publishing from `ci.yml`; release publishing should move to trusted
+publishing too once `release.yml` is authorized for the npm packages.
+
+## `devtools-artifact.yml`
+
+Maintains `release/devtools-artifact.json`, the public manifest that tells the
+LiveStore release pipeline which sanitized DevTools artifact to repackage.
+
+It can be triggered by `repository_dispatch` from the artifact-producing system
+or manually with public artifact URLs and a SHA-256 checksum. It verifies the
+manifest and opens a PR that only changes the public artifact metadata.
+
+The manifest separates artifact identity from release certification. The
+artifact-producing workflow may update URLs and checksums, but it must not mark
+the artifact as shippable for a LiveStore release. Repack and publish require a
+schemaVersion 2 certification entry, owned by the LiveStore release process,
+that names the exact LiveStore version, DevTools build id, protocol version, and
+e2e scenarios that passed.
+
+Artifact URLs should point at build-id-only release tags such as
+`devtools-artifact-dt-20260505-398c5feb`. The DevTools implementation version
+may appear in public metadata for traceability, but it is not the artifact
+release identity. When LiveStore republishes the artifact, the npm package and
+Chrome ZIP release asset are versioned with the LiveStore release group or
+snapshot version.
+
+Artifact ordering should use artifact metadata such as `artifactVersion` or
+`builtAt`. Runtime protocol compatibility is decided by
+`devtoolsProtocolVersion`, not by matching package versions. Shipping
+compatibility is decided by the LiveStore-owned certification entry, so stale
+artifacts with broad self-declared compatibility cannot be republished as a new
+LiveStore DevTools package.
+
+The workflow exists so the LiveStore repository can keep release CI
+self-contained while the DevTools source remains outside this repository.
+
+## `auto-review.yml`
+
+Small workflow that requests review from `schickling` when `schickling-assistant`
+opens or marks a PR ready for review.
+
+Draft PRs are intentionally ignored. This keeps draft release PRs and other
+work-in-progress branches visible without making them look ready for human
+review.
+
+## `sync-docs.yml`
+
+Synchronizes documentation Markdown/MDX files from `main` into the Mixedbread
+vector store used by docs search/RAG tooling. Pushes to `main` update the dev
+search index. Manual dispatch can target either `dev` or `prod`; production
+sync is also run by the stable release publish workflow.
+
+It runs on pushes to `main` that touch docs content and can also be dispatched
+manually. It is separate from the docs build/deploy jobs in `ci.yml`: CI verifies
+and deploys the website, while this workflow updates the external search index.

@@ -1,6 +1,7 @@
+import postgres from 'postgres'
+
 import type { LiveStoreEvent } from '@livestore/livestore'
 import { toTableName } from '@livestore/sync-electric'
-import postgres from 'postgres'
 
 export const makeDb = (storeId: string) => {
   const tableName = toTableName(storeId)
@@ -12,6 +13,10 @@ export const makeDb = (storeId: string) => {
     host: 'localhost',
   })
 
+  /**
+   * ⚠️  IMPORTANT: Any changes to this table schema require bumping PERSISTENCE_FORMAT_VERSION
+   * in packages/@livestore/sync-electric/src/make-electric-url.ts
+   */
   const migrate = () =>
     sql`
     CREATE TABLE IF NOT EXISTS ${sql(tableName)} (
@@ -26,7 +31,7 @@ export const makeDb = (storeId: string) => {
   // -- schema_hash INTEGER NOT NULL,
   // -- created_at TEXT NOT NULL
 
-  const createEvents = async (events: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) => {
+  const createEvents = async (events: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => {
     await sql`INSERT INTO ${sql(tableName)} ${sql(events)}`
   }
 

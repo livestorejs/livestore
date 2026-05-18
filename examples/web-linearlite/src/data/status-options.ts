@@ -1,4 +1,4 @@
-import type { IconName } from '@/components/icons'
+import type { IconName } from '../components/icons/index.tsx'
 
 export type StatusId = 'backlog' | 'todo' | 'in_progress' | 'done' | 'canceled'
 

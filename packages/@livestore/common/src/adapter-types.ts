@@ -1,6 +1,6 @@
 import {
-  type Cause,
   type Effect,
+  type Exit,
   type Queue,
   Schema,
   type Scope,
@@ -10,15 +10,21 @@ import {
 
 import type { ClientSessionLeaderThreadProxy } from './ClientSessionLeaderThreadProxy.ts'
 import type * as Devtools from './devtools/mod.ts'
-import type { IntentionalShutdownCause, SyncError, UnexpectedError } from './errors.ts'
+import type { IntentionalShutdownCause, MaterializeError, UnknownError } from './errors.ts'
 import type { LiveStoreSchema } from './schema/mod.ts'
 import type { SqliteDb } from './sqlite-types.ts'
+import type { BackendIdMismatchError } from './sync/index.ts'
 
 export * as ClientSessionLeaderThreadProxy from './ClientSessionLeaderThreadProxy.ts'
 export * from './defs.ts'
 export * from './errors.ts'
 export * from './sqlite-types.ts'
 
+/**
+ * Runtime handle to an active LiveStore client session within the current process.
+ * Provides direct access to the embedded SQLite database, leader thread bridge,
+ * and lifecycle controls useful for application-level coordination.
+ */
 export interface ClientSession {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
   sqliteDb: SqliteDb
@@ -27,7 +33,12 @@ export interface ClientSession {
   sessionId: string
   /** Status info whether current session is leader or not */
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
-  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause | SyncError>) => Effect.Effect<void>
+  shutdown: (
+    cause: Exit.Exit<
+      IntentionalShutdownCause,
+      UnknownError | MaterializeError | BackendIdMismatchError
+    >,
+  ) => Effect.Effect<void>
   /** A proxy API to communicate with the leader thread */
   leaderThread: ClientSessionLeaderThreadProxy
   /** A unique identifier for the current instance of the client session. Used for debugging purposes. */
@@ -41,12 +52,42 @@ export const BootStateProgress = Schema.Struct({
   total: Schema.Number,
 })
 
+/**
+ * Describes known reasons why LiveStore boot may encounter storage issues.
+ *
+ * @remarks
+ * - `private-browsing`: OPFS unavailable due to private/incognito browsing mode (Safari, Firefox)
+ * - `storage-unavailable`: OPFS access denied for other reasons (permissions, quota)
+ * - `unknown`: Unexpected error during storage initialization
+ */
+export const BootWarningReason = Schema.Literal('private-browsing', 'storage-unavailable', 'unknown')
+export type BootWarningReason = typeof BootWarningReason.Type
+
+/**
+ * Describes the storage mode the store is operating in.
+ *
+ * @remarks
+ * - `persisted`: Data is persisted to disk (e.g., via OPFS)
+ * - `in-memory`: Data is only stored in memory and will be lost on page refresh
+ */
+export const StorageMode = Schema.Literal('persisted', 'in-memory')
+export type StorageMode = typeof StorageMode.Type
+
 export const BootStatus = Schema.Union(
   Schema.Struct({ stage: Schema.Literal('loading') }),
   Schema.Struct({ stage: Schema.Literal('migrating'), progress: BootStateProgress }),
   Schema.Struct({ stage: Schema.Literal('rehydrating'), progress: BootStateProgress }),
   Schema.Struct({ stage: Schema.Literal('syncing'), progress: BootStateProgress }),
   Schema.Struct({ stage: Schema.Literal('done') }),
+  /**
+   * Indicates a non-fatal issue occurred during boot that may degrade functionality.
+   * LiveStore continues running but without full capabilities (e.g., no persistence).
+   */
+  Schema.Struct({
+    stage: Schema.Literal('warning'),
+    reason: BootWarningReason,
+    message: Schema.String,
+  }),
 ).annotations({ title: 'BootStatus' })
 
 export type BootStatus = typeof BootStatus.Type
@@ -90,7 +131,9 @@ export type MigrationOptions =
     }
   | {
       strategy: 'manual'
-      migrate: (oldDb: Uint8Array) => Uint8Array | Promise<Uint8Array> | Effect.Effect<Uint8Array, unknown>
+      migrate: (
+        oldDb: Uint8Array<ArrayBuffer>,
+      ) => Uint8Array<ArrayBuffer> | Promise<Uint8Array<ArrayBuffer>> | Effect.Effect<Uint8Array<ArrayBuffer>, unknown>
     }
 
 export type MigrationHooks = {
@@ -109,9 +152,9 @@ export interface ClientSessionDevtoolsChannel
 
 export type ConnectDevtoolsToStore = (
   storeDevtoolsChannel: ClientSessionDevtoolsChannel,
-) => Effect.Effect<void, UnexpectedError, Scope.Scope>
+) => Effect.Effect<void, UnknownError, Scope.Scope>
 
-export type Adapter = (args: AdapterArgs) => Effect.Effect<ClientSession, UnexpectedError, Scope.Scope>
+export type Adapter = (args: AdapterArgs) => Effect.Effect<ClientSession, UnknownError, Scope.Scope>
 
 export interface AdapterArgs {
   schema: LiveStoreSchema
@@ -119,12 +162,19 @@ export interface AdapterArgs {
   devtoolsEnabled: boolean
   debugInstanceId: string
   bootStatusQueue: Queue.Queue<BootStatus>
-  shutdown: (cause: Cause.Cause<any>) => Effect.Effect<void>
+  shutdown: (
+    exit: Exit.Exit<
+      IntentionalShutdownCause,
+      UnknownError | MaterializeError | BackendIdMismatchError
+    >,
+  ) => Effect.Effect<void>
   connectDevtoolsToStore: ConnectDevtoolsToStore
   /**
    * Payload that will be passed to the sync backend when connecting
    *
    * @default undefined
    */
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any> | undefined
+  /** Encoded representation of the sync payload matching `syncPayloadSchema`. */
+  syncPayloadEncoded: Schema.JsonValue | undefined
 }

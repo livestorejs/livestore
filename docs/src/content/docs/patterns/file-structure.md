@@ -1,5 +1,5 @@
 ---
-title: File Structure
+title: File structure
 ---
 
 While there are no strict requirements/conventions for how to structure your project (files, folders, etc), a common pattern is to have a `src/livestore` folder which contains all the LiveStore related code.

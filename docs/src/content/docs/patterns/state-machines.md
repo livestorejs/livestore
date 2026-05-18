@@ -1,5 +1,5 @@
 ---
-title: State Machines
+title: State machines
 description: How to use state machines with LiveStore
 ---
 
@@ -12,4 +12,3 @@ The basic idea is to listen query results and emit events when the query results
 ```ts
 // TODO (contribution welcome)
 ```
-

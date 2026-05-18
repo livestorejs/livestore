@@ -1,9 +1,16 @@
-import { Schema } from '@livestore/utils/effect'
 import { describe, expect, test } from 'vitest'
 
+import { Schema } from '@livestore/utils/effect'
+
 import { tables } from '../../../__tests__/fixture.ts'
-import type * as LiveStoreEvent from '../../LiveStoreEvent.ts'
-import { ClientDocumentTableDefSymbol, clientDocument, mergeDefaultValues } from './client-document-def.ts'
+import type * as LiveStoreEvent from '../../LiveStoreEvent/mod.ts'
+import {
+  ClientDocumentTableDefSymbol,
+  clientDocument,
+  createOptimisticEventSchema,
+  mergeDefaultValues,
+} from './client-document-def.ts'
+import { getResultSchema } from './query-builder/impl.ts'
 
 describe('client document table', () => {
   test('set event', () => {
@@ -50,6 +57,7 @@ describe('client document table', () => {
         currentFacts: new Map(),
         query: {} as any, // unused
         eventDef: Doc[ClientDocumentTableDefSymbol].derived.setEventDef,
+        event: {} as any, // unused in this test
       })
     }
 
@@ -230,15 +238,163 @@ describe('client document table', () => {
         }
       `)
     })
+
+    test('any value (Schema.Any) should fully replace', () => {
+      expect(forSchema(Schema.Any, { a: 1 }, 'id1')).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "id1",
+            "{"a":1}",
+            "{"a":1}",
+          ],
+          "sql": "INSERT INTO 'test' (id, value) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET value = ?",
+          "writeTables": Set {
+            "test",
+          },
+        }
+      `)
+    })
+  })
+
+  /** Ensures optimistic decoding stays robust when persisted JSON is incompatible. */
+  describe('optimistic schema', () => {
+    /** Models persisted JSON using epoch numbers + base64 while app code expects Date + Uint8Array. */
+    const valueSchema = Schema.Struct({
+      createdAt: Schema.DateFromNumber,
+      avatar: Schema.Uint8ArrayFromBase64,
+    })
+    const defaultValue = {
+      createdAt: new Date(0),
+      avatar: new Uint8Array(),
+    }
+    const invalidPayloads: Array<{ label: string; value: unknown }> = [
+      { label: 'decoded-shape JSON', value: { createdAt: new Date(0), avatar: new Uint8Array([1, 2]) } },
+      { label: 'wrong types', value: { createdAt: 'not-a-number', avatar: { nested: 'bad' } } },
+      { label: 'missing required fields', value: {} },
+    ]
+    const validPayload = { createdAt: 42, avatar: 'AQI=' }
+    const extraFieldsPayload = { createdAt: 42, avatar: 'AQI=', extra: 'ignored' }
+
+    test.each(invalidPayloads)('decodes invalid persisted JSON ($label)', ({ value }) => {
+      const optimisticSchema = createOptimisticEventSchema({
+        valueSchema,
+        defaultValue,
+        partialSet: false,
+      })
+      const rowSchema = Schema.parseJson(optimisticSchema)
+
+      expect(Schema.decodeUnknownSync(rowSchema)(JSON.stringify(value))).toEqual(defaultValue)
+    })
+
+    test('decodes valid persisted JSON (encoded shape)', () => {
+      const optimisticSchema = createOptimisticEventSchema({
+        valueSchema,
+        defaultValue,
+        partialSet: false,
+      })
+      const rowSchema = Schema.parseJson(optimisticSchema)
+
+      expect(Schema.decodeUnknownSync(rowSchema)(JSON.stringify(validPayload))).toEqual({
+        createdAt: new Date(42),
+        avatar: new Uint8Array([1, 2]),
+      })
+    })
+
+    test('decodes valid persisted JSON with extra fields', () => {
+      const optimisticSchema = createOptimisticEventSchema({
+        valueSchema,
+        defaultValue,
+        partialSet: false,
+      })
+      const rowSchema = Schema.parseJson(optimisticSchema)
+
+      expect(Schema.decodeUnknownSync(rowSchema)(JSON.stringify(extraFieldsPayload))).toEqual({
+        createdAt: new Date(42),
+        avatar: new Uint8Array([1, 2]),
+      })
+    })
+
+    test.each(invalidPayloads)('decodes clientDocument rowSchema with invalid JSON ($label)', ({ value }) => {
+      const Doc = clientDocument({
+        name: 'test_numbers',
+        schema: valueSchema,
+        default: { value: defaultValue },
+        partialSet: false,
+      })
+      const row = {
+        id: 'row-1',
+        value: JSON.stringify(value),
+      }
+
+      expect(Schema.decodeUnknownSync(Doc.rowSchema)(row)).toEqual({ id: 'row-1', value: defaultValue })
+    })
+
+    test('decodes clientDocument rowSchema with valid encoded JSON', () => {
+      const Doc = clientDocument({
+        name: 'test_numbers',
+        schema: valueSchema,
+        default: { value: defaultValue },
+        partialSet: false,
+      })
+      const row = {
+        id: 'row-1',
+        value: JSON.stringify(validPayload),
+      }
+
+      expect(Schema.decodeUnknownSync(Doc.rowSchema)(row)).toEqual({
+        id: 'row-1',
+        value: { createdAt: new Date(42), avatar: new Uint8Array([1, 2]) },
+      })
+    })
+
+    test.each(invalidPayloads)('decodes RowQuery result schema with invalid JSON ($label)', ({ value }) => {
+      const Doc = clientDocument({
+        name: 'test_numbers',
+        schema: valueSchema,
+        default: { value: defaultValue },
+        partialSet: false,
+      })
+      const query = Doc.get('row-1')
+      const resultSchema = getResultSchema(query)
+      const rawDbResults = [
+        {
+          id: 'row-1',
+          value: JSON.stringify(value),
+        },
+      ]
+
+      expect(Schema.decodeUnknownSync(resultSchema)(rawDbResults)).toEqual(defaultValue)
+    })
+
+    test('decodes RowQuery result schema with valid encoded JSON', () => {
+      const Doc = clientDocument({
+        name: 'test_numbers',
+        schema: valueSchema,
+        default: { value: defaultValue },
+        partialSet: false,
+      })
+      const query = Doc.get('row-1')
+      const resultSchema = getResultSchema(query)
+      const rawDbResults = [
+        {
+          id: 'row-1',
+          value: JSON.stringify(validPayload),
+        },
+      ]
+
+      expect(Schema.decodeUnknownSync(resultSchema)(rawDbResults)).toEqual({
+        createdAt: new Date(42),
+        avatar: new Uint8Array([1, 2]),
+      })
+    })
   })
 })
 
-const patchId = (muationEvent: LiveStoreEvent.PartialAnyDecoded) => {
+const patchId = (muationEvent: LiveStoreEvent.Input.Decoded) => {
   // TODO use new id paradigm
   const id = `00000000-0000-0000-0000-000000000000`
   return { ...muationEvent, id }
 }
-
 describe('mergeDefaultValues', () => {
   test('merges values from both objects', () => {
     const defaults = { a: 1, b: 2 }

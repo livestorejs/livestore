@@ -1,8 +1,8 @@
 ## Usage
 
-Those templates dependencies are maintained via [pnpm](https://pnpm.io) via `pnpm up -Lri`.
-
-This is the reason you see a `pnpm-lock.yaml`. That being said, any package manager will work. This file can be safely be removed once you clone a template.
+Those templates dependencies are maintained via the repo-root [pnpm](https://pnpm.io)
+workspace. That being said, any package manager will work once you copy a
+template into its own project.
 
 ```bash
 $ npm install # or pnpm install or yarn install
@@ -28,7 +28,3 @@ It correctly bundles Solid in production mode and optimizes the build for the be
 
 The build is minified and the filenames include the hashes.<br>
 Your app is ready to be deployed!
-
-## Deployment
-
-You can deploy the `dist` folder to any static host provider (netlify, surge, now, etc.)

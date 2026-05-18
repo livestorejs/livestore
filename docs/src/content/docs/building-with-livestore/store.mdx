@@ -1,0 +1,163 @@
+---
+title: Store
+sidebar:
+  order: 30
+---
+
+import CommitEventSnippet from '../../_assets/code/reference/store/commit-event.ts?snippet'
+import CreateStoreSnippet from '../../_assets/code/reference/store/create-store.ts?snippet'
+import QueryDataSnippet from '../../_assets/code/reference/store/query-data.ts?snippet'
+import ShutdownSnippet from '../../_assets/code/reference/store/shutdown.ts?snippet'
+import SubscribeSnippet from '../../_assets/code/reference/store/subscribe.ts?snippet'
+import StreamEventsSnippet from '../../_assets/code/reference/store/stream-events.ts?snippet'
+import MakeStoreContextSnippet from '../../_assets/code/reference/store/effect/make-store-context.ts?snippet'
+import UsageInServiceSnippet from '../../_assets/code/reference/store/effect/usage-in-service.ts?snippet'
+import MultipleStoresSnippet from '../../_assets/code/reference/store/effect/multiple-stores.ts?snippet'
+import LayerCompositionSnippet from '../../_assets/code/reference/store/effect/layer-composition.ts?snippet'
+
+The `Store` is the most common way to interact with LiveStore from your application code. It provides a way to query data, commit events, and subscribe to data changes.
+
+## Creating a store
+
+For how to create a store in React, see the [React integration docs](/framework-integrations/react-integration). The following example shows how to create a store manually:
+
+<CreateStoreSnippet />
+
+## Using a store
+
+### Querying data
+
+<QueryDataSnippet />
+
+### Subscribing to data
+
+<SubscribeSnippet />
+
+### Committing events
+
+<CommitEventSnippet />
+
+### Streaming events
+
+Currently only events confirmed by the sync backend are supported.
+
+<StreamEventsSnippet />
+
+### Shutting down a store
+
+LiveStore provides two APIs for shutting down a store:
+
+<ShutdownSnippet />
+
+## Effect integration
+
+For applications using [Effect](https://effect.website), LiveStore provides a type-safe way to access stores through the Effect layer system via `makeStoreContext()`.
+
+### Creating a typed store context
+
+Use `makeStoreContext()` to create a typed context that preserves your schema types:
+
+<MakeStoreContextSnippet />
+
+The factory takes your schema type as a generic parameter and returns a `StoreContext` with:
+- `Tag` - Context tag for dependency injection
+- `Layer` - Creates a layer that initializes the store
+- `DeferredTag` - For async initialization patterns
+- `DeferredLayer` - Layer providing the deferred context
+- `fromDeferred` - Layer that waits for deferred initialization
+
+### Using the store in Effect services
+
+Access the store in Effect code with full type safety and autocomplete:
+
+<UsageInServiceSnippet />
+
+### Layer composition
+
+Compose store layers with your application services:
+
+<LayerCompositionSnippet />
+
+### Multiple stores with Effect
+
+Each store gets a unique context tag, allowing multiple stores in the same Effect context:
+
+<MultipleStoresSnippet />
+
+For more Effect patterns including Effect Atom integration, see the [Effect patterns](/patterns/effect) page.
+
+## Multiple stores
+
+You can create and use multiple stores in the same app. This can be useful when breaking up your data model into smaller pieces.
+
+## Sync Status
+
+LiveStore provides APIs to monitor the synchronization status between the client session and the leader thread. This is useful for displaying sync indicators or performing health checks.
+
+### SyncStatus type
+
+```ts
+type SyncStatus = {
+  localHead: string      // e.g., "e5.2" or "e5.2r1"
+  upstreamHead: string   // e.g., "e3"
+  pendingCount: number   // Number of events pending sync
+  isSynced: boolean      // true when pendingCount === 0
+}
+```
+
+### `store.syncStatus()`
+
+Returns the current sync status synchronously.
+
+```ts
+const status = store.syncStatus()
+if (!status.isSynced) {
+  console.log(`${status.pendingCount} events pending sync`)
+}
+```
+
+### `store.subscribeSyncStatus(callback)`
+
+Subscribes to sync status changes. The callback is invoked immediately with the current status and whenever the sync state changes.
+
+```ts
+const unsubscribe = store.subscribeSyncStatus((status) => {
+  updateUI(status.isSynced ? 'Synced' : 'Syncing...')
+})
+
+// Later, stop listening
+unsubscribe()
+```
+
+### `store.syncStatusStream()`
+
+Returns an Effect Stream of sync status updates. For Effect-based workflows.
+
+```ts
+import { Effect, Stream } from 'effect'
+
+store.syncStatusStream().pipe(
+  Stream.tap((status) => Effect.log(`Sync: ${status.isSynced}`)),
+  Stream.runDrain,
+)
+```
+
+For React, see [`store.useSyncStatus()`](/framework-integrations/react-integration#storeusesyncstatus).
+
+## Development/debugging helpers
+
+A store instance also exposes a `_dev` property that contains some helpful methods for development. For convenience you can access a store on `globalThis`/`window` like via `__debugLiveStore.default._dev` (`default` is the store id):
+
+```ts
+// Download the SQLite database
+__debugLiveStore.default._dev.downloadDb()
+
+// Download the eventlog database
+__debugLiveStore.default._dev.downloadEventlogDb()
+
+// Reset the store
+__debugLiveStore.default._dev.hardReset()
+
+// See the current sync state
+__debugLiveStore.default._dev.syncStates()
+```

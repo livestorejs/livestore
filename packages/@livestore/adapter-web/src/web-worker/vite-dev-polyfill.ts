@@ -5,6 +5,7 @@ globalThis.$RefreshReg$ = () => {}
 // @ts-expect-error TODO remove when Vite does proper treeshaking during dev
 globalThis.$RefreshSig$ = () => (type: any) => type
 
+// biome-ignore lint/suspicious/noTsIgnore: sometimes @types/node is there, sometimes not.
 // @ts-ignore
 globalThis.process = globalThis.process ?? { env: {} }
 

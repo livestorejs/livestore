@@ -27,7 +27,7 @@ export default class QueryCache {
 
     const formatValue = (value: any) => (value === SessionIdSymbol ? 'SessionIdSymbol' : String(value))
 
-    if (Array.isArray(bindValues)) {
+    if (Array.isArray(bindValues) === true) {
       return `${sql}\n${bindValues.map(formatValue).join('\n')}` as CacheKey
     }
 

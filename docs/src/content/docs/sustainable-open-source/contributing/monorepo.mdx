@@ -1,0 +1,264 @@
+---
+title: Monorepo
+description: Notes on the monorepo setup of LiveStore.
+---
+
+import { REACT_VERSION, EFFECT_VERSION } from '../../../../../../packages/@local/shared/src/CONSTANTS'
+
+## Prerequisites
+
+### Personal experience
+
+Depending on the kind of contribution you're interested in, the following
+experience is recommended:
+
+- Deep experience with TypeScript (incl. type-level programming)
+- Solid working knowledge of [Effect-TS](https://effect.website) — LiveStore is
+  implemented on top of Effect and makes heavy use of its primitives (`Effect`,
+  `Layer`, `Schema`, `Stream`, `FiberRef`, `Ref`, etc.). Willingness to ramp up
+  is acceptable, but most non-trivial contributions assume fluency.
+- Experience with TypeScript monorepo setups
+- Experience with distributed systems
+
+### Required tooling: Nix + devenv
+
+LiveStore requires [Nix](https://nixos.org/) with [devenv](https://devenv.sh)
+to manage all development dependencies (Node.js, Bun, pnpm, oxlint, OTEL stack,
+Playwright browsers, etc.). Enter the development shell with `devenv shell`.
+
+#### Why this is a hard requirement
+
+LiveStore is developed alongside a family of projects that share tooling
+through [`effect-utils`](https://github.com/overengineeringstudio/effect-utils)
+— a Nix flake that provides the exact oxlint (with custom plugins), `dt` task
+runner, `genie` config generator, `megarepo` CLI, OTEL dashboards, and
+Playwright integration used here. Standing this up outside of Nix/devenv
+means reimplementing a moving target and drifting from CI.
+
+By requiring Nix + devenv we get:
+
+- **Version parity with CI and every other LiveStore/effect-utils project** —
+  the same compiler, linter, and task-runner versions everywhere.
+- **Reproducible builds** — no "works on my machine" drift between
+  contributors.
+- **Single source of truth** — tool versions live in `devenv.nix`, not
+  scattered across READMEs.
+
+#### Install Nix
+
+We recommend the
+[Determinate Nix Installer](https://docs.determinate.systems/determinate-nix/)
+— it sets sane defaults, enables flakes out of the box, and is easy to
+uninstall. Any Nix install with flakes enabled works; Determinate is simply
+the path of least resistance.
+
+After installing Nix, install
+[devenv](https://devenv.sh/getting-started/) following its install guide.
+
+(Optional) If you prefer the dev environment to auto-load when you `cd`
+into the repo, also install [direnv](https://direnv.net) — the repo ships
+an `.envrc` that wires devenv into direnv. Not required.
+
+### Manual setup (discouraged)
+
+It is technically possible to set up the toolchain manually (Node.js, Bun,
+pnpm, etc.), but this path is **not supported**: you'll diverge from CI,
+miss linter plugins, and have to track tool versions by hand. Use Nix +
+devenv unless you have a very specific reason not to.
+
+## Initial setup
+
+```bash
+git clone git@github.com:livestorejs/livestore.git
+cd livestore
+devenv shell
+```
+
+Entering the shell builds the Nix environment, puts the full toolchain
+(Node.js, Bun, pnpm, `dt`, `mono`, oxlint, oxfmt, etc.) on `$PATH`, and
+runs the project `setup` task (which installs pnpm deps, regenerates
+`genie` outputs, and builds TypeScript).
+
+## Working with devenv
+
+`devenv shell` is the primary entry point. Everything the repo provides —
+packages, env vars, tasks, background processes — comes from `devenv.nix`
+and is surfaced through the devenv CLI:
+
+- `devenv shell` — open an interactive subshell with the full dev
+  environment. Type `exit` to leave. Re-run after closing the terminal.
+- `devenv shell <cmd> [args...]` — run a single command inside the
+  environment without staying in the subshell. Useful for scripts and
+  CI (`devenv shell dt ts:check`).
+- `devenv tasks list` — list all defined tasks (see
+  [Common commands](#common-commands) below for the most-used ones).
+- `devenv tasks run <task>` — run a task directly. The project's
+  pre-commit hook uses this (`devenv tasks run check:quick`).
+- `devenv up` — start long-running processes defined in `devenv.nix`
+  (e.g. the local OTEL stack — see [OpenTelemetry setup](#opentelemetry-setup)).
+- `devenv info` — print a summary of what the current environment
+  provides (packages, env vars, processes, tasks). Handy when debugging.
+
+See the [devenv docs](https://devenv.sh) for the full CLI reference.
+
+## General notes
+
+- TypeScript
+  - LiveStore tries to follow the strictest TypeScript rules possible to ensure
+    type safety and avoid subtle bugs.
+    - LiveStore also makes heavy use of
+      [TypeScript project references](https://www.typescriptlang.org/docs/handbook/project-references.html).
+- Package management
+  - This project uses [pnpm](https://pnpm.io/) to manage the workspace.
+- LiveStore is primarily developed in VSCode/Cursor.
+- Testing
+  - LiveStore uses Vitest for most tests and Playwright for browser tests.
+
+### Notable used tools / technologies
+
+- [TypeScript](https://www.typescriptlang.org/)
+- [Effect](https://effect.website)
+- [pnpm](https://pnpm.io/)
+- [Bun](https://bun.sh/)
+- [Vitest](https://vitest.dev/)
+- [Playwright](https://playwright.dev/)
+- [OpenTelemetry](https://opentelemetry.io/)
+- [wa-sqlite](https://github.com/rhashimoto/wa-sqlite) (included as git subtree) - see [wa-sqlite management](../../../../../../contributor-docs/wa-sqlite-management.md)
+- [Nix](https://zero-to-nix.com/)
+- [devenv](https://devenv.sh)
+
+### Environment variables
+
+Project env vars are declared in `devenv.nix` and set by `devenv shell`.
+For local overrides (credentials, custom service endpoints), export them
+in your parent shell before running `devenv shell` — they propagate
+through. If you use direnv, the repo's `.envrc` sources a git-ignored
+`.envrc.local` for the same purpose.
+
+### Common commands
+
+Inside `devenv shell`, the `dt` CLI is a thin wrapper around
+`devenv tasks run` that adds status-check caching and OTEL
+instrumentation. From outside the shell, use
+`devenv shell dt <task>` or `devenv tasks run <task>` directly.
+Most-used tasks:
+
+- `dt ts:build` / `dt ts:build-watch` — build TypeScript across the monorepo
+- `dt ts:check` — run the TypeScript build/check
+- `dt lint:full` / `dt lint:full:fix` — run (and auto-fix) lint + format
+- `dt test:unit` / `dt test:perf` / `dt test:integration:*` — run test suites
+- `dt docs:dev` / `dt docs:build` / `dt docs:deploy` — docs workflows
+- `dt examples:install` / `dt examples:test` / `dt examples:deploy` —
+  example workflows
+
+Release workflows are documented in
+[`contributor-docs/release-workflows.md`](https://github.com/livestorejs/livestore/blob/main/contributor-docs/release-workflows.md).
+
+## Tasks to run before committing
+
+A `pre-commit` hook runs `devenv tasks run check:quick` automatically, but
+you should also run the following manually for a tighter feedback loop:
+
+- `dt lint:full:fix` — auto-fix lint + format issues
+- `dt ts:check` — ensure TypeScript passes
+- `dt test:unit` (and relevant `dt test:integration:*` suites) — run tests
+
+## Examples
+
+- Once you've set up the monorepo locally, you'll find all examples in the
+  `/examples` directory.
+- All examples are self-contained and can be run independently.
+- Examples use explicit version dependencies (e.g., `0.3.2-dev.0`) for LiveStore packages.
+- Examples are not part of the monorepo TypeScript build system to maintain independence.
+- Each example has its own TypeScript configuration that's independent of the
+  monorepo build system.
+
+#### Making changes to examples
+
+1. Make your desired changes directly in `/examples/<example-name>`.
+2. Test your changes by running the example (e.g., `pnpm dev` in the example
+   directory).
+3. Commit your changes.
+
+### OpenTelemetry setup
+
+As a local OpenTelemetry setup, we recommend the
+[docker-otel-lgtm](https://github.com/grafana/docker-otel-lgtm) setup.
+
+Export the following before entering `devenv shell` (or in your
+`.envrc.local` if you use direnv):
+
+```bash
+export VITE_GRAFANA_ENDPOINT="http://localhost:30003"
+export GRAFANA_ENDPOINT="http://localhost:30003"
+export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
+export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
+```
+
+### TypeScript
+
+- Each package has its own `tsconfig.json` file which extends the root
+  `tsconfig.base.json`.
+- This project makes heavy use of TypeScript project references.
+
+### Package management
+
+- This project uses [pnpm](https://pnpm.io/) to manage the workspace.
+- We're using the `workspace:*` protocol to link packages together.
+- We should try to keep dependencies to an absolute minimum and only add them if
+  we absolutely need them.
+- We also need to manually add peer dependencies for each package.
+- We should try to avoid duplicate dependencies across the monorepo as much as
+  possible as duplicate dependencies can lead to a lot of issues and pain.
+- Many `package.json` files are generated by `genie` from `.genie.ts` sources —
+  edit the `.genie.ts` and run `dt genie:run` (or let the pre-commit hook run
+  it) rather than editing generated `package.json` files directly.
+- For updating dependencies across the monorepo, see
+  [`contributor-docs/dependency-management.md`](https://github.com/livestorejs/livestore/blob/main/contributor-docs/dependency-management.md)
+  (catalog policy, peer-dep handling, validation).
+
+### Notes on external dependencies
+
+LiveStore tries to use as few external dependencies as possible. Given LiveStore
+is built on top of Effect, which can be considered a standard library for
+TypeScript, it should handle most use cases.
+
+#### Notes on some packages
+
+The following packages need to be updated with extra care:
+
+- `react`/`react-dom` as we need to move in lockstep with Expo / React Native
+  (currently pinned to {REACT_VERSION})
+- `effect` (currently pinned to {EFFECT_VERSION})
+
+#### Effect
+
+- LiveStore makes heavy use of the [Effect](https://effect.website) library and
+  ecosystem throughout the implementation of the various packages.
+- Effect is not imposed on the app developers using LiveStore but where it makes
+  sense, LiveStore is also exposing a Effect-based API (e.g. `createStore`).
+
+#### Updating dependencies
+
+See
+[dependency-management.md](https://github.com/livestorejs/livestore/blob/main/contributor-docs/dependency-management.md)
+for the full workflow.
+
+### Notes on monorepo structure
+
+- The `@livestore/utils` package re-exports many common modules/functions (e.g.
+  from `effect`) in order to
+  - Reduce the number of direct dependencies for other packages
+  - Allows for convenient extension of modules (e.g. adding methods to
+    `Effect.___`, `Schema.___`, ...)
+
+## Docs
+
+The LiveStore docs are built with
+[Astro Starlight](https://starlight.astro.build/).
+
+## Related external repos
+
+- [Fork of wa-sqlite](https://github.com/livestorejs/wa-sqlite) with Nix build setup included as git subtree.
+- DevTools distributable assets are consumed through public artifact releases;
+  this repository should not contain non-public DevTools source.

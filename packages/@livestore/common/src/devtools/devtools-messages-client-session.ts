@@ -52,8 +52,8 @@ export class SyncHeadUnsubscribe extends LSDClientSessionReqResMessage('LSD.Clie
   subscriptionId: Schema.String,
 }) {}
 export class SyncHeadRes extends LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadRes', {
-  local: EventSequenceNumber.EventSequenceNumber,
-  upstream: EventSequenceNumber.EventSequenceNumber,
+  local: EventSequenceNumber.Client.Composite,
+  upstream: EventSequenceNumber.Client.Composite,
   subscriptionId: Schema.String,
 }) {}
 
@@ -103,9 +103,26 @@ export class LiveQueriesRes extends LSDClientSessionReqResMessage('LSD.ClientSes
   subscriptionId: Schema.String,
 }) {}
 
-export class Ping extends LSDClientSessionReqResMessage('LSD.ClientSession.Ping', {}) {}
+export class Ping extends LSDClientSessionReqResMessage('LSD.ClientSession.Ping', {
+  devtoolsProtocolVersion: Schema.optional(Schema.Number),
+}) {}
 
-export class Pong extends LSDClientSessionReqResMessage('LSD.ClientSession.Pong', {}) {}
+export class Pong extends LSDClientSessionReqResMessage('LSD.ClientSession.Pong', {
+  devtoolsProtocolVersion: Schema.optional(Schema.Number),
+}) {}
+
+/**
+ * Sent by the app when the DevTools protocol isn't compatible.
+ * Contains package versions for display and protocol versions for the actual compatibility decision.
+ */
+export class VersionMismatch extends LSDClientSessionReqResMessage('LSD.ClientSession.VersionMismatch', {
+  /** The version running in the app */
+  appVersion: Schema.String,
+  /** The version that was sent by DevTools (that caused the mismatch) */
+  receivedVersion: Schema.String,
+  appDevtoolsProtocolVersion: Schema.Number,
+  receivedDevtoolsProtocolVersion: Schema.optional(Schema.Number),
+}) {}
 
 export class Disconnect extends LSDClientSessionChannelMessage('LSD.ClientSession.Disconnect', {}) {}
 
@@ -136,6 +153,7 @@ export const MessageFromApp = Schema.Union(
   LiveQueriesRes,
   Disconnect,
   Pong,
+  VersionMismatch,
   SyncHeadRes,
 ).annotations({ identifier: 'LSD.ClientSession.MessageFromApp' })
 

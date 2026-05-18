@@ -1,0 +1,9 @@
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  test: {
+    testTimeout: 60000,
+    include: ['src/**/*.test.ts'],
+    server: { deps: { inline: ['@effect/vitest'] } },
+  },
+})

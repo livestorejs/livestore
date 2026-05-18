@@ -1,20 +1,15 @@
 import { Schema } from '@livestore/utils/effect'
 
-import { liveStoreVersion as pkgVersion } from '../version.ts'
-
-export const NetworkStatus = Schema.Struct({
-  isConnected: Schema.Boolean,
-  timestampMs: Schema.Number,
-  /** Whether the network status devtools latch is closed. Used to simulate network disconnection. */
-  latchClosed: Schema.Boolean,
-})
-
-export type NetworkStatus = typeof NetworkStatus.Type
+export { NetworkStatus } from '../sync/sync-backend.ts'
 
 export const requestId = Schema.String
 export const clientId = Schema.String
 export const sessionId = Schema.String
-export const liveStoreVersion = Schema.Literal(pkgVersion)
+/**
+ * Display/package version field for DevTools messages.
+ * Compatibility is decided by the optional DevTools protocol version carried by handshake messages.
+ */
+export const liveStoreVersion = Schema.String
 
 export const LSDMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
   Schema.TaggedStruct(tag, {
@@ -94,7 +89,7 @@ export const LeaderReqResMessage = <
     ...fields.success,
   }).annotations({ identifier: `${tag}.Response.Success` })
 
-  const Error = fields.error
+  const Error = fields.error !== undefined
     ? Schema.TaggedStruct(`${tag}.Response.Error`, {
         requestId,
         liveStoreVersion,

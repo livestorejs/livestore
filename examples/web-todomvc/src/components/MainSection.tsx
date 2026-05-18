@@ -1,9 +1,10 @@
-import { queryDb } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
 import React from 'react'
 
-import { uiState$ } from '../livestore/queries.js'
-import { events, tables } from '../livestore/schema.js'
+import { queryDb } from '@livestore/livestore'
+
+import { uiState$ } from '../livestore/queries.ts'
+import { events, tables } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
 
 const visibleTodos$ = queryDb(
   (get) => {
@@ -17,7 +18,7 @@ const visibleTodos$ = queryDb(
 )
 
 export const MainSection: React.FC = () => {
-  const { store } = useStore()
+  const store = useAppStore()
 
   const toggleTodo = React.useCallback(
     ({ id, completed }: typeof tables.todos.Type) =>
@@ -27,20 +28,43 @@ export const MainSection: React.FC = () => {
 
   const visibleTodos = store.useQuery(visibleTodos$)
 
+  const handleTodoToggle = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const id = e.currentTarget.dataset.todoId
+      if (!id) return
+      const todo = visibleTodos.find((item) => item.id === id)
+      if (todo) {
+        toggleTodo(todo)
+      }
+    },
+    [toggleTodo, visibleTodos],
+  )
+
+  const handleTodoDelete = React.useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const id = e.currentTarget.dataset.todoId
+      if (!id) return
+      store.commit(events.todoDeleted({ id, deletedAt: new Date() }))
+    },
+    [store],
+  )
+
   return (
     <section className="main">
       <ul className="todo-list">
         {visibleTodos.map((todo) => (
           <li key={todo.id}>
             <div className="state">
-              <input type="checkbox" className="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
+              <input
+                type="checkbox"
+                className="toggle"
+                checked={todo.completed}
+                data-todo-id={todo.id}
+                onChange={handleTodoToggle}
+              />
               {/** biome-ignore lint/a11y/noLabelWithoutControl: otherwise breaks TODO MVC CSS 🙈 */}
               <label>{todo.text}</label>
-              <button
-                type="button"
-                className="destroy"
-                onClick={() => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))}
-              />
+              <button type="button" className="destroy" data-todo-id={todo.id} onClick={handleTodoDelete} />
             </div>
           </li>
         ))}

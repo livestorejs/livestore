@@ -11,10 +11,10 @@ export const stringifyObject = (obj: object, prefix = ''): string => {
   for (const [key, value] of Object.entries(obj)) {
     const fullKey = prefix !== '' ? `${prefix}.${key}` : key
 
-    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    if (typeof value === 'object' && value !== null && Array.isArray(value) === false) {
       // Recursively stringify nested objects with dot notation
       entries.push(stringifyObject(value, fullKey))
-    } else if (Array.isArray(value)) {
+    } else if (Array.isArray(value) === true) {
       // Arrays get converted to comma-separated values
       entries.push(`${fullKey}=${value.join(',')}`)
     } else {

@@ -1,0 +1,11 @@
+name = "wrangler-dev-server-test"
+main = "./cf-worker.ts"
+compatibility_date = "2024-05-12"
+
+[[durable_objects.bindings]]
+name = "TEST_DO"
+class_name = "TestDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["TestDO"]

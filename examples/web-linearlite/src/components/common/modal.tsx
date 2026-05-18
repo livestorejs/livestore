@@ -21,6 +21,8 @@ export const Modal = ({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [setShow])
 
+  const handleClose = React.useCallback(() => setShow(false), [setShow])
+
   return (
     <ModalOverlay
       isOpen={show}
@@ -39,7 +41,7 @@ export const Modal = ({
         {children}
         <Button
           slot="close"
-          onPress={() => setShow(false)}
+          onPress={handleClose}
           className="absolute top-2 right-2 size-8 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus:bg-neutral-700 flex items-center justify-center"
         >
           <XMarkIcon className="size-5" />

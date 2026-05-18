@@ -1,12 +1,10 @@
+import { expect } from 'vitest'
+
 import { makeAdapter } from '@livestore/adapter-node'
 import { makeSchema, State } from '@livestore/common/schema'
 import { createStore, SessionIdSymbol } from '@livestore/livestore'
-import { IS_CI } from '@livestore/utils'
-import { Effect, FetchHttpClient, Logger, LogLevel, Schema } from '@livestore/utils/effect'
-import { OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+import { Effect, Schema } from '@livestore/utils/effect'
 
 Vitest.describe('issue #487 - Optional fields without defaults cause errors', () => {
   Vitest.scopedLive('reproduces livestore-optional-field-bug repo scenario', (test) =>
@@ -59,22 +57,6 @@ Vitest.describe('issue #487 - Optional fields without defaults cause errors', ()
       expect(result.newTodoText).toBe('')
       expect(result.description).toBe('First attempt')
       expect(result.filter).toBe('all')
-    }).pipe(withCtx(test)),
+    }).pipe(Vitest.withTestCtx(test)),
   )
 })
-
-const otelLayer = IS_CI ? OtelLiveDummy : OtelLiveHttp({ serviceName: 'store-test', skipLogUrl: false })
-
-const withCtx =
-  (testContext: Vitest.TaskContext, { suffix }: { suffix?: string; skipOtel?: boolean } = {}) =>
-  <A, E, R>(self: Effect.Effect<A, E, R>) =>
-    self.pipe(
-      Effect.timeout(IS_CI ? 60_000 : 10_000),
-      Effect.provide(FetchHttpClient.layer),
-      Effect.provide(PlatformNode.NodeFileSystem.layer),
-      Logger.withMinimumLogLevel(LogLevel.Debug),
-      Effect.provide(Logger.prettyWithThread('test-main-thread')),
-      Effect.scoped,
-      Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),
-      Effect.provide(otelLayer),
-    )

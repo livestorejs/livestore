@@ -1,12 +1,14 @@
 import { ArrowDownIcon } from '@heroicons/react/16/solid'
-import { useStore } from '@livestore/react'
+import { useCallback } from 'react'
 import { Button } from 'react-aria-components'
 
+import { useAppStore } from '../../../livestore/store.ts'
+
 export const DownloadButton = ({ className }: { className?: string }) => {
-  const { store } = useStore()
-  const onClick = () => {
+  const store = useAppStore()
+  const onClick = useCallback(() => {
     ;(store as any)._dev.downloadDb()
-  }
+  }, [store])
 
   return (
     <div className={`lg:h-full flex items-center ${className}`}>

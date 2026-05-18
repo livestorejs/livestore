@@ -1,16 +1,17 @@
 import { CodeBracketIcon } from '@heroicons/react/16/solid'
-import { useStore } from '@livestore/react'
 import React from 'react'
 
+import { useAppStore } from '../../../livestore/store.ts'
+
 export const DevtoolsButton = ({ className }: { className?: string }) => {
-  const { store } = useStore()
+  const store = useAppStore()
   const devtoolsUrl = React.useMemo(() => {
-    const searchParams = new URLSearchParams()
-    searchParams.set('storeId', store.storeId)
-    searchParams.set('sessionId', store.sessionId)
-    searchParams.set('clientId', store.clientId)
-    return `${location.origin}/_livestore?${searchParams.toString()}`
-  }, [store.storeId, store.sessionId, store.clientId])
+    // Respect Vite base + plugin mount path when available
+    const basePath = (globalThis as { LIVESTORE_DEVTOOLS_PATH?: string }).LIVESTORE_DEVTOOLS_PATH ?? '/_livestore'
+    const schemaAlias = store.schema.devtools.alias
+    // Open DevTools directly connected to this store/session
+    return `${location.origin}${basePath}/web/${store.storeId}/${store.clientId}/${store.sessionId}/${schemaAlias}`
+  }, [store.storeId, store.sessionId, store.clientId, store.schema.devtools.alias])
 
   return (
     <div className={`lg:h-full flex items-center ${className}`}>

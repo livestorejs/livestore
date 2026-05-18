@@ -4,10 +4,10 @@ import { makeAdapter } from '@livestore/adapter-node'
 import { liveStoreVersion } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { createStore, queryDb, Schema } from '@livestore/livestore'
-import { makeCfSync } from '@livestore/sync-cf'
+import { makeWsSync } from '@livestore/sync-cf/client'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Effect, Layer, Logger, LogLevel, Option, Stream } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
 
 const storeIdOption = Cli.Options.text('store-id').pipe(Cli.Options.withDefault('default'))
 const baseDirectoryOption = Cli.Options.text('storage-fs-base-directory').pipe(Cli.Options.withDefault(''))
@@ -44,7 +44,7 @@ const live = Cli.Command.make(
       const adapter = makeAdapter({
         storage: adapterType === 'fs' ? { type: 'fs', baseDirectory } : { type: 'in-memory' },
         devtools: { schemaPath },
-        sync: { backend: makeCfSync({ url: 'ws://localhost:8787' }) },
+        sync: { backend: makeWsSync({ url: 'ws://localhost:8787' }) },
       })
 
       const store = yield* createStore({

@@ -1,32 +1,38 @@
 import { Bars4Icon, ViewColumnsIcon } from '@heroicons/react/24/outline'
+import { Link, useParams } from '@tanstack/react-router'
 import React from 'react'
-import { Link } from 'react-router-dom'
-import { MenuContext } from '@/app/contexts'
-import { AboutMenu } from '@/components/layout/sidebar/about-menu'
-import { NewIssueButton } from '@/components/layout/sidebar/new-issue-button'
-import { SearchButton } from '@/components/layout/sidebar/search-button'
-import { ThemeButton } from '@/components/layout/sidebar/theme-button'
-import { ToolbarButton } from '@/components/layout/toolbar/toolbar-button'
-import { useFilterState } from '@/lib/livestore/queries'
+
+import { MenuContext } from '../../../app/contexts.ts'
+import { useFilterState } from '../../../livestore/queries.ts'
+import { ToolbarButton } from '../toolbar/toolbar-button.tsx'
+import { AboutMenu } from './about-menu.tsx'
+import { NewIssueButton } from './new-issue-button.tsx'
+import { SearchButton } from './search-button.tsx'
+import { ThemeButton } from './theme-button.tsx'
+
+const navItems = [
+  {
+    title: 'List view',
+    icon: Bars4Icon,
+    to: '/$storeId',
+  },
+  {
+    title: 'Board view',
+    icon: ViewColumnsIcon,
+    to: '/$storeId/board',
+  },
+] as const
 
 export const Sidebar = ({ className }: { className?: string }) => {
   const [, setFilterState] = useFilterState()
   const { setShowMenu } = React.useContext(MenuContext)!
-
-  const navItems = [
-    {
-      title: 'List view',
-      icon: Bars4Icon,
-      href: '/',
-      onClick: () => setFilterState({ status: null }),
-    },
-    {
-      title: 'Board view',
-      icon: ViewColumnsIcon,
-      href: '/board',
-      onClick: () => setFilterState({ status: null }),
-    },
-  ]
+  const { storeId } = useParams({ from: '/$storeId' })
+  const params = React.useMemo(() => ({ storeId }), [storeId])
+  const search = React.useCallback((prev: Record<string, unknown>) => ({ ...prev, issueId: undefined }), [])
+  const handleNavigate = React.useCallback(() => {
+    setFilterState({ status: null })
+    setShowMenu(false)
+  }, [setFilterState, setShowMenu])
 
   return (
     <aside
@@ -44,14 +50,13 @@ export const Sidebar = ({ className }: { className?: string }) => {
           Issues
         </h2>
         <nav className="text-sm leading-none space-y-px">
-          {navItems.map(({ title, icon: Icon, href, onClick }) => (
+          {navItems.map(({ title, icon: Icon, to }) => (
             <Link
-              key={href}
-              to={href}
-              onClick={() => {
-                onClick()
-                setShowMenu(false)
-              }}
+              key={to}
+              to={to}
+              params={params}
+              search={search}
+              onClick={handleNavigate}
               className="flex items-center gap-2 px-2 h-8 rounded-md focus:outline-none dark:hover:bg-neutral-800 dark:focus:bg-neutral-800 hover:bg-neutral-100 focus:bg-neutral-100"
             >
               <Icon className="size-4" />

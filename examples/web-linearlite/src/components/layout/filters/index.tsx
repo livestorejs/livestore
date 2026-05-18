@@ -1,15 +1,16 @@
-import { useStore } from '@livestore/react'
 import { Button } from 'react-aria-components'
-import { Icon } from '@/components/icons'
-import { FilterMenu } from '@/components/layout/filters/filter-menu'
-import { Header } from '@/components/layout/filters/header'
-import { PriorityFilter } from '@/components/layout/filters/priority-filter'
-import { SortMenu } from '@/components/layout/filters/sort-menu'
-import { StatusFilter } from '@/components/layout/filters/status-filter'
-import { SearchBar } from '@/components/layout/search/search-bar'
-import { statusOptions } from '@/data/status-options'
-import { issueCount$, useFilterState } from '@/lib/livestore/queries'
-import type { Status } from '@/types/status'
+
+import { statusOptions } from '../../../data/status-options.ts'
+import { issueCount$, useFilterState } from '../../../livestore/queries.ts'
+import { useAppStore } from '../../../livestore/store.ts'
+import type { Status } from '../../../types/status.ts'
+import { Icon } from '../../icons/index.tsx'
+import { SearchBar } from '../search/search-bar.tsx'
+import { FilterMenu } from './filter-menu.tsx'
+import { Header } from './header.tsx'
+import { PriorityFilter } from './priority-filter.tsx'
+import { SortMenu } from './sort-menu.tsx'
+import { StatusFilter } from './status-filter.tsx'
 
 export const Filters = ({
   filteredCount,
@@ -22,7 +23,7 @@ export const Filters = ({
   hideSorting?: boolean
   search?: boolean
 }) => {
-  const { store } = useStore()
+  const store = useAppStore()
   const totalCount = store.useQuery(issueCount$)
   const [filterState] = useFilterState()
 
@@ -34,7 +35,7 @@ export const Filters = ({
         <Header
           totalCount={totalCount}
           filteredCount={filteredCount}
-          heading={filterState?.status?.length === 1 ? statusOptions[filterState.status[0] as Status]!.name : 'Issues'}
+          heading={filterState?.status?.length === 1 ? statusOptions[filterState.status[0]]!.name : 'Issues'}
         />
       )}
       <div className="h-12 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between text-sm px-4 gap-8">

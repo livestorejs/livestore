@@ -2,8 +2,16 @@ import { casesHandled } from '@livestore/utils'
 import { Effect, Queue } from '@livestore/utils/effect'
 
 import type { MigrationsReport } from '../defs.ts'
-import type { BootStatus, MigrationHooks, SqliteDb, SqliteError } from '../index.ts'
-import { migrateDb, rematerializeFromEventlog, UnexpectedError } from '../index.ts'
+import {
+  type BootStatus,
+  type MaterializeError,
+  type MigrationHooks,
+  migrateDb,
+  rematerializeFromEventlog,
+  type SqliteDb,
+  type SqliteError,
+  UnknownError,
+} from '../index.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { configureConnection } from './connection.ts'
 import type { MaterializeEvent } from './types.ts'
@@ -20,10 +28,10 @@ export const recreateDb = ({
   schema: LiveStoreSchema
   bootStatusQueue: Queue.Queue<BootStatus>
   materializeEvent: MaterializeEvent
-}): Effect.Effect<{ migrationsReport: MigrationsReport }, UnexpectedError | SqliteError> =>
+}): Effect.Effect<{ migrationsReport: MigrationsReport }, UnknownError | MaterializeError | SqliteError> =>
   Effect.gen(function* () {
     const migrationOptions = schema.state.sqlite.migrations
-    let migrationsReport: MigrationsReport
+    let migrationsReport: MigrationsReport = { migrations: [] }
 
     yield* Effect.addFinalizer(
       Effect.fn('recreateDb:finalizer')(function* (ex) {
@@ -40,7 +48,7 @@ export const recreateDb = ({
 
     const initDb = (hooks: Partial<MigrationHooks> | undefined) =>
       Effect.gen(function* () {
-        yield* Effect.tryAll(() => hooks?.init?.(tmpDb)).pipe(UnexpectedError.mapToUnexpectedError)
+        yield* Effect.tryAll(() => hooks?.init?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
 
         const migrationsReport = yield* migrateDb({
           db: tmpDb,
@@ -49,7 +57,7 @@ export const recreateDb = ({
             Queue.offer(bootStatusQueue, { stage: 'migrating', progress: { done, total } }),
         })
 
-        yield* Effect.tryAll(() => hooks?.pre?.(tmpDb)).pipe(UnexpectedError.mapToUnexpectedError)
+        yield* Effect.tryAll(() => hooks?.pre?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
 
         return { migrationsReport, tmpDb }
       })
@@ -70,7 +78,7 @@ export const recreateDb = ({
             Queue.offer(bootStatusQueue, { stage: 'rehydrating', progress: { done, total } }),
         })
 
-        yield* Effect.tryAll(() => hooks?.post?.(initResult.tmpDb)).pipe(UnexpectedError.mapToUnexpectedError)
+        yield* Effect.tryAll(() => hooks?.post?.(initResult.tmpDb)).pipe(UnknownError.mapToUnknownError)
 
         break
       }
@@ -80,7 +88,7 @@ export const recreateDb = ({
         migrationsReport = { migrations: [] }
 
         const newDbData = yield* Effect.tryAll(() => migrationOptions.migrate(oldDbData)).pipe(
-          UnexpectedError.mapToUnexpectedError,
+          UnknownError.mapToUnknownError,
         )
 
         tmpDb.import(newDbData)

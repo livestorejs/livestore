@@ -75,8 +75,8 @@ describe('debug-diff', () => {
 
   test('tagged union', () => {
     const schema = Schema.Union(
-      Schema.Struct({ _tag: Schema.Literal('a'), a: Schema.String }),
-      Schema.Struct({ _tag: Schema.Literal('b'), b: Schema.Number }),
+      Schema.TaggedStruct('a', { a: Schema.String }),
+      Schema.TaggedStruct('b', { b: Schema.Number }),
     )
     const a = { _tag: 'a', a: 'hello' } as const
     const b = { _tag: 'b', b: 1 } as const

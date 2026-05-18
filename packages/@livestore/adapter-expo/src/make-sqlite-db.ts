@@ -1,3 +1,5 @@
+import * as SQLite from 'expo-sqlite'
+
 import {
   type MakeSqliteDb,
   type PersistenceInfo,
@@ -7,13 +9,8 @@ import {
   SqliteError,
 } from '@livestore/common'
 import { EventSequenceNumber } from '@livestore/common/schema'
-import { shouldNeverHappen } from '@livestore/utils'
+import { ensureUint8ArrayBuffer, shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
-// TODO remove `expo-file-system` dependency once expo-sqlite supports `import`
-// // @ts-expect-error package misses `exports`
-// import * as ExpoFs from 'expo-file-system/src/next'
-// import * as ExpoFs from 'expo-file-system'
-import * as SQLite from 'expo-sqlite'
 
 type Metadata = {
   _tag: 'file'
@@ -80,7 +77,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
     _tag: 'SqliteDb',
     debug: {
       // Setting initially to root but will be set to correct value shortly after
-      head: EventSequenceNumber.ROOT,
+      head: EventSequenceNumber.Client.ROOT,
     },
     prepare: (queryStr) => {
       try {
@@ -122,9 +119,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
         stmt.finalizeSync()
       }
     }),
-    export: () => {
-      return db.serializeSync()
-    },
+    export: SqliteDbHelper.makeExport(() => ensureUint8ArrayBuffer(db.serializeSync())),
     select: SqliteDbHelper.makeSelect((queryStr, bindValues) => {
       const stmt = sqliteDb.prepare(queryStr)
       const res = stmt.select(bindValues)
@@ -174,7 +169,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       const session = db.createSessionSync()
       session.attachSync(null)
       return {
-        changeset: () => session.createChangesetSync(),
+        changeset: () => ensureUint8ArrayBuffer(session.createChangesetSync()),
         finish: () => session.closeSync(),
       }
     },
@@ -184,7 +179,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       // apply an inverted changeset
       return {
         invert: () => {
-          const inverted = session.invertChangesetSync(data)
+          const inverted = ensureUint8ArrayBuffer(session.invertChangesetSync(data))
           return sqliteDb.makeChangeset(inverted)
         },
         apply: () => {

@@ -1,5 +1,5 @@
-import { getCollection } from 'astro:content'
 import type { APIRoute } from 'astro'
+import { getCollection } from 'astro:content'
 
 const docs = await getCollection('docs', (entry) => entry.id.startsWith('docs/'))
 

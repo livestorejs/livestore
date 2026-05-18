@@ -17,7 +17,6 @@
 - [Node](https://docs.livestore.dev/getting-started/node/)
 - [Vue](https://docs.livestore.dev/getting-started/vue/)
 
-
 ## How LiveStore works
 
 LiveStore is a fully-featured, client-centric data layer (replacing libraries like Redux, MobX, etc.) with a reactive embedded SQLite database powered by real-time sync (via event-sourcing).

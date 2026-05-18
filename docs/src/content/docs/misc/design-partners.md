@@ -1,10 +1,11 @@
 ---
-title: Design Partners
+title: Design partners
 sidebar:
   order: 30
 ---
 
 LiveStore is looking for design partners with the following aims:
+
 - For your company:
   - Architectural guidance and internal training
   - Priority support

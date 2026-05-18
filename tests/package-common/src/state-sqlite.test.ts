@@ -1,11 +1,12 @@
+import { expect } from 'vitest'
+
 import { type MakeSqliteDb, migrateTable, sql } from '@livestore/common'
 import { State } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
 
 Vitest.describe('SQLite State', () => {
   Vitest.describe('DB Schema', () => {
@@ -47,7 +48,7 @@ Vitest.describe('SQLite State', () => {
         const rawResult = db.select(sql`select * from test`)
         expect(rawResult).toEqual([{ id: 1, json: null }])
 
-        const result = Schema.decodeUnknownSync(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(rawResult)
+        const result = yield* Schema.decodeUnknown(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(rawResult)
 
         expect(result).toEqual({ id: 1, json: null })
       }, Effect.provide(PlatformNode.NodeFileSystem.layer)),
@@ -72,7 +73,7 @@ Vitest.describe('SQLite State', () => {
         const rawResult = db.select(sql`select * from test`)
         expect(rawResult).toEqual([{ id: 1, json: '"null"' }])
 
-        const result = Schema.decodeUnknownSync(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(rawResult)
+        const result = yield* Schema.decodeUnknown(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(rawResult)
 
         expect(result).toEqual({ id: 1, json: 'null' })
       }, Effect.provide(PlatformNode.NodeFileSystem.layer)),

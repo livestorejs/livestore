@@ -1,15 +1,17 @@
 import path from 'node:path'
 import process from 'node:process'
 
-export const EFFECT_VERSION = '3.16.12'
-export const REACT_VERSION = '19.0.0'
+export const EFFECT_VERSION = '3.19.12'
+/** Needs to align with Expo's React version */
+export const REACT_VERSION = '19.1.0'
 export const MIN_NODE_VERSION = '23.0.0'
-
-export const LIVESTORE_WA_SQLITE_VERSION = '1.0.5'
 
 export const DISCORD_INVITE_URL = 'https://discord.gg/RbMcjUAPd7'
 
-export const LIVESTORE_DEVTOOLS_CHROME_DIST_PATH = path.resolve(
-  process.env.WORKSPACE_ROOT!,
-  'tmp/devtools/chrome-extension',
-)
+const workspaceRoot = process.env.WORKSPACE_ROOT
+
+if (workspaceRoot === undefined || workspaceRoot === '') {
+  throw new Error('WORKSPACE_ROOT must be set')
+}
+
+export const LIVESTORE_DEVTOOLS_CHROME_DIST_PATH = path.resolve(workspaceRoot, 'tmp/devtools/chrome-extension')

@@ -44,6 +44,7 @@
     "**/build": true,
     "**/.vercel": true,
     "**/.direnv": true,
+    "**/.wrangler": true,
     "**/dist": true,
     "**/*.tsbuildinfo": true,
     "pnpm-lock.yaml": true

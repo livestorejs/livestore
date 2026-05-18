@@ -1,17 +1,18 @@
-import { useStore } from '@livestore/react'
 import { generateKeyBetween } from 'fractional-indexing'
 import React from 'react'
 import { Button } from 'react-aria-components'
-import { NewIssueModalContext } from '@/app/contexts'
-import { Modal } from '@/components/common/modal'
-import { PriorityMenu } from '@/components/common/priority-menu'
-import { StatusMenu } from '@/components/common/status-menu'
-import { DescriptionInput } from '@/components/layout/issue/description-input'
-import { TitleInput } from '@/components/layout/issue/title-input'
-import { highestIssueId$, useFrontendState } from '@/lib/livestore/queries'
-import { events, tables } from '@/lib/livestore/schema'
-import type { Priority } from '@/types/priority'
-import type { Status } from '@/types/status'
+
+import { NewIssueModalContext } from '../../../app/contexts.ts'
+import { highestIssueId$, useFrontendState } from '../../../livestore/queries.ts'
+import { events, tables } from '../../../livestore/schema/index.ts'
+import { useAppStore } from '../../../livestore/store.ts'
+import type { Priority } from '../../../types/priority.ts'
+import type { Status } from '../../../types/status.ts'
+import { Modal } from '../../common/modal.tsx'
+import { PriorityMenu } from '../../common/priority-menu.tsx'
+import { StatusMenu } from '../../common/status-menu.tsx'
+import { DescriptionInput } from './description-input.tsx'
+import { TitleInput } from './title-input.tsx'
 
 export const NewIssueModal = () => {
   const [frontendState] = useFrontendState()
@@ -19,16 +20,16 @@ export const NewIssueModal = () => {
   const [title, setTitle] = React.useState('')
   const [description, setDescription] = React.useState('')
   const [priority, setPriority] = React.useState<Priority>(0)
-  const { store } = useStore()
+  const store = useAppStore()
 
-  const closeModal = () => {
+  const closeModal = React.useCallback(() => {
     setTitle('')
     setDescription('')
     setPriority(0)
     setNewIssueModalStatus(false)
-  }
+  }, [setNewIssueModalStatus])
 
-  const createIssue = () => {
+  const createIssue = React.useCallback(() => {
     if (!title) return
     const date = new Date()
     // TODO make this "merge safe"
@@ -36,7 +37,7 @@ export const NewIssueModal = () => {
     const highestKanbanOrder = store.query(
       tables.issue
         .select('kanbanorder')
-        .where({ status: newIssueModalStatus === false ? 0 : (newIssueModalStatus as Status) })
+        .where({ status: newIssueModalStatus === false ? 0 : newIssueModalStatus })
         .orderBy('kanbanorder', 'desc')
         .first({ behaviour: 'fallback', fallback: () => 'a1' }),
     )
@@ -46,7 +47,7 @@ export const NewIssueModal = () => {
         id: highestIssueId + 1,
         title,
         priority,
-        status: newIssueModalStatus as Status,
+        status: newIssueModalStatus,
         modified: date,
         created: date,
         creator: frontendState.user,
@@ -55,7 +56,7 @@ export const NewIssueModal = () => {
       }),
     )
     closeModal()
-  }
+  }, [closeModal, frontendState.user, newIssueModalStatus, priority, store, title, description])
 
   return (
     <Modal show={newIssueModalStatus !== false} setShow={closeModal}>
@@ -72,7 +73,7 @@ export const NewIssueModal = () => {
         <div className="mt-2 flex gap-px w-full">
           <StatusMenu
             showLabel
-            status={newIssueModalStatus === false ? 0 : (newIssueModalStatus as Status)}
+            status={newIssueModalStatus === false ? 0 : newIssueModalStatus}
             onStatusChange={setNewIssueModalStatus}
           />
           <PriorityMenu showLabel priority={priority} onPriorityChange={setPriority} />

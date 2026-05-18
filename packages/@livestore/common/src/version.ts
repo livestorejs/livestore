@@ -1,14 +1,39 @@
-// TODO bring back when Expo and Playwright supports `with` imports
-// import packageJson from '../package.json' with { type: 'json' }
-// export const liveStoreVersion = packageJson.version
-
-export const liveStoreVersion = '0.3.2-dev.10' as const
+import pkg from '../package.json' with { type: 'json' }
 
 /**
- * This version number is incremented whenever the internal storage format changes in a breaking way.
- * Whenever this version changes, LiveStore will start with fresh database files. Old database files are not deleted.
+ * Current LiveStore package version used for display, release assets, and install guidance.
  *
- * While LiveStore is in beta, this might happen more frequently.
- * In the future, LiveStore will provide a migration path for older database files to avoid the impression of data loss.
+ * Can be overridden at runtime via `globalThis.__LIVESTORE_VERSION_OVERRIDE__` for testing display-only version values.
  */
-export const liveStoreStorageFormatVersion = 5
+export const liveStoreVersion: string = (globalThis as any).__LIVESTORE_VERSION_OVERRIDE__ ?? pkg.version
+
+export const devtoolsProtocolVersion: number =
+  (globalThis as any).__LIVESTORE_DEVTOOLS_PROTOCOL_VERSION_OVERRIDE__ ?? 1
+
+export const supportedDevtoolsProtocolVersions: ReadonlyArray<number> = [devtoolsProtocolVersion]
+
+export const resolveDevtoolsProtocolVersion = (version: number | undefined): number => version ?? 1
+
+export const isDevtoolsProtocolVersionSupported = (
+  version: number | undefined,
+  supportedVersions: ReadonlyArray<number> = supportedDevtoolsProtocolVersions,
+): boolean => supportedVersions.includes(resolveDevtoolsProtocolVersion(version))
+
+/**
+ * CRITICAL: Increment this version whenever you modify client-side EVENTLOG table schemas.
+ *
+ * Used to generate database file names (e.g., `eventlog@6.db`, `state@6.db`) across all client adapters.
+ *
+ * Bump required when:
+ * - Modifying eventlog system tables (eventlogMetaTable, syncStatusTable) in schema/state/sqlite/system-tables/eventlog-tables.ts
+ * - Changing columns, types, constraints, or indexes in eventlog tables
+ *
+ * Bump NOT required when:
+ * - Modifying STATE table schemas (auto-migrated via hash-based detection and rebuilt from eventlog)
+ * - Changing query patterns or client-side implementation details
+ *
+ * ⚠️  CRITICAL: Eventlog changes without bumping this version cause permanent data loss!
+ *
+ * Impact: Version changes trigger a "soft reset" - old data becomes inaccessible but remains on disk.
+ */
+export const liveStoreStorageFormatVersion = 6

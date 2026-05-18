@@ -1,21 +1,43 @@
 /** biome-ignore-all lint/a11y: testing */
-import { useStore } from '@livestore/react'
-import type React from 'react'
+import React from 'react'
 
-import { uiState$ } from '../livestore/queries.js'
-import { events } from '../livestore/schema.js'
+import { uiState$ } from '../livestore/queries.ts'
+import { events } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
 
 export const Header: React.FC = () => {
-  const { store } = useStore()
+  const store = useAppStore()
   const { newTodoText } = store.useQuery(uiState$)
 
-  const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
+  const updatedNewTodoText = React.useCallback(
+    (text: string) => store.commit(events.uiStateSet({ newTodoText: text })),
+    [store],
+  )
 
-  const todoCreated = () =>
-    store.commit(
-      events.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
-      events.uiStateSet({ newTodoText: '' }),
-    )
+  const todoCreated = React.useCallback(
+    () =>
+      store.commit(
+        events.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
+        events.uiStateSet({ newTodoText: '' }),
+      ),
+    [store, newTodoText],
+  )
+
+  const handleChange = React.useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      updatedNewTodoText(event.target.value)
+    },
+    [updatedNewTodoText],
+  )
+
+  const handleKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+        todoCreated()
+      }
+    },
+    [todoCreated],
+  )
 
   return (
     <header className="header">
@@ -25,12 +47,8 @@ export const Header: React.FC = () => {
         placeholder="What needs to be done?"
         autoFocus={true}
         value={newTodoText}
-        onChange={(e) => updatedNewTodoText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            todoCreated()
-          }
-        }}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
       />
     </header>
   )

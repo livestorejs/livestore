@@ -1,10 +1,11 @@
 import { queryDb } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
-import { Filters } from '@/components/layout/filters'
-import { FilteredList } from '@/components/layout/list/filtered-list'
-import { filterState$ } from '@/lib/livestore/queries'
-import { tables } from '@/lib/livestore/schema'
-import { filterStateToOrderBy, filterStateToWhere } from '@/lib/livestore/utils'
+
+import { filterState$ } from '../../../livestore/queries.ts'
+import { tables } from '../../../livestore/schema/index.ts'
+import { useAppStore } from '../../../livestore/store.ts'
+import { filterStateToOrderBy, filterStateToWhere } from '../../../livestore/utils.tsx'
+import { Filters } from '../filters/index.tsx'
+import { FilteredList } from './filtered-list.tsx'
 
 const filteredIssueIds$ = queryDb(
   (get) =>
@@ -16,7 +17,7 @@ const filteredIssueIds$ = queryDb(
 )
 
 export const List = () => {
-  const { store } = useStore()
+  const store = useAppStore()
   const filteredIssueIds = store.useQuery(filteredIssueIds$)
 
   return (

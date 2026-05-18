@@ -2,12 +2,13 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "NodeNext",
     "skipLibCheck": true,
 
-    /* Bundler mode */
-    "moduleResolution": "bundler",
+    "moduleResolution": "NodeNext",
+    "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
@@ -22,10 +23,8 @@
     // "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "types": ["vite/client"]
   },
   "include": ["./src"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "./src/server/api.ts"]
 }

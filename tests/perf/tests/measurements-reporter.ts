@@ -1,20 +1,10 @@
 import os from 'node:os'
+import process from 'node:process'
 
-import {
-  Config,
-  Data,
-  Effect,
-  ManagedRuntime,
-  Metric,
-  type MetricState,
-  Option,
-  ParseResult,
-  Pretty,
-  ReadonlyArray,
-  Schema,
-} from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
+
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { Data, Effect, ManagedRuntime, Metric, type MetricState, Option, ParseResult, Pretty, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import { printConsoleTable } from './print-console-table.ts'
 
@@ -64,14 +54,17 @@ const MeasurementUnitAnnotation = Schema.Struct({
   description: MeasurementUnit,
 })
 
-const getRequiredAnnotation = <T extends AnyAnnotation['type']>(
-  decodedAnnotations: ReadonlyArray<AnyAnnotation>, // Change this line
+const getRequiredAnnotationSync = <T extends AnyAnnotation['type']>(
+  decodedAnnotations: ReadonlyArray<AnyAnnotation>,
   type: T,
   testTitle: string,
-): Effect.Effect<Extract<AnyAnnotation, { type: T }>, MissingAnnotationError> =>
-  ReadonlyArray.findFirst(decodedAnnotations, (a): a is Extract<AnyAnnotation, { type: T }> => a.type === type).pipe(
-    Effect.mapError(() => new MissingAnnotationError({ annotationType: type, testTitle: testTitle })),
-  )
+): Extract<AnyAnnotation, { type: T }> => {
+  const annotation = decodedAnnotations.find((value): value is Extract<AnyAnnotation, { type: T }> => value.type === type)
+  if (annotation === undefined) {
+    throw new MissingAnnotationError({ annotationType: type, testTitle })
+  }
+  return annotation
+}
 
 const AnyAnnotation = Schema.Union(
   MeasurementAnnotation,
@@ -182,112 +175,57 @@ const collectSystemInfo = (): SystemInfo => {
   })
 }
 
-type TrackedMetric = {
-  metric: Metric.Metric.Summary<number>
+type TrackedMeasurement = {
+  measurements: number[]
   meta: {
     unit: MeasurementUnit
     testSuiteTitle: string
     testSuiteTitlePath: string
+    testTitle: string
+    testName: string
   }
 }
 
 export default class MeasurementsReporter implements Reporter {
   private readonly systemInfo = collectSystemInfo()
-  private metricsByTestTitle: Record<string, TrackedMetric> = {}
-  private measurementEffects: Effect.Effect<unknown, ParseResult.ParseError | MissingAnnotationError>[] = []
+  private measurementsByTestTitle: Record<string, TrackedMeasurement> = {}
   private runtime = ManagedRuntime.make(OtelLayer)
 
   onBegin = (_config: FullConfig, suite: Suite): void => {
-    this.runtime.runSync(
-      Effect.forEach(
-        suite.allTests(),
-        (test) =>
-          Effect.gen(this, function* () {
-            const decodedAnnotations = yield* Schema.decodeUnknown(Annotations)(test.annotations)
+    for (const test of suite.allTests()) {
+      const decodedAnnotations = Schema.decodeUnknownSync(Annotations)(test.annotations)
+      const measurementUnitAnnotation = getRequiredAnnotationSync(decodedAnnotations, 'measurement unit', test.title)
+      const testSuiteTitle = test.parent?.parent?.title ?? 'n/a'
+      const testSuiteTitlePath = test.parent.titlePath().slice(1, -2).join(' > ')
 
-            const measurementUnitAnnotation = yield* getRequiredAnnotation(
-              decodedAnnotations,
-              'measurement unit',
-              test.title,
-            )
-            const unit = measurementUnitAnnotation.description
-
-            const testSuiteTitle = test.parent?.parent?.title ?? 'n/a'
-            const testSuiteTitlePath = test.parent.titlePath().slice(1, -2).join(' > ')
-
-            const snakeCase = (str: string) => str.replaceAll(/[^a-zA-Z0-9]/g, '_').toLowerCase()
-
-            const testName = `${testSuiteTitle} ${test.title}`
-
-            let metric = Metric.summary({
-              name: snakeCase(testName),
-              maxAge: '1 hour',
-              maxSize: 100,
-              error: 0,
-              quantiles: [0.25, 0.5, 0.75],
-              description: testName,
-            }).pipe(
-              Metric.tagged('unit', unit),
-              Metric.tagged('test.suite.title', testSuiteTitle),
-              Metric.tagged('test.title', test.title),
-              Metric.tagged('test.name', testName),
-              Metric.tagged('os.type', this.systemInfo.os.type),
-              Metric.tagged('os.version', this.systemInfo.os.release),
-              Metric.tagged('host.arch', this.systemInfo.os.arch),
-              Metric.tagged('host.cpu.model.name', this.systemInfo.cpus.model),
-              Metric.tagged('system.memory.limit', this.systemInfo.memory.total.toString()),
-              Metric.tagged(
-                'system.memory.usage',
-                (this.systemInfo.memory.total - this.systemInfo.memory.free).toString(),
-              ),
-            )
-
-            const isCi = yield* Config.boolean('CI').pipe(Config.withDefault(false))
-            if (isCi) {
-              const commitSha = yield* Config.string('COMMIT_SHA')
-              const refName = yield* Config.string('GITHUB_REF_NAME')
-              metric = metric.pipe(
-                Metric.tagged('github.commit_sha', commitSha),
-                Metric.tagged('github.ref_name', refName),
-              )
-            }
-
-            this.metricsByTestTitle[test.title] = {
-              metric: metric,
-              meta: {
-                unit: unit,
-                testSuiteTitle: testSuiteTitle,
-                testSuiteTitlePath: testSuiteTitlePath,
-              },
-            }
-          }),
-        { concurrency: 'unbounded' },
-      ),
-    )
+      this.measurementsByTestTitle[test.title] = {
+        measurements: [],
+        meta: {
+          unit: measurementUnitAnnotation.description,
+          testSuiteTitle,
+          testSuiteTitlePath,
+          testTitle: test.title,
+          testName: `${testSuiteTitle} ${test.title}`,
+        },
+      }
+    }
   }
 
   onTestEnd = (test: TestCase, result: TestResult): void => {
     if (result.status !== 'passed') return
 
-    const processMeasurementEffect = Effect.gen(this, function* () {
-      const decodedAnnotations = yield* Schema.decodeUnknown(Annotations)(test.annotations)
-      const measurementAnnotation = yield* getRequiredAnnotation(decodedAnnotations, 'measurement', test.title)
-      const value = measurementAnnotation.description
+    const decodedAnnotations = Schema.decodeUnknownSync(Annotations)(test.annotations)
+    const measurementAnnotation = getRequiredAnnotationSync(decodedAnnotations, 'measurement', test.title)
+    const trackedMeasurement = this.measurementsByTestTitle[test.title]
+    if (trackedMeasurement === undefined) return
 
-      const trackedMetric = this.metricsByTestTitle[test.title]
-      if (trackedMetric === undefined) {
-        return Effect.void
-      }
-      return trackedMetric.metric(Effect.succeed(value))
-    }).pipe(Effect.flatten)
-
-    this.measurementEffects.push(processMeasurementEffect)
+    trackedMeasurement.measurements.push(measurementAnnotation.description)
   }
 
   onEnd = async (): Promise<void> => {
-    this.runtime.runSync(Effect.all(this.measurementEffects, { concurrency: 'unbounded' }))
+    const metricStatesByTitle = await this.runtime.runPromise(this.computeMetricStates())
     this.printSystemInfo()
-    this.printMeasurements()
+    this.printMeasurements(metricStatesByTitle)
     await this.runtime.dispose()
   }
 
@@ -298,14 +236,14 @@ export default class MeasurementsReporter implements Reporter {
     console.log(PrettySystemInfo(this.systemInfo))
   }
 
-  private printMeasurements = (): void => {
-    const metricsByTitlePath = this.groupMetricsByTitlePath()
+  private printMeasurements = (metricStatesByTitle: Record<string, TrackedMeasurementState>): void => {
+    const metricsByTitlePath = this.groupMetricsByTitlePath(metricStatesByTitle)
 
     for (const [testSuiteTitlePath, trackedMetricsInGroup] of Object.entries(metricsByTitlePath)) {
       if (Object.keys(trackedMetricsInGroup).length === 0) continue
 
       const firstTrackedMetric = Object.values(trackedMetricsInGroup)[0]
-      if (!firstTrackedMetric) continue
+      if (firstTrackedMetric == null) continue
 
       const testSuiteTitle = firstTrackedMetric.meta.testSuiteTitle
 
@@ -314,16 +252,18 @@ export default class MeasurementsReporter implements Reporter {
     }
   }
 
-  private groupMetricsByTitlePath = (): Record<string, Record<string, TrackedMetric>> => {
-    const result: Record<string, Record<string, TrackedMetric>> = {}
+  private groupMetricsByTitlePath = (
+    metricStatesByTitle: Record<string, TrackedMeasurementState>,
+  ): Record<string, Record<string, TrackedMeasurementState>> => {
+    const result: Record<string, Record<string, TrackedMeasurementState>> = {}
 
-    for (const [testTitle, trackedMetric] of Object.entries(this.metricsByTestTitle)) {
+    for (const [testTitle, trackedMetric] of Object.entries(metricStatesByTitle)) {
       const path = trackedMetric.meta.testSuiteTitlePath
 
-      if (!result[path]) {
+      if (result[path] == null) {
         result[path] = {}
       }
-      result[path]![testTitle] = trackedMetric
+      result[path][testTitle] = trackedMetric
     }
 
     return result
@@ -331,21 +271,12 @@ export default class MeasurementsReporter implements Reporter {
 
   private printMeasurementsTable = (
     testSuiteTitle: string,
-    trackedMetricsInGroup: Record<string, TrackedMetric>,
+    trackedMetricsInGroup: Record<string, TrackedMeasurementState>,
   ): void => {
     if (Object.keys(trackedMetricsInGroup).length === 0) return
 
-    const metricStatesResult = this.runtime.runSync(
-      Effect.all(
-        Object.entries(trackedMetricsInGroup).reduce(
-          (acc, [testTitle, trackedMetric]) => {
-            acc[testTitle] = Metric.value(trackedMetric.metric)
-            return acc
-          },
-          {} as Record<string, Effect.Effect<MetricState.MetricState.Summary>>,
-        ),
-        { concurrency: 'unbounded' },
-      ),
+    const metricStatesResult = Object.fromEntries(
+      Object.entries(trackedMetricsInGroup).map(([testTitle, trackedMetric]) => [testTitle, trackedMetric.state]),
     )
 
     const hasSingleMeasurementPerTestTitle = Object.values(metricStatesResult).every((state) => state.count === 1)
@@ -355,7 +286,7 @@ export default class MeasurementsReporter implements Reporter {
     const displayUnit = measurementUnitToDisplayUnit[unit]
     const formatValue = unitFormatters[unit]
 
-    if (hasSingleMeasurementPerTestTitle) {
+    if (hasSingleMeasurementPerTestTitle === true) {
       const headers = [testSuiteTitle, `Measurement`]
       const rows = Object.entries(metricStatesResult).map(([testTitle, state]) => {
         return [testTitle, `${formatValue(state.sum)} ${displayUnit}`]
@@ -394,4 +325,68 @@ export default class MeasurementsReporter implements Reporter {
       printConsoleTable(headers, rows)
     }
   }
+
+  private computeMetricStates = (): Effect.Effect<
+    Record<string, TrackedMeasurementState>,
+    ParseResult.ParseError | MissingAnnotationError
+  > =>
+    Effect.all(
+      Object.entries(this.measurementsByTestTitle).reduce(
+        (acc, [testTitle, trackedMeasurement]) => {
+          acc[testTitle] = Effect.gen(this, function* () {
+            const metric = this.makeMetric(trackedMeasurement)
+            yield* Effect.forEach(trackedMeasurement.measurements, (value) => metric(Effect.succeed(value)), {
+              concurrency: 'unbounded',
+            })
+            const state = yield* Metric.value(metric)
+            return {
+              meta: trackedMeasurement.meta,
+              state,
+            }
+          })
+          return acc
+        },
+        {} as Record<string, Effect.Effect<TrackedMeasurementState, ParseResult.ParseError | MissingAnnotationError>>,
+      ),
+      { concurrency: 'unbounded' },
+    )
+
+  private makeMetric = (trackedMeasurement: TrackedMeasurement): Metric.Metric.Summary<number> => {
+    const snakeCase = (str: string) => str.replaceAll(/[^a-zA-Z0-9]/g, '_').toLowerCase()
+    const { meta } = trackedMeasurement
+
+    let metric = Metric.summary({
+      name: snakeCase(meta.testName),
+      maxAge: '1 hour',
+      maxSize: 100,
+      error: 0,
+      quantiles: [0.25, 0.5, 0.75],
+      description: meta.testName,
+    }).pipe(
+      Metric.tagged('unit', meta.unit),
+      Metric.tagged('test.suite.title', meta.testSuiteTitle),
+      Metric.tagged('test.title', meta.testTitle),
+      Metric.tagged('test.name', meta.testName),
+      Metric.tagged('os.type', this.systemInfo.os.type),
+      Metric.tagged('os.version', this.systemInfo.os.release),
+      Metric.tagged('host.arch', this.systemInfo.os.arch),
+      Metric.tagged('host.cpu.model.name', this.systemInfo.cpus.model),
+      Metric.tagged('system.memory.limit', this.systemInfo.memory.total.toString()),
+      Metric.tagged('system.memory.usage', (this.systemInfo.memory.total - this.systemInfo.memory.free).toString()),
+    )
+
+    if (process.env.CI !== undefined && process.env.COMMIT_SHA !== undefined && process.env.GITHUB_REF_NAME !== undefined) {
+      metric = metric.pipe(
+        Metric.tagged('github.commit_sha', process.env.COMMIT_SHA),
+        Metric.tagged('github.ref_name', process.env.GITHUB_REF_NAME),
+      )
+    }
+
+    return metric
+  }
+}
+
+type TrackedMeasurementState = {
+  meta: TrackedMeasurement['meta']
+  state: MetricState.MetricState.Summary
 }

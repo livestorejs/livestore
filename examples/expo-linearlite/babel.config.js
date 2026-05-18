@@ -22,6 +22,11 @@ module.exports = (api) => {
         },
       ],
     ],
-    plugins: ['babel-plugin-transform-vite-meta-env', '@babel/plugin-syntax-import-attributes'],
+    // Reanimated plugin must be last
+    plugins: [
+      'babel-plugin-transform-vite-meta-env',
+      '@babel/plugin-syntax-import-attributes',
+      'react-native-reanimated/plugin',
+    ],
   }
 }

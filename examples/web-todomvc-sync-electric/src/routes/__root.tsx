@@ -1,39 +1,26 @@
-import 'todomvc-app-css/index.css'
-
-import { makePersistedAdapter } from '@livestore/adapter-web'
-import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { LiveStoreProvider } from '@livestore/react'
-import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
 import type * as React from 'react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
-import { ErrorBoundary } from 'react-error-boundary'
+import { Suspense } from 'react'
+import stylesheetUrl from 'todomvc-app-css/index.css?url'
 
-import { schema } from '@/livestore/schema.js'
+import type { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 
-import LiveStoreWorker from '../livestore.worker.ts?worker'
+import { VersionBadge } from '../components/VersionBadge.tsx'
+
+const suspenseFallback = <div>Loading...</div>
 
 const RootComponent = () => {
-  const storeId = getStoreId()
-  const adapter = makePersistedAdapter({
-    storage: { type: 'opfs' },
-    worker: LiveStoreWorker,
-    sharedWorker: LiveStoreSharedWorker,
-  })
+  const { storeRegistry } = Route.useRouteContext()
 
   return (
     <RootDocument>
-      <ErrorBoundary fallback={<div>Something went wrong</div>}>
-        <LiveStoreProvider
-          schema={schema}
-          storeId={storeId}
-          renderLoading={() => <div>Loading...</div>}
-          adapter={adapter}
-          batchUpdates={batchUpdates}
-          syncPayload={{ authToken: 'insecure-token-change-me' }}
-        >
+      <Suspense fallback={suspenseFallback}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
           <Outlet />
-        </LiveStoreProvider>
-      </ErrorBoundary>
+          <VersionBadge />
+        </StoreRegistryProvider>
+      </Suspense>
     </RootDocument>
   )
 }
@@ -52,19 +39,21 @@ const RootDocument = ({ children }: { children: React.ReactNode }) => {
   )
 }
 
-export const Route = createRootRoute({
+type RouterContext = {
+  storeRegistry: StoreRegistry
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
+  head: () => ({
+    meta: [
+      { charSet: 'utf-8' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { title: 'TodoMVC Sync Electric · LiveStore' },
+    ],
+    links: [
+      { rel: 'stylesheet', href: stylesheetUrl },
+      { rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' },
+    ],
+  }),
   component: RootComponent,
 })
-
-const getStoreId = () => {
-  if (typeof window === 'undefined') return 'unused'
-
-  const searchParams = new URLSearchParams(window.location.search)
-  const storeId = searchParams.get('storeId')
-  if (storeId !== null) return storeId
-
-  const newAppId = crypto.randomUUID()
-  searchParams.set('storeId', newAppId)
-
-  window.location.search = searchParams.toString()
-}

@@ -1,22 +1,20 @@
 import { TrashIcon } from '@heroicons/react/16/solid'
 import React from 'react'
 import { Button } from 'react-aria-components'
-import { useNavigate } from 'react-router-dom'
 
 export const ResetButton = ({ className }: { className?: string }) => {
   const [confirm, setConfirm] = React.useState(false)
-  const navigate = useNavigate()
 
-  const onClick = () => {
+  const onClick = React.useCallback(() => {
     if (confirm) {
-      navigate('/?reset')
-      window.location.reload()
+      window.location.href = '/?reset'
+      return
     }
     setConfirm(true)
     setTimeout(() => {
       setConfirm(false)
     }, 2000)
-  }
+  }, [confirm])
 
   return (
     <div className={`lg:h-full flex items-center ${className}`}>

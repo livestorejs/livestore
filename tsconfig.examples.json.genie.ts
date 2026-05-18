@@ -1,0 +1,26 @@
+import { tsconfigJson } from './genie/repo.ts'
+
+/**
+ * Root tsconfig for example builds.
+ * References all example projects for composite builds.
+ */
+export default tsconfigJson({
+  compilerOptions: {},
+  include: [],
+  references: [
+    { path: './examples/node-effect-cli' },
+    { path: './examples/node-todomvc-sync-cf' },
+    { path: './examples/expo-todomvc-sync-cf' },
+    { path: './examples/expo-linearlite' },
+    { path: './examples/web-linearlite' },
+    { path: './examples/web-todomvc' },
+    { path: './examples/web-todomvc-custom-elements' },
+    { path: './examples/web-todomvc-experimental' },
+    { path: './examples/web-todomvc-react-router' },
+    { path: './examples/web-todomvc-redwood' },
+    { path: './examples/web-todomvc-solid' },
+    { path: './examples/web-todomvc-sync-cf' },
+    { path: './examples/web-todomvc-sync-electric' },
+    { path: './examples/web-todomvc-sync-s2' },
+  ],
+})

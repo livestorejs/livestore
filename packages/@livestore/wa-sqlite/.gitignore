@@ -1,0 +1,23 @@
+.DS_Store
+
+# https://yarnpkg.com/getting-started/qa/#which-files-should-be-gitignored
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+
+node_modules
+
+/cache
+/debug
+/deps
+/tmp
+
+# Nix build results
+result
+
+# tsc composite build output (dist/ contains pre-built WASM, not tsc output)
+.tsc-out

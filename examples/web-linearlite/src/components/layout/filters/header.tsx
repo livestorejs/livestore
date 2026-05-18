@@ -1,4 +1,4 @@
-import { MenuButton } from '@/components/common/menu-button'
+import { MenuButton } from '../../common/menu-button.tsx'
 
 export const Header = ({
   totalCount,

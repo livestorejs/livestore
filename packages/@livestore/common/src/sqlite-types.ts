@@ -1,5 +1,6 @@
 import { type Effect, Schema } from '@livestore/utils/effect'
-import type { SqliteError, UnexpectedError } from './errors.ts'
+
+import type { SqliteError, UnknownError } from './errors.ts'
 import type { EventSequenceNumber } from './schema/mod.ts'
 import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
 import type { PreparedBindValues } from './util.ts'
@@ -17,23 +18,23 @@ export interface SqliteDb<TReq = any, TMetadata extends TReq = TReq> {
   prepare(queryStr: string): PreparedStatement
   execute(
     queryStr: string,
-    bindValues?: PreparedBindValues | undefined,
+    bindValues?: PreparedBindValues  ,
     options?: { onRowsChanged?: (rowsChanged: number) => void },
   ): void
   execute(queryBuilder: QueryBuilder.Any, options?: { onRowsChanged?: (rowsChanged: number) => void }): void
 
-  select<T>(queryStr: string, bindValues?: PreparedBindValues | undefined): ReadonlyArray<T>
+  select<T>(queryStr: string, bindValues?: PreparedBindValues  ): ReadonlyArray<T>
   select<T>(queryBuilder: QueryBuilder<T, any, any>): T
 
-  export(): Uint8Array
-  import: (data: Uint8Array | SqliteDb<TReq>) => void
+  export(): Uint8Array<ArrayBuffer>
+  import: (data: Uint8Array<ArrayBuffer> | SqliteDb<TReq>) => void
   close(): void
   destroy(): void
   session(): SqliteDbSession
-  makeChangeset: (data: Uint8Array) => SqliteDbChangeset
+  makeChangeset: (data: Uint8Array<ArrayBuffer>) => SqliteDbChangeset
 }
 
-export type SqliteDebugInfo = { head: EventSequenceNumber.EventSequenceNumber }
+export type SqliteDebugInfo = { head: EventSequenceNumber.Client.Composite }
 
 // TODO refactor this helper type. It's quite cumbersome to use and should be revisited.
 export type MakeSqliteDb<
@@ -46,7 +47,7 @@ export type MakeSqliteDb<
   TMetadata extends TMetadata_ & { _tag: TInput['_tag'] } = TMetadata_ & { _tag: TInput['_tag'] },
 >(
   input: TInput,
-) => Effect.Effect<SqliteDb<TReq, Extract<TMetadata, { _tag: TInput['_tag'] }>>, SqliteError | UnexpectedError, R>
+) => Effect.Effect<SqliteDb<TReq, Extract<TMetadata, { _tag: TInput['_tag'] }>>, SqliteError | UnknownError, R>
 
 export interface PreparedStatement {
   execute(bindValues: PreparedBindValues | undefined, options?: { onRowsChanged?: (rowsChanged: number) => void }): void
@@ -56,7 +57,7 @@ export interface PreparedStatement {
 }
 
 export type SqliteDbSession = {
-  changeset: () => Uint8Array | undefined
+  changeset: () => Uint8Array<ArrayBuffer> | undefined
   finish: () => void
 }
 

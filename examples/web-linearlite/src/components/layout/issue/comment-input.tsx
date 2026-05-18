@@ -1,17 +1,18 @@
 import { ArrowUpIcon } from '@heroicons/react/20/solid'
-import { useStore } from '@livestore/react'
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button } from 'react-aria-components'
-import Editor from '@/components/common/editor'
-import { useFrontendState } from '@/lib/livestore/queries'
-import { events } from '@/lib/livestore/schema'
+
+import { useFrontendState } from '../../../livestore/queries.ts'
+import { events } from '../../../livestore/schema/index.ts'
+import { useAppStore } from '../../../livestore/store.ts'
+import Editor from '../../common/editor.tsx'
 
 export const CommentInput = ({ issueId, className }: { issueId: number; className?: string }) => {
   // TODO move this into LiveStore
   const [commentDraft, setCommentDraft] = React.useState<string>('')
   const [frontendState] = useFrontendState()
-  const { store } = useStore()
+  const store = useAppStore()
 
   const { keyboardProps } = useKeyboard({
     onKeyDown: (e) => {
@@ -21,7 +22,7 @@ export const CommentInput = ({ issueId, className }: { issueId: number; classNam
     },
   })
 
-  const submitComment = () => {
+  const submitComment = React.useCallback(() => {
     if (!commentDraft) return
     store.commit(
       events.createComment({
@@ -33,19 +34,16 @@ export const CommentInput = ({ issueId, className }: { issueId: number; classNam
       }),
     )
     setCommentDraft('')
-  }
+  }, [commentDraft, frontendState.user, issueId, store])
+
+  const handleChange = React.useCallback((value: string) => setCommentDraft(value), [])
 
   return (
     <div
       className={`bg-white dark:bg-neutral-800 pb-4 rounded-lg shadow dark:shadow-none border border-transparent dark:border-neutral-700/50 ${className}`}
       {...keyboardProps}
     >
-      <Editor
-        className="px-4 py-1"
-        value={commentDraft}
-        onChange={(value) => setCommentDraft(value)}
-        placeholder="Leave a comment..."
-      />
+      <Editor className="px-4 py-1" value={commentDraft} onChange={handleChange} placeholder="Leave a comment..." />
       {/* TODO add tooltip for submit shortcut */}
       <Button
         aria-label="Submit comment"

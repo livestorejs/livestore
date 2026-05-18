@@ -4,6 +4,7 @@ export {
   type BootStatus,
   type DebugInfo,
   IntentionalShutdownCause,
+  liveStoreVersion,
   type MutableDebugInfo,
   type PreparedBindValues,
   prepareBindValues,
@@ -14,6 +15,7 @@ export {
   SessionIdSymbol,
   type SqliteDb,
   StoreInterrupted,
+  type SyncState,
   sql,
 } from '@livestore/common'
 export * from '@livestore/common/schema'
@@ -33,13 +35,31 @@ export {
   signal,
 } from './live-queries/mod.ts'
 export { emptyDebugInfo, SqliteDbWrapper } from './SqliteDbWrapper.ts'
-export { type CreateStoreOptions, createStore, createStorePromise } from './store/create-store.ts'
-export { Store } from './store/store.ts'
-export type { OtelOptions, QueryDebugInfo, RefreshReason, Unsubscribe } from './store/store-types.ts'
 export {
+  type CreateStoreOptions,
+  type CreateStoreOptionsPromise,
+  createStore,
+  createStorePromise,
+} from './store/create-store.ts'
+export { type RegistryStoreOptions, StoreRegistry, storeOptions } from './store/StoreRegistry.ts'
+export { Store } from './store/store.ts'
+export {
+  isLiveQueryDef,
+  isLiveQueryInstance,
+  isQueryable,
   type LiveStoreContext,
   type LiveStoreContextRunning,
   makeShutdownDeferred,
+  type OtelOptions,
+  type Queryable,
+  type QueryDebugInfo,
+  type RefreshReason,
   type ShutdownDeferred,
+  type StoreInternals,
+  StoreInternalsSymbol,
+  type SubscribeOptions,
+  type SyncStatus,
+  type Unsubscribe,
 } from './store/store-types.ts'
+export { exposeDebugUtils } from './utils/dev.ts'
 export * from './utils/stack-info.ts'

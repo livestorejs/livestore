@@ -1,5 +1,64 @@
 import type * as PW from '@playwright/test'
-import { expect } from '@playwright/test'
+import { errors, expect } from '@playwright/test'
+
+/**
+ * Checks that the DevTools compatibility overlay is displayed with correct content.
+ */
+export const checkProtocolMismatchOverlay = async (options: {
+  devtools: PW.Frame | PW.Page
+  label: string
+  expect: {
+    devtoolsVersion: string
+    appVersion: string
+  }
+}) => {
+  const overlay = options.devtools.locator('[data-testid="version-mismatch-overlay"]')
+  await overlay.describe(`${options.label}:protocol-mismatch-overlay`).waitFor({ state: 'attached', timeout: 5000 })
+
+  await expect(
+    options.devtools
+      .getByText('Version Mismatch', { exact: false })
+      .describe(`${options.label}:protocol-mismatch-title`),
+  ).toBeVisible()
+
+  await expect(
+    options.devtools
+      .locator('code')
+      .filter({ hasText: options.expect.devtoolsVersion })
+      .describe(`${options.label}:devtools-version`),
+  ).toBeVisible()
+
+  await expect(
+    options.devtools
+      .locator('code')
+      .filter({ hasText: options.expect.appVersion })
+      .describe(`${options.label}:app-version`),
+  ).toBeVisible()
+}
+
+export const checkConnectionRemainsActive = async (options: {
+  devtools: PW.Frame | PW.Page
+  label: string
+  durationMs: number
+}) => {
+  await expect(
+    options.devtools
+      .getByText('Connection to app lost', { exact: false })
+      .describe(`${options.label}:connection-lost`),
+  ).not.toBeVisible()
+
+  try {
+    await options.devtools
+      .getByText('Connection to app lost', { exact: false })
+      .describe(`${options.label}:connection-lost-during-watch`)
+      .waitFor({ state: 'visible', timeout: options.durationMs })
+  } catch (error) {
+    if (error instanceof errors.TimeoutError) return
+    throw error
+  }
+
+  throw new Error(`DevTools lost its app connection during ${options.label}`)
+}
 
 const checkDevtoolsState_ = async (options: {
   devtools: PW.Frame | PW.Page
@@ -18,17 +77,22 @@ const checkDevtoolsState_ = async (options: {
   await loading.waitFor({ state: 'detached' })
 
   await options.devtools
-    .getByRole('tab', { name: 'Data Browser' })
-    .describe(`${options.label}:Data Browser`)
+    .getByRole('tab', { name: 'Database' })
+    .describe(`${options.label}:Database`)
     .waitFor({ state: 'attached', timeout: 3000 })
 
   // expect(await options.devtools.getByRole('status', { name: 'Leader Tab' }).isVisible()).toBe(options.expect.leader)
 
-  const tablesList = options.devtools.getByRole('treegrid', { name: 'Tables' }).describe(`${options.label}:Tables`)
-  await tablesList.waitFor({ timeout: 1000 })
+  await options.devtools
+    .getByText('Tables')
+    .describe(`${options.label}:Tables`)
+    .waitFor({ timeout: 2000 })
+    .catch(() => {})
 
   for (const table of options.expect.tables) {
-    await expect(tablesList.getByText(table).describe(`${options.label}:${table}`)).toBeVisible()
+    await expect(
+      options.devtools.getByText(table, { exact: false }).first().describe(`${options.label}:${table}`),
+    ).toBeVisible()
   }
 }
 

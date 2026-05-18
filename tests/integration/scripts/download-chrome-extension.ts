@@ -1,8 +1,9 @@
 import path from 'node:path'
-import { UnexpectedError } from '@livestore/common'
+
+import { UnknownError } from '@livestore/common'
+import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import { Effect, FileSystem, HttpClient, HttpClientResponse, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd } from '@livestore/utils-dev/node'
 
 /** Download the latest Chrome extension from LiveStore GitHub releases */
 export const downloadChromeExtension = ({ version, targetDir }: { version?: string; targetDir: string }) =>
@@ -24,24 +25,22 @@ export const downloadChromeExtension = ({ version, targetDir }: { version?: stri
     if ((yield* fs.exists(targetDir)) === true) {
       yield* Effect.logInfo(`Target directory ${targetDir} already exists`)
 
-      if (yield* Cli.Prompt.confirm({ message: `Delete existing directory ${targetDir}?` })) {
+      if ((yield* Cli.Prompt.confirm({ message: `Delete existing directory ${targetDir}?` })) === true) {
         yield* fs.remove(targetDir, { recursive: true })
       } else {
-        yield* Effect.die('Aborting...')
+        return yield* Effect.die('Aborting...')
       }
     }
 
     // Create target directory
     yield* fs.makeDirectory(targetDir, { recursive: true })
 
-    const releaseEndpoint = version ? `tags/${version}` : 'latest'
+    const releaseEndpoint = version !== undefined ? `tags/${version}` : 'latest'
     const releaseUrl = `https://api.github.com/repos/livestorejs/livestore/releases/${releaseEndpoint}`
 
     const releaseResponse = yield* HttpClient.get(releaseUrl).pipe(
       Effect.andThen(HttpClientResponse.schemaBodyJson(ResponseSchema)),
-      Effect.mapError(
-        (cause) => new UnexpectedError({ cause, note: `Failed to fetch release info from ${releaseUrl}` }),
-      ),
+      Effect.mapError((cause) => new UnknownError({ cause, note: `Failed to fetch release info from ${releaseUrl}` })),
     )
 
     // Find the Chrome extension asset
@@ -50,12 +49,10 @@ export const downloadChromeExtension = ({ version, targetDir }: { version?: stri
     )
 
     if (chromeExtensionAsset === undefined) {
-      return yield* Effect.fail(
-        new UnexpectedError({
-          cause: `Chrome extension asset not found in release ${releaseResponse.tag_name}`,
-          note: 'Expected to find an asset with name containing "chrome-extension" and ending with ".zip"',
-        }),
-      )
+      return yield* new UnknownError({
+        cause: `Chrome extension asset not found in release ${releaseResponse.tag_name}`,
+        note: 'Expected to find an asset with name containing "chrome-extension" and ending with ".zip"',
+      })
     }
 
     yield* Effect.logInfo(
@@ -70,7 +67,7 @@ export const downloadChromeExtension = ({ version, targetDir }: { version?: stri
     const downloadResponse = yield* HttpClient.get(chromeExtensionAsset.browser_download_url).pipe(
       Effect.mapError(
         (cause) =>
-          new UnexpectedError({
+          new UnknownError({
             cause,
             note: `Failed to download extension from ${chromeExtensionAsset.browser_download_url}`,
           }),
@@ -81,7 +78,7 @@ export const downloadChromeExtension = ({ version, targetDir }: { version?: stri
     const zipData = yield* downloadResponse.arrayBuffer.pipe(
       Effect.mapError(
         (cause) =>
-          new UnexpectedError({
+          new UnknownError({
             cause,
             note: 'Failed to read extension data as ArrayBuffer',
           }),
@@ -107,9 +104,10 @@ const extractZipFile = (zipPath: string, targetDir: string) =>
     // Ensure target directory exists
     yield* fs.makeDirectory(targetDir, { recursive: true })
 
-    yield* cmd(['unzip', '-o', '-j', zipPath], { cwd: targetDir }).pipe(
+    yield* cmd(['unzip', '-o', '-j', zipPath]).pipe(
+      Effect.provide(CurrentWorkingDirectory.fromPath(targetDir)),
       Effect.mapError(
-        (cause) => new UnexpectedError({ cause, note: `Failed to extract zip file from ${zipPath} to ${targetDir}` }),
+        (cause) => new UnknownError({ cause, note: `Failed to extract zip file from ${zipPath} to ${targetDir}` }),
       ),
     )
   })

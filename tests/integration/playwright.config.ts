@@ -1,8 +1,17 @@
 import process from 'node:process'
 
-import { envTruish } from '@livestore/utils'
 import type { PlaywrightTestConfig } from '@playwright/test'
 import { devices } from '@playwright/test'
+
+import { envTruish } from '@livestore/utils'
+
+/**
+ * Ensure Playwright tests are run via the mono CLI (or VS Code extension) to guarantee proper environment setup.
+ */
+const isVSCode = process.env.VSCODE_PID !== undefined
+if (envTruish(process.env.FORCE_PLAYWRIGHT_VIA_CLI) === false && isVSCode === false) {
+  throw new Error(`Playwright tests must be run via 'mono test integration <devtools|todomvc|misc>'.`)
+}
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -25,11 +34,11 @@ const config: PlaywrightTestConfig = {
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI !== undefined ? 2 : 0,
   /* Opt out of parallel tests on CI. */
   // workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: [['html', { open: process.env.CI ? 'never' : 'on' }]],
+  reporter: [['html', { open: process.env.CI !== undefined ? 'never' : 'on' }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
 
   use: {

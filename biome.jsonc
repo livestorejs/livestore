@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.1.2/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.3.8/schema.json",
   // WORKAROUND: Biome 2.1.x nested root configuration issue
   // Prevents "Found a nested root configuration" errors in parent repo
   // TODO: Remove "root": false once Biome properly supports git submodules
@@ -7,33 +7,43 @@
   "vcs": {
     "enabled": true,
     "clientKind": "git",
-    "useIgnoreFile": true
+    "useIgnoreFile": true,
   },
   "files": {
-    "ignoreUnknown": false,
     "includes": [
-      "**",
-      "!**/dist/**",
-      "!**/.wrangler/**",
-      "!**/node_modules/**",
-      "!**/tmp/**",
-      "!**/.output/**",
-      "!**/.vercel/**",
-      "!**/.netlify/**",
-      "!**/.astro/**",
-      "!**/.vinxi/**",
-      "!**/.direnv/**",
-      "!**/playwright-report/**",
-      "!**/test-results/**",
-      "!**/*.mdx", // TODO re-enable when Biome supports MDX files
-      // https://github.com/biomejs/biome/issues/6528
-      "!**/*.astro"
-    ]
+      "packages/**",
+      "!packages/@livestore/wa-sqlite",
+      "examples/**",
+      "!**/routeTree.gen.ts",
+      "docs/**",
+      "!docs/**/.astro", // TODO re-enable once Biome supports Astro files
+      "!**/*.svelte", // TODO re-enable once Biome supports Svelte files
+      "tests/**",
+      "scripts/**",
+      "contributor-docs/**",
+      "*.{json,jsonc,js,ts,md}",
+      "!!**/node_modules/**",
+      "!!**/dist/**",
+      "!!**/.wrangler/**",
+      "!!**/.vercel/**",
+      "!!**/.netlify/**",
+      "!!**/.astro/**",
+      "!!**/.nitro/**",
+      "!!**/.tanstack/**",
+      "!!**/.direnv/**",
+      "!!**/playwright-report/**",
+      "!!**/test-results/**",
+      "!!**/nix/**",
+      "!!**/wip/**",
+      "!!**/.vite/**",
+      "!!**/patches/**",
+    ],
+    "ignoreUnknown": true,
   },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
-    "lineWidth": 120
+    "lineWidth": 120,
   },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
@@ -42,7 +52,10 @@
       "recommended": true,
       "suspicious": {
         "noExplicitAny": "off",
-        "noShadowRestrictedNames": "off"
+        "noShadowRestrictedNames": "off",
+        // Intentional debugger statements are now suppressed via oxlint comments.
+        // Disable Biome's rule to avoid IDE noise until Biome is fully removed.
+        "noDebugger": "off",
       },
       "style": {
         "noUselessElse": "off",
@@ -55,32 +68,107 @@
         "useSelfClosingElements": "error",
         "useSingleVarDeclarator": "error",
         "useNumberNamespace": "error",
-        "noInferrableTypes": "error"
+        "noInferrableTypes": "error",
       },
       "complexity": {
+        "useArrowFunction": "error",
         "noBannedTypes": "off",
-        "noUselessTernary": "off"
+        "noUselessTernary": "off",
       },
       "a11y": {
-        "useKeyWithClickEvents": "off"
+        "useKeyWithClickEvents": "off",
       },
       "correctness": {
         "noUnusedImports": "warn",
         "useImportExtensions": "error",
+        "useExhaustiveDependencies": "error",
+        "useHookAtTopLevel": "error",
         "noUnusedLabels": {
-          "level": "warn"
+          "level": "warn",
         },
-        "useYield": "off"
-      }
-    }
+        "useYield": "off",
+      },
+      "nursery": {},
+    },
   },
   "javascript": {
     "formatter": {
       "quoteStyle": "single",
-      "semicolons": "asNeeded"
-    }
+      "semicolons": "asNeeded",
+    },
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true,
+    },
   },
   "json": {
-    "formatter": {}
-  }
+    "formatter": {},
+  },
+  "overrides": [
+    {
+      // Disable noUnusedVariables for Astro files due to false positives
+      // Biome only analyzes frontmatter, not template usage
+      // See: https://github.com/biomejs/biome/discussions/1254
+      "includes": ["**/*.astro"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedVariables": "off",
+            "noUnusedImports": "off",
+          },
+        },
+      },
+    },
+    {
+      // Disable noUnknownAtRules for CSS files that use Tailwind CSS
+      // Tailwind uses custom at-rules like @apply, @config, @theme, @custom-variant
+      // See: https://github.com/biomejs/biome/discussions/3195
+      "includes": ["**/*.css", "**/tailwind.css", "**/style.css"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noUnknownAtRules": "off",
+          },
+        },
+      },
+    },
+    {
+      // Disable React hook rules for Solid.js package
+      // Solid's useContext/createSignal/etc are not React hooks and don't follow React's "rules of hooks"
+      "includes": ["packages/@livestore/solid/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useHookAtTopLevel": "off",
+            "useExhaustiveDependencies": "off",
+          },
+        },
+      },
+    },
+    {
+      // Disable React hook rules for Solid.js documentation snippets
+      "includes": ["docs/src/content/_assets/code/reference/solid-integration/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useHookAtTopLevel": "off",
+            "useExhaustiveDependencies": "off",
+          },
+        },
+      },
+    },
+    {
+      // Disable React hook rules for Solid.js TodoMVC example
+      "includes": ["examples/web-todomvc-solid/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useHookAtTopLevel": "off",
+            "useExhaustiveDependencies": "off",
+          },
+        },
+      },
+    },
+  ],
 }

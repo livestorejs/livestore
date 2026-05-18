@@ -3,7 +3,7 @@ import { Schema } from '@livestore/utils/effect'
 
 export const PushPayload = Schema.TaggedStruct('@livestore/sync-electric.Push', {
   storeId: Schema.String,
-  batch: Schema.Array(LiveStoreEvent.AnyEncodedGlobal),
+  batch: Schema.Array(LiveStoreEvent.Global.Encoded),
 }).annotations({ title: '@livestore/sync-electric.PushPayload' })
 
 export const PullPayload = Schema.TaggedStruct('@livestore/sync-electric.Pull', {
@@ -15,6 +15,10 @@ export const PullPayload = Schema.TaggedStruct('@livestore/sync-electric.Pull', 
       handle: Schema.String,
     }),
   ),
+  live: Schema.Boolean,
 }).annotations({ title: '@livestore/sync-electric.PullPayload' })
 
 export const ApiPayload = Schema.Union(PullPayload, PushPayload)
+
+// Format for the query params
+export const ArgsSchema = Schema.compose(Schema.StringFromUriComponent, Schema.parseJson(PullPayload))

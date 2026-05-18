@@ -8,7 +8,7 @@ import type {
   ClientSessionLeaderThreadProxy,
   LockStatus,
   SqliteDb,
-  UnexpectedError,
+  UnknownError,
 } from './adapter-types.ts'
 import * as Devtools from './devtools/mod.ts'
 import { liveStoreVersion } from './version.ts'
@@ -33,6 +33,7 @@ export const makeClientSession = <R>({
   webmeshMode,
   registerBeforeUnload,
   debugInstanceId,
+  origin,
 }: AdapterArgs & {
   clientId: string
   sessionId: string
@@ -43,16 +44,18 @@ export const makeClientSession = <R>({
   connectWebmeshNode: (args: {
     webmeshNode: Webmesh.MeshNode
     sessionInfo: Devtools.SessionInfo.SessionInfo
-  }) => Effect.Effect<void, UnexpectedError, Scope.Scope | R>
+  }) => Effect.Effect<void, UnknownError, Scope.Scope | R>
   webmeshMode: 'direct' | 'proxy'
   registerBeforeUnload: (onBeforeUnload: () => void) => () => void
+  /** Browser origin of the client session; used for origin-scoped DevTools mesh channels */
+  origin: string | undefined
 }): Effect.Effect<ClientSession, never, Scope.Scope | R> =>
   Effect.gen(function* () {
-    const devtools: ClientSession['devtools'] = devtoolsEnabled
+    const devtools: ClientSession['devtools'] = devtoolsEnabled === true
       ? { enabled: true, pullLatch: yield* Effect.makeLatch(true), pushLatch: yield* Effect.makeLatch(true) }
       : { enabled: false }
 
-    if (devtoolsEnabled) {
+    if (devtoolsEnabled === true) {
       yield* Effect.gen(function* () {
         const webmeshNode = yield* Webmesh.makeMeshNode(
           Devtools.makeNodeName.client.session({ storeId, clientId, sessionId }),
@@ -67,11 +70,14 @@ export const makeClientSession = <R>({
           sessionId,
           schemaAlias,
           isLeader,
+          origin,
         })
 
         yield* connectWebmeshNode({ webmeshNode, sessionInfo })
 
-        const sessionInfoBroadcastChannel = yield* Devtools.makeSessionInfoBroadcastChannel(webmeshNode)
+        const sessionInfoBroadcastChannel = yield* Devtools.makeSessionInfoBroadcastChannel(webmeshNode, {
+          origin,
+        })
 
         yield* Devtools.SessionInfo.provideSessionInfo({
           webChannel: sessionInfoBroadcastChannel,

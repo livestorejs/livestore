@@ -8,7 +8,7 @@ description: How to use an ORM with LiveStore
 - As long as the ORM allows supports synchronously generating SQL statements (and binding parameters), you should be able to use it with LiveStore.
 - Supported ORMs:
   - [Knex](https://knexjs.org/)
-	- [Kysely](https://kysely.dev/)
+  - [Kysely](https://kysely.dev/)
   - [Drizzle](https://orm.drizzle.team/)
   - [Objection.js](https://vincit.github.io/objection.js/)
 - Unsupported ORMs:
@@ -19,4 +19,3 @@ description: How to use an ORM with LiveStore
 ```ts
 // TODO (contribution welcome)
 ```
-

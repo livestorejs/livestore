@@ -21,6 +21,16 @@ import { makeMeshNode, makeWebSocketEdge } from '@livestore/webmesh'
 import { makeViteMiddleware } from './vite-dev-server.ts'
 
 /**
+ * Determines if a request URL should be routed to the Vite middleware.
+ * Includes LiveStore devtools paths and Vite internal paths like `/@fs/`, `/@vite/`, etc.
+ */
+const shouldRouteToVite = (url: string): boolean =>
+  url.startsWith('/_livestore') ||
+  url.startsWith('/@fs') ||
+  url.startsWith('/@vite') ||
+  url.startsWith('/@react-refresh')
+
+/**
  * Starts a devtools HTTP/WS server which serves ...
  * - the Devtools UI via Vite
  * - the Devtools Protocol via WebSocket Webmesh
@@ -39,11 +49,12 @@ export const startDevtoolsServer = ({
   Effect.gen(function* () {
     const viteMiddleware = yield* makeViteMiddleware({
       mode: { _tag: 'node', url: `http://${host}:${port}` },
-      schemaPath: isReadonlyArray(schemaPath)
-        ? schemaPath.map((schemaPath) => path.resolve(process.cwd(), schemaPath))
-        : path.resolve(process.cwd(), schemaPath),
+      schemaPath:
+        isReadonlyArray(schemaPath) === true
+          ? schemaPath.map((schemaPath) => path.resolve(process.cwd(), schemaPath))
+          : path.resolve(process.cwd(), schemaPath),
       viteConfig: (viteConfig) => {
-        if (LS_DEV) {
+        if (LS_DEV === true) {
           viteConfig.server ??= {}
           viteConfig.server.fs ??= {}
           viteConfig.server.fs.strict = false
@@ -63,7 +74,7 @@ export const startDevtoolsServer = ({
     const handler = Effect.gen(function* () {
       const req = yield* HttpServerRequest.HttpServerRequest
 
-      if (Headers.has(req.headers, 'upgrade')) {
+      if (Headers.has(req.headers, 'upgrade') === true) {
         // yield* Effect.logDebug(`WS Relay ${relayNodeName}: WS upgrade request ${req.url}`)
 
         const socket = yield* req.upgrade
@@ -81,7 +92,7 @@ export const startDevtoolsServer = ({
               .addEdge({ target: from, edgeChannel: webChannel, replaceIfExists: true })
               .pipe(Effect.acquireRelease(() => node.removeEdge(from).pipe(Effect.orDie)))
 
-            if (LS_DEV) {
+            if (LS_DEV === true) {
               yield* Effect.log(`WS Relay ${relayNodeName}: added edge from '${from}'`)
               yield* Effect.addFinalizerLog(`WS Relay ${relayNodeName}: removed edge from '${from}'`)
             }
@@ -96,7 +107,7 @@ export const startDevtoolsServer = ({
       } else {
         if (req.url === '/' || req.url === '') {
           return HttpServerResponse.redirect('/_livestore/node')
-        } else if (req.url.startsWith('/_livestore')) {
+        } else if (shouldRouteToVite(req.url) === true) {
           // Here we're delegating to the Vite middleware
 
           // TODO replace this once @effect/platform-node supports Node HTTP middlewares
@@ -114,9 +125,10 @@ export const startDevtoolsServer = ({
       return HttpServerResponse.text('Not found')
     }).pipe(Effect.tapCauseLogPretty, Effect.interruptible)
 
-    const sessionSuffix = clientSessionInfo
-      ? `/${clientSessionInfo.storeId}/${clientSessionInfo.clientId}/${clientSessionInfo.sessionId}/${clientSessionInfo.schemaAlias}`
-      : '?autoconnect'
+    const sessionSuffix =
+      clientSessionInfo !== undefined
+        ? `/${clientSessionInfo.storeId}/${clientSessionInfo.clientId}/${clientSessionInfo.sessionId}/${clientSessionInfo.schemaAlias}`
+        : '?autoconnect'
 
     // Use `localhost` instead of `0.0.0.0` as it doesn't have the `navigator.locks` web adapter limitation (https://share.cleanshot.com/nHBnmk6S)
     const maybeLocalhost = host === '0.0.0.0' ? 'localhost' : host

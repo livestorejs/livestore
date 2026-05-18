@@ -1,0 +1,15 @@
+name = "adapter-cloudflare-test"
+main = "./worker.ts"
+compatibility_date = "2025-08-24"
+
+[[durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[durable_objects.bindings]]
+name = "TEST_STORE_DO"
+class_name = "TestStoreDo"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "TestStoreDo"]

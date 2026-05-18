@@ -3,23 +3,108 @@
 
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { createStorePromise, queryDb } from '@livestore/livestore'
+import { createStorePromise, liveStoreVersion, queryDb, type BootStatus } from '@livestore/livestore'
 
 import LiveStoreWorker from './livestore.worker.ts?worker'
-import { events, schema, type Todo, tables } from './schema.ts'
+import { events, SyncPayload, schema, tables } from './schema.ts'
+
+type TodoItemData = {
+  id: string
+  text: string
+  completed: boolean
+}
+
+export const parseTemplate = (source: string) => {
+  const el = document.createElement('template')
+  el.innerHTML = source
+
+  return {
+    source,
+    cloneNode() {
+      return el.content.cloneNode(true)
+    },
+  }
+}
 
 // These are here to try to get editors to highlight strings correctly 😔
 export const html = (strings: TemplateStringsArray, ...values: unknown[]) =>
   parseTemplate(String.raw({ raw: strings }, ...values))
 export const css = (strings: TemplateStringsArray, ...values: unknown[]) => String.raw({ raw: strings }, ...values)
 
+const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
+
+if (resetPersistence) {
+  const searchParams = new URLSearchParams(window.location.search)
+  searchParams.delete('reset')
+  window.history.replaceState(undefined, '', `${window.location.pathname}?${searchParams.toString()}`)
+}
+
 const adapter = makePersistedAdapter({
   storage: { type: 'opfs' },
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
+  resetPersistence,
 })
 
-const store = await createStorePromise({ schema, adapter, storeId: 'todomvc-custom-elements' })
+const syncPayload = { authToken: 'insecure-token-change-me' }
+
+let storeBootStatus: BootStatus = { stage: 'loading' }
+const storeBootDoneListeners = new Set<() => void>()
+
+const notifyStoreBootStatus = (status: BootStatus) => {
+  storeBootStatus = status
+
+  if (status.stage !== 'done') {
+    return
+  }
+
+  for (const listener of storeBootDoneListeners) {
+    listener()
+  }
+
+  storeBootDoneListeners.clear()
+}
+
+const onStoreBootDone = (listener: () => void) => {
+  if (storeBootStatus.stage === 'done') {
+    listener()
+    return () => {}
+  }
+
+  storeBootDoneListeners.add(listener)
+
+  return () => {
+    storeBootDoneListeners.delete(listener)
+  }
+}
+
+const store = await createStorePromise({
+  schema,
+  adapter,
+  storeId: 'todomvc-custom-elements',
+  onBootStatus: notifyStoreBootStatus,
+  syncPayloadSchema: SyncPayload,
+  syncPayload,
+})
+
+// Add version badge
+console.log(`LiveStore v${liveStoreVersion}`)
+const versionBadge = document.createElement('div')
+versionBadge.textContent = `v${liveStoreVersion}`
+versionBadge.style.cssText = `
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: white;
+  z-index: 1000;
+  user-select: none;
+`
+document.body.appendChild(versionBadge)
 
 const appState$ = queryDb(tables.uiState.get())
 const todos$ = queryDb(tables.todos.where({ deletedAt: null }))
@@ -29,7 +114,7 @@ const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ ne
 const todoCreated = (text: string) =>
   store.commit(events.todoCreated({ id: crypto.randomUUID(), text }), events.uiStateSet({ newTodoText: '' }))
 
-const toggleTodo = (todo: Todo) => {
+const toggleTodo = (todo: TodoItemData) => {
   if (todo.completed) {
     store.commit(events.todoUncompleted({ id: todo.id }))
   } else {
@@ -37,7 +122,7 @@ const toggleTodo = (todo: Todo) => {
   }
 }
 
-const todoDeleted = (todo: Todo) => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))
+const todoDeleted = (todo: TodoItemData) => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))
 
 const TodoItemTemplate = html`
   <link rel="stylesheet" href="/src/index.css" />
@@ -55,7 +140,7 @@ const TodoItemTemplate = html`
 `
 
 class TodoItem extends HTMLElement {
-  #todo: Todo | null
+  #todo: TodoItemData | null
 
   constructor() {
     super()
@@ -82,12 +167,12 @@ class TodoItem extends HTMLElement {
     }
   }
 
-  set todo(t: Todo | null) {
+  set todo(t: TodoItemData | null) {
     this.#todo = t
     this.updateTemplate()
   }
 
-  get todo(): Todo | null {
+  get todo(): TodoItemData | null {
     return this.#todo
   }
 
@@ -149,23 +234,42 @@ class TodoList extends HTMLElement {
   #todos: ReadonlyArray<Todo> = []
 
   connectedCallback() {
-    const input = this.shadowRoot!.querySelector('input')!
+    const input = this.shadowRoot.querySelector('input')!
 
     // NOTE: can we get an AsyncIterator for newValues as well?
     // TODO unsubscribe
-    store.subscribe(todos$, {
-      onUpdate: (newValue) => {
-        this.#todos = newValue
-        this.updateTodoItems()
-      },
+    store.subscribe(todos$, (newValue) => {
+      this.#todos = newValue
+      this.updateTodoItems()
     })
 
     // TODO unsubscribe
-    store.subscribe(appState$, {
-      onUpdate: (newValue) => {
-        input.value = newValue.newTodoText
-      },
+    store.subscribe(appState$, (newValue) => {
+      input.value = newValue.newTodoText
     })
+
+    const markStoreReady = () => {
+      if (this.dataset.storeReady === 'true') {
+        return
+      }
+
+      /**
+       * Boot completion is the closest lifecycle boundary we have to "persistence rehydration is settled".
+       * We do one post-boot app-state read before exposing `data-store-ready` so tests don't race an
+       * early empty snapshot during reloads.
+       *
+       * TODO expose a first-class hydration-complete signal from LiveStore so examples don't need this latch.
+       */
+      let unsubscribeReadyCheck: (() => void) | undefined
+      unsubscribeReadyCheck = store.subscribe(appState$, (newValue) => {
+        input.value = newValue.newTodoText
+        this.dataset.storeReady = 'true'
+        queueMicrotask(() => unsubscribeReadyCheck?.())
+      })
+    }
+
+    // TODO unsubscribe
+    onStoreBootDone(markStoreReady)
   }
 
   updateTodoItems() {
@@ -181,15 +285,3 @@ class TodoList extends HTMLElement {
 }
 
 customElements.define('todo-list', TodoList)
-
-export function parseTemplate(source: string) {
-  const el = document.createElement('template')
-  el.innerHTML = source
-
-  return {
-    source,
-    cloneNode() {
-      return el.content.cloneNode(true)
-    },
-  }
-}

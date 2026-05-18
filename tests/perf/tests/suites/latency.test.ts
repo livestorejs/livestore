@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 
 import { test } from '../fixtures.ts'
-import { repeatSuite } from '../utils.ts'
+import { assertPerfAppReady, repeatSuite } from '../utils.ts'
 
 const REPETITIONS_PER_TEST = 15
 
@@ -14,6 +14,7 @@ repeatSuite(
   () => {
     test.beforeEach(async ({ page }) => {
       await page.goto('/')
+      await assertPerfAppReady(page)
     })
 
     test.afterEach(async ({ page }, testInfo) => {
@@ -24,7 +25,7 @@ repeatSuite(
             const clickEntries = entries.filter((entry) => entry.name === 'click')
             // The last click entry is the one we are interested in
             const lastClickEntry = clickEntries.at(-1)
-            if (!lastClickEntry) throw new Error('No click entry found')
+            if (lastClickEntry == null) throw new Error('No click entry found')
             resolve(lastClickEntry.duration) // Duration is provided rounded to the nearest 8 ms for privacy reasons
           }).observe({
             type: 'event',

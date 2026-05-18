@@ -1,13 +1,30 @@
-import { shouldNeverHappen } from '@livestore/utils'
-import type { HttpClient, Schema, Scope } from '@livestore/utils/effect'
-import { Deferred, Effect, Layer, Queue, SubscriptionRef } from '@livestore/utils/effect'
+import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
+import type { HttpClient, Scope } from '@livestore/utils/effect'
+import {
+  Deferred,
+  Effect,
+  KeyValueStore,
+  Layer,
+  PlatformError,
+  Queue,
+  Schema,
+  Stream,
+  Subscribable,
+  SubscriptionRef,
+} from '@livestore/utils/effect'
 
-import type { BootStatus, MakeSqliteDb, SqliteDb, SqliteError } from '../adapter-types.ts'
-import { UnexpectedError } from '../adapter-types.ts'
+import {
+  type BootStatus,
+  type MakeSqliteDb,
+  type MaterializerHashMismatchError,
+  type SqliteDb,
+  UnknownError,
+} from '../adapter-types.ts'
+import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
-import type { InvalidPullError, IsOfflineError, SyncOptions } from '../sync/sync.ts'
+import type { SyncBackend, SyncOptions } from '../sync/sync.ts'
 import { SyncState } from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
@@ -17,6 +34,7 @@ import { makeMaterializeEvent } from './materialize-event.ts'
 import { recreateDb } from './recreate-db.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 import type {
+  DevtoolsContext,
   DevtoolsOptions,
   InitialBlockingSyncContext,
   InitialSyncOptions,
@@ -27,7 +45,8 @@ import { LeaderThreadCtx } from './types.ts'
 
 export interface MakeLeaderThreadLayerParams {
   storeId: string
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any> | undefined
+  syncPayloadEncoded: Schema.JsonValue | undefined
   clientId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
@@ -36,6 +55,8 @@ export interface MakeLeaderThreadLayerParams {
   dbEventlog: LeaderSqliteDb
   devtoolsOptions: DevtoolsOptions
   shutdownChannel: ShutdownChannel
+  /** Boot warning to emit (e.g., OPFS unavailable in private browsing) */
+  bootWarning?: BootStatus
   params?: {
     localPushBatchSize?: number
     backendPushBatchSize?: number
@@ -53,28 +74,73 @@ export const makeLeaderThreadLayer = ({
   schema,
   storeId,
   clientId,
-  syncPayload,
+  syncPayloadSchema = Schema.JsonValue,
+  syncPayloadEncoded,
   makeSqliteDb,
   syncOptions,
   dbState,
   dbEventlog,
   devtoolsOptions,
   shutdownChannel,
+  bootWarning,
   params,
   testing,
-}: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnexpectedError, Scope.Scope | HttpClient.HttpClient> =>
+}: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnknownError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
+    const syncPayloadDecoded =
+      syncPayloadEncoded === undefined ? undefined : yield* Schema.decodeUnknown(syncPayloadSchema)(syncPayloadEncoded)
+
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
+
+    // Emit boot warning if present (e.g., OPFS unavailable in private browsing)
+    if (bootWarning !== undefined) {
+      yield* Queue.offer(bootStatusQueue, bootWarning)
+    }
 
     const dbEventlogMissing = !hasEventlogTables(dbEventlog)
 
     // Either happens on initial boot or if schema changes
     const dbStateMissing = !hasStateTables(dbState)
 
+    yield* Eventlog.initEventlogDb(dbEventlog)
+
     const syncBackend =
       syncOptions?.backend === undefined
         ? undefined
-        : yield* syncOptions.backend({ storeId, clientId, payload: syncPayload })
+        : yield* syncOptions.backend({ storeId, clientId, payload: syncPayloadDecoded }).pipe(
+            Effect.provide(
+              Layer.succeed(
+                KeyValueStore.KeyValueStore,
+                KeyValueStore.makeStringOnly({
+                  get: (_key) =>
+                    Effect.sync(() => Eventlog.getBackendIdFromDb(dbEventlog)).pipe(
+                      Effect.catchAllDefect((cause) =>
+                        PlatformError.BadArgument.make({
+                          method: 'getBackendIdFromDb',
+                          description: 'Failed to get backendId',
+                          module: 'KeyValueStore',
+                          cause,
+                        }),
+                      ),
+                    ),
+                  set: (_key, value) =>
+                    Effect.sync(() => Eventlog.updateBackendId(dbEventlog, value)).pipe(
+                      Effect.catchAllDefect((cause) =>
+                        PlatformError.BadArgument.make({
+                          method: 'updateBackendId',
+                          module: 'KeyValueStore',
+                          description: 'Failed to update backendId',
+                          cause,
+                        }),
+                      ),
+                    ),
+                  clear: Effect.dieMessage(`Not implemented. Should never be used.`),
+                  remove: () => Effect.dieMessage(`Not implemented. Should never be used.`),
+                  size: Effect.dieMessage(`Not implemented. Should never be used.`),
+                }),
+              ),
+            ),
+          )
 
     if (syncBackend !== undefined) {
       // We're already connecting to the sync backend concurrently
@@ -86,18 +152,31 @@ export const makeLeaderThreadLayer = ({
       bootStatusQueue,
     })
 
+    const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
+
+    // Recreate state database if needed BEFORE creating sync processor
+    // This ensures all system tables exist before any queries are made
+    const { migrationsReport } =
+      dbStateMissing === true
+        ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
+        : { migrationsReport: { migrations: [] } }
+
     const syncProcessor = yield* makeLeaderSyncProcessor({
       schema,
       dbState,
       initialSyncState: getInitialSyncState({ dbEventlog, dbState, dbEventlogMissing }),
       initialBlockingSyncContext,
       onError: syncOptions?.onSyncError ?? 'ignore',
+      onBackendIdMismatch: syncOptions?.onBackendIdMismatch ?? 'reset',
+      livePull: syncOptions?.livePull ?? true,
       params: {
-        localPushBatchSize: params?.localPushBatchSize,
-        backendPushBatchSize: params?.backendPushBatchSize,
+        ...omitUndefineds({
+          localPushBatchSize: params?.localPushBatchSize,
+          backendPushBatchSize: params?.backendPushBatchSize,
+        }),
       },
       testing: {
-        delays: testing?.syncProcessor?.delays,
+        ...omitUndefineds({ delays: testing?.syncProcessor?.delays }),
       },
     })
 
@@ -105,15 +184,16 @@ export const makeLeaderThreadLayer = ({
       Effect.acquireRelease(Queue.shutdown),
     )
 
-    const devtoolsContext = devtoolsOptions.enabled
-      ? {
-          enabled: true as const,
-          syncBackendLatch: yield* Effect.makeLatch(true),
-          syncBackendLatchState: yield* SubscriptionRef.make<{ latchClosed: boolean }>({ latchClosed: false }),
-        }
-      : { enabled: false as const }
+    const devtoolsContext =
+      devtoolsOptions.enabled === true
+        ? {
+            enabled: true as const,
+            syncBackendLatch: yield* Effect.makeLatch(true),
+            syncBackendLatchState: yield* SubscriptionRef.make<{ latchClosed: boolean }>({ latchClosed: false }),
+          }
+        : { enabled: false as const }
 
-    const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
+    const networkStatus = yield* makeNetworkStatusSubscribable({ syncBackend, devtoolsContext })
 
     const ctx = {
       schema,
@@ -123,7 +203,7 @@ export const makeLeaderThreadLayer = ({
       dbState,
       dbEventlog,
       makeSqliteDb,
-      eventSchema: LiveStoreEvent.makeEventDefSchema(schema),
+      eventSchema: LiveStoreEvent.Client.makeSchema(schema),
       shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
       shutdownChannel,
       syncBackend,
@@ -131,6 +211,7 @@ export const makeLeaderThreadLayer = ({
       materializeEvent,
       extraIncomingMessagesQueue,
       devtools: devtoolsContext,
+      networkStatus,
       // State will be set during `bootLeaderThread`
       initialState: {} as any as LeaderThreadCtx['Type']['initialState'],
     } satisfies typeof LeaderThreadCtx.Service
@@ -141,7 +222,7 @@ export const makeLeaderThreadLayer = ({
     const layer = Layer.succeed(LeaderThreadCtx, ctx)
 
     ctx.initialState = yield* bootLeaderThread({
-      dbStateMissing,
+      migrationsReport,
       initialBlockingSyncContext,
       devtoolsOptions,
     }).pipe(Effect.provide(layer))
@@ -150,7 +231,7 @@ export const makeLeaderThreadLayer = ({
   }).pipe(
     Effect.withSpan('@livestore/common:leader-thread:boot'),
     Effect.withSpanScoped('@livestore/common:leader-thread'),
-    UnexpectedError.mapToUnexpectedError,
+    UnknownError.mapToUnknownError,
     Effect.tapCauseLogPretty,
     Layer.unwrapScoped,
   )
@@ -167,12 +248,14 @@ const hasStateTables = (db: SqliteDb) => {
   return isSubsetOf(stateTables, tableNames)
 }
 
-const isSubsetOf = (a: Set<string>, b: Set<string>) => {
+const isSubsetOf = (a: Set<string>, b: Set<string>): boolean => {
   for (const item of a) {
-    if (!b.has(item)) {
+    if (b.has(item) === false) {
       return false
     }
   }
+
+  return true
 }
 
 const getInitialSyncState = ({
@@ -184,11 +267,11 @@ const getInitialSyncState = ({
   dbState: SqliteDb
   dbEventlogMissing: boolean
 }) => {
-  const initialBackendHead = dbEventlogMissing
-    ? EventSequenceNumber.ROOT.global
-    : Eventlog.getBackendHeadFromDb(dbEventlog)
+  const initialBackendHead =
+    dbEventlogMissing === true ? EventSequenceNumber.Client.ROOT.global : Eventlog.getBackendHeadFromDb(dbEventlog)
 
-  const initialLocalHead = dbEventlogMissing ? EventSequenceNumber.ROOT : Eventlog.getClientHeadFromDb(dbEventlog)
+  const initialLocalHead =
+    dbEventlogMissing === true ? EventSequenceNumber.Client.ROOT : Eventlog.getClientHeadFromDb(dbEventlog)
 
   if (initialBackendHead > initialLocalHead.global) {
     return shouldNeverHappen(
@@ -200,20 +283,21 @@ const getInitialSyncState = ({
     localHead: initialLocalHead,
     upstreamHead: {
       global: initialBackendHead,
-      client: EventSequenceNumber.clientDefault,
-      rebaseGeneration: EventSequenceNumber.rebaseGenerationDefault,
+      client: EventSequenceNumber.Client.DEFAULT,
+      rebaseGeneration: EventSequenceNumber.Client.REBASE_GENERATION_DEFAULT,
     },
-    pending: dbEventlogMissing
-      ? []
-      : Eventlog.getEventsSince({
-          dbEventlog,
-          dbState,
-          since: {
-            global: initialBackendHead,
-            client: EventSequenceNumber.clientDefault,
-            rebaseGeneration: initialLocalHead.rebaseGeneration,
-          },
-        }),
+    pending:
+      dbEventlogMissing === true
+        ? []
+        : Eventlog.getEventsSince({
+            dbEventlog,
+            dbState,
+            since: {
+              global: initialBackendHead,
+              client: EventSequenceNumber.Client.DEFAULT,
+              rebaseGeneration: initialLocalHead.rebaseGeneration,
+            },
+          }),
   })
 }
 
@@ -242,12 +326,12 @@ const makeInitialBlockingSyncContext = ({
 
     return {
       blockingDeferred,
-      update: ({ processed, remaining }) =>
+      update: ({ processed, pageInfo }) =>
         Effect.gen(function* () {
           if (ctx.isDone === true) return
 
-          if (ctx.total === -1) {
-            ctx.total = remaining + processed
+          if (ctx.total === -1 && pageInfo._tag === 'MoreKnown') {
+            ctx.total = pageInfo.remaining + processed
           }
 
           ctx.processedEvents += processed
@@ -256,7 +340,7 @@ const makeInitialBlockingSyncContext = ({
             progress: { done: ctx.processedEvents, total: ctx.total },
           })
 
-          if (remaining === 0 && blockingDeferred !== undefined) {
+          if (pageInfo._tag === 'NoMore' && blockingDeferred !== undefined) {
             yield* Deferred.succeed(blockingDeferred, void 0)
             ctx.isDone = true
           }
@@ -269,26 +353,20 @@ const makeInitialBlockingSyncContext = ({
  * It also starts various background processes (e.g. syncing)
  */
 const bootLeaderThread = ({
-  dbStateMissing,
+  migrationsReport,
   initialBlockingSyncContext,
   devtoolsOptions,
 }: {
-  dbStateMissing: boolean
+  migrationsReport: MigrationsReport
   initialBlockingSyncContext: InitialBlockingSyncContext
   devtoolsOptions: DevtoolsOptions
 }): Effect.Effect<
   LeaderThreadCtx['Type']['initialState'],
-  UnexpectedError | SqliteError | IsOfflineError | InvalidPullError,
+  UnknownError | MaterializerHashMismatchError,
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {
-    const { dbEventlog, bootStatusQueue, syncProcessor, schema, materializeEvent, dbState } = yield* LeaderThreadCtx
-
-    yield* Eventlog.initEventlogDb(dbEventlog)
-
-    const { migrationsReport } = dbStateMissing
-      ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
-      : { migrationsReport: { migrations: [] } }
+    const { bootStatusQueue, syncProcessor } = yield* LeaderThreadCtx
 
     // NOTE the sync processor depends on the dbs being initialized properly
     const { initialLeaderHead } = yield* syncProcessor.boot
@@ -310,4 +388,57 @@ const bootLeaderThread = ({
     yield* bootDevtools(devtoolsOptions).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
     return { migrationsReport, leaderHead: initialLeaderHead }
+  })
+
+/** @internal */
+export const makeNetworkStatusSubscribable = ({
+  syncBackend,
+  devtoolsContext,
+}: {
+  syncBackend: SyncBackend.SyncBackend | undefined
+  devtoolsContext: DevtoolsContext
+}): Effect.Effect<Subscribable.Subscribable<SyncBackend.NetworkStatus>, never, Scope.Scope> =>
+  Effect.gen(function* () {
+    const initialIsConnected = syncBackend !== undefined ? yield* SubscriptionRef.get(syncBackend.isConnected) : false
+    const initialLatchClosed =
+      devtoolsContext.enabled === true
+        ? (yield* SubscriptionRef.get(devtoolsContext.syncBackendLatchState)).latchClosed
+        : false
+
+    const networkStatusRef = yield* SubscriptionRef.make<SyncBackend.NetworkStatus>({
+      isConnected: initialIsConnected,
+      timestampMs: Date.now(),
+      devtools: { latchClosed: initialLatchClosed },
+    })
+
+    const updateNetworkStatus = (patch: { isConnected?: boolean; latchClosed?: boolean }) =>
+      SubscriptionRef.update(networkStatusRef, (previous) => ({
+        isConnected: patch.isConnected ?? previous.isConnected,
+        timestampMs: Date.now(),
+        devtools: {
+          latchClosed: patch.latchClosed ?? previous.devtools.latchClosed,
+        },
+      }))
+
+    if (syncBackend !== undefined) {
+      yield* syncBackend.isConnected.changes.pipe(
+        Stream.tap((isConnected) => updateNetworkStatus({ isConnected })),
+        Stream.runDrain,
+        Effect.interruptible,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
+    }
+
+    if (devtoolsContext.enabled === true) {
+      yield* devtoolsContext.syncBackendLatchState.changes.pipe(
+        Stream.tap(({ latchClosed }) => updateNetworkStatus({ latchClosed })),
+        Stream.runDrain,
+        Effect.interruptible,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
+    }
+
+    return Subscribable.fromSubscriptionRef(networkStatusRef)
   })

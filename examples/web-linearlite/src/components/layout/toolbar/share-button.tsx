@@ -9,13 +9,15 @@ export const ShareButton = ({ className }: { className?: string }) => {
   const [showQR, setShowQR] = React.useState(false)
 
   // TODO build sharable workspace feature
-  const copyUrl = () => {
+  const copyUrl = React.useCallback(() => {
     navigator.clipboard.writeText(window.location.href)
     setCopied(true)
     setTimeout(() => {
       setCopied(false)
     }, 2000)
-  }
+  }, [])
+
+  const handleShowQR = React.useCallback(() => setShowQR(true), [])
 
   return (
     <>
@@ -45,7 +47,7 @@ export const ShareButton = ({ className }: { className?: string }) => {
         </Button>
         <Button
           aria-label="Copy workspace URL"
-          onPress={() => setShowQR(true)}
+          onPress={handleShowQR}
           className="size-6 flex items-center justify-center bg-neutral-800 rounded hover:bg-neutral-700 focus:outline-none focus:bg-neutral-800"
         >
           <QrCodeIcon className="size-3.5" />

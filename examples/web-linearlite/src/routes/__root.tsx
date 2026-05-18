@@ -1,0 +1,90 @@
+import '../app/init-theme.ts'
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
+import React, { type ReactNode, Suspense } from 'react'
+
+import type { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
+
+import { MenuContext, NewIssueModalContext } from '../app/contexts.ts'
+import stylesheetUrl from '../app/style.css?url'
+import { Icon } from '../components/icons/index.tsx'
+import { VersionBadge } from '../components/VersionBadge.tsx'
+
+const RootDocument = ({ children }: { children: ReactNode }) => {
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+
+const loadingStyle = { fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }
+
+const RootComponent = () => {
+  const { storeRegistry } = Route.useRouteContext()
+
+  const [showMenu, setShowMenu] = React.useState(false)
+  const [newIssueModalStatus, setNewIssueModalStatus] = React.useState<0 | 1 | 2 | 3 | 4 | false>(false)
+  const menuContextValue = React.useMemo(() => ({ showMenu, setShowMenu }), [showMenu])
+  const newIssueModalContextValue = React.useMemo(
+    () => ({ newIssueModalStatus, setNewIssueModalStatus }),
+    [newIssueModalStatus],
+  )
+
+  return (
+    <RootDocument>
+      <Suspense fallback={React.createElement(Loading)}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
+          <MenuContext.Provider value={menuContextValue}>
+            <NewIssueModalContext.Provider value={newIssueModalContextValue}>
+              <Outlet />
+            </NewIssueModalContext.Provider>
+          </MenuContext.Provider>
+          <VersionBadge />
+        </StoreRegistryProvider>
+      </Suspense>
+    </RootDocument>
+  )
+}
+
+const Loading = () => {
+  return (
+    <div
+      className="fixed inset-0 bg-white dark:bg-neutral-900 flex flex-col items-center justify-center gap-4 text-sm"
+      style={loadingStyle}
+    >
+      <div className="flex items-center gap-3 text-xl font-bold">
+        <Icon name="livestore" className="size-7 mt-1" />
+        <span>LiveStore</span>
+      </div>
+      <div>Loading...</div>
+    </div>
+  )
+}
+
+type RouterContext = {
+  storeRegistry: StoreRegistry
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
+  head: () => ({
+    meta: [
+      { charSet: 'utf-8' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { title: 'LinearLite · LiveStore' },
+      { name: 'description', content: 'LinearLite clone using React & TailwindJS' },
+      { name: 'theme-color', content: '#000000' },
+    ],
+    links: [
+      { rel: 'stylesheet', href: stylesheetUrl },
+      { rel: 'icon', href: '/favicon.ico' },
+    ],
+  }),
+  component: RootComponent,
+})

@@ -7,7 +7,15 @@ const NoLivestore = () => {
 }
 
 const DynamicIndexHtml = () => {
+  // React strict mode mounts components twice to help detect side effects.
+  // We don't want to execute the imported test code twice, but we also don't want
+  // to disable React strict mode. This ref ensures the code only runs once.
+  const hasRun = React.useRef(false)
+
   React.useEffect(() => {
+    if (hasRun.current === true) return
+    hasRun.current = true
+
     const main = async () => {
       const modules = import.meta.glob('../**/*.ts')
 
@@ -49,6 +57,10 @@ const routes = [
   {
     path: '/devtools/no-livestore',
     component: NoLivestore,
+  },
+  {
+    path: '/adapter-web/concurrent-boot',
+    component: React.lazy(() => import('./adapter-web/Root.tsx').then((m) => ({ default: m.Root }))),
   },
 ]
 

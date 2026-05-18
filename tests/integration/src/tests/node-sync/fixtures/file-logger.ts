@@ -1,11 +1,15 @@
 import * as fs from 'node:fs/promises'
-import { createServer } from 'node:http'
+import * as http from 'node:http'
 import path from 'node:path'
+
 import { shouldNeverHappen, sluggify } from '@livestore/utils'
+import { FileLogger } from '@livestore/utils-dev/node'
+import type { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Effect,
   FetchHttpClient,
   HttpRouter,
+  HttpServer,
   Layer,
   Logger,
   Rpc,
@@ -16,8 +20,6 @@ import {
   Schema,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { FileLogger } from '@livestore/utils-dev/node'
-import type { Vitest } from '@livestore/utils-dev/node-vitest'
 
 /*
  * ## Why is this custom file logger needed?
@@ -52,24 +54,36 @@ class LoggerRpcs extends RpcGroup.make(
   }),
 ) {}
 
-export const makeFileLogger = (threadName: string, exposeTestContext?: { testContext: Vitest.TestContext }) =>
+export const makeFileLogger = (
+  threadName: string,
+  exposeTestContext?: { testContext: Vitest.TestContext },
+): Layer.Layer<never> =>
   Layer.suspend(() => {
     if (exposeTestContext !== undefined) {
       const spanName = `${exposeTestContext.testContext.task.suite?.name}:${exposeTestContext.testContext.task.name}`
       const testRunId = sluggify(spanName)
 
-      process.env.TEST_RUN_ID = testRunId
-
-      const serverPort = Math.floor(Math.random() * 10000) + 50000
-      process.env.LOGGER_SERVER_PORT = String(serverPort)
-
-      return Layer.provide(makeRpcClient(threadName), RpcLogger(testRunId, serverPort))
+      return Layer.unwrapEffect(
+        Effect.gen(function* () {
+          yield* HttpServer.addressWith((address) =>
+            Effect.sync(() => {
+              if (address._tag === 'TcpAddress') {
+                process.env.LOGGER_SERVER_PORT = String(address.port)
+              } else {
+                shouldNeverHappen('Expected a TcpAddress', { address })
+              }
+            }),
+          )
+          process.env.TEST_RUN_ID = testRunId
+          return Layer.provide(makeRpcClient(threadName), RpcLogger({ testRunId }))
+        }),
+      ).pipe(Layer.provide(PlatformNode.NodeHttpServer.layer(() => http.createServer(), { port: 0 })), Layer.orDie)
     } else {
       return makeRpcClient(threadName)
     }
   })
 
-export const RpcLogger = (testRunId: string, serverPort: number) =>
+export const RpcLogger = ({ testRunId }: { testRunId: string }) =>
   Effect.gen(function* () {
     const workspaceRoot = process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
     const logFilePath = path.join(workspaceRoot, 'tests', 'integration', 'tmp', 'logs', `${testRunId}.log`)
@@ -95,13 +109,8 @@ export const RpcLogger = (testRunId: string, serverPort: number) =>
       path: '/rpc',
     }).pipe(Layer.provide(RpcSerialization.layerNdjson))
 
-    // Use the provided port
-    return HttpRouter.Default.serve().pipe(
-      Layer.provide(RpcLayer),
-      Layer.provide(HttpProtocol),
-      Layer.provide(PlatformNode.NodeHttpServer.layer(() => createServer(), { port: serverPort })),
-    )
-  }).pipe(Layer.unwrapScoped)
+    return HttpRouter.Default.serve().pipe(Layer.provide(RpcLayer), Layer.provide(HttpProtocol))
+  }).pipe(Layer.unwrapScoped, Layer.orDie)
 
 export const makeRpcClient = (threadName: string) => {
   const prettyLogger = FileLogger.prettyLoggerTty({
@@ -122,7 +131,7 @@ export const makeRpcClient = (threadName: string) => {
 
       const client = yield* RpcClient.make(LoggerRpcs).pipe(Effect.provide(ProtocolLive))
 
-      const runtime = yield* Effect.runtime<never>()
+      const runtime = yield* Effect.runtime()
 
       return Logger.make((args) => {
         const formattedMessage = prettyLogger.log(args)

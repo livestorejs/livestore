@@ -22,4 +22,4 @@ export const keyObjectFromObject = <TObj extends Record<string, any>>(obj: TObj)
   pipe(
     objectEntries(obj).map(([k]) => [k, k]),
     Object.fromEntries,
-  ) as any
+  )

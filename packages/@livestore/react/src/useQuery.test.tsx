@@ -1,19 +1,19 @@
 /** biome-ignore-all lint/a11y: test */
-import '@livestore/utils-dev/node-vitest-polyfill'
-
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
+import { provideOtel } from '@livestore/common'
 import * as LiveStore from '@livestore/livestore'
-import { queryDb, signal } from '@livestore/livestore'
+import { createStore, queryDb, StoreInternalsSymbol, signal } from '@livestore/livestore'
 import { RG } from '@livestore/livestore/internal/testing-utils'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as ReactTesting from '@testing-library/react'
 import React from 'react'
-// @ts-expect-error no types
 import * as ReactWindow from 'react-window'
 import { expect } from 'vitest'
 
-import { events, makeTodoMvcReact, tables } from './__tests__/fixture.js'
-import { __resetUseRcResourceCache } from './useRcResource.js'
+import { events, makeTodoMvcReact, schema, tables } from './__tests__/fixture.tsx'
+import { __resetUseRcResourceCache } from './useRcResource.ts'
+import { withReactApi } from './useStore.ts'
 
 Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
   'useQuery (strictMode=%s)',
@@ -40,14 +40,14 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
 
         expect(result.current.length).toBe(0)
         expect(renderCount.val).toBe(1)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
         ReactTesting.act(() => store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false })))
 
         expect(result.current.length).toBe(1)
         expect(result.current[0]!.text).toBe('buy milk')
         expect(renderCount.val).toBe(2)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
       }),
     )
 
@@ -82,19 +82,25 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
 
         expect(result.current).toBe('buy milk')
         expect(renderCount.val).toBe(1)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot('1: after first render')
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot(
+          '1: after first render',
+        )
 
         ReactTesting.act(() => store.commit(events.todoUpdated({ id: 't1', text: 'buy soy milk' })))
 
         expect(result.current).toBe('buy soy milk')
         expect(renderCount.val).toBe(2)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot('2: after first commit')
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot(
+          '2: after first commit',
+        )
 
         rerender('t2')
 
         expect(result.current).toBe('buy eggs')
         expect(renderCount.val).toBe(3)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot('3: after forced rerender')
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot(
+          '3: after forced rerender',
+        )
       }),
     )
 
@@ -122,19 +128,19 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
 
         expect(result.current).toBe('buy milk')
         expect(renderCount.val).toBe(1)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
         ReactTesting.act(() => store.commit(events.todoUpdated({ id: 't1', text: 'buy soy milk' })))
 
         expect(result.current).toBe('buy soy milk')
         expect(renderCount.val).toBe(2)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
         ReactTesting.act(() => store.setSignal(filter$, 't2'))
 
         expect(result.current).toBe('buy eggs')
         expect(renderCount.val).toBe(3)
-        expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+        expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
       }),
     )
 
@@ -152,7 +158,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
               width={100}
               itemSize={10}
               itemCount={numItems}
-              itemData={Array.from({ length: numItems }, (_, i) => i).reverse()}
+              itemData={Array.from({ length: numItems }, (_, i) => i).toReversed()}
             >
               {ListItem}
             </ReactWindow.FixedSizeList>
@@ -187,6 +193,84 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
         ReactTesting.act(() => store.setSignal(num$, 1))
 
         expect(result.current).toBe(1)
+      }),
+    )
+
+    Vitest.scopedLive('supports query builders directly', () =>
+      Effect.gen(function* () {
+        const { wrapper, store } = yield* makeTodoMvcReact({ strictMode })
+
+        store.commit(
+          events.todoCreated({ id: 't1', text: 'buy milk', completed: false }),
+          events.todoCreated({ id: 't2', text: 'buy eggs', completed: true }),
+        )
+
+        const todosWhereIncomplete = tables.todos.where({ completed: false })
+
+        const { result } = ReactTesting.renderHook(() => store.useQuery(todosWhereIncomplete).map((todo) => todo.id), {
+          wrapper,
+        })
+
+        expect(result.current).toEqual(['t1'])
+      }),
+    )
+
+    Vitest.scopedLive('derives a fresh LiveQuery per Store instance', () =>
+      Effect.gen(function* () {
+        const makeStore = () =>
+          createStore({
+            schema,
+            storeId: 'reset-test',
+            adapter: makeInMemoryAdapter({ clientId: 'stable-client', sessionId: 'stable-session' }),
+            debug: { instanceId: 'test' },
+          }).pipe(provideOtel({}))
+
+        const storeA = withReactApi(yield* makeStore())
+        const storeB = withReactApi(yield* makeStore())
+
+        const allTodos$ = queryDb({ query: `select * from todos`, schema: Schema.Array(tables.todos.rowSchema) })
+
+        const MaybeStrictMode = strictMode === true ? React.StrictMode : React.Fragment
+        const wrapper = ({ children }: any) => <MaybeStrictMode>{children}</MaybeStrictMode>
+
+        storeA.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
+
+        const { result, rerender } = ReactTesting.renderHook(
+          ({ store }: { store: typeof storeA }) => store.useQuery(allTodos$).length,
+          { wrapper, initialProps: { store: storeA } },
+        )
+
+        expect(result.current).toBe(1)
+
+        rerender({ store: storeB })
+
+        expect(result.current).toBe(0)
+      }),
+    )
+
+    Vitest.scopedLive('union of different result types with useQuery', () =>
+      Effect.gen(function* () {
+        const { wrapper, store, renderCount } = yield* makeTodoMvcReact({ strictMode })
+
+        const str$ = signal('hello', { label: 'str' })
+        const num$ = signal(123, { label: 'num' })
+
+        const { result, rerender } = ReactTesting.renderHook(
+          (useNum: boolean) => {
+            renderCount.inc()
+            const query$ = React.useMemo(() => (useNum === true ? num$ : str$), [useNum])
+            return store.useQuery(query$)
+          },
+          { wrapper, initialProps: false },
+        )
+
+        expect(result.current).toBe('hello')
+        expect(renderCount.val).toBe(1)
+
+        rerender(true)
+
+        expect(result.current).toBe(123)
+        expect(renderCount.val).toBe(2)
       }),
     )
   },

@@ -13,7 +13,7 @@ export const dbExecute = (db: SqliteDb, queryStr: string, bindValues?: ParamsObj
   // cachedStmts.set(queryStr, stmt)
   // }
 
-  const preparedBindValues = bindValues ? prepareBindValues(bindValues, queryStr) : undefined
+  const preparedBindValues = bindValues !== undefined ? prepareBindValues(bindValues, queryStr) : undefined
 
   try {
     stmt.execute(preparedBindValues)
@@ -34,7 +34,7 @@ export const dbSelect = <T>(db: SqliteDb, queryStr: string, bindValues?: ParamsO
   // cachedStmts.set(queryStr, stmt)
   // }
 
-  const res = stmt.select<T>(bindValues ? prepareBindValues(bindValues, queryStr) : undefined)
+  const res = stmt.select<T>(bindValues !== undefined ? prepareBindValues(bindValues, queryStr) : undefined)
   stmt.finalize()
   return res
 }

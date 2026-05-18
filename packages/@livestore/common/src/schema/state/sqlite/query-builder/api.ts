@@ -3,7 +3,7 @@ import { type Option, Predicate, type Schema } from '@livestore/utils/effect'
 
 import type { SessionIdSymbol } from '../../../../adapter-types.ts'
 import type { SqlValue } from '../../../../util.ts'
-import type { ClientDocumentTableDef } from '../client-document-def.ts'
+import type { ClientDocumentTableDef, ClientDocumentTableDefSymbol } from '../client-document-def.ts'
 import type { SqliteDsl } from '../db-schema/mod.ts'
 import type { TableDefBase } from '../table-def.ts'
 
@@ -128,15 +128,25 @@ export type QueryBuilder<
 
 export namespace QueryBuilder {
   export type Any = QueryBuilder<any, any, any>
-  export type WhereOps = WhereOps.Equality | WhereOps.Order | WhereOps.Like | WhereOps.In
+  export type WhereOps = WhereOps.Equality | WhereOps.Order | WhereOps.Like | WhereOps.In | WhereOps.JsonArray
 
   export namespace WhereOps {
     export type Equality = '=' | '!='
     export type Order = '<' | '>' | '<=' | '>='
     export type Like = 'LIKE' | 'NOT LIKE' | 'ILIKE' | 'NOT ILIKE'
     export type In = 'IN' | 'NOT IN'
+    /**
+     * Operators for checking if a JSON array column contains a value.
+     *
+     * ⚠️ **Performance note**: These operators use SQLite's `json_each()` table-valued function
+     * which **cannot be indexed** and requires a full table scan. For large tables with frequent
+     * lookups, consider denormalizing the data into a separate indexed table.
+     *
+     * @see https://sqlite.org/json1.html#jeach
+     */
+    export type JsonArray = 'JSON_CONTAINS' | 'JSON_NOT_CONTAINS'
 
-    export type SingleValue = Equality | Order | Like
+    export type SingleValue = Equality | Order | Like | JsonArray
     export type MultiValue = In
   }
 
@@ -155,14 +165,26 @@ export namespace QueryBuilder {
     | 'returning'
     | 'onConflict'
 
+  /** Extracts the element type from an array type, or returns never if not an array */
+  type ArrayElement<T> = T extends ReadonlyArray<infer E> ? E : never
+
   export type WhereParams<TTableDef extends TableDefBase> = Partial<{
     [K in keyof TTableDef['sqliteDef']['columns']]:
       | TTableDef['sqliteDef']['columns'][K]['schema']['Type']
-      | { op: QueryBuilder.WhereOps.SingleValue; value: TTableDef['sqliteDef']['columns'][K]['schema']['Type'] }
+      | {
+          op: Exclude<QueryBuilder.WhereOps.SingleValue, QueryBuilder.WhereOps.JsonArray>
+          value: TTableDef['sqliteDef']['columns'][K]['schema']['Type']
+        }
       | {
           op: QueryBuilder.WhereOps.MultiValue
           value: ReadonlyArray<TTableDef['sqliteDef']['columns'][K]['schema']['Type']>
         }
+      | (ArrayElement<TTableDef['sqliteDef']['columns'][K]['schema']['Type']> extends never
+          ? never
+          : {
+              op: QueryBuilder.WhereOps.JsonArray
+              value: ArrayElement<TTableDef['sqliteDef']['columns'][K]['schema']['Type']>
+            })
       | undefined
   }>
 
@@ -208,9 +230,8 @@ export namespace QueryBuilder {
       /** Select multiple columns */
       <TColumns extends keyof TTableDef['sqliteDef']['columns'] & string>(
         ...columns: TColumns[]
-        // TODO also support arbitrary SQL selects
-        // params: QueryBuilderSelectParams,
-      ): QueryBuilder<
+      )// params: QueryBuilderSelectParams, // TODO also support arbitrary SQL selects
+      : QueryBuilder<
         ReadonlyArray<{
           readonly [K in TColumns]: TTableDef['sqliteDef']['columns'][K]['schema']['Type']
         }>,
@@ -242,7 +263,12 @@ export namespace QueryBuilder {
       ): QueryBuilder<TResult, TTableDef, TWithout | 'row' | 'select'>
       <TColName extends keyof TTableDef['sqliteDef']['columns']>(
         col: TColName,
-        op: QueryBuilder.WhereOps,
+        op: QueryBuilder.WhereOps.MultiValue,
+        value: ReadonlyArray<TTableDef['sqliteDef']['columns'][TColName]['schema']['Type']>,
+      ): QueryBuilder<TResult, TTableDef, TWithout | 'row' | 'select'>
+      <TColName extends keyof TTableDef['sqliteDef']['columns']>(
+        col: TColName,
+        op: QueryBuilder.WhereOps.SingleValue,
         value: TTableDef['sqliteDef']['columns'][TColName]['schema']['Type'],
       ): QueryBuilder<TResult, TTableDef, TWithout | 'row' | 'select'>
     }
@@ -264,14 +290,15 @@ export namespace QueryBuilder {
      * Example:
      * ```ts
      * db.todos.orderBy('createdAt', 'desc')
+     * db.todos.orderBy([{ col: 'createdAt', direction: 'desc' }])
      * ```
      */
     readonly orderBy: {
-      <TColName extends keyof TTableDef['sqliteDef']['columns'] & string>(
+      <const TColName extends keyof TTableDef['sqliteDef']['columns'] & string>(
         col: TColName,
         direction: 'asc' | 'desc',
       ): QueryBuilder<TResult, TTableDef, TWithout | 'returning' | 'onConflict'>
-      <TParams extends QueryBuilder.OrderByParams<TTableDef>>(
+      <const TParams extends QueryBuilder.OrderByParams<TTableDef>>(
         params: TParams,
       ): QueryBuilder<TResult, TTableDef, TWithout | 'returning' | 'onConflict'>
     }
@@ -330,12 +357,20 @@ export namespace QueryBuilder {
     >
 
     /**
-     * Insert a new row into the table
+     * Insert a new row into the table.
      *
-     * Example:
+     * @remarks
+     *
+     * Follows SQL semantics: nullable columns and columns with defaults are omittable.
+     * `NullOr(S)` and `optional(NullOr(S))` both produce nullable columns, so both are omittable.
+     *
+     * @example
+     *
      * ```ts
      * db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' })
      * ```
+     *
+     * @param values - The row values to insert.
      */
     readonly insert: (
       values: TTableDef['insertSchema']['Type'],
@@ -346,22 +381,26 @@ export namespace QueryBuilder {
     >
 
     /**
-     * Example: If the row already exists, it will be ignored.
+     * Upsert: insert a row, or handle conflicts on existing rows.
+     * Equivalent to SQLite's `INSERT ... ON CONFLICT` clause.
+     *
+     * Actions:
+     * - `'ignore'`: Skip the insert if a row with the same key exists
+     * - `'replace'`: Delete the existing row and insert the new one
+     * - `'update'`: Update specific columns on the existing row
+     *
      * ```ts
+     * // Ignore: skip if row exists
      * db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'ignore')
-     * ```
      *
-     * Example: If the row already exists, it will be replaced.
-     * ```ts
+     * // Replace: delete existing row and insert new one
      * db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'replace')
-     * ```
      *
-     * Example: If the row already exists, it will be updated.
-     * ```ts
+     * // Update: merge specific columns into existing row
      * db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'update', { text: 'Buy soy milk' })
      * ```
      *
-     * NOTE This API doesn't yet support composite primary keys.
+     * NOTE: Composite primary keys are not yet supported.
      */
     readonly onConflict: {
       <TTarget extends SingleOrReadonlyArray<keyof TTableDef['sqliteDef']['columns']>>(
@@ -436,7 +475,12 @@ export namespace QueryBuilder {
 
 export namespace RowQuery {
   export type GetOrCreateOptions<TTableDef extends ClientDocumentTableDef.TraitAny> = {
-    default: Partial<TTableDef['Value']>
+    /**
+     * Default value to use instead of the default value from the table definition
+     */
+    default: TTableDef[ClientDocumentTableDefSymbol]['options']['partialSet'] extends false
+      ? TTableDef['Value']
+      : Partial<TTableDef['Value']>
   }
 
   // TODO get rid of this

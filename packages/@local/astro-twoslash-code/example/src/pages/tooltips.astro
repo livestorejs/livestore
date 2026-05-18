@@ -1,0 +1,28 @@
+---
+import '../styles/tailwind.css'
+import PrimarySnippet from '../content/_assets/code/main.ts?snippet'
+---
+<!--
+  Dedicated route used by Playwright to assert tooltip placement.
+  We intentionally mirror the docs layout (multi-file snippet plus toolbar)
+  so regressions in positioning are caught before shipping.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tooltip Placement Regression Harness</title>
+  </head>
+  <body class="min-h-screen bg-slate-950 text-slate-100">
+    <main class="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-6 py-16">
+      <h1 class="text-balance text-4xl font-semibold tracking-tight">
+        Tooltip Placement Regression Harness
+      </h1>
+      <p class="text-pretty text-lg text-slate-300">
+        This page intentionally renders a multi-file Twoslash snippet exactly like the docs. Our end-to-end
+        tests hover the highlighted token and verify the tooltip stays anchored within the snippet frame.
+      </p>
+
+      <PrimarySnippet class="ls-demo-tooltip" />
+    </main>
+  </body>
+</html>

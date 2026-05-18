@@ -1,5 +1,5 @@
 ---
-title: External Data
+title: External data
 sidebar:
   order: 22
 ---

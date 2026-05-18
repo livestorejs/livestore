@@ -1,5 +1,3 @@
-import { queryDb } from '@livestore/livestore'
-import * as LiveStoreReact from '@livestore/react'
 import { generateKeyBetween } from 'fractional-indexing'
 import React from 'react'
 import {
@@ -14,17 +12,66 @@ import {
   Virtualizer,
 } from 'react-aria-components'
 import AutoSizer from 'react-virtualized-auto-sizer'
-import { Icon } from '@/components/icons'
-import { NewIssueButton } from '@/components/layout/sidebar/new-issue-button'
-import type { StatusDetails } from '@/data/status-options'
-import { filterState$, useDebouncedScrollState, useFilterState } from '@/lib/livestore/queries'
-import { events, tables } from '@/lib/livestore/schema'
-import { filterStateToWhere } from '@/lib/livestore/utils'
-import type { Status } from '@/types/status'
+
+import { queryDb } from '@livestore/livestore'
+
+import type { StatusDetails } from '../../../data/status-options.ts'
+import { filterState$, useDebouncedScrollState, useFilterState } from '../../../livestore/queries.ts'
+import { events, tables } from '../../../livestore/schema/index.ts'
+import { useAppStore } from '../../../livestore/store.ts'
+import { filterStateToWhere } from '../../../livestore/utils.tsx'
+import type { Status } from '../../../types/status.ts'
+import { Icon } from '../../icons/index.tsx'
+import { NewIssueButton } from '../sidebar/new-issue-button.tsx'
 import { Card } from './card.tsx'
 
+const ColumnGridList = ({
+  width,
+  height,
+  filteredIssues,
+  statusName,
+  dragAndDropHooks,
+  setScrollState,
+}: {
+  width: number
+  height: number
+  filteredIssues: readonly (typeof tables.issue.Type)[]
+  statusName: string
+  dragAndDropHooks: ReturnType<typeof useDragAndDrop>['dragAndDropHooks']
+  setScrollState: (_: { list: number }) => void
+}) => {
+  const listStyle = React.useMemo(() => ({ width, height }), [width, height])
+  const handleScroll = React.useCallback(
+    (e: React.UIEvent<HTMLElement>) => {
+      setScrollState({ list: e.currentTarget.scrollTop })
+    },
+    [setScrollState],
+  )
+
+  return (
+    <GridList
+      items={filteredIssues}
+      aria-label={`Issues with status ${statusName}`}
+      dragAndDropHooks={dragAndDropHooks}
+      className="pt-2 overflow-y-auto"
+      style={listStyle}
+      onScroll={handleScroll}
+    >
+      {(issue) => (
+        <GridListItem
+          textValue={issue.id.toString()}
+          aria-label={`Issue ${issue.id}: ${issue.title}`}
+          className="group data-[dragging]:opacity-50 w-full px-2 focus:outline-none"
+        >
+          <Card issue={issue} />
+        </GridListItem>
+      )}
+    </GridList>
+  )
+}
+
 export const Column = ({ status, statusDetails }: { status: Status; statusDetails: StatusDetails }) => {
-  const { store } = LiveStoreReact.useStore()
+  const store = useAppStore()
   // TODO restore initial scroll position once React Aria supports this scenario
   const [_scrollState, setScrollState] = useDebouncedScrollState(`column-${status}-${store.sessionId}`)
   const [filterState] = useFilterState()
@@ -116,24 +163,14 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
         <AutoSizer>
           {({ width, height }: { width: number; height: number }) => (
             <Virtualizer layout={layout}>
-              <GridList
-                items={filteredIssues}
-                aria-label={`Issues with status ${statusDetails.name}`}
+              <ColumnGridList
+                width={width}
+                height={height}
+                filteredIssues={filteredIssues}
+                statusName={statusDetails.name}
                 dragAndDropHooks={dragAndDropHooks}
-                className="pt-2 overflow-y-auto"
-                style={{ width, height }}
-                onScroll={(e) => setScrollState({ list: (e.target as HTMLElement).scrollTop })}
-              >
-                {(issue) => (
-                  <GridListItem
-                    textValue={issue.id.toString()}
-                    aria-label={`Issue ${issue.id}: ${issue.title}`}
-                    className="group data-[dragging]:opacity-50 w-full px-2 focus:outline-none"
-                  >
-                    <Card issue={issue} />
-                  </GridListItem>
-                )}
-              </GridList>
+                setScrollState={setScrollState}
+              />
             </Virtualizer>
           )}
         </AutoSizer>

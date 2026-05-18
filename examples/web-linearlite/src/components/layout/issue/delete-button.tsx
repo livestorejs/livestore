@@ -1,8 +1,9 @@
 import { TrashIcon } from '@heroicons/react/16/solid'
-import { useStore } from '@livestore/react'
 import React from 'react'
 import { Button } from 'react-aria-components'
-import { events } from '@/lib/livestore/schema'
+
+import { events } from '../../../livestore/schema/index.ts'
+import { useAppStore } from '../../../livestore/store.ts'
 
 export const DeleteButton = ({
   issueId,
@@ -13,10 +14,10 @@ export const DeleteButton = ({
   close: () => void
   className?: string
 }) => {
-  const { store } = useStore()
+  const store = useAppStore()
   const [confirm, setConfirm] = React.useState(false)
 
-  const onClick = () => {
+  const onClick = React.useCallback(() => {
     if (confirm) {
       const deleted = new Date()
       store.commit(
@@ -31,7 +32,7 @@ export const DeleteButton = ({
     setTimeout(() => {
       setConfirm(false)
     }, 2000)
-  }
+  }, [close, confirm, issueId, store])
 
   return (
     <Button

@@ -14,14 +14,14 @@ const PERSISTENT_FILE_TYPES =
 
 const textDecoder = new TextDecoder()
 
-export const decodeSAHPoolFilename = async (file: File): Promise<string> => {
+export const decodeAccessHandlePoolFilename = async (file: File): Promise<string> => {
   // Read the path and digest of the path from the file.
   const corpus = new Uint8Array(await file.slice(0, HEADER_CORPUS_SIZE).arrayBuffer())
 
   // Delete files not expected to be present.
   const dataView = new DataView(corpus.buffer, corpus.byteOffset)
   const flags = dataView.getUint32(HEADER_OFFSET_FLAGS)
-  if (corpus[0] && (flags & VFS.SQLITE_OPEN_DELETEONCLOSE || (flags & PERSISTENT_FILE_TYPES) === 0)) {
+  if (corpus[0] !== 0 && ((flags & VFS.SQLITE_OPEN_DELETEONCLOSE) !== 0 || (flags & PERSISTENT_FILE_TYPES) === 0)) {
     console.warn(`Remove file with unexpected flags ${flags.toString(16)}`)
     return ''
   }
@@ -32,7 +32,7 @@ export const decodeSAHPoolFilename = async (file: File): Promise<string> => {
 
   // Verify the digest.
   const computedDigest = computeDigest(corpus)
-  if (fileDigest.every((value, i) => value === computedDigest[i])) {
+  if (fileDigest.every((value, i) => value === computedDigest[i]) === true) {
     // Good digest. Decode the null-terminated path string.
     const pathBytes = corpus.indexOf(0)
     if (pathBytes === 0) {
@@ -48,7 +48,7 @@ export const decodeSAHPoolFilename = async (file: File): Promise<string> => {
 }
 
 const computeDigest = (corpus: Uint8Array): Uint32Array => {
-  if (!corpus[0]) {
+  if (corpus[0] === 0) {
     // Optimization for deleted file.
     return new Uint32Array([0xfe_cc_5f_80, 0xac_ce_c0_37])
   }

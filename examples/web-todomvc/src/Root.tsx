@@ -1,15 +1,19 @@
-import { makePersistedAdapter } from '@livestore/adapter-web'
-import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { LiveStoreProvider } from '@livestore/react'
 import { FPSMeter } from '@overengineering/fps-meter'
 import type React from 'react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { Suspense, useState } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 
-import { Footer } from './components/Footer.js'
-import { Header } from './components/Header.js'
-import { MainSection } from './components/MainSection.js'
-import { schema } from './livestore/schema.js'
-import LiveStoreWorker from './livestore.worker.ts?worker'
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
+
+import { Footer } from './components/Footer.tsx'
+import { Header } from './components/Header.tsx'
+import { MainSection } from './components/MainSection.tsx'
+import { VersionBadge } from './components/VersionBadge.tsx'
+
+const errorBoundaryFallback = <div>Something went wrong</div>
+const suspenseFallback = <div>Loading app...</div>
+const fpsContainerStyle = { top: 0, right: 0, position: 'absolute', background: '#333' } as const
 
 const AppBody: React.FC = () => (
   <section className="todoapp">
@@ -19,31 +23,20 @@ const AppBody: React.FC = () => (
   </section>
 )
 
-const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
+export const App: React.FC = () => {
+  const [storeRegistry] = useState(() => new StoreRegistry())
 
-if (resetPersistence) {
-  const searchParams = new URLSearchParams(window.location.search)
-  searchParams.delete('reset')
-  window.history.replaceState(null, '', `${window.location.pathname}?${searchParams.toString()}`)
+  return (
+    <ErrorBoundary fallback={errorBoundaryFallback}>
+      <Suspense fallback={suspenseFallback}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
+          <div style={fpsContainerStyle}>
+            <FPSMeter height={40} />
+          </div>
+          <AppBody />
+          <VersionBadge />
+        </StoreRegistryProvider>
+      </Suspense>
+    </ErrorBoundary>
+  )
 }
-
-const adapter = makePersistedAdapter({
-  storage: { type: 'opfs' },
-  worker: LiveStoreWorker,
-  sharedWorker: LiveStoreSharedWorker,
-  resetPersistence,
-})
-
-export const App: React.FC = () => (
-  <LiveStoreProvider
-    schema={schema}
-    adapter={adapter}
-    renderLoading={(_) => <div>Loading LiveStore ({_.stage})...</div>}
-    batchUpdates={batchUpdates}
-  >
-    <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
-      <FPSMeter height={40} />
-    </div>
-    <AppBody />
-  </LiveStoreProvider>
-)

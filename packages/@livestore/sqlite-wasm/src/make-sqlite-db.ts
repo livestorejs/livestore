@@ -7,7 +7,9 @@ import type {
 } from '@livestore/common'
 import { SqliteDbHelper, SqliteError } from '@livestore/common'
 import { EventSequenceNumber } from '@livestore/common/schema'
+import type { SQLiteAPI } from '@livestore/wa-sqlite'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
+
 import { makeInMemoryDb } from './in-memory-vfs.ts'
 
 export const makeSqliteDb = <
@@ -34,7 +36,7 @@ export const makeSqliteDb = <
     metadata,
     debug: {
       // Setting initially to root but will be set to correct value shortly after
-      head: EventSequenceNumber.ROOT,
+      head: EventSequenceNumber.Client.ROOT,
     },
     prepare: (queryStr) => {
       try {
@@ -52,7 +54,7 @@ export const makeSqliteDb = <
               try {
                 sqlite3.step(stmt)
               } finally {
-                if (options?.onRowsChanged) {
+                if (options?.onRowsChanged !== undefined) {
                   options.onRowsChanged(sqlite3.changes(dbPointer))
                 }
 
@@ -108,7 +110,7 @@ export const makeSqliteDb = <
           },
           finalize: () => {
             // Avoid double finalization which leads to a crash
-            if (isFinalized) {
+            if (isFinalized === true) {
               return
             }
 
@@ -132,7 +134,7 @@ export const makeSqliteDb = <
         })
       }
     },
-    export: () => sqlite3.serialize(dbPointer, 'main'),
+    export: SqliteDbHelper.makeExport(() => sqlite3.serialize(dbPointer, 'main')),
     execute: SqliteDbHelper.makeExecute((queryStr, bindValues, options) => {
       const stmt = sqliteDb.prepare(queryStr)
       stmt.execute(bindValues, options)
@@ -148,12 +150,9 @@ export const makeSqliteDb = <
       sqliteDb.close()
 
       metadata.deleteDb()
-      // if (metadata._tag === 'opfs') {
-      //   metadata.vfs.resetAccessHandle(metadata.fileName)
-      // }
     },
     close: () => {
-      if (isClosed) {
+      if (isClosed === true) {
         return
       }
 
@@ -175,15 +174,48 @@ export const makeSqliteDb = <
       // if (readOnly === true) {
       //   sqlite3.deserialize(db, 'main', bytes, bytes.length, bytes.length, FREE_ON_CLOSE | RESIZEABLE)
       // } else {
+      const ensureSuccess = (rc: number, operation: string) => {
+        if (rc !== SqliteConstants.SQLITE_OK) {
+          throw new SqliteError({
+            code: rc,
+            cause: new Error(`${operation} failed with rc=${rc}`),
+            note: 'Snapshot import failed during SQLite copy',
+          })
+        }
+      }
+
       if (source instanceof Uint8Array) {
+        const WAL_FILE_FORMAT = 2
+        if (source.length >= 24 && (source[18] === WAL_FILE_FORMAT || source[19] === WAL_FILE_FORMAT)) {
+          throw new SqliteError({
+            code: SqliteConstants.SQLITE_CANTOPEN,
+            cause: new Error('WAL snapshots are not supported'),
+            note: 'Import expects rollback-journal snapshots (journal_mode=DELETE). Please convert snapshot before importing.',
+          })
+        }
+
         const tmpDb = makeInMemoryDb(sqlite3)
         // TODO find a way to do this more efficiently with sqlite to avoid either of the deserialize + backup call
         // Maybe this can be done via the VFS API
-        sqlite3.deserialize(tmpDb.dbPointer, 'main', source, source.length, source.length, FREE_ON_CLOSE | RESIZEABLE)
-        sqlite3.backup(dbPointer, 'main', tmpDb.dbPointer, 'main')
-        sqlite3.close(tmpDb.dbPointer)
+        const rcDeserialize = sqlite3.deserialize(
+          tmpDb.dbPointer,
+          'main',
+          source,
+          source.length,
+          source.length,
+          FREE_ON_CLOSE | RESIZEABLE,
+        )
+        ensureSuccess(rcDeserialize, 'sqlite3.deserialize')
+
+        try {
+          const rcBackup = sqlite3.backup(dbPointer, 'main', tmpDb.dbPointer, 'main')
+          ensureSuccess(rcBackup, 'sqlite3.backup')
+        } finally {
+          sqlite3.close(tmpDb.dbPointer)
+        }
       } else {
-        sqlite3.backup(dbPointer, 'main', source.metadata.dbPointer, 'main')
+        const rcBackup = sqlite3.backup(dbPointer, 'main', source.metadata.dbPointer, 'main')
+        ensureSuccess(rcBackup, 'sqlite3.backup')
       }
 
       metadata.configureDb(sqliteDb)
@@ -210,7 +242,26 @@ export const makeSqliteDb = <
         },
         apply: () => {
           try {
-            sqlite3.changeset_apply(dbPointer, data)
+            sqlite3.changeset_apply(
+              dbPointer,
+              data,
+              null,
+              (eConflict) => {
+                // During rollback we apply inverted changesets to undo local events
+                // before replaying them on top of remote state. We want the undo to
+                // succeed unconditionally: if the row was already changed by another
+                // tab (DATA) or reinserted (CONFLICT), force-overwrite it. For
+                // NOTFOUND, CONSTRAINT, and FOREIGN_KEY the row is already gone or
+                // can't be replaced, so we skip.
+                if (
+                  eConflict === SqliteConstants.SQLITE_CHANGESET_DATA ||
+                  eConflict === SqliteConstants.SQLITE_CHANGESET_CONFLICT
+                ) {
+                  return SqliteConstants.SQLITE_CHANGESET_REPLACE
+                }
+                return SqliteConstants.SQLITE_CHANGESET_OMIT
+              },
+            )
             // @ts-expect-error data should be garbage collected after use
             // biome-ignore lint/style/noParameterAssign: ...
             data = undefined

@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react'
 import { StyleSheet, Text, type TextProps, type TextStyle } from 'react-native'
 
-import { useThemeColor } from '@/hooks/useThemeColor.ts'
+import { useThemeColor } from '../hooks/useThemeColor.ts'
 
-export type ThemedTextProps = TextProps & {
+export interface ThemedTextProps extends TextProps {
   lightColor?: string
   darkColor?: string
   type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link'
