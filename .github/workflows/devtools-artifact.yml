@@ -140,7 +140,13 @@ jobs:
           fi
 
           resolve_devenv() {
-            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+            nix build \
+              --accept-flake-config \
+              --option extra-substituters https://devenv.cachix.org \
+              --option extra-trusted-public-keys devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= \
+              --no-link \
+              --print-out-paths \
+              "github:cachix/devenv/$DEVENV_REV#devenv"
           }
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
