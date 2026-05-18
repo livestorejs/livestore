@@ -1,22 +1,10 @@
 {
   "schemaVersion": 2,
   "artifact": {
-    "metadataUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260513-27179788/release-metadata.json",
-    "tarballUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260513-27179788/livestore-devtools-vite.tgz",
-    "sha256": "1e766d5b1e0226c3c70c29c0dff24ee4da0ff8593b813c4b5fd29e852696f3f0",
-    "chromeZipUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260513-27179788/livestore-devtools-chrome.zip",
-    "chromeZipSha256": "f1feead7eb67f620a119ce92d35f84238274128cc480e3a851f1cc20785e2ed2"
-  },
-  "certification": {
-    "livestoreVersion": "0.4.0-dev.26",
-    "devtoolsBuildId": "dt-20260513-27179788",
-    "devtoolsProtocolVersion": 1,
-    "status": "passed",
-    "testSuite": "tests/integration/src/tests/playwright/devtools",
-    "scenarios": [
-      "direct web session loads and stays connected past heartbeat window",
-      "node adapter session loads through Vite and stays connected past 35 seconds"
-    ],
-    "evidence": "Verified locally on 2026-05-13 for the 0.4.0-dev.26 release branch against exact artifact tarball from https://github.com/livestorejs/livestore-devtools-artifacts/releases/tag/devtools-artifact-dt-20260513-27179788."
+    "metadataUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260518-24e5cc3b/release-metadata.json",
+    "tarballUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260518-24e5cc3b/livestore-devtools-vite.tgz",
+    "sha256": "89e9367e43f49937f8a30e02748a889cf486105f954998b98628e81585154fb5",
+    "chromeZipUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-dt-20260518-24e5cc3b/livestore-devtools-chrome.zip",
+    "chromeZipSha256": "a093e31fa31193cbf63c8ae3e7e08b956babc8ac21e8cd9d7b726b2f53406d95"
   }
 }
