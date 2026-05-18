@@ -30,6 +30,7 @@
     "@local/astro-tldraw": "workspace:^",
     "@local/astro-twoslash-code": "workspace:^",
     "@local/docs": "workspace:^",
+    "@local/shared": "workspace:^",
     "@local/tests-integration": "workspace:^",
     "@local/tests-sync-provider": "workspace:^",
     "@opentelemetry/api": "1.9.0",

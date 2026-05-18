@@ -299,6 +299,11 @@ in
       exec = "mono examples deploy --prod";
     };
 
+    "examples:validate-links" = {
+      description = "Validate hosted example links";
+      exec = "mono examples validate-links";
+    };
+
     "examples:install" = {
       description = "Install examples workspace dependencies";
       exec = ''
