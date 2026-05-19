@@ -23,7 +23,7 @@
     "./bun": "./src/bun/mod.ts",
     "./cuid": {
       "browser": "./src/cuid/cuid.browser.ts",
-      "react-native": "./src/cuid/cuid.browser.ts",
+      "react-native": "./src/cuid/cuid.react-native.ts",
       "default": "./src/cuid/cuid.node.ts"
     },
     "./effect": "./src/effect/mod.ts",

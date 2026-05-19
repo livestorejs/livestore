@@ -1,5 +1,4 @@
 import 'react-native-reanimated'
-import '../polyfill.ts'
 import { Stack } from 'expo-router'
 import { Suspense, useMemo, useState } from 'react'
 import { LogBox, Platform } from 'react-native'
