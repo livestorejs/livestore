@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   assertCertifiedDevtoolsArtifactForLivestore,
+  assertUncertifiedRepackMode,
   containsForbiddenPattern,
   type ArtifactManifest,
   type DevtoolsArtifactCertification,
@@ -39,10 +40,7 @@ const certification = (overrides: Partial<DevtoolsArtifactCertification> = {}) =
   devtoolsProtocolVersion: 1,
   status: 'passed' as const,
   testSuite: 'tests/integration/src/tests/playwright/devtools',
-  scenarios: [
-    'direct web session loads and stays connected past heartbeat window',
-    'node adapter session loads through Vite and stays connected past 35 seconds',
-  ],
+  scenarios: ['node adapter session loads through Vite and stays connected past 35 seconds'],
   ...overrides,
 })
 
@@ -146,6 +144,13 @@ describe('assertCertifiedDevtoolsArtifactForLivestore', () => {
       status: 'ci-uncertified-repack',
       scenarios: ['ci-uncertified-repack'],
     })
+  })
+
+  it('rejects an uncertified publish repack before liveness certification', () => {
+    expect(() => assertUncertifiedRepackMode({ allowUncertified: true, publish: true })).toThrow(
+      /allow-uncertified.*dry-run/,
+    )
+    expect(() => assertUncertifiedRepackMode({ allowUncertified: true, publish: false })).not.toThrow()
   })
 
   it('rejects certification for a different LiveStore release or DevTools build', () => {

@@ -91,8 +91,7 @@ Ephemeral CI proof:
   "devtoolsBuildId": "dt-...",
   "devtoolsProtocolVersion": 1,
   "scenarios": [
-    "direct web session loads and stays connected past heartbeat window",
-    "node adapter session loads through Vite and stays connected past heartbeat window"
+    "node adapter session loads through Vite and stays connected past 35 seconds"
   ],
   "ciRunUrl": "https://github.com/livestorejs/livestore/actions/runs/..."
 }
@@ -109,16 +108,20 @@ LiveStore release CI must verify:
 - metadata declares a supported DevTools protocol version
 - repacked package shape is valid
 - the artifact does not leak source, sourcemaps, credentials, or local paths
-- direct web session liveness survives the heartbeat window
 - node adapter direct-route liveness survives the heartbeat window
 
-The liveness scenarios must use the exact downloaded artifact, not a local
-workspace build. The Node adapter scenario must replace every workspace
+The release artifact liveness scenario must use the exact downloaded artifact,
+not a local workspace build. The Node adapter scenario must replace every workspace
 `@livestore/devtools-vite` resolution path used by the fixture, including the
 transitive package under `@livestore/adapter-node`; replacing only the test
 package's top-level `node_modules` entry is not sufficient proof.
 
-The liveness scenarios must also be independent of developer-machine sponsor
+Direct web session liveness is still required in the normal Playwright DevTools
+suite, but it is not claimed as exact-artifact release proof because it does not
+exercise the repacked `@livestore/devtools-vite` artifact selected by the
+LiveStore manifest.
+
+The liveness scenario must also be independent of developer-machine sponsor
 activation state. Public DevTools artifacts enforce the sponsor/license gate by
 default, but release certification runs with the explicit
 `LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false` test override so CI verifies

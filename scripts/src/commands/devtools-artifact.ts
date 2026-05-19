@@ -76,7 +76,10 @@ type DevtoolsArtifactEphemeralCertification = {
 }
 
 const requiredReleaseCertificationScenarios = [
-  'direct web session loads and stays connected past heartbeat window',
+  // Exact artifact certification installs the repacked @livestore/devtools-vite
+  // package into the Node adapter fixture. Direct web transport liveness is
+  // covered by the normal Playwright DevTools suite, but it is not evidence
+  // that this selected npm artifact was installed and exercised.
   'node adapter session loads through Vite and stays connected past 35 seconds',
 ] as const
 
@@ -408,6 +411,18 @@ export const assertCertifiedDevtoolsArtifactForLivestore = ({
   return releaseCertification
 }
 
+export const assertUncertifiedRepackMode = ({
+  allowUncertified,
+  publish,
+}: {
+  readonly allowUncertified: boolean
+  readonly publish: boolean
+}) => {
+  if (allowUncertified === true && publish === true) {
+    throw new Error('--allow-uncertified is only valid for dry-run repack; publish requires liveness certification')
+  }
+}
+
 const assertMetadata = (metadata: ArtifactMetadata, tarballPath: string, chromeZipPath: string | undefined) => {
   if (metadata.schemaVersion !== 1) throw new Error('Unsupported metadata schemaVersion')
   if (metadata.artifactName !== 'livestore-devtools-vite') throw new Error('Unexpected artifactName')
@@ -592,6 +607,10 @@ const publishChromeZipReleaseAsset = (version: string, assetPath: string) => {
 const repackArtifact = async (flags: Map<string, string | true>) => {
   const version = readFlag(flags, 'version')
   if (version === undefined) throw new Error('--version is required')
+  assertUncertifiedRepackMode({
+    allowUncertified: hasFlag(flags, 'allow-uncertified'),
+    publish: hasFlag(flags, 'publish'),
+  })
 
   const { metadata, tarballPath, chromeZipPath, workDir, manifest } = await verifyArtifact(flags)
   // The public DevTools artifact describes what was built; it does not decide which
