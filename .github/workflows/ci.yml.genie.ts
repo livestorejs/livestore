@@ -326,6 +326,9 @@ done`,
         contents: 'write',
         'id-token': 'write',
       },
+      outputs: {
+        npm_snapshot_published: "${{ steps.publish-snapshot.outcome == 'success' && '1' || '0' }}",
+      },
       needs: [
         'test-unit',
         'test-integration-node-sync',
@@ -339,6 +342,7 @@ done`,
       steps: withNixDiagnosticsOnFailure([
         ...livestoreSetupSteps,
         {
+          id: 'publish-snapshot',
           name: 'Publish snapshot version',
           run: runDevenvTasksBefore('release:snapshot:git-sha'),
           env: { GIT_SHA: PR_HEAD_SHA },
@@ -471,7 +475,7 @@ done`,
     // },
 
     'build-example-create': {
-      if: IS_NOT_FORK,
+      if: `${IS_NOT_FORK} && needs.publish-snapshot-version.outputs.npm_snapshot_published == '1'`,
       needs: 'publish-snapshot-version',
       strategy: {
         matrix: {

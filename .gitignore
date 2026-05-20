@@ -59,3 +59,6 @@ packages/@livestore/livestore/docs
 # Task context files (agent work tracking, not part of codebase)
 /tasks/
 .claude/settings.local.json
+
+# Ephemeral release-candidate proof produced by DevTools artifact liveness CI
+/release/devtools-artifact.certification.json

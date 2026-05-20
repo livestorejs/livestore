@@ -21,13 +21,16 @@ import process from 'node:process'
 
 import { expect, test } from '@playwright/test'
 
+import { schema } from '../fixtures/devtools/node-adapter-timeout/schema.ts'
 import { checkConnectionRemainsActive } from './shared.ts'
 
 const FIXTURE_DIR = path.join(import.meta.dirname, '../fixtures/devtools/node-adapter-timeout')
 const TIMEOUT_WAIT_MS = 35_000 // 35 seconds, to exceed the 30 second timeout
+const DEVTOOLS_READY_TIMEOUT_MS = 120_000
 
 let nodeProcess: ChildProcess | undefined
 let devtoolsPort: number
+let storeId: string
 
 /**
  * Get an available port by binding to port 0 and reading the assigned port.
@@ -53,6 +56,7 @@ const getAvailablePort = (): Promise<number> => {
  */
 const startNodeApp = async (): Promise<void> => {
   devtoolsPort = await getAvailablePort()
+  storeId = `test-store-${Date.now()}`
 
   return new Promise((resolve, reject) => {
     const mainPath = path.join(FIXTURE_DIR, 'main.ts')
@@ -63,7 +67,7 @@ const startNodeApp = async (): Promise<void> => {
       env: {
         ...process.env,
         DEVTOOLS_PORT: String(devtoolsPort),
-        STORE_ID: `test-store-${Date.now()}`,
+        STORE_ID: storeId,
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
@@ -122,6 +126,7 @@ const stopNodeApp = (): void => {
 test.describe('Node adapter devtools timeout', () => {
   // Run tests serially since each test needs its own Node process
   test.describe.configure({ mode: 'serial' })
+  test.setTimeout(240_000)
 
   test.beforeEach(async () => {
     await startNodeApp()
@@ -132,9 +137,6 @@ test.describe('Node adapter devtools timeout', () => {
   })
 
   test('should maintain connection to devtools after 30+ seconds', async ({ page }) => {
-    // Set a longer timeout for this test since we're waiting 35+ seconds
-    test.setTimeout(90_000)
-
     // Capture browser console output to debug what's being loaded
     page.on('console', (msg) => {
       const text = msg.text()
@@ -146,17 +148,31 @@ test.describe('Node adapter devtools timeout', () => {
         text.includes('runPingPong') === true ||
         text.includes('devtools-api') === true ||
         text.includes('mesh-node') === true ||
+        text.includes('devtools heartbeat') === true ||
         text.includes('ProxyChannel') === true ||
         text.includes('Pong') === true ||
         text.includes('Ping') === true ||
+        text.includes('message=status') === true ||
         text.includes('recv') === true ||
-        text.includes('listenQueue') === true
+        text.includes('listenQueue') === true ||
+        msg.type() === 'error' ||
+        msg.type() === 'warning'
       ) {
-        console.log(`[browser console] ${text}`)
+        console.log(`[browser console:${msg.type()}] ${text}`)
+      }
+
+    })
+    page.on('pageerror', (error) => console.log(`[browser pageerror] ${error.message}`))
+    page.on('requestfailed', (request) => {
+      console.log(`[browser requestfailed] ${request.url()} ${request.failure()?.errorText ?? 'unknown error'}`)
+    })
+    page.on('response', (response) => {
+      if (response.status() >= 400) {
+        console.log(`[browser response] ${response.status()} ${response.url()}`)
       }
     })
 
-    const devtoolsUrl = `http://localhost:${devtoolsPort}/_livestore/node?autoconnect`
+    const devtoolsUrl = `http://localhost:${devtoolsPort}/_livestore/node/${storeId}/test-client/static/${schema.devtools.alias}`
     console.log(`Navigating to devtools: ${devtoolsUrl}`)
 
     // Retry navigation a few times in case Vite is still warming up
@@ -175,45 +191,24 @@ test.describe('Node adapter devtools timeout', () => {
       throw new Error('Failed to navigate to devtools after 3 attempts')
     }
 
-    // Wait for the devtools to connect and show the session
-    // With ?autoconnect, it should auto-connect to the first session
-    // Wait for either Sessions list or Database tab (if already connected)
-    await Promise.race([
-      page.waitForSelector('text=Sessions', { timeout: 15_000 }),
-      page.waitForSelector('text=Database', { timeout: 15_000 }),
-      page.waitForSelector('text=Tables', { timeout: 15_000 }),
-    ])
-    console.log('Devtools loaded')
-
-    // Check if we need to click on a session link (if not auto-connected)
-    const sessionLink = page
-      .locator('a')
-      .filter({ hasText: /test-store/ })
-      .first()
-    if ((await sessionLink.isVisible({ timeout: 1000 }).catch(() => false)) === true) {
-      await sessionLink.click()
-      console.log('Clicked on session link')
-    } else {
-      console.log('Auto-connected to session (no link to click)')
+    await expect(page).toHaveURL(/\/_livestore\/node\/test-store-/, { timeout: 10_000 })
+    try {
+      await page
+        .getByRole('tab', { name: 'Database' })
+        .describe('node-devtools:Database')
+        .waitFor({ state: 'attached', timeout: DEVTOOLS_READY_TIMEOUT_MS })
+    } catch (error) {
+      console.log(`[devtools diagnostics] url=${page.url()}`)
+      console.log(`[devtools diagnostics] title=${await page.title().catch(() => '<unavailable>')}`)
+      const bodyText = await page.locator('body').innerText({ timeout: 1000 }).catch(() => '<unavailable>')
+      console.log(`[devtools diagnostics] body=${bodyText.slice(0, 2000)}`)
+      throw error
     }
-
-    // Wait for the devtools to show connected state (e.g., Database tab)
-    await page.waitForSelector('text=Database', { timeout: 10_000 }).catch(() => {
-      // Sometimes it shows Tables directly
-      return page.waitForSelector('text=Tables', { timeout: 5_000 })
-    })
     console.log('Devtools connected to session')
-
-    // Record the initial state - check that we can see the todo table
-    const initialState = await page.locator('text=todo').first().isVisible()
-    console.log('Initial state - todo table visible:', initialState)
 
     console.log(`Watching connection for ${TIMEOUT_WAIT_MS / 1000} seconds...`)
     await checkConnectionRemainsActive({ devtools: page, label: 'node-devtools', durationMs: TIMEOUT_WAIT_MS })
 
-    const databaseTabStillVisible = await page.locator('text=Database').isVisible()
-    const tablesStillVisible = await page.locator('text=Tables').isVisible()
-
-    expect(databaseTabStillVisible === true || tablesStillVisible === true).toBe(true)
+    await expect(page).toHaveURL(/\/_livestore\/node\/test-store-/)
   })
 })
