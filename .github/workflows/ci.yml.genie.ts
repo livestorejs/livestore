@@ -313,10 +313,11 @@ done`,
     },
 
     /**
-     * Publish job runs on GitHub-hosted runner (not Namespace) because npm OIDC
-     * trusted publishing with --provenance requires sigstore, which only supports
-     * GitHub-hosted runners. We still configure the npm token fallback to avoid
-     * interactive auth if trusted publishing is unavailable for a package.
+     * Keep only the publish boundary on GitHub-hosted runners. The heavy tests
+     * above may use Namespace/self-hosted runners, but npm trusted publishing
+     * currently requires GitHub-hosted OIDC and does not support self-hosted
+     * runners. Do not add an npm write token here; the npm package settings
+     * should trust this workflow file (`ci.yml`) for snapshot publishes.
      */
     'publish-snapshot-version': {
       if: IS_NOT_FORK,
@@ -333,18 +334,10 @@ done`,
       ],
       env: {
         GH_TOKEN: '${{ github.token }}',
-        NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
       },
       defaults: bashShellDefaults,
       steps: withNixDiagnosticsOnFailure([
         ...livestoreSetupSteps,
-        {
-          name: 'Configure npm token fallback',
-          run: `set -euo pipefail
-: "\${NODE_AUTH_TOKEN:?Missing NPM_TOKEN secret}"
-printf '%s\\n' "always-auth=true" > "$HOME/.npmrc"
-printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.npmrc"`,
-        },
         {
           name: 'Publish snapshot version',
           run: runDevenvTasksBefore('release:snapshot:git-sha'),

@@ -63,9 +63,18 @@ plan is still the intended release; the publisher is idempotent for already
 published packages, but production deploys still reflect the checked-in release
 state.
 
-The publish job uses the repository `NPM_TOKEN` secret. Snapshot publishing uses
-npm trusted publishing from `ci.yml`; release publishing should move to trusted
-publishing too once `release.yml` is authorized for the npm packages.
+Snapshot package publishing uses npm trusted publishing from `ci.yml`. Only the
+final publish job runs on a GitHub-hosted runner because npm trusted publishing
+currently requires GitHub-hosted OIDC; the heavier validation jobs may continue
+to run on Namespace/self-hosted runners. Do not configure an npm write token for
+the snapshot publish job. Each published `@livestore/*` package must trust
+`livestorejs/livestore` with workflow filename `ci.yml` in npm package settings.
+
+Stable release publishing still uses the repository `NPM_TOKEN` secret from
+`release.yml`. npm currently allows only one trusted publisher workflow per
+package, so moving stable releases to trusted publishing requires a deliberate
+workflow consolidation that preserves the ability to cut LiveStore releases
+without touching the overeng repository.
 
 ## `devtools-artifact.yml`
 
