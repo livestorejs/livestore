@@ -2936,7 +2936,6 @@ jobs:
     needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
     env:
       GH_TOKEN: ${{ github.token }}
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     defaults:
       run:
         shell: bash
@@ -3064,12 +3063,6 @@ jobs:
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - name: Configure npm token fallback
-        run: |
-          set -euo pipefail
-          : "${NODE_AUTH_TOKEN:?Missing NPM_TOKEN secret}"
-          printf '%s\n' "always-auth=true" > "$HOME/.npmrc"
-          printf '%s\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.npmrc"
       - name: Publish snapshot version
         run: |
           __nix_gc_retry_helper=$(mktemp)
