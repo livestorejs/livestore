@@ -4466,6 +4466,9 @@ importers:
       '@local/docs':
         specifier: workspace:^
         version: link:../docs
+      '@local/shared':
+        specifier: workspace:^
+        version: link:../packages/@local/shared
       '@local/tests-integration':
         specifier: workspace:^
         version: link:../tests/integration

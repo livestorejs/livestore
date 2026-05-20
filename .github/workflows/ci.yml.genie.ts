@@ -394,6 +394,10 @@ printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.np
             CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
           },
         },
+        {
+          name: 'Validate hosted example links',
+          run: runDevenvTasksBefore('examples:validate-links'),
+        },
       ]),
     },
 

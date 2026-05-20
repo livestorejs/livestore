@@ -5,6 +5,7 @@ import utilsDevPkg from '../packages/@livestore/utils-dev/package.json.genie.ts'
 import utilsPkg from '../packages/@livestore/utils/package.json.genie.ts'
 import astroTldrawPkg from '../packages/@local/astro-tldraw/package.json.genie.ts'
 import astroTwoslashCodePkg from '../packages/@local/astro-twoslash-code/package.json.genie.ts'
+import sharedPkg from '../packages/@local/shared/package.json.genie.ts'
 import testsIntegrationPkg from '../tests/integration/package.json.genie.ts'
 import testsSyncProviderPkg from '../tests/sync-provider/package.json.genie.ts'
 
@@ -17,6 +18,7 @@ const composition = catalog.compose({
       commonPkg,
       utilsPkg,
       utilsDevPkg,
+      sharedPkg,
       astroTldrawPkg,
       astroTwoslashCodePkg,
       docsPkg,
