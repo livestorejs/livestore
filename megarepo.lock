@@ -4,7 +4,7 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "schickling/2026-05-21-ci-concurrency-actionlint",
-      "commit": "e568d9669cc971a5fa8e19d660ad29895cc014ec",
+      "commit": "b3f33c5802fee99e74da73ebe7301f2c2490265a",
       "pinned": true,
       "lockedAt": "2026-05-21T02:53:17.681Z"
     },
