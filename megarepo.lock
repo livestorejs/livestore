@@ -3,8 +3,8 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "ce7cf8f8ebfaa1da6c7e9122cd195a5f95ce2fca",
+      "ref": "schickling/2026-05-21-ci-concurrency-actionlint",
+      "commit": "b3f33c5802fee99e74da73ebe7301f2c2490265a",
       "pinned": true,
       "lockedAt": "2026-05-18T06:45:33.610Z"
     },
