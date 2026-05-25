@@ -77,7 +77,7 @@ export const runFirstUnsafe = <A, E, R>(
   stream: Stream.Stream<A, E, R>,
 ): Effect.Effect<A, Cause.NoSuchElementError | E, R> =>
   Effect.gen(function* () {
-    return yield* (yield* runFirst(stream))
+    return yield* Effect.fromOption(yield* runFirst(stream))
   })
 
 export const runCollectReadonlyArray = <A, E, R>(stream: Stream.Stream<A, E, R>): Effect.Effect<readonly A[], E, R> =>

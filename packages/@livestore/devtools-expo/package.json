@@ -28,22 +28,22 @@
     "@livestore/utils": "workspace:^"
   },
   "devDependencies": {
-    "@effect/platform-node": "4.0.0-beta.65",
+    "@effect/platform-node": "4.0.0-beta.70",
     "@types/node": "25.3.3",
     "expo": "54.0.12",
     "vite": "7.3.1"
   },
   "peerDependencies": {
-    "@effect/opentelemetry": "^4.0.0-beta.65",
-    "@effect/platform-browser": "^4.0.0-beta.65",
-    "@effect/platform-bun": "^4.0.0-beta.65",
-    "@effect/platform-node": "^4.0.0-beta.65",
-    "@effect/vitest": "^4.0.0-beta.65",
+    "@effect/opentelemetry": "^4.0.0-beta.70",
+    "@effect/platform-browser": "^4.0.0-beta.70",
+    "@effect/platform-bun": "^4.0.0-beta.70",
+    "@effect/platform-node": "^4.0.0-beta.70",
+    "@effect/vitest": "^4.0.0-beta.70",
     "@livestore/devtools-vite": "^0.4.0-dev.25",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/resources": "^2.2.0",
     "@standard-schema/spec": "^1.1.0",
-    "effect": "^4.0.0-beta.65",
+    "effect": "^4.0.0-beta.70",
     "expo": "^54.0.12"
   },
   "$genie": {

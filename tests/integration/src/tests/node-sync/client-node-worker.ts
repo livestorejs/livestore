@@ -42,7 +42,7 @@ const WorkerContextLive = Layer.unwrapScoped(
   Effect.gen(function* () {
     const protocol = yield* RpcServer.Protocol
     const { storeId, clientId, adapterType, storageType, params, syncUrl } = yield* protocol.initialMessage.pipe(
-      Effect.flatMap((option) => option.asEffect()),
+      Effect.flatMap((option) => Effect.fromOption(option)),
       Effect.flatMap(Schema.decodeUnknownEffect(Schema.toCodecJson(WorkerSchema.InitialMessage))),
       Effect.orDie,
     )

@@ -131,17 +131,17 @@ const platformRunnerImpl = Runner.WorkerRunnerPlatform.of({
         port.on('messageerror', (cause) => {
           Deferred.doneUnsafe(
             closeLatch,
-            new WorkerError({
+            Effect.fail(new WorkerError({
               reason: new WorkerReceiveError({ message: 'received messageerror event', cause }),
-            }).asEffect(),
+            })),
           )
         })
         port.on('error', (cause) => {
           Deferred.doneUnsafe(
             closeLatch,
-            new WorkerError({
+            Effect.fail(new WorkerError({
               reason: new WorkerUnknownError({ message: 'received error event', cause }),
-            }).asEffect(),
+            })),
           )
         })
         port.postMessage([0])

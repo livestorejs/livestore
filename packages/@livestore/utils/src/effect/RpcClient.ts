@@ -42,4 +42,4 @@ export const makeProtocolSocketWithIsConnected = (options: {
     Effect.map((protocol) => ({ ...protocol, pinger: noopPinger }) as Protocol['Service'] & { pinger: SocketPinger }),
   )
 
-export const SocketPinger = Effect.map(Protocol.asEffect(), (protocol) => (protocol as any).pinger as SocketPinger)
+export const SocketPinger = Effect.map(Protocol, (protocol) => (protocol as any).pinger as SocketPinger)

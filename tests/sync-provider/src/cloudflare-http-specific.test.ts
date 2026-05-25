@@ -54,7 +54,7 @@ Vitest.describe.each(cloudflareHttpProviders)('$name HTTP response headers', { t
 
   const makeProvider = (testName?: string, options?: SyncProviderOptions) =>
     Effect.suspend(() =>
-      Effect.andThen(SyncProviderImpl.asEffect(), (_) =>
+      Effect.andThen(SyncProviderImpl, (_) =>
         _.makeProvider(
           {
             storeId: `test-store-${name}-${testName}-${testId}`,

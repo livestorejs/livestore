@@ -61,7 +61,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     Effect.gen(function* () {
       const protocol = yield* RpcServer.Protocol
       const args = yield* protocol.initialMessage.pipe(
-        Effect.flatMap((option) => option.asEffect()),
+        Effect.flatMap((option) => Effect.fromOption(option)),
         Effect.flatMap(Schema.decodeUnknownEffect(Schema.toCodecJson(WorkerSchema.LeaderWorkerInnerInitialMessage))),
         Effect.orDie,
       )
@@ -85,7 +85,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
 
   const WorkerHandlers = WorkerSchema.LeaderWorkerInnerRpcs.toLayer({
     PushToLeader: ({ batch }) =>
-      Effect.andThen(LeaderThreadCtx.asEffect(), (_) =>
+      Effect.andThen(LeaderThreadCtx, (_) =>
         _.syncProcessor.push(
           batch.map(
             (item: typeof LiveStoreEvent.Client.Encoded.Type) => new LiveStoreEvent.Client.EncodedWithMeta(item),
@@ -95,14 +95,14 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         ),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-node:worker:PushToLeader')),
     BootStatusStream: () =>
-      Effect.map(LeaderThreadCtx.asEffect(), (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
+      Effect.map(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {
         const { syncProcessor } = yield* LeaderThreadCtx
         return syncProcessor.pull({ cursor })
       }).pipe(Stream.unwrapScoped),
     StreamEvents: (options) =>
-      LeaderThreadCtx.asEffect().pipe(
+      LeaderThreadCtx.pipe(
         Effect.map(({ dbEventlog, syncProcessor }) => {
           const streamOptions = options as StreamEventsOptions
           return streamEventsWithSyncState({
@@ -115,11 +115,11 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         Stream.withSpan('@livestore/adapter-node:worker:StreamEvents'),
       ),
     Export: () =>
-      Effect.map(LeaderThreadCtx.asEffect(), (_) => _.dbState.export()).pipe(
+      Effect.map(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
         Effect.withSpan('@livestore/adapter-node:worker:Export'),
       ),
     ExportEventlog: () =>
-      Effect.map(LeaderThreadCtx.asEffect(), (_) => _.dbEventlog.export()).pipe(
+      Effect.map(LeaderThreadCtx, (_) => _.dbEventlog.export()).pipe(
         Effect.withSpan('@livestore/adapter-node:worker:ExportEventlog'),
       ),
     GetLeaderHead: Effect.fn('@livestore/adapter-node:worker:GetLeaderHead')(function* () {
@@ -169,7 +169,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       // yield* Effect.sleep(1000)
     }),
     ExtraDevtoolsMessage: ({ message }) =>
-      Effect.andThen(LeaderThreadCtx.asEffect(), (_) => Queue.offer(_.extraIncomingMessagesQueue, message)).pipe(
+      Effect.andThen(LeaderThreadCtx, (_) => Queue.offer(_.extraIncomingMessagesQueue, message)).pipe(
         Effect.asVoid,
         Effect.withSpan('@livestore/adapter-node:worker:ExtraDevtoolsMessage'),
       ),

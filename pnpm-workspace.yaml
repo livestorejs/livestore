@@ -43,15 +43,15 @@ packages:
   - tests/wa-sqlite
 
 overrides:
-  effect: 4.0.0-beta.65
-  '@effect/ai-openai': 4.0.0-beta.65
-  '@effect/platform-browser': 4.0.0-beta.65
-  '@effect/platform-bun': 4.0.0-beta.65
-  '@effect/platform-node': 4.0.0-beta.65
-  '@effect/platform-node-shared': 4.0.0-beta.65
-  '@effect/opentelemetry': 4.0.0-beta.65
-  '@effect/sql-sqlite-node': 4.0.0-beta.65
-  '@effect/vitest': 4.0.0-beta.65
+  effect: 4.0.0-beta.70
+  '@effect/ai-openai': 4.0.0-beta.70
+  '@effect/platform-browser': 4.0.0-beta.70
+  '@effect/platform-bun': 4.0.0-beta.70
+  '@effect/platform-node': 4.0.0-beta.70
+  '@effect/platform-node-shared': 4.0.0-beta.70
+  '@effect/opentelemetry': 4.0.0-beta.70
+  '@effect/sql-sqlite-node': 4.0.0-beta.70
+  '@effect/vitest': 4.0.0-beta.70
   react: 19.2.3
   react-dom: 19.2.3
   '@tanstack/router-core': 1.145.7

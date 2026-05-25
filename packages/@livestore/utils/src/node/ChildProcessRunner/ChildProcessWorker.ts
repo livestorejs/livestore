@@ -132,21 +132,21 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
     port.on('messageerror', (cause) => {
       Deferred.doneUnsafe(
         deferred,
-        new WorkerError({ reason: new WorkerReceiveError({ message: 'received messageerror event', cause }) }).asEffect(),
+        Effect.fail(new WorkerError({ reason: new WorkerReceiveError({ message: 'received messageerror event', cause }) })),
       )
     })
     port.on('error', (cause) => {
       Deferred.doneUnsafe(
         deferred,
-        new WorkerError({ reason: new WorkerUnknownError({ message: 'received error event', cause }) }).asEffect(),
+        Effect.fail(new WorkerError({ reason: new WorkerUnknownError({ message: 'received error event', cause }) })),
       )
     })
     port.on('exit', (code) => {
       Deferred.doneUnsafe(
         deferred,
-        new WorkerError({
+        Effect.fail(new WorkerError({
           reason: new WorkerUnknownError({ message: 'worker exited', cause: new Error(`exited with code ${code}`) }),
-        }).asEffect(),
+        })),
       )
     })
     return Effect.void

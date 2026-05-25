@@ -299,7 +299,7 @@ const packPackageForPublish = ({ cwd, pkg, version }: { cwd: string; pkg: string
     const safePackageName = pkg.replaceAll('/', '__').replaceAll('@', '')
     const packDir = `${cwd}/tmp/release-pack/${version}/${safePackageName}`
 
-    yield* fsEffect.remove(packDir, { recursive: true }).pipe(Effect.catchAll(() => Effect.void))
+    yield* fsEffect.remove(packDir, { recursive: true }).pipe(Effect.catch(() => Effect.void))
     yield* fsEffect.makeDirectory(packDir, { recursive: true })
 
     /**

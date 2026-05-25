@@ -60,7 +60,7 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
 
   const makeElectricProvider = ({ storeId }: { storeId: string }) =>
     Effect.suspend(() =>
-      Effect.andThen(SyncProviderImpl.asEffect(), (_) =>
+      Effect.andThen(SyncProviderImpl, (_) =>
         _.makeProvider({
           // Isolated store for each test to avoid conflicts
           storeId,
@@ -78,7 +78,7 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
     Effect.gen(function* () {
       const storeId = `test-store-electric-${test.task.name}-${testId}`
       const syncBackend = yield* makeElectricProvider({ storeId })
-      const provider = yield* Effect.tryPromise(() => runtime.runPromise(SyncProviderImpl.asEffect()))
+      const provider = yield* Effect.tryPromise(() => runtime.runPromise(SyncProviderImpl))
 
       // Push a valid event first
       const eventFactory = EventFactory.makeFactory(events)({
@@ -127,7 +127,7 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
       const storeId = `test-store-electric-${test.task.name}-${testId}`
 
       const syncBackend = yield* makeElectricProvider({ storeId })
-      const provider = yield* Effect.tryPromise(() => runtime.runPromise(SyncProviderImpl.asEffect()))
+      const provider = yield* Effect.tryPromise(() => runtime.runPromise(SyncProviderImpl))
 
       // Push a valid event first
       const eventFactory = EventFactory.makeFactory(events)({

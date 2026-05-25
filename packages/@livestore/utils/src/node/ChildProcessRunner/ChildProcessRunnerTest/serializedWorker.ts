@@ -15,7 +15,7 @@ const WorkerHandlers = WorkerRpcs.toLayer({
     Effect.gen(function* () {
       const protocol = yield* RpcServer.Protocol
       const initialMessage = yield* protocol.initialMessage.pipe(
-        Effect.flatMap((option) => option.asEffect()),
+        Effect.flatMap((option) => Effect.fromOption(option)),
         Effect.flatMap(Schema.decodeUnknownEffect(Schema.toCodecJson(InitialMessage))),
         Effect.orDie,
       )

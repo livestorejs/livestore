@@ -79,7 +79,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
   const makeProvider = (testName?: string, options?: SyncProviderOptions) =>
     Effect.suspend(() =>
-      Effect.andThen(SyncProviderImpl.asEffect(), (_) =>
+      Effect.andThen(SyncProviderImpl, (_) =>
         _.makeProvider(
           {
             // Isolated store for each provider and test to avoid conflicts
@@ -406,7 +406,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
         const fiber = yield* syncBackend.pull(Option.none(), { live: true }).pipe(runFirstNonEmpty, Effect.forkChild)
 
-        const syncProvider = yield* Effect.tryPromise(() => runtime.runPromise(SyncProviderImpl.asEffect()))
+        const syncProvider = yield* Effect.tryPromise(() => runtime.runPromise(SyncProviderImpl))
 
         yield* syncProvider.turnBackendOffline
         yield* Effect.sleep(100)

@@ -37,8 +37,8 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
 
       return { stage: 'running', store } as unknown as LiveStoreContextRunningType
     }),
-    Effect.tapCause((cause) => Effect.flatMap(DeferredStoreContext.asEffect(), (def) => Deferred.failCause(def, cause))),
-    Effect.tap((storeCtx) => Effect.flatMap(DeferredStoreContext.asEffect(), (def) => Deferred.succeed(def, storeCtx))),
+    Effect.tapCause((cause) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.failCause(def, cause))),
+    Effect.tap((storeCtx) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.succeed(def, storeCtx))),
     // This can take quite a while.
     // TODO make this configurable
     Effect.timeout(Duration.minutes(5)),
@@ -282,17 +282,17 @@ const makeStoreTag = <TSchema extends LiveStoreSchema, TStoreId extends string>(
     )
 
     static query<TResult>(query: Queryable<TResult>) {
-      return Effect.map(Tag.asEffect(), ({ store }) => store.query(query))
+      return Effect.map(Tag, ({ store }) => store.query(query))
     }
 
     static commit(...eventInputs: LiveStoreEvent.Input.ForSchema<TSchema>[]) {
-      return Effect.map(Tag.asEffect(), ({ store }) => {
+      return Effect.map(Tag, ({ store }) => {
         store.commit(...eventInputs)
       })
     }
 
     static override use<A, E, R>(f: (ctx: RunningType) => Effect.Effect<A, E, R>) {
-      return Effect.flatMap(Tag.asEffect(), f)
+      return Effect.flatMap(Tag, f)
     }
   }
 

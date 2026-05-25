@@ -43,7 +43,7 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
 
   const makeProvider = (testName?: string) =>
     Effect.suspend(() =>
-      Effect.andThen(SyncProviderImpl.asEffect(), (_) =>
+      Effect.andThen(SyncProviderImpl, (_) =>
         _.makeProvider({
           storeId: `s2-specific-${testName}-${testId}`,
           clientId: 'test-client',
@@ -56,7 +56,7 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
     Effect.gen(function* () {
       // Create a backend with payload to trigger one-time SSE close in proxy
       const storeId = `s2-reconnect-${test.task.name}-${testId}`
-      const provider = yield* SyncProviderImpl.asEffect()
+      const provider = yield* SyncProviderImpl
       const syncBackend = yield* provider.makeProvider({
         storeId,
         clientId: 'test-client',
@@ -91,7 +91,7 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
   Vitest.scopedLive('retries transient append failure', (test) =>
     Effect.gen(function* () {
       const storeId = `s2-retry-append-${test.task.name}-${testId}`
-      const provider = yield* SyncProviderImpl.asEffect()
+      const provider = yield* SyncProviderImpl
       const providerSpecific = provider.providerSpecific as S2Provider.ProviderSpecific
       const syncBackend = yield* provider.makeProvider({ storeId, clientId: 'test-client', payload: undefined })
 
@@ -119,7 +119,7 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
   Vitest.scopedLive('retries transient non-live read failure', (test) =>
     Effect.gen(function* () {
       const storeId = `s2-retry-read-${test.task.name}-${testId}`
-      const provider = yield* SyncProviderImpl.asEffect()
+      const provider = yield* SyncProviderImpl
       const providerSpecific = provider.providerSpecific as S2Provider.ProviderSpecific
       const syncBackend = yield* provider.makeProvider({ storeId, clientId: 'test-client', payload: undefined })
 
@@ -150,7 +150,7 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
       const syncBackend = yield* makeProvider(test.task.name)
 
       // Append raw records via providerSpecific (two valid LiveStore events)
-      const provider = yield* SyncProviderImpl.asEffect()
+      const provider = yield* SyncProviderImpl
       const storeId = `s2-specific-${test.task.name}-${testId}`
       const providerSpecific = provider.providerSpecific as S2Provider.ProviderSpecific
 
