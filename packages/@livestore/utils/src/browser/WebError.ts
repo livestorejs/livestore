@@ -1,5 +1,5 @@
 import './QuotaExceededError.ts'
-import { Either, ParseResult, Predicate, Schema } from 'effect'
+import { Predicate, Schema, SchemaTransformation } from 'effect'
 
 /**
  * Unique identifier for web errors.
@@ -43,9 +43,7 @@ export const isWebError = (u: unknown): u is WebError => Predicate.hasProperty(u
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Evalerror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#exceptiondef-evalerror | Specification}
  */
-export class EvalError extends Schema.TaggedError<EvalError>(
-  `${TypeId}/EvalError`,
-)('EvalError', {
+export class EvalError extends Schema.TaggedErrorClass<EvalError>()('EvalError', {
   cause: Schema.instanceOf(globalThis.EvalError),
 }) {
   readonly [TypeId] = TypeId
@@ -59,9 +57,7 @@ export class EvalError extends Schema.TaggedError<EvalError>(
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Rangeerror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#exceptiondef-rangeerror | Specification}
  */
-export class RangeError extends Schema.TaggedError<RangeError>(
-  `${TypeId}/RangeError`,
-)('RangeError', {
+export class RangeError extends Schema.TaggedErrorClass<RangeError>()('RangeError', {
   cause: Schema.instanceOf(globalThis.RangeError),
 }) {
   readonly [TypeId] = TypeId
@@ -75,9 +71,7 @@ export class RangeError extends Schema.TaggedError<RangeError>(
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Referenceerror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#exceptiondef-referenceerror | Specification}
  */
-export class ReferenceError extends Schema.TaggedError<ReferenceError>(
-  `${TypeId}/ReferenceError`,
-)('ReferenceError', {
+export class ReferenceError extends Schema.TaggedErrorClass<ReferenceError>()('ReferenceError', {
   cause: Schema.instanceOf(globalThis.ReferenceError),
 }) {
   readonly [TypeId] = TypeId
@@ -91,9 +85,7 @@ export class ReferenceError extends Schema.TaggedError<ReferenceError>(
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Typeerror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#exceptiondef-typeerror | Specification}
  */
-export class TypeError extends Schema.TaggedError<TypeError>(
-  `${TypeId}/TypeError`,
-)('TypeError', {
+export class TypeError extends Schema.TaggedErrorClass<TypeError>()('TypeError', {
   cause: Schema.instanceOf(globalThis.TypeError),
 }) {
   readonly [TypeId] = TypeId
@@ -107,9 +99,7 @@ export class TypeError extends Schema.TaggedError<TypeError>(
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/URIerror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#exceptiondef-urierror | Specification}
  */
-export class URIError extends Schema.TaggedError<URIError>(
-  `${TypeId}/URIError`,
-)('URIError', {
+export class URIError extends Schema.TaggedErrorClass<URIError>()('URIError', {
   cause: Schema.instanceOf(globalThis.URIError),
 }) {
   readonly [TypeId] = TypeId
@@ -123,14 +113,10 @@ export class URIError extends Schema.TaggedError<URIError>(
 // [Specification](https://webidl.spec.whatwg.org/#idl-DOMException-derived-predefineds)
 
 const domExceptionWithName = (expectedName: string) =>
-  Schema.instanceOf(DOMException).pipe(
-    Schema.filter((a, options) =>
-      ParseResult.validateEither(
-        Schema.Struct({
-          name: Schema.Literal(expectedName),
-        }),
-      )(a, options).pipe(Either.flip, Either.getOrUndefined),
-    ),
+  Schema.instanceOf(DOMException).check(
+    Schema.makeFilter((error) => error.name === expectedName, {
+      expected: `DOMException with name ${expectedName}`,
+    }),
   )
 
 /**
@@ -141,16 +127,10 @@ const domExceptionWithName = (expectedName: string) =>
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/QuotaExceededError | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#quotaexceedederror | Specification}
  */
-export class QuotaExceededError extends Schema.TaggedError<QuotaExceededError>(
-  `${TypeId}/QuotaExceededError`,
-)('QuotaExceededError', {
-  cause: Schema.Union(
-    typeof globalThis.QuotaExceededError === 'function'
+export class QuotaExceededError extends Schema.TaggedErrorClass<QuotaExceededError>()('QuotaExceededError', {
+  cause: Schema.Union([typeof globalThis.QuotaExceededError === 'function'
       ? Schema.instanceOf(globalThis.QuotaExceededError)
-      : Schema.Never,
-    // Deprecated but still in use in some browsers
-    domExceptionWithName('QuotaExceededError'),
-  ),
+      : Schema.Never, domExceptionWithName('QuotaExceededError')]),
 }) {
   readonly [TypeId] = TypeId
   override get message(): string {
@@ -173,9 +153,7 @@ export class QuotaExceededError extends Schema.TaggedError<QuotaExceededError>(
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#nomodificationallowederror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#nomodificationallowederror | Specification}
  */
-export class NoModificationAllowedError extends Schema.TaggedError<NoModificationAllowedError>(
-  `${TypeId}/NoModificationAllowedError`,
-)('NoModificationAllowedError', {
+export class NoModificationAllowedError extends Schema.TaggedErrorClass<NoModificationAllowedError>()('NoModificationAllowedError', {
   cause: domExceptionWithName('NoModificationAllowedError'),
 }) {
   readonly [TypeId] = TypeId
@@ -192,9 +170,7 @@ export class NoModificationAllowedError extends Schema.TaggedError<NoModificatio
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#notfounderror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#notfounderror | Specification}
  */
-export class NotFoundError extends Schema.TaggedError<NotFoundError>(
-  `${TypeId}/NotFoundError`,
-)('NotFoundError', {
+export class NotFoundError extends Schema.TaggedErrorClass<NotFoundError>()('NotFoundError', {
   cause: domExceptionWithName('NotFoundError'),
 }) {
   readonly [TypeId] = TypeId
@@ -211,9 +187,7 @@ export class NotFoundError extends Schema.TaggedError<NotFoundError>(
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#notallowederror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#notallowederror | Specification}
  */
-export class NotAllowedError extends Schema.TaggedError<NotAllowedError>(
-  `${TypeId}/NotAllowedError`,
-)('NotAllowedError', {
+export class NotAllowedError extends Schema.TaggedErrorClass<NotAllowedError>()('NotAllowedError', {
   cause: domExceptionWithName('NotAllowedError'),
 }) {
   readonly [TypeId] = TypeId
@@ -230,9 +204,7 @@ export class NotAllowedError extends Schema.TaggedError<NotAllowedError>(
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#typemismatcherror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#typemismatcherror | Specification}
  */
-export class TypeMismatchError extends Schema.TaggedError<TypeMismatchError>(
-  `${TypeId}/TypeMismatchError`,
-)('TypeMismatchError', {
+export class TypeMismatchError extends Schema.TaggedErrorClass<TypeMismatchError>()('TypeMismatchError', {
   cause: domExceptionWithName('TypeMismatchError'),
 }) {
   readonly [TypeId] = TypeId
@@ -249,9 +221,7 @@ export class TypeMismatchError extends Schema.TaggedError<TypeMismatchError>(
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#invalidstateerror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#invalidstateerror | Specification}
  */
-export class InvalidStateError extends Schema.TaggedError<InvalidStateError>(
-  `${TypeId}/InvalidStateError`,
-)('InvalidStateError', {
+export class InvalidStateError extends Schema.TaggedErrorClass<InvalidStateError>()('InvalidStateError', {
   cause: domExceptionWithName('InvalidStateError'),
 }) {
   readonly [TypeId] = TypeId
@@ -268,9 +238,7 @@ export class InvalidStateError extends Schema.TaggedError<InvalidStateError>(
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#aborterror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#aborterror | Specification}
  */
-export class AbortError extends Schema.TaggedError<AbortError>(
-  `${TypeId}/AbortError`,
-)('AbortError', {
+export class AbortError extends Schema.TaggedErrorClass<AbortError>()('AbortError', {
   cause: domExceptionWithName('AbortError'),
 }) {
   readonly [TypeId] = TypeId
@@ -287,9 +255,7 @@ export class AbortError extends Schema.TaggedError<AbortError>(
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#invalidmodificationerror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#invalidmodificationerror | Specification}
  */
-export class InvalidModificationError extends Schema.TaggedError<InvalidModificationError>(
-  `${TypeId}/InvalidModificationError`,
-)('InvalidModificationError', {
+export class InvalidModificationError extends Schema.TaggedErrorClass<InvalidModificationError>()('InvalidModificationError', {
   cause: domExceptionWithName('InvalidModificationError'),
 }) {
   readonly [TypeId] = TypeId
@@ -306,9 +272,7 @@ export class InvalidModificationError extends Schema.TaggedError<InvalidModifica
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#securityerror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#securityerror | Specification}
  */
-export class SecurityError extends Schema.TaggedError<SecurityError>(
-  `${TypeId}/SecurityError`,
-)('SecurityError', {
+export class SecurityError extends Schema.TaggedErrorClass<SecurityError>()('SecurityError', {
   cause: domExceptionWithName('SecurityError'),
 }) {
   readonly [TypeId] = TypeId
@@ -325,9 +289,7 @@ export class SecurityError extends Schema.TaggedError<SecurityError>(
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#datacloneerror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#datacloneerror | Specification}
  */
-export class DataCloneError extends Schema.TaggedError<DataCloneError>(
-  `${TypeId}/DataCloneError`,
-)('DataCloneError', {
+export class DataCloneError extends Schema.TaggedErrorClass<DataCloneError>()('DataCloneError', {
   cause: domExceptionWithName('DataCloneError'),
 }) {
   readonly [TypeId] = TypeId
@@ -375,9 +337,7 @@ export class DataCloneError extends Schema.TaggedError<DataCloneError>(
  * )
  * ```
  */
-export class UnknownError extends Schema.TaggedError<UnknownError>(
-  `${TypeId}/UnknownError`,
-)('UnknownError', {
+export class UnknownError extends Schema.TaggedErrorClass<UnknownError>()('UnknownError', {
   module: Schema.optional(Schema.String),
   method: Schema.optional(Schema.String),
   description: Schema.optional(Schema.String),
@@ -467,28 +427,7 @@ export const WebError: Schema.Union<
     // Custom Errors
     typeof UnknownError,
   ]
-> = Schema.Union(
-  // Simple Exception Errors
-  EvalError,
-  RangeError,
-  ReferenceError,
-  TypeError,
-  URIError,
-  // Predefined DOMException Errors
-  QuotaExceededError,
-  // Base DOMException Errors
-  NoModificationAllowedError,
-  NotFoundError,
-  NotAllowedError,
-  TypeMismatchError,
-  InvalidStateError,
-  AbortError,
-  InvalidModificationError,
-  SecurityError,
-  DataCloneError,
-  // Custom Errors
-  UnknownError,
-)
+> = Schema.Union([EvalError, RangeError, ReferenceError, TypeError, URIError, QuotaExceededError, NoModificationAllowedError, NotFoundError, NotAllowedError, TypeMismatchError, InvalidStateError, AbortError, InvalidModificationError, SecurityError, DataCloneError, UnknownError])
 
 /**
  * Constructor type for any `WebError` variant exposed by the schema union.
@@ -504,58 +443,50 @@ type WebErrorConstructor = (typeof WebError.members)[number]
  * This transform handles various web error types and converts them to
  * properly typed WebError instances while preserving the original cause.
  */
-const WebErrorFromUnknown = Schema.transform(Schema.Unknown, WebError, {
-  strict: true,
-  decode: (value) => {
-    // Already a WebError
-    if (isWebError(value) === true) return value
+const webErrorFromUnknown = (value: unknown): WebError => {
+  if (isWebError(value) === true) return value
 
-    // Simple Exception Errors
-    if (value instanceof globalThis.EvalError) return new EvalError({ cause: value })
-    if (value instanceof globalThis.RangeError) return new RangeError({ cause: value })
-    if (value instanceof globalThis.ReferenceError) return new ReferenceError({ cause: value })
-    if (value instanceof globalThis.TypeError) return new TypeError({ cause: value })
-    if (value instanceof globalThis.URIError) return new URIError({ cause: value })
+  if (value instanceof globalThis.EvalError) return new EvalError({ cause: value })
+  if (value instanceof globalThis.RangeError) return new RangeError({ cause: value })
+  if (value instanceof globalThis.ReferenceError) return new ReferenceError({ cause: value })
+  if (value instanceof globalThis.TypeError) return new TypeError({ cause: value })
+  if (value instanceof globalThis.URIError) return new URIError({ cause: value })
 
-    // Predefined DOMException Errors
-    if (typeof globalThis.QuotaExceededError === 'function' && value instanceof globalThis.QuotaExceededError) {
-      return new QuotaExceededError({ cause: value })
+  if (typeof globalThis.QuotaExceededError === 'function' && value instanceof globalThis.QuotaExceededError) {
+    return new QuotaExceededError({ cause: value })
+  }
+
+  if (value instanceof DOMException) {
+    switch (value.name) {
+      case 'QuotaExceededError':
+        return new QuotaExceededError({ cause: value })
+      case 'NoModificationAllowedError':
+        return new NoModificationAllowedError({ cause: value })
+      case 'NotFoundError':
+        return new NotFoundError({ cause: value })
+      case 'NotAllowedError':
+        return new NotAllowedError({ cause: value })
+      case 'TypeMismatchError':
+        return new TypeMismatchError({ cause: value })
+      case 'InvalidStateError':
+        return new InvalidStateError({ cause: value })
+      case 'AbortError':
+        return new AbortError({ cause: value })
+      case 'InvalidModificationError':
+        return new InvalidModificationError({ cause: value })
+      case 'SecurityError':
+        return new SecurityError({ cause: value })
+      case 'DataCloneError':
+        return new DataCloneError({ cause: value })
+      default:
+        break
     }
+  }
 
-    // Base DOMException Errors
-    if (value instanceof DOMException) {
-      switch (value.name) {
-        case 'QuotaExceededError':
-          return new QuotaExceededError({ cause: value })
-        case 'NoModificationAllowedError':
-          return new NoModificationAllowedError({ cause: value })
-        case 'NotFoundError':
-          return new NotFoundError({ cause: value })
-        case 'NotAllowedError':
-          return new NotAllowedError({ cause: value })
-        case 'TypeMismatchError':
-          return new TypeMismatchError({ cause: value })
-        case 'InvalidStateError':
-          return new InvalidStateError({ cause: value })
-        case 'AbortError':
-          return new AbortError({ cause: value })
-        case 'InvalidModificationError':
-          return new InvalidModificationError({ cause: value })
-        case 'SecurityError':
-          return new SecurityError({ cause: value })
-        case 'DataCloneError':
-          return new DataCloneError({ cause: value })
-        default:
-          break
-      }
-    }
+  if (value instanceof Error) return new UnknownError({ description: value.message, cause: value })
 
-    if (value instanceof Error) return new UnknownError({ description: value.message, cause: value })
-
-    return new UnknownError({ cause: value })
-  },
-  encode: (webError) => webError,
-})
+  return new UnknownError({ cause: value })
+}
 
 /**
  * Parses an unknown value into a typed WebError instance.
@@ -602,11 +533,13 @@ export function parseWebError<BECs extends readonly WebErrorConstructor[]>(
   expected: BECs,
 ): InstanceType<BECs[number]> | UnknownError
 export function parseWebError(value: unknown, expected: readonly WebErrorConstructor[] = []): WebError {
-  const parsed = Schema.decodeUnknownSync(WebErrorFromUnknown)(value)
+  const parsed = webErrorFromUnknown(value)
 
   if (expected.length === 0) return parsed
 
-  const expectedTags = new Set(expected.map((ErrorConstructor) => ErrorConstructor._tag))
+  const expectedTags = new Set(
+    expected.map((ErrorConstructor) => (ErrorConstructor as { _tag?: string; key?: string })._tag ?? ErrorConstructor.name),
+  )
   if (expectedTags.has(parsed._tag) === true) return parsed
 
   return parsed instanceof UnknownError ? parsed : new UnknownError({ cause: parsed })

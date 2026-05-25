@@ -40,7 +40,7 @@ export class SqliteDbWrapper implements SqliteDb {
   private db: SqliteDb
   private otelTracer: otel.Tracer
   private otelRootSpanContext: otel.Context
-  private tablesUsedStmt
+  private tablesUsedStmt: PreparedStatement
   public debugInfo: MutableDebugInfo = emptyDebugInfo()
 
   constructor({

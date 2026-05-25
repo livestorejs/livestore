@@ -14,7 +14,7 @@ import {
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
-import type { Effect, Runtime, Schema, Scope } from '@livestore/utils/effect'
+import type { Context, Effect, Schema, Scope } from '@livestore/utils/effect'
 import { Deferred, Predicate } from '@livestore/utils/effect'
 
 import type {
@@ -115,14 +115,14 @@ export type StoreInternals = {
   readonly sqliteDbWrapper: SqliteDbWrapper
 
   /**
-   * Effect runtime and scope used to fork background fibers for the Store.
+   * Effect context and scope used to fork background fibers for the Store.
    *
-   * - `runtime` executes effects from imperative Store APIs.
+   * - `context` executes effects from imperative Store APIs.
    * - `lifetimeScope` owns forked fibers; closed during Store shutdown.
    */
   readonly effectContext: {
-    /** Effect runtime to run Store effects with proper environment. */
-    readonly runtime: Runtime.Runtime<Scope.Scope>
+    /** Effect context to run Store effects with proper environment. */
+    readonly context: Context.Context<Scope.Scope>
     /** Scope that owns all long‑lived fibers spawned by the Store. */
     readonly lifetimeScope: Scope.Scope
   }
@@ -189,7 +189,7 @@ export type StoreConstructorParams<TSchema extends LiveStoreSchema = LiveStoreSc
   context: TContext
   otelOptions: OtelOptions
   effectContext: {
-    runtime: Runtime.Runtime<Scope.Scope>
+    context: Context.Context<Scope.Scope>
     lifetimeScope: Scope.Scope
   }
   confirmUnsavedChanges: boolean

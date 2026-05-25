@@ -19,11 +19,9 @@ export type ChannelName = string
 export type ChannelKey = `target:${MeshNodeName}, channelName:${ChannelName}`
 
 // TODO actually use this to avoid timeouts in certain cases
-// export class NoConnectionRouteSignal extends Schema.TaggedError<NoConnectionRouteSignal>(
-//   '~@livestore/webmesh/NoConnectionRouteSignal',
-// )('NoConnectionRouteSignal', {}) {}
+// export class NoConnectionRouteSignal extends Schema.TaggedErrorClass<NoConnectionRouteSignal>()('NoConnectionRouteSignal', {}) {}
 
-export class EdgeAlreadyExistsError extends Schema.TaggedError<EdgeAlreadyExistsError>('~@livestore/webmesh/EdgeAlreadyExistsError')('EdgeAlreadyExistsError', {
+export class EdgeAlreadyExistsError extends Schema.TaggedErrorClass<EdgeAlreadyExistsError>()('EdgeAlreadyExistsError', {
   target: Schema.String,
 }) {}
 
@@ -40,7 +38,7 @@ export const packetAsOtelAttributes = (packet: typeof Packet.Type) => ({
 export const ListenForChannelResult = Schema.Struct({
   channelName: Schema.String,
   source: Schema.String,
-  mode: Schema.Literal('proxy', 'direct'),
+  mode: Schema.Literals(['proxy', 'direct']),
 })
 
 export type ListenForChannelResult = typeof ListenForChannelResult.Type

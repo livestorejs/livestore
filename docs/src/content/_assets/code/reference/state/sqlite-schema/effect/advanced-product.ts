@@ -5,7 +5,7 @@ const ProductSchema = Schema.Struct({
   sku: Schema.String.pipe(State.SQLite.withUnique),
   name: Schema.String,
   price: Schema.Number.pipe(State.SQLite.withDefault(0)),
-  category: Schema.Literal('electronics', 'clothing', 'books'),
+  category: Schema.Literals(['electronics', 'clothing', 'books']),
   metadata: Schema.optional(
     Schema.Struct({
       weight: Schema.Number,
@@ -18,6 +18,6 @@ const ProductSchema = Schema.Struct({
   ),
   isActive: Schema.Boolean.pipe(State.SQLite.withDefault(true)),
   createdAt: Schema.Date.pipe(State.SQLite.withDefault('CURRENT_TIMESTAMP')),
-}).annotations({ title: 'products' })
+}).annotate({ title: 'products' })
 
 export const productTable = State.SQLite.table({ schema: ProductSchema })

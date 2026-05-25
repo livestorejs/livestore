@@ -11,7 +11,7 @@ import { Opfs, type WebError } from '@livestore/utils/effect/browser'
 
 import type * as WorkerSchema from './worker-schema.ts'
 
-export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>('~@livestore/adapter-web/PersistedSqliteError')('PersistedSqliteError', {
+export class PersistedSqliteError extends Schema.TaggedErrorClass<PersistedSqliteError>()('PersistedSqliteError', {
   message: Schema.String,
   cause: Schema.optional(Schema.Defect),
 }) {}
@@ -40,21 +40,22 @@ export const readPersistedStateDbFromClientSession: (args: {
 
     const stateDbFileName = `/${getStateDbFileName(schema)}`
 
-    const handlesStream = yield* Opfs.Opfs.values(accessHandlePoolDirHandle)
+    const handlesStream = yield* Opfs.values(accessHandlePoolDirHandle)
 
-    const stateDbFileOption = yield* handlesStream.pipe(
+    const stateDbFileOption = Option.fromNullishOr(
+      (yield* handlesStream.pipe(
       Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
       Stream.mapEffect(
         (fileHandle) =>
           Effect.gen(function* () {
-            const file = yield* Opfs.Opfs.getFile(fileHandle)
+            const file = yield* Opfs.getFile(fileHandle)
             const fileName = yield* Effect.promise(() => decodeAccessHandlePoolFilename(file))
             return { file, fileName }
           }),
         { concurrency: 'unbounded' },
       ),
-      Stream.find(({ fileName }) => fileName === stateDbFileName),
-      Stream.runHead,
+        Stream.runCollect,
+      )).find(({ fileName }) => fileName === stateDbFileName),
     )
 
     if (Option.isNone(stateDbFileOption) === true) {
@@ -243,22 +244,21 @@ const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDire
   keep: number
 }) {
   const archiveDirHandle = yield* Opfs.getDirectoryHandleByPath(archiveDirectory)
-  const handlesStream = yield* Opfs.Opfs.values(archiveDirHandle)
+  const handlesStream = yield* Opfs.values(archiveDirHandle)
   const filesWithMetadata = yield* handlesStream.pipe(
     Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
     Stream.mapEffect((fileHandle) => Opfs.getMetadata(fileHandle)),
     Stream.runCollect,
   )
-  const filesToDelete = filesWithMetadata.pipe(
-    // oxlint-disable-next-line unicorn/no-array-sort -- false positive: Effect Chunk.sort is immutable, not Array#sort (https://github.com/oxc-project/oxc/issues/19110)
-    Chunk.sort(Order.mapInput(Order.number, (entry: { lastModified: number }) => entry.lastModified)),
+  const filesToDelete = Chunk.fromIterable(filesWithMetadata).pipe(
+    Chunk.sort(Order.mapInput(Order.Number, (entry: { lastModified: number }) => entry.lastModified)),
     Chunk.drop(keep),
     Chunk.toReadonlyArray,
   )
 
   if (filesToDelete.length === 0) return
 
-  yield* Effect.forEach(filesToDelete, ({ name }) => Opfs.Opfs.removeEntry(archiveDirHandle, name))
+  yield* Effect.forEach(filesToDelete, ({ name }) => Opfs.removeEntry(archiveDirHandle, name))
 
   yield* Effect.logDebug(`Pruned ${filesToDelete.length} old database file(s) from archive directory`)
 })

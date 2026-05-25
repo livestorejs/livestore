@@ -10,20 +10,21 @@ import {
   HttpClientError,
   HttpClientRequest,
   HttpClientResponse,
-  type ParseResult,
+  type SchemaIssue,
   Schema as S,
 } from '@livestore/utils/effect'
 
-export class ListAccessTokensParams extends S.Struct({
+export const ListAccessTokensParams = S.Struct({
   prefix: S.optionalWith(S.String, { nullable: true, default: () => '' as const }),
   start_after: S.optionalWith(S.String, { nullable: true, default: () => '' as const }),
   limit: S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1000)), {
     nullable: true,
     default: () => 1000 as const,
   }),
-}) {}
+})
+export type ListAccessTokensParams = typeof ListAccessTokensParams.Type
 
-export class ResourceSet extends S.Union(
+export const ResourceSet = S.Union([
   /**
    * Match only the resource with this exact name.
    * Use an empty string to match no resources.
@@ -46,7 +47,8 @@ export class ResourceSet extends S.Union(
      */
     prefix: S.String,
   }),
-) {}
+])
+export type ResourceSet = typeof ResourceSet.Type
 
 export class ReadWritePermissions extends S.Class<ReadWritePermissions>('ReadWritePermissions')({
   /**
@@ -65,7 +67,7 @@ export class PermittedOperationGroups extends S.Class<PermittedOperationGroups>(
   stream: S.optionalWith(ReadWritePermissions, { nullable: true }),
 }) {}
 
-export class Operation extends S.Literal(
+export const Operation = S.Literals([
   'list-basins',
   'create-basin',
   'delete-basin',
@@ -87,7 +89,8 @@ export class Operation extends S.Literal(
   'account-metrics',
   'basin-metrics',
   'stream-metrics',
-) {}
+])
+export type Operation = typeof Operation.Type
 
 export class AccessTokenScope extends S.Class<AccessTokenScope>('AccessTokenScope')({
   access_tokens: S.optionalWith(ResourceSet, { nullable: true }),
@@ -146,18 +149,21 @@ export class IssueAccessTokenResponse extends S.Class<IssueAccessTokenResponse>(
   access_token: S.String,
 }) {}
 
-export class ListBasinsParams extends S.Struct({
+export const ListBasinsParams = S.Struct({
   prefix: S.optionalWith(S.String, { nullable: true, default: () => '' as const }),
   start_after: S.optionalWith(S.String, { nullable: true, default: () => '' as const }),
   limit: S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1000)), {
     nullable: true,
     default: () => 1000 as const,
   }),
-}) {}
+})
+export type ListBasinsParams = typeof ListBasinsParams.Type
 
-export class BasinScope extends S.Literal('aws:us-east-1') {}
+export const BasinScope = S.Literal('aws:us-east-1')
+export type BasinScope = typeof BasinScope.Type
 
-export class BasinState extends S.Literal('active', 'creating', 'deleting') {}
+export const BasinState = S.Literals(['active', 'creating', 'deleting'])
+export type BasinState = typeof BasinState.Type
 
 export class BasinInfo extends S.Class<BasinInfo>('BasinInfo')({
   /**
@@ -193,9 +199,10 @@ export class DeleteOnEmptyConfig extends S.Class<DeleteOnEmptyConfig>('DeleteOnE
   min_age_secs: S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
 }) {}
 
-export class InfiniteRetention extends S.Record({ key: S.String, value: S.Unknown }) {}
+export const InfiniteRetention = S.Record(S.String, S.Unknown)
+export type InfiniteRetention = typeof InfiniteRetention.Type
 
-export class RetentionPolicy extends S.Union(
+export const RetentionPolicy = S.Union([
   /**
    * Age in seconds for automatic trimming of records older than this threshold.
    * This must be set to a value greater than 0 seconds.
@@ -218,11 +225,14 @@ export class RetentionPolicy extends S.Union(
      */
     infinite: InfiniteRetention,
   }),
-) {}
+])
+export type RetentionPolicy = typeof RetentionPolicy.Type
 
-export class StorageClass extends S.Literal('standard', 'express') {}
+export const StorageClass = S.Literals(['standard', 'express'])
+export type StorageClass = typeof StorageClass.Type
 
-export class TimestampingMode extends S.Literal('client-prefer', 'client-require', 'arrival') {}
+export const TimestampingMode = S.Literals(['client-prefer', 'client-require', 'arrival'])
+export type TimestampingMode = typeof TimestampingMode.Type
 
 export class TimestampingConfig extends S.Class<TimestampingConfig>('TimestampingConfig')({
   mode: S.optionalWith(TimestampingMode, { nullable: true }),
@@ -266,12 +276,13 @@ export class CreateBasinRequest extends S.Class<CreateBasinRequest>('CreateBasin
   scope: S.optionalWith(BasinScope, { nullable: true, default: () => 'aws:us-east-1' as const }),
 }) {}
 
-export class CreateOrReconfigureBasinParams extends S.Struct({
+export const CreateOrReconfigureBasinParams = S.Struct({
   's2-request-token': S.optionalWith(S.String, { nullable: true }),
-}) {}
+})
+export type CreateOrReconfigureBasinParams = typeof CreateOrReconfigureBasinParams.Type
 
-export class CreateOrReconfigureBasinRequest extends S.Union(S.Null) {}
-// export class CreateOrReconfigureBasinRequest extends S.Union(S.Null, CreateOrReconfigureBasinRequest) {}
+export const CreateOrReconfigureBasinRequest = S.Null
+export type CreateOrReconfigureBasinRequest = typeof CreateOrReconfigureBasinRequest.Type
 
 export class DeleteOnEmptyReconfiguration extends S.Class<DeleteOnEmptyReconfiguration>('DeleteOnEmptyReconfiguration')(
   {
@@ -310,18 +321,22 @@ export class BasinReconfiguration extends S.Class<BasinReconfiguration>('BasinRe
   default_stream_config: S.optionalWith(StreamReconfiguration, { nullable: true }),
 }) {}
 
-export class AccountMetricSet extends S.Literal('active-basins', 'account-ops') {}
+export const AccountMetricSet = S.Literals(['active-basins', 'account-ops'])
+export type AccountMetricSet = typeof AccountMetricSet.Type
 
-export class TimeseriesInterval extends S.Literal('minute', 'hour', 'day') {}
+export const TimeseriesInterval = S.Literals(['minute', 'hour', 'day'])
+export type TimeseriesInterval = typeof TimeseriesInterval.Type
 
-export class AccountMetricsParams extends S.Struct({
+export const AccountMetricsParams = S.Struct({
   set: AccountMetricSet,
   start: S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
   end: S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
   interval: S.optionalWith(TimeseriesInterval, { nullable: true }),
-}) {}
+})
+export type AccountMetricsParams = typeof AccountMetricsParams.Type
 
-export class MetricUnit extends S.Literal('bytes', 'operations') {}
+export const MetricUnit = S.Literals(['bytes', 'operations'])
+export type MetricUnit = typeof MetricUnit.Type
 
 export class Scalar extends S.Class<Scalar>('Scalar')({
   /**
@@ -375,7 +390,7 @@ export class Label extends S.Class<Label>('Label')({
   values: S.Array(S.String),
 }) {}
 
-export class Metric extends S.Union(
+export const Metric = S.Union([
   /**
    * Single named value.
    */
@@ -414,7 +429,8 @@ export class Metric extends S.Union(
      */
     label: Label,
   }),
-) {}
+])
+export type Metric = typeof Metric.Type
 
 export class MetricSetResponse extends S.Class<MetricSetResponse>('MetricSetResponse')({
   /**
@@ -423,39 +439,44 @@ export class MetricSetResponse extends S.Class<MetricSetResponse>('MetricSetResp
   values: S.Array(Metric),
 }) {}
 
-export class BasinMetricSet extends S.Literal(
+export const BasinMetricSet = S.Literals([
   'storage',
   'append-ops',
   'read-ops',
   'read-throughput',
   'append-throughput',
   'basin-ops',
-) {}
+])
+export type BasinMetricSet = typeof BasinMetricSet.Type
 
-export class BasinMetricsParams extends S.Struct({
+export const BasinMetricsParams = S.Struct({
   set: BasinMetricSet,
   start: S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
   end: S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
   interval: S.optionalWith(TimeseriesInterval, { nullable: true }),
-}) {}
+})
+export type BasinMetricsParams = typeof BasinMetricsParams.Type
 
-export class StreamMetricSet extends S.Literal('storage') {}
+export const StreamMetricSet = S.Literal('storage')
+export type StreamMetricSet = typeof StreamMetricSet.Type
 
-export class StreamMetricsParams extends S.Struct({
+export const StreamMetricsParams = S.Struct({
   set: StreamMetricSet,
   start: S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
   end: S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
   interval: S.optionalWith(TimeseriesInterval, { nullable: true }),
-}) {}
+})
+export type StreamMetricsParams = typeof StreamMetricsParams.Type
 
-export class ListStreamsParams extends S.Struct({
+export const ListStreamsParams = S.Struct({
   prefix: S.optionalWith(S.String, { nullable: true, default: () => '' as const }),
   start_after: S.optionalWith(S.String, { nullable: true, default: () => '' as const }),
   limit: S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0), S.lessThanOrEqualTo(1000)), {
     nullable: true,
     default: () => 1000 as const,
   }),
-}) {}
+})
+export type ListStreamsParams = typeof ListStreamsParams.Type
 
 export class StreamInfo extends S.Class<StreamInfo>('StreamInfo')({
   /**
@@ -492,17 +513,21 @@ export class CreateStreamRequest extends S.Class<CreateStreamRequest>('CreateStr
   stream: S.String,
 }) {}
 
-export class CreateOrReconfigureStreamParams extends S.Struct({
+export const CreateOrReconfigureStreamParams = S.Struct({
   's2-request-token': S.optionalWith(S.String, { nullable: true }),
-}) {}
+})
+export type CreateOrReconfigureStreamParams = typeof CreateOrReconfigureStreamParams.Type
 
-export class CreateOrReconfigureStreamRequest extends S.Union(S.Null, StreamConfig) {}
+export const CreateOrReconfigureStreamRequest = S.Union([S.Null, StreamConfig])
+export type CreateOrReconfigureStreamRequest = typeof CreateOrReconfigureStreamRequest.Type
 
-export class S2Format extends S.Literal('raw', 'base64') {}
+export const S2Format = S.Literals(['raw', 'base64'])
+export type S2Format = typeof S2Format.Type
 
-export class U64 extends S.Int.pipe(S.greaterThanOrEqualTo(0)) {}
+export const U64 = S.Int.pipe(S.greaterThanOrEqualTo(0))
+export type U64 = typeof U64.Type
 
-export class ReadParams extends S.Struct({
+export const ReadParams = S.Struct({
   's2-format': S.optionalWith(S2Format, { nullable: true }),
   seq_num: S.optionalWith(U64, { nullable: true }),
   timestamp: S.optionalWith(U64, { nullable: true }),
@@ -511,14 +536,16 @@ export class ReadParams extends S.Struct({
   bytes: S.optionalWith(S.Int.pipe(S.greaterThanOrEqualTo(0)), { nullable: true }),
   until: S.optionalWith(U64, { nullable: true }),
   clamp: S.optionalWith(S.Boolean, { nullable: true }),
-}) {}
+})
+export type ReadParams = typeof ReadParams.Type
 
 /**
  * Headers add structured information to a record as name-value pairs.
  *
  * The name cannot be empty, with the exception of an S2 command record.
  */
-export class Header extends S.NonEmptyArray(S.String).pipe(S.minItems(2), S.maxItems(2)) {}
+export const Header = S.NonEmptyArray(S.String).pipe(S.minItems(2), S.maxItems(2))
+export type Header = typeof Header.Type
 
 /**
  * Record that is durably sequenced on a stream.
@@ -573,9 +600,10 @@ export class TailResponse extends S.Class<TailResponse>('TailResponse')({
   tail: StreamPosition,
 }) {}
 
-export class AppendParams extends S.Struct({
+export const AppendParams = S.Struct({
   's2-format': S.optionalWith(S2Format, { nullable: true }),
-}) {}
+})
+export type AppendParams = typeof AppendParams.Type
 
 /**
  * Record to be appended to a stream.
@@ -631,7 +659,7 @@ export class AppendAck extends S.Class<AppendAck>('AppendAck')({
 /**
  * Aborted due to a failed condition.
  */
-export class AppendConditionFailed extends S.Union(
+export const AppendConditionFailed = S.Union([
   /**
    * Fencing token did not match.
    * The expected fencing token is returned.
@@ -654,7 +682,8 @@ export class AppendConditionFailed extends S.Union(
      */
     seq_num_mismatch: S.Int.pipe(S.greaterThanOrEqualTo(0)),
   }),
-) {}
+])
+export type AppendConditionFailed = typeof AppendConditionFailed.Type
 
 export const make = (
   httpClient: HttpClient.HttpClient,
@@ -667,23 +696,22 @@ export const make = (
       Effect.orElseSucceed(response.json, () => 'Unexpected status code'),
       (description) =>
         Effect.fail(
-          new HttpClientError.ResponseError({
+          new HttpClientError.StatusCodeError({
             request: response.request,
             response,
-            reason: 'StatusCode',
             description: typeof description === 'string' ? description : JSON.stringify(description),
           }),
         ),
     )
-  const withResponse: <A, E>(
-    f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<A, E>,
-  ) => (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> = options.transformClient !== undefined
+  const withResponse: <A, E, R>(
+    f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<A, E, R>,
+  ) => (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any, never> = options.transformClient !== undefined
     ? (f) => (request) =>
         Effect.flatMap(
           Effect.flatMap(options.transformClient!(httpClient), (client) => client.execute(request)),
           f,
-        )
-    : (f) => (request) => Effect.flatMap(httpClient.execute(request), f)
+        ) as Effect.Effect<any, any, never>
+    : (f) => (request) => Effect.flatMap(httpClient.execute(request), f) as Effect.Effect<any, any, never>
   const decodeSuccess =
     <A, I, R>(schema: S.Schema<A, I, R>) =>
     (response: HttpClientResponse.HttpClientResponse) =>
@@ -716,7 +744,7 @@ export const make = (
     issueAccessToken: (options) =>
       // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.post(`/access-tokens`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
+        HttpClientRequest.bodyJsonUnsafe(options),
         withResponse(
           HttpClientResponse.matchStatus({
             '2xx': decodeSuccess(IssueAccessTokenResponse),
@@ -729,7 +757,7 @@ export const make = (
       ),
     revokeAccessToken: (id) =>
       // @effect-diagnostics-next-line anyUnknownInErrorContext:off
-      HttpClientRequest.del(`/access-tokens/${id}`).pipe(
+      HttpClientRequest.delete(`/access-tokens/${id}`).pipe(
         withResponse(
           HttpClientResponse.matchStatus({
             '400': decodeError('ErrorResponse', ErrorResponse),
@@ -759,7 +787,7 @@ export const make = (
     createBasin: (options) =>
       // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.post(`/basins`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
+        HttpClientRequest.bodyJsonUnsafe(options),
         withResponse(
           HttpClientResponse.matchStatus({
             '200': decodeSuccess(BasinInfo),
@@ -789,7 +817,7 @@ export const make = (
       // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.put(`/basins/${basin}`).pipe(
         HttpClientRequest.setHeaders({ 's2-request-token': options.params?.['s2-request-token'] ?? undefined }),
-        HttpClientRequest.bodyUnsafeJson(options.payload),
+        HttpClientRequest.bodyJsonUnsafe(options.payload),
         withResponse(
           HttpClientResponse.matchStatus({
             '200': decodeSuccess(BasinInfo),
@@ -802,7 +830,7 @@ export const make = (
       ),
     deleteBasin: (basin) =>
       // @effect-diagnostics-next-line anyUnknownInErrorContext:off
-      HttpClientRequest.del(`/basins/${basin}`).pipe(
+      HttpClientRequest.delete(`/basins/${basin}`).pipe(
         withResponse(
           HttpClientResponse.matchStatus({
             '400': decodeError('ErrorResponse', ErrorResponse),
@@ -817,7 +845,7 @@ export const make = (
     reconfigureBasin: (basin, options) =>
       // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.patch(`/basins/${basin}`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
+        HttpClientRequest.bodyJsonUnsafe(options),
         withResponse(
           HttpClientResponse.matchStatus({
             '2xx': decodeSuccess(BasinConfig),
@@ -903,7 +931,7 @@ export const make = (
     createStream: (options) =>
       // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.post(`/streams`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
+        HttpClientRequest.bodyJsonUnsafe(options),
         withResponse(
           HttpClientResponse.matchStatus({
             '2xx': decodeSuccess(StreamInfo),
@@ -933,7 +961,7 @@ export const make = (
       // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.put(`/streams/${stream}`).pipe(
         HttpClientRequest.setHeaders({ 's2-request-token': options.params?.['s2-request-token'] ?? undefined }),
-        HttpClientRequest.bodyUnsafeJson(options.payload),
+        HttpClientRequest.bodyJsonUnsafe(options.payload),
         withResponse(
           HttpClientResponse.matchStatus({
             '2xx': decodeSuccess(StreamInfo),
@@ -948,7 +976,7 @@ export const make = (
       ),
     deleteStream: (stream) =>
       // @effect-diagnostics-next-line anyUnknownInErrorContext:off
-      HttpClientRequest.del(`/streams/${stream}`).pipe(
+      HttpClientRequest.delete(`/streams/${stream}`).pipe(
         withResponse(
           HttpClientResponse.matchStatus({
             '400': decodeError('ErrorResponse', ErrorResponse),
@@ -962,7 +990,7 @@ export const make = (
     reconfigureStream: (stream, options) =>
       // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.patch(`/streams/${stream}`).pipe(
-        HttpClientRequest.bodyUnsafeJson(options),
+        HttpClientRequest.bodyJsonUnsafe(options),
         withResponse(
           HttpClientResponse.matchStatus({
             '2xx': decodeSuccess(StreamConfig),
@@ -1004,7 +1032,7 @@ export const make = (
       // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.post(`/streams/${stream}/records`).pipe(
         HttpClientRequest.setHeaders({ 's2-format': options.params?.['s2-format'] ?? undefined }),
-        HttpClientRequest.bodyUnsafeJson(options.payload),
+        HttpClientRequest.bodyJsonUnsafe(options.payload),
         withResponse(
           HttpClientResponse.matchStatus({
             '2xx': decodeSuccess(AppendAck),
@@ -1046,7 +1074,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof ListAccessTokensResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
   >
@@ -1058,7 +1086,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof IssueAccessTokenResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1071,7 +1099,7 @@ export interface Client {
   ) => Effect.Effect<
     void,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
   >
@@ -1083,7 +1111,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof ListBasinsResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
   >
@@ -1095,7 +1123,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof BasinInfo.Type  ,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1109,7 +1137,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof BasinConfig.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1125,7 +1153,7 @@ export interface Client {
     },
   ) => Effect.Effect<
     typeof BasinInfo.Type  ,
-    HttpClientError.HttpClientError | ParseResult.ParseError | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+    HttpClientError.HttpClientError | SchemaIssue.Issue | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
   >
   /**
    * Delete a basin.
@@ -1135,7 +1163,7 @@ export interface Client {
   ) => Effect.Effect<
     void,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1150,7 +1178,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof BasinConfig.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1163,7 +1191,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof MetricSetResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
   >
@@ -1176,7 +1204,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof MetricSetResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
   >
@@ -1190,7 +1218,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof MetricSetResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
   >
@@ -1202,7 +1230,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof ListStreamsResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1215,7 +1243,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof StreamInfo.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1229,7 +1257,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof StreamConfig.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1247,7 +1275,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof StreamInfo.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1261,7 +1289,7 @@ export interface Client {
   ) => Effect.Effect<
     void,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1275,7 +1303,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof StreamConfig.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1290,7 +1318,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof ReadBatch.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1310,7 +1338,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof AppendAck.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1326,7 +1354,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof TailResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      

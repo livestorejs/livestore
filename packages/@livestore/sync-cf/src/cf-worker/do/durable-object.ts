@@ -9,11 +9,10 @@ import {
   FetchHttpClient,
   Layer,
   Logger,
-  LogLevel,
   Otlp,
+  References,
   RpcMessage,
   Schema,
-  type Scope,
 } from '@livestore/utils/effect'
 
 import {
@@ -24,7 +23,7 @@ import {
   type SyncBackendRpcInterface,
   WebSocketAttachmentSchema,
 } from '../shared.ts'
-import { DoCtx } from './layer.ts'
+import { layer as doCtxLayer } from './layer.ts'
 import { createDoRpcHandler } from './transport/do-rpc-server.ts'
 import { createHttpRpcHandler } from './transport/http-rpc-server.ts'
 import { makeRpcServer } from './transport/ws-rpc-server.ts'
@@ -120,7 +119,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
             if (request._tag === 'Request' && request.tag === 'SyncWsRpc.Pull') {
               // Is Pull request: add requestId to pullRequestIds
               const attachment = ws.deserializeAttachment()
-              const { pullRequestIds, ...rest } = Schema.decodeSync(WebSocketAttachmentSchema)(attachment)
+              const { pullRequestIds, ...rest } = Schema.decodeSync(WebSocketAttachmentSchema as any)(attachment) as typeof WebSocketAttachmentSchema.Type
               ws.serializeAttachment(
                 Schema.encodeSync(WebSocketAttachmentSchema)({
                   ...rest,
@@ -130,11 +129,11 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
             } else if (request._tag === 'Interrupt') {
               // Is Interrupt request: remove requestId from pullRequestIds
               const attachment = ws.deserializeAttachment()
-              const { pullRequestIds, ...rest } = Schema.decodeSync(WebSocketAttachmentSchema)(attachment)
+              const { pullRequestIds, ...rest } = Schema.decodeSync(WebSocketAttachmentSchema as any)(attachment) as typeof WebSocketAttachmentSchema.Type
               ws.serializeAttachment(
                 Schema.encodeSync(WebSocketAttachmentSchema)({
                   ...rest,
-                  pullRequestIds: pullRequestIds.filter((id) => id !== request.requestId),
+                  pullRequestIds: pullRequestIds.filter((id: string) => id !== request.requestId),
                 }),
               )
               // TODO also emit `Exit` stream RPC message
@@ -146,7 +145,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     }
 
     override fetch = async (request: Request): Promise<Response> =>
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const searchParams = matchSyncRequest(request)
         if (searchParams === undefined) {
           throw new Error('No search params found in request URL')
@@ -200,11 +199,11 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         })
       }).pipe(
         Effect.tapCauseLogPretty, // Also log errors to console before catching them
-        Effect.catchAllCause((cause) =>
+        Effect.catchCause((cause) =>
           Effect.succeed(new Response('Error', { status: 500, statusText: cause.toString() })),
         ),
         Effect.withSpan('@livestore/sync-cf:durable-object:fetch'),
-        Effect.provide(DoCtx.Default({ doSelf: this, doOptions: options, from: request })),
+        Effect.provide(doCtxLayer({ doSelf: this, doOptions: options, from: request })),
         this.runEffectAsPromise,
       )
 
@@ -234,13 +233,13 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         ...(forwardedHeaders !== undefined ? { forwardedHeaders } : {}),
       }).pipe(Effect.withSpan('@livestore/sync-cf:durable-object:handleHttp'))
 
-    private runEffectAsPromise = <T, E = never>(effect: Effect.Effect<T, E, Scope.Scope>): Promise<T> =>
+    private runEffectAsPromise = <T, E = never>(effect: Effect.Effect<T, E, unknown>): Promise<T> =>
       effect.pipe(
         Effect.tapCauseLogPretty,
-        Logger.withMinimumLogLevel(LogLevel.Debug),
+        Effect.provideService(References.MinimumLogLevel, 'Debug'),
         Effect.provide(Layer.mergeAll(Observability, Logging)),
         Effect.scoped,
-        Effect.runPromise,
+        (_) => Effect.runPromise(_ as Effect.Effect<T, E>),
       )
   }
 }

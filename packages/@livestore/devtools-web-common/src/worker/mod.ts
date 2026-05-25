@@ -3,14 +3,13 @@ import { Context, Effect, Layer, Stream, WebChannel } from '@livestore/utils/eff
 import type { MeshNode } from '@livestore/webmesh'
 import { makeMeshNode, WebmeshSchema } from '@livestore/webmesh'
 
-import type * as SharedWorkerSchema from './schema.ts'
 
 export * as Schema from './schema.ts'
 
-export class CacheService extends Context.Tag('@livestore/devtools-web-common:CacheService')<
+export class CacheService extends Context.Service<
   CacheService,
   { node: MeshNode }
->() {
+>()('@livestore/devtools-web-common:CacheService') {
   static layer = ({ nodeName }: { nodeName: string }) =>
     Effect.gen(function* () {
       const node = yield* makeMeshNode(nodeName)
@@ -18,12 +17,11 @@ export class CacheService extends Context.Tag('@livestore/devtools-web-common:Ca
       globalThis.__debugWebmeshNode = node
 
       return { node }
-    }).pipe(Layer.scoped(CacheService))
+    }).pipe(Layer.effect(CacheService))
 }
 
-export const CreateConnection = ({ from, port }: typeof SharedWorkerSchema.CreateConnection.Type) =>
-  Stream.asyncScoped<{}, never, CacheService>((emit) =>
-    Effect.gen(function* () {
+export const CreateConnection = ({ from, port }: { from: string; port: MessagePort }) =>
+  Effect.gen(function* () {
       const { node } = yield* CacheService
 
       const messagePortChannel = yield* WebChannel.messagePortChannel({ port, schema: WebmeshSchema.Packet })
@@ -34,13 +32,11 @@ export const CreateConnection = ({ from, port }: typeof SharedWorkerSchema.Creat
         yield* Effect.logDebug(`@livestore/devtools-web-common: accepted edge: ${node.nodeName} ← ${from}`)
       }
 
-      emit.single({})
-
       yield* Effect.spanEvent({ connectedTo: [...node.edgeKeys] })
 
-      // Keep connection alive
-      // yield* Effect.never
-
-      // return {}
-    }).pipe(Effect.orDie),
-  ).pipe(Stream.withSpan(`@livestore/devtools-web-common:worker:create-connection:${from}`))
+      return {}
+    }).pipe(
+      Effect.orDie,
+      Stream.fromEffect,
+      Stream.withSpan(`@livestore/devtools-web-common:worker:create-connection:${from}`),
+    )

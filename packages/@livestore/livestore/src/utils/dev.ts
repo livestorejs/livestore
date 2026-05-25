@@ -24,7 +24,7 @@ export const downloadURL = (data: string, fileName: string) => {
   const a = document.createElement('a')
   a.href = data
   a.download = fileName
-  document.body.append(a)
+  ;(document.body as any).append(a)
   a.style.display = 'none'
   a.click()
   a.remove()

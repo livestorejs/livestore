@@ -7,14 +7,14 @@ export const events = {
     schema: Schema.Struct({
       id: Schema.String,
       title: Schema.String,
-      status: Schema.Literal('todo', 'done'),
+      status: Schema.Literals(['todo', 'done']),
     }),
   }),
   issueStatusChanged: Events.synced({
     name: 'v1.IssueStatusChanged',
     schema: Schema.Struct({
       id: Schema.String,
-      status: Schema.Literal('todo', 'done'),
+      status: Schema.Literals(['todo', 'done']),
     }),
   }),
 }

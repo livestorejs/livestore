@@ -5,8 +5,8 @@ import { makeSchema, State } from '@livestore/common/schema'
 import { createStore, SessionIdSymbol } from '@livestore/livestore'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 Vitest.describe('Client Document Optimistic Decoding Integration', () => {
   const getTmpDbDir = Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
@@ -14,7 +14,7 @@ Vitest.describe('Client Document Optimistic Decoding Integration', () => {
   })
 
   const withTestCtx = Vitest.makeWithTestCtx({
-    makeLayer: () => PlatformNode.NodeFileSystem.layer,
+    makeLayer: () => NodeFileSystem.layer,
   })
 
   Vitest.scopedLive('handles schema evolution gracefully', (test) =>

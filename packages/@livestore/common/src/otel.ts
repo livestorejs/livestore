@@ -1,12 +1,12 @@
 import * as otel from '@opentelemetry/api'
 
 import { makeNoopTracer } from '@livestore/utils'
-import { Effect, identity, Layer, OtelTracer } from '@livestore/utils/effect'
+import { Effect, identity, Layer, OtelTracer, Tracer } from '@livestore/utils/effect'
 
 export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend(() => {
   const OtelTracerLive = Layer.succeed(OtelTracer.OtelTracer, makeNoopTracer())
 
-  const TracingLive = Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+  const TracingLive = Layer.effect(Tracer.Tracer, OtelTracer.make).pipe(
     Layer.provideMerge(OtelTracerLive),
   )
 
@@ -18,7 +18,7 @@ export const provideOtel =
   <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, Exclude<R, OtelTracer.OtelTracer>> => {
     const OtelTracerLive = Layer.succeed(OtelTracer.OtelTracer, otelTracer ?? makeNoopTracer())
 
-    const TracingLive = Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+    const TracingLive = Layer.effect(Tracer.Tracer, OtelTracer.make).pipe(
       Layer.provideMerge(OtelTracerLive),
     ) as any as Layer.Layer<OtelTracer.OtelTracer>
 

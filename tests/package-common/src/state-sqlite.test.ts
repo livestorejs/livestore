@@ -6,8 +6,8 @@ import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Schema } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 Vitest.describe('SQLite State', () => {
   Vitest.describe('DB Schema', () => {
     const setup = (tableDef: State.SQLite.TableDef.Any) =>
@@ -32,7 +32,7 @@ Vitest.describe('SQLite State', () => {
 
     Vitest.scopedLive(
       'should work for nullable json fields with default null',
-      Effect.fn(function* () {
+      () => Effect.gen(function* () {
         const testTable = State.SQLite.table({
           name: 'test',
           columns: {
@@ -48,16 +48,16 @@ Vitest.describe('SQLite State', () => {
         const rawResult = db.select(sql`select * from test`)
         expect(rawResult).toEqual([{ id: 1, json: null }])
 
-        const result = yield* Schema.decodeUnknown(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(rawResult)
+        const [result] = yield* Schema.decodeUnknownEffect(Schema.Array(testTable.rowSchema))(rawResult)
 
         expect(result).toEqual({ id: 1, json: null })
-      }, Effect.provide(PlatformNode.NodeFileSystem.layer)),
+      }).pipe(Effect.provide(NodeFileSystem.layer)),
     )
 
     // Probably a very unlikely scenario but hey 🤷
     Vitest.scopedLive(
       'should work for nullable json fields with default "null" as a string',
-      Effect.fn(function* () {
+      () => Effect.gen(function* () {
         const testTable = State.SQLite.table({
           name: 'test',
           columns: {
@@ -73,10 +73,10 @@ Vitest.describe('SQLite State', () => {
         const rawResult = db.select(sql`select * from test`)
         expect(rawResult).toEqual([{ id: 1, json: '"null"' }])
 
-        const result = yield* Schema.decodeUnknown(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(rawResult)
+        const [result] = yield* Schema.decodeUnknownEffect(Schema.Array(testTable.rowSchema))(rawResult)
 
         expect(result).toEqual({ id: 1, json: 'null' })
-      }, Effect.provide(PlatformNode.NodeFileSystem.layer)),
+      }).pipe(Effect.provide(NodeFileSystem.layer)),
     )
   })
 })

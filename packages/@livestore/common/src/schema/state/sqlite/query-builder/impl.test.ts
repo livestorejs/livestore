@@ -1,11 +1,20 @@
 import { describe, expect, it } from 'vitest'
 
-import { Schema } from '@livestore/utils/effect'
-import { objectToString } from '@livestore/utils'
+import { Schema, SchemaAST, SchemaTransformation } from '@livestore/utils/effect'
 
 import { State } from '../../../mod.ts'
 import type { QueryBuilder } from './api.ts'
 import { getResultSchema } from './impl.ts'
+
+const DateFromMillis = Schema.Number.pipe(
+  Schema.decodeTo(
+    Schema.Date,
+    SchemaTransformation.transform({
+      decode: (ms) => new Date(ms),
+      encode: (date) => date.getTime(),
+    }),
+  ),
+)
 
 const todos = State.SQLite.table({
   name: 'todos',
@@ -13,7 +22,7 @@ const todos = State.SQLite.table({
     id: State.SQLite.text({ primaryKey: true }),
     text: State.SQLite.text({ default: '', nullable: false }),
     completed: State.SQLite.boolean({ default: false, nullable: false }),
-    status: State.SQLite.text({ schema: Schema.Literal('active', 'completed') }),
+    status: State.SQLite.text({ schema: Schema.Literals(['active', 'completed']) }),
     deletedAt: State.SQLite.datetime({ nullable: true }),
     // TODO consider leaning more into Effect schema
     // other: Schema.Number.pipe(State.SQLite.asInteger),
@@ -25,7 +34,7 @@ const todosWithIntId = State.SQLite.table({
   columns: {
     id: State.SQLite.integer({ primaryKey: true }),
     text: State.SQLite.text({ default: '', nullable: false }),
-    status: State.SQLite.text({ schema: Schema.Literal('active', 'completed') }),
+    status: State.SQLite.text({ schema: Schema.Literals(['active', 'completed']) }),
   },
 })
 
@@ -41,7 +50,7 @@ const comments = State.SQLite.table({
 const UiState = State.SQLite.clientDocument({
   name: 'UiState',
   schema: Schema.Struct({
-    filter: Schema.Literal('all', 'active', 'completed'),
+    filter: Schema.Literals(['all', 'active', 'completed']),
   }),
   default: { value: { filter: 'all' } },
 })
@@ -49,7 +58,7 @@ const UiState = State.SQLite.clientDocument({
 const UiStateWithDefaultId = State.SQLite.clientDocument({
   name: 'UiState',
   schema: Schema.Struct({
-    filter: Schema.Literal('all', 'active', 'completed'),
+    filter: Schema.Literals(['all', 'active', 'completed']),
   }),
   default: {
     id: 'static',
@@ -63,10 +72,10 @@ const issue = State.SQLite.table({
     id: State.SQLite.integer({ primaryKey: true }),
     title: State.SQLite.text({ default: '' }),
     creator: State.SQLite.text({ default: '' }),
-    priority: State.SQLite.integer({ schema: Schema.Literal(0, 1, 2, 3, 4), default: 0 }),
-    created: State.SQLite.integer({ schema: Schema.DateFromNumber }),
-    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
-    modified: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+    priority: State.SQLite.integer({ schema: Schema.Literals([0, 1, 2, 3, 4]), default: 0 }),
+    created: State.SQLite.integer({ schema: DateFromMillis }),
+    deleted: State.SQLite.integer({ nullable: true, schema: DateFromMillis }),
+    modified: State.SQLite.integer({ schema: DateFromMillis }),
     kanbanorder: State.SQLite.text({ nullable: false, default: '' }),
   },
   indexes: [
@@ -83,7 +92,7 @@ const selections = State.SQLite.table({
   },
 })
 
-const Source = Schema.Literal('google', 'linkedin', 'facebook')
+const Source = Schema.Literals(['google', 'linkedin', 'facebook'])
 const ProfileAttribute = Schema.Struct({ key: Schema.String, value: Schema.String })
 
 const personProfiles = State.SQLite.table({
@@ -103,8 +112,60 @@ const db = { todos, todosWithIntId, comments, issue, selections, UiState, UiStat
 const dump = (qb: QueryBuilder<any, any, any>) => ({
   bindValues: qb.asSql().bindValues,
   query: qb.asSql().query,
-  schema: objectToString(getResultSchema(qb)),
+  schema: schemaToString(getResultSchema(qb)),
 })
+
+const schemaToString = (schema: Schema.Schema.Any): string => astToSnapshotString(schema.ast)
+
+const astToSnapshotString = (ast: SchemaAST.AST): string => {
+  const encoding = ast.encoding?.[0]
+  if (encoding !== undefined) {
+    return `(${astToSnapshotString(encoding.to)} <-> ${astToSnapshotString(withoutEncoding(ast))})`
+  }
+
+  const title = SchemaAST.resolveTitle(ast) ?? SchemaAST.resolveIdentifier(ast)
+  if (title !== undefined) return title
+
+  if (SchemaAST.isString(ast) === true) return 'string'
+  if (SchemaAST.isNumber(ast) === true) return 'number'
+  if (SchemaAST.isBoolean(ast) === true) return 'boolean'
+  if (SchemaAST.isNull(ast) === true) return 'null'
+  if (SchemaAST.isUndefined(ast) === true) return 'undefined'
+  if (SchemaAST.isLiteral(ast) === true) return typeof ast.literal === 'string' ? JSON.stringify(ast.literal) : String(ast.literal)
+  if (SchemaAST.isArrays(ast) === true) {
+    const rest = ast.rest[0]
+    return rest === undefined ? 'readonly []' : `ReadonlyArray<${astToSnapshotString(rest)}>`
+  }
+  if (SchemaAST.isObjects(ast) === true) {
+    return `{ ${ast.propertySignatures
+      .map((prop) => `readonly ${String(prop.name)}: ${astToSnapshotString(prop.type)}`)
+      .join('; ')} }`
+  }
+  if (SchemaAST.isUnion(ast) === true) {
+    return ast.types.map(astToSnapshotString).join(' | ')
+  }
+
+  return ast._tag
+}
+
+const withoutEncoding = (ast: SchemaAST.AST): SchemaAST.AST => {
+  if (SchemaAST.isString(ast) === true) return SchemaAST.string
+  if (SchemaAST.isNumber(ast) === true) return SchemaAST.number
+  if (SchemaAST.isBoolean(ast) === true) return SchemaAST.boolean
+  if (SchemaAST.isNull(ast) === true) return SchemaAST.null
+  if (SchemaAST.isUndefined(ast) === true) return SchemaAST.undefined
+  if (SchemaAST.isLiteral(ast) === true) return new SchemaAST.Literal(ast.literal, ast.annotations, ast.checks, undefined, ast.context)
+  if (SchemaAST.isArrays(ast) === true) {
+    return new SchemaAST.Arrays(ast.isMutable, ast.elements, ast.rest, ast.annotations, ast.checks, undefined, ast.context)
+  }
+  if (SchemaAST.isObjects(ast) === true) {
+    return new SchemaAST.Objects(ast.propertySignatures, ast.indexSignatures, ast.annotations, ast.checks, undefined, ast.context)
+  }
+  if (SchemaAST.isUnion(ast) === true) {
+    return new SchemaAST.Union(ast.types, ast.mode, ast.annotations, ast.checks, undefined, ast.context)
+  }
+  return ast
+}
 
 describe('query builder', () => {
   describe('basic queries', () => {
@@ -163,7 +224,7 @@ describe('query builder', () => {
             1,
           ],
           "query": "SELECT "id", "text" FROM 'todos' LIMIT ?",
-          "schema": "(ReadonlyArray<{ readonly id: string; readonly text: string }> | readonly [undefined] <-> { readonly id: string; readonly text: string } | undefined)",
+          "schema": "(ReadonlyArray<{ readonly id: string; readonly text: string }> <-> { readonly id: string; readonly text: string })",
         }
       `)
     })
@@ -866,32 +927,33 @@ describe('query builder', () => {
       contactEmail: Schema.String.pipe(State.SQLite.withUnique),
     })
 
-    const Nested = Schema.transform(
-      Flat,
-      Schema.Struct({
-        id: Schema.String,
-        contact: Schema.Struct({
-          firstName: Schema.String,
-          lastName: Schema.String,
-          email: Schema.String,
+    const Nested = Flat.pipe(
+      Schema.decodeTo(
+        Schema.Struct({
+          id: Schema.String,
+          contact: Schema.Struct({
+            firstName: Schema.String,
+            lastName: Schema.String,
+            email: Schema.String,
+          }),
         }),
-      }),
-      {
-        decode: ({ id, contactFirstName, contactLastName, contactEmail }) => ({
-          id,
-          contact: {
-            firstName: contactFirstName,
-            lastName: contactLastName,
-            email: contactEmail,
-          },
+        SchemaTransformation.transform({
+          decode: ({ id, contactFirstName, contactLastName, contactEmail }) => ({
+            id,
+            contact: {
+              firstName: contactFirstName,
+              lastName: contactLastName,
+              email: contactEmail,
+            },
+          }),
+          encode: ({ id, contact }) => ({
+            id,
+            contactFirstName: contact.firstName,
+            contactLastName: contact.lastName,
+            contactEmail: contact.email,
+          }),
         }),
-        encode: ({ id, contact }) => ({
-          id,
-          contactFirstName: contact.firstName,
-          contactLastName: contact.lastName,
-          contactEmail: contact.email,
-        }),
-      },
+      ),
     )
 
     const makeContactsTable = () =>
@@ -974,7 +1036,8 @@ describe('query builder', () => {
           })
           .asSql(),
       ).toThrowErrorMatchingInlineSnapshot(`
-        [ParseError: contacts\n└─ ["contactFirstName"]\n   └─ is missing]
+        [Error: Missing key
+          at ["contactFirstName"]]
       `)
     })
   })
@@ -992,9 +1055,9 @@ describe('query builder', () => {
 // SELECT todos.*, (SELECT COUNT(*) FROM comments WHERE comments.todoId = todos.id) AS commentsCount
 // FROM todos WHERE todos.completed = true
 // const q4CommentsCountSchema = Schema.Struct({ count: Schema.Number }).pipe(
-//   Schema.pluck('count'),
+//   // pluck count with Schema.decodeTo(...),
 //   Schema.Array,
-//   Schema.headOrElse(),
+//   // decode to the first row,
 // )
 // const _q4$ = db.todos
 //   .select({

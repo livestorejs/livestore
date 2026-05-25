@@ -7,7 +7,7 @@ export const name = 'Mock Sync Backend'
 
 export const prepare = Effect.void
 
-export const layer: SyncProviderLayer = Layer.scoped(
+export const layer: SyncProviderLayer = Layer.effect(
   SyncProviderImpl,
   Effect.gen(function* () {
     const mocksRef = yield* Ref.make(new Map<string, MockSyncBackend>())
@@ -49,4 +49,4 @@ export const layer: SyncProviderLayer = Layer.scoped(
       providerSpecific: {},
     }
   }),
-).pipe(UnknownError.mapToUnknownErrorLayer)
+).pipe(UnknownError.mapToUnknownErrorLayer) as SyncProviderLayer

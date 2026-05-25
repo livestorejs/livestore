@@ -8,6 +8,7 @@ import type { ForwardedHeaders } from '../shared.ts'
 import { DoCtx } from './layer.ts'
 
 const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
+type StoredEvent = SyncMessage.PullResponse['batch'][number]
 
 // Notes on stream handling:
 // We're intentionally closing the stream once we've read all existing events
@@ -50,28 +51,33 @@ export const makeEndingPullStream = ({
       Option.getOrUndefined(req.cursor)?.eventSequenceNumber,
     )
 
-    return storedEvents.pipe(
-      Stream.mapChunksEffect(
-        splitChunkBySize({
+    return (storedEvents as Stream.Stream<StoredEvent, UnknownError>).pipe(
+      Stream.mapArrayEffect((batch) =>
+        splitChunkBySize<StoredEvent>({
           maxItems: MAX_PULL_EVENTS_PER_MESSAGE,
           maxBytes: MAX_WS_MESSAGE_BYTES,
-          encode: (batch) =>
+          encode: (items) =>
             encodePullResponse(
-              SyncMessage.PullResponse.make({ batch, pageInfo: SyncBackend.pageInfoNoMore, backendId }),
+              SyncMessage.PullResponse.make({ batch: items, pageInfo: SyncBackend.pageInfoNoMore, backendId }),
             ),
-        }),
+        })(Chunk.fromIterable(batch)).pipe(
+          Effect.map(
+            (chunks) =>
+              Chunk.toReadonlyArray(chunks) as readonly [Chunk.Chunk<StoredEvent>, ...Array<Chunk.Chunk<StoredEvent>>],
+          ),
+        ),
       ),
-      Stream.mapAccum(total, (remaining, chunk) => {
+      Stream.mapAccum(() => total, (remaining, chunk) => {
         const asArray = Chunk.toReadonlyArray(chunk)
         const nextRemaining = Math.max(0, remaining - asArray.length)
 
         return [
           nextRemaining,
-          SyncMessage.PullResponse.make({
+          [SyncMessage.PullResponse.make({
             batch: asArray,
             pageInfo: nextRemaining > 0 ? SyncBackend.pageInfoMoreKnown(nextRemaining) : SyncBackend.pageInfoNoMore,
             backendId,
-          }),
+          })],
         ] as const
       }),
       Stream.tap(
@@ -85,10 +91,11 @@ export const makeEndingPullStream = ({
     )
   }).pipe(
     Stream.unwrap,
-    Stream.mapError((cause) =>
-      cause._tag === 'BackendIdMismatchError' || cause._tag === 'UnknownError'
-        ? cause
-        : new UnknownError({ cause }),
-    ),
+    Stream.mapError((cause: unknown) => {
+      const tag = (cause as { _tag?: string })._tag
+      return tag === 'BackendIdMismatchError' || tag === 'UnknownError'
+        ? (cause as BackendIdMismatchError | UnknownError)
+        : new UnknownError({ cause })
+    }),
     Stream.withSpan('cloudflare-provider:pull'),
   )

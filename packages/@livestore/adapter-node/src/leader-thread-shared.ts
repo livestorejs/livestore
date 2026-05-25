@@ -64,7 +64,7 @@ export const makeLeaderThread = ({
   Scope.Scope
 > =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime()
+    const context = yield* Effect.context()
 
     const schemaHashSuffix =
       schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
@@ -80,7 +80,7 @@ export const makeLeaderThread = ({
         ? makeSqliteDb({
             _tag: 'in-memory',
             configureDb: (db) =>
-              configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
+              configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(context)),
           })
         : makeSqliteDb({
             _tag: 'fs',
@@ -89,8 +89,8 @@ export const makeLeaderThread = ({
               kind === 'state' ? getStateDbFileName(schemaHashSuffix) : `eventlog@${liveStoreStorageFormatVersion}.db`,
             // TODO enable WAL for nodejs
             configureDb: (db) =>
-              configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
-          }).pipe(Effect.acquireRelease((db) => Effect.sync(() => db.close())))
+              configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(context)),
+          }).pipe((acquire) => Effect.acquireRelease(acquire, (db) => Effect.sync(() => db.close())))
     }
 
     // Might involve some async work, so we're running them concurrently

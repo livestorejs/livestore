@@ -1,8 +1,8 @@
-import { HttpClient } from '@effect/platform'
+import { HttpClient } from 'effect/unstable/http'
 import type { Schedule, Scope } from 'effect'
 import { Effect, Exit, identity, Schema } from 'effect'
 
-export class WebSocketError extends Schema.TaggedError<WebSocketError>('~@livestore/utils/WebSocketError')('WebSocketError', {
+export class WebSocketError extends Schema.TaggedErrorClass<WebSocketError>()('WebSocketError', {
   cause: Schema.Defect,
 }) {}
 
@@ -25,7 +25,7 @@ export const makeWebSocket = ({
   Effect.gen(function* () {
     yield* validateUrl(url)
 
-    const socket = yield* Effect.async<globalThis.WebSocket, WebSocketError>((cb, signal) => {
+    const socket = yield* Effect.callback<globalThis.WebSocket, WebSocketError>((cb, signal) => {
       try {
         const socket = new globalThis.WebSocket(url)
 
@@ -63,7 +63,7 @@ export const makeWebSocket = ({
       }
     }).pipe(
       Effect.tapErrorTag('WebSocketError', () => tryLogWebsocketConnectError(url)),
-      reconnect !== undefined ? Effect.retry(reconnect) : identity,
+      reconnect !== undefined && reconnect !== false ? Effect.retry(reconnect) : identity,
     )
 
     /**

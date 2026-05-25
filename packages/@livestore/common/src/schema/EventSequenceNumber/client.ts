@@ -8,7 +8,7 @@ export type Type = Brand.Branded<number, 'ClientEventSequenceNumber'>
 const ClientBrand = Brand.nominal<Type>()
 
 /** Effect Schema for encoding/decoding client sequence numbers. */
-export const Schema = S.fromBrand(ClientBrand)(S.Int)
+export const Schema = S.Int.pipe(S.fromBrand('ClientEventSequenceNumber', ClientBrand))
 
 /**
  * Creates a branded client sequence number from a plain number.
@@ -177,9 +177,9 @@ const CompositeSchema = S.Struct({
   client: Schema,
   // Client only
   rebaseGeneration: S.Int,
-}).annotations({
+}).annotate({
   title: 'EventSequenceNumber.Composite',
-  pretty: () => (seqNum) => toString(seqNum),
+  pretty: () => (seqNum: Composite) => toString(seqNum),
 })
 
 /**

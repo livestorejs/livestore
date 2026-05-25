@@ -1,10 +1,10 @@
-import { UnknownError } from '@livestore/common'
+import { BackendIdMismatchError, ServerAheadError, UnknownError } from '@livestore/common'
 import { WsContext } from '@livestore/common-cf'
 import { Effect, identity, Layer, RpcServer, Schema, Stream } from '@livestore/utils/effect'
 
 import { SyncWsRpc } from '../../../common/ws-rpc-schema.ts'
 import { headersRecordToMap, WebSocketAttachmentSchema } from '../../shared.ts'
-import { DoCtx, type DoCtxInput } from '../layer.ts'
+import { DoCtx, layer as doCtxLayer, type DoCtxInput } from '../layer.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
 
@@ -16,12 +16,13 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
         return makeEndingPullStream({ req, payload: req.payload, headers }).pipe(
           // Needed to keep the stream alive on the client side for phase 2 (i.e. not send the `Exit` stream RPC message)
           req.live === true ? Stream.concat(Stream.never) : identity,
-          Stream.provideLayer(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
-          Stream.mapError((cause) =>
-            cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
-              ? cause
-              : new UnknownError({ cause }),
-          ),
+          Stream.provide(doCtxLayer({ doSelf, doOptions, from: { storeId: req.storeId } })),
+          Stream.mapError((cause: unknown) => {
+            const tag = (cause as { _tag?: string })._tag
+            return tag === 'UnknownError' || tag === 'BackendIdMismatchError'
+              ? (cause as UnknownError | BackendIdMismatchError)
+              : new UnknownError({ cause })
+          }),
         )
       }).pipe(Stream.unwrap),
     'SyncWsRpc.Push': (req) =>
@@ -33,12 +34,13 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
 
         return yield* push(req)
       }).pipe(
-        Effect.provide(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
-        Effect.mapError((cause) =>
-          cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
-            ? cause
-            : new UnknownError({ cause }),
-        ),
+        Effect.provide(doCtxLayer({ doSelf, doOptions, from: { storeId: req.storeId } })),
+        Effect.mapError((cause: unknown) => {
+          const tag = (cause as { _tag?: string })._tag
+          return tag === 'UnknownError' || tag === 'ServerAheadError' || tag === 'BackendIdMismatchError'
+            ? (cause as UnknownError | ServerAheadError | BackendIdMismatchError)
+            : new UnknownError({ cause })
+        }),
         Effect.tapCauseLogPretty,
       ),
   })
@@ -50,13 +52,13 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
 const getForwardedHeaders = Effect.gen(function* () {
   const { ws } = yield* WsContext
   const attachment = ws.deserializeAttachment()
-  const decoded = Schema.decodeUnknownEither(WebSocketAttachmentSchema)(attachment)
-  if (decoded._tag === 'Left') {
-    yield* Effect.logError('Failed to decode WebSocket attachment for forwarded headers', { error: decoded.left })
+  const decoded = Schema.decodeUnknownExit(WebSocketAttachmentSchema as any)(attachment)
+  if (decoded._tag !== 'Success') {
+    yield* Effect.logError('Failed to decode WebSocket attachment for forwarded headers', { error: decoded.cause })
     ws.close(1011, 'invalid-attachment')
     return yield* Effect.die('Invalid WebSocket attachment (headers decode failed)')
   }
 
-  const headers = headersRecordToMap(decoded.right.headers)
+  const headers = headersRecordToMap((decoded.value as typeof WebSocketAttachmentSchema.Type).headers)
   return headers
 })

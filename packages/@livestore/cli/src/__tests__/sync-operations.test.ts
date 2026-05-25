@@ -1,14 +1,14 @@
 import { expect } from 'vitest'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 import type { LiveStoreEvent } from '@livestore/common/schema'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Chunk, Effect, FetchHttpClient, Layer, Mailbox, Stream } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
+import { Effect, FetchHttpClient, Layer, Mailbox, Stream } from '@livestore/utils/effect'
 
 import { pullEventsFromSyncBackend, pushEventsToSyncBackend } from '../sync-operations.ts'
 import { makeEventFactory, useMockConfig } from './fixtures/mock-config.ts'
 
-const baseLayer = Layer.mergeAll(PlatformNode.NodeFileSystem.layer, FetchHttpClient.layer)
+const baseLayer = Layer.mergeAll(NodeFileSystem.layer, FetchHttpClient.layer)
 const withTestCtx = Vitest.makeWithTestCtx({ makeLayer: () => baseLayer })
 
 /** Each test acquires its own temporary config module via useMockConfig, avoiding shared state. */
@@ -23,7 +23,7 @@ Vitest.describe('sync-operations', { timeout: 10_000 }, () => {
     Mailbox.toStream(mailbox).pipe(
       Stream.take(2),
       Stream.runCollect,
-      Effect.map((chunk) => Chunk.toReadonlyArray(chunk)),
+      Effect.map((events) => events),
     )
 
   Vitest.scopedLive('exports events and releases the backend connection', (test: Vitest.TestContext) =>
@@ -77,11 +77,11 @@ Vitest.describe('sync-operations', { timeout: 10_000 }, () => {
         },
         force: false,
         dryRun: false,
-      }).pipe(Effect.either)
+      }).pipe(Effect.result)
 
-      expect(result._tag).toBe('Left')
-      if (result._tag === 'Left') {
-        expect(result.left._tag).toBe('ImportError')
+      expect(result._tag).toBe('Failure')
+      if (result._tag === 'Failure') {
+        expect(result.failure._tag).toBe('ImportError')
       }
 
       const lifecycle = yield* expectConnectLifecycle(connectionEvents)
@@ -154,7 +154,7 @@ Vitest.describe('sync-operations', { timeout: 10_000 }, () => {
       const pushedEvents = yield* mockBackend.pushedEvents.pipe(
         Stream.take(importBatch.length),
         Stream.runCollect,
-        Effect.map((chunk: Chunk.Chunk<LiveStoreEvent.Global.Encoded>) => Chunk.toReadonlyArray(chunk)),
+        Effect.map((events: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => events),
       )
       expect(pushedEvents.map((event) => event.seqNum)).toHaveLength(importBatch.length)
 
@@ -190,7 +190,7 @@ Vitest.describe('sync-operations', { timeout: 10_000 }, () => {
       const pushedEvents = yield* mockBackend.pushedEvents.pipe(
         Stream.take(1),
         Stream.runCollect,
-        Effect.map((chunk: Chunk.Chunk<LiveStoreEvent.Global.Encoded>) => Chunk.toReadonlyArray(chunk)),
+        Effect.map((events: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => events),
       )
       expect(pushedEvents).toHaveLength(1)
 
@@ -218,11 +218,11 @@ Vitest.describe('sync-operations', { timeout: 10_000 }, () => {
         },
         force: false,
         dryRun: false,
-      }).pipe(Effect.either)
+      }).pipe(Effect.result)
 
-      expect(result._tag).toBe('Left')
-      if (result._tag === 'Left') {
-        expect(result.left._tag).toBe('ImportError')
+      expect(result._tag).toBe('Failure')
+      if (result._tag === 'Failure') {
+        expect(result.failure._tag).toBe('ImportError')
       }
 
       const lifecycle = yield* expectConnectLifecycle(connectionEvents)

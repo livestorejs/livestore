@@ -5,7 +5,7 @@ export interface SyncProviderOptions {
   pingSchedule?: Schedule.Schedule<unknown>
 }
 
-export class SyncProviderImpl extends Context.Tag('SyncProviderImpl')<
+export class SyncProviderImpl extends Context.Service<
   SyncProviderImpl,
   {
     // TODO support simulatation of latency and offline mode etc
@@ -17,6 +17,8 @@ export class SyncProviderImpl extends Context.Tag('SyncProviderImpl')<
     turnBackendOnline: Effect.Effect<void>
     providerSpecific: any
   }
->() {}
+>()('SyncProviderImpl') {}
+
+export type SyncProvider = Context.Service.Shape<typeof SyncProviderImpl>
 
 export type SyncProviderLayer = Layer.Layer<SyncProviderImpl, UnknownError, HttpClient.HttpClient>

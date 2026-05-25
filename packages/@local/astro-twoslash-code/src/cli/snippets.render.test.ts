@@ -8,12 +8,12 @@ import { beforeAll, describe, expect, it } from 'vitest'
 
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
 import { resolveProjectPaths } from '../project-paths.ts'
 import { buildSnippetBundle } from '../vite/snippet-graph.ts'
 import { __internal, buildSnippets } from './snippets.ts'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 type TTwoslasher = (
   code: string,
   lang: string,
@@ -352,7 +352,7 @@ describe('buildSnippets cache reuse', () => {
 
   const runBuild = () =>
     Effect.runPromise(
-      buildSnippets({ projectRoot: exampleProjectRoot }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer)),
+      buildSnippets({ projectRoot: exampleProjectRoot }).pipe(Effect.provide(NodeFileSystem.layer)),
     )
 
   beforeAll(async () => {

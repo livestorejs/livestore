@@ -15,11 +15,12 @@ import {
   HttpServerResponse,
   Layer,
 } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 import { makeMeshNode, makeWebSocketEdge } from '@livestore/webmesh'
 
 import { makeViteMiddleware } from './vite-dev-server.ts'
 
+import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer'
+import * as NodeHttpServerRequest from '@effect/platform-node/NodeHttpServerRequest'
 /**
  * Determines if a request URL should be routed to the Vite middleware.
  * Includes LiveStore devtools paths and Vite internal paths like `/@fs/`, `/@vite/`, etc.
@@ -65,7 +66,7 @@ export const startDevtoolsServer = ({
 
         return viteConfig
       },
-    }).pipe(Effect.acquireRelease((viteMiddleware) => Effect.promise(() => viteMiddleware.close())))
+    }).pipe((acquire) => Effect.acquireRelease(acquire, (viteMiddleware) => Effect.promise(() => viteMiddleware.close())))
 
     const relayNodeName = 'ws'
 
@@ -90,7 +91,7 @@ export const startDevtoolsServer = ({
           Effect.gen(function* () {
             yield* node
               .addEdge({ target: from, edgeChannel: webChannel, replaceIfExists: true })
-              .pipe(Effect.acquireRelease(() => node.removeEdge(from).pipe(Effect.orDie)))
+              .pipe((acquire) => Effect.acquireRelease(acquire, () => node.removeEdge(from).pipe(Effect.orDie)))
 
             if (LS_DEV === true) {
               yield* Effect.log(`WS Relay ${relayNodeName}: added edge from '${from}'`)
@@ -100,7 +101,7 @@ export const startDevtoolsServer = ({
             // We want to keep the websocket open until the client disconnects or the server shuts down
             return yield* Effect.never
           }),
-          webChannel.closedDeferred,
+          Deferred.await(webChannel.closedDeferred),
         )
 
         return HttpServerResponse.empty({ status: 101 })
@@ -111,11 +112,11 @@ export const startDevtoolsServer = ({
           // Here we're delegating to the Vite middleware
 
           // TODO replace this once @effect/platform-node supports Node HTTP middlewares
-          const nodeReq = PlatformNode.NodeHttpServerRequest.toIncomingMessage(req)
-          const nodeRes = PlatformNode.NodeHttpServerRequest.toServerResponse(req)
-          const deferred = yield* Deferred.make()
-          viteMiddleware.middlewares(nodeReq, nodeRes, () => Deferred.unsafeDone(deferred, Exit.void))
-          yield* deferred
+          const nodeReq = NodeHttpServerRequest.toIncomingMessage(req)
+          const nodeRes = NodeHttpServerRequest.toServerResponse(req)
+          const deferred = yield* Deferred.make<void>()
+          viteMiddleware.middlewares(nodeReq, nodeRes, () => Effect.runFork(Deferred.done(deferred, Exit.void)))
+          yield* Deferred.await(deferred)
 
           // The response is already sent, so we need to return an empty response (which won't be sent)
           return HttpServerResponse.empty()
@@ -143,7 +144,7 @@ export const startDevtoolsServer = ({
     }),
     HttpMiddleware.withLoggerDisabled,
     Layer.unwrapScoped,
-    Layer.provide(PlatformNode.NodeHttpServer.layer(() => http.createServer(), { port, host })),
+    Layer.provide(NodeHttpServer.layer(() => http.createServer(), { port, host })),
     Layer.launch,
     Effect.orDie,
-  )
+  ) as Effect.Effect<never, never, HttpClient.HttpClient>

@@ -2,6 +2,7 @@
 import { LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
 import {
   BucketQueue,
+  Cause,
   Effect,
   Exit,
   FiberHandle,
@@ -22,7 +23,7 @@ import type { LiveStoreSchema } from '../schema/mod.ts'
 import * as SyncState from './syncstate.ts'
 
 /** Serialize value to JSON string for trace attributes */
-const jsonStringify = Schema.encodeSync(Schema.parseJson())
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
 
 /**
  * Rebase behaviour:
@@ -134,7 +135,9 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       Effect.forever,
       Effect.interruptible,
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
+      Effect.catchCause((cause) =>
+        Cause.hasInterruptsOnly(cause) ? Effect.void : clientSession.shutdown(Exit.failCause(cause)),
+      ),
     )
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
@@ -197,9 +200,10 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
             for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
               const event = mergeResult.rollbackEvents[i]!
-              if (event.meta.sessionChangeset._tag !== 'no-op' && event.meta.sessionChangeset._tag !== 'unset') {
-                rollback(event.meta.sessionChangeset.data)
-                event.meta.sessionChangeset = { _tag: 'unset' }
+              const eventMeta = event.meta!
+              if (eventMeta.sessionChangeset._tag !== 'no-op' && eventMeta.sessionChangeset._tag !== 'unset') {
+                rollback(eventMeta.sessionChangeset.data)
+                eventMeta.sessionChangeset = { _tag: 'unset' }
               }
             }
 
@@ -223,35 +227,37 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
           if (mergeResult.newEvents.length === 0) {
             // If there are no new events, we need to update the sync state as well
-            yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+            yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
             return
           }
 
           const writeTables = new Set<string>()
           for (const event of mergeResult.newEvents) {
+            const eventMeta = event.meta!
+            eventMeta.sessionChangeset = { _tag: 'no-op' }
             const {
               writeTables: newWriteTables,
               sessionChangeset,
               materializerHash,
             } = yield* materializeEvent(event, {
               withChangeset: true,
-              materializerHashLeader: event.meta.materializerHashLeader,
+              materializerHashLeader: eventMeta.materializerHashLeader,
             })
             for (const table of newWriteTables) {
               writeTables.add(table)
             }
 
-            event.meta.sessionChangeset = sessionChangeset
-            event.meta.materializerHashSession = materializerHash
+            eventMeta.sessionChangeset = sessionChangeset
+            eventMeta.materializerHashSession = materializerHash
           }
 
           refreshTables(writeTables)
 
           // We're only triggering the sync state update after all events have been materialized
-          yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+          yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
         }).pipe(
           Effect.tapCauseLogPretty,
-          Effect.catchAllCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
+          Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
         ),
       ),
       Stream.runDrain,
@@ -294,6 +300,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   ) {
     const writeTables = new Set<string>()
     for (const event of events) {
+      const eventMeta = event.meta!
       const {
         writeTables: newWriteTables,
         sessionChangeset,
@@ -305,8 +312,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       for (const table of newWriteTables) {
         writeTables.add(table)
       }
-      event.meta.sessionChangeset = sessionChangeset
-      event.meta.materializerHashSession = materializerHash
+      eventMeta.sessionChangeset = sessionChangeset
+      eventMeta.materializerHashSession = materializerHash
     }
     return { writeTables }
   })
@@ -314,22 +321,37 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (
     encodedEvents,
   ) {
-    const mergeResult = yield* SyncState.merge({
+    let eventsToPush = encodedEvents
+    let mergeResult = yield* SyncState.merge({
       syncState: syncStateRef.current,
-      payload: { _tag: 'local-push', newEvents: encodedEvents },
+      payload: { _tag: 'local-push', newEvents: eventsToPush },
       isClientEvent,
       isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-    }).pipe(
-      Effect.filterOrDieMessage(
-        (r) => r._tag === 'advance',
-        'Expected advance from local-push merge',
-      ),
-    )
+    })
+
+    if (mergeResult._tag === 'reject') {
+      eventsToPush = resequenceEvents({
+        events: eventsToPush,
+        baseEventSequenceNumber: syncStateRef.current.localHead,
+        isClientEvent,
+      })
+
+      mergeResult = yield* SyncState.merge({
+        syncState: syncStateRef.current,
+        payload: { _tag: 'local-push', newEvents: eventsToPush },
+        isClientEvent,
+        isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+      })
+    }
+
+    if (mergeResult._tag !== 'advance') {
+      return yield* Effect.dieMessage('Expected advance from local-push merge')
+    }
 
     yield* Effect.annotateCurrentSpan({
-      batchSize: encodedEvents.length,
+      batchSize: eventsToPush.length,
       mergeResultTag: mergeResult._tag,
-      eventCounts: encodedEvents.reduce<Record<string, number>>((acc, event) => {
+      eventCounts: eventsToPush.reduce<Record<string, number>>((acc, event) => {
         acc[event.name] = (acc[event.name] ?? 0) + 1
         return acc
       }, {}),
@@ -337,7 +359,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     })
 
     syncStateRef.current = mergeResult.newSyncState
-    yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+    yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
     yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
   })
 
@@ -374,6 +396,27 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   } satisfies ClientSessionSyncProcessor
 })
 
+const resequenceEvents = ({
+  events,
+  baseEventSequenceNumber,
+  isClientEvent,
+}: {
+  events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
+  baseEventSequenceNumber: EventSequenceNumber.Client.Composite
+  isClientEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
+}): ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> => {
+  let parentSeqNum = baseEventSequenceNumber
+  return events.map((event) => {
+    const nextEvent = event.rebase({
+      parentSeqNum,
+      isClient: isClientEvent(event),
+      rebaseGeneration: baseEventSequenceNumber.rebaseGeneration,
+    })
+    parentSeqNum = nextEvent.seqNum
+    return nextEvent
+  })
+}
+
 export interface ClientSessionSyncProcessor {
   boot: Effect.Effect<void, never, Scope.Scope>
   encodeEvents: (
@@ -404,11 +447,11 @@ const SIMULATION_ENABLED = true
 // Warning: High values for the simulation params can lead to very long test runs since those get multiplied with the number of events
 export const ClientSessionSyncProcessorSimulationParams = Schema.Struct({
   pull: Schema.Struct({
-    '1_before_leader_push_fiber_interrupt': Schema.Int.pipe(Schema.between(0, 15)),
-    '2_before_leader_push_queue_clear': Schema.Int.pipe(Schema.between(0, 15)),
-    '3_before_rebase_rollback': Schema.Int.pipe(Schema.between(0, 15)),
-    '4_before_leader_push_queue_offer': Schema.Int.pipe(Schema.between(0, 15)),
-    '5_before_leader_push_fiber_run': Schema.Int.pipe(Schema.between(0, 15)),
+    '1_before_leader_push_fiber_interrupt': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
+    '2_before_leader_push_queue_clear': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
+    '3_before_rebase_rollback': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
+    '4_before_leader_push_queue_offer': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
+    '5_before_leader_push_fiber_run': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
   }),
 })
 type ClientSessionSyncProcessorSimulationParams = typeof ClientSessionSyncProcessorSimulationParams.Type

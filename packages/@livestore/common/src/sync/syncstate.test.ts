@@ -146,7 +146,7 @@ Vitest.describe('syncstate', () => {
             Effect.exit,
           )
           assert(Exit.isFailure(exit))
-          expect(Cause.isDie(exit.cause)).toBe(true)
+          expect(Cause.hasDies(exit.cause)).toBe(true)
         }),
       )
 
@@ -161,7 +161,7 @@ Vitest.describe('syncstate', () => {
             Effect.exit,
           )
           assert(Exit.isFailure(exit))
-          expect(Cause.isDie(exit.cause)).toBe(true)
+          expect(Cause.hasDies(exit.cause)).toBe(true)
         }),
       )
 
@@ -176,7 +176,7 @@ Vitest.describe('syncstate', () => {
             Effect.exit,
           )
           assert(Exit.isFailure(exit))
-          expect(Cause.isDie(exit.cause)).toBe(true)
+          expect(Cause.hasDies(exit.cause)).toBe(true)
         }),
       )
 
@@ -191,7 +191,7 @@ Vitest.describe('syncstate', () => {
             Effect.exit,
           )
           assert(Exit.isFailure(exit))
-          expect(Cause.isDie(exit.cause)).toBe(true)
+          expect(Cause.hasDies(exit.cause)).toBe(true)
         }),
       )
 
@@ -369,7 +369,7 @@ Vitest.describe('syncstate', () => {
             Effect.exit,
           )
           assert(Exit.isFailure(exit))
-          expect(Cause.isDie(exit.cause)).toBe(true)
+          expect(Cause.hasDies(exit.cause)).toBe(true)
         }),
       )
 
@@ -379,7 +379,7 @@ Vitest.describe('syncstate', () => {
             id: Schema.String,
             flag: Schema.UndefinedOr(Schema.Boolean),
           })
-          const localArgs = Schema.encodeUnknownSync(argsSchema)({ id: 'abc' } as any)
+          const localArgs = Schema.encodeUnknownSync(argsSchema)({ id: 'abc', flag: undefined } as any)
           const wireArgs = JSON.parse(JSON.stringify(localArgs))
 
           const localPending = new TestEvent({

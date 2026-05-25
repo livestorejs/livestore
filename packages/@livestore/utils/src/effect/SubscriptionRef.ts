@@ -1,4 +1,4 @@
-import { Chunk, Effect, pipe, Stream, SubscriptionRef } from 'effect'
+import { Effect, pipe, Stream, SubscriptionRef } from 'effect'
 import { dual } from 'effect/Function'
 import type { Predicate, Refinement } from 'effect/Predicate'
 
@@ -17,7 +17,18 @@ export const waitUntil: {
   ): Effect.Effect<B>
   <A, B extends A>(sref: SubscriptionRef.SubscriptionRef<A>, predicate: Predicate<B>): Effect.Effect<A>
 } = dual(2, <A>(sref: SubscriptionRef.SubscriptionRef<A>, predicate: (a: A) => boolean) =>
-  pipe(sref.changes, Stream.filter(predicate), Stream.take(1), Stream.runCollect, Effect.map(Chunk.unsafeHead)),
+  Effect.gen(function* () {
+    const current = yield* SubscriptionRef.get(sref)
+    if (predicate(current) === true) return current
+
+    return yield* pipe(
+      SubscriptionRef.changes(sref),
+      Stream.filter(predicate),
+      Stream.take(1),
+      Stream.runCollect,
+      Effect.map((items) => items[0]!),
+    )
+  }),
 )
 
 export const fromStream = <A>(stream: Stream.Stream<A>, initialValue: A) =>

@@ -52,7 +52,7 @@ describe('Store.Tag R channel consistency', () => {
       Effect.provide(Layer.merge(MainStore.fromDeferred, MainStore.DeferredLayer)),
     )
 
-    type _R = Effect.Effect.Context<typeof _provided>
+    type _R = typeof _provided extends Effect.Effect<any, any, infer R> ? R : never
     /** MainStore should not be in R after providing fromDeferred */
     type _MainStoreNotInR = StoreTagClass<typeof schema, 'main'> extends _R ? false : true
     const _check: _MainStoreNotInR = true

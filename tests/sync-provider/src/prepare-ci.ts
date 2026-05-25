@@ -1,5 +1,6 @@
 import type { DockerComposeError } from '@livestore/utils-dev/node'
-import { type CommandExecutor, Effect, type PlatformError } from '@livestore/utils/effect'
+import { Effect, type PlatformError } from '@livestore/utils/effect'
+import type { ChildProcessSpawner } from 'effect/unstable/process/ChildProcessSpawner'
 
 import { providerKeys, providerRegistry } from './providers/registry.ts'
 
@@ -7,7 +8,7 @@ import { providerKeys, providerRegistry } from './providers/registry.ts'
 export const prepareCi: Effect.Effect<
   void,
   PlatformError.PlatformError | DockerComposeError,
-  CommandExecutor.CommandExecutor
+  ChildProcessSpawner
 > = Effect.gen(function* () {
   yield* Effect.log('Preparing sync provider tests')
 

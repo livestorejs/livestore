@@ -3,10 +3,10 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { Effect, FileSystem, Queue, Schema } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
 import { type WatchSnippetsRebuildInfo, watchSnippets } from './snippets.ts'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 const createDocsImportSource = (relativeSnippetPath: string) => `---
 title: Snippet Watch Test
 ---
@@ -32,7 +32,7 @@ const writeInitialProject = (fs: FileSystem.FileSystem, projectRoot: string): Ef
 
     yield* fs.writeFileString(snippetPath, 'export const value = 1\n').pipe(Effect.orDie)
     yield* fs.writeFileString(docsPath, createDocsImportSource('../content/_assets/code/example.ts')).pipe(Effect.orDie)
-    const tsconfigJson = yield* Schema.encode(Schema.parseJson({ space: 2 }))({
+    const tsconfigJson = yield* Schema.encodeEffect(Schema.UnknownFromJsonString)({
       compilerOptions: {
         target: 'ESNext',
         module: 'ESNext',
@@ -84,6 +84,6 @@ describe('watchSnippets', () => {
       expect(update.renderedCount).toBeGreaterThanOrEqual(0)
     })
 
-    await program.pipe(Effect.scoped, Effect.provide(PlatformNode.NodeFileSystem.layer), Effect.runPromise)
+    await program.pipe(Effect.scoped, Effect.provide(NodeFileSystem.layer), Effect.runPromise)
   }, 10000)
 })

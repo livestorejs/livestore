@@ -18,8 +18,11 @@ import {
 import { OtelLiveDummy } from '@livestore/utils/node'
 
 import { OtelLiveHttp } from '../node/mod.ts'
+import type * as LayerType from 'effect/Layer'
 
 export * from '@effect/vitest'
+
+export { live as scopedLive } from '@effect/vitest'
 
 export const DEBUGGER_ACTIVE = Boolean(process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined)
 
@@ -29,18 +32,18 @@ export const makeWithTestCtx: <ROut = never, E1 = never, RIn = never>(
   self: Effect.Effect<A, E, R>,
 ) => Effect.Effect<
   A,
-  E | E1 | Cause.TimeoutException,
+  E | E1 | Cause.TimeoutError,
   // Exclude dependencies provided by `withTestCtx` from the layer dependencies
   | Exclude<RIn, OtelTracer.OtelTracer | Scope.Scope>
   // Exclude dependencies provided by `withTestCtx` **and** dependencies produced
   // by the layer from the effect dependencies
   | Exclude<R, ROut | OtelTracer.OtelTracer | Scope.Scope>
-> = (ctxParams) => (testContext: Vitest.TestContext) => withTestCtx(testContext, ctxParams)
+> = (ctxParams) => ((testContext: Vitest.TestContext) => withTestCtx(testContext, ctxParams)) as any
 
 export type WithTestCtxParams<ROut, E1, RIn> = {
   suffix?: string
-  makeLayer?: (testContext: Vitest.TestContext) => Layer.Layer<ROut, E1, RIn | Scope.Scope>
-  timeout?: Duration.DurationInput
+  makeLayer?: (testContext: Vitest.TestContext) => LayerType.Layer<ROut, E1, RIn | Scope.Scope>
+  timeout?: Duration.Input
   forceOtel?: boolean
 }
 
@@ -54,8 +57,8 @@ export const withTestCtx =
       forceOtel = false,
     }: {
       suffix?: string
-      makeLayer?: (testContext: Vitest.TestContext) => Layer.Layer<ROut, E1, RIn>
-      timeout?: Duration.DurationInput
+      makeLayer?: (testContext: Vitest.TestContext) => LayerType.Layer<ROut, E1, RIn>
+      timeout?: Duration.Input
       forceOtel?: boolean
     } = {},
   ) =>
@@ -63,7 +66,7 @@ export const withTestCtx =
     self: Effect.Effect<A, E, R>,
   ): Effect.Effect<
     A,
-    E | E1 | Cause.TimeoutException,
+    E | E1 | Cause.TimeoutError,
     // Exclude dependencies provided internally from the provided layer's dependencies
     | Exclude<RIn, OtelTracer.OtelTracer | Scope.Scope>
     // Exclude dependencies provided internally **and** dependencies produced by the
@@ -85,7 +88,7 @@ export const withTestCtx =
         ? identity
         : Effect.logWarnIfTakesLongerThan({
             duration: Duration.toMillis(timeout) * 0.8,
-            label: `${spanName} approaching timeout (timeout: ${Duration.format(timeout)})`,
+            label: `${spanName} approaching timeout (timeout: ${String(timeout)})`,
           }),
       DEBUGGER_ACTIVE === true ? identity : Effect.timeout(timeout),
       Effect.provide(combinedLayer),
@@ -139,30 +142,30 @@ const normalizePropOptions = <Arbs extends Vitest.Vitest.Arbitraries>(
     return {
       timeout: propOptions,
       fastCheck: { numRuns: 100 },
-    }
+    } as any
   }
 
   // If no fastCheck property, add it with our default numRuns
-  if (propOptions.fastCheck == null) {
+  if ((propOptions as any).fastCheck == null) {
     return {
       ...propOptions,
       fastCheck: { numRuns: 100 },
-    }
+    } as any
   }
 
   // If fastCheck exists but no numRuns, add our default
-  if (propOptions.fastCheck !== undefined && propOptions.fastCheck.numRuns == null) {
+  if ((propOptions as any).fastCheck !== undefined && (propOptions as any).fastCheck.numRuns == null) {
     return {
       ...propOptions,
       fastCheck: {
-        ...propOptions.fastCheck,
+        ...(propOptions as any).fastCheck,
         numRuns: 100,
       },
-    }
+    } as any
   }
 
   // If everything is properly structured, pass through
-  return propOptions
+  return propOptions as any
 }
 
 /**
@@ -198,7 +201,7 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
         }>
       }),
 ) => {
-  const normalizedPropOptions = normalizePropOptions(propOptions)
+  const normalizedPropOptions = normalizePropOptions(propOptions) as any
   const numRuns = normalizedPropOptions.fastCheck?.numRuns ?? 100
   let runIndex = 0
   let shrinkAttempts = 0
@@ -235,7 +238,7 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
               totalExecutions,
             }
 
-      return test(properties, ctx, enhancedContext)
+      return test(properties as any, ctx, enhancedContext)
     },
     normalizedPropOptions,
   )

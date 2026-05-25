@@ -1,6 +1,8 @@
 import { expect } from 'vitest'
 
+import { SyncBackend, UnknownError } from '@livestore/common'
 import { nanoid } from '@livestore/livestore'
+import { SearchParamsSchema } from '@livestore/sync-cf/common'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { objectToString } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -14,6 +16,9 @@ import {
   Logger,
   LogLevel,
   ManagedRuntime,
+  Schema,
+  Scope,
+  UrlParams,
 } from '@livestore/utils/effect'
 
 import * as CloudflareHttpProvider from './providers/cloudflare-http-rpc.ts'
@@ -24,7 +29,10 @@ import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'
 const cloudflareHttpProviders = [CloudflareHttpProvider.d1, CloudflareHttpProvider.doSqlite]
 
 Vitest.describe.each(cloudflareHttpProviders)('$name HTTP response headers', { timeout: 30000 }, ({ layer, name }) => {
-  let runtime: ManagedRuntime.ManagedRuntime<SyncProviderImpl | HttpClient.HttpClient, never>
+  let runtime: ManagedRuntime.ManagedRuntime<
+    SyncProviderImpl | HttpClient.HttpClient | KeyValueStore.KeyValueStore,
+    never
+  >
   let testId: string
 
   Vitest.beforeAll(async () => {
@@ -32,9 +40,10 @@ Vitest.describe.each(cloudflareHttpProviders)('$name HTTP response headers', { t
     runtime = ManagedRuntime.make(
       layer.pipe(
         Layer.provideMerge(FetchHttpClient.layer),
+        Layer.provideMerge(KeyValueStore.layerMemory),
+        Layer.provideMerge(Layer.effect(Scope.Scope)(Scope.make())),
         Layer.provide(OtelLiveHttp({ rootSpanName: 'beforeAll', serviceName: 'vitest-runner', skipLogUrl: false })),
         Layer.provide(Logger.prettyWithThread('test-runner')),
-        Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
         Layer.orDie,
       ),
     )
@@ -54,49 +63,62 @@ Vitest.describe.each(cloudflareHttpProviders)('$name HTTP response headers', { t
           },
           options,
         ),
-      ).pipe(Effect.provide(runtime)),
+      ).pipe((effect) =>
+        Effect.tryPromise(() =>
+          runtime.runPromise(
+            effect as Effect.Effect<
+              SyncBackend.SyncBackend,
+              UnknownError,
+              SyncProviderImpl | HttpClient.HttpClient | KeyValueStore.KeyValueStore
+            >,
+          ),
+        ),
+      ),
     )
 
   Vitest.scopedLive('HTTP responses include custom headers', (test) =>
     Effect.gen(function* () {
       const syncBackend = yield* makeProvider(test.task.name)
-      const http = yield* HttpClient.HttpClient
-
       // Get the sync backend URL from metadata
       const metadata = syncBackend.metadata
       expect(metadata.protocol).toBe('http')
       const baseUrl = metadata.url
+      const storeId = `test-store-${name}-${test.task.name}-${testId}`
 
-      // Make a raw HTTP request to the ping endpoint
-      const searchParams = new URLSearchParams({
-        storeId: `test-store-${name}-${test.task.name}-${testId}`,
+      // Encode search params via the same schema the worker decodes with — `matchSyncRequest` requires
+      // the full SearchParams shape. We use `null` rather than `undefined` for `payload` because
+      // `UndefinedOr` drops the key during encoding, which would leave the URL missing a required field.
+      const urlParamsRecord = yield* Schema.encodeEffect(SearchParamsSchema)({
+        storeId,
+        payload: null,
         transport: 'http',
       })
 
       const baseUrlString = typeof baseUrl === 'string' ? baseUrl : objectToString(baseUrl)
       const requestUrl = new URL(baseUrlString)
-      requestUrl.search = searchParams.toString()
+      requestUrl.search = UrlParams.toString(UrlParams.fromInput(urlParamsRecord))
       const req = HttpClientRequest.post(requestUrl.href).pipe(
         HttpClientRequest.setHeader('content-type', 'application/json'),
-        HttpClientRequest.setHeader('x-livestore-store-id', `test-store-${name}-${test.task.name}-${testId}`),
-        HttpClientRequest.bodyUnsafeJson({
+        HttpClientRequest.setHeader('x-livestore-store-id', storeId),
+        HttpClientRequest.bodyJsonUnsafe({
           _tag: 'Request',
           id: 'test-req-1',
           tag: 'SyncHttpRpc.Ping',
           payload: {
-            storeId: `test-store-${name}-${test.task.name}-${testId}`,
-            payload: undefined,
+            storeId,
+            payload: null,
           },
         }),
       )
 
-      const pingResponse = yield* http.execute(req).pipe(Effect.scoped)
+      const pingResponse = yield* Effect.tryPromise(() =>
+        runtime.runPromise(HttpClient.execute(req).pipe(Effect.scoped)),
+      )
 
       // Verify custom response headers are present
       expect(pingResponse.headers['x-custom-header']).toBe('test-value')
       expect(pingResponse.headers['x-livestore-version']).toBe('1.0.0')
     }).pipe(
-      Effect.provide(runtime),
       Vitest.makeWithTestCtx({
         makeLayer: (_testContext) => Layer.mergeAll(Logger.prettyWithThread('test-runner'), KeyValueStore.layerMemory),
         forceOtel: true,

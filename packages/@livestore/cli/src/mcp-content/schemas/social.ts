@@ -82,7 +82,7 @@ export const tables = {
   feedState: State.SQLite.clientDocument({
     name: 'feedState',
     schema: Schema.Struct({
-      currentFeed: Schema.Literal('home', 'discover', 'following'),
+      currentFeed: Schema.Literals(['home', 'discover', 'following']),
       lastRefresh: Schema.Date,
       scrollPosition: Schema.Number,
     }),
@@ -142,7 +142,7 @@ export const events = {
       content: Schema.String,
       mediaUrls: Schema.NullOr(Schema.Array(Schema.String)),
       replyToId: Schema.NullOr(Schema.String),
-      visibility: Schema.Literal('public', 'followers', 'private'),
+      visibility: Schema.Literals(['public', 'followers', 'private']),
       createdAt: Schema.Date,
     }),
   }),

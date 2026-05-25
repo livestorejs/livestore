@@ -19,12 +19,21 @@ import {
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
-import type * as WebmeshWorker from '@livestore/devtools-web-common/worker'
+import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import type { MakeWebSqliteDb } from '@livestore/sqlite-wasm/browser'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { tryAsFunctionAndNew } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Effect, FetchHttpClient, Fiber, Layer, type Schema, SubscriptionRef, Worker } from '@livestore/utils/effect'
+import {
+  Effect,
+  EffectRpcClient,
+  FetchHttpClient,
+  Fiber,
+  Layer,
+  Queue,
+  type Schema,
+  SubscriptionRef,
+} from '@livestore/utils/effect'
 import { BrowserWorker } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as Webmesh from '@livestore/webmesh'
@@ -122,11 +131,16 @@ export const makeInMemoryAdapter =
         : undefined
 
       const sharedWorkerFiber = sharedWebWorker !== undefined
-        ? yield* Worker.makePoolSerialized<typeof WebmeshWorker.Schema.Request.Type>({
-            size: 1,
-            concurrency: 100,
+        ? yield* Effect.gen(function* () {
+            const scope = yield* Effect.scope
+            const protocolContext = yield* Layer.buildWithScope(
+              EffectRpcClient.layerProtocolWorker({ size: 1, concurrency: 100 }).pipe(
+                Layer.provide(BrowserWorker.layer(() => sharedWebWorker)),
+              ),
+              scope,
+            )
+            return yield* EffectRpcClient.make(WebmeshWorker.Schema.Rpcs).pipe(Effect.provide(protocolContext))
           }).pipe(
-            Effect.provide(BrowserWorker.layer(() => sharedWebWorker)),
             Effect.tapCauseLogPretty,
             UnknownError.mapToUnknownError,
             Effect.forkScoped,
@@ -211,13 +225,13 @@ const makeLeaderThread = ({
   sharedWorkerFiber,
 }: MakeLeaderThreadArgs) =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime()
+    const context = yield* Effect.context()
 
     const makeDb = (_kind: 'state' | 'eventlog') => {
       return makeSqliteDb({
         _tag: 'in-memory',
         configureDb: (db) =>
-          configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
+          configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(context)),
       })
     }
 
@@ -286,7 +300,7 @@ const makeLeaderThread = ({
         export: Effect.sync(() => dbState.export()),
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         syncState: syncProcessor.syncState,
-        sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+        sendDevtoolsMessage: (message) => Queue.offer(extraIncomingMessagesQueue, message),
         networkStatus,
       })
 
@@ -296,10 +310,7 @@ const makeLeaderThread = ({
     }).pipe(Effect.provide(layer))
   })
 
-type SharedWorkerFiber = Fiber.Fiber<
-  Worker.SerializedWorkerPool<typeof WebmeshWorker.Schema.Request.Type>,
-  UnknownError
->
+type SharedWorkerFiber = Fiber.Fiber<DevtoolsWeb.WorkerClient, UnknownError>
 
 const makeDevtoolsOptions = ({
   devtoolsEnabled,

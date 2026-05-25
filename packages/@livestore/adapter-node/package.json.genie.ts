@@ -23,6 +23,7 @@ const runtimeDeps = catalog.compose({
       '@rollup/plugin-node-resolve',
       '@rollup/plugin-terser',
       '@types/node',
+      '@effect/platform-node',
       'rollup',
       'vite',
     ),

@@ -44,9 +44,9 @@ export const makeElectricUrl = ({
 } => {
   const endpointUrl = `${electricHost}/v1/shape`
   const UrlParamsSchema = Schema.Struct({ args: ApiSchema.ArgsSchema })
-  const argsResult = Schema.decodeUnknownEither(UrlParamsSchema)(Object.fromEntries(providedSearchParams.entries()))
+  const argsResult = Schema.decodeUnknownExit(UrlParamsSchema as any)(Object.fromEntries(providedSearchParams.entries()))
 
-  if (argsResult._tag === 'Left') {
+  if (argsResult._tag !== 'Success') {
     return shouldNeverHappen(
       'Invalid search params provided to makeElectricUrl',
       providedSearchParams,
@@ -54,7 +54,7 @@ export const makeElectricUrl = ({
     )
   }
 
-  const args = argsResult.right.args
+  const args = (argsResult.value as typeof UrlParamsSchema.Type).args
   const tableName = toTableName(args.storeId)
   // TODO refactor with Effect URLSearchParams schema
   // https://electric-sql.com/openapi.html

@@ -1,11 +1,18 @@
 import { deepEqual, memoizeByRef } from '@livestore/utils'
-import { Option, Schema } from '@livestore/utils/effect'
+import { Effect, Option, Schema, Struct } from '@livestore/utils/effect'
 
 import type { EventDef } from '../EventDef/mod.ts'
 import * as EventSequenceNumber from '../EventSequenceNumber/mod.ts'
 import type { LiveStoreSchema } from '../schema.ts'
 import type * as ForEventDef from './for-event-def.ts'
 import type * as Global from './global.ts'
+
+const defaultMeta = () => ({
+  sessionChangeset: { _tag: 'unset' as const },
+  syncMetadata: Option.none(),
+  materializerHashLeader: Option.none(),
+  materializerHashSession: Option.none(),
+})
 
 /** Effect Schema for client events with decoded args. */
 export const Decoded = Schema.Struct({
@@ -15,7 +22,7 @@ export const Decoded = Schema.Struct({
   parentSeqNum: EventSequenceNumber.Client.Composite,
   clientId: Schema.String,
   sessionId: Schema.String,
-}).annotations({ title: 'LiveStoreEvent.Client.Decoded' })
+}).annotate({ title: 'LiveStoreEvent.Client.Decoded' })
 
 /**
  * Effect Schema for client events with encoded args.
@@ -45,7 +52,7 @@ export const Encoded = Schema.Struct({
   parentSeqNum: EventSequenceNumber.Client.Composite,
   clientId: Schema.String,
   sessionId: Schema.String,
-}).annotations({ title: 'LiveStoreEvent.Client.Encoded' })
+}).annotate({ title: 'LiveStoreEvent.Client.Encoded' })
 
 /** Event with composite sequence numbers and decoded (native TypeScript) args. */
 export type Decoded = ForEventDef.Decoded<EventDef.Any>
@@ -73,36 +80,21 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
   sessionId: Schema.String,
   // TODO get rid of `meta` again by cleaning up the usage implementations
   meta: Schema.Struct({
-    sessionChangeset: Schema.Union(
-      Schema.TaggedStruct('sessionChangeset', {
+    sessionChangeset: Schema.Union([Schema.TaggedStruct('sessionChangeset', {
         data: Schema.Uint8Array as any as Schema.Schema<Uint8Array<ArrayBuffer>>,
         debug: Schema.Any.pipe(Schema.optional),
-      }),
-      Schema.TaggedStruct('no-op', {}),
-      Schema.TaggedStruct('unset', {}),
-    ),
+      }), Schema.TaggedStruct('no-op', {}), Schema.TaggedStruct('unset', {})]),
     syncMetadata: Schema.Option(Schema.JsonValue),
     /** Used to detect if the materializer is side effecting (during dev) */
     materializerHashLeader: Schema.Option(Schema.Number),
     materializerHashSession: Schema.Option(Schema.Number),
-  }).pipe(
-    Schema.mutable,
-    Schema.optional,
-    Schema.withDefaults({
-      constructor: () => ({
-        sessionChangeset: { _tag: 'unset' as const },
-        syncMetadata: Option.none(),
-        materializerHashLeader: Option.none(),
-        materializerHashSession: Option.none(),
-      }),
-      decoding: () => ({
-        sessionChangeset: { _tag: 'unset' as const },
-        syncMetadata: Option.none(),
-        materializerHashLeader: Option.none(),
-        materializerHashSession: Option.none(),
-      }),
-    }),
-  ),
+  })
+    .mapFields(Struct.map(Schema.mutableKey))
+    .pipe(
+      Schema.optional,
+      Schema.withConstructorDefault(Effect.sync(defaultMeta)),
+      Schema.withDecodingDefaultType(Effect.sync(defaultMeta)),
+    ),
 }) {
   toJSON = (): any => {
     // Only used for logging/debugging
@@ -140,11 +132,16 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
     parentSeqNum: EventSequenceNumber.Client.Composite
     isClient: boolean
     rebaseGeneration: number
-  }) =>
-    new EncodedWithMeta({
+  }) => {
+    const EventConstructor = this.constructor as new (
+      args: ConstructorParameters<typeof EncodedWithMeta>[0],
+    ) => EncodedWithMeta
+
+    return new EventConstructor({
       ...this,
       ...EventSequenceNumber.Client.nextPair({ seqNum: parentSeqNum, isClient, rebaseGeneration }),
     })
+  }
 
   static fromGlobal = (
     event: Global.Encoded,
@@ -218,7 +215,7 @@ const canonicalizeArgs = (args: unknown): unknown =>
 export const makeSchema = <TSchema extends LiveStoreSchema>(
   schema: TSchema,
 ): ForEventDef.ForRecord<TSchema['_EventDefMapType']> =>
-  Schema.Union(
+  Schema.Union([
     ...[...schema.eventsDefsMap.values()].map((def) =>
       Schema.Struct({
         name: Schema.Literal(def.name),
@@ -229,7 +226,7 @@ export const makeSchema = <TSchema extends LiveStoreSchema>(
         sessionId: Schema.String,
       }),
     ),
-  ).annotations({ title: 'LiveStoreEvent.Client' }) as any
+  ]).annotate({ title: 'LiveStoreEvent.Client' }) as any
 
 /** Memoized `makeSchema` - caches the generated schema by reference. */
 export const makeSchemaMemo = memoizeByRef(makeSchema)

@@ -3,6 +3,7 @@ import {
   Fiber,
   FiberMap,
   Layer,
+  Option,
   RpcClient,
   type RpcMessage,
   RpcSerialization,
@@ -17,7 +18,7 @@ import type * as CfTypes from '../cf-types.ts'
  */
 const processReadableStream = (
   stream: CfTypes.ReadableStream,
-  parser: ReturnType<typeof RpcSerialization.msgPack.unsafeMake>,
+  parser: ReturnType<typeof RpcSerialization.msgPack.makeUnsafe>,
   writeResponse: (response: any) => Effect.Effect<void>,
 ): Effect.Effect<void> =>
   Effect.gen(function* () {
@@ -72,7 +73,7 @@ interface MakeDoRpcProtocolArgs {
  */
 export const layerProtocolDurableObject = (
   args: MakeDoRpcProtocolArgs,
-): Layer.Layer<RpcClient.Protocol> => Layer.scoped(RpcClient.Protocol, makeProtocolDurableObject(args))
+): Layer.Layer<RpcClient.Protocol> => Layer.effect(RpcClient.Protocol)(makeProtocolDurableObject(args))
 
 /**
  * Implementation of the RPC Protocol interface using Cloudflare Durable Object RPC calls.
@@ -80,20 +81,22 @@ export const layerProtocolDurableObject = (
  */
 const makeProtocolDurableObject = ({
   callRpc,
-}: MakeDoRpcProtocolArgs): Effect.Effect<RpcClient.Protocol['Type'], never, Scope.Scope> =>
+}: MakeDoRpcProtocolArgs): Effect.Effect<RpcClient.Protocol['Service'], never, Scope.Scope> =>
   RpcClient.Protocol.make(
-    Effect.fnUntraced(function* (writeResponse) {
-      const parser = RpcSerialization.msgPack.unsafeMake()
+    Effect.fnUntraced(function* (writeResponse, _clientIds) {
+      const parser = RpcSerialization.msgPack.makeUnsafe()
       // Not using an actual `FiberMap` here because it seems to shutdown to early
       // const fiberMap = new Map<string, Fiber.RuntimeFiber<void, never>>()
       const fiberMap = yield* FiberMap.make<string, void, never>()
 
-  const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void> => {
+      const send = (clientId: number, message: RpcMessage.FromClientEncoded): Effect.Effect<void> => {
         if (message._tag !== 'Request') {
           if (message._tag === 'Interrupt') {
             return Effect.gen(function* () {
               const fiber = yield* FiberMap.get(fiberMap, message.requestId)
-              yield* Fiber.interrupt(fiber)
+              if (Option.isSome(fiber)) {
+                yield* Fiber.interrupt(fiber.value)
+              }
             }).pipe(Effect.orDie)
           }
 
@@ -111,16 +114,16 @@ const makeProtocolDurableObject = ({
             const fiber = yield* processReadableStream(
               serializedResponse as CfTypes.ReadableStream,
               parser,
-              writeResponse,
+              (response) => writeResponse(clientId, response),
             ).pipe(
               // Effect.tapCauseLogPretty,
-              Effect.fork,
+              Effect.forkChild,
             )
 
             // fiberMap.set(message.id, fiber)
             yield* FiberMap.set(fiberMap, message.id, fiber)
 
-            yield* fiber
+            yield* Fiber.join(fiber)
 
             return
           }
@@ -138,7 +141,7 @@ const makeProtocolDurableObject = ({
 
           // Process each response
           for (const response of responseArray) {
-            yield* writeResponse(response)
+            yield* writeResponse(clientId, response)
           }
         }).pipe(Effect.withSpan('do-rpc-client:send'), Effect.orDie) // Ensure never error type
       }

@@ -1,12 +1,12 @@
-import { Effect, Layer } from 'effect'
+import { Context, Effect, Layer } from 'effect'
 
 import { TodoStore, TodoStoreLayer } from './make-store-context.ts'
 import { storeEvents } from './schema.ts'
 
 // ---cut---
 // Define services that depend on the store
-class TodoService extends Effect.Service<TodoService>()('TodoService', {
-  effect: Effect.gen(function* () {
+class TodoService extends Context.Service<TodoService>()('TodoService', {
+  make: Effect.gen(function* () {
     const { store } = yield* TodoStore
 
     const createTodo = (id: string, text: string) =>
@@ -16,11 +16,11 @@ class TodoService extends Effect.Service<TodoService>()('TodoService', {
 
     return { createTodo, completeTodo } as const
   }),
-  dependencies: [TodoStoreLayer],
 }) {}
 
 // Compose everything into a main layer
-const MainLayer = Layer.mergeAll(TodoStoreLayer, TodoService.Default)
+const TodoServiceLayer = Layer.effect(TodoService)(TodoService.make)
+const MainLayer = TodoServiceLayer.pipe(Layer.provideMerge(TodoStoreLayer))
 
 // Use in your application
 const program = Effect.gen(function* () {

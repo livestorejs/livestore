@@ -76,7 +76,7 @@ export default {
       const url = new URL(request.url)
 
       // Handle HTTP RPC endpoint
-      if (url.pathname === '/rpc') {
+      if (url.pathname === '/rpc' || url.pathname === '/rpc/') {
         // Get the test server DO instance
         const doId = env.TEST_RPC_DO.idFromName('test-server')
         const serverDO = env.TEST_RPC_DO.get(doId)
@@ -106,26 +106,23 @@ export default {
               doRpcClient.StreamBugScenarioDoServer(msg).pipe(
                 Stream.tap(() => Effect.fail('doh')),
                 // observed behaviour: `log1` is still logged
-                Stream.tapErrorCause((cause) => Effect.log('log1', cause)),
+                Stream.tapCause((cause) => Effect.log('log1', cause)),
                 Stream.mapError((cause) => cause.toString()),
                 // observed behaviour: after this error mapping `log2` is never logged
-                Stream.tapErrorCause((cause) => Effect.log('log2', cause)),
+                Stream.tapCause((cause) => Effect.log('log2', cause)),
                 Stream.tapLogWithLabel('stream'),
                 Stream.runCount,
                 Effect.orDie,
                 // observed behaviour: `log3` is also never logged
-                Effect.tapErrorCause((cause) => Effect.log('log3', cause)),
+                Effect.tapCause((cause) => Effect.log('log3', cause)),
               ),
           }).pipe(
-            Layer.provideMerge(RpcServer.layerProtocolHttp({ path: '/rpc' })),
             Layer.provideMerge(RpcSerialization.layerJson),
           )
 
           // Create the HTTP RPC app
-          const httpApp = RpcServer.toHttpApp(TestRpcs).pipe(Effect.provide(handlersLayer))
-
-          // Run the app and convert to web handler
-          const webHandler = yield* httpApp.pipe(Effect.map(HttpApp.toWebHandler))
+          const httpEffect = yield* RpcServer.toHttpEffect(TestRpcs).pipe(Effect.provide(handlersLayer))
+          const webHandler = HttpApp.toWebHandler(httpEffect)
 
           return yield* Effect.promise(() => webHandler(request))
         }).pipe(
@@ -133,7 +130,7 @@ export default {
           Effect.scoped,
           Effect.withSpan('@livestore/common-cf/do-rpc/test-fixtures/worker:fetch'),
           // Effect.provide(ProtocolLive),
-          Effect.runPromise,
+          (_) => Effect.runPromise(_ as Effect.Effect<Response>),
         )
       }
 

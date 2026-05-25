@@ -1,6 +1,4 @@
-import { objectToString } from '@livestore/utils'
-
-import { Schema } from '@livestore/utils/effect'
+import { Schema, SchemaAST, SchemaTransformation } from '@livestore/utils/effect'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
 import { State } from '../../mod.ts'
@@ -11,7 +9,7 @@ describe('table function overloads', () => {
       id: Schema.String,
       text: Schema.String,
       completed: Schema.Boolean,
-    }).annotations({ title: 'todos' })
+    }).annotate({ title: 'todos' })
 
     const todosTable = State.SQLite.table({
       schema: TodoSchema,
@@ -25,7 +23,7 @@ describe('table function overloads', () => {
       id: Schema.String,
       text: Schema.String,
       completed: Schema.Boolean,
-    }).annotations({ identifier: 'TodoItem' })
+    }).annotate({ identifier: 'TodoItem' })
 
     const todosTable = State.SQLite.table({ schema: TodoSchema })
 
@@ -37,7 +35,7 @@ describe('table function overloads', () => {
       id: Schema.String,
       text: Schema.String,
       completed: Schema.Boolean,
-    }).annotations({
+    }).annotate({
       title: 'todos',
       identifier: 'TodoItem',
     })
@@ -74,7 +72,7 @@ describe('table function overloads', () => {
       },
     })
 
-    expect((todosTable.rowSchema as any).fields.completed.toString()).toMatchInlineSnapshot(`"(number <-> boolean)"`)
+    expect(Schema.decodeUnknownSync((todosTable.rowSchema as any).fields.completed)(1)).toBe(true)
     expect(todosTable.sqliteDef.name).toBe('todos')
     expect(todosTable.sqliteDef.columns).toHaveProperty('id')
     expect(todosTable.sqliteDef.columns).toHaveProperty('text')
@@ -82,16 +80,14 @@ describe('table function overloads', () => {
     expect(todosTable.sqliteDef.columns).toHaveProperty('optionalComplex')
 
     expect(todosTable.sqliteDef.columns.optionalBoolean.nullable).toBe(true)
-    expect(objectToString(todosTable.sqliteDef.columns.optionalBoolean.schema)).toBe('(number <-> boolean) | null')
-    expect((todosTable.rowSchema as any).fields.optionalBoolean.toString()).toBe('(number <-> boolean) | null')
+    expect(Schema.decodeUnknownSync(todosTable.sqliteDef.columns.optionalBoolean.schema)(1)).toBe(true)
+    expect(Schema.decodeUnknownSync((todosTable.rowSchema as any).fields.optionalBoolean)(null)).toBe(null)
 
     expect(todosTable.sqliteDef.columns.optionalComplex.nullable).toBe(true)
-    expect(objectToString(todosTable.sqliteDef.columns.optionalComplex.schema)).toBe(
-      '(parseJson <-> { readonly color: string } | undefined) | null',
+    expect(Schema.encodeSync(todosTable.sqliteDef.columns.optionalComplex.schema)({ color: 'red' })).toBe(
+      '{"color":"red"}',
     )
-    expect((todosTable.rowSchema as any).fields.optionalComplex.toString()).toBe(
-      '(parseJson <-> { readonly color: string } | undefined) | null',
-    )
+    expect(Schema.decodeUnknownSync((todosTable.rowSchema as any).fields.optionalComplex)(null)).toBe(null)
   })
 
   it('should allow explicit first two generic arguments without options generic', () => {
@@ -205,32 +201,33 @@ describe('table function overloads', () => {
       contactEmail: Schema.String.pipe(State.SQLite.withUnique),
     })
 
-    const Nested = Schema.transform(
-      Flat,
-      Schema.Struct({
-        id: Schema.String,
-        contact: Schema.Struct({
-          firstName: Schema.String,
-          lastName: Schema.String,
-          email: Schema.String,
+    const Nested = Flat.pipe(
+      Schema.decodeTo(
+        Schema.Struct({
+          id: Schema.String,
+          contact: Schema.Struct({
+            firstName: Schema.String,
+            lastName: Schema.String,
+            email: Schema.String,
+          }),
         }),
-      }),
-      {
-        decode: ({ id, contactFirstName, contactLastName, contactEmail }) => ({
-          id,
-          contact: {
-            firstName: contactFirstName,
-            lastName: contactLastName,
-            email: contactEmail,
-          },
+        SchemaTransformation.transform({
+          decode: ({ id, contactFirstName, contactLastName, contactEmail }) => ({
+            id,
+            contact: {
+              firstName: contactFirstName,
+              lastName: contactLastName,
+              email: contactEmail,
+            },
+          }),
+          encode: ({ id, contact }) => ({
+            id,
+            contactFirstName: contact.firstName,
+            contactLastName: contact.lastName,
+            contactEmail: contact.email,
+          }),
         }),
-        encode: ({ id, contact }) => ({
-          id,
-          contactFirstName: contact.firstName,
-          contactLastName: contact.lastName,
-          contactEmail: contact.email,
-        }),
-      },
+      ),
     )
 
     const contactsTable = State.SQLite.table({
@@ -272,7 +269,7 @@ describe('table function overloads', () => {
       name: Schema.String,
       age: Schema.Int,
       active: Schema.Boolean,
-      metadata: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+      metadata: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
     })
 
     const userTable = State.SQLite.table({
@@ -298,11 +295,9 @@ describe('table function overloads', () => {
     type MetadataColumn = typeof userTable.sqliteDef.columns.metadata
 
     // Should derive proper column schema
-    expect((userTable.rowSchema as any).fields.age.toString()).toMatchInlineSnapshot(`"Int"`)
-    expect((userTable.rowSchema as any).fields.active.toString()).toMatchInlineSnapshot(`"(number <-> boolean)"`)
-    expect((userTable.rowSchema as any).fields.metadata.toString()).toMatchInlineSnapshot(
-      `"(parseJson <-> { readonly [x: string]: unknown }) | null"`,
-    )
+    expect(Schema.decodeUnknownSync((userTable.rowSchema as any).fields.age)(30)).toBe(30)
+    expect(Schema.decodeUnknownSync((userTable.rowSchema as any).fields.active)(1)).toBe(true)
+    expect(Schema.encodeSync((userTable.rowSchema as any).fields.metadata)({ key: 'value' })).toBe('{"key":"value"}')
 
     // These should compile without errors
     const _idCheck: IdColumn['schema']['Type'] = 'string'
@@ -370,7 +365,7 @@ describe('table function overloads', () => {
     })
     const CircleSchema = Schema.Struct({
       kind: Schema.Literal('circle'),
-      data: Schema.parseJson(CircleDataSchema),
+      data: Schema.fromJsonString(CircleDataSchema),
     })
 
     const SquareDataSchema = Schema.Struct({
@@ -378,10 +373,10 @@ describe('table function overloads', () => {
     })
     const SquareSchema = Schema.Struct({
       kind: Schema.Literal('square'),
-      data: Schema.parseJson(SquareDataSchema),
+      data: Schema.fromJsonString(SquareDataSchema),
     })
 
-    const ShapeSchema = Schema.Union(CircleSchema, SquareSchema)
+    const ShapeSchema = Schema.Union([CircleSchema, SquareSchema])
 
     const shapes = State.SQLite.table({
       name: 'shapes',
@@ -390,8 +385,7 @@ describe('table function overloads', () => {
 
     expect(shapes.sqliteDef.columns.kind.columnType).toBe('text')
 
-    const kindSchema = objectToString(shapes.sqliteDef.columns.kind.schema)
-    expect(kindSchema).toContain('"circle" | "square"')
+    expectLiteralValues(shapes.sqliteDef.columns.kind.schema, ['circle', 'square'])
 
     expect(() =>
       shapes
@@ -412,3 +406,17 @@ describe('table function overloads', () => {
     ).not.toThrow()
   })
 })
+
+const expectLiteralValues = (
+  schema: Schema.Schema.Any,
+  expectedValues: ReadonlyArray<SchemaAST.LiteralValue>,
+): void => {
+  const ast = schema.ast
+  const literals = SchemaAST.isUnion(ast) === true
+    ? ast.types.filter(SchemaAST.isLiteral).map((type) => type.literal)
+    : SchemaAST.isLiteral(ast) === true
+    ? [ast.literal]
+    : []
+
+  expect(new Set(literals)).toEqual(new Set(expectedValues))
+}

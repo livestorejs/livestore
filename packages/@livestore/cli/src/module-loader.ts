@@ -82,7 +82,7 @@ export const loadModuleConfig = ({
     const syncPayload = yield* (
       syncPayloadExport === undefined
         ? Effect.succeed<unknown>(undefined)
-        : Schema.decodeUnknown(syncPayloadSchema)(syncPayloadExport)
+        : Schema.decodeUnknownEffect(syncPayloadSchema)(syncPayloadExport)
     ).pipe(UnknownError.mapToUnknownError)
 
     return {

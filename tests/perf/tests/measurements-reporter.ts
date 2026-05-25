@@ -4,14 +4,23 @@ import process from 'node:process'
 import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
 
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import { Data, Effect, ManagedRuntime, Metric, type MetricState, Option, ParseResult, Pretty, ReadonlyArray, Schema } from '@livestore/utils/effect'
+import {
+  Data,
+  Effect,
+  ManagedRuntime,
+  Metric,
+  Option,
+  Schema,
+  SchemaGetter,
+  SchemaIssue,
+} from '@livestore/utils/effect'
 
 import { printConsoleTable } from './print-console-table.ts'
 
-const MeasurementUnit = Schema.Literal('ms', 'bytes')
+const MeasurementUnit = Schema.Literals(['ms', 'bytes'])
 type MeasurementUnit = typeof MeasurementUnit.Type
 
-const DisplayUnit = Schema.Literal('ms', 'MB')
+const DisplayUnit = Schema.Literals(['ms', 'MB'])
 type DisplayUnit = typeof DisplayUnit.Type
 
 class MissingAnnotationError extends Data.TaggedError('MissingAnnotationError')<{
@@ -26,23 +35,28 @@ const StringDescribedAnnotation = <T extends string>(typeLiteral: T) =>
   })
 
 const NumberFromDescriptionAnnotation = <T extends string>(typeLiteral: T) =>
-  Schema.transformOrFail(
-    StringDescribedAnnotation(typeLiteral),
-    Schema.Struct({
+  StringDescribedAnnotation(typeLiteral).pipe(
+    Schema.decodeTo(
+      Schema.Struct({
       type: Schema.Literal(typeLiteral),
       description: Schema.Number,
-    }),
-    {
-      decode: ({ description, ...rest }, _, ast) =>
-        Effect.sync(() => Number.parseFloat(description)).pipe(
-          Effect.filterOrFail(
-            (num) => !Number.isNaN(num),
-            () => new ParseResult.Type(ast, description, `Invalid ${rest.type} description: ${description}`),
+      }),
+      {
+        decode: SchemaGetter.transformOrFail(({ description, ...rest }) =>
+          Effect.sync(() => Number.parseFloat(description)).pipe(
+            Effect.filterOrFail(
+              (num) => !Number.isNaN(num),
+              () =>
+                new SchemaIssue.InvalidValue(Option.some(description), {
+                  message: `Invalid ${rest.type} description: ${description}`,
+                }),
+            ),
+            Effect.map((parsedDescription) => ({ ...rest, description: parsedDescription })),
           ),
-          Effect.map((parsedDescription) => ({ ...rest, description: parsedDescription })),
         ),
-      encode: ({ description, ...rest }) => Effect.succeed({ ...rest, description: String(description) }),
-    },
+        encode: SchemaGetter.transform(({ description, ...rest }) => ({ ...rest, description: String(description) })),
+      },
+    ),
   )
 
 const MeasurementAnnotation = NumberFromDescriptionAnnotation('measurement')
@@ -66,85 +80,28 @@ const getRequiredAnnotationSync = <T extends AnyAnnotation['type']>(
   return annotation
 }
 
-const AnyAnnotation = Schema.Union(
-  MeasurementAnnotation,
-  MeasurementUnitAnnotation,
-  CpuThrottlingRateAnnotation,
-  WarmupRunsAnnotation,
-)
+const AnyAnnotation = Schema.Union([MeasurementAnnotation, MeasurementUnitAnnotation, CpuThrottlingRateAnnotation, WarmupRunsAnnotation])
 type AnyAnnotation = Schema.Schema.Type<typeof AnyAnnotation>
 
 const Annotations = Schema.NonEmptyArray(AnyAnnotation)
 
-const Cpus = Schema.NonEmptyArray(
-  Schema.Struct({
-    model: Schema.String,
-    speed: Schema.Number,
-  }),
-).pipe(
-  Schema.transform(
-    Schema.Struct({
-      model: Schema.String,
-      count: Schema.Number,
-      speed: Schema.Number.annotations({
-        pretty: () => (value) => `${(value / 1000).toFixed(2)} GHz`,
-      }),
-    }),
-    {
-      encode: ({ count, ...value }) => ReadonlyArray.replicate(value, count),
-      decode: (cpus) => ({
-        model: cpus[0].model,
-        speed: cpus[0].speed,
-        count: cpus.length,
-      }),
-      strict: false,
-    },
-  ),
-)
-
-const SystemInfo = Schema.Struct({
-  os: Schema.Struct({
-    type: Schema.String,
-    platform: Schema.String,
-    release: Schema.String,
-    arch: Schema.String,
-  }),
-  cpus: Cpus,
-  memory: Schema.Struct({
-    total: Schema.Number.annotations({
-      pretty: () => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`,
-    }),
-    free: Schema.Number.annotations({
-      pretty: () => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`,
-    }),
-  }),
-}).annotations({
-  pretty: () => (value) => {
-    return `
-🖥️  System Information:
-
-Operating System:
-  Type: ${value.os.type}
-  Platform: ${value.os.platform}
-  Release: ${value.os.release}
-  Architecture: ${value.os.arch}
-
-CPU:
-  Model: ${value.cpus.model}
-  Count: ${value.cpus.count}
-  Speed: ${value.cpus.speed}
-
-Memory:
-  Total: ${value.memory.total}
-  Free: ${value.memory.free}`
-  },
-})
-
-type SystemInfo = typeof SystemInfo.Type
-
-const decodeSystemInfo = Schema.decodeUnknownSync(SystemInfo)
-
-const PrettySystemInfo = Pretty.make(SystemInfo)
+type SystemInfo = {
+  os: {
+    type: string
+    platform: string
+    release: string
+    arch: string
+  }
+  cpus: {
+    model: string
+    count: number
+    speed: number
+  }
+  memory: {
+    total: number
+    free: number
+  }
+}
 
 const measurementUnitToDisplayUnit: Record<MeasurementUnit, DisplayUnit> = {
   ms: 'ms',
@@ -160,19 +117,24 @@ const OtelLayer = OtelLiveHttp({ serviceName: 'livestore-perf-tests', skipLogUrl
 
 const collectSystemInfo = (): SystemInfo => {
   const cpus = os.cpus()
-  return decodeSystemInfo({
+  const firstCpu = cpus[0]
+  return {
     os: {
       type: os.type(),
       platform: os.platform(),
       release: os.release(),
       arch: os.arch(),
     },
-    cpus,
+    cpus: {
+      model: firstCpu?.model ?? 'unknown',
+      speed: firstCpu?.speed ?? 0,
+      count: cpus.length,
+    },
     memory: {
       total: os.totalmem(),
       free: os.freemem(),
     },
-  })
+  }
 }
 
 type TrackedMeasurement = {
@@ -233,7 +195,7 @@ export default class MeasurementsReporter implements Reporter {
 
   // Private methods
   private printSystemInfo = (): void => {
-    console.log(PrettySystemInfo(this.systemInfo))
+    console.log(formatSystemInfo(this.systemInfo))
   }
 
   private printMeasurements = (metricStatesByTitle: Record<string, TrackedMeasurementState>): void => {
@@ -302,16 +264,14 @@ export default class MeasurementsReporter implements Reporter {
         const quantiles = Object.fromEntries(metricState.quantiles)
 
         const mean = metricState.sum / metricState.count
-        const median = Option.map(quantiles[0.5] ?? Option.none(), (q) => `${formatValue(q)} ${displayUnit}`).pipe(
-          Option.getOrElse(() => 'n/a'),
-        )
-        const lowerQuartile = quantiles[0.25] ?? Option.none()
-        const upperQuartile = quantiles[0.75] ?? Option.none()
-        const iqr = Option.zipWith(
-          lowerQuartile,
-          upperQuartile,
-          (lower, upper) => `${formatValue(upper - lower)} ${displayUnit}`,
-        ).pipe(Option.getOrElse(() => 'n/a'))
+        const medianValue = quantiles[0.5]
+        const median = medianValue === undefined ? 'n/a' : `${formatValue(medianValue)} ${displayUnit}`
+        const lowerQuartile = quantiles[0.25]
+        const upperQuartile = quantiles[0.75]
+        const iqr =
+          lowerQuartile === undefined || upperQuartile === undefined
+            ? 'n/a'
+            : `${formatValue(upperQuartile - lowerQuartile)} ${displayUnit}`
 
         rows.push([
           testTitle,
@@ -328,14 +288,14 @@ export default class MeasurementsReporter implements Reporter {
 
   private computeMetricStates = (): Effect.Effect<
     Record<string, TrackedMeasurementState>,
-    ParseResult.ParseError | MissingAnnotationError
+    SchemaIssue.Issue | MissingAnnotationError
   > =>
     Effect.all(
       Object.entries(this.measurementsByTestTitle).reduce(
         (acc, [testTitle, trackedMeasurement]) => {
-          acc[testTitle] = Effect.gen(this, function* () {
+          acc[testTitle] = Effect.gen({ self: this }, function* () {
             const metric = this.makeMetric(trackedMeasurement)
-            yield* Effect.forEach(trackedMeasurement.measurements, (value) => metric(Effect.succeed(value)), {
+            yield* Effect.forEach(trackedMeasurement.measurements, (value) => Metric.update(metric, value), {
               concurrency: 'unbounded',
             })
             const state = yield* Metric.value(metric)
@@ -346,47 +306,62 @@ export default class MeasurementsReporter implements Reporter {
           })
           return acc
         },
-        {} as Record<string, Effect.Effect<TrackedMeasurementState, ParseResult.ParseError | MissingAnnotationError>>,
+        {} as Record<string, Effect.Effect<TrackedMeasurementState, SchemaIssue.Issue | MissingAnnotationError>>,
       ),
       { concurrency: 'unbounded' },
     )
 
-  private makeMetric = (trackedMeasurement: TrackedMeasurement): Metric.Metric.Summary<number> => {
+  private makeMetric = (trackedMeasurement: TrackedMeasurement): Metric.Summary<number> => {
     const snakeCase = (str: string) => str.replaceAll(/[^a-zA-Z0-9]/g, '_').toLowerCase()
     const { meta } = trackedMeasurement
 
-    let metric = Metric.summary({
-      name: snakeCase(meta.testName),
-      maxAge: '1 hour',
-      maxSize: 100,
-      error: 0,
-      quantiles: [0.25, 0.5, 0.75],
-      description: meta.testName,
-    }).pipe(
-      Metric.tagged('unit', meta.unit),
-      Metric.tagged('test.suite.title', meta.testSuiteTitle),
-      Metric.tagged('test.title', meta.testTitle),
-      Metric.tagged('test.name', meta.testName),
-      Metric.tagged('os.type', this.systemInfo.os.type),
-      Metric.tagged('os.version', this.systemInfo.os.release),
-      Metric.tagged('host.arch', this.systemInfo.os.arch),
-      Metric.tagged('host.cpu.model.name', this.systemInfo.cpus.model),
-      Metric.tagged('system.memory.limit', this.systemInfo.memory.total.toString()),
-      Metric.tagged('system.memory.usage', (this.systemInfo.memory.total - this.systemInfo.memory.free).toString()),
-    )
-
-    if (process.env.CI !== undefined && process.env.COMMIT_SHA !== undefined && process.env.GITHUB_REF_NAME !== undefined) {
-      metric = metric.pipe(
-        Metric.tagged('github.commit_sha', process.env.COMMIT_SHA),
-        Metric.tagged('github.ref_name', process.env.GITHUB_REF_NAME),
-      )
+    const attributes: Record<string, string> = {
+      unit: meta.unit,
+      'test.suite.title': meta.testSuiteTitle,
+      'test.title': meta.testTitle,
+      'test.name': meta.testName,
+      'os.type': this.systemInfo.os.type,
+      'os.version': this.systemInfo.os.release,
+      'host.arch': this.systemInfo.os.arch,
+      'host.cpu.model.name': this.systemInfo.cpus.model,
+      'system.memory.limit': this.systemInfo.memory.total.toString(),
+      'system.memory.usage': (this.systemInfo.memory.total - this.systemInfo.memory.free).toString(),
     }
 
-    return metric
+    if (process.env.CI !== undefined && process.env.COMMIT_SHA !== undefined && process.env.GITHUB_REF_NAME !== undefined) {
+      attributes['github.commit_sha'] = process.env.COMMIT_SHA
+      attributes['github.ref_name'] = process.env.GITHUB_REF_NAME
+    }
+
+    return Metric.summary(snakeCase(meta.testName), {
+      maxAge: '1 hour',
+      maxSize: 100,
+      quantiles: [0.25, 0.5, 0.75],
+      description: meta.testName,
+      attributes,
+    })
   }
 }
 
 type TrackedMeasurementState = {
   meta: TrackedMeasurement['meta']
-  state: MetricState.MetricState.Summary
+  state: Metric.SummaryState
 }
+
+const formatSystemInfo = (value: SystemInfo): string => `
+🖥️  System Information:
+
+Operating System:
+  Type: ${value.os.type}
+  Platform: ${value.os.platform}
+  Release: ${value.os.release}
+  Architecture: ${value.os.arch}
+
+CPU:
+  Model: ${value.cpus.model}
+  Count: ${value.cpus.count}
+  Speed: ${(value.cpus.speed / 1000).toFixed(2)} GHz
+
+Memory:
+  Total: ${(value.memory.total / (1024 * 1024 * 1024)).toFixed(2)} GB
+  Free: ${(value.memory.free / (1024 * 1024 * 1024)).toFixed(2)} GB`

@@ -121,4 +121,4 @@ export const recreateDb = ({
     Effect.scoped, // NOTE we're closing the scope here so finalizers are called when the effect is done
     Effect.withSpan('@livestore/common:leader-thread:recreateDb'),
     Effect.withPerformanceMeasure('@livestore/common:leader-thread:recreateDb'),
-  )
+  ) as Effect.Effect<{ migrationsReport: MigrationsReport }, UnknownError | MaterializeError | SqliteError>

@@ -4,7 +4,7 @@ import { Schema, State } from '@livestore/livestore'
 const UserSchema = Schema.Struct({
   id: Schema.String.pipe(State.SQLite.withPrimaryKey),
   name: Schema.String,
-}).annotations({ title: 'users' })
+}).annotate({ title: 'users' })
 
 export const userTable = State.SQLite.table({ schema: UserSchema })
 
@@ -12,6 +12,6 @@ export const userTable = State.SQLite.table({ schema: UserSchema })
 const PostSchema = Schema.Struct({
   id: Schema.String.pipe(State.SQLite.withPrimaryKey),
   title: Schema.String,
-}).annotations({ identifier: 'posts' })
+}).annotate({ identifier: 'posts' })
 
 export const postTable = State.SQLite.table({ schema: PostSchema })

@@ -8,11 +8,11 @@ import { EventFactory } from '@livestore/common/testing'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
+import { NodeServices } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import type { OtelTracer, Scope } from '@livestore/utils/effect'
-import { Context, Effect, FetchHttpClient, Layer, Logger, LogLevel, Queue, Stream } from '@livestore/utils/effect'
+import { Context, Effect, FetchHttpClient, Layer, LogLevel, Queue, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import { PlatformNode } from '@livestore/utils/node'
 
 import { events, schema } from '../utils/tests/fixture.ts'
 
@@ -20,9 +20,8 @@ const withTestCtx = Vitest.makeWithTestCtx({
   makeLayer: () =>
     Layer.mergeAll(
       TestContextLive,
-      PlatformNode.NodeFileSystem.layer,
+      NodeServices.layer,
       FetchHttpClient.layer,
-      Logger.minimumLogLevel(LogLevel.Debug),
     ),
 })
 
@@ -69,7 +68,7 @@ Vitest.describe('Store events API', () => {
   )
 })
 
-class TestContext extends Context.Tag('TestContext')<
+class TestContext extends Context.Service<
   TestContext,
   {
     makeStore: (args?: {
@@ -87,10 +86,9 @@ class TestContext extends Context.Tag('TestContext')<
     mockSyncBackend: MockSyncBackend
     shutdownDeferred: ShutdownDeferred
   }
->() {}
+>()('TestContext') {}
 
-const TestContextLive = Layer.scoped(
-  TestContext,
+const TestContextLive = Layer.effect(TestContext)(
   Effect.gen(function* () {
     const mockSyncBackend = yield* makeMockSyncBackend()
     const shutdownDeferred = yield* makeShutdownDeferred

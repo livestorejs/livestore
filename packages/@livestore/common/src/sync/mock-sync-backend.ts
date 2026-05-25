@@ -1,5 +1,5 @@
-import type { Schema, Scope } from '@livestore/utils/effect'
-import { Effect, Mailbox, Option, Queue, Ref, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import type { Scope } from '@livestore/utils/effect'
+import { Effect, Mailbox, Option, Queue, Ref, Semaphore, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
@@ -40,16 +40,18 @@ export const makeMockSyncBackend = (
 ): Effect.Effect<MockSyncBackend, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
     const span = yield* Effect.currentSpan.pipe(Effect.orDie)
-    const semaphore = yield* Effect.makeSemaphore(1)
+    const semaphore = yield* Semaphore.make(1)
 
     // State refs
     const syncHeadRef = yield* Ref.make(EventSequenceNumber.Client.ROOT.global)
     const allEventsRef = yield* Ref.make<LiveStoreEvent.Global.Encoded[]>([])
     const syncIsConnectedRef = yield* SubscriptionRef.make(options?.startConnected ?? false)
+    const manuallyDisconnectedRef = yield* Ref.make(false)
 
     // Queues for streaming
     const syncPullQueue = yield* Queue.unbounded<LiveStoreEvent.Global.Encoded>()
     const pushedEventsQueue = yield* Mailbox.make<LiveStoreEvent.Global.Encoded>()
+    const pushedEventsRef = yield* Ref.make<ReadonlyArray<LiveStoreEvent.Global.Encoded>>([])
 
     // Failure simulation state
     const failPushRef = yield* Ref.make<
@@ -130,13 +132,19 @@ export const makeMockSyncBackend = (
       ),
     )
 
+    const backendConnect = Effect.gen(function* () {
+      const manuallyDisconnected = yield* Ref.get(manuallyDisconnectedRef)
+      if (manuallyDisconnected === true) return
+      yield* SubscriptionRef.set(syncIsConnectedRef, true)
+    })
+
     const makeSyncBackend = Effect.gen(function* () {
       // TODO consider making offline state actively error pull/push.
       // Currently, offline only reflects in `isConnected`, while operations still succeed,
       // mirroring how some real providers behave during transient disconnects.
       return SyncBackend.of({
         isConnected: syncIsConnectedRef,
-        connect: SubscriptionRef.set(syncIsConnectedRef, true),
+        connect: backendConnect,
         ping: Effect.void,
         pull: (cursor, pullOptions) =>
           Stream.fromEffect(
@@ -161,8 +169,9 @@ export const makeMockSyncBackend = (
 
             yield* Effect.sleep(10).pipe(Effect.withSpan('MockSyncBackend:push:sleep')) // Simulate network latency
 
+            yield* Ref.update(pushedEventsRef, (events) => events.concat(batch))
             yield* pushedEventsQueue.offerAll(batch)
-            yield* syncPullQueue.offerAll(batch)
+            yield* Queue.offerAll(syncPullQueue, batch)
             yield* Ref.update(allEventsRef, (events) => events.concat(batch))
             yield* Ref.set(syncHeadRef, batch.at(-1)!.seqNum)
           }).pipe(
@@ -187,7 +196,7 @@ export const makeMockSyncBackend = (
       Effect.gen(function* () {
         yield* Ref.set(syncHeadRef, batch.at(-1)!.seqNum)
         yield* Ref.update(allEventsRef, (events) => events.concat(batch))
-        yield* syncPullQueue.offerAll(batch)
+        yield* Queue.offerAll(syncPullQueue, batch)
       }).pipe(
         Effect.withSpan('MockSyncBackend:advance', {
           parent: span,
@@ -209,9 +218,16 @@ export const makeMockSyncBackend = (
     ) => Ref.set(failPullRef, { remaining: count, error })
 
     return {
-      pushedEvents: Mailbox.toStream(pushedEventsQueue),
-      connect: SubscriptionRef.set(syncIsConnectedRef, true),
-      disconnect: SubscriptionRef.set(syncIsConnectedRef, false),
+      pushedEvents: Stream.fromEffect(Ref.get(pushedEventsRef)).pipe(
+        Stream.flatMap(Stream.fromIterable),
+        Stream.concat(Mailbox.toStream(pushedEventsQueue)),
+      ),
+      connect: Ref.set(manuallyDisconnectedRef, false).pipe(
+        Effect.andThen(SubscriptionRef.set(syncIsConnectedRef, true)),
+      ),
+      disconnect: Ref.set(manuallyDisconnectedRef, true).pipe(
+        Effect.andThen(SubscriptionRef.set(syncIsConnectedRef, false)),
+      ),
       makeSyncBackend,
       advance,
       failNextPushes,

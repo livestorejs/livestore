@@ -29,16 +29,8 @@ exports[`useClientDocument > otel > should update the data based on component ke
         {
           "_name": "client-session-sync-processor:pull",
           "attributes": {
-            "code.stacktrace": "<STACKTRACE>",
             "span.label": "⚠︎ Interrupted",
             "status.interrupted": true,
-          },
-        },
-        {
-          "_name": "@livestore/common:LeaderSyncProcessor:push",
-          "attributes": {
-            "batch": "undefined",
-            "batchSize": 1,
           },
         },
       ],

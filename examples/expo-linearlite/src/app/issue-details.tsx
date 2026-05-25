@@ -181,7 +181,7 @@ const IssueDetailsScreen = () => {
             WHERE issues.id = '${issueId}'
           `,
         schema: tables.issues.rowSchema.pipe(
-          Schema.extend(Schema.Struct({ assigneeName: Schema.String, assigneePhotoUrl: Schema.String })),
+          Schema.fieldsAssign({ assigneeName: Schema.String, assigneePhotoUrl: Schema.String }),
           Schema.Array,
           Schema.headOrElse(),
         ),
@@ -216,13 +216,11 @@ const IssueDetailsScreen = () => {
             ORDER BY comments.createdAt DESC
           `,
         schema: tables.comments.rowSchema.pipe(
-          Schema.extend(
-            Schema.Struct({
-              authorName: Schema.String,
-              authorPhotoUrl: Schema.String,
-              reactions: Schema.parseJson(Schema.Array(Schema.Struct({ id: Schema.String, emoji: Schema.String }))),
-            }),
-          ),
+          Schema.fieldsAssign({
+            authorName: Schema.String,
+            authorPhotoUrl: Schema.String,
+            reactions: Schema.fromJsonString(Schema.Array(Schema.Struct({ id: Schema.String, emoji: Schema.String }))),
+          }),
           Schema.Array,
         ),
       },

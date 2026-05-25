@@ -5,7 +5,7 @@ import { Effect, type Layer, Logger, LogLevel } from '@livestore/utils/effect'
  * Optional Effect logger configuration that LiveStore entry points accept.
  *
  * When provided, `logger` replaces the default pretty logger for the runtime.
- * Use `logLevel` to control verbosity. Set to `LogLevel.None` to disable logging
+ * Use `logLevel` to control verbosity. Set to `'None'` to disable logging
  * entirely while keeping the same logger implementation.
  */
 export type WithLoggerOptions = {
@@ -41,12 +41,12 @@ export const resolveLoggerLayer = (config?: WithLoggerOptions, defaults?: Logger
 }
 
 /**
- * Resolve the minimum log level, falling back to `defaults.defaultLogLevel` then `LogLevel.Debug`.
+ * Resolve the minimum log level, falling back to `defaults.defaultLogLevel` then `'Debug'`.
  */
 export const resolveLogLevel = (config?: WithLoggerOptions, defaults?: LoggerDefaults): LogLevel.LogLevel => {
   if (config?.logLevel !== undefined) return config.logLevel
   if (defaults?.defaultLogLevel !== undefined) return defaults.defaultLogLevel
-  return isDevEnv() === true ? LogLevel.Debug : LogLevel.Info
+  return isDevEnv() === true ? 'Debug' : 'Info'
 }
 
 /**
@@ -58,5 +58,14 @@ export const withLoggerConfig = <TEnv, TError, TOut>(
 ): ((effect: Effect.Effect<TOut, TError, TEnv>) => Effect.Effect<TOut, TError, TEnv>) => {
   const level = resolveLogLevel(config, defaults)
   const layer = resolveLoggerLayer(config, defaults)
-  return (effect) => effect.pipe(Logger.withMinimumLogLevel(level), Effect.provide(layer))
+  const hasOnlyEffectDefaultLogger = (loggers: ReadonlySet<Logger.Logger<unknown, any>>) =>
+    loggers.size === 0 || (loggers.size === 1 && loggers.has(Logger.defaultLogger))
+
+  return (effect) =>
+    Effect.gen(function* () {
+      const currentLoggers = yield* Effect.service(Logger.CurrentLoggers)
+      const shouldProvideLogger = config?.logger !== undefined || hasOnlyEffectDefaultLogger(currentLoggers)
+      const configuredEffect = shouldProvideLogger === true ? effect.pipe(Effect.provide(layer)) : effect
+      return yield* configuredEffect.pipe(Logger.withMinimumLogLevel(level))
+    }) as Effect.Effect<TOut, TError, TEnv>
 }

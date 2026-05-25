@@ -112,7 +112,7 @@ Vitest.describe('isEqualEncoded', () => {
       id: Schema.String,
       flag: Schema.UndefinedOr(Schema.Boolean),
     })
-    const localArgs = Schema.encodeUnknownSync(argsSchema)({ id: 'abc' } as any)
+    const localArgs = Schema.encodeUnknownSync(argsSchema)({ id: 'abc', flag: undefined } as any)
     const wireArgs = JSON.parse(JSON.stringify(localArgs))
     expect(isEqualEncoded(makeEncodedEvent(localArgs), makeEncodedEvent(wireArgs))).toBe(true)
   })

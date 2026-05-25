@@ -8,32 +8,32 @@ export const livestoreToolkit = Toolkit.make(
   Tool.make('livestore_generate_schema', {
     description:
       'Generate a LiveStore schema for a specific use case. Choose from predefined types (todo, blog, social, ecommerce) or request a custom schema by providing a description.',
-    parameters: {
-      schemaType: Schema.String.annotations({
+    parameters: Schema.Struct({
+      schemaType: Schema.String.annotate({
         description: "Schema type: 'todo', 'blog', 'social', 'ecommerce', or 'custom'",
       }),
       customDescription: Schema.optional(
-        Schema.String.annotations({
+        Schema.String.annotate({
           description:
             "For custom schemas: describe your data model needs (e.g., 'user management system with roles and permissions')",
         }),
       ),
-    },
+    }),
     success: Schema.Struct({
-      schemaCode: Schema.String.annotations({ description: 'The generated LiveStore schema TypeScript code' }),
-      explanation: Schema.String.annotations({ description: 'Brief explanation of the schema structure' }),
+      schemaCode: Schema.String.annotate({ description: 'The generated LiveStore schema TypeScript code' }),
+      explanation: Schema.String.annotate({ description: 'Brief explanation of the schema structure' }),
     }),
   }),
 
   Tool.make('livestore_get_example_schema', {
     description:
       'Get a complete example LiveStore schema with TypeScript code. Returns ready-to-use schema definitions for common application types.',
-    parameters: {
-      type: Schema.String.annotations({ description: "Example type: 'todo', 'blog', 'social', or 'ecommerce'" }),
-    },
+    parameters: Schema.Struct({
+      type: Schema.String.annotate({ description: "Example type: 'todo', 'blog', 'social', or 'ecommerce'" }),
+    }),
     success: Schema.Struct({
-      schemaCode: Schema.String.annotations({ description: 'The complete LiveStore schema code' }),
-      description: Schema.String.annotations({ description: 'Description of what this schema models' }),
+      schemaCode: Schema.String.annotate({ description: 'The complete LiveStore schema code' }),
+      description: Schema.String.annotate({ description: 'Description of what this schema models' }),
     }),
   })
     .annotate(Tool.Readonly, true)
@@ -86,27 +86,27 @@ Returns on success:
     "eventNames": ["<event-name-1>", "<event-name-2>", "..."]
   }
 }`,
-    parameters: {
-      configPath: Schema.String.annotations({
+    parameters: Schema.Struct({
+      configPath: Schema.String.annotate({
         description: 'Path to a module that exports named variables: schema and syncBackend',
       }),
-      storeId: Schema.String.annotations({ description: 'Required store id for the LiveStore instance.' }),
+      storeId: Schema.String.annotate({ description: 'Required store id for the LiveStore instance.' }),
       clientId: Schema.optional(
-        Schema.String.annotations({ description: 'Optional client id for the LiveStore instance.' }),
+        Schema.String.annotate({ description: 'Optional client id for the LiveStore instance.' }),
       ),
       sessionId: Schema.optional(
-        Schema.String.annotations({ description: 'Optional session id for the LiveStore instance.' }),
+        Schema.String.annotate({ description: 'Optional session id for the LiveStore instance.' }),
       ),
-    },
+    }),
     success: Schema.Struct({
       storeId: Schema.String,
       clientId: Schema.String,
       sessionId: Schema.String,
       schemaInfo: Schema.Struct({
-        tableNames: Schema.Array(Schema.String).annotations({
+        tableNames: Schema.Array(Schema.String).annotate({
           description: 'Non-system table names in the connected schema',
         }),
-        eventNames: Schema.Array(Schema.String).annotations({
+        eventNames: Schema.Array(Schema.String).annotate({
           description: 'Canonical event names defined by the connected schema',
         }),
       }),
@@ -137,17 +137,14 @@ Returns on success:
   "rows": [{ "col": "value" }],
   "rowCount": 1
 }`,
-    parameters: {
-      sql: Schema.String.annotations({ description: 'The SQL query to execute' }),
-      bindValues: Schema.Union(
-        Schema.Array(Schema.JsonValue),
-        Schema.Record({ key: Schema.String, value: Schema.JsonValue }),
-      ).annotations({
+    parameters: Schema.Struct({
+      sql: Schema.String.annotate({ description: 'The SQL query to execute' }),
+      bindValues: Schema.Union([Schema.Array(Schema.JsonValue), Schema.Record(Schema.String, Schema.JsonValue)]).annotate({
         description: 'Bind values for the SQL query (array or record). Record keys must not start with $.',
       }),
-    },
+    }),
     success: Schema.Struct({
-      rows: Schema.Array(Schema.Record({ key: Schema.String, value: Schema.JsonValue })),
+      rows: Schema.Array(Schema.Record(Schema.String, Schema.JsonValue)),
       rowCount: Schema.Number,
     }),
   }).annotate(Tool.Destructive, false),
@@ -176,16 +173,16 @@ Example parameters:
 
 Returns on success:
 { "committed": 1 }`,
-    parameters: {
+    parameters: Schema.Struct({
       events: Schema.Array(
         Schema.Struct({
-          name: Schema.String.annotations({ description: 'The name of the event' }),
-          args: Schema.JsonValue.annotations({
+          name: Schema.String.annotate({ description: 'The name of the event' }),
+          args: Schema.JsonValue.annotate({
             description: 'The arguments for the event as a non-stringified JSON value',
           }),
         }),
       ),
-    },
+    }),
     success: Schema.Struct({ committed: Schema.Number }),
   }).annotate(Tool.Destructive, true),
 
@@ -205,18 +202,15 @@ Returns when not connected:
 {
   "_tag": "disconnected"
 }`,
-    parameters: {},
-    success: Schema.Union(
-      Schema.TaggedStruct('connected', {
+    parameters: Schema.Struct({}),
+    success: Schema.Union([Schema.TaggedStruct('connected', {
         storeId: Schema.String,
         clientId: Schema.String,
         sessionId: Schema.String,
-        tableCounts: Schema.Record({ key: Schema.String, value: Schema.Number }).annotations({
+        tableCounts: Schema.Record(Schema.String, Schema.Number).annotate({
           description: 'Tables in the LiveStore instance with their row count',
         }),
-      }),
-      Schema.TaggedStruct('disconnected', {}),
-    ),
+      }), Schema.TaggedStruct('disconnected', {})]),
   }).annotate(Tool.Readonly, true),
 
   Tool.make('livestore_instance_disconnect', {
@@ -224,7 +218,7 @@ Returns when not connected:
 
 Example success:
 { "_tag": "disconnected" }`,
-    parameters: {},
+    parameters: Schema.Struct({}),
     success: Schema.TaggedStruct('disconnected', {}),
   }),
 
@@ -253,18 +247,18 @@ Returns on success:
   "exportedAt": "2024-01-15T10:30:00.000Z",
   "data": { "version": 1, "storeId": "my-store", ... }
 }`,
-    parameters: {
-      configPath: Schema.String.annotations({
+    parameters: Schema.Struct({
+      configPath: Schema.String.annotate({
         description: 'Path to a module that exports schema and syncBackend',
       }),
-      storeId: Schema.String.annotations({ description: 'Store identifier' }),
-      clientId: Schema.optional(Schema.String.annotations({ description: 'Client identifier (default: mcp-export)' })),
-    },
+      storeId: Schema.String.annotate({ description: 'Store identifier' }),
+      clientId: Schema.optional(Schema.String.annotate({ description: 'Client identifier (default: mcp-export)' })),
+    }),
     success: Schema.Struct({
       storeId: Schema.String,
       eventCount: Schema.Number,
       exportedAt: Schema.String,
-      data: Schema.JsonValue.annotations({ description: 'The export file data (can be saved or passed to import)' }),
+      data: Schema.JsonValue.annotate({ description: 'The export file data (can be saved or passed to import)' }),
     }),
   }).annotate(Tool.Readonly, true),
 
@@ -295,20 +289,20 @@ Returns on success:
   "eventCount": 127,
   "dryRun": false
 }`,
-    parameters: {
-      configPath: Schema.String.annotations({
+    parameters: Schema.Struct({
+      configPath: Schema.String.annotate({
         description: 'Path to a module that exports schema and syncBackend',
       }),
-      storeId: Schema.String.annotations({ description: 'Store identifier' }),
-      clientId: Schema.optional(Schema.String.annotations({ description: 'Client identifier (default: mcp-import)' })),
-      data: Schema.JsonValue.annotations({
+      storeId: Schema.String.annotate({ description: 'Store identifier' }),
+      clientId: Schema.optional(Schema.String.annotate({ description: 'Client identifier (default: mcp-import)' })),
+      data: Schema.JsonValue.annotate({
         description: 'The export data to import (from livestore_sync_export or a file)',
       }),
       force: Schema.optional(
-        Schema.Boolean.annotations({ description: 'Force import even if store ID does not match' }),
+        Schema.Boolean.annotate({ description: 'Force import even if store ID does not match' }),
       ),
-      dryRun: Schema.optional(Schema.Boolean.annotations({ description: 'Validate without actually importing' })),
-    },
+      dryRun: Schema.optional(Schema.Boolean.annotate({ description: 'Validate without actually importing' })),
+    }),
     success: Schema.Struct({
       storeId: Schema.String,
       eventCount: Schema.Number,

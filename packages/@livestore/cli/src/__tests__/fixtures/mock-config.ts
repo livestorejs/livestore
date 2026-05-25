@@ -8,7 +8,7 @@ import { Effect, FileSystem, type Mailbox, Schema } from '@livestore/utils/effec
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-class DynamicImportError extends Schema.TaggedError<DynamicImportError>()('DynamicImportError', {
+class DynamicImportError extends Schema.TaggedErrorClass<DynamicImportError>()('DynamicImportError', {
   cause: Schema.Defect,
   path: Schema.String,
 }) {}
@@ -100,7 +100,7 @@ export const useMockConfig = Effect.acquireRelease(
   ({ configPath }) =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
-      yield* fs.remove(configPath, { recursive: false }).pipe(Effect.catchAll(() => Effect.void))
+      yield* fs.remove(configPath, { recursive: false }).pipe(Effect.catch(() => Effect.void))
     }),
 )
 

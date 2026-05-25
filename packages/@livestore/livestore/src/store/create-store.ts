@@ -12,7 +12,6 @@ import {
   type BackendIdMismatchError,
   type MigrationsReport,
   provideOtel,
-  type ServerAheadError,
   UnknownError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -27,7 +26,6 @@ import {
   Layer,
   OtelTracer,
   Queue,
-  Runtime,
   Schema,
   Scope,
   TaskTracing,
@@ -64,13 +62,13 @@ declare global {
  * const { store } = yield* AppStore.Tag
  * ```
  */
-export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/effect/LiveStoreContextRunning')<
+export class LiveStoreContextRunning extends Context.Service<
   LiveStoreContextRunning,
   LiveStoreContextRunning_
->() {
+>()('@livestore/livestore/effect/LiveStoreContextRunning') {
   static fromDeferred = Effect.gen(function* () {
     const deferred = yield* DeferredStoreContext
-    const ctx = yield* deferred
+    const ctx = yield* Deferred.await(deferred)
     return Layer.succeed(LiveStoreContextRunning, ctx)
   }).pipe(Layer.unwrapScoped)
 }
@@ -78,10 +76,10 @@ export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/e
 /**
  * @deprecated Use `StoreContext.DeferredTag` from `makeStoreContext()` instead.
  */
-export class DeferredStoreContext extends Context.Tag('@livestore/livestore/effect/DeferredStoreContext')<
+export class DeferredStoreContext extends Context.Service<
   DeferredStoreContext,
-  Deferred.Deferred<LiveStoreContextRunning['Type'], UnknownError>
->() {}
+  Deferred.Deferred<LiveStoreContextRunning_, UnknownError>
+>()('@livestore/livestore/effect/DeferredStoreContext') {}
 
 export type LiveStoreContextProps<
   TSchema extends LiveStoreSchema,
@@ -243,15 +241,15 @@ export const createStorePromise = async <
 }: CreateStoreOptionsPromise<TSchema, TContext, TSyncPayloadSchema>): Promise<Store<TSchema, TContext>> =>
   Effect.gen(function* () {
     const scope = yield* Scope.make()
-    const runtime = yield* Effect.runtime()
+    const effectContext = yield* Effect.context()
 
     if (signal !== undefined) {
       signal.addEventListener('abort', () => {
-        Scope.close(scope, Exit.void).pipe(Effect.tapCauseLogPretty, Runtime.runFork(runtime))
+        Scope.close(scope, Exit.void).pipe(Effect.tapCauseLogPretty, Effect.runForkWith(effectContext))
       })
     }
 
-    return yield* createStore({ ...options }).pipe(Scope.extend(scope))
+    return yield* createStore({ ...options }).pipe(Scope.provide(scope))
   }).pipe(
     Effect.withSpan('createStore', {
       attributes: { storeId: options.storeId, disableDevtools: options.disableDevtools },
@@ -302,7 +300,7 @@ export const createStore = <
       const otelRootSpanContext = otel.trace.setSpan(otel.context.active(), span)
       const otelTracer = yield* OtelTracer.OtelTracer
 
-      const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
+      const bootStatusQueue = yield* Effect.acquireRelease(Queue.unbounded<BootStatus>(), Queue.shutdown)
 
       yield* Queue.take(bootStatusQueue).pipe(
         Effect.tapSync((status) => onBootStatus?.(status)),
@@ -316,11 +314,11 @@ export const createStore = <
 
       const connectDevtoolsToStore_ = (storeDevtoolsChannel: ClientSessionDevtoolsChannel) =>
         Effect.gen(function* () {
-          const store = yield* storeDeferred
+          const store = yield* Deferred.await(storeDeferred)
           yield* connectDevtoolsToStore({ storeDevtoolsChannel, store })
         })
 
-      const runtime = yield* Effect.runtime<Scope.Scope>()
+      const effectContext = yield* Effect.context<Scope.Scope>()
 
       const shutdown = (
         exit: Exit.Exit<
@@ -332,7 +330,7 @@ export const createStore = <
           yield* Scope.close(lifetimeScope, exit).pipe(
             Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
             Effect.timeout(1000),
-            Effect.catchTag('TimeoutException', () =>
+            Effect.catchTag('TimeoutError', () =>
               Effect.logError('@livestore/livestore:shutdown: Timed out after 1 second'),
             ),
           )
@@ -344,18 +342,17 @@ export const createStore = <
           yield* Effect.logDebug('LiveStore shutdown complete')
         }).pipe(
           Effect.withSpan('@livestore/livestore:shutdown'),
-          Effect.provide(runtime),
           Effect.tapCauseLogPretty,
           // Given that the shutdown flow might also interrupt the effect that is calling the shutdown,
           // we want to detach the shutdown effect so it's not interrupted by itself
-          Effect.runFork,
+          Effect.runForkWith(effectContext),
           Fiber.join,
         )
 
       const syncPayloadEncoded =
         syncPayload === undefined
           ? undefined
-          : yield* Schema.encode(resolvedSyncPayloadSchema)(syncPayload).pipe(UnknownError.mapToUnknownError)
+          : yield* Schema.encodeEffect(resolvedSyncPayloadSchema)(syncPayload).pipe(UnknownError.mapToUnknownError)
 
       const clientSession: ClientSession = yield* adapter({
         schema,
@@ -385,7 +382,7 @@ export const createStore = <
         schema,
         context,
         otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
-        effectContext: { lifetimeScope, runtime },
+        effectContext: { lifetimeScope, context: effectContext },
         // TODO find a better way to detect if we're running LiveStore in the LiveStore devtools
         // But for now this is a good enough approximation with little downsides
         __runningInDevtools: ! getDevtoolsEnabled(disableDevtools),
@@ -416,7 +413,7 @@ export const createStore = <
       }
 
       // NOTE it's important to yield here to allow the forked Effect in the store constructor to run
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
 
       if (batchUpdates !== undefined) {
         // Replacing the default batchUpdates function with the provided one after boot
@@ -440,7 +437,7 @@ export const createStore = <
       Effect.withSpan('createStore', { attributes: { debugInstanceId, storeId } }),
       Effect.annotateLogs({ debugInstanceId, storeId }),
       LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
-      Scope.extend(lifetimeScope),
+      Scope.provide(lifetimeScope),
     )
   })
 

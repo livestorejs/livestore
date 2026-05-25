@@ -11,18 +11,17 @@ import {
   HttpClientRequest,
   HttpClientResponse,
   HttpRouter,
-  HttpServer,
-  HttpServerRequest,
   HttpServerResponse,
   Layer,
   Schedule,
   Schema,
   Stream,
 } from '@livestore/utils/effect'
-import { getFreePort, PlatformNode } from '@livestore/utils/node'
+import { getFreePort } from '@livestore/utils/node'
 
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 
+import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer'
 /** S2-Lite based sync provider for testing. Uses the open-source s2-lite container. */
 export const name = 'S2-Lite'
 
@@ -34,7 +33,7 @@ export type ProviderSpecific = {
   failNextRead: (storeId: string, count: number) => Effect.Effect<void>
 }
 
-export const layer: SyncProviderLayer = Layer.scoped(
+export const layer: SyncProviderLayer = Layer.effect(
   SyncProviderImpl,
   Effect.gen(function* () {
     const { endpointPort } = yield* startS2LiteProxy
@@ -49,7 +48,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
             const http = yield* HttpClient.HttpClient
             const req = HttpClientRequest.post(`http://localhost:${endpointPort}/_test/append-raw`).pipe(
               HttpClientRequest.setHeader('content-type', 'application/json'),
-              HttpClientRequest.bodyUnsafeJson({ storeId, bodies }),
+              HttpClientRequest.bodyJsonUnsafe({ storeId, bodies }),
             )
             yield* http
               .pipe(HttpClient.filterStatusOk)
@@ -67,7 +66,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
             const http = yield* HttpClient.HttpClient
             const req = HttpClientRequest.post(`http://localhost:${endpointPort}/_test/fail-next-append`).pipe(
               HttpClientRequest.setHeader('content-type', 'application/json'),
-              HttpClientRequest.bodyUnsafeJson({ storeId, count }),
+              HttpClientRequest.bodyJsonUnsafe({ storeId, count }),
             )
             yield* http
               .pipe(HttpClient.filterStatusOk)
@@ -83,7 +82,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
             const http = yield* HttpClient.HttpClient
             const req = HttpClientRequest.post(`http://localhost:${endpointPort}/_test/fail-next-read`).pipe(
               HttpClientRequest.setHeader('content-type', 'application/json'),
-              HttpClientRequest.bodyUnsafeJson({ storeId, count }),
+              HttpClientRequest.bodyJsonUnsafe({ storeId, count }),
             )
             yield* http
               .pipe(HttpClient.filterStatusOk)
@@ -97,7 +96,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
       },
     }
   }),
-).pipe(UnknownError.mapToUnknownErrorLayer)
+).pipe(UnknownError.mapToUnknownErrorLayer) as SyncProviderLayer
 
 const startS2LiteProxy = Effect.gen(function* () {
   const endpointPort = yield* getFreePort
@@ -113,11 +112,9 @@ const startS2LiteProxy = Effect.gen(function* () {
     lite: true,
   }
 
-  const httpClient = yield* HttpClient.HttpClient.pipe(
-    Effect.andThen(
-      HttpClient.mapRequest(HttpClientRequest.setHeaders({ Authorization: 'Bearer unused', 's2-basin': basin })),
-    ),
-  )
+  const httpClient = HttpClient.mapRequest(
+    HttpClientRequest.setHeaders({ Authorization: 'Bearer unused', 's2-basin': basin }),
+  )(yield* HttpClient.HttpClient)
 
   const basinClient = S2Sync.HttpClientGenerated.make(httpClient, {
     transformClient: (client) =>
@@ -138,8 +135,8 @@ const startS2LiteProxy = Effect.gen(function* () {
   )
 
   yield* makeRouter({ s2Config, basinClient }).pipe(
-    HttpServer.serve(),
-    Layer.provide(PlatformNode.NodeHttpServer.layer(() => http.createServer(), { port: endpointPort })),
+    HttpRouter.serve,
+    Layer.provide(NodeHttpServer.layer(() => http.createServer(), { port: endpointPort })),
     Layer.launch,
     Effect.tapCauseLogPretty,
     Effect.forkScoped,
@@ -160,12 +157,13 @@ const makeRouter = ({
   s2Config: S2Helpers.S2Config
   basinClient: S2Sync.HttpClientGenerated.Client
 }) => {
-  return HttpRouter.empty.pipe(
+  return HttpRouter.addAll([
     // GET / (pull)
-    HttpRouter.get(
+    HttpRouter.route(
+      'GET',
       '/',
-      Effect.gen(function* () {
-        const request = yield* HttpServerRequest.HttpServerRequest
+      (request) =>
+        Effect.gen(function* () {
         const args = S2Sync.decodePullArgsFromSearchParams(new URL(request.url, 'http://localhost').searchParams)
 
         const stream = S2Sync.makeS2StreamName(args.storeId)
@@ -182,7 +180,7 @@ const makeRouter = ({
         if ((args.payload as any)?.testCloseOnce === true && closedOnceStreams.has(stream) === false) {
           closedOnceStreams.add(stream)
           const sseLines = ['event: ping', 'data: {}', '']
-          return yield* HttpServerResponse.stream(Stream.fromIterable(sseLines).pipe(Stream.encodeText), {
+          return HttpServerResponse.stream(Stream.fromIterable(sseLines).pipe(Stream.encodeText), {
             contentType: 'text/event-stream',
           })
         }
@@ -196,20 +194,21 @@ const makeRouter = ({
         )
 
         const bodyStream = HttpClientResponse.stream(Effect.succeed(resp))
-        return yield* HttpServerResponse.stream(bodyStream, { contentType: 'text/event-stream' })
+        return HttpServerResponse.stream(bodyStream, { contentType: 'text/event-stream' })
       }).pipe(
         // Never fail the route: return empty ReadBatch on unexpected error to keep the pull stream alive
-        Effect.catchAll(() => HttpServerResponse.json({ records: [] })),
+        Effect.catch(() => HttpServerResponse.json({ records: [] })),
       ),
     ),
 
     // POST / (push)
-    HttpRouter.post(
+    HttpRouter.route(
+      'POST',
       '/',
-      Effect.gen(function* () {
-        const request = yield* HttpServerRequest.HttpServerRequest
+      (request) =>
+        Effect.gen(function* () {
         const body = yield* request.json
-        const parsed = yield* Schema.decodeUnknown(S2Sync.ApiSchema.PushPayload)(body)
+        const parsed = yield* Schema.decodeUnknownEffect(S2Sync.ApiSchema.PushPayload)(body)
 
         const streamName = S2Sync.makeS2StreamName(parsed.storeId)
         if (createdStreams.has(streamName) === false) {
@@ -247,10 +246,11 @@ const makeRouter = ({
     ),
 
     // POST /_test/append-raw (test-only)
-    HttpRouter.post(
+    HttpRouter.route(
+      'POST',
       '/_test/append-raw',
-      Effect.gen(function* () {
-        const request = yield* HttpServerRequest.HttpServerRequest
+      (request) =>
+        Effect.gen(function* () {
         const body = (yield* request.json) as { storeId: string; bodies: string[] }
         const stream = S2Sync.makeS2StreamName(body.storeId)
         if (createdStreams.has(stream) === false) {
@@ -282,10 +282,11 @@ const makeRouter = ({
     ),
 
     // POST /_test/fail-next-append
-    HttpRouter.post(
+    HttpRouter.route(
+      'POST',
       '/_test/fail-next-append',
-      Effect.gen(function* () {
-        const request = yield* HttpServerRequest.HttpServerRequest
+      (request) =>
+        Effect.gen(function* () {
         const body = (yield* request.json) as { storeId: string; count: number }
         failNextAppend.set(S2Sync.makeS2StreamName(body.storeId), Math.max(0, Math.floor(body.count ?? 1)))
         return yield* HttpServerResponse.json({ success: true })
@@ -293,10 +294,11 @@ const makeRouter = ({
     ),
 
     // POST /_test/fail-next-read
-    HttpRouter.post(
+    HttpRouter.route(
+      'POST',
       '/_test/fail-next-read',
-      Effect.gen(function* () {
-        const request = yield* HttpServerRequest.HttpServerRequest
+      (request) =>
+        Effect.gen(function* () {
         const body = (yield* request.json) as { storeId: string; count: number }
         failNextRead.set(S2Sync.makeS2StreamName(body.storeId), Math.max(0, Math.floor(body.count ?? 1)))
         return yield* HttpServerResponse.json({ success: true })
@@ -304,6 +306,6 @@ const makeRouter = ({
     ),
 
     // HEAD / (ping)
-    HttpRouter.head('/', HttpServerResponse.empty()),
-  )
+    HttpRouter.route('HEAD', '/', HttpServerResponse.empty()),
+  ])
 }

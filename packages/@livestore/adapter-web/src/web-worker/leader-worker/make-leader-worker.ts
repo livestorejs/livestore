@@ -16,18 +16,20 @@ import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
-import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
+import type { Scope } from '@livestore/utils/effect'
 import {
   Effect,
   FetchHttpClient,
   identity,
   Layer,
   OtelTracer,
+  Queue,
+  RpcServer,
   Scheduler,
   Schema,
   Stream,
   TaskTracing,
-  WorkerRunner,
+  Tracer,
 } from '@livestore/utils/effect'
 import { BrowserWorkerRunner, Opfs, WebError } from '@livestore/utils/effect/browser'
 
@@ -55,21 +57,20 @@ if (isDevEnv() === true) {
 }
 
 export const makeWorker = (options: WorkerOptions) => {
-  makeWorkerEffect(options).pipe(Effect.runFork)
+  makeWorkerEffect(options).pipe((effect) => Effect.runFork(effect as Effect.Effect<never, unknown, never>))
 }
 
 export const makeWorkerEffect = (options: WorkerOptions) => {
   const TracingLive = options.otelOptions?.tracer !== undefined
-    ? Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+    ? Layer.effect(Tracer.Tracer, OtelTracer.make).pipe(
         Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
       )
     : undefined
 
   const runtimeLayer = Layer.mergeAll(FetchHttpClient.layer, TracingLive ?? Layer.empty)
 
-  return makeWorkerRunnerOuter(options).pipe(
-    Layer.provide(BrowserWorkerRunner.layer),
-    WorkerRunner.launch,
+  return RpcServer.make(WorkerSchema.LeaderWorkerOuterRpcs).pipe(
+    Effect.provide(makeWorkerRunnerOuter(options)),
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
@@ -85,41 +86,61 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
   )
 }
 
-const makeWorkerRunnerOuter = (
-  workerOptions: WorkerOptions,
-): Layer.Layer<never, WorkerError.WorkerError, WorkerRunner.PlatformRunner | HttpClient.HttpClient> =>
-  WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerOuterInitialMessage, {
-    // Port coming from client session and forwarded via the shared worker
-    InitialMessage: ({ port: incomingRequestsPort, storeId, clientId }) =>
-      Effect.gen(function* () {
-        yield* makeWorkerRunnerInner(workerOptions).pipe(
-          Layer.provide(BrowserWorkerRunner.layerMessagePort(incomingRequestsPort)),
-          WorkerRunner.launch,
-          Effect.scoped,
-          Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage:innerFiber'),
-          Effect.tapCauseLogPretty,
-          Effect.provide(
-            Layer.mergeAll(
-              Opfs.Opfs.Default,
-              WebmeshWorker.CacheService.layer({
-                nodeName: Devtools.makeNodeName.client.leader({ storeId, clientId }),
-              }),
-            ),
+const makeWorkerRunnerOuter = (workerOptions: WorkerOptions) => {
+  const LaunchInnerWorker = Layer.unwrapScoped(
+    Effect.gen(function* () {
+      const protocol = yield* RpcServer.Protocol
+      const { port: incomingRequestsPort, storeId, clientId } = yield* protocol.initialMessage.pipe(
+        Effect.flatMap((option) => Effect.fromOption(option)),
+        Effect.flatMap(Schema.decodeUnknownEffect(Schema.toCodecJson(WorkerSchema.LeaderWorkerOuterInitialMessage))),
+        Effect.orDie,
+      )
+
+      yield* RpcServer.make(WorkerSchema.LeaderWorkerInnerRpcs).pipe(
+        Effect.provide(makeWorkerRunnerInner(workerOptions)),
+        Effect.scoped,
+        Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage:innerFiber'),
+        Effect.tapCauseLogPretty,
+        Effect.provide(BrowserWorkerRunner.layerMessagePort(incomingRequestsPort)),
+        Effect.provide(
+          Layer.mergeAll(
+            Opfs.layer,
+            WebmeshWorker.CacheService.layer({
+              nodeName: Devtools.makeNodeName.client.leader({ storeId, clientId }),
+            }),
           ),
-          Effect.forkScoped,
+        ),
+        Effect.forkScoped,
+      )
+
+      return Layer.empty
+    }).pipe(Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage')),
+  )
+
+  return WorkerSchema.LeaderWorkerOuterRpcs.toLayer({
+    Ready: () => Effect.void,
+  }).pipe(
+    Layer.provide(LaunchInnerWorker),
+    Layer.provideMerge(RpcServer.layerProtocolWorkerRunner),
+    Layer.provide(BrowserWorkerRunner.layer),
+  )
+}
+
+const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }: WorkerOptions) => {
+  const LeaderThreadLive = Layer.unwrapScoped(
+    Effect.gen(function* () {
+      const protocol = yield* RpcServer.Protocol
+      const { storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayloadEncoded } =
+        yield* protocol.initialMessage.pipe(
+          Effect.flatMap((option) => Effect.fromOption(option)),
+          Effect.flatMap(Schema.decodeUnknownEffect(Schema.toCodecJson(WorkerSchema.LeaderWorkerInnerInitialMessage))),
+          Effect.orDie,
         )
 
-        return Layer.empty
-      }).pipe(Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage'), Layer.unwrapScoped),
-  })
-
-const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }: WorkerOptions) =>
-  WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInnerRequest, {
-    InitialMessage: ({ storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayloadEncoded }) =>
-      Effect.gen(function* () {
+      return yield* Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
-        const runtime = yield* Effect.runtime()
+        const context = yield* Effect.context()
 
         // Check OPFS availability and determine storage mode
         const opfsCheck = yield* checkOpfsAvailability
@@ -150,15 +171,23 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
                 // TODO bring back exclusive locking mode when `WAL` is working properly
                 // lockingMode: 'EXCLUSIVE',
                 foreignKeys: true,
-              }).pipe(Effect.provide(runtime), Effect.runSync),
-          }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
+              }).pipe(Effect.runSyncWith(context)),
+          }).pipe(
+            (dbEffect) => Effect.acquireRelease(dbEffect, (db) =>
+              Effect.try({ try: () => db.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged),
+            ),
+          )
 
         const makeInMemoryDb = () =>
           makeSqliteDb({
             _tag: 'in-memory',
             configureDb: (db) =>
-              configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
-          }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
+              configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(context)),
+          }).pipe(
+            (dbEffect) => Effect.acquireRelease(dbEffect, (db) =>
+              Effect.try({ try: () => db.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged),
+            ),
+          )
 
         // Use OPFS if available, otherwise fall back to in-memory
         const [dbState, dbEventlog] = useOpfs === true
@@ -198,8 +227,11 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         Effect.withPerformanceMeasure('@livestore/adapter-web:worker:InitialMessage'),
         Effect.withSpan('@livestore/adapter-web:worker:InitialMessage'),
         Effect.annotateSpans({ debugInstanceId }),
-        Layer.unwrapScoped,
-      ),
+      )
+    }),
+  )
+
+  return WorkerSchema.LeaderWorkerInnerRpcs.toLayer({
     GetRecreateSnapshot: Effect.fn('@livestore/adapter-web:worker:GetRecreateSnapshot')(function* () {
       const workerCtx = yield* LeaderThreadCtx
 
@@ -224,7 +256,9 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
     PushToLeader: ({ batch }) =>
       Effect.andThen(LeaderThreadCtx, ({ syncProcessor }) =>
         syncProcessor.push(
-          batch.map((event) => new LiveStoreEvent.Client.EncodedWithMeta(event)),
+          batch.map(
+            (event: typeof LiveStoreEvent.Client.Encoded.Type) => new LiveStoreEvent.Client.EncodedWithMeta(event),
+          ),
           // We'll wait in order to keep back pressure on the client session
           { waitForProcessing: true },
         ),
@@ -232,27 +266,25 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
     StreamEvents: (options) =>
       LeaderThreadCtx.pipe(
         Effect.map(({ dbEventlog, syncProcessor }) => {
-          const { _tag: _ignored, ...payload } = options as any
-          const streamOptions = payload as StreamEventsOptions
           return streamEventsWithSyncState({
             dbEventlog,
             syncState: syncProcessor.syncState,
-            options: streamOptions,
+            options: options as StreamEventsOptions,
           })
         }),
         Stream.unwrapScoped,
         Stream.withSpan('@livestore/adapter-web:worker:StreamEvents'),
       ),
     Export: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
+      Effect.map(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
         Effect.withSpan('@livestore/adapter-web:worker:Export'),
       ),
     ExportEventlog: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.dbEventlog.export()).pipe(
+      Effect.map(LeaderThreadCtx, (_) => _.dbEventlog.export()).pipe(
         Effect.withSpan('@livestore/adapter-web:worker:ExportEventlog'),
       ),
     BootStatusStream: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
+      Effect.map(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
     GetLeaderHead: Effect.fn('@livestore/adapter-web:worker:GetLeaderHead')(function* () {
       const workerCtx = yield* LeaderThreadCtx
       return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
@@ -283,11 +315,13 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       yield* Effect.sleep(300)
     }),
     ExtraDevtoolsMessage: ({ message }) =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
+      Effect.andThen(LeaderThreadCtx, (_) => Queue.offer(_.extraIncomingMessagesQueue, message)).pipe(
+        Effect.asVoid,
         Effect.withSpan('@livestore/adapter-web:worker:ExtraDevtoolsMessage'),
       ),
-    'DevtoolsWebCommon.CreateConnection': WebmeshWorker.CreateConnection,
-  })
+    CreateConnection: WebmeshWorker.CreateConnection,
+  }).pipe(Layer.provide(LeaderThreadLive), Layer.provideMerge(RpcServer.layerProtocolWorkerRunner))
+}
 
 const makeDevtoolsOptions = ({
   devtoolsEnabled,
@@ -330,7 +364,7 @@ const checkOpfsAvailability = Effect.gen(function* () {
   const opfs = yield* Opfs.Opfs
   return yield* opfs.getRootDirectoryHandle.pipe(
     Effect.as(undefined),
-    Effect.catchAll((error) => {
+    Effect.catch((error) => {
       const reason: BootWarningReason =
         Schema.is(WebError.SecurityError)(error) === true || Schema.is(WebError.NotAllowedError)(error) === true
           ? 'private-browsing'
