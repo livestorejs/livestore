@@ -14,6 +14,18 @@ const withNixDiagnosticsOnFailure = (steps: unknown[]) => [
   nixDiagnosticsArtifactStep(),
 ]
 
+const devtoolsCertificationArtifactsStep = {
+  uses: 'actions/upload-artifact@v4',
+  if: '${{ !cancelled() }}',
+  with: {
+    name: 'devtools-certification-playwright-artifacts-${{ github.job }}',
+    path: `tests/integration/playwright-report/
+tests/integration/test-results/devtools/`,
+    'retention-days': 30,
+    'if-no-files-found': 'ignore',
+  },
+}
+
 const releasePlanPaths = [
   '.github/workflows/release.yml',
   '.github/workflows/release.yml.genie.ts',
@@ -116,6 +128,7 @@ git add \\
   .changeset \\
   package.json \\
   pnpm-lock.yaml \\
+  release/devtools-artifact.json \\
   release/release-plan.json \\
   release/version.json \\
   docs/package.json \\
@@ -230,6 +243,11 @@ else
 fi`,
         },
         {
+          name: 'Certify DevTools artifact liveness',
+          run: runDevenvTasksBefore('release:devtools-artifact:certify-liveness:no-install'),
+        },
+        devtoolsCertificationArtifactsStep,
+        {
           name: 'Dry-run DevTools artifact repack',
           run: runDevenvTasksBefore('release:devtools-artifact:repack-dryrun:no-install'),
         },
@@ -261,13 +279,22 @@ echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"`,
           name: 'Configure npm token fallback',
           run: `set -euo pipefail
 : "\${NODE_AUTH_TOKEN:?Missing NPM_TOKEN secret}"
-printf '%s\\n' "always-auth=true" > "$HOME/.npmrc"
-printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.npmrc"`,
+npmrc="$HOME/.npmrc"
+printf '%s\\n' "always-auth=true" > "$npmrc"
+printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$npmrc"
+printf '%s\\n' "NPM_CONFIG_USERCONFIG=$npmrc" >> "$GITHUB_ENV"
+printf '%s\\n' "NPM_CONFIG_REGISTRY=https://registry.npmjs.org/" >> "$GITHUB_ENV"
+NPM_CONFIG_USERCONFIG="$npmrc" NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ npm whoami >/dev/null`,
         },
         {
           name: 'Publish stable package release',
           run: runDevenvTasksBefore('release:stable:publish'),
         },
+        {
+          name: 'Certify DevTools artifact liveness',
+          run: runDevenvTasksBefore('release:devtools-artifact:certify-liveness:no-install'),
+        },
+        devtoolsCertificationArtifactsStep,
         {
           name: 'Publish DevTools artifact release',
           run: runDevenvTasksBefore('release:devtools-artifact:publish:no-install'),

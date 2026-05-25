@@ -292,6 +292,36 @@ const restoreGeneratedReleaseFiles = (cwd: string) =>
     ),
   )
 
+const packPackageForPublish = ({ cwd, pkg, version }: { cwd: string; pkg: string; version: string }) =>
+  Effect.gen(function* () {
+    const fsEffect = yield* FileSystem.FileSystem
+    const pkgDir = `${cwd}/packages/${pkg}`
+    const safePackageName = pkg.replaceAll('/', '__').replaceAll('@', '')
+    const packDir = `${cwd}/tmp/release-pack/${version}/${safePackageName}`
+
+    yield* fsEffect.remove(packDir, { recursive: true }).pipe(Effect.catchAll(() => Effect.void))
+    yield* fsEffect.makeDirectory(packDir, { recursive: true })
+
+    /**
+     * Use pnpm for packaging because the repo intentionally keeps source-time
+     * `exports`/`bin` in package.json and publish-time dist mappings in
+     * `publishConfig`. `pnpm pack` materializes those mappings into the tarball;
+     * plain `npm publish <directory>` would publish the source mappings instead.
+     */
+    yield* cmd(`DT_PASSTHROUGH=1 pnpm --dir ${pkgDir} pack --pack-destination ${packDir}`, { shell: true }).pipe(
+      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
+    )
+
+    const tarballs = (yield* fsEffect.readDirectory(packDir)).filter((entry) => entry.endsWith('.tgz'))
+    if (tarballs.length !== 1) {
+      return yield* Effect.fail(
+        new Error(`Expected exactly one packed tarball for ${pkg}@${version}, found ${tarballs.length}`),
+      )
+    }
+
+    return `${packDir}/${tarballs[0]}`
+  })
+
 const publishReleasePackages = ({
   cwd,
   version,
@@ -350,8 +380,15 @@ const publishReleasePackages = ({
         continue
       }
 
-      const publishArgs = ['pnpm', 'publish', `--tag=${npmTag}`, '--access=public', '--no-git-checks']
-      if (isCI === true) publishArgs.push('--provenance')
+      const packedTarballPath = yield* packPackageForPublish({ cwd, pkg, version })
+      const publishArgs = [
+        'npm',
+        'publish',
+        packedTarballPath,
+        `--tag=${npmTag}`,
+        '--access=public',
+        '--ignore-scripts',
+      ]
       if (dryRun === true) publishArgs.push('--dry-run')
       const versionIsVisible = cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
         Effect.provide(cwdLayer),
@@ -366,32 +403,16 @@ const publishReleasePackages = ({
           return versionIsVisible.pipe(
             Effect.flatMap((isVisible) => {
               if (isVisible === true) {
-                return Effect.logWarning(
-                  `${pkg}@${version} became visible after a failed provenance publish; continuing`,
-                )
+                return Effect.logWarning(`${pkg}@${version} became visible after a failed publish; continuing`)
               }
 
-              const fallbackArgs = publishArgs.filter((arg) => arg !== '--provenance')
-              return Effect.logWarning(
-                `Retrying ${pkg}@${version} snapshot publish without provenance after provenance publish failed`,
-              ).pipe(
-                Effect.zipRight(
-                  cmd(`DT_PASSTHROUGH=1 ${fallbackArgs.join(' ')}`, { shell: true }).pipe(
-                    Effect.provide(cwdLayer),
-                    Effect.catchTag('CmdError', (fallbackError) =>
-                      versionIsVisible.pipe(
-                        Effect.flatMap((isVisibleAfterFallback) =>
-                          isVisibleAfterFallback === true
-                            ? Effect.logWarning(
-                                `${pkg}@${version} became visible after the fallback publish failed; continuing`,
-                              )
-                            : Effect.fail(fallbackError),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              )
+              return Effect.logError(
+                [
+                  `Failed to publish ${pkg}@${version} from CI.`,
+                  'Snapshot publishing must authenticate through npm trusted publishing from .github/workflows/ci.yml.',
+                  'Check that npm has this package configured for GitHub Actions trusted publishing and that this job uses a GitHub-hosted runner with id-token: write.',
+                ].join(' '),
+              ).pipe(Effect.zipRight(Effect.fail(error)))
             }),
           )
         }),

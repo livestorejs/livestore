@@ -313,10 +313,11 @@ done`,
     },
 
     /**
-     * Publish job runs on GitHub-hosted runner (not Namespace) because npm OIDC
-     * trusted publishing with --provenance requires sigstore, which only supports
-     * GitHub-hosted runners. We still configure the npm token fallback to avoid
-     * interactive auth if trusted publishing is unavailable for a package.
+     * Keep only the publish boundary on GitHub-hosted runners. The heavy tests
+     * above may use Namespace/self-hosted runners, but npm trusted publishing
+     * currently requires GitHub-hosted OIDC and does not support self-hosted
+     * runners. Do not add an npm write token here; the npm package settings
+     * should trust this workflow file (`ci.yml`) for snapshot publishes.
      */
     'publish-snapshot-version': {
       if: IS_NOT_FORK,
@@ -324,6 +325,9 @@ done`,
       permissions: {
         contents: 'write',
         'id-token': 'write',
+      },
+      outputs: {
+        npm_snapshot_published: "${{ steps.publish-snapshot.outcome == 'success' && '1' || '0' }}",
       },
       needs: [
         'test-unit',
@@ -333,19 +337,12 @@ done`,
       ],
       env: {
         GH_TOKEN: '${{ github.token }}',
-        NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
       },
       defaults: bashShellDefaults,
       steps: withNixDiagnosticsOnFailure([
         ...livestoreSetupSteps,
         {
-          name: 'Configure npm token fallback',
-          run: `set -euo pipefail
-: "\${NODE_AUTH_TOKEN:?Missing NPM_TOKEN secret}"
-printf '%s\\n' "always-auth=true" > "$HOME/.npmrc"
-printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.npmrc"`,
-        },
-        {
+          id: 'publish-snapshot',
           name: 'Publish snapshot version',
           run: runDevenvTasksBefore('release:snapshot:git-sha'),
           env: { GIT_SHA: PR_HEAD_SHA },
@@ -393,6 +390,10 @@ printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.np
             CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
             CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
           },
+        },
+        {
+          name: 'Validate hosted example links',
+          run: runDevenvTasksBefore('examples:validate-links'),
         },
       ]),
     },
@@ -474,7 +475,7 @@ printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.np
     // },
 
     'build-example-create': {
-      if: IS_NOT_FORK,
+      if: `${IS_NOT_FORK} && needs.publish-snapshot-version.outputs.npm_snapshot_published == '1'`,
       needs: 'publish-snapshot-version',
       strategy: {
         matrix: {

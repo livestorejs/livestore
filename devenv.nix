@@ -79,9 +79,16 @@ let
     : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
     artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
     if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" || -n "''${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
-      echo "release:devtools-artifact repack requires LIVESTORE_DEVTOOLS_MANIFEST so LiveStore-owned certification is available." >&2
+      echo "release:devtools-artifact repack requires LIVESTORE_DEVTOOLS_MANIFEST so release-candidate certification can bind to the selected artifact." >&2
       echo "Use release:devtools-artifact:verify for direct metadata/tarball integrity checks." >&2
       exit 1
+    fi
+    certification_path="''${LIVESTORE_DEVTOOLS_CERTIFICATION:-release/devtools-artifact.certification.json}"
+    if [[ -f "$certification_path" ]]; then
+      artifact_args+=(--certification "$certification_path")
+    fi
+    if [[ "''${LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK:-}" = "1" ]]; then
+      artifact_args+=(--allow-uncertified)
     fi
 
     bun scripts/src/commands/devtools-artifact.ts repack \
@@ -89,6 +96,102 @@ let
       --version "$LIVESTORE_RELEASE_VERSION" \
       --out-dir "''${LIVESTORE_DEVTOOLS_OUT_DIR:-$(mktemp -d)}" \
       ${publishFlag}
+  '';
+
+  devtoolsArtifactCertifyLivenessExec = ''
+    set -euo pipefail
+    cd "$DEVENV_ROOT"
+
+    : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
+
+    out_dir="''${LIVESTORE_DEVTOOLS_OUT_DIR:-$(mktemp -d)}"
+    mkdir -p "$out_dir"
+    export LIVESTORE_DEVTOOLS_OUT_DIR="$out_dir"
+
+    export LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK=1
+    ${devtoolsArtifactRepackExec "--dry-run"}
+    unset LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK
+
+    repacked_tarball="$out_dir/livestore-devtools-vite-$LIVESTORE_RELEASE_VERSION.tgz"
+    if [ ! -f "$repacked_tarball" ]; then
+      echo "Expected repacked DevTools tarball not found: $repacked_tarball" >&2
+      exit 1
+    fi
+
+    playwright_bin="tests/integration/node_modules/.bin/playwright"
+    if [ ! -x "$playwright_bin" ]; then
+      echo "Expected Playwright binary not found: $playwright_bin" >&2
+      echo "Run release:devtools-artifact:certify-liveness instead of the no-install variant when dependencies are not installed yet." >&2
+      exit 1
+    fi
+
+    backup_dir="$(mktemp -d)"
+    package_links=(
+      "tests/integration/node_modules/@livestore/devtools-vite"
+      "packages/@livestore/adapter-node/node_modules/@livestore/devtools-vite"
+    )
+
+    for index in "''${!package_links[@]}"; do
+      package_link="''${package_links[$index]}"
+      if [ ! -e "$package_link" ]; then
+        echo "Expected installed @livestore/devtools-vite package link not found: $package_link" >&2
+        exit 1
+      fi
+      cp -a "$package_link" "$backup_dir/devtools-vite-$index"
+    done
+
+    restore_node_modules() {
+      for index in "''${!package_links[@]}"; do
+        package_link="''${package_links[$index]}"
+        rm -rf "$package_link"
+        cp -a "$backup_dir/devtools-vite-$index" "$package_link"
+      done
+      rm -rf "$backup_dir"
+    }
+    trap restore_node_modules EXIT
+
+    unpack_dir="$(mktemp -d)"
+    tar -xzf "$repacked_tarball" -C "$unpack_dir"
+    for package_link in "''${package_links[@]}"; do
+      rm -rf "$package_link"
+      cp -a "$unpack_dir/package" "$package_link"
+    done
+    rm -rf "$unpack_dir"
+
+    for package_link in "''${package_links[@]}"; do
+      package_version="$(bun -e "console.log(require('./$package_link/package.json').version)")"
+      if [ "$package_version" != "$LIVESTORE_RELEASE_VERSION" ]; then
+        echo "Expected $package_link to contain exact DevTools artifact version $LIVESTORE_RELEASE_VERSION, found $package_version" >&2
+        exit 1
+      fi
+    done
+
+    (
+      cd tests/integration
+      CI=true \
+        FORCE_PLAYWRIGHT_VIA_CLI=1 \
+        PLAYWRIGHT_SUITE=devtools \
+        PLAYWRIGHT_HEADLESS="''${PLAYWRIGHT_HEADLESS:-1}" \
+        LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
+        DT_PASSTHROUGH=1 \
+        ./node_modules/.bin/playwright test \
+          src/tests/playwright/devtools/node-adapter-timeout.play.ts \
+          --reporter=line
+    )
+
+    certification_path="''${LIVESTORE_DEVTOOLS_CERTIFICATION:-release/devtools-artifact.certification.json}"
+    evidence="DevTools exact-artifact liveness passed for $LIVESTORE_RELEASE_VERSION"
+    if [[ -n "''${GITHUB_SERVER_URL:-}" && -n "''${GITHUB_REPOSITORY:-}" && -n "''${GITHUB_RUN_ID:-}" ]]; then
+      evidence="$evidence in $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+    fi
+    bun scripts/src/commands/devtools-artifact.ts certify \
+      --manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}" \
+      --version "$LIVESTORE_RELEASE_VERSION" \
+      --out "$certification_path" \
+      --evidence "$evidence"
+    if [[ -n "''${GITHUB_ENV:-}" ]]; then
+      echo "LIVESTORE_DEVTOOLS_CERTIFICATION=$certification_path" >> "$GITHUB_ENV"
+    fi
   '';
 
   devtoolsArtifactRepackTask =
@@ -286,6 +389,17 @@ in
     description = "Verify and repack a public LiveStore DevTools artifact after release setup has already run";
     publishFlag = "--dry-run";
     withInstall = false;
+  };
+
+  tasks."release:devtools-artifact:certify-liveness" = {
+    description = "Repack the public DevTools artifact and run the strict Playwright liveness certification";
+    exec = devtoolsArtifactCertifyLivenessExec;
+    after = [ "pnpm:install" ];
+  };
+
+  tasks."release:devtools-artifact:certify-liveness:no-install" = {
+    description = "Run the strict DevTools artifact liveness certification after release setup has already run";
+    exec = devtoolsArtifactCertifyLivenessExec;
   };
 
   tasks."release:devtools-artifact:publish" = devtoolsArtifactRepackTask {

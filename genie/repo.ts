@@ -227,6 +227,7 @@ import {
   installNixStep,
   applyMegarepoLockStep,
   checkoutStep,
+  defaultRefPolicyCheckStep,
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
   restorePnpmStateStep,
@@ -251,6 +252,13 @@ export {
 export const namespaceRunner = (runId: string) =>
   namespaceRunnerBase({ profile: 'namespace-profile-linux-x86-64', runId })
 
+const defaultRefPolicyCheckStepForGitHubRefs = () =>
+  defaultRefPolicyCheckStep({
+    firstPartyOwners: ['overengineeringstudio'],
+    normalizeGitBranchRefs: true,
+    verifyReachable: true,
+  })
+
 /**
  * Setup steps for livestore CI jobs (without checkout).
  * Uses shared step atoms from effect-utils/genie/ci-workflow.ts.
@@ -265,6 +273,7 @@ export const livestoreSetupStepsAfterCheckout = [
     const base = cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' })
     return { ...base, with: { ...base.with, skipPush: true } }
   })(),
+  defaultRefPolicyCheckStepForGitHubRefs(),
   applyMegarepoLockStep(),
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
