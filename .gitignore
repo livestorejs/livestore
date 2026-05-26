@@ -26,6 +26,7 @@ dist
 *.db
 
 .direnv
+.pnpm-store/
 repos/
 
 # Codex project-local config

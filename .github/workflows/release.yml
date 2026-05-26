@@ -460,6 +460,7 @@ jobs:
         shell: bash
         run: |
           echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_CONFIG_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
       - id: restore-pnpm-state
         name: Restore pnpm state
@@ -639,7 +640,7 @@ jobs:
           EOF
           . "$__nix_gc_retry_helper"
           rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:changeset:version --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:changeset:version --mode before'
+          run_nix_gc_race_retry 'devenv tasks run release:changeset:version --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:changeset:version --mode before'
         env:
           LIVESTORE_NPM_TAG: ${{ inputs.npm_tag }}
       - name: Open release plan PR
@@ -1119,6 +1120,7 @@ jobs:
         shell: bash
         run: |
           echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_CONFIG_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
       - id: restore-pnpm-state
         name: Restore pnpm state
@@ -1333,7 +1335,7 @@ jobs:
           EOF
           . "$__nix_gc_retry_helper"
           rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:stable:dryrun --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:stable:dryrun --mode before'
+          run_nix_gc_race_retry 'devenv tasks run release:stable:dryrun --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:stable:dryrun --mode before'
       - name: Read release plan
         run: |
           set -euo pipefail
@@ -1461,7 +1463,7 @@ jobs:
           EOF
           . "$__nix_gc_retry_helper"
           rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:certify-liveness:no-install --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:certify-liveness:no-install --mode before'
+          run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:certify-liveness:no-install --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:certify-liveness:no-install --mode before'
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -1584,7 +1586,7 @@ jobs:
           EOF
           . "$__nix_gc_retry_helper"
           rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:repack-dryrun:no-install --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:repack-dryrun:no-install --mode before'
+          run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:repack-dryrun:no-install --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:repack-dryrun:no-install --mode before'
       - name: Save pnpm state
         if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
@@ -2016,6 +2018,7 @@ jobs:
         shell: bash
         run: |
           echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_CONFIG_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
       - id: restore-pnpm-state
         name: Restore pnpm state
@@ -2211,7 +2214,7 @@ jobs:
           EOF
           . "$__nix_gc_retry_helper"
           rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:stable:publish --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:stable:publish --mode before'
+          run_nix_gc_race_retry 'devenv tasks run release:stable:publish --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:stable:publish --mode before'
       - name: Certify DevTools artifact liveness
         run: |
           __nix_gc_retry_helper=$(mktemp)
@@ -2325,7 +2328,7 @@ jobs:
           EOF
           . "$__nix_gc_retry_helper"
           rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:certify-liveness:no-install --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:certify-liveness:no-install --mode before'
+          run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:certify-liveness:no-install --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:certify-liveness:no-install --mode before'
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -2448,7 +2451,7 @@ jobs:
           EOF
           . "$__nix_gc_retry_helper"
           rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:publish:no-install --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:publish:no-install --mode before'
+          run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:publish:no-install --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:publish:no-install --mode before'
       - name: Deploy production docs
         if: env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'
         run: |
@@ -2563,7 +2566,7 @@ jobs:
           EOF
           . "$__nix_gc_retry_helper"
           rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run docs:deploy:prod --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy:prod --mode before'
+          run_nix_gc_race_retry 'devenv tasks run docs:deploy:prod --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy:prod --mode before'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       - name: Deploy production examples
@@ -2680,7 +2683,7 @@ jobs:
           EOF
           . "$__nix_gc_retry_helper"
           rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run examples:deploy:prod --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:deploy:prod --mode before'
+          run_nix_gc_race_retry 'devenv tasks run examples:deploy:prod --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:deploy:prod --mode before'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

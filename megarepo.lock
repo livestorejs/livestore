@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "21774b60d1924e477325a8eab29a24951cbce5d6",
-      "pinned": false,
-      "lockedAt": "2026-05-24T06:21:39.809Z"
+      "ref": "schickling/2026-05-26-pnpm-refactor",
+      "commit": "5a50c8a3cb5fa7f622df116fb9337261242f0371",
+      "pinned": true,
+      "lockedAt": "2026-05-26T02:38:09.413Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",

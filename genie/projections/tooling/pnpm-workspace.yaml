@@ -13,6 +13,8 @@ peerDependencyRules:
 
 enableGlobalVirtualStore: true
 
+storeDir: .pnpm-store
+
 optimisticRepeatInstall: false
 
 verifyDepsBeforeRun: false

@@ -119,4 +119,6 @@ strictPeerDependencies: false
 
 enableGlobalVirtualStore: true
 
+storeDir: .pnpm-store
+
 linkWorkspacePackages: true
