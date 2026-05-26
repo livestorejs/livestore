@@ -1,4 +1,10 @@
-import { bashShellDefaults, defaultActionlintConfig, githubWorkflow, livestoreSetupSteps } from '../../genie/repo.ts'
+import {
+  bashShellDefaults,
+  defaultActionlintConfig,
+  githubWorkflow,
+  livestoreDefaultRefPolicyJob,
+  livestoreSetupSteps,
+} from '../../genie/repo.ts'
 
 export default githubWorkflow({
   name: 'DevTools artifact manifest',
@@ -72,6 +78,7 @@ export default githubWorkflow({
   },
 
   jobs: {
+    'source-policy': livestoreDefaultRefPolicyJob,
     'update-manifest-pr': {
       'runs-on': 'ubuntu-latest',
       defaults: bashShellDefaults,

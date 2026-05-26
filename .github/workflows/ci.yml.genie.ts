@@ -4,6 +4,7 @@ import {
   defaultActionlintConfig,
   dispatchAlignmentStep,
   githubWorkflow,
+  livestoreDefaultRefPolicyJob,
   livestoreSetupSteps,
   livestoreSetupStepsAfterCheckout,
   namespaceRunner,
@@ -99,6 +100,7 @@ export default githubWorkflow({
   },
 
   jobs: {
+    'source-policy': livestoreDefaultRefPolicyJob,
     lint: standardCIJob({
       steps: [
         ...livestoreSetupSteps,

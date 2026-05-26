@@ -237,7 +237,7 @@ import {
   installNixStep,
   applyMegarepoLockStep,
   checkoutStep,
-  defaultRefPolicyCheckStep,
+  defaultRefPolicyCheckJob,
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
   restorePnpmStateStep,
@@ -262,13 +262,6 @@ export {
 export const namespaceRunner = (runId: string) =>
   namespaceRunnerBase({ profile: 'namespace-profile-linux-x86-64', runId })
 
-const defaultRefPolicyCheckStepForGitHubRefs = () =>
-  defaultRefPolicyCheckStep({
-    firstPartyOwners: ['overengineeringstudio'],
-    normalizeGitBranchRefs: true,
-    verifyReachable: true,
-  })
-
 /**
  * Setup steps for livestore CI jobs (without checkout).
  * Uses shared step atoms from effect-utils/genie/ci-workflow.ts.
@@ -283,7 +276,6 @@ export const livestoreSetupStepsAfterCheckout = [
     const base = cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' })
     return { ...base, with: { ...base.with, skipPush: true } }
   })(),
-  defaultRefPolicyCheckStepForGitHubRefs(),
   applyMegarepoLockStep(),
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
@@ -296,6 +288,13 @@ export const livestoreSetupStepsAfterCheckout = [
  * Use livestoreSetupStepsAfterCheckout if you need a custom checkout step.
  */
 export const livestoreSetupSteps = [checkoutStep(), ...livestoreSetupStepsAfterCheckout] as const
+
+/** Dedicated source-policy job so policy failures do not hide test/lint results. */
+export const livestoreDefaultRefPolicyJob = defaultRefPolicyCheckJob({
+  firstPartyOwners: ['overengineeringstudio'],
+  normalizeGitBranchRefs: true,
+  verifyReachable: true,
+})
 
 /**
  * OTEL configuration step for Grafana Cloud.
