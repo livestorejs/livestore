@@ -23,7 +23,6 @@ env:
 
 jobs:
   source-policy:
-    name: First-party default refs
     runs-on: [sh-linux-x64, nix]
     permissions:
       contents: read
@@ -54,7 +53,7 @@ jobs:
           VERIFY_REACHABLE: '1'
           NORMALIZE_GIT_BRANCH_REFS: '1'
         run: |
-          nix run nixpkgs#nodejs_24 -- node <<'NODE'
+          nix shell nixpkgs#nodejs_24 -c node <<'NODE'
           const fs = require('node:fs')
           const path = require('node:path')
           const os = require('node:os')
