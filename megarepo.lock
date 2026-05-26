@@ -4,9 +4,9 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "schickling/2026-05-26-pnpm-refactor",
-      "commit": "b9ca6afd7f82760d9348ab175dcdd557409a9261",
+      "commit": "00cb9eac8bf4e564983727742036d32d9dba7176",
       "pinned": true,
-      "lockedAt": "2026-05-26T14:30:21.505Z"
+      "lockedAt": "2026-05-26T20:56:54.795Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
