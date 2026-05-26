@@ -13,7 +13,17 @@ peerDependencyRules:
 
 enableGlobalVirtualStore: true
 
-storeDir: .pnpm-store
+storeDir: .devenv/pnpm-store-pure-v1
+
+packageImportMethod: clone-or-copy
+
+sideEffectsCache: false
+
+verifyStoreIntegrity: true
+
+strictStorePkgContentCheck: true
+
+pmOnFail: ignore
 
 optimisticRepeatInstall: false
 
