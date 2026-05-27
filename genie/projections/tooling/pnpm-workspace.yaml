@@ -11,7 +11,21 @@ peerDependencyRules:
     '@effect/platform': '>=0.94.2'
     '@effect/rpc': '>=0.73.0'
 
+injectWorkspacePackages: true
+
 enableGlobalVirtualStore: true
+
+storeDir: .devenv/pnpm-store-pure-v1
+
+packageImportMethod: clone-or-copy
+
+sideEffectsCache: false
+
+verifyStoreIntegrity: true
+
+strictStorePkgContentCheck: true
+
+pmOnFail: ignore
 
 optimisticRepeatInstall: false
 

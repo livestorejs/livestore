@@ -149,6 +149,7 @@ const rootWorkspaceExtraFields = {
   devDependencies: {
     '@changesets/cli': '^2.31.0',
   },
+  packageManager: 'pnpm@11.3.0',
 } as const
 
 const rootWorkspace = {
@@ -170,6 +171,7 @@ const rootWorkspace = {
           ...generated.devDependencies,
           ...rootWorkspaceExtraFields.devDependencies,
         },
+        packageManager: rootWorkspaceExtraFields.packageManager,
       },
       null,
       2,

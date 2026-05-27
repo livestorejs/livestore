@@ -61,6 +61,19 @@ export default pnpmWorkspaceYaml.root({
   repoName: 'livestore',
   extraMembers: ['examples/*'],
   ...commonPnpmPolicySettings,
+  /**
+   * LiveStore's live CI/dev workspace typechecks package source and generated
+   * dist outputs together. pnpm's injected workspace snapshots are still used
+   * by Nix/FOD package preparation, but enabling them for the live workspace
+   * makes TypeScript see duplicate package identities through GVS links.
+   */
+  injectWorkspacePackages: false,
+  enableGlobalVirtualStore: true,
+  storeDir: '.devenv/pnpm-store-pure-v1',
+  packageImportMethod: 'clone-or-copy',
+  sideEffectsCache: false,
+  verifyStoreIntegrity: true,
+  strictStorePkgContentCheck: true,
   allowBuilds: repoPnpmAllowBuilds,
   packageExtensions: repoPackageExtensions,
   /** Relaxed until @livestore/devtools-vite publishes with updated Effect peer ranges */

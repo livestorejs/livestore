@@ -231,6 +231,7 @@ import {
   bashShellDefaults,
   cachixCliBuildStep,
   cachixStep,
+  defaultRefPolicyCheckJob,
   defaultActionlintConfig,
   dispatchAlignmentStep,
   namespaceRunner as namespaceRunnerBase,
@@ -252,6 +253,7 @@ export const devenvShellDefaults = {
 export { bashShellDefaults }
 export {
   defaultActionlintConfig,
+  defaultRefPolicyCheckJob,
   dispatchAlignmentStep,
   runDevenvTasksBefore,
   nixDiagnosticsArtifactStep,

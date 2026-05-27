@@ -1,6 +1,7 @@
 import { playwrightSuites, syncProviderMatrix } from '../../genie/ci.ts'
 import {
   bashShellDefaults,
+  defaultRefPolicyCheckJob,
   defaultActionlintConfig,
   dispatchAlignmentStep,
   githubWorkflow,
@@ -99,6 +100,15 @@ export default githubWorkflow({
   },
 
   jobs: {
+    'default-ref-policy': defaultRefPolicyCheckJob({
+      runsOn: namespaceRunner(GITHUB_RUN_ID),
+      firstPartyOwners: ['livestorejs', 'overengineeringstudio'],
+      defaultRefs: {
+        'livestorejs/livestore': 'dev',
+        'overengineeringstudio/effect-utils': 'main',
+      },
+    }),
+
     lint: standardCIJob({
       steps: [
         ...livestoreSetupSteps,
