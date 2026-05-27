@@ -61,6 +61,12 @@ export default pnpmWorkspaceYaml.root({
   repoName: 'livestore',
   extraMembers: ['examples/*'],
   ...commonPnpmPolicySettings,
+  enableGlobalVirtualStore: true,
+  storeDir: '.devenv/pnpm-store-pure-v1',
+  packageImportMethod: 'clone-or-copy',
+  sideEffectsCache: false,
+  verifyStoreIntegrity: true,
+  strictStorePkgContentCheck: true,
   allowBuilds: repoPnpmAllowBuilds,
   packageExtensions: repoPackageExtensions,
   /** Relaxed until @livestore/devtools-vite publishes with updated Effect peer ranges */
