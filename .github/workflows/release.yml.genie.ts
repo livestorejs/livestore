@@ -2,6 +2,7 @@ import {
   bashShellDefaults,
   defaultActionlintConfig,
   githubWorkflow,
+  livestoreDefaultRefPolicyJob,
   livestoreSetupSteps,
   runDevenvTasksBefore,
   savePnpmStateStep,
@@ -82,6 +83,7 @@ export default githubWorkflow({
   },
 
   jobs: {
+    'source-policy': livestoreDefaultRefPolicyJob,
     'create-release-pr': {
       if: "github.event_name == 'workflow_dispatch' && inputs.mode == 'create-release-pr'",
       'runs-on': 'ubuntu-latest',

@@ -4,9 +4,7 @@ import {
   createStorePromise,
   isLiveQueryDef,
   type LiveStoreSchema,
-  type Queryable,
   type RefreshReason,
-  type Schema,
   type Store,
 } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
@@ -60,10 +58,9 @@ export const createStore = async <TSchema extends LiveStoreSchema>(
   const originalQuery = store.query
 
   // monkey-patch `store.query` to add some ✨ svelte magic ✨
-  store.query = <TResult>(
-    queryDef: Queryable<TResult> | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
-    options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
-  ): TResult => {
+  store.query = ((...args: Parameters<typeof originalQuery>) => {
+    const [queryDef, options] = args
+
     // TODO support other query types
     if (isLiveQueryDef(queryDef) === true && queryDef._tag === 'def' && $effect.tracking() === true) {
       const token = {}
@@ -93,7 +90,7 @@ export const createStore = async <TSchema extends LiveStoreSchema>(
 
     // Fallback to the original query implementation
     return originalQuery(queryDef, options)
-  }
+  }) as typeof originalQuery
 
   return store
 }

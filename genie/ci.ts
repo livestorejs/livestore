@@ -19,6 +19,7 @@ export const syncProviderMatrix = [
 export const playwrightSuites = ['misc', 'todomvc', 'devtools'] as const
 
 export const requiredCIJobs = [
+  'source-policy',
   'lint',
   'changeset-check',
   'type-check',
