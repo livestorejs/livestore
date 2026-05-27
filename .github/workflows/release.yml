@@ -44,7 +44,7 @@ env:
 
 jobs:
   source-policy:
-    runs-on: [sh-linux-x64, nix]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     permissions:
       contents: read
     defaults:

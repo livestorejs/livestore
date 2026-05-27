@@ -291,6 +291,7 @@ export const livestoreSetupSteps = [checkoutStep(), ...livestoreSetupStepsAfterC
 
 /** Dedicated source-policy job so policy failures do not hide test/lint results. */
 export const livestoreDefaultRefPolicyJob = defaultRefPolicyCheckJob({
+  runsOn: namespaceRunner('${{ github.run_id }}'),
   firstPartyOwners: ['overengineeringstudio'],
   normalizeGitBranchRefs: true,
   verifyReachable: true,
