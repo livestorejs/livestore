@@ -117,7 +117,7 @@ dedupePeerDependents: true
 
 strictPeerDependencies: false
 
-injectWorkspacePackages: true
+injectWorkspacePackages: false
 
 enableGlobalVirtualStore: true
 
