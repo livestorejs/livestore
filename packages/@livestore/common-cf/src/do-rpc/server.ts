@@ -290,8 +290,13 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
           ),
         )
 
-        // Run the stream processing
-        runStream.pipe(Effect.provide(layer), Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
+        // Run the stream processing.
+        //
+        // The promise MUST be returned from `start()`: the Cloudflare runtime uses it to know
+        // when the stream is done producing chunks. Without returning it, CF can tear the stream
+        // down before the 2nd+ `controller.enqueue()` calls fire, dropping the tail of any
+        // multi-chunk payload (see do-rpc stream-stall postmortem).
+        return runStream.pipe(Effect.provide(layer), Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
       },
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridging standard Web API ReadableStream to Cloudflare Worker ReadableStream type
     }) as any as CfTypes.ReadableStream
