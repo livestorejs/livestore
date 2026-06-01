@@ -256,11 +256,20 @@ export const devenvShellDefaults = {
 } as const
 export { bashShellDefaults }
 export {
+  applyMegarepoLockStep,
+  cachixCliBuildStep,
+  cachixStep,
+  checkoutStep,
   defaultActionlintConfig,
   dispatchAlignmentStep,
-  runDevenvTasksBefore,
+  installNixStep,
   nixDiagnosticsArtifactStep,
+  pnpmStateSetupStep,
+  preparePinnedDevenvStep,
+  restorePnpmStateStep,
+  runDevenvTasksBefore,
   savePnpmStateStep,
+  validateNixStoreStep,
   workflowReportCollectorStep,
   workflowReportCommentBodyStep,
   workflowReportProducerStep,
