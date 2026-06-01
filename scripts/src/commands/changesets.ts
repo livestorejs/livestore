@@ -6,6 +6,7 @@ import semver from 'semver'
 
 const usage = `Usage:
   bun scripts/src/commands/changesets.ts check-pr [--base <ref>]
+  bun scripts/src/commands/changesets.ts check-bodies
   bun scripts/src/commands/changesets.ts restore-prerelease-changesets
   bun scripts/src/commands/changesets.ts sync-version-source
   bun scripts/src/commands/changesets.ts sync-standalone-consumers
@@ -90,6 +91,59 @@ const changedFiles = (base: string) => {
 
 const isChangesetMarkdown = (file: string) =>
   file.startsWith('.changeset/') && file.endsWith('.md') && path.basename(file) !== 'README.md'
+
+/**
+ * Parse a changeset markdown file into its YAML frontmatter lines (between the
+ * first two `---` fences) and body. Returns `undefined` when the file does not
+ * have a valid frontmatter block.
+ */
+const parseChangeset = (contents: string): { frontmatter: ReadonlyArray<string>; body: string } | undefined => {
+  const lines = contents.split('\n')
+  if (lines[0]?.trim() !== '---') return undefined
+  const closingIndex = lines.findIndex((line, index) => index > 0 && line.trim() === '---')
+  if (closingIndex === -1) return undefined
+  return {
+    frontmatter: lines
+      .slice(1, closingIndex)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0),
+    body: lines
+      .slice(closingIndex + 1)
+      .join('\n')
+      .trim(),
+  }
+}
+
+/**
+ * Validates every checked-in changeset. Each file must either bump at least one
+ * package (release-impacting) or carry a non-empty body explaining why it is an
+ * intentional empty changeset. Catches `changeset add --empty` invocations that
+ * never had their description filled in, which would otherwise enter the
+ * release-intent ledger as noise.
+ */
+const checkBodies = () => {
+  const violations: string[] = []
+  for (const entry of readdirSync('.changeset')) {
+    const file = `.changeset/${entry}`
+    if (isChangesetMarkdown(file) === false) continue
+    const contents = readFileSync(file, 'utf8')
+    const parsed = parseChangeset(contents)
+    if (parsed === undefined) {
+      violations.push(`${file}: missing or malformed YAML frontmatter`)
+      continue
+    }
+    const bumpsPackages = parsed.frontmatter.length > 0
+    if (bumpsPackages === true) continue
+    if (parsed.body.length === 0) {
+      violations.push(`${file}: empty changeset with no body — add a one-line description of the change`)
+    }
+  }
+
+  if (violations.length > 0) {
+    throw new Error(['Found malformed changesets:', ...violations].join('\n'))
+  }
+  console.log('All changesets are well-formed.')
+}
 
 const changedPublicPackageFiles = (files: ReadonlyArray<string>) => {
   const packages = publicLivestorePackages()
@@ -301,6 +355,7 @@ const main = () => {
     return
   }
   if (command === 'check-pr') return checkPr(flags)
+  if (command === 'check-bodies') return checkBodies()
   if (command === 'restore-prerelease-changesets') return restorePrereleaseChangesets()
   if (command === 'sync-version-source') return syncVersionSource()
   if (command === 'sync-standalone-consumers') return syncStandaloneConsumers()
