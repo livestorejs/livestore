@@ -459,7 +459,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 ##### Cloudflare
 
-- Fix a Durable-Object-as-LiveStore-client sync head freezing after a cold-boot catchup: `processReadableStream` now drains the whole streaming response into one buffer and decodes it once instead of decoding each `reader.read()` chunk. CF DO RPC splits stream bytes at arbitrary (~4KB) boundaries that do not align with msgpack frames; the per-chunk decode silently dropped the tail of multi-chunk catchup payloads, leaving the client's sync head stuck below the eventlog head. Reproduced end-to-end in `tests/integration/.../do-rpc-stream-stall` (#1170).
+- Fix a Durable-Object-as-LiveStore-client sync head freezing after a cold-boot catchup: `processReadableStream` now drains the whole streaming response into one buffer and decodes it once instead of decoding each `reader.read()` chunk. CF DO RPC splits stream bytes at arbitrary (~4KB) boundaries that do not align with msgpack frames; the per-chunk decode silently dropped the tail of multi-chunk catchup payloads, leaving the client's sync head stuck below the eventlog head. Reproduced end-to-end in `tests/integration/.../do-rpc-stream-stall` ([#1266](https://github.com/livestorejs/livestore/pull/1266)).
 
 ##### TypeScript & Build
 
