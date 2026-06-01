@@ -123,6 +123,10 @@ export default githubWorkflow({
             CHANGESET_BASE_REF: 'origin/${{ github.base_ref }}',
           },
         },
+        {
+          name: 'Check changeset bodies',
+          run: runDevenvTasksBefore('release:changeset:check-bodies'),
+        },
       ],
     }),
 

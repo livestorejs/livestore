@@ -423,6 +423,16 @@ in
     '';
   };
 
+  tasks."release:changeset:check-bodies" = {
+    description = "Reject malformed changesets (empty frontmatter and empty body)";
+    exec = ''
+      set -euo pipefail
+      cd "$DEVENV_ROOT"
+
+      bun scripts/src/commands/changesets.ts check-bodies
+    '';
+  };
+
   tasks."release:changeset:status" = {
     description = "Show pending Changesets release status";
     exec = ''

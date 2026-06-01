@@ -174,7 +174,12 @@ gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$branch" \\
   -f mode=validate-release-plan \\
   -f npm_tag="$LIVESTORE_NPM_TAG"
 
-if gh pr view "$branch" --repo "$GITHUB_REPOSITORY" --json autoMergeRequest --jq '.autoMergeRequest != null' | grep -qx true; then
+# Stable (npm_tag=latest) release PRs are gated by a human reviewer. For
+# prerelease channels (dev, next, etc.) the release PR is fully automated, so
+# auto-merge is enabled to drive the publish on green CI.
+if [ "$LIVESTORE_NPM_TAG" = "latest" ]; then
+  echo "npm_tag=latest: leaving auto-merge disabled; this PR requires a human ready-for-review and merge."
+elif gh pr view "$branch" --repo "$GITHUB_REPOSITORY" --json autoMergeRequest --jq '.autoMergeRequest != null' | grep -qx true; then
   echo "Auto-merge already enabled for $branch."
 else
   gh pr merge "$branch" --repo "$GITHUB_REPOSITORY" --auto --merge
@@ -265,7 +270,6 @@ fi`,
       },
       env: {
         GH_TOKEN: '${{ github.token }}',
-        NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
       },
       defaults: bashShellDefaults,
       steps: withNixDiagnosticsOnFailure([
@@ -277,17 +281,14 @@ release_version="$(jq -r '.version' release/release-plan.json)"
 : "\${release_version:?Missing release version}"
 echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"`,
         },
-        {
-          name: 'Configure npm token fallback',
-          run: `set -euo pipefail
-: "\${NODE_AUTH_TOKEN:?Missing NPM_TOKEN secret}"
-npmrc="$HOME/.npmrc"
-printf '%s\\n' "always-auth=true" > "$npmrc"
-printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$npmrc"
-printf '%s\\n' "NPM_CONFIG_USERCONFIG=$npmrc" >> "$GITHUB_ENV"
-printf '%s\\n' "NPM_CONFIG_REGISTRY=https://registry.npmjs.org/" >> "$GITHUB_ENV"
-NPM_CONFIG_USERCONFIG="$npmrc" NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ npm whoami >/dev/null`,
-        },
+        /*
+         * Stable package publishing uses npm trusted publishing (OIDC). Each
+         * `@livestore/*` npm package authorizes this workflow file
+         * (`release.yml`) as a trusted publisher with no environment scope.
+         * The npm CLI auto-detects the OIDC exchange when `id-token: write` is
+         * granted, so no NPM_TOKEN secret is required. Keep this on
+         * GitHub-hosted runners (npm OIDC does not support self-hosted).
+         */
         {
           name: 'Publish stable package release',
           run: runDevenvTasksBefore('release:stable:publish'),
