@@ -457,6 +457,10 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Fix event equality check failing when args key order differs, which caused duplicate events when syncing with backends that reorder JSON keys (e.g. PostgreSQL `jsonb`) (#1160)
 - Fix event equality check failing when args use `Schema.UndefinedOr` or loose `Schema.optional` and the field is omitted at commit time, which caused the sync merge to falsely take the rebase path and trigger `MaterializerHashMismatchError` for state-dependent materializers ([#1217](https://github.com/livestorejs/livestore/issues/1217))
 
+##### Cloudflare
+
+- Fix Durable Object RPC streaming responses being truncated to the first chunk: `createStreamingResponse` now returns the stream-runner promise from `ReadableStream.start()` so the Cloudflare runtime keeps the stream open until every chunk is enqueued and `close()` is called. Previously the tail of any multi-chunk catchup payload could be dropped, permanently stalling a DO-as-LiveStore-client sync head ([#1264](https://github.com/livestorejs/livestore/pull/1264), follow-up to #1170).
+
 ##### TypeScript & Build
 
 - Fix TypeScript build issues and examples restructuring
