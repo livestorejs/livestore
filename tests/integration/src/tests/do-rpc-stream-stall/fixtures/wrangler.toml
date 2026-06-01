@@ -1,0 +1,15 @@
+name = "do-rpc-stream-stall-test"
+main = "./worker.ts"
+compatibility_date = "2025-08-24"
+
+[[durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[durable_objects.bindings]]
+name = "CLIENT_STORE_DO"
+class_name = "ClientStoreDo"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "ClientStoreDo"]
