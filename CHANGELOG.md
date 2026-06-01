@@ -459,7 +459,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 ##### Cloudflare
 
-- Fix Durable Object RPC streaming responses being truncated to the first chunk: `createStreamingResponse` now returns the stream-runner promise from `ReadableStream.start()` so the Cloudflare runtime keeps the stream open until every chunk is enqueued and `close()` is called. Previously the tail of any multi-chunk catchup payload could be dropped, permanently stalling a DO-as-LiveStore-client sync head ([#1170](https://github.com/livestorejs/livestore/pull/1170)).
+- Fix Durable Object RPC streaming responses being truncated to the first chunk: `createStreamingResponse` now returns the stream-runner promise from `ReadableStream.start()` so the Cloudflare runtime keeps the stream open until every chunk is enqueued and `close()` is called. Previously the tail of any multi-chunk catchup payload could be dropped, permanently stalling a DO-as-LiveStore-client sync head ([#1264](https://github.com/livestorejs/livestore/pull/1264), follow-up to #1170).
 
 ##### TypeScript & Build
 
