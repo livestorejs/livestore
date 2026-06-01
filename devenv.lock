@@ -24,11 +24,11 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1779827190,
-        "narHash": "sha256-gJkTIDvppLj4hMqdFb0RaW+KONlq2ha9MyU4eI61Tqk=",
+        "lastModified": 1780338095,
+        "narHash": "sha256-kLxWEy7K5n57SCrtXl2I6KDYNxvPnsumyTywAS2Dzec=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "8c5bc8e6be49440f03b9b0bb9504264352d47bd8",
+        "rev": "5ee1fc08670b318a8eb954badec96f9106514a15",
         "type": "github"
       },
       "original": {
@@ -135,16 +135,16 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1775036866,
-        "narHash": "sha256-ZojAnPuCdy657PbTq5V0Y+AHKhZAIwSIT2cb8UgAz/U=",
+        "lastModified": 1780125817,
+        "narHash": "sha256-A44psESF9sRBg5kkkYwPPKcDakheLDnpwWMguKpA2xw=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "6201e203d09599479a3b3450ed24fa81537ebc4e",
+        "rev": "cc8609d47cd9ddda67f70bd4729b0c1dfb2e7f21",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
-        "ref": "nixos-unstable",
+        "ref": "release-26.05",
         "repo": "nixpkgs",
         "type": "github"
       }
