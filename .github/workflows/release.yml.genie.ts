@@ -429,10 +429,7 @@ NPM_CONFIG_USERCONFIG="$npmrc" NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ n
           name: 'Sync production docs search',
           if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
           'timeout-minutes': 15,
-          run: `set -euo pipefail
-: "\${MXBAI_API_KEY:?Missing MXBAI_API_KEY secret}"
-: "\${MXBAI_VECTOR_STORE_ID:?Missing MXBAI_VECTOR_STORE_ID secret}"
-pnpm --dir docs exec mxbai store sync "$MXBAI_VECTOR_STORE_ID" "./src/content/**/*.mdx" "./src/content/**/*.md" --yes --strategy fast`,
+          run: runDevenvTasksBefore('docs:search:sync:prod'),
           env: {
             MXBAI_API_KEY: '${{ secrets.MXBAI_API_KEY }}',
             MXBAI_VECTOR_STORE_ID: '${{ secrets.MXBAI_VECTOR_STORE_ID }}',

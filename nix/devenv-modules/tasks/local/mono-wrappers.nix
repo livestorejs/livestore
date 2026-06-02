@@ -333,6 +333,21 @@ in
       '';
     };
 
+    "docs:search:sync:prod" = {
+      description = "Sync prod Mixedbread vector store from docs Markdown sources";
+      exec = ''
+        set -euo pipefail
+        : "''${MXBAI_API_KEY:?Missing MXBAI_API_KEY secret}"
+        : "''${MXBAI_VECTOR_STORE_ID:?Missing MXBAI_VECTOR_STORE_ID secret}"
+        timeout --signal=TERM --kill-after=1m 10m \
+          pnpm --dir docs exec mxbai store sync "$MXBAI_VECTOR_STORE_ID" \
+            "./src/content/**/*.mdx" \
+            "./src/content/**/*.md" \
+            --yes --strategy fast
+      '';
+      after = [ "pnpm:install" ];
+    };
+
     "docs:deploy:prod:diagnostics" = {
       description = "Collect prod docs deploy diagnostics on failure";
       exec = ''
