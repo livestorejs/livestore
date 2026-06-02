@@ -270,6 +270,7 @@ fi`,
       },
       env: {
         GH_TOKEN: '${{ github.token }}',
+        NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
       },
       defaults: bashShellDefaults,
       steps: withNixDiagnosticsOnFailure([
@@ -282,13 +283,25 @@ release_version="$(jq -r '.version' release/release-plan.json)"
 echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"`,
         },
         /*
-         * Stable package publishing uses npm trusted publishing (OIDC). Each
-         * `@livestore/*` npm package authorizes this workflow file
-         * (`release.yml`) as a trusted publisher with no environment scope.
-         * The npm CLI auto-detects the OIDC exchange when `id-token: write` is
-         * granted, so no NPM_TOKEN secret is required. Keep this on
-         * GitHub-hosted runners (npm OIDC does not support self-hosted).
+         * Stable package publishing uses the NPM_TOKEN secret. npm currently
+         * allows only one trusted publisher workflow per package, and
+         * `ci.yml` already owns that slot for snapshot publishing. Moving
+         * stable releases to trusted publishing would require consolidating
+         * the snapshot + stable publish into a single workflow file or
+         * giving up snapshot OIDC — neither is worth doing right now.
+         * See .github/workflows/README.md `release.yml` section.
          */
+        {
+          name: 'Configure npm token fallback',
+          run: `set -euo pipefail
+: "\${NODE_AUTH_TOKEN:?Missing NPM_TOKEN secret}"
+npmrc="$HOME/.npmrc"
+printf '%s\\n' "always-auth=true" > "$npmrc"
+printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$npmrc"
+printf '%s\\n' "NPM_CONFIG_USERCONFIG=$npmrc" >> "$GITHUB_ENV"
+printf '%s\\n' "NPM_CONFIG_REGISTRY=https://registry.npmjs.org/" >> "$GITHUB_ENV"
+NPM_CONFIG_USERCONFIG="$npmrc" NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ npm whoami >/dev/null`,
+        },
         {
           name: 'Publish stable package release',
           run: runDevenvTasksBefore('release:stable:publish'),
