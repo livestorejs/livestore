@@ -329,6 +329,7 @@ NPM_CONFIG_USERCONFIG="$npmrc" NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ n
         {
           name: 'Deploy production docs',
           if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          'timeout-minutes': 30,
           run: runDevenvTasksBefore('docs:deploy:prod'),
           env: {
             NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
@@ -337,6 +338,7 @@ NPM_CONFIG_USERCONFIG="$npmrc" NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ n
         {
           name: 'Deploy production examples',
           if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          'timeout-minutes': 30,
           run: runDevenvTasksBefore('examples:deploy:prod'),
           env: {
             CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
@@ -346,6 +348,7 @@ NPM_CONFIG_USERCONFIG="$npmrc" NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ n
         {
           name: 'Sync production docs search',
           if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          'timeout-minutes': 15,
           run: `set -euo pipefail
 : "\${MXBAI_API_KEY:?Missing MXBAI_API_KEY secret}"
 : "\${MXBAI_VECTOR_STORE_ID_PROD:?Missing MXBAI_VECTOR_STORE_ID_PROD secret}"
