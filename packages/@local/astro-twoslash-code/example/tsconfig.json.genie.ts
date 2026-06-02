@@ -11,7 +11,7 @@ export default tsconfigJson({
     sourceMap: true,
     rootDir: '.',
     outDir: './dist',
-    types: ['node', '@astrojs/astro-types'],
+    types: ['node'],
     jsx: 'preserve',
     jsxImportSource: 'astro',
   },

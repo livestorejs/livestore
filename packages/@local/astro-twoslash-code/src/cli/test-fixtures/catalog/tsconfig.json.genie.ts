@@ -8,7 +8,6 @@ export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
     rootDir: './',
-    types: ['vite/client'],
     noEmit: true,
   },
   include: ['./**/*.ts', './**/*.tsx', './**/*.d.ts'],
