@@ -13,6 +13,10 @@ import {
   repoPnpmOnlyBuiltDependencies,
   runDevenvTasksBefore,
   savePnpmStateStep,
+  workflowReportCollectorStep,
+  workflowReportCommentBodyStep,
+  workflowReportProducerStep,
+  workflowReportPublisherStep,
 } from '../../genie/repo.ts'
 
 // =============================================================================
@@ -24,6 +28,89 @@ const PR_HEAD_SHA = '${{ github.event.pull_request.head.sha || github.sha }}'
 const IS_NOT_FORK = 'github.event.pull_request.head.repo.fork != true'
 const DLX_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `--allow-build=${name}`).join(' ')
 const PNPM_ADD_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `--allow-build=${name}`).join(' ')
+
+// =============================================================================
+// Snapshot Publish Workflow Report
+// =============================================================================
+
+/**
+ * Surface the snapshot publish outcome as a managed PR comment so contributors
+ * can copy the install command + Chrome devtools artifact link without digging
+ * into the workflow log. The producer step writes a single JSONL record in the
+ * publish job; the dedicated reporting job collects it from an artifact and
+ * upserts the PR comment.
+ */
+const SNAPSHOT_REPORT_STATE_ID = 'snapshot-publish'
+const SNAPSHOT_REPORT_ARTIFACT_NAME = 'snapshot-publish-workflow-report'
+const SNAPSHOT_REPORT_RECORD_PATH = '${{ runner.temp }}/workflow-reports/snapshot-publish.jsonl'
+const SNAPSHOT_REPORT_DOWNLOAD_DIR = '${{ runner.temp }}/workflow-reports/snapshot-publish-download'
+const SNAPSHOT_REPORT_BUNDLE_PATH = '${{ runner.temp }}/workflow-reports/snapshot-publish-bundle.json'
+const SNAPSHOT_REPORT_COMMENT_BODY_PATH =
+  '${{ runner.temp }}/workflow-reports/snapshot-publish-comment.md'
+const SNAPSHOT_REPORT_SUMMARY_PATH = '${{ runner.temp }}/workflow-reports/snapshot-publish-summary.md'
+
+/**
+ * Emit the snapshot publish report as a single JSONL line at runtime.
+ *
+ * `workflowReportProducerStep` from effect-utils validates the record at genie
+ * codegen time, which forces every field to a literal value before GitHub
+ * Actions has a chance to interpolate. The `createdAtUtc` ISO timestamp is the
+ * one piece we genuinely need at runtime, so we build the record inline with
+ * `jq` (mirroring the canonical `netlifyDeployStep` pattern in effect-utils).
+ *
+ * The bash payload writes the JSONL line to the agreed shared output path so
+ * the dedicated `report-snapshot-publish` job can collect it from an uploaded
+ * artifact and run the collector → comment-body → publisher pipeline.
+ */
+const emitSnapshotPublishReportStep = {
+  name: 'Emit snapshot publish workflow report',
+  shell: 'bash' as const,
+  if: "${{ github.event_name == 'pull_request' && steps.publish-snapshot.outcome == 'success' }}",
+  env: {
+    WORKFLOW_REPORT_OUTPUT_PATH: SNAPSHOT_REPORT_RECORD_PATH,
+    SNAPSHOT_VERSION: `0.0.0-snapshot-${PR_HEAD_SHA}`,
+    HEAD_SHA: PR_HEAD_SHA,
+    RUN_ID: GITHUB_RUN_ID,
+    REPOSITORY: '${{ github.repository }}',
+  },
+  run: [
+    'set -euo pipefail',
+    'mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_PATH")"',
+    'created_at_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"',
+    'record_id="snapshot-publish-${HEAD_SHA}"',
+    'npm_url="https://www.npmjs.com/package/@livestore/livestore/v/${SNAPSHOT_VERSION}"',
+    'run_url="https://github.com/${REPOSITORY}/actions/runs/${RUN_ID}"',
+    'install_cmd="pnpm add @livestore/livestore@${SNAPSHOT_VERSION}"',
+    'record_json="$(jq -cn \\',
+    '  --arg id "$record_id" \\',
+    '  --arg version "$SNAPSHOT_VERSION" \\',
+    '  --arg headSha "$HEAD_SHA" \\',
+    '  --arg runId "$RUN_ID" \\',
+    '  --arg createdAtUtc "$created_at_utc" \\',
+    '  --arg npmUrl "$npm_url" \\',
+    '  --arg runUrl "$run_url" \\',
+    '  --arg installCmd "$install_cmd" \\',
+    "  '{",
+    '    _tag: "WorkflowReportRecord",',
+    '    schemaVersion: 1,',
+    '    id: $id,',
+    '    kind: "npm-snapshot-publish",',
+    '    subject: { id: "livestore-npm-snapshot", label: "LiveStore npm snapshot" },',
+    '    status: "success",',
+    '    title: ("Snapshot published as " + $version),',
+    '    summary: ("Install with `" + $installCmd + "`"),',
+    '    createdAtUtc: $createdAtUtc,',
+    '    links: [',
+    '      { label: "@livestore/livestore on npm", url: $npmUrl, primary: true },',
+    '      { label: "Chrome devtools ZIP (workflow run artifacts)", url: $runUrl }',
+    '    ],',
+    '    data: { snapshotVersion: $version, headSha: $headSha, runId: $runId }',
+    "  }')\"",
+    'workflow_report_line="WORKFLOW_REPORT_V1: ${record_json}"',
+    'printf "%s\\n" "$workflow_report_line"',
+    'printf "%s\\n" "$workflow_report_line" > "$WORKFLOW_REPORT_OUTPUT_PATH"',
+  ].join('\n'),
+}
 
 // =============================================================================
 // Job Helpers
@@ -367,7 +454,67 @@ done`,
             'retention-days': 14,
           },
         },
+        emitSnapshotPublishReportStep,
+        {
+          name: 'Upload snapshot publish workflow report',
+          if: `\${{ github.event_name == 'pull_request' && steps.publish-snapshot.outcome == 'success' }}`,
+          uses: 'actions/upload-artifact@v4',
+          with: {
+            name: SNAPSHOT_REPORT_ARTIFACT_NAME,
+            path: SNAPSHOT_REPORT_RECORD_PATH,
+            'if-no-files-found': 'error',
+            'retention-days': 14,
+          },
+        },
       ]),
+    },
+
+    /**
+     * Aggregate the snapshot publish workflow report and upsert the managed PR
+     * comment. Runs after `publish-snapshot-version` so a failed publish leaves
+     * the existing comment (if any) untouched rather than overwriting it with a
+     * stale success record.
+     */
+    'report-snapshot-publish': {
+      if: `\${{ github.event_name == 'pull_request' && needs.publish-snapshot-version.outputs.npm_snapshot_published == '1' }}`,
+      needs: 'publish-snapshot-version',
+      ...namespaceRunnerConfig,
+      permissions: {
+        contents: 'read',
+        'pull-requests': 'write',
+      },
+      defaults: bashShellDefaults,
+      steps: [
+        ...livestoreSetupSteps,
+        {
+          name: 'Download snapshot publish workflow report',
+          uses: 'actions/download-artifact@v4',
+          with: {
+            name: SNAPSHOT_REPORT_ARTIFACT_NAME,
+            path: SNAPSHOT_REPORT_DOWNLOAD_DIR,
+          },
+        },
+        workflowReportCollectorStep({
+          bundleId: 'snapshot-publish',
+          inputPaths: [`${SNAPSHOT_REPORT_DOWNLOAD_DIR}/snapshot-publish.jsonl`],
+          outputPath: SNAPSHOT_REPORT_BUNDLE_PATH,
+        }),
+        workflowReportCommentBodyStep({
+          bundlePath: SNAPSHOT_REPORT_BUNDLE_PATH,
+          commentBodyPath: SNAPSHOT_REPORT_COMMENT_BODY_PATH,
+          summaryPath: SNAPSHOT_REPORT_SUMMARY_PATH,
+          title: 'Snapshot release',
+          noRecordsMessage: 'No snapshot release was published for this commit.',
+          stateId: SNAPSHOT_REPORT_STATE_ID,
+          entryId: PR_HEAD_SHA,
+          entryLabel: `PR \${{ github.event.pull_request.number }}`,
+        }),
+        workflowReportPublisherStep({
+          commentBodyPath: SNAPSHOT_REPORT_COMMENT_BODY_PATH,
+          summaryPath: SNAPSHOT_REPORT_SUMMARY_PATH,
+          stateId: SNAPSHOT_REPORT_STATE_ID,
+        }),
+      ],
     },
 
     'build-and-deploy-examples-src': {
