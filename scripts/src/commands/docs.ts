@@ -485,20 +485,43 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             }
           })
 
-          // Verify root returns Markdown on Accept negotiation (use commitDeploy URL as canonical)
+          /**
+           * Verify root returns Markdown on Accept negotiation (use commitDeploy URL as canonical).
+           * Bounded with a timeout because Netlify's CDN can take a while to start serving the freshly
+           * deployed site, and a hung verification request blocks the rest of the release publish
+           * pipeline indefinitely (see livestorejs/livestore#1279).
+           */
           const rootContentType = yield* HttpClient.execute(
             HttpClientRequest.get(`${commitDeploy.deploy_url}/`).pipe(
               HttpClientRequest.setHeaders({ Accept: 'text/markdown' }),
             ),
-          ).pipe(Effect.map((res) => res.headers['content-type']))
+          ).pipe(
+            Effect.map((res) => res.headers['content-type']),
+            Effect.timeout('60 seconds'),
+            Effect.catchTag('TimeoutException', () =>
+              Effect.gen(function* () {
+                yield* Effect.logWarning(
+                  `Docs deploy markdown-negotiation check at ${commitDeploy.deploy_url}/ timed out after 60s; treating as non-fatal (the Netlify deploy itself succeeded).`,
+                )
+                return undefined
+              }),
+            ),
+          )
 
-          if (rootContentType?.toLowerCase().includes('text/markdown') === false) {
+          if (rootContentType !== undefined && rootContentType.toLowerCase().includes('text/markdown') === false) {
             return shouldNeverHappen('Docs deploy validation failed: markdown negotiation at root')
           }
 
           if (purgeCdn === true) {
             const purgeSiteId = commitDeploy.site_id
-            yield* purgeNetlifyCdn({ siteId: purgeSiteId, siteSlug: site })
+            yield* purgeNetlifyCdn({ siteId: purgeSiteId, siteSlug: site }).pipe(
+              Effect.timeout('60 seconds'),
+              Effect.catchTag('TimeoutException', () =>
+                Effect.logWarning(
+                  `Netlify CDN purge for site ${site} timed out after 60s; deploy is live regardless (see livestorejs/livestore#1279).`,
+                ),
+              ),
+            )
           }
 
           yield* appendGithubSummaryMarkdown({
