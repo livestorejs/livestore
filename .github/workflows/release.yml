@@ -2879,11 +2879,11 @@ jobs:
         run: |
           set -euo pipefail
           : "${MXBAI_API_KEY:?Missing MXBAI_API_KEY secret}"
-          : "${MXBAI_VECTOR_STORE_ID_PROD:?Missing MXBAI_VECTOR_STORE_ID_PROD secret}"
-          pnpm --dir docs exec mxbai store sync "$MXBAI_VECTOR_STORE_ID_PROD" "./src/content/**/*.mdx" "./src/content/**/*.md" --yes --strategy fast
+          : "${MXBAI_VECTOR_STORE_ID:?Missing MXBAI_VECTOR_STORE_ID secret}"
+          pnpm --dir docs exec mxbai store sync "$MXBAI_VECTOR_STORE_ID" "./src/content/**/*.mdx" "./src/content/**/*.md" --yes --strategy fast
         env:
           MXBAI_API_KEY: ${{ secrets.MXBAI_API_KEY }}
-          MXBAI_VECTOR_STORE_ID_PROD: ${{ secrets.MXBAI_VECTOR_STORE_ID_PROD }}
+          MXBAI_VECTOR_STORE_ID: ${{ secrets.MXBAI_VECTOR_STORE_ID }}
       - name: Save pnpm state
         if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
