@@ -586,17 +586,52 @@ const materializeChromeZipAsset = (version: string, chromeZipPath: string, workD
   return assetPath
 }
 
+/**
+ * Resolves the release notes file emitted by `mono release extract-release-notes`.
+ * Returns `undefined` (with a warning) when the file is missing so DevTools-artifact
+ * publishing remains unblocked. In that case the GitHub Release falls back to the
+ * legacy `Release <version>` body.
+ */
+const resolveReleaseNotesPath = (version: string): string | undefined => {
+  const workspaceRoot = process.env.WORKSPACE_ROOT ?? process.cwd()
+  const candidate = path.resolve(workspaceRoot, 'release/release-notes.md')
+  if (existsSync(candidate) === false) {
+    console.warn(
+      `[publishChromeZipReleaseAsset] release/release-notes.md not found for v${version}; ` +
+        'falling back to "Release <version>" body. Run `mono release extract-release-notes` to populate it.',
+    )
+    return undefined
+  }
+  return candidate
+}
+
 const publishChromeZipReleaseAsset = (version: string, assetPath: string) => {
   const repo = process.env.GITHUB_REPOSITORY ?? 'livestorejs/livestore'
   const tag = `v${version}`
+  const notesPath = resolveReleaseNotesPath(version)
 
   const releaseExists = spawnSync('gh', ['release', 'view', tag, '--repo', repo], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
-  if (releaseExists.status !== 0) {
-    const createArgs = ['gh', 'release', 'create', tag, '--repo', repo, '--title', tag, '--notes', `Release ${version}`]
+  if (releaseExists.status === 0) {
+    /**
+     * Refresh the body on reruns so a corrected `release/release-notes.md` actually lands
+     * on the GitHub Release page. Without this, only the very first create call sets the
+     * body, and later DevTools-artifact uploads silently leave a stale "Release <version>"
+     * body in place — which is exactly the regression we hit on v0.4.0.
+     */
+    if (notesPath !== undefined) {
+      run(['gh', 'release', 'edit', tag, '--repo', repo, '--notes-file', notesPath])
+    }
+  } else {
+    const createArgs = ['gh', 'release', 'create', tag, '--repo', repo, '--title', tag]
+    if (notesPath === undefined) {
+      createArgs.push('--notes', `Release ${version}`)
+    } else {
+      createArgs.push('--notes-file', notesPath)
+    }
     if (version.includes('-') === true) createArgs.push('--prerelease')
     run(createArgs)
   }

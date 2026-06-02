@@ -112,6 +112,35 @@ release data self-contained: the DevTools artifact identity remains the
 artifact build id, while the LiveStore package version is assigned by release
 automation and then validated by CI before auto-merge.
 
+### Release notes artifact
+
+Alongside `release/release-plan.json`, the release PR generator extracts the
+current version's `CHANGELOG.md` section into `release/release-notes.md` via
+the `release:notes:extract` task (which calls
+`mono release extract-release-notes`). The extracted file is committed to the
+release-plan PR so reviewers see exactly what will land on the GitHub Release
+page.
+
+The DevTools artifact publish step then uses that file when it creates or
+updates the GitHub Release tag:
+
+- On `gh release create`, it passes `--notes-file release/release-notes.md`
+  instead of the legacy hardcoded `Release <version>` body.
+- On subsequent reruns (the release already exists), it also calls
+  `gh release edit --notes-file release/release-notes.md` so a corrected
+  `CHANGELOG.md` section actually lands on the GitHub Release page.
+
+If `release/release-notes.md` is missing at publish time, the publish step
+falls back to the legacy `Release <version>` body and logs a warning. To
+refresh it locally for a planned release:
+
+```bash
+mono release extract-release-notes
+```
+
+This reads the version from `release/release-plan.json` and writes
+`release/release-notes.md`.
+
 Release plans are validated against the npm dist-tag before dry-run or publish:
 
 - `latest` only accepts stable versions such as `0.4.0`.

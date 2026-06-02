@@ -33,6 +33,7 @@ const releasePlanPaths = [
   'genie/repo.ts',
   'nix/devenv-modules/tasks/local/mono-wrappers.nix',
   'release/release-plan.json',
+  'release/release-notes.md',
   'release/version.json',
   'release/devtools-artifact.json',
   'scripts/src/commands/release.ts',
@@ -111,6 +112,16 @@ export default githubWorkflow({
           },
         },
         {
+          /**
+           * Extract the changelog section for this release into a reviewable
+           * `release/release-notes.md` artifact. The publish job uses this
+           * file via `gh release create|edit --notes-file` so the GitHub
+           * Release body matches what reviewers approved on the release PR.
+           */
+          name: 'Extract release notes',
+          run: runDevenvTasksBefore('release:notes:extract'),
+        },
+        {
           name: 'Open release plan PR',
           env: {
             GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
@@ -131,6 +142,7 @@ git add \\
   package.json \\
   pnpm-lock.yaml \\
   release/devtools-artifact.json \\
+  release/release-notes.md \\
   release/release-plan.json \\
   release/version.json \\
   docs/package.json \\
