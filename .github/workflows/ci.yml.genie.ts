@@ -45,8 +45,7 @@ const SNAPSHOT_REPORT_ARTIFACT_NAME = 'snapshot-publish-workflow-report'
 const SNAPSHOT_REPORT_RECORD_PATH = '${{ runner.temp }}/workflow-reports/snapshot-publish.jsonl'
 const SNAPSHOT_REPORT_DOWNLOAD_DIR = '${{ runner.temp }}/workflow-reports/snapshot-publish-download'
 const SNAPSHOT_REPORT_BUNDLE_PATH = '${{ runner.temp }}/workflow-reports/snapshot-publish-bundle.json'
-const SNAPSHOT_REPORT_COMMENT_BODY_PATH =
-  '${{ runner.temp }}/workflow-reports/snapshot-publish-comment.md'
+const SNAPSHOT_REPORT_COMMENT_BODY_PATH = '${{ runner.temp }}/workflow-reports/snapshot-publish-comment.md'
 const SNAPSHOT_REPORT_SUMMARY_PATH = '${{ runner.temp }}/workflow-reports/snapshot-publish-summary.md'
 
 /**
@@ -105,7 +104,7 @@ const emitSnapshotPublishReportStep = {
     '      { label: "Chrome devtools ZIP (workflow run artifacts)", url: $runUrl }',
     '    ],',
     '    data: { snapshotVersion: $version, headSha: $headSha, runId: $runId }',
-    "  }')\"",
+    '  }\')"',
     'workflow_report_line="WORKFLOW_REPORT_V1: ${record_json}"',
     'printf "%s\\n" "$workflow_report_line"',
     'printf "%s\\n" "$workflow_report_line" > "$WORKFLOW_REPORT_OUTPUT_PATH"',
