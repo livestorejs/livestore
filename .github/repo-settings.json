@@ -81,6 +81,12 @@
           },
           {
             "context": "wa-sqlite-test"
+          },
+          {
+            "context": "build-deploy-docs"
+          },
+          {
+            "context": "build-and-deploy-examples-src"
           }
         ]
       }
