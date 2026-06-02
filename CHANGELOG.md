@@ -6,16 +6,14 @@
 > for more info. LiveStore is following a semver-like release strategy where
 > breaking changes are released in minor versions before the 1.0 release.
 
-## 0.4.0 (Unreleased)
+## 0.4.0 - 2026-06-02
 
-> For v0.4.0 features, see the development documentation at [dev.docs.livestore.dev](https://dev.docs.livestore.dev) which includes the latest documentation.
-
-> **Installing v0.4.0 dev release:** Use the `dev` tag to install the latest development version. Make sure all LiveStore packages use the same version:
+> **Installing v0.4.0:** Make sure all LiveStore packages use the same version:
 >
 > ```bash
-> pnpm add @livestore/livestore@dev @livestore/adapter-web@dev @livestore/wa-sqlite@dev @livestore/react@dev
+> pnpm add @livestore/livestore @livestore/adapter-web @livestore/wa-sqlite @livestore/react
 > # Or for Cloudflare
-> pnpm add @livestore/livestore@dev @livestore/adapter-cloudflare@dev @livestore/sync-cf@dev
+> pnpm add @livestore/livestore @livestore/adapter-cloudflare @livestore/sync-cf
 > ```
 
 ### Highlights
