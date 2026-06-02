@@ -311,6 +311,8 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 - **Event log lookup optimization:** Improved event log lookup performance for large unsynced logs, speeding startup time ([#1012](https://github.com/livestorejs/livestore/pull/1012)).
 
+- **DevTools protocol versioning:** The app and DevTools now exchange an explicit protocol version during handshake, decoupling DevTools runtime compatibility from package versions. Newer or older DevTools builds connect cleanly to any LiveStore runtime that speaks the same protocol ([#1232](https://github.com/livestorejs/livestore/pull/1232)).
+
 - **Unknown event handling:** Schemas now ship an `unknownEventHandling` configuration so older clients can warn, ignore, fail, or forward telemetry when they see future events while keeping the eventlog intact ([#353](https://github.com/livestorejs/livestore/issues/353)).
 
 - **Schema-first tables:** LiveStore now accepts Effect schema definitions as SQLite table inputs, keeping type information and stored schema in the same place. For example:
@@ -429,6 +431,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Fix query builder method order to preserve where clauses (#586)
 - Fix Symbol values in QueryCache key generation
 - Fix SQLite query builder clause order so LIMIT precedes OFFSET, preventing syntax errors (#882)
+- Fix `useQuery` returning stale results after a `Store` is disposed and recreated with the same `(storeId, clientId, sessionId)`. The `useRcResource` cache is now scoped per `Store` instance via a `WeakMap`, so a replaced store gets a fresh bucket and previously cached `LiveQuery` instances become GC-eligible ([#1186](https://github.com/livestorejs/livestore/issues/1186), [#1241](https://github.com/livestorejs/livestore/pull/1241)).
 
 ##### SQLite & Storage
 
@@ -453,6 +456,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Prevent `store.subscribe` reentrancy crashes by restoring the reactive debug context after nested commits (#577, #656)
 - Fix `subscribe` with `skipInitialRun` to properly register reactive dependencies while suppressing the initial callback (#847)
 - Fix event equality check failing when args key order differs, which caused duplicate events when syncing with backends that reorder JSON keys (e.g. PostgreSQL `jsonb`) (#1160)
+- Fix event equality check failing when args use `Schema.UndefinedOr` or loose `Schema.optional` and the field is omitted at commit time, which caused the sync merge to falsely take the rebase path and trigger `MaterializerHashMismatchError` for state-dependent materializers ([#1217](https://github.com/livestorejs/livestore/issues/1217))
 
 ##### TypeScript & Build
 
@@ -474,7 +478,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 #### Experimental features
 
-- LiveStore CLI for project scaffolding (experimental preview, not production-ready)
+- LiveStore CLI for project scaffolding (experimental preview, not production-ready). Generated projects now link to the `main` branch in the source LiveStore repository ([#1206](https://github.com/livestorejs/livestore/pull/1206)), and the CLI uses `GITHUB_TOKEN` or `GH_TOKEN` for example downloads when available so rate-limited unauthenticated fetches are no longer the default ([#1201](https://github.com/livestorejs/livestore/pull/1201)).
 
 #### Updated (peer) dependencies
 
@@ -501,6 +505,8 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 #### Development Tooling
 
 - **Strict peer dep composition:** Added `@effect/vitest` to `utilsEffectPeerDeps` and `@livestore/peer-deps`, and deduplicated the peer-deps package to derive its dependency list from the canonical `utilsEffectPeerDeps` source ([#1107](https://github.com/livestorejs/livestore/issues/1107)).
+- **Hosted example link validation:** Maintainers now have a shared deployment metadata source and `mono examples validate-links` check so docs and example deployments can catch stale first-party demo URLs before publishing ([#1244](https://github.com/livestorejs/livestore/issues/1244)).
+- **Chrome DevTools extension assets restored:** Restored `qrcode-generator` 2.0.4 in `@livestore/utils` and included the Chrome DevTools extension assets in the release artifact flow so the published DevTools package contains the Chrome extension build alongside the Vite plugin ([#1215](https://github.com/livestorejs/livestore/pull/1215)).
 - Migration from ESLint to Biome for improved performance (#447)
 - Automated dependency management with Renovate
 - Pre-commit hooks via Husky (#522)
