@@ -1425,8 +1425,19 @@ jobs:
         run: |
           set -euo pipefail
           release_version="$(jq -r '.version' release/release-plan.json)"
+          npm_tag="$(jq -r '.npmTag' release/release-plan.json)"
           : "${release_version:?Missing release version}"
+          : "${npm_tag:?Missing npm tag}"
           echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
+          echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
+          # Env vars do not carry across jobs in GitHub Actions, so the deploy-target
+          # gate that the validate-release-plan job sets must be re-derived here for the
+          # Deploy production docs/examples and Sync production docs search steps below.
+          if [ "$npm_tag" = "latest" ]; then
+            echo "LIVESTORE_RELEASE_DEPLOY_TARGET=prod" >> "$GITHUB_ENV"
+          else
+            echo "LIVESTORE_RELEASE_DEPLOY_TARGET=dev" >> "$GITHUB_ENV"
+          fi
       - name: Configure npm token fallback
         run: |
           set -euo pipefail

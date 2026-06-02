@@ -682,7 +682,16 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
 
   const publishTag = publishTagForVersion(version)
   if (hasFlag(flags, 'dry-run') === true) {
-    run(['npm', 'publish', '--dry-run', '--tag', publishTag, repackedPath], { cwd: workDir })
+    // npm publish --dry-run still pre-checks the registry and errors with
+    // "cannot publish over previously published versions" when the version
+    // already exists. Treat existing-on-npm as stronger evidence that the
+    // artifact is publishable than a dry-run could provide, so cert-liveness
+    // reruns after a successful publish stay idempotent.
+    if (packageVersionExists(metadata.packageName, version) === true) {
+      console.warn(`${metadata.packageName}@${version} already published, skipping dry-run publish check`)
+    } else {
+      run(['npm', 'publish', '--dry-run', '--tag', publishTag, repackedPath], { cwd: workDir })
+    }
   }
   if (hasFlag(flags, 'publish') === true) {
     const alreadyPublished = packageVersionExists(metadata.packageName, version)
