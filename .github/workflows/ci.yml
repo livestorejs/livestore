@@ -4064,60 +4064,25 @@ jobs:
       - name: Collect workflow report bundle
         shell: bash
         env:
+          GH_TOKEN: ${{ github.token }}
+          WORKFLOW_REPORT_FLAKE_REF: 'github:overengineeringstudio/effect-utils/main#workflow-report'
           WORKFLOW_REPORT_BUNDLE_ID: pr-preview
           WORKFLOW_REPORT_INPUT_PATHS_JSON: '["${{ runner.temp }}/workflow-reports/snapshot-publish-download/snapshot-publish.jsonl","${{ runner.temp }}/workflow-reports/docs-deploy-download/docs-deploy.jsonl","${{ runner.temp }}/workflow-reports/examples-deploy-download/examples-deploy.jsonl"]'
           WORKFLOW_REPORT_OUTPUT_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-bundle.json'
           WORKFLOW_REPORT_RECORD_MARKER: 'WORKFLOW_REPORT_V1: '
           WORKFLOW_REPORT_ALLOW_MISSING_INPUT: '1'
         run: |
-          if [ -z "${WORKFLOW_REPORT_RUNTIME_MODULE:-}" ]; then
-            if [ -f packages/@overeng/genie/src/runtime/mod.ts ]; then
-              export WORKFLOW_REPORT_RUNTIME_MODULE=packages/@overeng/genie/src/runtime/mod.ts
-            elif [ -f repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts ]; then
-              export WORKFLOW_REPORT_RUNTIME_MODULE=repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts
-            else
-              echo "::error::unable to locate @overeng/genie runtime module for workflow reports"
-              exit 1
-            fi
+          if [ -n "${GH_TOKEN:-}" ]; then
+            export NIX_CONFIG="${NIX_CONFIG:+$NIX_CONFIG$'\n'}access-tokens = github.com=${GH_TOKEN}"
           fi
-          cat > /tmp/collect-workflow-report-bundle.mjs <<'EOF'
-          import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-          import { dirname, resolve } from 'node:path'
-          import { pathToFileURL } from 'node:url'
-
-          const runtimeModule = process.env.WORKFLOW_REPORT_RUNTIME_MODULE
-          if (typeof runtimeModule !== "string" || runtimeModule.length === 0) throw new Error("WORKFLOW_REPORT_RUNTIME_MODULE is required")
-          const { collectWorkflowReportBundle, encodeWorkflowReportBundleJson } = await import(pathToFileURL(resolve(runtimeModule)).href)
-
-          const expectString = (value, path) =>
-            typeof value === "string" && value.length > 0 ? value : (() => { throw new Error(`${path} must be a non-empty string`) })()
-
-          const marker = expectString(process.env.WORKFLOW_REPORT_RECORD_MARKER, "WORKFLOW_REPORT_RECORD_MARKER")
-          const inputPaths = JSON.parse(expectString(process.env.WORKFLOW_REPORT_INPUT_PATHS_JSON, "WORKFLOW_REPORT_INPUT_PATHS_JSON"))
-          const outputPath = expectString(process.env.WORKFLOW_REPORT_OUTPUT_PATH, "WORKFLOW_REPORT_OUTPUT_PATH")
-          const bundleId = expectString(process.env.WORKFLOW_REPORT_BUNDLE_ID, "WORKFLOW_REPORT_BUNDLE_ID")
-          const allowMissingInput = process.env.WORKFLOW_REPORT_ALLOW_MISSING_INPUT === "1"
-
-          const sources = []
-          for (const path of inputPaths) {
-            if (!existsSync(path)) {
-              if (allowMissingInput) continue
-              throw new Error(`workflow report input file does not exist: ${path}`)
-            }
-            sources.push(readFileSync(path, "utf8"))
-          }
-
-          const bundle = collectWorkflowReportBundle({ bundleId, generatedAtUtc: new Date().toISOString(), sources, marker })
-
-          mkdirSync(dirname(outputPath), { recursive: true })
-          writeFileSync(outputPath, encodeWorkflowReportBundleJson(bundle))
-          EOF
-          nix run nixpkgs#bun -- /tmp/collect-workflow-report-bundle.mjs
+          workflow_report_flake_ref="${WORKFLOW_REPORT_FLAKE_REF:-github:overengineeringstudio/effect-utils/main#workflow-report}"
+          nix run "$workflow_report_flake_ref" -- collect-bundle --bundle-id "$WORKFLOW_REPORT_BUNDLE_ID" --input-paths-json "$WORKFLOW_REPORT_INPUT_PATHS_JSON" --output-path "$WORKFLOW_REPORT_OUTPUT_PATH" --record-marker "$WORKFLOW_REPORT_RECORD_MARKER" --allow-missing-input
       - name: Render workflow report comment
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          WORKFLOW_REPORT_FLAKE_REF: 'github:overengineeringstudio/effect-utils/main#workflow-report'
           WORKFLOW_REPORT_BUNDLE_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-bundle.json'
           WORKFLOW_REPORT_COMMENT_BODY_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-comment.md'
           WORKFLOW_REPORT_SUMMARY_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-summary.md'
@@ -4130,101 +4095,32 @@ jobs:
           WORKFLOW_REPORT_TIME_ZONE: UTC
           WORKFLOW_REPORT_MANAGED_MARKER: '<!-- workflow-report:managed -->'
         run: |
-          if [ -z "${WORKFLOW_REPORT_RUNTIME_MODULE:-}" ]; then
-            if [ -f packages/@overeng/genie/src/runtime/mod.ts ]; then
-              export WORKFLOW_REPORT_RUNTIME_MODULE=packages/@overeng/genie/src/runtime/mod.ts
-            elif [ -f repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts ]; then
-              export WORKFLOW_REPORT_RUNTIME_MODULE=repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts
-            else
-              echo "::error::unable to locate @overeng/genie runtime module for workflow reports"
-              exit 1
-            fi
+          if [ -n "${GH_TOKEN:-}" ]; then
+            export NIX_CONFIG="${NIX_CONFIG:+$NIX_CONFIG$'\n'}access-tokens = github.com=${GH_TOKEN}"
           fi
           comments_json="$(mktemp)"
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            export NIX_CONFIG="${NIX_CONFIG:+$NIX_CONFIG$'\n'}access-tokens = github.com=${GH_TOKEN}"
             nix run nixpkgs#gh -- api "repos/$GH_REPO/issues/${{ github.event.pull_request.number }}/comments" --paginate > "$comments_json"
           else
             printf '[]' > "$comments_json"
           fi
 
-          nix run nixpkgs#bun -- - "$comments_json" <<'EOF'
-          import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-          import { dirname, resolve } from 'node:path'
-          import { pathToFileURL } from 'node:url'
-
-          const [commentsPath] = process.argv.slice(2)
-          const runtimeModule = process.env.WORKFLOW_REPORT_RUNTIME_MODULE
-          if (typeof runtimeModule !== "string" || runtimeModule.length === 0) throw new Error("WORKFLOW_REPORT_RUNTIME_MODULE is required")
-          const {
-            decodeWorkflowReportBundleJson,
-            deriveWorkflowReportManagedState,
-            findWorkflowReportManagedComment,
-            renderWorkflowReportCommentBody,
-          } = await import(pathToFileURL(resolve(runtimeModule)).href)
-
-          const expectString = (value, path) =>
-            typeof value === "string" && value.length > 0 ? value : (() => { throw new Error(`${path} must be a non-empty string`) })()
-
-          const optionalString = (value) => (typeof value === "string" && value.length > 0 ? value : undefined)
-          const latestCreatedAtUtc = (records, fallback) =>
-            records.reduce((latest, record) => (record.createdAtUtc > latest ? record.createdAtUtc : latest), fallback)
-
-          const bundlePath = expectString(process.env.WORKFLOW_REPORT_BUNDLE_PATH, "WORKFLOW_REPORT_BUNDLE_PATH")
-          const commentBodyPath = expectString(process.env.WORKFLOW_REPORT_COMMENT_BODY_PATH, "WORKFLOW_REPORT_COMMENT_BODY_PATH")
-          const summaryPath = expectString(process.env.WORKFLOW_REPORT_SUMMARY_PATH, "WORKFLOW_REPORT_SUMMARY_PATH")
-          const title = expectString(process.env.WORKFLOW_REPORT_TITLE, "WORKFLOW_REPORT_TITLE")
-          const noRecordsMessage = expectString(process.env.WORKFLOW_REPORT_NO_RECORDS_MESSAGE, "WORKFLOW_REPORT_NO_RECORDS_MESSAGE")
-          const stateId = expectString(process.env.WORKFLOW_REPORT_STATE_ID, "WORKFLOW_REPORT_STATE_ID")
-          const entryId = expectString(process.env.WORKFLOW_REPORT_ENTRY_ID, "WORKFLOW_REPORT_ENTRY_ID")
-          const entryLabel = expectString(process.env.WORKFLOW_REPORT_ENTRY_LABEL, "WORKFLOW_REPORT_ENTRY_LABEL")
-          const timeZone = expectString(process.env.WORKFLOW_REPORT_TIME_ZONE, "WORKFLOW_REPORT_TIME_ZONE")
-          const marker = expectString(process.env.WORKFLOW_REPORT_MANAGED_MARKER, "WORKFLOW_REPORT_MANAGED_MARKER")
-
-          const bundle = decodeWorkflowReportBundleJson(readFileSync(bundlePath, "utf8"))
-          const comments = JSON.parse(readFileSync(commentsPath, "utf8"))
-          if (!Array.isArray(comments)) throw new Error("comments response must be an array")
-
-          const existingComment = findWorkflowReportManagedComment(comments, { stateId, marker })
-          const createdAtUtc = optionalString(process.env.WORKFLOW_REPORT_CREATED_AT_UTC) ?? latestCreatedAtUtc(bundle.records, bundle.generatedAtUtc)
-          const state = deriveWorkflowReportManagedState({
-            stateId,
-            timeZone,
-            priorState: existingComment?.state,
-            entryId,
-            entryLabel,
-            createdAtUtc,
-            records: bundle.records,
-          })
-          const body = renderWorkflowReportCommentBody({ title, noRecordsMessage, state })
-          const markerIndex = body.indexOf(marker)
-          const visibleBody = markerIndex === -1 ? body : `${body.slice(0, markerIndex).trimEnd()}\n`
-
-          mkdirSync(dirname(commentBodyPath), { recursive: true })
-          mkdirSync(dirname(summaryPath), { recursive: true })
-          writeFileSync(commentBodyPath, body)
-          writeFileSync(summaryPath, visibleBody)
-          EOF
+          workflow_report_flake_ref="${WORKFLOW_REPORT_FLAKE_REF:-github:overengineeringstudio/effect-utils/main#workflow-report}"
+          nix run "$workflow_report_flake_ref" -- render-comment-body --bundle-path "$WORKFLOW_REPORT_BUNDLE_PATH" --comments-path "$comments_json" --comment-body-path "$WORKFLOW_REPORT_COMMENT_BODY_PATH" --summary-path "$WORKFLOW_REPORT_SUMMARY_PATH" --title "$WORKFLOW_REPORT_TITLE" --no-records-message "$WORKFLOW_REPORT_NO_RECORDS_MESSAGE" --state-id "$WORKFLOW_REPORT_STATE_ID" --entry-id "$WORKFLOW_REPORT_ENTRY_ID" --entry-label "$WORKFLOW_REPORT_ENTRY_LABEL" --created-at-utc "$WORKFLOW_REPORT_CREATED_AT_UTC" --time-zone "$WORKFLOW_REPORT_TIME_ZONE" --managed-marker "$WORKFLOW_REPORT_MANAGED_MARKER"
       - name: Publish workflow report
         if: always() && !cancelled()
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          WORKFLOW_REPORT_FLAKE_REF: 'github:overengineeringstudio/effect-utils/main#workflow-report'
           WORKFLOW_REPORT_STATE_ID: pr-preview
           WORKFLOW_REPORT_COMMENT_BODY_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-comment.md'
           WORKFLOW_REPORT_SUMMARY_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-summary.md'
           WORKFLOW_REPORT_MANAGED_MARKER: '<!-- workflow-report:managed -->'
         run: |
-          if [ -z "${WORKFLOW_REPORT_RUNTIME_MODULE:-}" ]; then
-            if [ -f packages/@overeng/genie/src/runtime/mod.ts ]; then
-              export WORKFLOW_REPORT_RUNTIME_MODULE=packages/@overeng/genie/src/runtime/mod.ts
-            elif [ -f repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts ]; then
-              export WORKFLOW_REPORT_RUNTIME_MODULE=repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts
-            else
-              echo "::error::unable to locate @overeng/genie runtime module for workflow reports"
-              exit 1
-            fi
+          if [ -n "${GH_TOKEN:-}" ]; then
+            export NIX_CONFIG="${NIX_CONFIG:+$NIX_CONFIG$'\n'}access-tokens = github.com=${GH_TOKEN}"
           fi
           if [ -s "$WORKFLOW_REPORT_SUMMARY_PATH" ]; then
             cat "$WORKFLOW_REPORT_SUMMARY_PATH" >> "$GITHUB_STEP_SUMMARY"
@@ -4241,30 +4137,9 @@ jobs:
 
           comments_json="$(mktemp)"
           comment_id_file="$(mktemp)"
-          export NIX_CONFIG="${NIX_CONFIG:+$NIX_CONFIG$'\n'}access-tokens = github.com=${GH_TOKEN}"
           nix run nixpkgs#gh -- api "repos/$GH_REPO/issues/${{ github.event.pull_request.number }}/comments" --paginate > "$comments_json"
-          nix run nixpkgs#bun -- - "$comments_json" "$comment_id_file" <<'EOF'
-          import { readFileSync, writeFileSync } from 'node:fs'
-          import { resolve } from 'node:path'
-          import { pathToFileURL } from 'node:url'
-
-          const [commentsPath, commentIdPath] = process.argv.slice(2)
-          const runtimeModule = process.env.WORKFLOW_REPORT_RUNTIME_MODULE
-          if (typeof runtimeModule !== "string" || runtimeModule.length === 0) throw new Error("WORKFLOW_REPORT_RUNTIME_MODULE is required")
-          const { extractWorkflowReportManagedState, findWorkflowReportManagedComment } = await import(pathToFileURL(resolve(runtimeModule)).href)
-          const stateId = process.env.WORKFLOW_REPORT_STATE_ID
-          if (typeof stateId !== "string" || stateId.length === 0) throw new Error("WORKFLOW_REPORT_STATE_ID is required")
-          const marker = process.env.WORKFLOW_REPORT_MANAGED_MARKER
-          if (typeof marker !== "string" || marker.length === 0) throw new Error("WORKFLOW_REPORT_MANAGED_MARKER is required")
-          const commentBodyPath = process.env.WORKFLOW_REPORT_COMMENT_BODY_PATH
-          if (typeof commentBodyPath !== "string" || commentBodyPath.length === 0) throw new Error("WORKFLOW_REPORT_COMMENT_BODY_PATH is required")
-          const targetState = extractWorkflowReportManagedState(readFileSync(commentBodyPath, "utf8"), { stateId })
-          if (targetState === undefined) throw new Error("workflow report comment body is missing managed state")
-          const comments = JSON.parse(readFileSync(commentsPath, "utf8"))
-          if (!Array.isArray(comments)) throw new Error("comments response must be an array")
-          const existingComment = findWorkflowReportManagedComment(comments, { stateId: targetState.stateId, marker })
-          writeFileSync(commentIdPath, existingComment?.id ?? "")
-          EOF
+          workflow_report_flake_ref="${WORKFLOW_REPORT_FLAKE_REF:-github:overengineeringstudio/effect-utils/main#workflow-report}"
+          nix run "$workflow_report_flake_ref" -- find-comment --comments-path "$comments_json" --comment-body-path "$WORKFLOW_REPORT_COMMENT_BODY_PATH" --comment-id-path "$comment_id_file" --state-id "$WORKFLOW_REPORT_STATE_ID" --managed-marker "$WORKFLOW_REPORT_MANAGED_MARKER"
 
           comment_id="$(cat "$comment_id_file")"
           if [ -n "$comment_id" ]; then
