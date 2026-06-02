@@ -4,6 +4,7 @@ import {
   githubWorkflow,
   livestoreDefaultRefPolicyJob,
   livestoreSetupSteps,
+  otelSetupStep,
   runDevenvTasksBefore,
   savePnpmStateStep,
   nixDiagnosticsArtifactStep,
@@ -30,6 +31,8 @@ tests/integration/test-results/devtools/`,
 const releasePlanPaths = [
   '.github/workflows/release.yml',
   '.github/workflows/release.yml.genie.ts',
+  '.github/workflows/deploy-prod.yml',
+  '.github/workflows/deploy-prod.yml.genie.ts',
   'genie/repo.ts',
   'nix/devenv-modules/tasks/local/mono-wrappers.nix',
   'release/release-plan.json',
@@ -39,6 +42,8 @@ const releasePlanPaths = [
   'scripts/src/commands/release.ts',
   'scripts/src/commands/devtools-artifact.ts',
   'scripts/src/commands/changesets.ts',
+  'scripts/src/commands/docs.ts',
+  'scripts/src/shared/netlify.ts',
 ]
 
 export default githubWorkflow({
@@ -325,6 +330,7 @@ printf '%s\\n' "NPM_CONFIG_USERCONFIG=$npmrc" >> "$GITHUB_ENV"
 printf '%s\\n' "NPM_CONFIG_REGISTRY=https://registry.npmjs.org/" >> "$GITHUB_ENV"
 NPM_CONFIG_USERCONFIG="$npmrc" NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ npm whoami >/dev/null`,
         },
+        otelSetupStep,
         {
           name: 'Publish stable package release',
           run: runDevenvTasksBefore('release:stable:publish'),
@@ -338,13 +344,75 @@ NPM_CONFIG_USERCONFIG="$npmrc" NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ n
           name: 'Publish DevTools artifact release',
           run: runDevenvTasksBefore('release:devtools-artifact:publish:no-install'),
         },
+        /*
+         * Prod docs deploy — phase-split with OS-level shell timeouts +
+         * heartbeats to cap orphan Chromium children from the tldraw render
+         * step (livestorejs/livestore#1279). Each phase has its own
+         * `timeout-minutes` backstop above the per-task `timeout(1)` wrapper.
+         *
+         * If a phase fails or hangs, an operator can recover with
+         * `gh workflow run deploy-prod.yml -f target=docs` instead of
+         * re-running the entire publish chain.
+         */
         {
-          name: 'Deploy production docs',
+          name: 'Deploy production docs — snippets',
           if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
-          'timeout-minutes': 30,
-          run: runDevenvTasksBefore('docs:deploy:prod'),
+          'timeout-minutes': 25,
+          run: runDevenvTasksBefore('docs:deploy:prod:phase:snippets'),
+        },
+        {
+          name: 'Deploy production docs — diagrams',
+          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          'timeout-minutes': 25,
+          run: runDevenvTasksBefore('docs:deploy:prod:phase:diagrams'),
+        },
+        {
+          name: 'Deploy production docs — astro build',
+          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          'timeout-minutes': 25,
+          run: runDevenvTasksBefore('docs:deploy:prod:phase:astro'),
+        },
+        {
+          name: 'Deploy production docs — upload',
+          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          'timeout-minutes': 25,
+          run: runDevenvTasksBefore('docs:deploy:prod:phase:upload'),
           env: {
             NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
+          },
+        },
+        {
+          name: 'Deploy production docs — verify',
+          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          'timeout-minutes': 15,
+          run: runDevenvTasksBefore('docs:deploy:prod:phase:verify'),
+          env: {
+            NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
+          },
+        },
+        {
+          name: 'Deploy production docs — purge CDN',
+          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          'timeout-minutes': 15,
+          run: runDevenvTasksBefore('docs:deploy:prod:phase:purge'),
+          env: {
+            NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
+          },
+        },
+        {
+          name: 'Collect docs deploy diagnostics on failure',
+          if: "${{ failure() && env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod' }}",
+          run: runDevenvTasksBefore('docs:deploy:prod:diagnostics'),
+        },
+        {
+          name: 'Upload docs prod deploy logs',
+          if: "${{ always() && env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod' }}",
+          uses: 'actions/upload-artifact@v4',
+          with: {
+            name: 'docs-prod-deploy-logs-${{ github.run_id }}-${{ github.run_attempt }}',
+            path: 'tmp/ci-docs-prod/',
+            'if-no-files-found': 'ignore',
+            'retention-days': 14,
           },
         },
         {
