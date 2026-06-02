@@ -356,6 +356,12 @@ in
       after = [ "pnpm:install" ];
     };
 
+    "release:notes:extract" = {
+      description = "Slice the current release's section from CHANGELOG.md into release/release-notes.md";
+      exec = "mono release extract-release-notes";
+      after = [ "pnpm:install" ];
+    };
+
     "release:stable:dryrun" = {
       description = "Dry-run stable release publishing from release/release-plan.json";
       exec = "mono release stable --dry-run --yes";

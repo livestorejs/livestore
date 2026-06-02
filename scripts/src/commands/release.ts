@@ -80,6 +80,82 @@ const validateReleasePlan = (plan: TReleasePlan) =>
 
 const releasePlanPath = (cwd: string) => `${cwd}/release/release-plan.json`
 
+const releaseNotesPath = (cwd: string) => `${cwd}/release/release-notes.md`
+
+/**
+ * Slices a single version's section out of `CHANGELOG.md`.
+ *
+ * The changelog uses headings shaped like `## <version> - YYYY-MM-DD` (date
+ * optional). We match the version token strictly between `## ` and the end of
+ * the line (allowing trailing ` - <date>` or whitespace), so `0.4.0` does not
+ * accidentally match `0.4.0-dev.23` or vice-versa. The returned block is the
+ * verbatim section content excluding the `## <version> ...` heading line and
+ * stopping at the next `## ` heading. Trailing blank lines are trimmed; a
+ * single trailing newline is normalized.
+ *
+ * Throws when the heading is not found, or when more than one `## <version>`
+ * heading exists (defensive — should never happen, but cheap to guard).
+ */
+export const sliceChangelogSection = (changelog: string, version: string): string => {
+  const lines = changelog.split('\n')
+  /**
+   * Match `## <version>` where the version is followed by either end-of-line,
+   * whitespace, or ` - <anything>`. The strict boundary prevents `0.4.0` from
+   * matching `0.4.0-dev.23` and vice-versa.
+   */
+  const headingIndices: number[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!
+    if (line.startsWith('## ') === false) continue
+    const rest = line.slice(3).trimEnd()
+    if (rest === version) {
+      headingIndices.push(i)
+      continue
+    }
+    if (rest.startsWith(`${version} `) === true || rest.startsWith(`${version}\t`) === true) {
+      headingIndices.push(i)
+    }
+  }
+
+  if (headingIndices.length === 0) {
+    throw new Error(`No changelog section found for version ${version} in CHANGELOG.md`)
+  }
+  if (headingIndices.length > 1) {
+    throw new Error(
+      `Multiple changelog sections found for version ${version} in CHANGELOG.md (lines ${headingIndices.map((i) => i + 1).join(', ')})`,
+    )
+  }
+
+  const startIndex = headingIndices[0]! + 1
+  let endIndex = lines.length
+  for (let i = startIndex; i < lines.length; i++) {
+    if (lines[i]!.startsWith('## ') === true) {
+      endIndex = i
+      break
+    }
+  }
+
+  /** Trim leading and trailing blank lines, then normalize to a single trailing newline. */
+  let start = startIndex
+  while (start < endIndex && lines[start]!.trim() === '') start += 1
+  let end = endIndex
+  while (end > start && lines[end - 1]!.trim() === '') end -= 1
+
+  return `${lines.slice(start, end).join('\n')}\n`
+}
+
+const extractReleaseNotes = ({ cwd, version }: { cwd: string; version: string }) =>
+  Effect.gen(function* () {
+    const fsEffect = yield* FileSystem.FileSystem
+    const changelogPath = `${cwd}/CHANGELOG.md`
+    const changelog = yield* fsEffect.readFileString(changelogPath)
+    const section = sliceChangelogSection(changelog, version)
+    yield* fsEffect.makeDirectory(`${cwd}/release`, { recursive: true })
+    const outPath = releaseNotesPath(cwd)
+    yield* fsEffect.writeFileString(outPath, section)
+    return outPath
+  })
+
 const readReleasePlan = (cwd: string, planPath: string) =>
   Effect.gen(function* () {
     const fsEffect = yield* FileSystem.FileSystem
@@ -572,6 +648,29 @@ export const releaseSnapshotCommand = Cli.Command.make(
   }),
 )
 
+export const releaseNotesExtractCommand = Cli.Command.make(
+  'extract-release-notes',
+  {
+    plan: Cli.Options.text('plan').pipe(Cli.Options.withDefault('release/release-plan.json')),
+    cwd: Cli.Options.text('cwd').pipe(
+      Cli.Options.withDefault(
+        process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
+      ),
+    ),
+  },
+  Effect.fn(function* ({ plan: planPath, cwd }) {
+    const plan = yield* readReleasePlan(cwd, planPath)
+    const outPath = yield* extractReleaseNotes({ cwd, version: plan.version })
+    yield* Effect.log(`Wrote release notes for ${plan.version} to ${outPath}`)
+    console.log(outPath)
+  }),
+)
+
 export const releaseCommand = Cli.Command.make('release').pipe(
-  Cli.Command.withSubcommands([releasePlanCommand, releaseStableCommand, releaseSnapshotCommand]),
+  Cli.Command.withSubcommands([
+    releasePlanCommand,
+    releaseStableCommand,
+    releaseSnapshotCommand,
+    releaseNotesExtractCommand,
+  ]),
 )
