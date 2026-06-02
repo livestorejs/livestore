@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
-import { Effect, HttpClient, HttpClientRequest, Schedule } from '@livestore/utils/effect'
+import { Duration, Effect, HttpClient, HttpClientRequest, Schedule, Schema } from '@livestore/utils/effect'
 import { Cli, getFreePort } from '@livestore/utils/node'
 import { buildDiagrams, watchDiagrams } from '@local/astro-tldraw'
 import { buildSnippets, createSnippetsCommand } from '@local/astro-twoslash-code'
@@ -25,6 +25,39 @@ const workspaceRoot =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
 const docsPath = `${workspaceRoot}/docs`
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
+
+/**
+ * Where the prod deploy phases (`upload` → `verify` → `purge`) exchange state.
+ *
+ * Each prod-deploy phase runs as its own Nix task (and its own GitHub Actions
+ * step / workflow_call job) so we can scope shell timeouts + heartbeats at the
+ * OS boundary instead of inheriting an orphaned tldraw/Chromium child from a
+ * preceding build step. The phases share Netlify identifiers via this file.
+ */
+const PROD_DEPLOY_STATE_DIR = `${workspaceRoot}/tmp/ci-docs-prod`
+const PROD_DEPLOY_STATE_FILE = `${PROD_DEPLOY_STATE_DIR}/deploy-state.json`
+
+/**
+ * Tagged so callers can match the per-phase Effect-level timeout independently
+ * from a Netlify error or a shell `timeout(1)` kill (which surfaces as exit
+ * code 124 / 137 outside Effect).
+ */
+class DocsPhaseTimeoutError extends Schema.TaggedError<DocsPhaseTimeoutError>()('DocsPhaseTimeoutError', {
+  phase: Schema.String,
+  durationMs: Schema.Number,
+}) {}
+
+const ProdDeployStateSchema = Schema.Struct({
+  site: Schema.String,
+  siteId: Schema.String,
+  deployId: Schema.String,
+  deployUrl: Schema.String,
+  branchName: Schema.String,
+  shortSha: Schema.String,
+  fullSha: Schema.String,
+  runId: Schema.optional(Schema.String),
+})
+type ProdDeployState = typeof ProdDeployStateSchema.Type
 
 const docsSnippetsCommand = createSnippetsCommand({ projectRoot: docsPath })
 
@@ -137,7 +170,7 @@ const formatDocsDeploymentSummaryMarkdown = ({
  * (e.g. https://github.com/livestorejs/livestore/actions/runs/19968500091/job/57266669492).
  * This helper force-kills Chromium children of the current mono process in the docs CWD.
  */
-const cleanupChromiumChildren = Effect.fn('cleanup-chromium-children')(function* () {
+const cleanupChromiumChildren = Effect.fn('docs.cleanup-chromium-children')(function* () {
   const parentPid = String(process.pid)
   const script =
     'pids=$(ps -eo pid=,ppid=,comm= | awk -v ppid="' +
@@ -150,6 +183,25 @@ const cleanupChromiumChildren = Effect.fn('cleanup-chromium-children')(function*
     Effect.ignoreLogged,
   )
 })
+
+/**
+ * Emit a GitHub Actions `::notice` line every `intervalMs` so a hung phase
+ * still produces visible CI output (and a wall-clock anchor in retrospective
+ * log analysis). Lives in the parent scope; cancelled automatically when the
+ * scope closes.
+ */
+const startHeartbeat = ({ phase, intervalMs = 30_000 }: { phase: string; intervalMs?: number }) =>
+  Effect.gen(function* () {
+    const startedAtMs = Date.now()
+    yield* Effect.repeat(
+      Effect.sync(() => {
+        const elapsedSec = Math.round((Date.now() - startedAtMs) / 1000)
+        // `::notice` is rendered as an annotation in the Actions UI and is greppable in logs.
+        console.log(`::notice title=docs-deploy-heartbeat::phase=${phase} elapsed=${elapsedSec}s`)
+      }),
+      Schedule.spaced(Duration.millis(intervalMs)),
+    ).pipe(Effect.forkScoped)
+  })
 
 const docsBuildCommand = Cli.Command.make(
   'build',
@@ -164,7 +216,7 @@ const docsBuildCommand = Cli.Command.make(
       Cli.Options.withDescription('Skip building snippets and diagrams'),
     ),
   },
-  Effect.fn(function* ({ apiDocs, clean, skipDeps }) {
+  Effect.fn('docs.build')(function* ({ apiDocs, clean, skipDeps }) {
     if (clean === true) {
       // Wipe Astro output plus cached diagram/snippet artefacts to avoid stale renders between builds.
       yield* cmd(
@@ -203,6 +255,71 @@ const docsBuildCommand = Cli.Command.make(
   }),
 )
 
+/** Persist Netlify identifiers from the upload phase so `verify` and `purge` jobs can read them. */
+const writeProdDeployState = (state: ProdDeployState) =>
+  Effect.sync(() => {
+    fs.mkdirSync(PROD_DEPLOY_STATE_DIR, { recursive: true })
+    fs.writeFileSync(PROD_DEPLOY_STATE_FILE, JSON.stringify(state, null, 2))
+  }).pipe(Effect.withSpan('docs.deploy.state.write', { attributes: { path: PROD_DEPLOY_STATE_FILE } }))
+
+const readProdDeployState = Effect.gen(function* () {
+  if (fs.existsSync(PROD_DEPLOY_STATE_FILE) === false) {
+    return yield* Effect.dieMessage(
+      `Prod deploy state file missing at ${PROD_DEPLOY_STATE_FILE}. Did the upload phase run?`,
+    )
+  }
+  const content = fs.readFileSync(PROD_DEPLOY_STATE_FILE, 'utf8')
+  return yield* Schema.decode(Schema.parseJson(ProdDeployStateSchema))(content)
+}).pipe(Effect.withSpan('docs.deploy.state.read', { attributes: { path: PROD_DEPLOY_STATE_FILE } }))
+
+/**
+ * Post-deploy markdown content-type negotiation. The HTTP probe itself is bounded by
+ * `Effect.timeout(60s)` because the Netlify CDN can take a few seconds to start serving
+ * the freshly published root, and we don't want a hung edge to block the publish
+ * pipeline (see livestorejs/livestore#1279, #1280).
+ *
+ * Failure semantics:
+ * - Timeout or transport error: non-fatal (CDN warming / transient). Logged as
+ *   `::warning::` so it surfaces in the Actions UI without failing the deploy.
+ * - Wrong content-type returned: fatal. The Edge function being misconfigured is
+ *   a real release-breaking bug that should fail the publish.
+ */
+const verifyMarkdownNegotiation = (deployUrl: string) =>
+  Effect.gen(function* () {
+    const rootContentType = yield* HttpClient.execute(
+      HttpClientRequest.get(`${deployUrl}/`).pipe(HttpClientRequest.setHeaders({ Accept: 'text/markdown' })),
+    ).pipe(
+      Effect.map((res) => res.headers['content-type']),
+      Effect.timeout(Duration.seconds(60)),
+      Effect.catchTag('TimeoutException', () =>
+        Effect.gen(function* () {
+          yield* Effect.logWarning(
+            `::warning::Markdown negotiation request at ${deployUrl}/ timed out after 60s (treated as non-fatal; the Netlify deploy itself succeeded).`,
+          )
+          return undefined
+        }),
+      ),
+      // Transport errors (5xx from edge, network blip, etc.) are still non-fatal —
+      // the deploy is live and the markdown probe is a sanity check, not a release gate.
+      Effect.catchAll((error) =>
+        Effect.gen(function* () {
+          yield* Effect.logWarning(
+            `::warning::Markdown negotiation request at ${deployUrl}/ failed: ${String(error)} (treated as non-fatal).`,
+          )
+          return undefined
+        }),
+      ),
+    )
+
+    if (rootContentType !== undefined && rootContentType.toLowerCase().includes('text/markdown') === false) {
+      return shouldNeverHappen(
+        `Docs deploy validation failed: markdown negotiation at root returned ${rootContentType}`,
+      )
+    }
+
+    yield* Effect.log(`Markdown negotiation OK at ${deployUrl}/ (content-type=${rootContentType ?? 'probe-skipped'})`)
+  }).pipe(Effect.withSpan('docs.deploy.verify.markdown-negotiation', { attributes: { deployUrl } }))
+
 export const docsCommand = Cli.Command.make('docs').pipe(
   Cli.Command.withSubcommands([
     Cli.Command.make(
@@ -214,7 +331,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           Cli.Options.withDescription('Skip building snippets and diagrams'),
         ),
       },
-      Effect.fn(function* ({ open, skipDeps }) {
+      Effect.fn('docs.dev')(function* ({ open, skipDeps }) {
         if (skipDeps === false) {
           yield* Effect.log('Building snippets and diagrams...')
           yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
@@ -252,7 +369,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           Cli.Options.withDescription('Build the docs before starting the preview server'),
         ),
       },
-      Effect.fn(function* ({ port: portOption, build }) {
+      Effect.fn('docs.preview')(function* ({ port: portOption, build }) {
         if (build === true) {
           yield* docsBuildCommand.handler({ apiDocs: false, clean: false, skipDeps: false })
         }
@@ -316,9 +433,52 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           Cli.Options.optional,
           Cli.Options.withDescription('Print the resolved deploy plan without building or deploying'),
         ),
+        /**
+         * Phase split for the prod deploy. The release CI runs each phase as a
+         * separate Nix task / GitHub Actions step so a hang in `upload` (e.g.
+         * an orphan Chromium left from build) cannot freeze `verify`/`purge`.
+         *
+         * - `upload`: build (if `--build`) + Netlify deploy. Writes deploy IDs to
+         *   `tmp/ci-docs-prod/deploy-state.json`.
+         * - `verify`: reads state, posts the GitHub job summary + workflow report.
+         *   Markdown content-type probe is non-fatal and runs in both `upload`
+         *   and `verify` (cheap, gives extra wall-clock coverage).
+         * - `purge`: reads state, purges the Netlify CDN cache.
+         * - `all` (default): runs the legacy single-process pipeline so dev
+         *   surfaces and ad-hoc usage are unaffected.
+         */
+        step: Cli.Options.choice('step', ['all', 'upload', 'verify', 'purge'] as const).pipe(
+          Cli.Options.withDefault('all' as const),
+          Cli.Options.withDescription('Run only one phase of the prod deploy pipeline (used by CI)'),
+        ),
       },
-      Effect.fn(
-        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, purgeCdn, build: buildOption, plan }) {
+      Effect.fn('docs.deploy')(
+        function* ({
+          prod: prodOption,
+          alias: aliasOption,
+          site: siteOption,
+          purgeCdn,
+          build: buildOption,
+          plan,
+          step,
+        }) {
+          // In CI, fork a heartbeat fiber so a hung HTTP call or netlify CLI
+          // still produces visible output every 30s. The fiber is scoped to the
+          // handler (via the outer `Effect.scoped` wrapper applied below), so
+          // it is interrupted when the handler returns or fails.
+          if (isGithubAction === true) {
+            yield* startHeartbeat({ phase: `step=${step}` })
+          }
+
+          // `verify` and `purge` are stateless w.r.t. the local repo: they read the
+          // state file written by `upload` and only need Netlify credentials.
+          if (step === 'verify') {
+            return yield* runVerifyPhase()
+          }
+          if (step === 'purge') {
+            return yield* runPurgePhase()
+          }
+
           const branchName = yield* Effect.gen(function* () {
             if (isGithubAction === true) {
               const branchFromEnv = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME
@@ -438,6 +598,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
                         ? { _tag: 'prod' }
                         : { _tag: 'alias', alias: branchAlias },
                   purgeCdn,
+                  step,
                 },
                 null,
                 2,
@@ -483,43 +644,44 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
               return { stickyDeploy: deploy, commitDeploy: deploy }
             }
-          })
+          }).pipe(Effect.withSpan('docs.deploy.upload', { attributes: { site, prod } }))
 
-          /**
-           * Verify root returns Markdown on Accept negotiation (use commitDeploy URL as canonical).
-           * Bounded with a timeout because Netlify's CDN can take a while to start serving the freshly
-           * deployed site, and a hung verification request blocks the rest of the release publish
-           * pipeline indefinitely (see livestorejs/livestore#1279).
-           */
-          const rootContentType = yield* HttpClient.execute(
-            HttpClientRequest.get(`${commitDeploy.deploy_url}/`).pipe(
-              HttpClientRequest.setHeaders({ Accept: 'text/markdown' }),
-            ),
-          ).pipe(
-            Effect.map((res) => res.headers['content-type']),
-            Effect.timeout('60 seconds'),
-            Effect.catchTag('TimeoutException', () =>
-              Effect.gen(function* () {
-                yield* Effect.logWarning(
-                  `Docs deploy markdown-negotiation check at ${commitDeploy.deploy_url}/ timed out after 60s; treating as non-fatal (the Netlify deploy itself succeeded).`,
-                )
-                return undefined
-              }),
-            ),
-          )
-
-          if (rootContentType !== undefined && rootContentType.toLowerCase().includes('text/markdown') === false) {
-            return shouldNeverHappen('Docs deploy validation failed: markdown negotiation at root')
+          // For phased prod deploys (`--step=upload`), persist enough state for the
+          // verify/purge phases to reconstitute the report and target the right site.
+          if (step === 'upload' && prod === true) {
+            yield* writeProdDeployState({
+              site,
+              siteId: commitDeploy.site_id,
+              deployId: commitDeploy.deploy_id,
+              deployUrl: commitDeploy.deploy_url,
+              branchName,
+              shortSha,
+              fullSha,
+              runId,
+            })
+            yield* Effect.log(`Wrote prod deploy state to ${PROD_DEPLOY_STATE_FILE}`)
+            return
           }
+
+          // Verify root returns Markdown on Accept negotiation (use commitDeploy URL as canonical).
+          // `verifyMarkdownNegotiation` wraps the request in `Effect.timeout(60s)` + non-fatal fallback
+          // — the Netlify deploy is the source of truth, the CDN sometimes needs a few seconds to
+          // start serving the freshly published root (see livestorejs/livestore#1279, #1280).
+          yield* verifyMarkdownNegotiation(commitDeploy.deploy_url)
 
           if (purgeCdn === true) {
             const purgeSiteId = commitDeploy.site_id
             yield* purgeNetlifyCdn({ siteId: purgeSiteId, siteSlug: site }).pipe(
-              Effect.timeout('60 seconds'),
+              Effect.timeout(Duration.seconds(60)),
               Effect.catchTag('TimeoutException', () =>
                 Effect.logWarning(
-                  `Netlify CDN purge for site ${site} timed out after 60s; deploy is live regardless (see livestorejs/livestore#1279).`,
+                  `::warning::Netlify CDN purge for site ${site} timed out after 60s; deploy is live regardless (see livestorejs/livestore#1279).`,
                 ),
+              ),
+              // Any other failure (auth, network) is also non-fatal — the deploy is live
+              // regardless of CDN purge state, the purge just shortens the stale-content window.
+              Effect.catchAll((error) =>
+                Effect.logWarning(`::warning::Netlify CDN purge failed for ${site}: ${String(error)} (non-fatal)`),
               ),
             )
           }
@@ -582,7 +744,95 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           (e) => e._tag === 'NetlifyError' && e.reason === 'auth',
           () => Effect.logWarning('::warning Not logged in to Netlify'),
         ),
+        // Scope the handler so the heartbeat fiber is interrupted on return/error.
+        Effect.scoped,
       ),
     ),
   ]),
 )
+
+/**
+ * Stand-alone `verify` phase: read the upload-phase state, run the markdown
+ * content-type probe, emit the GitHub job summary, and surface the deploy as
+ * a workflow-report record. Idempotent — safe to re-run if the upload phase
+ * succeeded but verify needs a retry.
+ */
+const runVerifyPhase = Effect.fn('docs.deploy.verify')(function* () {
+  const state = yield* readProdDeployState
+  yield* Effect.log(`Verifying prod docs deploy: ${state.deployUrl} (deployId=${state.deployId})`)
+
+  yield* verifyMarkdownNegotiation(state.deployUrl)
+
+  const repo = process.env.GITHUB_REPOSITORY ?? 'livestorejs/livestore'
+  const runUrl = state.runId !== undefined ? `https://github.com/${repo}/actions/runs/${state.runId}` : undefined
+
+  const stickyDeploy = {
+    site_id: state.siteId,
+    site_name: state.site,
+    deploy_id: state.deployId,
+    deploy_url: state.deployUrl,
+    logs: '',
+  }
+
+  yield* appendGithubSummaryMarkdown({
+    markdown: formatDocsDeploymentSummaryMarkdown({
+      site: state.site,
+      prod: true,
+      purgeCdn: false, // purge runs in a later phase; the markdown table is regenerated then
+      prAliases: undefined,
+      branchAlias: undefined,
+      stickyDeploy,
+      commitDeploy: stickyDeploy,
+    }),
+    context: 'docs deployment (verify phase)',
+  })
+
+  const links: Array<{ label: string; url: string; primary?: boolean }> = [
+    { label: 'Docs preview', url: state.deployUrl, primary: true },
+  ]
+  if (runUrl !== undefined) {
+    links.push({ label: 'Workflow run', url: runUrl })
+  }
+
+  yield* emitWorkflowReportRecord({
+    _tag: 'WorkflowReportRecord',
+    schemaVersion: 1,
+    id: `docs-deploy-${state.fullSha}`,
+    kind: 'docs-deploy-preview',
+    subject: { id: 'livestore-docs-preview', label: 'LiveStore docs preview' },
+    status: 'success',
+    title: 'Docs deployed to production',
+    summary: state.site,
+    createdAtUtc: nowIsoUtc(),
+    links,
+    data: {
+      site: state.site,
+      prod: true,
+      deployId: state.deployId,
+      commitUrl: state.deployUrl,
+      sha: state.fullSha,
+    },
+  })
+})
+
+/**
+ * Stand-alone `purge` phase: read the upload-phase state and purge the
+ * Netlify CDN cache. CDN purge failures are non-fatal — the deploy is already
+ * live, the purge just shortens the window in which stale content is served.
+ */
+const runPurgePhase = Effect.fn('docs.deploy.purge')(function* () {
+  const state = yield* readProdDeployState
+  yield* Effect.log(`Purging Netlify CDN for prod docs: site=${state.site} siteId=${state.siteId}`)
+
+  yield* purgeNetlifyCdn({ siteId: state.siteId, siteSlug: state.site }).pipe(
+    Effect.timeout(Duration.seconds(60)),
+    Effect.catchTag('TimeoutException', () =>
+      Effect.logWarning(`::warning::Netlify CDN purge timed out for ${state.site} (treated as non-fatal)`),
+    ),
+    Effect.catchAll((error) =>
+      Effect.logWarning(`::warning::Netlify CDN purge failed for ${state.site}: ${String(error)} (non-fatal)`),
+    ),
+  )
+})
+
+export { DocsPhaseTimeoutError }
