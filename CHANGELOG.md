@@ -514,6 +514,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Add GitHub issue templates to improve issue quality (#602)
 - Reworked the documentation tooling so maintainers continuously publish token-efficient, TypeScript-backed snippets that stay reliable for coding agents (#715)
 - **Snapshot release confirmation prompt:** The `mono release snapshot` command now prompts for confirmation before publishing. Pass `--yes` to skip the prompt in scripts and CI. The prompt is also auto-skipped when `CI` is set (#1049).
+- **Prod docs deploy phase split:** The stable-release docs deploy is now split into six independently-timed phases (snippets, diagrams, astro, upload, verify, purge), each wrapped in an OS-level `timeout(1)` + heartbeat. This caps orphan Chromium children from the tldraw renderer at the OS boundary so a single hang no longer blocks the post-publish release flow. A new `deploy-prod.yml` workflow lets operators re-dispatch a single failing target (`gh workflow run deploy-prod.yml -f target=docs`) without re-running the entire publish chain ([#1279](https://github.com/livestorejs/livestore/issues/1279)).
 
 #### wa-sqlite Integration
 
