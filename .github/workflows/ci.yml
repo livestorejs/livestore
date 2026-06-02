@@ -3837,6 +3837,59 @@ jobs:
           path: '${{ runner.temp }}/livestore-devtools-snapshot/livestore-devtools-chrome-0.0.0-snapshot-${{ github.event.pull_request.head.sha || github.sha }}.zip'
           if-no-files-found: error
           retention-days: 14
+      - name: Emit snapshot publish workflow report
+        shell: bash
+        if: ${{ github.event_name == 'pull_request' && steps.publish-snapshot.outcome == 'success' }}
+        env:
+          WORKFLOW_REPORT_OUTPUT_PATH: '${{ runner.temp }}/workflow-reports/snapshot-publish.jsonl'
+          SNAPSHOT_VERSION: '0.0.0-snapshot-${{ github.event.pull_request.head.sha || github.sha }}'
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_PATH")"
+          created_at_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          record_id="snapshot-publish-${HEAD_SHA}"
+          npm_url="https://www.npmjs.com/package/@livestore/livestore/v/${SNAPSHOT_VERSION}"
+          run_url="https://github.com/${REPOSITORY}/actions/runs/${RUN_ID}"
+          install_cmd="pnpm add @livestore/livestore@${SNAPSHOT_VERSION}"
+          record_json="$(jq -cn \
+            --arg id "$record_id" \
+            --arg version "$SNAPSHOT_VERSION" \
+            --arg headSha "$HEAD_SHA" \
+            --arg runId "$RUN_ID" \
+            --arg createdAtUtc "$created_at_utc" \
+            --arg npmUrl "$npm_url" \
+            --arg runUrl "$run_url" \
+            --arg installCmd "$install_cmd" \
+            '{
+              _tag: "WorkflowReportRecord",
+              schemaVersion: 1,
+              id: $id,
+              kind: "npm-snapshot-publish",
+              subject: { id: "livestore-npm-snapshot", label: "LiveStore npm snapshot" },
+              status: "success",
+              title: ("Snapshot published as " + $version),
+              summary: ("Install with `" + $installCmd + "`"),
+              createdAtUtc: $createdAtUtc,
+              links: [
+                { label: "@livestore/livestore on npm", url: $npmUrl, primary: true },
+                { label: "Chrome devtools ZIP (workflow run artifacts)", url: $runUrl }
+              ],
+              data: { snapshotVersion: $version, headSha: $headSha, runId: $runId }
+            }')"
+          workflow_report_line="WORKFLOW_REPORT_V1: ${record_json}"
+          printf "%s\n" "$workflow_report_line"
+          printf "%s\n" "$workflow_report_line" > "$WORKFLOW_REPORT_OUTPUT_PATH"
+      - name: Upload snapshot publish workflow report
+        if: ${{ github.event_name == 'pull_request' && steps.publish-snapshot.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-publish-workflow-report
+          path: '${{ runner.temp }}/workflow-reports/snapshot-publish.jsonl'
+          if-no-files-found: error
+          retention-days: 14
       - name: Save pnpm state
         if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
@@ -3853,6 +3906,375 @@ jobs:
           path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
+  report-pr-preview:
+    if: ${{ github.event_name == 'pull_request' && !cancelled() }}
+    needs: [publish-snapshot-version, build-deploy-docs, build-and-deploy-examples-src]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    permissions:
+      contents: read
+      pull-requests: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v17
+        with:
+          name: livestore
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
+      - name: Sync megarepo dependencies
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
+          mkdir -p "$MEGAREPO_STORE"
+          echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s\n' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+        shell: bash
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
+        shell: bash
+      - name: Isolate pnpm state
+        shell: bash
+        run: |
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_CONFIG_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - id: restore-pnpm-state
+        name: Restore pnpm state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+      - name: Resolve devenv
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+
+          resolve_devenv() {
+            nix build \
+              --accept-flake-config \
+              --option extra-substituters https://devenv.cachix.org \
+              --option extra-trusted-public-keys devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= \
+              --no-link \
+              --print-out-paths \
+              "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Temporary: capture diagnostics dir for #272 root-cause analysis.
+          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
+          mkdir -p "$DIAG_ROOT"
+          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
+
+          {
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_name=${RUNNER_NAME:-unknown}"
+            echo "runner_os=${RUNNER_OS:-unknown}"
+            echo "runner_arch=${RUNNER_ARCH:-unknown}"
+            echo "github_job=${GITHUB_JOB:-unknown}"
+            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
+            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
+            nix --version || true
+          } > "$DIAG_ROOT/environment.txt" 2>&1
+
+          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
+            echo "::error::resolve_devenv failed. Last 30 lines of log:"
+            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
+            exit 1
+          fi
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+
+          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
+          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
+            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
+              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
+              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
+              exit 1
+            fi
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+          fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
+        shell: bash
+      - name: Download snapshot publish workflow report
+        if: ${{ needs.publish-snapshot-version.outputs.npm_snapshot_published == '1' }}
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: snapshot-publish-workflow-report
+          path: '${{ runner.temp }}/workflow-reports/snapshot-publish-download'
+      - name: Download docs deploy workflow report
+        if: ${{ needs.build-deploy-docs.result == 'success' }}
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: docs-deploy-workflow-report
+          path: '${{ runner.temp }}/workflow-reports/docs-deploy-download'
+      - name: Download examples deploy workflow report
+        if: ${{ needs.build-and-deploy-examples-src.result == 'success' }}
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: examples-deploy-workflow-report
+          path: '${{ runner.temp }}/workflow-reports/examples-deploy-download'
+      - name: Collect workflow report bundle
+        shell: bash
+        env:
+          WORKFLOW_REPORT_BUNDLE_ID: pr-preview
+          WORKFLOW_REPORT_INPUT_PATHS_JSON: '["${{ runner.temp }}/workflow-reports/snapshot-publish-download/snapshot-publish.jsonl","${{ runner.temp }}/workflow-reports/docs-deploy-download/docs-deploy.jsonl","${{ runner.temp }}/workflow-reports/examples-deploy-download/examples-deploy.jsonl"]'
+          WORKFLOW_REPORT_OUTPUT_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-bundle.json'
+          WORKFLOW_REPORT_RECORD_MARKER: 'WORKFLOW_REPORT_V1: '
+          WORKFLOW_REPORT_ALLOW_MISSING_INPUT: '1'
+        run: |
+          if [ -z "${WORKFLOW_REPORT_RUNTIME_MODULE:-}" ]; then
+            if [ -f packages/@overeng/genie/src/runtime/mod.ts ]; then
+              export WORKFLOW_REPORT_RUNTIME_MODULE=packages/@overeng/genie/src/runtime/mod.ts
+            elif [ -f repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts ]; then
+              export WORKFLOW_REPORT_RUNTIME_MODULE=repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts
+            else
+              echo "::error::unable to locate @overeng/genie runtime module for workflow reports"
+              exit 1
+            fi
+          fi
+          cat > /tmp/collect-workflow-report-bundle.mjs <<'EOF'
+          import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+          import { dirname, resolve } from 'node:path'
+          import { pathToFileURL } from 'node:url'
+
+          const runtimeModule = process.env.WORKFLOW_REPORT_RUNTIME_MODULE
+          if (typeof runtimeModule !== "string" || runtimeModule.length === 0) throw new Error("WORKFLOW_REPORT_RUNTIME_MODULE is required")
+          const { collectWorkflowReportBundle, encodeWorkflowReportBundleJson } = await import(pathToFileURL(resolve(runtimeModule)).href)
+
+          const expectString = (value, path) =>
+            typeof value === "string" && value.length > 0 ? value : (() => { throw new Error(`${path} must be a non-empty string`) })()
+
+          const marker = expectString(process.env.WORKFLOW_REPORT_RECORD_MARKER, "WORKFLOW_REPORT_RECORD_MARKER")
+          const inputPaths = JSON.parse(expectString(process.env.WORKFLOW_REPORT_INPUT_PATHS_JSON, "WORKFLOW_REPORT_INPUT_PATHS_JSON"))
+          const outputPath = expectString(process.env.WORKFLOW_REPORT_OUTPUT_PATH, "WORKFLOW_REPORT_OUTPUT_PATH")
+          const bundleId = expectString(process.env.WORKFLOW_REPORT_BUNDLE_ID, "WORKFLOW_REPORT_BUNDLE_ID")
+          const allowMissingInput = process.env.WORKFLOW_REPORT_ALLOW_MISSING_INPUT === "1"
+
+          const sources = []
+          for (const path of inputPaths) {
+            if (!existsSync(path)) {
+              if (allowMissingInput) continue
+              throw new Error(`workflow report input file does not exist: ${path}`)
+            }
+            sources.push(readFileSync(path, "utf8"))
+          }
+
+          const bundle = collectWorkflowReportBundle({ bundleId, generatedAtUtc: new Date().toISOString(), sources, marker })
+
+          mkdirSync(dirname(outputPath), { recursive: true })
+          writeFileSync(outputPath, encodeWorkflowReportBundleJson(bundle))
+          EOF
+          nix run nixpkgs#bun -- /tmp/collect-workflow-report-bundle.mjs
+      - name: Render workflow report comment
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW_REPORT_BUNDLE_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-bundle.json'
+          WORKFLOW_REPORT_COMMENT_BODY_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-comment.md'
+          WORKFLOW_REPORT_SUMMARY_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-summary.md'
+          WORKFLOW_REPORT_TITLE: PR preview
+          WORKFLOW_REPORT_NO_RECORDS_MESSAGE: No previews or snapshot were published for this commit.
+          WORKFLOW_REPORT_STATE_ID: pr-preview
+          WORKFLOW_REPORT_ENTRY_ID: ${{ github.event.pull_request.head.sha || github.sha }}
+          WORKFLOW_REPORT_ENTRY_LABEL: 'PR ${{ github.event.pull_request.number }}'
+          WORKFLOW_REPORT_CREATED_AT_UTC: ''
+          WORKFLOW_REPORT_TIME_ZONE: UTC
+          WORKFLOW_REPORT_MANAGED_MARKER: '<!-- workflow-report:managed -->'
+        run: |
+          if [ -z "${WORKFLOW_REPORT_RUNTIME_MODULE:-}" ]; then
+            if [ -f packages/@overeng/genie/src/runtime/mod.ts ]; then
+              export WORKFLOW_REPORT_RUNTIME_MODULE=packages/@overeng/genie/src/runtime/mod.ts
+            elif [ -f repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts ]; then
+              export WORKFLOW_REPORT_RUNTIME_MODULE=repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts
+            else
+              echo "::error::unable to locate @overeng/genie runtime module for workflow reports"
+              exit 1
+            fi
+          fi
+          comments_json="$(mktemp)"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            export NIX_CONFIG="${NIX_CONFIG:+$NIX_CONFIG$'\n'}access-tokens = github.com=${GH_TOKEN}"
+            nix run nixpkgs#gh -- api "repos/$GH_REPO/issues/${{ github.event.pull_request.number }}/comments" --paginate > "$comments_json"
+          else
+            printf '[]' > "$comments_json"
+          fi
+
+          nix run nixpkgs#bun -- - "$comments_json" <<'EOF'
+          import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+          import { dirname, resolve } from 'node:path'
+          import { pathToFileURL } from 'node:url'
+
+          const [commentsPath] = process.argv.slice(2)
+          const runtimeModule = process.env.WORKFLOW_REPORT_RUNTIME_MODULE
+          if (typeof runtimeModule !== "string" || runtimeModule.length === 0) throw new Error("WORKFLOW_REPORT_RUNTIME_MODULE is required")
+          const {
+            decodeWorkflowReportBundleJson,
+            deriveWorkflowReportManagedState,
+            findWorkflowReportManagedComment,
+            renderWorkflowReportCommentBody,
+          } = await import(pathToFileURL(resolve(runtimeModule)).href)
+
+          const expectString = (value, path) =>
+            typeof value === "string" && value.length > 0 ? value : (() => { throw new Error(`${path} must be a non-empty string`) })()
+
+          const optionalString = (value) => (typeof value === "string" && value.length > 0 ? value : undefined)
+          const latestCreatedAtUtc = (records, fallback) =>
+            records.reduce((latest, record) => (record.createdAtUtc > latest ? record.createdAtUtc : latest), fallback)
+
+          const bundlePath = expectString(process.env.WORKFLOW_REPORT_BUNDLE_PATH, "WORKFLOW_REPORT_BUNDLE_PATH")
+          const commentBodyPath = expectString(process.env.WORKFLOW_REPORT_COMMENT_BODY_PATH, "WORKFLOW_REPORT_COMMENT_BODY_PATH")
+          const summaryPath = expectString(process.env.WORKFLOW_REPORT_SUMMARY_PATH, "WORKFLOW_REPORT_SUMMARY_PATH")
+          const title = expectString(process.env.WORKFLOW_REPORT_TITLE, "WORKFLOW_REPORT_TITLE")
+          const noRecordsMessage = expectString(process.env.WORKFLOW_REPORT_NO_RECORDS_MESSAGE, "WORKFLOW_REPORT_NO_RECORDS_MESSAGE")
+          const stateId = expectString(process.env.WORKFLOW_REPORT_STATE_ID, "WORKFLOW_REPORT_STATE_ID")
+          const entryId = expectString(process.env.WORKFLOW_REPORT_ENTRY_ID, "WORKFLOW_REPORT_ENTRY_ID")
+          const entryLabel = expectString(process.env.WORKFLOW_REPORT_ENTRY_LABEL, "WORKFLOW_REPORT_ENTRY_LABEL")
+          const timeZone = expectString(process.env.WORKFLOW_REPORT_TIME_ZONE, "WORKFLOW_REPORT_TIME_ZONE")
+          const marker = expectString(process.env.WORKFLOW_REPORT_MANAGED_MARKER, "WORKFLOW_REPORT_MANAGED_MARKER")
+
+          const bundle = decodeWorkflowReportBundleJson(readFileSync(bundlePath, "utf8"))
+          const comments = JSON.parse(readFileSync(commentsPath, "utf8"))
+          if (!Array.isArray(comments)) throw new Error("comments response must be an array")
+
+          const existingComment = findWorkflowReportManagedComment(comments, { stateId, marker })
+          const createdAtUtc = optionalString(process.env.WORKFLOW_REPORT_CREATED_AT_UTC) ?? latestCreatedAtUtc(bundle.records, bundle.generatedAtUtc)
+          const state = deriveWorkflowReportManagedState({
+            stateId,
+            timeZone,
+            priorState: existingComment?.state,
+            entryId,
+            entryLabel,
+            createdAtUtc,
+            records: bundle.records,
+          })
+          const body = renderWorkflowReportCommentBody({ title, noRecordsMessage, state })
+          const markerIndex = body.indexOf(marker)
+          const visibleBody = markerIndex === -1 ? body : `${body.slice(0, markerIndex).trimEnd()}\n`
+
+          mkdirSync(dirname(commentBodyPath), { recursive: true })
+          mkdirSync(dirname(summaryPath), { recursive: true })
+          writeFileSync(commentBodyPath, body)
+          writeFileSync(summaryPath, visibleBody)
+          EOF
+      - name: Publish workflow report
+        if: always() && !cancelled()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          WORKFLOW_REPORT_STATE_ID: pr-preview
+          WORKFLOW_REPORT_COMMENT_BODY_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-comment.md'
+          WORKFLOW_REPORT_SUMMARY_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-summary.md'
+          WORKFLOW_REPORT_MANAGED_MARKER: '<!-- workflow-report:managed -->'
+        run: |
+          if [ -z "${WORKFLOW_REPORT_RUNTIME_MODULE:-}" ]; then
+            if [ -f packages/@overeng/genie/src/runtime/mod.ts ]; then
+              export WORKFLOW_REPORT_RUNTIME_MODULE=packages/@overeng/genie/src/runtime/mod.ts
+            elif [ -f repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts ]; then
+              export WORKFLOW_REPORT_RUNTIME_MODULE=repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts
+            else
+              echo "::error::unable to locate @overeng/genie runtime module for workflow reports"
+              exit 1
+            fi
+          fi
+          if [ -s "$WORKFLOW_REPORT_SUMMARY_PATH" ]; then
+            cat "$WORKFLOW_REPORT_SUMMARY_PATH" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            exit 0
+          fi
+
+          if [ ! -s "$WORKFLOW_REPORT_COMMENT_BODY_PATH" ]; then
+            echo "::notice::workflow report comment body is empty; skipping PR comment"
+            exit 0
+          fi
+
+          comments_json="$(mktemp)"
+          comment_id_file="$(mktemp)"
+          export NIX_CONFIG="${NIX_CONFIG:+$NIX_CONFIG$'\n'}access-tokens = github.com=${GH_TOKEN}"
+          nix run nixpkgs#gh -- api "repos/$GH_REPO/issues/${{ github.event.pull_request.number }}/comments" --paginate > "$comments_json"
+          nix run nixpkgs#bun -- - "$comments_json" "$comment_id_file" <<'EOF'
+          import { readFileSync, writeFileSync } from 'node:fs'
+          import { resolve } from 'node:path'
+          import { pathToFileURL } from 'node:url'
+
+          const [commentsPath, commentIdPath] = process.argv.slice(2)
+          const runtimeModule = process.env.WORKFLOW_REPORT_RUNTIME_MODULE
+          if (typeof runtimeModule !== "string" || runtimeModule.length === 0) throw new Error("WORKFLOW_REPORT_RUNTIME_MODULE is required")
+          const { extractWorkflowReportManagedState, findWorkflowReportManagedComment } = await import(pathToFileURL(resolve(runtimeModule)).href)
+          const stateId = process.env.WORKFLOW_REPORT_STATE_ID
+          if (typeof stateId !== "string" || stateId.length === 0) throw new Error("WORKFLOW_REPORT_STATE_ID is required")
+          const marker = process.env.WORKFLOW_REPORT_MANAGED_MARKER
+          if (typeof marker !== "string" || marker.length === 0) throw new Error("WORKFLOW_REPORT_MANAGED_MARKER is required")
+          const commentBodyPath = process.env.WORKFLOW_REPORT_COMMENT_BODY_PATH
+          if (typeof commentBodyPath !== "string" || commentBodyPath.length === 0) throw new Error("WORKFLOW_REPORT_COMMENT_BODY_PATH is required")
+          const targetState = extractWorkflowReportManagedState(readFileSync(commentBodyPath, "utf8"), { stateId })
+          if (targetState === undefined) throw new Error("workflow report comment body is missing managed state")
+          const comments = JSON.parse(readFileSync(commentsPath, "utf8"))
+          if (!Array.isArray(comments)) throw new Error("comments response must be an array")
+          const existingComment = findWorkflowReportManagedComment(comments, { stateId: targetState.stateId, marker })
+          writeFileSync(commentIdPath, existingComment?.id ?? "")
+          EOF
+
+          comment_id="$(cat "$comment_id_file")"
+          if [ -n "$comment_id" ]; then
+            nix run nixpkgs#gh -- api \
+              --method PATCH \
+              "repos/$GH_REPO/issues/comments/$comment_id" \
+              --field body=@"$WORKFLOW_REPORT_COMMENT_BODY_PATH" >/dev/null
+          else
+            nix run nixpkgs#gh -- pr comment "${{ github.event.pull_request.number }}" --body-file "$WORKFLOW_REPORT_COMMENT_BODY_PATH"
+          fi
   build-and-deploy-examples-src:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
@@ -4324,9 +4746,11 @@ jobs:
           . "$__nix_gc_retry_helper"
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run examples:test --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:test --mode before'
-      - name: Deploy examples to Cloudflare
+      - id: deploy-examples
+        name: Deploy examples to Cloudflare
         if: github.event.pull_request.head.repo.fork != true
         run: |
+          mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_FILE")"
           __nix_gc_retry_helper=$(mktemp)
           cat > "$__nix_gc_retry_helper" <<'EOF'
           #!/usr/bin/env bash
@@ -4442,6 +4866,15 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WORKFLOW_REPORT_OUTPUT_FILE: '${{ runner.temp }}/workflow-reports/examples-deploy.jsonl'
+      - name: Upload examples deploy workflow report
+        if: ${{ github.event_name == 'pull_request' && steps.deploy-examples.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: examples-deploy-workflow-report
+          path: '${{ runner.temp }}/workflow-reports/examples-deploy.jsonl'
+          if-no-files-found: warn
+          retention-days: 14
       - name: Validate hosted example links
         run: |
           __nix_gc_retry_helper=$(mktemp)
@@ -5165,9 +5598,11 @@ jobs:
           name: docs-build-logs
           path: tmp/ci-docs/
           retention-days: 14
-      - name: Deploy docs
+      - id: deploy-docs
+        name: Deploy docs
         if: ${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}
         run: |
+          mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_FILE")"
           __nix_gc_retry_helper=$(mktemp)
           cat > "$__nix_gc_retry_helper" <<'EOF'
           #!/usr/bin/env bash
@@ -5282,6 +5717,15 @@ jobs:
           run_nix_gc_race_retry 'devenv tasks run docs:deploy --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy --mode before'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          WORKFLOW_REPORT_OUTPUT_FILE: '${{ runner.temp }}/workflow-reports/docs-deploy.jsonl'
+      - name: Upload docs deploy workflow report
+        if: ${{ github.event_name == 'pull_request' && steps.deploy-docs.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-deploy-workflow-report
+          path: '${{ runner.temp }}/workflow-reports/docs-deploy.jsonl'
+          if-no-files-found: warn
+          retention-days: 14
       - name: Save pnpm state
         if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4

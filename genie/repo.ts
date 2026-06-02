@@ -245,6 +245,10 @@ import {
   nixDiagnosticsArtifactStep,
   savePnpmStateStep,
   validateNixStoreStep,
+  workflowReportCollectorStep,
+  workflowReportCommentBodyStep,
+  workflowReportProducerStep,
+  workflowReportPublisherStep,
 } from '#mr/effect-utils/genie/ci-workflow.ts'
 
 export const devenvShellDefaults = {
@@ -257,6 +261,10 @@ export {
   runDevenvTasksBefore,
   nixDiagnosticsArtifactStep,
   savePnpmStateStep,
+  workflowReportCollectorStep,
+  workflowReportCommentBodyStep,
+  workflowReportProducerStep,
+  workflowReportPublisherStep,
 }
 
 export const namespaceRunner = (runId: string) =>

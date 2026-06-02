@@ -18,6 +18,7 @@ import {
 } from '../shared/deploy-target.ts'
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 import { deployToNetlify, purgeNetlifyCdn } from '../shared/netlify.ts'
+import { emitWorkflowReportRecord, nowIsoUtc } from '../shared/workflow-report.ts'
 import { exportMarkdownCommand } from './docs-export.ts'
 
 const workspaceRoot =
@@ -511,6 +512,47 @@ export const docsCommand = Cli.Command.make('docs').pipe(
               commitDeploy,
             }),
             context: 'docs deployment',
+          })
+
+          /**
+           * Surface the docs deploy as a workflow-report record so the managed
+           * PR comment aggregator can pick it up alongside other deploy/publish
+           * reports. For PR deploys we expose both commit-specific and sticky
+           * aliases (primary link is the commit alias so reviewers always see
+           * the SHA they pushed).
+           */
+          const docsLinks: Array<{ label: string; url: string; primary?: boolean }> = [
+            { label: 'Docs preview', url: commitDeploy.deploy_url, primary: true },
+          ]
+          if (prAliases !== undefined && stickyDeploy.deploy_url !== commitDeploy.deploy_url) {
+            docsLinks.push({ label: 'Docs preview (sticky)', url: stickyDeploy.deploy_url })
+          }
+          if (runUrl !== undefined) {
+            docsLinks.push({ label: 'Workflow run', url: runUrl })
+          }
+
+          yield* emitWorkflowReportRecord({
+            _tag: 'WorkflowReportRecord',
+            schemaVersion: 1,
+            id: `docs-deploy-${fullSha}`,
+            kind: 'docs-deploy-preview',
+            subject: { id: 'livestore-docs-preview', label: 'LiveStore docs preview' },
+            status: 'success',
+            title: prod === true ? 'Docs deployed to production' : `Docs preview deployed (${site})`,
+            summary: prAliases !== undefined ? `PR aliases: ${prAliases.commitAlias}, ${prAliases.stickyAlias}` : site,
+            createdAtUtc: nowIsoUtc(),
+            links: docsLinks,
+            data: {
+              site,
+              prod,
+              deployId: commitDeploy.deploy_id,
+              commitUrl: commitDeploy.deploy_url,
+              ...(prAliases !== undefined
+                ? { stickyAlias: prAliases.stickyAlias, commitAlias: prAliases.commitAlias }
+                : {}),
+              ...(branchAlias !== undefined ? { branchAlias } : {}),
+              sha: fullSha,
+            },
           })
         },
         Effect.catchIf(
