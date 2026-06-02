@@ -575,10 +575,9 @@ done`,
           id: 'deploy-examples',
           name: 'Deploy examples to Cloudflare',
           if: IS_NOT_FORK,
-          run: [
-            'mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_FILE")"',
-            runDevenvTasksBefore('examples:deploy'),
-          ].join('\n'),
+          run: ['mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_FILE")"', runDevenvTasksBefore('examples:deploy')].join(
+            '\n',
+          ),
           env: {
             CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
             CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
@@ -661,10 +660,7 @@ done`,
           id: 'deploy-docs',
           name: 'Deploy docs',
           if: `\${{ success() && (github.event_name != 'pull_request' || ${IS_NOT_FORK}) }}`,
-          run: [
-            'mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_FILE")"',
-            runDevenvTasksBefore('docs:deploy'),
-          ].join('\n'),
+          run: ['mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_FILE")"', runDevenvTasksBefore('docs:deploy')].join('\n'),
           env: {
             NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
             WORKFLOW_REPORT_OUTPUT_FILE: DOCS_REPORT_RECORD_PATH,

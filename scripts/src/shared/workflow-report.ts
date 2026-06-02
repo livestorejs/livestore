@@ -46,11 +46,13 @@ export const emitWorkflowReportRecord = (record: WorkflowReportRecord) =>
     if (outputPath === undefined || outputPath.trim() === '') return
 
     const fs = yield* FileSystem.FileSystem
-    yield* fs.writeFileString(outputPath, `${line}\n`, { flag: 'a' }).pipe(
-      Effect.catchAll((cause) =>
-        Effect.logWarning(`Unable to append workflow-report record to ${outputPath}: ${String(cause)}`),
-      ),
-    )
+    yield* fs
+      .writeFileString(outputPath, `${line}\n`, { flag: 'a' })
+      .pipe(
+        Effect.catchAll((cause) =>
+          Effect.logWarning(`Unable to append workflow-report record to ${outputPath}: ${String(cause)}`),
+        ),
+      )
   })
 
 /** ISO-8601 UTC timestamp matching the schema's pattern (no fractional seconds). */
