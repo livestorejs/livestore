@@ -30,23 +30,36 @@ const DLX_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `--all
 const PNPM_ADD_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `--allow-build=${name}`).join(' ')
 
 // =============================================================================
-// Snapshot Publish Workflow Report
+// PR Preview Workflow Report
 // =============================================================================
 
 /**
- * Surface the snapshot publish outcome as a managed PR comment so contributors
- * can copy the install command + Chrome devtools artifact link without digging
- * into the workflow log. The producer step writes a single JSONL record in the
- * publish job; the dedicated reporting job collects it from an artifact and
- * upserts the PR comment.
+ * Surface PR-time deploy/publish outcomes (npm snapshot, docs preview, examples
+ * previews) as a single managed PR comment. Each producer job writes one or
+ * more JSONL records to its own artifact; the dedicated `report-pr-preview`
+ * job aggregates every artifact into one bundle and upserts the comment.
+ *
+ * Records are deduped by `subject.id` downstream, so each producer owns a
+ * stable subject (`livestore-npm-snapshot`, `livestore-docs-preview`,
+ * `livestore-example-<slug>`) and contributors see the latest URL per surface.
  */
-const SNAPSHOT_REPORT_STATE_ID = 'snapshot-publish'
+const PR_PREVIEW_REPORT_STATE_ID = 'pr-preview'
+
 const SNAPSHOT_REPORT_ARTIFACT_NAME = 'snapshot-publish-workflow-report'
 const SNAPSHOT_REPORT_RECORD_PATH = '${{ runner.temp }}/workflow-reports/snapshot-publish.jsonl'
 const SNAPSHOT_REPORT_DOWNLOAD_DIR = '${{ runner.temp }}/workflow-reports/snapshot-publish-download'
-const SNAPSHOT_REPORT_BUNDLE_PATH = '${{ runner.temp }}/workflow-reports/snapshot-publish-bundle.json'
-const SNAPSHOT_REPORT_COMMENT_BODY_PATH = '${{ runner.temp }}/workflow-reports/snapshot-publish-comment.md'
-const SNAPSHOT_REPORT_SUMMARY_PATH = '${{ runner.temp }}/workflow-reports/snapshot-publish-summary.md'
+
+const DOCS_REPORT_ARTIFACT_NAME = 'docs-deploy-workflow-report'
+const DOCS_REPORT_RECORD_PATH = '${{ runner.temp }}/workflow-reports/docs-deploy.jsonl'
+const DOCS_REPORT_DOWNLOAD_DIR = '${{ runner.temp }}/workflow-reports/docs-deploy-download'
+
+const EXAMPLES_REPORT_ARTIFACT_NAME = 'examples-deploy-workflow-report'
+const EXAMPLES_REPORT_RECORD_PATH = '${{ runner.temp }}/workflow-reports/examples-deploy.jsonl'
+const EXAMPLES_REPORT_DOWNLOAD_DIR = '${{ runner.temp }}/workflow-reports/examples-deploy-download'
+
+const PR_PREVIEW_REPORT_BUNDLE_PATH = '${{ runner.temp }}/workflow-reports/pr-preview-bundle.json'
+const PR_PREVIEW_REPORT_COMMENT_BODY_PATH = '${{ runner.temp }}/workflow-reports/pr-preview-comment.md'
+const PR_PREVIEW_REPORT_SUMMARY_PATH = '${{ runner.temp }}/workflow-reports/pr-preview-summary.md'
 
 /**
  * Emit the snapshot publish report as a single JSONL line at runtime.
@@ -469,14 +482,15 @@ done`,
     },
 
     /**
-     * Aggregate the snapshot publish workflow report and upsert the managed PR
-     * comment. Runs after `publish-snapshot-version` so a failed publish leaves
-     * the existing comment (if any) untouched rather than overwriting it with a
-     * stale success record.
+     * Aggregate every PR-time deploy/publish workflow report and upsert a
+     * single managed PR comment. Runs after the snapshot/docs/examples jobs so
+     * all producer artifacts are available; individual artifacts are allowed to
+     * be missing (e.g. snapshot is skipped on forks) so the comment still
+     * publishes whatever subset succeeded.
      */
-    'report-snapshot-publish': {
-      if: `\${{ github.event_name == 'pull_request' && needs.publish-snapshot-version.outputs.npm_snapshot_published == '1' }}`,
-      needs: 'publish-snapshot-version',
+    'report-pr-preview': {
+      if: `\${{ github.event_name == 'pull_request' && !cancelled() }}`,
+      needs: ['publish-snapshot-version', 'build-deploy-docs', 'build-and-deploy-examples-src'],
       ...namespaceRunnerConfig,
       permissions: {
         contents: 'read',
@@ -487,31 +501,58 @@ done`,
         ...livestoreSetupSteps,
         {
           name: 'Download snapshot publish workflow report',
+          if: `\${{ needs.publish-snapshot-version.outputs.npm_snapshot_published == '1' }}`,
           uses: 'actions/download-artifact@v4',
+          'continue-on-error': true,
           with: {
             name: SNAPSHOT_REPORT_ARTIFACT_NAME,
             path: SNAPSHOT_REPORT_DOWNLOAD_DIR,
           },
         },
+        {
+          name: 'Download docs deploy workflow report',
+          if: `\${{ needs.build-deploy-docs.result == 'success' }}`,
+          uses: 'actions/download-artifact@v4',
+          'continue-on-error': true,
+          with: {
+            name: DOCS_REPORT_ARTIFACT_NAME,
+            path: DOCS_REPORT_DOWNLOAD_DIR,
+          },
+        },
+        {
+          name: 'Download examples deploy workflow report',
+          if: `\${{ needs.build-and-deploy-examples-src.result == 'success' }}`,
+          uses: 'actions/download-artifact@v4',
+          'continue-on-error': true,
+          with: {
+            name: EXAMPLES_REPORT_ARTIFACT_NAME,
+            path: EXAMPLES_REPORT_DOWNLOAD_DIR,
+          },
+        },
         workflowReportCollectorStep({
-          bundleId: 'snapshot-publish',
-          inputPaths: [`${SNAPSHOT_REPORT_DOWNLOAD_DIR}/snapshot-publish.jsonl`],
-          outputPath: SNAPSHOT_REPORT_BUNDLE_PATH,
+          bundleId: 'pr-preview',
+          inputPaths: [
+            `${SNAPSHOT_REPORT_DOWNLOAD_DIR}/snapshot-publish.jsonl`,
+            `${DOCS_REPORT_DOWNLOAD_DIR}/docs-deploy.jsonl`,
+            `${EXAMPLES_REPORT_DOWNLOAD_DIR}/examples-deploy.jsonl`,
+          ],
+          outputPath: PR_PREVIEW_REPORT_BUNDLE_PATH,
+          allowMissingInput: true,
         }),
         workflowReportCommentBodyStep({
-          bundlePath: SNAPSHOT_REPORT_BUNDLE_PATH,
-          commentBodyPath: SNAPSHOT_REPORT_COMMENT_BODY_PATH,
-          summaryPath: SNAPSHOT_REPORT_SUMMARY_PATH,
-          title: 'Snapshot release',
-          noRecordsMessage: 'No snapshot release was published for this commit.',
-          stateId: SNAPSHOT_REPORT_STATE_ID,
+          bundlePath: PR_PREVIEW_REPORT_BUNDLE_PATH,
+          commentBodyPath: PR_PREVIEW_REPORT_COMMENT_BODY_PATH,
+          summaryPath: PR_PREVIEW_REPORT_SUMMARY_PATH,
+          title: 'PR preview',
+          noRecordsMessage: 'No previews or snapshot were published for this commit.',
+          stateId: PR_PREVIEW_REPORT_STATE_ID,
           entryId: PR_HEAD_SHA,
           entryLabel: `PR \${{ github.event.pull_request.number }}`,
         }),
         workflowReportPublisherStep({
-          commentBodyPath: SNAPSHOT_REPORT_COMMENT_BODY_PATH,
-          summaryPath: SNAPSHOT_REPORT_SUMMARY_PATH,
-          stateId: SNAPSHOT_REPORT_STATE_ID,
+          commentBodyPath: PR_PREVIEW_REPORT_COMMENT_BODY_PATH,
+          summaryPath: PR_PREVIEW_REPORT_SUMMARY_PATH,
+          stateId: PR_PREVIEW_REPORT_STATE_ID,
         }),
       ],
     },
@@ -531,12 +572,28 @@ done`,
         },
         { name: 'Test examples', run: runDevenvTasksBefore('examples:test') },
         {
+          id: 'deploy-examples',
           name: 'Deploy examples to Cloudflare',
           if: IS_NOT_FORK,
-          run: runDevenvTasksBefore('examples:deploy'),
+          run: [
+            'mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_FILE")"',
+            runDevenvTasksBefore('examples:deploy'),
+          ].join('\n'),
           env: {
             CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
             CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
+            WORKFLOW_REPORT_OUTPUT_FILE: EXAMPLES_REPORT_RECORD_PATH,
+          },
+        },
+        {
+          name: 'Upload examples deploy workflow report',
+          if: `\${{ github.event_name == 'pull_request' && steps.deploy-examples.outcome == 'success' }}`,
+          uses: 'actions/upload-artifact@v4',
+          with: {
+            name: EXAMPLES_REPORT_ARTIFACT_NAME,
+            path: EXAMPLES_REPORT_RECORD_PATH,
+            'if-no-files-found': 'warn',
+            'retention-days': 14,
           },
         },
         {
@@ -601,10 +658,28 @@ done`,
           },
         },
         {
+          id: 'deploy-docs',
           name: 'Deploy docs',
           if: `\${{ success() && (github.event_name != 'pull_request' || ${IS_NOT_FORK}) }}`,
-          run: runDevenvTasksBefore('docs:deploy'),
-          env: { NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}' },
+          run: [
+            'mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_FILE")"',
+            runDevenvTasksBefore('docs:deploy'),
+          ].join('\n'),
+          env: {
+            NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
+            WORKFLOW_REPORT_OUTPUT_FILE: DOCS_REPORT_RECORD_PATH,
+          },
+        },
+        {
+          name: 'Upload docs deploy workflow report',
+          if: `\${{ github.event_name == 'pull_request' && steps.deploy-docs.outcome == 'success' }}`,
+          uses: 'actions/upload-artifact@v4',
+          with: {
+            name: DOCS_REPORT_ARTIFACT_NAME,
+            path: DOCS_REPORT_RECORD_PATH,
+            'if-no-files-found': 'warn',
+            'retention-days': 14,
+          },
         },
       ]),
     },

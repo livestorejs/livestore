@@ -23,6 +23,7 @@ import {
   type DeploymentKind,
 } from '../../shared/deploy-target.ts'
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../../shared/misc.ts'
+import { emitWorkflowReportRecord, nowIsoUtc } from '../../shared/workflow-report.ts'
 
 export class ScriptError extends Schema.TaggedError<ScriptError>()('ScriptError', {
   message: Schema.String,
@@ -340,6 +341,40 @@ export const command = Cli.Command.make(
     )
 
     console.log(`Deployed ${results.length} examples`)
+
+    /**
+     * Surface each example deploy as a workflow-report record so the managed PR
+     * comment can list every preview URL alongside other deploy/publish reports
+     * collected for the run. Records are deduped by `subject.id` downstream, so
+     * stable per-example IDs keep history clean across reruns.
+     */
+    const reportCreatedAtUtc = nowIsoUtc()
+    yield* Effect.forEach(
+      results,
+      (result) => {
+        const previewUrl = result.previewUrl ?? `https://${result.workerHost}`
+        return emitWorkflowReportRecord({
+          _tag: 'WorkflowReportRecord',
+          schemaVersion: 1,
+          id: `examples-deploy-${result.example}`,
+          kind: 'examples-deploy-preview',
+          subject: { id: `livestore-example-${result.example}`, label: result.example },
+          status: 'success',
+          title: `${result.example} deployed (${result.env})`,
+          summary: `Worker: ${result.workerHost}`,
+          createdAtUtc: reportCreatedAtUtc,
+          links: [{ label: 'Preview URL', url: previewUrl, primary: true }],
+          data: {
+            example: result.example,
+            workerName: result.workerName,
+            workerHost: result.workerHost,
+            env: result.env,
+            domains: result.domains,
+          },
+        })
+      },
+      { concurrency: 1 },
+    )
 
     const tableRows = results.map((result) => ({
       Example: result.example,

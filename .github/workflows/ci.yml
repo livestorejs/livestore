@@ -3792,9 +3792,9 @@ jobs:
           path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
-  report-snapshot-publish:
-    if: ${{ github.event_name == 'pull_request' && needs.publish-snapshot-version.outputs.npm_snapshot_published == '1' }}
-    needs: publish-snapshot-version
+  report-pr-preview:
+    if: ${{ github.event_name == 'pull_request' && !cancelled() }}
+    needs: [publish-snapshot-version, build-deploy-docs, build-and-deploy-examples-src]
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     permissions:
       contents: read
@@ -3927,18 +3927,34 @@ jobs:
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
       - name: Download snapshot publish workflow report
+        if: ${{ needs.publish-snapshot-version.outputs.npm_snapshot_published == '1' }}
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: snapshot-publish-workflow-report
           path: '${{ runner.temp }}/workflow-reports/snapshot-publish-download'
+      - name: Download docs deploy workflow report
+        if: ${{ needs.build-deploy-docs.result == 'success' }}
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: docs-deploy-workflow-report
+          path: '${{ runner.temp }}/workflow-reports/docs-deploy-download'
+      - name: Download examples deploy workflow report
+        if: ${{ needs.build-and-deploy-examples-src.result == 'success' }}
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: examples-deploy-workflow-report
+          path: '${{ runner.temp }}/workflow-reports/examples-deploy-download'
       - name: Collect workflow report bundle
         shell: bash
         env:
-          WORKFLOW_REPORT_BUNDLE_ID: snapshot-publish
-          WORKFLOW_REPORT_INPUT_PATHS_JSON: '["${{ runner.temp }}/workflow-reports/snapshot-publish-download/snapshot-publish.jsonl"]'
-          WORKFLOW_REPORT_OUTPUT_PATH: '${{ runner.temp }}/workflow-reports/snapshot-publish-bundle.json'
+          WORKFLOW_REPORT_BUNDLE_ID: pr-preview
+          WORKFLOW_REPORT_INPUT_PATHS_JSON: '["${{ runner.temp }}/workflow-reports/snapshot-publish-download/snapshot-publish.jsonl","${{ runner.temp }}/workflow-reports/docs-deploy-download/docs-deploy.jsonl","${{ runner.temp }}/workflow-reports/examples-deploy-download/examples-deploy.jsonl"]'
+          WORKFLOW_REPORT_OUTPUT_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-bundle.json'
           WORKFLOW_REPORT_RECORD_MARKER: 'WORKFLOW_REPORT_V1: '
-          WORKFLOW_REPORT_ALLOW_MISSING_INPUT: '0'
+          WORKFLOW_REPORT_ALLOW_MISSING_INPUT: '1'
         run: |
           if [ -z "${WORKFLOW_REPORT_RUNTIME_MODULE:-}" ]; then
             if [ -f packages/@overeng/genie/src/runtime/mod.ts ]; then
@@ -3988,12 +4004,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          WORKFLOW_REPORT_BUNDLE_PATH: '${{ runner.temp }}/workflow-reports/snapshot-publish-bundle.json'
-          WORKFLOW_REPORT_COMMENT_BODY_PATH: '${{ runner.temp }}/workflow-reports/snapshot-publish-comment.md'
-          WORKFLOW_REPORT_SUMMARY_PATH: '${{ runner.temp }}/workflow-reports/snapshot-publish-summary.md'
-          WORKFLOW_REPORT_TITLE: Snapshot release
-          WORKFLOW_REPORT_NO_RECORDS_MESSAGE: No snapshot release was published for this commit.
-          WORKFLOW_REPORT_STATE_ID: snapshot-publish
+          WORKFLOW_REPORT_BUNDLE_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-bundle.json'
+          WORKFLOW_REPORT_COMMENT_BODY_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-comment.md'
+          WORKFLOW_REPORT_SUMMARY_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-summary.md'
+          WORKFLOW_REPORT_TITLE: PR preview
+          WORKFLOW_REPORT_NO_RECORDS_MESSAGE: No previews or snapshot were published for this commit.
+          WORKFLOW_REPORT_STATE_ID: pr-preview
           WORKFLOW_REPORT_ENTRY_ID: ${{ github.event.pull_request.head.sha || github.sha }}
           WORKFLOW_REPORT_ENTRY_LABEL: 'PR ${{ github.event.pull_request.number }}'
           WORKFLOW_REPORT_CREATED_AT_UTC: ''
@@ -4081,9 +4097,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          WORKFLOW_REPORT_STATE_ID: snapshot-publish
-          WORKFLOW_REPORT_COMMENT_BODY_PATH: '${{ runner.temp }}/workflow-reports/snapshot-publish-comment.md'
-          WORKFLOW_REPORT_SUMMARY_PATH: '${{ runner.temp }}/workflow-reports/snapshot-publish-summary.md'
+          WORKFLOW_REPORT_STATE_ID: pr-preview
+          WORKFLOW_REPORT_COMMENT_BODY_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-comment.md'
+          WORKFLOW_REPORT_SUMMARY_PATH: '${{ runner.temp }}/workflow-reports/pr-preview-summary.md'
           WORKFLOW_REPORT_MANAGED_MARKER: '<!-- workflow-report:managed -->'
         run: |
           if [ -z "${WORKFLOW_REPORT_RUNTIME_MODULE:-}" ]; then
@@ -4616,9 +4632,11 @@ jobs:
           . "$__nix_gc_retry_helper"
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run examples:test --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:test --mode before'
-      - name: Deploy examples to Cloudflare
+      - id: deploy-examples
+        name: Deploy examples to Cloudflare
         if: github.event.pull_request.head.repo.fork != true
         run: |
+          mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_FILE")"
           __nix_gc_retry_helper=$(mktemp)
           cat > "$__nix_gc_retry_helper" <<'EOF'
           #!/usr/bin/env bash
@@ -4734,6 +4752,15 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WORKFLOW_REPORT_OUTPUT_FILE: '${{ runner.temp }}/workflow-reports/examples-deploy.jsonl'
+      - name: Upload examples deploy workflow report
+        if: ${{ github.event_name == 'pull_request' && steps.deploy-examples.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: examples-deploy-workflow-report
+          path: '${{ runner.temp }}/workflow-reports/examples-deploy.jsonl'
+          if-no-files-found: warn
+          retention-days: 14
       - name: Validate hosted example links
         run: |
           __nix_gc_retry_helper=$(mktemp)
@@ -5457,9 +5484,11 @@ jobs:
           name: docs-build-logs
           path: tmp/ci-docs/
           retention-days: 14
-      - name: Deploy docs
+      - id: deploy-docs
+        name: Deploy docs
         if: ${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}
         run: |
+          mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_FILE")"
           __nix_gc_retry_helper=$(mktemp)
           cat > "$__nix_gc_retry_helper" <<'EOF'
           #!/usr/bin/env bash
@@ -5574,6 +5603,15 @@ jobs:
           run_nix_gc_race_retry 'devenv tasks run docs:deploy --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy --mode before'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          WORKFLOW_REPORT_OUTPUT_FILE: '${{ runner.temp }}/workflow-reports/docs-deploy.jsonl'
+      - name: Upload docs deploy workflow report
+        if: ${{ github.event_name == 'pull_request' && steps.deploy-docs.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-deploy-workflow-report
+          path: '${{ runner.temp }}/workflow-reports/docs-deploy.jsonl'
+          if-no-files-found: warn
+          retention-days: 14
       - name: Save pnpm state
         if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
