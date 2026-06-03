@@ -1,7 +1,7 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, SchemaAST } from '@livestore/utils/effect'
 
-import { SessionIdSymbol } from '../../../../adapter-types.ts'
+import { SessionIdSymbol } from '../../../../session-id-symbol.ts'
 import type { SqlValue } from '../../../../util.ts'
 import type { State } from '../../../mod.ts'
 import type { QueryBuilderAst } from './api.ts'

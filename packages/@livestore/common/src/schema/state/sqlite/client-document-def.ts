@@ -2,7 +2,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import type { Option, Types } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
-import { SessionIdSymbol } from '../../../adapter-types.ts'
+import { SessionIdSymbol } from '../../../session-id-symbol.ts'
 import { sql } from '../../../util.ts'
 import type { EventDef, Materializer } from '../../EventDef/mod.ts'
 import { defineEvent, defineMaterializer } from '../../EventDef/mod.ts'

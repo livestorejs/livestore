@@ -1,7 +1,7 @@
 import type { GetValForKey, SingleOrReadonlyArray } from '@livestore/utils'
 import { type Option, Predicate, type Schema } from '@livestore/utils/effect'
 
-import type { SessionIdSymbol } from '../../../../adapter-types.ts'
+import type { SessionIdSymbol } from '../../../../session-id-symbol.ts'
 import type { SqlValue } from '../../../../util.ts'
 import type { ClientDocumentTableDef, ClientDocumentTableDefSymbol } from '../client-document-def.ts'
 import type { SqliteDsl } from '../db-schema/mod.ts'
