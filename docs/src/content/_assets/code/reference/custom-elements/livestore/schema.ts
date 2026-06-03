@@ -1,4 +1,4 @@
-import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 export const tables = {
   todos: State.SQLite.table({
@@ -10,10 +10,12 @@ export const tables = {
       deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
     },
   }),
-  uiState: State.SQLite.clientDocument({
+  uiState: State.SQLite.table({
     name: 'uiState',
-    schema: Schema.Struct({ newTodoText: Schema.String }),
-    default: { id: SessionIdSymbol, value: { newTodoText: '' } },
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      newTodoText: State.SQLite.text({ default: '' }),
+    },
   }),
 }
 
@@ -34,7 +36,10 @@ export const events = {
     name: 'v1.TodoDeleted',
     schema: Schema.Struct({ id: Schema.String, deletedAt: Schema.Date }),
   }),
-  uiStateSet: tables.uiState.set,
+  uiStateSet: Events.clientOnly({
+    name: 'v1.UiStateSet',
+    schema: Schema.Struct({ newTodoText: Schema.String }),
+  }),
 }
 
 const materializers = State.SQLite.materializers(events, {
@@ -42,6 +47,8 @@ const materializers = State.SQLite.materializers(events, {
   'v1.TodoCompleted': ({ id }) => tables.todos.update({ completed: true }).where({ id }),
   'v1.TodoUncompleted': ({ id }) => tables.todos.update({ completed: false }).where({ id }),
   'v1.TodoDeleted': ({ id, deletedAt }) => tables.todos.update({ deletedAt }).where({ id }),
+  'v1.UiStateSet': ({ newTodoText }) =>
+    tables.uiState.insert({ id: 'default', newTodoText }).onConflict('id', 'update', { newTodoText }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

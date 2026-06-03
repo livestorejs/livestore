@@ -11,8 +11,12 @@ export const ScrollState = Schema.Struct({
 
 export type ScrollState = typeof ScrollState.Type
 
-export const scrollState = State.SQLite.clientDocument({
+export const defaultScrollState: ScrollState = { list: 0 }
+
+export const scrollState = State.SQLite.table({
   name: 'scroll_state',
-  schema: ScrollState,
-  default: { value: { list: 0 } },
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    value: State.SQLite.json({ schema: ScrollState, default: defaultScrollState }),
+  },
 })

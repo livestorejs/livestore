@@ -1,4 +1,4 @@
-import { Schema, SessionIdSymbol, State } from '@livestore/livestore'
+import { Schema, State } from '@livestore/livestore'
 
 import { Priority } from '../../types/priority.ts'
 import { Status } from '../../types/status.ts'
@@ -18,11 +18,18 @@ export const FilterState = Schema.Struct({
 }).annotations({ title: 'FilterState' })
 export type FilterState = typeof FilterState.Type
 
-export const filterState = State.SQLite.clientDocument({
+export const defaultFilterState: FilterState = {
+  orderBy: 'created',
+  orderDirection: 'desc',
+  priority: null,
+  query: null,
+  status: null,
+}
+
+export const filterState = State.SQLite.table({
   name: 'filter_state',
-  schema: FilterState,
-  default: {
-    value: { orderBy: 'created', orderDirection: 'desc', priority: null, query: null, status: null },
-    id: SessionIdSymbol,
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    value: State.SQLite.json({ schema: FilterState, default: defaultFilterState }),
   },
 })

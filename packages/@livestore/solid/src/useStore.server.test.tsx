@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel } from '@livestore/common'
-import { createStore } from '@livestore/livestore'
+import { createStore, queryDb } from '@livestore/livestore'
 import { Effect } from '@livestore/utils/effect'
 
 import { schema, tables } from './__tests__/fixture.tsx'
@@ -55,16 +55,15 @@ describe('useStore SSR', () => {
       })
 
       const storeWithSolidApi = withSolidApi(store)
+      const todos = storeWithSolidApi.useQuery(queryDb(tables.todos.select('text'), { label: 'todos' }))
 
-      const [state] = storeWithSolidApi.useClientDocument(tables.userInfo, 'u1')
-
-      const UserInfo = () => {
-        return <div>User: {state().username || 'anonymous'}</div>
+      const TodoCount = () => {
+        return <div>Todos: {todos()?.length ?? 0}</div>
       }
 
-      const html = renderToString(() => <UserInfo />)
+      const html = renderToString(() => <TodoCount />)
 
-      expect(html).toContain('User:')
+      expect(html).toContain('Todos:')
     }).pipe(provideOtel({}), Effect.scoped, Effect.runPromise)
   })
 })

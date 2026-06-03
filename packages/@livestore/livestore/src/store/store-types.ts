@@ -386,7 +386,7 @@ export const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | Sig
  *
  * @example
  * ```ts
- * const [, , , query$] = useClientDocument(tables.uiState)
+ * const query$ = queryDb(tables.uiState.select().where({ id: 'default' }).first())
  *
  * if (isLiveQueryInstance(query$)) {
  *   console.log('Execution count:', query$.runs)

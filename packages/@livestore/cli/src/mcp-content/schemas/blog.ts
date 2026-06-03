@@ -1,4 +1,4 @@
-export const blogSchemaContent = `import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+export const blogSchemaContent = `import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 // Content management with collaborative editing capabilities
 export const tables = {
@@ -45,17 +45,14 @@ export const tables = {
   }),
   
   // Track collaborative editing sessions
-  editingSessions: State.SQLite.clientDocument({
+  editingSessions: State.SQLite.table({
     name: 'editingSessions',
-    schema: Schema.Struct({
-      postId: Schema.String,
-      authorId: Schema.String,
-      lastActivity: Schema.Date,
-      cursorPosition: Schema.Number,
-    }),
-    default: { 
-      id: SessionIdSymbol, 
-      value: { postId: '', authorId: '', lastActivity: new Date(), cursorPosition: 0 }
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      postId: State.SQLite.text({ default: '' }),
+      authorId: State.SQLite.text({ default: '' }),
+      lastActivity: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      cursorPosition: State.SQLite.integer({ default: 0 }),
     },
   }),
 }
@@ -155,7 +152,16 @@ export const events = {
   }),
   
   // Local editing session tracking
-  editingSessionUpdated: tables.editingSessions.set,
+  editingSessionUpdated: Events.clientOnly({
+    name: 'v1.EditingSessionUpdated',
+    schema: Schema.Struct({
+      id: Schema.String,
+      postId: Schema.String,
+      authorId: Schema.String,
+      lastActivity: Schema.Date,
+      cursorPosition: Schema.Number,
+    }),
+  }),
 }
 
 // Materializers with conflict resolution strategies
@@ -193,6 +199,11 @@ const materializers = State.SQLite.materializers(events, {
   // Author materializers
   'v1.AuthorCreated': ({ id, name, email, createdAt }) =>
     tables.authors.insert({ id, name, email, createdAt }),
+
+  'v1.EditingSessionUpdated': ({ id, postId, authorId, lastActivity, cursorPosition }) =>
+    tables.editingSessions
+      .insert({ id, postId, authorId, lastActivity, cursorPosition })
+      .onConflict('id', 'update', { postId, authorId, lastActivity, cursorPosition }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

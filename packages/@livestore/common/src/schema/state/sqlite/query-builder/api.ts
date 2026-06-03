@@ -1,16 +1,12 @@
-import type { GetValForKey, SingleOrReadonlyArray } from '@livestore/utils'
+import type { SingleOrReadonlyArray } from '@livestore/utils'
 import { type Option, Predicate, type Schema } from '@livestore/utils/effect'
 
-import type { SessionIdSymbol } from '../../../../adapter-types.ts'
 import type { SqlValue } from '../../../../util.ts'
-import type { ClientDocumentTableDef, ClientDocumentTableDefSymbol } from '../client-document-def.ts'
-import type { SqliteDsl } from '../db-schema/mod.ts'
 import type { TableDefBase } from '../table-def.ts'
 
 export type QueryBuilderAst =
   | QueryBuilderAst.SelectQuery
   | QueryBuilderAst.CountQuery
-  | QueryBuilderAst.RowQuery
   | QueryBuilderAst.InsertQuery
   | QueryBuilderAst.UpdateQuery
   | QueryBuilderAst.DeleteQuery
@@ -40,13 +36,6 @@ export namespace QueryBuilderAst {
     readonly tableDef: TableDefBase
     readonly where: ReadonlyArray<QueryBuilderAst.Where>
     readonly resultSchema: Schema.Schema<number, ReadonlyArray<{ count: number }>>
-  }
-
-  export interface RowQuery {
-    readonly _tag: 'RowQuery'
-    readonly tableDef: ClientDocumentTableDef.Any
-    readonly id: string | SessionIdSymbol
-    readonly explicitDefaultValues: Record<string, unknown>
   }
 
   export interface InsertQuery {
@@ -158,7 +147,6 @@ export namespace QueryBuilder {
     | 'offset'
     | 'limit'
     | 'first'
-    | 'row'
     | 'insert'
     | 'update'
     | 'delete'
@@ -225,7 +213,7 @@ export namespace QueryBuilder {
       ): QueryBuilder<
         ReadonlyArray<TTableDef['sqliteDef']['columns'][TColumn]['schema']['Type']>,
         TTableDef,
-        TWithout | 'row' | 'select' | 'returning' | 'onConflict'
+        TWithout | 'select' | 'returning' | 'onConflict'
       >
       /** Select multiple columns */
       <TColumns extends keyof TTableDef['sqliteDef']['columns'] & string>(
@@ -236,7 +224,7 @@ export namespace QueryBuilder {
           readonly [K in TColumns]: TTableDef['sqliteDef']['columns'][K]['schema']['Type']
         }>,
         TTableDef,
-        TWithout | 'row' | 'select' | 'count' | 'returning' | 'onConflict'
+        TWithout | 'select' | 'count' | 'returning' | 'onConflict'
       >
     }
 
@@ -256,21 +244,21 @@ export namespace QueryBuilder {
      * TODO: Also support `OR`
      */
     readonly where: {
-      (params: QueryBuilder.WhereParams<TTableDef>): QueryBuilder<TResult, TTableDef, TWithout | 'row' | 'select'>
+      (params: QueryBuilder.WhereParams<TTableDef>): QueryBuilder<TResult, TTableDef, TWithout | 'select'>
       <TColName extends keyof TTableDef['sqliteDef']['columns']>(
         col: TColName,
         value: TTableDef['sqliteDef']['columns'][TColName]['schema']['Type'],
-      ): QueryBuilder<TResult, TTableDef, TWithout | 'row' | 'select'>
+      ): QueryBuilder<TResult, TTableDef, TWithout | 'select'>
       <TColName extends keyof TTableDef['sqliteDef']['columns']>(
         col: TColName,
         op: QueryBuilder.WhereOps.MultiValue,
         value: ReadonlyArray<TTableDef['sqliteDef']['columns'][TColName]['schema']['Type']>,
-      ): QueryBuilder<TResult, TTableDef, TWithout | 'row' | 'select'>
+      ): QueryBuilder<TResult, TTableDef, TWithout | 'select'>
       <TColName extends keyof TTableDef['sqliteDef']['columns']>(
         col: TColName,
         op: QueryBuilder.WhereOps.SingleValue,
         value: TTableDef['sqliteDef']['columns'][TColName]['schema']['Type'],
-      ): QueryBuilder<TResult, TTableDef, TWithout | 'row' | 'select'>
+      ): QueryBuilder<TResult, TTableDef, TWithout | 'select'>
     }
 
     /**
@@ -283,7 +271,7 @@ export namespace QueryBuilder {
     readonly count: () => QueryBuilder<
       number,
       TTableDef,
-      TWithout | 'row' | 'count' | 'select' | 'orderBy' | 'first' | 'offset' | 'limit' | 'returning' | 'onConflict'
+      TWithout | 'count' | 'select' | 'orderBy' | 'first' | 'offset' | 'limit' | 'returning' | 'onConflict'
     >
 
     /**
@@ -311,7 +299,7 @@ export namespace QueryBuilder {
      */
     readonly offset: (
       offset: number,
-    ) => QueryBuilder<TResult, TTableDef, TWithout | 'row' | 'offset' | 'orderBy' | 'returning' | 'onConflict'>
+    ) => QueryBuilder<TResult, TTableDef, TWithout | 'offset' | 'orderBy' | 'returning' | 'onConflict'>
 
     /**
      * Example:
@@ -324,7 +312,7 @@ export namespace QueryBuilder {
     ) => QueryBuilder<
       TResult,
       TTableDef,
-      TWithout | 'row' | 'limit' | 'offset' | 'first' | 'orderBy' | 'returning' | 'onConflict'
+      TWithout | 'limit' | 'offset' | 'first' | 'orderBy' | 'returning' | 'onConflict'
     >
 
     /**
@@ -353,7 +341,7 @@ export namespace QueryBuilder {
           ? undefined | GetSingle<TResult>
           : GetSingle<TResult>,
       TTableDef,
-      TWithout | 'row' | 'first' | 'orderBy' | 'select' | 'limit' | 'offset' | 'where' | 'returning' | 'onConflict'
+      TWithout | 'first' | 'orderBy' | 'select' | 'limit' | 'offset' | 'where' | 'returning' | 'onConflict'
     >
 
     /**
@@ -377,7 +365,7 @@ export namespace QueryBuilder {
     ) => QueryBuilder<
       TResult,
       TTableDef,
-      TWithout | 'row' | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'where'
+      TWithout | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'where'
     >
 
     /**
@@ -409,7 +397,7 @@ export namespace QueryBuilder {
       ): QueryBuilder<
         TResult,
         TTableDef,
-        TWithout | 'row' | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'where'
+        TWithout | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'where'
       >
       <TTarget extends SingleOrReadonlyArray<keyof TTableDef['sqliteDef']['columns']>>(
         target: TTarget,
@@ -418,7 +406,7 @@ export namespace QueryBuilder {
       ): QueryBuilder<
         TResult,
         TTableDef,
-        TWithout | 'row' | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'where'
+        TWithout | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'where'
       >
     }
 
@@ -452,7 +440,7 @@ export namespace QueryBuilder {
     ) => QueryBuilder<
       TResult,
       TTableDef,
-      TWithout | 'row' | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'onConflict'
+      TWithout | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'onConflict'
     >
 
     /**
@@ -468,47 +456,9 @@ export namespace QueryBuilder {
     readonly delete: () => QueryBuilder<
       TResult,
       TTableDef,
-      TWithout | 'row' | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'onConflict'
+      TWithout | 'select' | 'count' | 'orderBy' | 'first' | 'offset' | 'limit' | 'onConflict'
     >
   }
-}
-
-export namespace RowQuery {
-  export type GetOrCreateOptions<TTableDef extends ClientDocumentTableDef.TraitAny> = {
-    /**
-     * Default value to use instead of the default value from the table definition
-     */
-    default: TTableDef[ClientDocumentTableDefSymbol]['options']['partialSet'] extends false
-      ? TTableDef['Value']
-      : Partial<TTableDef['Value']>
-  }
-
-  // TODO get rid of this
-  export type RequiredColumnsOptions<TTableDef extends TableDefBase> = {
-    /**
-     * Values to be inserted into the row if it doesn't exist yet
-     */
-    explicitDefaultValues: Pick<
-      SqliteDsl.FromColumns.RowDecodedAll<TTableDef['sqliteDef']['columns']>,
-      SqliteDsl.FromColumns.RequiredInsertColumnNames<Omit<TTableDef['sqliteDef']['columns'], 'id'>>
-    >
-  }
-
-  export type Result<TTableDef extends TableDefBase> = SqliteDsl.FromColumns.RowDecoded<
-    TTableDef['sqliteDef']['columns']
-  >
-
-  export type DocumentResult<TTableDef extends ClientDocumentTableDef.Any> = GetValForKey<
-    SqliteDsl.FromColumns.RowDecoded<TTableDef['sqliteDef']['columns']>,
-    'value'
-  >
-
-  export type ResultEncoded<TTableDef extends TableDefBase> = TTableDef['options']['isClientDocumentTable'] extends true
-    ? GetValForKey<SqliteDsl.FromColumns.RowEncoded<TTableDef['sqliteDef']['columns']>, 'value'>
-    : SqliteDsl.FromColumns.RowEncoded<TTableDef['sqliteDef']['columns']>
-
-  export type GetIdColumnType<TTableDef extends TableDefBase> =
-    TTableDef['sqliteDef']['columns']['id']['schema']['Type']
 }
 
 type GetSingle<T> = T extends ReadonlyArray<infer U> ? U : never

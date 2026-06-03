@@ -5,7 +5,13 @@ import { queryDb } from '@livestore/livestore'
 import { events, tables } from './livestore/schema.ts'
 import { useAppStore } from './store.ts'
 
-const uiState$ = queryDb(tables.uiState.get(), { label: 'uiState' })
+const uiState$ = queryDb(
+  tables.uiState
+    .select('newTodoText', 'filter')
+    .where({ id: 'default' })
+    .first({ behaviour: 'fallback', fallback: () => ({ newTodoText: '', filter: 'all' }) }),
+  { label: 'uiState' },
+)
 
 const visibleTodos$ = queryDb(
   (get) => {

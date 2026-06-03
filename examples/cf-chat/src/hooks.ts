@@ -11,12 +11,22 @@ const messagesQuery = queryDb(tables.messages.where({}), { label: 'messages' })
 const reactionsQuery = queryDb(tables.reactions.where({}), { label: 'reactions' })
 const usersQuery = queryDb(tables.users.where({}), { label: 'users' })
 const readReceiptsQuery = queryDb(tables.readReceipts.where({}), { label: 'readReceipts' })
+const uiStateQuery = queryDb(
+  tables.uiState
+    .select('userContext', 'lastSeenMessageId')
+    .where({ id: 'singleton' })
+    .first({ behaviour: 'fallback', fallback: () => ({ userContext: undefined, lastSeenMessageId: null }) }),
+  { label: 'uiState' },
+)
 
 export const useChat = () => {
   const store = useAppStore()
   const [currentMessage, setCurrentMessage] = useState('')
   const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null)
-  const [uiState, setUiState] = store.useClientDocument(tables.uiState)
+  const uiState = store.useQuery(uiStateQuery)
+  const setUiState = React.useCallback((patch: Parameters<typeof events.uiStateSet>[0]) => {
+    store.commit(events.uiStateSet(patch))
+  }, [store])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   // Circuit breaker: track which messageIds we've already emitted a read receipt for
   const readCircuitBreakerRef = useRef<Set<string>>(new Set())

@@ -1,4 +1,4 @@
-import { makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 import { Filter } from '../types.ts'
 import * as eventsDefs from './events.ts'
@@ -58,59 +58,64 @@ export type User = typeof users.Type
 export type Comment = typeof comments.Type
 export type Reaction = typeof reactions.Type
 
-const uiState = State.SQLite.clientDocument({
-  name: 'uiState',
-  // TODO refine schemas (e.g. via literals)
-  schema: Schema.Struct({
-    newIssueText: Schema.String,
-    newIssueDescription: Schema.String,
-    filter: Filter,
-    selectedHomeTab: Schema.Literal('assigned', 'created'),
-    assignedTabGrouping: Schema.String,
-    assignedTabOrdering: Schema.String,
-    assignedTabCompletedIssues: Schema.String,
-    createdTabGrouping: Schema.String,
-    createdTabOrdering: Schema.String,
-    createdTabCompletedIssues: Schema.String,
-    assignedTabShowAssignee: Schema.Boolean,
-    assignedTabShowStatus: Schema.Boolean,
-    assignedTabShowPriority: Schema.Boolean,
-    createdTabShowAssignee: Schema.Boolean,
-    createdTabShowStatus: Schema.Boolean,
-    createdTabShowPriority: Schema.Boolean,
-    navigationHistory: Schema.String,
-  }),
-  default: {
-    id: SessionIdSymbol,
-    value: {
-      newIssueText: '',
-      newIssueDescription: '',
-      filter: 'all',
-      selectedHomeTab: 'assigned',
-      assignedTabGrouping: 'status',
-      assignedTabOrdering: 'priority',
-      assignedTabCompletedIssues: 'week',
-      createdTabGrouping: 'status',
-      createdTabOrdering: 'priority',
-      createdTabCompletedIssues: 'week',
-      assignedTabShowAssignee: true,
-      assignedTabShowStatus: true,
-      assignedTabShowPriority: true,
-      createdTabShowAssignee: true,
-      createdTabShowStatus: true,
-      createdTabShowPriority: true,
-      navigationHistory: '',
-    },
-  },
+const UiStateSchema = Schema.Struct({
+  newIssueText: Schema.String,
+  newIssueDescription: Schema.String,
+  filter: Filter,
+  selectedHomeTab: Schema.Literal('assigned', 'created'),
+  assignedTabGrouping: Schema.String,
+  assignedTabOrdering: Schema.String,
+  assignedTabCompletedIssues: Schema.String,
+  createdTabGrouping: Schema.String,
+  createdTabOrdering: Schema.String,
+  createdTabCompletedIssues: Schema.String,
+  assignedTabShowAssignee: Schema.Boolean,
+  assignedTabShowStatus: Schema.Boolean,
+  assignedTabShowPriority: Schema.Boolean,
+  createdTabShowAssignee: Schema.Boolean,
+  createdTabShowStatus: Schema.Boolean,
+  createdTabShowPriority: Schema.Boolean,
+  navigationHistory: Schema.String,
 })
 
-export type UiState = typeof uiState.Value
+export type UiState = typeof UiStateSchema.Type
+
+export const defaultUiState: UiState = {
+  newIssueText: '',
+  newIssueDescription: '',
+  filter: 'all',
+  selectedHomeTab: 'assigned',
+  assignedTabGrouping: 'status',
+  assignedTabOrdering: 'priority',
+  assignedTabCompletedIssues: 'week',
+  createdTabGrouping: 'status',
+  createdTabOrdering: 'priority',
+  createdTabCompletedIssues: 'week',
+  assignedTabShowAssignee: true,
+  assignedTabShowStatus: true,
+  assignedTabShowPriority: true,
+  createdTabShowAssignee: true,
+  createdTabShowStatus: true,
+  createdTabShowPriority: true,
+  navigationHistory: '',
+}
+
+const uiState = State.SQLite.table({
+  name: 'uiState',
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    value: State.SQLite.json({ schema: UiStateSchema, default: defaultUiState }),
+  },
+})
 
 export const tables = { issues, users, comments, reactions, uiState }
 
 export const events = {
   ...eventsDefs,
-  uiStateSet: uiState.set,
+  uiStateSet: Events.clientOnly({
+    name: 'v1.UiStateSet',
+    schema: Schema.partial(UiStateSchema),
+  }),
 }
 
 const materializers = State.SQLite.materializers(events, {
@@ -138,6 +143,10 @@ const materializers = State.SQLite.materializers(events, {
   'v1.ReactionCreated': ({ id, issueId, commentId, userId, emoji }) =>
     reactions.insert({ id, issueId, commentId, userId, emoji }),
   'v1.AllCleared': ({ deletedAt }) => issues.update({ deletedAt }).where({ deletedAt: null }),
+  'v1.UiStateSet': (patch) =>
+    uiState
+      .insert({ id: 'default', value: { ...defaultUiState, ...patch } })
+      .onConflict('id', 'update', { value: { ...defaultUiState, ...patch } }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

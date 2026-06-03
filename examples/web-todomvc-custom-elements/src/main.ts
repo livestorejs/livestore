@@ -106,7 +106,12 @@ versionBadge.style.cssText = `
 `
 document.body.appendChild(versionBadge)
 
-const appState$ = queryDb(tables.uiState.get())
+const appState$ = queryDb(
+  tables.uiState
+    .select('newTodoText', 'filter')
+    .where({ id: 'default' })
+    .first({ behaviour: 'fallback', fallback: () => ({ newTodoText: '', filter: 'all' }) }),
+)
 const todos$ = queryDb(tables.todos.where({ deletedAt: null }))
 
 const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))

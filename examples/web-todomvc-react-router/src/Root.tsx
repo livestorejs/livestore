@@ -14,7 +14,7 @@ import { uiState$ } from './livestore/queries.ts'
 import { events, type tables } from './livestore/schema.ts'
 import { useAppStore } from './livestore/store.ts'
 
-type Filter = (typeof tables.uiState.Value)['filter']
+type Filter = (typeof tables.uiState.Type)['filter']
 
 const suspenseFallback = <div>Loading app...</div>
 const fpsContainerStyle = { top: 0, right: 0, position: 'absolute', background: '#333' } as const

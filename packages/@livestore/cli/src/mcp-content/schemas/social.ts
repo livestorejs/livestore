@@ -1,4 +1,4 @@
-export const socialSchemaContent = `import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+export const socialSchemaContent = `import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 // Social network with activity feeds and real-time interactions
 export const tables = {
@@ -79,16 +79,13 @@ export const tables = {
   }),
   
   // Client-side state for UI
-  feedState: State.SQLite.clientDocument({
+  feedState: State.SQLite.table({
     name: 'feedState',
-    schema: Schema.Struct({
-      currentFeed: Schema.Literal('home', 'discover', 'following'),
-      lastRefresh: Schema.Date,
-      scrollPosition: Schema.Number,
-    }),
-    default: { 
-      id: SessionIdSymbol, 
-      value: { currentFeed: 'home', lastRefresh: new Date(), scrollPosition: 0 }
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      currentFeed: State.SQLite.text({ schema: Schema.Literal('home', 'discover', 'following'), default: 'home' }),
+      lastRefresh: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      scrollPosition: State.SQLite.integer({ default: 0 }),
     },
   }),
 }
@@ -209,7 +206,14 @@ export const events = {
   }),
   
   // Local UI state
-  feedStateUpdated: tables.feedState.set,
+  feedStateUpdated: Events.clientOnly({
+    name: 'v1.FeedStateUpdated',
+    schema: Schema.Struct({
+      currentFeed: Schema.Literal('home', 'discover', 'following').pipe(Schema.optional),
+      lastRefresh: Schema.Date.pipe(Schema.optional),
+      scrollPosition: Schema.Number.pipe(Schema.optional),
+    }),
+  }),
 }
 
 // Materializers with eventual consistency for aggregates
@@ -302,6 +306,20 @@ const materializers = State.SQLite.materializers(events, {
       lastUpdated: new Date()
     }).where({ postId }),
   ],
+
+  'v1.FeedStateUpdated': ({ currentFeed, lastRefresh, scrollPosition }) =>
+    tables.feedState
+      .insert({
+        id: 'default',
+        currentFeed: currentFeed ?? 'home',
+        lastRefresh: lastRefresh ?? new Date(),
+        scrollPosition: scrollPosition ?? 0,
+      })
+      .onConflict('id', 'update', {
+        ...(currentFeed === undefined ? {} : { currentFeed }),
+        ...(lastRefresh === undefined ? {} : { lastRefresh }),
+        ...(scrollPosition === undefined ? {} : { scrollPosition }),
+      }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

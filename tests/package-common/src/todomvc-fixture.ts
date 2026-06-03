@@ -47,32 +47,6 @@ const app = State.SQLite.table({
   },
 })
 
-const userInfo = State.SQLite.clientDocument({
-  name: 'UserInfo',
-  schema: Schema.Struct({
-    username: Schema.String,
-    text: Schema.String,
-  }),
-  default: { value: { username: '', text: '' } },
-})
-
-const AppRouterSchema = State.SQLite.clientDocument({
-  name: 'AppRouter',
-  schema: Schema.Struct({
-    currentTaskId: Schema.String.pipe(Schema.NullOr),
-  }),
-  default: {
-    value: { currentTaskId: null },
-    id: 'singleton',
-  },
-})
-
-const kv = State.SQLite.clientDocument({
-  name: 'Kv',
-  schema: Schema.Any,
-  default: { value: null },
-})
-
 // ============================================================================
 // Events
 // ============================================================================
@@ -90,9 +64,6 @@ export const events = {
       completed: Schema.Boolean.pipe(Schema.optional),
     }),
   }),
-  AppRouterSet: AppRouterSchema.set,
-  UserInfoSet: userInfo.set,
-  KvSet: kv.set,
 }
 
 // ============================================================================
@@ -104,7 +75,7 @@ const materializers = State.SQLite.materializers(events, {
   todoUpdated: ({ id, text, completed }) => todos.update({ ...omitUndefineds({ completed, text }) }).where({ id }),
 })
 
-export const tables = { todos, app, userInfo, AppRouterSchema, kv }
+export const tables = { todos, app }
 
 const state = State.SQLite.makeState({ tables, materializers })
 export const schema = makeSchema({ state, events })

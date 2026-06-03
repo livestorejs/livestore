@@ -5,7 +5,8 @@ import { queryDb } from '@livestore/livestore'
 import { useStoreRegistry } from '@livestore/react'
 
 import { useMailboxStore } from '../stores/mailbox/index.ts'
-import { mailboxTables } from '../stores/mailbox/schema.ts'
+import { mailboxUiState$ } from '../stores/mailbox/queries.ts'
+import { mailboxEvents, mailboxTables } from '../stores/mailbox/schema.ts'
 import { threadStoreOptions } from '../stores/thread/index.ts'
 
 const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
@@ -24,7 +25,11 @@ export const ThreadList: React.FC = () => {
 
   const labels = mailboxStore.useQuery(labelsQuery)
   const threadIndex = mailboxStore.useQuery(threadIndexQuery)
-  const [uiState, setUiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
+  const uiState = mailboxStore.useQuery(mailboxUiState$)
+  const setUiState = useCallback(
+    (patch: Parameters<typeof mailboxEvents.uiStateSet>[0]) => mailboxStore.commit(mailboxEvents.uiStateSet(patch)),
+    [mailboxStore],
+  )
   const threadLabelsForLabel = mailboxStore.useQuery(
     queryDb(mailboxTables.threadLabels.where({ labelId: uiState.selectedLabelId || '' }), {
       label: 'threadLabelsForLabel',

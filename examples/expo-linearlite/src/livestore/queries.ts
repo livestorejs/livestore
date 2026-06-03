@@ -1,5 +1,11 @@
 import { queryDb } from '@livestore/livestore'
 
-import { tables } from './schema.ts'
+import { defaultUiState, tables } from './schema.ts'
 
-export const uiState$ = queryDb(tables.uiState.get(), { label: 'uiState' })
+export const uiState$ = queryDb(
+  tables.uiState
+    .select('value')
+    .where({ id: 'default' })
+    .first({ behaviour: 'fallback', fallback: () => defaultUiState }),
+  { label: 'uiState' },
+)

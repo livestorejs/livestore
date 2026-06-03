@@ -4,7 +4,8 @@ import { useCallback, useMemo } from 'react'
 import { queryDb } from '@livestore/livestore'
 
 import { useMailboxStore } from '../stores/mailbox/index.ts'
-import { mailboxTables } from '../stores/mailbox/schema.ts'
+import { mailboxUiState$ } from '../stores/mailbox/queries.ts'
+import { mailboxEvents, mailboxTables } from '../stores/mailbox/schema.ts'
 
 const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
 
@@ -20,7 +21,11 @@ const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
 export const LabelSidebar: React.FC = () => {
   const mailboxStore = useMailboxStore()
 
-  const [uiState, setUiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
+  const uiState = mailboxStore.useQuery(mailboxUiState$)
+  const setUiState = useCallback(
+    (patch: Parameters<typeof mailboxEvents.uiStateSet>[0]) => mailboxStore.commit(mailboxEvents.uiStateSet(patch)),
+    [mailboxStore],
+  )
   const labels = mailboxStore.useQuery(labelsQuery)
 
   const selectLabel = useCallback(

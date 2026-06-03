@@ -149,7 +149,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.scopedLive('client document pending events confirm after upstream advance', (test) =>
+  Vitest.scopedLive('client-only pending events confirm after upstream advance', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
       const backendFactory = EventFactory.makeFactory(events)({
@@ -158,7 +158,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       const store = yield* makeStore()
 
-      store.commit(tables.appConfig.set({ theme: 'dark' }, 'session-a'))
+      store.commit(events.appConfigSet({ id: 'session-a', value: { theme: 'dark' } }))
 
       const initialState = yield* store[StoreInternalsSymbol].syncProcessor.syncState.get
       expect(initialState.pending.length).toBeGreaterThan(0)

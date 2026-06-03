@@ -1,4 +1,4 @@
-import { defineMaterializer, Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+import { defineMaterializer, Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 export const tables = {
   todos: State.SQLite.table({
@@ -10,13 +10,13 @@ export const tables = {
       createdAt: State.SQLite.datetime(),
     },
   }),
-  uiState: State.SQLite.clientDocument({
+  uiState: State.SQLite.table({
     name: 'UiState',
-    schema: Schema.Struct({
-      newTodoText: Schema.String,
-      filter: Schema.Literal('all', 'active', 'completed'),
-    }),
-    default: { id: SessionIdSymbol, value: { newTodoText: '', filter: 'all' } },
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      newTodoText: State.SQLite.text({ default: '' }),
+      filter: State.SQLite.text({ schema: Schema.Literal('all', 'active', 'completed'), default: 'all' }),
+    },
   }),
 } as const
 
@@ -25,11 +25,26 @@ export const events = {
     name: 'v1.TodoCreated',
     schema: Schema.Struct({ id: Schema.String, text: Schema.String, createdAt: Schema.Date }),
   }),
+  uiStateSet: Events.clientOnly({
+    name: 'v1.UiStateSet',
+    schema: Schema.Struct({
+      newTodoText: Schema.String.pipe(Schema.optional),
+      filter: Schema.Literal('all', 'active', 'completed').pipe(Schema.optional),
+    }),
+  }),
 } as const
 
 const materializers = State.SQLite.materializers(events, {
   [events.todoCreated.name]: defineMaterializer(events.todoCreated, ({ id, text, createdAt }) =>
     tables.todos.insert({ id, text, completed: false, createdAt }),
+  ),
+  [events.uiStateSet.name]: defineMaterializer(events.uiStateSet, ({ newTodoText, filter }) =>
+    tables.uiState
+      .insert({ id: 'default', newTodoText: newTodoText ?? '', filter: filter ?? 'all' })
+      .onConflict('id', 'update', {
+        ...(newTodoText === undefined ? {} : { newTodoText }),
+        ...(filter === undefined ? {} : { filter }),
+      }),
   ),
 })
 

@@ -3,7 +3,7 @@
 import React, { Suspense, useCallback, useMemo, useRef, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 
-import { StoreRegistry } from '@livestore/livestore'
+import { queryDb, StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
 
 import { ChatHeader, MessageInput, MessagesContainer, UserSidebar } from './components.tsx'
@@ -11,6 +11,14 @@ import { VersionBadge } from './components/VersionBadge.tsx'
 import { useChat } from './hooks.ts'
 import { events, tables } from './livestore/schema.ts'
 import { useAppStore } from './livestore/store.ts'
+
+const uiStateQuery = queryDb(
+  tables.uiState
+    .select('userContext', 'lastSeenMessageId')
+    .where({ id: 'singleton' })
+    .first({ behaviour: 'fallback', fallback: () => ({ userContext: undefined, lastSeenMessageId: null }) }),
+  { label: 'uiState' },
+)
 
 // Main chat component that uses LiveStore hooks
 export const ChatComponent = () => {
@@ -86,7 +94,10 @@ export default ChatApp
 
 const UserNameWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
   const store = useAppStore()
-  const [uiState, setUiState] = store.useClientDocument(tables.uiState)
+  const uiState = store.useQuery(uiStateQuery)
+  const setUiState = useCallback((patch: Parameters<typeof events.uiStateSet>[0]) => {
+    store.commit(events.uiStateSet(patch))
+  }, [store])
   const newUserId = useRef(crypto.randomUUID())
 
   const joinChat = useCallback(() => {

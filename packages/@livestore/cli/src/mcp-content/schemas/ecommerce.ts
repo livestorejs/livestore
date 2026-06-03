@@ -1,4 +1,4 @@
-export const ecommerceSchemaContent = `import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+export const ecommerceSchemaContent = `import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 // E-commerce with inventory management and order processing
 export const tables = {
@@ -140,20 +140,20 @@ export const tables = {
   }),
   
   // Shopping cart (client-side state)
-  cart: State.SQLite.clientDocument({
+  cart: State.SQLite.table({
     name: 'cart',
-    schema: Schema.Struct({
-      items: Schema.Array(Schema.Struct({
-        productId: Schema.String,
-        quantity: Schema.Number,
-        addedAt: Schema.Date,
-      })),
-      discountCode: Schema.NullOr(Schema.String),
-      notes: Schema.String,
-    }),
-    default: { 
-      id: SessionIdSymbol, 
-      value: { items: [], discountCode: null, notes: '' }
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      items: State.SQLite.json({
+        schema: Schema.Array(Schema.Struct({
+          productId: Schema.String,
+          quantity: Schema.Number,
+          addedAt: Schema.Date,
+        })),
+        default: [],
+      }),
+      discountCode: State.SQLite.text({ nullable: true }),
+      notes: State.SQLite.text({ default: '' }),
     },
   }),
 }
@@ -273,7 +273,18 @@ export const events = {
   }),
   
   // Cart management (local)
-  cartUpdated: tables.cart.set,
+  cartUpdated: Events.clientOnly({
+    name: 'v1.CartUpdated',
+    schema: Schema.Struct({
+      items: Schema.Array(Schema.Struct({
+        productId: Schema.String,
+        quantity: Schema.Number,
+        addedAt: Schema.Date,
+      })).pipe(Schema.optional),
+      discountCode: Schema.NullOr(Schema.String).pipe(Schema.optional),
+      notes: Schema.String.pipe(Schema.optional),
+    }),
+  }),
 }
 
 // Materializers with business logic and constraints
@@ -381,7 +392,7 @@ const materializers = State.SQLite.materializers(events, {
     
   'v1.OrderCancelled': ({ orderId, reason, cancelledAt }) => [
     tables.orders.update({ 
-      status: 'cancelled',
+      status: 'cancelled', 
       cancelledAt,
       notes: reason,
       updatedAt: cancelledAt 
@@ -393,6 +404,15 @@ const materializers = State.SQLite.materializers(events, {
       }).where({ id: item.productId })
     ),
   ],
+
+  'v1.CartUpdated': ({ items, discountCode, notes }) =>
+    tables.cart
+      .insert({ id: 'default', items: items ?? [], discountCode: discountCode ?? null, notes: notes ?? '' })
+      .onConflict('id', 'update', {
+        ...(items === undefined ? {} : { items }),
+        ...(discountCode === undefined ? {} : { discountCode }),
+        ...(notes === undefined ? {} : { notes }),
+      }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

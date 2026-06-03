@@ -1,4 +1,4 @@
-export const todoSchemaContent = `import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+export const todoSchemaContent = `import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 // State tables - Define your application state as SQLite tables
 export const tables = {
@@ -32,14 +32,14 @@ export const tables = {
     },
   }),
   // Client-only state for UI (not synced)
-  uiState: State.SQLite.clientDocument({
+  uiState: State.SQLite.table({
     name: 'uiState',
-    schema: Schema.Struct({ 
-      newTodoText: Schema.String, 
-      filter: Schema.Literal('all', 'active', 'completed'),
-      selectedTags: Schema.Array(Schema.String)
-    }),
-    default: { id: SessionIdSymbol, value: { newTodoText: '', filter: 'all', selectedTags: [] } },
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      newTodoText: State.SQLite.text({ default: '' }),
+      filter: State.SQLite.text({ schema: Schema.Literal('all', 'active', 'completed'), default: 'all' }),
+      selectedTags: State.SQLite.json({ schema: Schema.Array(Schema.String), default: [] }),
+    },
   }),
 }
 
@@ -106,7 +106,14 @@ export const events = {
   }),
   
   // UI state events (local only)
-  uiStateSet: tables.uiState.set,
+  uiStateSet: Events.clientOnly({
+    name: 'v1.UiStateSet',
+    schema: Schema.Struct({
+      newTodoText: Schema.String.pipe(Schema.optional),
+      filter: Schema.Literal('all', 'active', 'completed').pipe(Schema.optional),
+      selectedTags: Schema.Array(Schema.String).pipe(Schema.optional),
+    }),
+  }),
 }
 
 // Materializers - Map events to state changes with conflict-free semantics
@@ -146,6 +153,20 @@ const materializers = State.SQLite.materializers(events, {
     
   'v1.TodoUntagged': ({ todoId, tagId }) => 
     tables.todoTags.delete().where({ todoId, tagId }),
+
+  'v1.UiStateSet': ({ newTodoText, filter, selectedTags }) =>
+    tables.uiState
+      .insert({
+        id: 'default',
+        newTodoText: newTodoText ?? '',
+        filter: filter ?? 'all',
+        selectedTags: selectedTags ?? [],
+      })
+      .onConflict('id', 'update', {
+        ...(newTodoText === undefined ? {} : { newTodoText }),
+        ...(filter === undefined ? {} : { filter }),
+        ...(selectedTags === undefined ? {} : { selectedTags }),
+      }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

@@ -1,10 +1,8 @@
 import type { UnknownError } from '@livestore/common'
 import {
-  type AppState,
   type CreateTodoMvcStoreOptions,
   createTodoMvcStore,
   events,
-  type Filter,
   schema,
   type Todo,
   tables,
@@ -17,7 +15,7 @@ import * as LiveStoreReact from '../mod.ts'
 
 // Re-export shared types and schema
 export { events, schema, tables }
-export type { AppState, Filter, Todo }
+export type { Todo }
 
 export type MakeTodoMvcReactOptions = CreateTodoMvcStoreOptions & {
   strictMode?: boolean | undefined

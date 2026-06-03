@@ -28,13 +28,13 @@ export const todos = State.SQLite.table({
   },
 })
 
-export const app = State.SQLite.clientDocument({
+export const app = State.SQLite.table({
   name: 'app',
-  schema: Schema.Struct({
-    newTodoText: Schema.String,
-    filter: Schema.String,
-  }),
-  default: { value: { newTodoText: '', filter: 'all' } },
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    newTodoText: State.SQLite.text({ default: '' }),
+    filter: State.SQLite.text({ default: 'all' }),
+  },
 })
 
 export const tables = { todos, app }

@@ -2,11 +2,21 @@
 
 import { createEffect, createMemo, createSignal, type JSX, onMount, Show } from 'solid-js'
 
+import { queryDb } from '@livestore/livestore'
+
 import { ChatHeader, MessageInput, MessagesContainer, UserSidebar } from './components.tsx'
 import { VersionBadge } from './components/VersionBadge.tsx'
 import { useChat } from './hooks.ts'
 import { events, tables } from './livestore/schema.ts'
 import { useAppStore } from './livestore/store.ts'
+
+const uiStateQuery = queryDb(
+  tables.uiState
+    .select('userContext', 'lastSeenMessageId')
+    .where({ id: 'singleton' })
+    .first({ behaviour: 'fallback', fallback: () => ({ userContext: undefined, lastSeenMessageId: null }) }),
+  { label: 'uiState' },
+)
 
 // Main chat component that uses LiveStore hooks
 export const ChatComponent = () => {
@@ -83,7 +93,10 @@ export default App
 
 const UserNameWrapper = (props: { children: JSX.Element }) => {
   const store = useAppStore()
-  const [uiState, setUiState] = store.useClientDocument(tables.uiState)
+  const uiState = store.useQuery(uiStateQuery)
+  const setUiState = (patch: Parameters<typeof events.uiStateSet>[0]) => {
+    store()?.commit(events.uiStateSet(patch))
+  }
   const newUserId = crypto.randomUUID()
 
   const joinChat = createMemo(() => () => {
