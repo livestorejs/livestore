@@ -2,9 +2,7 @@
 
 ## Context
 
-LiveStore applications define state as SQLite tables and derive that state by committing events that are processed by materializers.
-
-For durable application data, users usually define:
+LiveStore applications define state as SQLite tables and derive that state by committing events that are processed by materializers:
 
 ```ts
 const tables = {
@@ -32,18 +30,7 @@ const materializers = State.SQLite.materializers(events, {
 })
 ```
 
-LiveStore also supports client-only events. Client-only events are processed locally on the client and can be synced across client sessions such as browser tabs/windows, but are not part of the synced domain event stream shared with other clients.
-
-Client documents are a convenience API for persisted client-specific state. A table declared with `State.SQLite.clientDocument()` currently expands into:
-
-- A SQLite table with `id` and `value` columns.
-- A generated client-only setter event named `${DocumentName}Set`.
-- A generated materializer that upserts the document.
-- A `.get()` query helper that returns the document value.
-- A `.set()` event helper that commits partial or full document updates.
-- Framework hooks such as `store.useClientDocument()`.
-
-For example:
+LiveStore also supports client-only events. Client-only events are persisted locally on the client and are synced across browser tabs but are not sent to the server. Client documents are a convenience API built on top of client-only events. For example:
 
 ```ts
 const tables = {
@@ -69,27 +56,15 @@ const [{ input, filter }, setUiState, , uiState$] = store.useClientDocument(tabl
 setUiState({ filter: 'Completed' })
 ```
 
-This is useful for UI state that should survive refreshes and participate in LiveStore reactivity, such as selected filters, draft text, scroll state, selected tabs, and local layout preferences.
-
-The API exists because LiveStore applications often have state that sits between framework-local state and durable domain data:
-
-- Framework-local state such as `React.useState()` is easy to update, but it is lost on refresh and cannot be used as a first-class dependency in LiveStore queries.
-- Durable domain data belongs in explicit synced events and materializers, but that ceremony is often too heavy for local UI details such as a filter tab or draft input.
-- Client-specific UI state still benefits from LiveStore's persistence, schema validation, reactivity graph, DevTools visibility, and adapter/session storage model.
-
-Client documents therefore provide a shorthand for a repeated pattern: a single local document, a default value, a client-only setter event, an upsert materializer, a get-or-create read helper, and a framework hook with `useState`-like setter ergonomics.
+This is useful for UI state that should survive refreshes and stay in sync across tabs, such as theme preference, text size, and draft state.
 
 ## Problem
 
-> **Problem Statement**: The Client Document API adds public surface area and internal special cases for a convenience pattern that is not essential to LiveStore's core value, making the product harder to maintain at the level of quality expected from a data layer.
-
-Client documents are valuable because they make a common task easy: persisted local UI state. The problem is not that this use case is unimportant. The problem is that the current API solves it by introducing a second state-modeling path beside LiveStore's core event/materializer model.
+> **Problem Statement**: The Client Document API adds public surface area and internal special cases for a convenience pattern that is not essential to LiveStore's core value, making the product more complex and harder to maintain.
 
 ### 1. Maintenance Cost
 
-Client documents are not a thin helper around public APIs. They require special handling in core schema construction, query building, live query execution, framework integrations, type definitions, docs, examples, and tests.
-
-This maintenance cost matters because LiveStore is a data-layer product where quality depends on making the core model reliable, understandable, and recoverable. Every extra public abstraction expands the set of behavior that must be designed, tested, documented, migrated, and supported. That cost compounds across adapters, framework integrations, examples, generated docs, and user expectations. Removing a convenience API that duplicates expressible core behavior lets implementation effort concentrate on making the essential event, materializer, query, persistence, and sync paths excellent.
+Client documents are not just a thin helper around public APIs. They require special handling in schema construction, query building, live query execution, framework integrations, type definitions, docs, examples, and tests.
 
 #### A Special Table Definition Type
 
@@ -107,7 +82,7 @@ This adds an implicit schema path:
 - Normal materializers are added from `State.SQLite.materializers()`.
 - Client document events and materializers are derived from table definitions.
 
-Removing client documents would make event and materializer registration explicit again.
+Removing client documents would make event and materializer registration fully explicit again.
 
 #### A Query Builder Special Case
 
@@ -125,26 +100,7 @@ This is a meaningful amount of query-system complexity for an API that can be ex
 
 At runtime, row queries need a `makeExecBeforeFirstRun()` path that can run before the first query execution and commit a default event with `skipRefresh`.
 
-This is the implementation consequence of the read-can-write conceptual issue. It forces live query execution and direct `store.query()` paths to know about client document initialization.
-
-#### Generic JSON Patch Semantics
-
-Client documents default to partial-set behavior for struct-like documents:
-
-```ts
-setUiState({ filter: 'Completed' })
-```
-
-The generated materializer must support:
-
-- Insert with defaults when the document does not exist.
-- Merge partial patches into an existing JSON value.
-- Skip `undefined` values.
-- Fully replace values when `partialSet: false`.
-- Handle non-struct schemas differently from struct schemas.
-- Encode and decode custom Effect schemas correctly.
-
-These semantics are useful but generic. Applications that need this behavior can define it explicitly, and applications that need different behavior currently need to bypass the client document abstraction anyway.
+It forces live query execution and direct `store.query()` paths to know about client document initialization.
 
 #### Additional Framework API Surface
 
@@ -157,7 +113,7 @@ The React integration needs its own `useClientDocument` API surface and type beh
 - Partial update typing.
 - Access to the underlying `LiveQuery`.
 
-Removing client documents would keep framework integrations focused on `useStore()` and `useQuery()`. Applications could still define their own domain-specific hooks on top of explicit events and queries.
+Removing client documents would keep framework integrations focused on `useStore()` and `useQuery()`.
 
 ### 2. Breaks the Core LiveStore Model
 
@@ -166,9 +122,8 @@ LiveStore's conceptual model is intentionally explicit:
 - Events record what happened.
 - Materializers derive SQLite state from those events.
 - Queries read the materialized state.
-- Framework integrations subscribe to queries and commit events.
 
-Client documents blur each of those boundaries.
+Client documents blur each of those boundaries. It modifies the conceptual model in a way that dilutes and complicates the original one.
 
 #### Tables Also Define Events and Materializers
 
@@ -186,7 +141,7 @@ events.filterChanged({ filter: 'Completed' })
 tables.uiState.set({ filter: 'Completed' })
 ```
 
-The second form is shorter, but the event log now records a generic `UiStateSet` event instead of a meaningful fact such as `FilterChanged`.
+The second form is shorter, but the event log now records a generic `UiStateSet` event instead of a more meaningful fact such as `FilterChanged`.
 
 #### Queries Can Cause Writes
 
@@ -204,61 +159,19 @@ That behavior is useful for get-or-create ergonomics, but it complicates the men
 - Normal commit: append event and materialize state.
 - Client document query: maybe append an event, materialize state, then read state.
 
-LiveStore should avoid read paths that perform writes unless the behavior is essential to the core model.
-
-#### Events Become Generic State Mutations
-
-LiveStore's core model encourages applications to record what happened:
-
-```ts
-events.todoCompleted({ id })
-events.issueAssigned({ issueId, assigneeId })
-events.filterChanged({ filter })
-```
-
-Client documents encourage applications to record the new value:
-
-```ts
-tables.frontendState.set({ selectedIssueId })
-tables.uiState.set({ filter })
-tables.composerState.set({ draft })
-```
-
-That is often fine for local UI state, but the API can become a dumping ground for state that should have been modeled as explicit events. Broad documents such as `uiState`, `frontendState`, and `appState` are especially likely to accumulate unrelated fields over time.
+This brings in hidden behavior, which can confuse users.
 
 #### Schema Evolution Follows a Separate Policy
 
 Client documents include an optimistic decoding strategy for historical document values and generated setter events. The decoder attempts to preserve compatible fields, drop removed fields, and fall back to defaults when structures are incompatible.
 
-This is pragmatic for UI state, but it creates a second migration/evolution model beside ordinary event and materializer evolution. It also means incompatible changes may silently reset client-document state. That is acceptable for low-value UI state, but it is not an appropriate default for anything with business meaning.
+This is pragmatic for UI state, but it creates a second migration/evolution model beside ordinary event and materializer evolution. It also means incompatible changes may silently reset client-document state.
 
 ## Proposed Solution
 
 Remove the client document API from LiveStore and replace its documented use cases with explicit client-only events, normal SQLite tables, and small framework-level helper recipes.
 
-The removal should happen in one step. The implementation should remove the API, update docs and examples, and provide migration guidance in the same change rather than introducing a deprecation period.
-
-### Scope
-
-Remove these public concepts:
-
-- `State.SQLite.clientDocument()`
-- `State.SQLite.ClientDocumentTableDef`
-- `State.SQLite.ClientDocumentTableDefSymbol`
-- `State.SQLite.tableIsClientDocumentTable()`
-- `store.useClientDocument()` in framework integrations
-- Any generated client-document setter event behavior
-- Client-document-specific get-or-create row query behavior
-
-Keep these concepts:
-
-- `Events.clientOnly()`
-- Normal SQLite tables
-- Normal materializers
-- Normal query builder APIs
-- Framework `store.useQuery()` APIs
-
-Client-only events remain the recommended LiveStore-native way to persist local/client-specific state.
+Client-only events remain the LiveStore-native way to persist local/client-specific state.
 
 ### Migration Paths
 
@@ -266,16 +179,7 @@ Removing the Client Document API should not imply that every former client docum
 
 #### Path 1: Move UI-Only State Out of LiveStore
 
-Some state does not need to be in LiveStore. If a value is only used by the view layer and does not need to participate in LiveStore queries, materializers, persistence, cross-tab/client-session sync, or DevTools, it should use ordinary UI state instead.
-
-Examples:
-
-- Modal open/closed state.
-- Hovered or focused item.
-- Drag state.
-- Resize state.
-- Command palette state.
-- View-only toggles.
+Some state does not need to be in LiveStore. If a value is only used by the view layer and does not need to participate in LiveStore queries, materializers, persistence, cross-tab/client-session sync, it should use ordinary UI state instead.
 
 In React, this can be `useState()`, `useReducer()`, or a small component-local store. For app-local reactive state outside React, Effect Atom may be a better fit than storing the value in LiveStore just because it is state.
 
@@ -287,7 +191,7 @@ This path removes LiveStore from state it does not need to own.
 
 #### Path 2: Model LiveStore-Relevant State With Client-Only Events
 
-Some local/client-specific state should remain in LiveStore because LiveStore queries need to depend on it, because it should be persisted in the same storage model, because it needs cross-tab/client-session sync, or because it is useful to inspect as part of the local event/state graph.
+Some local/client-specific state should remain in because it should be persisted in the same storage model, because it needs cross-tab/client-session sync, or because it is useful to inspect as part of the local event/state graph.
 
 For that state, use normal tables and explicit `Events.clientOnly()` events.
 
@@ -371,9 +275,9 @@ const defaultUiState = { input: '', filter: 'All' as const }
 
 const uiState$ = queryDb(
   tables.uiState
-    .select('input', 'filter')
-    .where({ id: store.sessionId })
-    .first({ behaviour: 'fallback', fallback: () => defaultUiState }),
+  .select('input', 'filter')
+  .where({ id: store.sessionId })
+  .first({ behaviour: 'fallback', fallback: () => defaultUiState }),
 )
 
 const todos$ = queryDb(
@@ -393,13 +297,19 @@ This path is the preferred LiveStore-native migration for state that participate
 
 Some applications may want the least disruptive migration, especially if they have many existing client documents and want to preserve the same "single document with patch updates" model.
 
-For that case, applications can replicate the client document shape explicitly with a normal table, a JSON `value` column, and a generic client-only patch event:
+For that case, applications can replicate the client document shape explicitly with a normal table, a JSON `value` column, a generic client-only patch event, and a materializer that applies top-level JSON updates:
 
-```ts
+```tsx
+import { Events, makeSchema, queryDb, Schema, State } from '@livestore/livestore'
+import { useAppStore } from './store.ts'
+
 const UiState = Schema.Struct({
   input: Schema.String,
   filter: Schema.Literal('All', 'Active', 'Completed'),
 })
+
+const defaultUiState = { input: '', filter: 'All' } as const
+const uiStateId = 'default'
 
 const tables = {
   uiState: State.SQLite.table({
@@ -420,22 +330,63 @@ const events = {
     }),
   }),
 }
+
+const encodeValue = Schema.encodeSync(Schema.parseJson(UiState))
+const encodePatch = Schema.encodeSync(Schema.partial(UiState))
+
+const materializers = State.SQLite.materializers(events, {
+  'v1.UiStatePatched': ({ id, patch }) => {
+    const cleanPatch = Object.fromEntries(
+      Object.entries(patch).filter(([, value]) => value !== undefined),
+    ) as Partial<typeof UiState.Type>
+    const encodedPatch = encodePatch(cleanPatch)
+
+    let jsonSetSql = 'value'
+    const bindValues: unknown[] = [id, encodeValue({ ...defaultUiState, ...cleanPatch })]
+
+    for (const [key, value] of Object.entries(encodedPatch)) {
+      jsonSetSql = `json_set(${jsonSetSql}, ?, json(?))`
+      bindValues.push(`$.${key}`, JSON.stringify(value))
+    }
+
+    return {
+      sql: `
+        INSERT INTO 'UiState' (id, value)
+        VALUES (?, ?)
+        ON CONFLICT (id) DO UPDATE SET value = ${jsonSetSql}
+      `,
+      bindValues,
+      writeTables: new Set(['UiState']),
+    }
+  },
+})
+
+const state = State.SQLite.makeState({ tables, materializers })
+export const schema = makeSchema({ events, state })
+
+export const uiState$ = queryDb(
+  tables.uiState
+    .select()
+    .where({ id: uiStateId })
+    .first({ behaviour: 'fallback', fallback: () => ({ id: uiStateId, value: defaultUiState }) }),
+  { label: 'uiState' },
+)
+
+export const TodoHeader = () => {
+  const store = useAppStore()
+  const { value: uiState } = store.useQuery(uiState$)
+
+  const setUiState = (patch: Partial<typeof UiState.Type>) =>
+    store.commit(events.uiStatePatched({ id: uiStateId, patch }))
+
+  return (
+    <input
+      value={uiState.input}
+      onChange={(event) => setUiState({ input: event.currentTarget.value })}
+      placeholder="What needs to be done?"
+    />
+  )
+}
 ```
 
-The application can then define a small helper that commits `uiStatePatched` and a materializer that applies the patch to the `value` column.
-
-This path intentionally preserves the old document-style model, but moves it out of LiveStore core. It should be treated as a low-friction migration path, not the recommended modeling style for new code.
-
-### Removal Work
-
-The implementation should remove the API directly:
-
-- Remove `State.SQLite.clientDocument()`.
-- Remove `ClientDocumentTableDef` types.
-- Remove generated setter event/materializer registration.
-- Remove `RowQuery` if no other feature needs get-or-create row semantics.
-- Remove `makeExecBeforeFirstRun()` client-document default-row behavior.
-- Remove `store.useClientDocument()` from framework integrations.
-- Convert core examples away from client documents.
-- Convert tutorial chapter 6 to explicit client-only events.
-- Update docs, generated snippets, MCP content, generated API docs, and client-document-specific tests.
+This path intentionally preserves the old document-style model, but moves it out of the core API. It should be treated as a low-friction migration path, not the recommended modeling style for new code.
