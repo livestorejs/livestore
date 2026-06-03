@@ -64,14 +64,25 @@ const readJson = <T>(file: string): T => JSON.parse(readFileSync(file, 'utf8')) 
 
 const writeJson = (file: string, value: unknown) => writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`)
 
+type ReleaseTopology = {
+  publishablePackages: readonly { name: string; dir: string }[]
+}
+
+const releaseTopology = () => readJson<ReleaseTopology>('scripts/src/generated/release-topology.json')
+
 const publicLivestorePackages = () =>
-  readdirSync('packages/@livestore')
-    .flatMap((entry) => {
-      const packageJsonPath = `packages/@livestore/${entry}/package.json`
+  releaseTopology()
+    .publishablePackages.flatMap(({ dir, name: expectedName }) => {
+      const packageJsonPath = `${dir}/package.json`
       if (existsSync(packageJsonPath) === false) return []
       const packageJson = readJson<{ name?: string; private?: boolean }>(packageJsonPath)
       if (packageJson.private === true || packageJson.name === undefined) return []
-      return [{ name: packageJson.name, dir: `packages/@livestore/${entry}` }]
+      if (packageJson.name !== expectedName) {
+        throw new Error(
+          `Topology/package.json mismatch for ${dir}: expected ${expectedName}, found ${packageJson.name}`,
+        )
+      }
+      return [{ name: packageJson.name, dir }]
     })
     .sort((left, right) => left.name.localeCompare(right.name))
 

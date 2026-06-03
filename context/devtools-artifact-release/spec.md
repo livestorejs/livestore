@@ -55,14 +55,14 @@ publish the repacked DevTools package if those checks pass.
 
 ## Release Scenarios
 
-| Scenario | Requires `overeng`? | Expected behavior |
-| --- | --- | --- |
-| LiveStore release with unchanged DevTools | No | LiveStore CI re-verifies the pinned artifact against the release candidate. |
-| LiveStore patch release | No | The pinned artifact is reused if the compatibility gate passes. |
-| DevTools-only artifact refresh | Yes | `overeng` builds and publishes a new immutable artifact, then LiveStore reviews the manifest update. |
-| Coupled LiveStore and DevTools change | Yes | A new artifact is produced for the LiveStore change and LiveStore CI verifies that exact pairing. |
-| Existing artifact fails compatibility | Usually yes | Release blocks until LiveStore preserves compatibility or a new DevTools artifact is produced. |
-| CI snapshot release | No | Snapshot repack may use ephemeral CI certification because snapshot versions cannot be checked in ahead of time. |
+| Scenario                                  | Requires `overeng`? | Expected behavior                                                                                                |
+| ----------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| LiveStore release with unchanged DevTools | No                  | LiveStore CI re-verifies the pinned artifact against the release candidate.                                      |
+| LiveStore patch release                   | No                  | The pinned artifact is reused if the compatibility gate passes.                                                  |
+| DevTools-only artifact refresh            | Yes                 | `overeng` builds and publishes a new immutable artifact, then LiveStore reviews the manifest update.             |
+| Coupled LiveStore and DevTools change     | Yes                 | A new artifact is produced for the LiveStore change and LiveStore CI verifies that exact pairing.                |
+| Existing artifact fails compatibility     | Usually yes         | Release blocks until LiveStore preserves compatibility or a new DevTools artifact is produced.                   |
+| CI snapshot release                       | No                  | Snapshot repack may use ephemeral CI certification because snapshot versions cannot be checked in ahead of time. |
 
 ## Certification Model
 
@@ -90,9 +90,7 @@ Ephemeral CI proof:
   "livestoreVersion": "0.4.0-dev.27",
   "devtoolsBuildId": "dt-...",
   "devtoolsProtocolVersion": 1,
-  "scenarios": [
-    "node adapter session loads through Vite and stays connected past 35 seconds"
-  ],
+  "scenarios": ["node adapter session loads through Vite and stays connected past 35 seconds"],
   "ciRunUrl": "https://github.com/livestorejs/livestore/actions/runs/..."
 }
 ```

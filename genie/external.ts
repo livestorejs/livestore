@@ -5,34 +5,41 @@
  * can import it without requiring nested megarepo sync.
  */
 
+import { livestoreCurrentPackageNames, workspaceCatalogForProjection } from './repo-topology.ts'
+
+export {
+  changesetsIgnoredPackageNames,
+  changesetsIgnoredPackageJsonNames,
+  livestoreContribExampleMembers,
+  livestoreContribPackageNames,
+  livestoreCorePackageNames,
+  livestoreCurrentPackageNames,
+  livestoreEffectUtilsPackageNames,
+  livestoreOwnedPackageNames,
+  livestorePackageTopology,
+  materializedMemberPathsForProjection,
+  memberPathsForProjection,
+  packageDescriptorForPackageName,
+  packageDirForPackageName,
+  packageJsonNameForPackageName,
+  packageNamesForOwner,
+  packageNamesForProjection,
+  publishableLivestorePackageDescriptors,
+  publishableLivestorePackageJsonNames,
+  releaseGroupPackageDescriptors,
+  releaseGroupPackageJsonNames,
+  releaseGroupPackageNames,
+  workspaceCatalogForProjection,
+  type LivestorePackageName,
+  type LivestorePackageOwner,
+  type LivestorePackageProjection,
+  type LivestorePackageTopologyEntry,
+  type LivestoreReleaseGroup,
+} from './repo-topology.ts'
+
 /** Workspace packages exposed by LiveStore. */
 export const livestoreWorkspaceCatalog = {
-  '@livestore/utils': 'workspace:*',
-  '@livestore/utils-dev': 'workspace:*',
-  '@livestore/common': 'workspace:*',
-  '@livestore/common-cf': 'workspace:*',
-  '@livestore/livestore': 'workspace:*',
-  '@livestore/react': 'workspace:*',
-  '@livestore/solid': 'workspace:*',
-  '@livestore/svelte': 'workspace:*',
-  '@livestore/adapter-web': 'workspace:*',
-  '@livestore/adapter-node': 'workspace:*',
-  '@livestore/adapter-expo': 'workspace:*',
-  '@livestore/adapter-cloudflare': 'workspace:*',
-  '@livestore/sqlite-wasm': 'workspace:*',
-  '@livestore/webmesh': 'workspace:*',
-  '@livestore/devtools-web-common': 'workspace:*',
-  '@livestore/devtools-expo': 'workspace:*',
-  '@livestore/graphql': 'workspace:*',
-  '@livestore/sync-cf': 'workspace:*',
-  '@livestore/sync-s2': 'workspace:*',
-  '@livestore/sync-electric': 'workspace:*',
-  '@livestore/cli': 'workspace:*',
-  '@livestore/effect-playwright': 'workspace:*',
-  '@livestore/framework-toolkit': 'workspace:*',
-  '@livestore/peer-deps': 'workspace:*',
-  '@livestore/wa-sqlite': 'workspace:*',
-
+  ...workspaceCatalogForProjection('root'),
   '@local/astro-tldraw': 'workspace:*',
   '@local/astro-twoslash-code': 'workspace:*',
   '@local/shared': 'workspace:*',
@@ -130,36 +137,8 @@ export const livestoreOnlyCatalog = {
   yaml: '2.8.1',
 } as const
 
-const livestorePackageNames = [
-  'adapter-cloudflare',
-  'adapter-expo',
-  'adapter-node',
-  'adapter-web',
-  'cli',
-  'common',
-  'common-cf',
-  'devtools-expo',
-  'devtools-web-common',
-  'effect-playwright',
-  'framework-toolkit',
-  'graphql',
-  'livestore',
-  'peer-deps',
-  'react',
-  'solid',
-  'sqlite-wasm',
-  'svelte',
-  'sync-cf',
-  'sync-electric',
-  'sync-s2',
-  'utils',
-  'utils-dev',
-  'wa-sqlite',
-  'webmesh',
-] as const
-
 const toCamelCase = (value: string) => value.replace(/-([a-z])/g, (_, char: string) => char.toUpperCase())
 
 /** Internal refs for consumers that need path mappings to @livestore packages. */
 export const createLivestoreRefs = (basePath: string) =>
-  Object.fromEntries(livestorePackageNames.map((name) => [toCamelCase(name), { path: `${basePath}/${name}` }]))
+  Object.fromEntries(livestoreCurrentPackageNames.map((name) => [toCamelCase(name), { path: `${basePath}/${name}` }]))
