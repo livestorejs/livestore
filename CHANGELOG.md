@@ -511,6 +511,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Add GitHub issue templates to improve issue quality (#602)
 - Reworked the documentation tooling so maintainers continuously publish token-efficient, TypeScript-backed snippets that stay reliable for coding agents (#715)
 - **Snapshot release confirmation prompt:** The `mono release snapshot` command now prompts for confirmation before publishing. Pass `--yes` to skip the prompt in scripts and CI. The prompt is also auto-skipped when `CI` is set (#1049).
+- **Release pre-flight health check:** Weekly workflow (plus on every release-workflow PR) exercises every external token, OIDC binding, and DNS path the publish job depends on without ever publishing — npm/Netlify/Cloudflare/Mixedbread API read probes, required-secrets presence, PATH sanity for `pnpm`/`node`/`bun`/`gh`/`jq`. Aggregated failures open (or warm) a `bug`-labelled issue; the structured report is also exported as a workflow artifact and can be consumed by `scripts/src/commands/health/release-preflight.ts --json`.
 
 #### wa-sqlite Integration
 
