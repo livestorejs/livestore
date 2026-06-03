@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "f29b791b25f080bcf73438c9dfa5434f2572d2c4",
+      "ref": "schickling-assistant/2026-06-03-workflow-call-job",
+      "commit": "cac20e6be3ba04dc52b7e190f7e134dd5e24ee38",
       "pinned": true,
-      "lockedAt": "2026-06-02T12:37:14.000Z"
+      "lockedAt": "2026-06-03T07:03:13.722Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",

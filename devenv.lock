@@ -3,11 +3,11 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1776802132,
-        "narHash": "sha256-2yO2SGA7zVFYKe0qyJjdg7WHuMOKNwTQmigL7ydD8hI=",
+        "lastModified": 1780459148,
+        "narHash": "sha256-oIpiel88r8zV/WqTFwcGAjWXKOASHNzq7wjXQ6ORTvg=",
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "91affc7a7b6646852a0079678eadf12ac5029d9d",
+        "rev": "493ed7ef062ba3972c06e60970fe5ebe014f5c33",
         "type": "github"
       },
       "original": {
@@ -24,16 +24,16 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1780403834,
-        "narHash": "sha256-kqDwgBq0LxpigfaxbJbhXEkZ0ubeIgvx/GLLh7hMpDg=",
+        "lastModified": 1780470039,
+        "narHash": "sha256-zOGA7zg+C1kC3Qcn5ST1OAyNCNzx99QfB7V4r8oLe7o=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "f29b791b25f080bcf73438c9dfa5434f2572d2c4",
+        "rev": "cac20e6be3ba04dc52b7e190f7e134dd5e24ee38",
         "type": "github"
       },
       "original": {
         "owner": "overengineeringstudio",
-        "ref": "main",
+        "ref": "schickling-assistant/2026-06-03-workflow-call-job",
         "repo": "effect-utils",
         "type": "github"
       }
@@ -99,11 +99,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1776796298,
-        "narHash": "sha256-PcRvlWayisPSjd0UcRQbhG8Oqw78AcPE6x872cPRHN8=",
+        "lastModified": 1778507602,
+        "narHash": "sha256-kTwur1wV+01SdqskVMSo6JMEpg71ps3HpbFY2GsflKs=",
         "owner": "cachix",
         "repo": "git-hooks.nix",
-        "rev": "3cfd774b0a530725a077e17354fbdb87ea1c4aad",
+        "rev": "61ab0e80d9c7ab14c256b5b453d8b3fb0189ba0a",
         "type": "github"
       },
       "original": {
@@ -190,17 +190,17 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
-        "lastModified": 1780403834,
-        "narHash": "sha256-kqDwgBq0LxpigfaxbJbhXEkZ0ubeIgvx/GLLh7hMpDg=",
+        "lastModified": 1780470039,
+        "narHash": "sha256-zOGA7zg+C1kC3Qcn5ST1OAyNCNzx99QfB7V4r8oLe7o=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "f29b791b25f080bcf73438c9dfa5434f2572d2c4",
+        "rev": "cac20e6be3ba04dc52b7e190f7e134dd5e24ee38",
         "type": "github"
       },
       "original": {
         "dir": "nix/playwright-flake",
         "owner": "overengineeringstudio",
-        "ref": "main",
+        "ref": "schickling-assistant/2026-06-03-workflow-call-job",
         "repo": "effect-utils",
         "type": "github"
       }

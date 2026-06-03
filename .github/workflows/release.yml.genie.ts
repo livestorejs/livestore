@@ -31,6 +31,8 @@ tests/integration/test-results/devtools/`,
 const releasePlanPaths = [
   '.github/workflows/release.yml',
   '.github/workflows/release.yml.genie.ts',
+  '.github/workflows/validate-publish-substance.yml',
+  '.github/workflows/validate-publish-substance.yml.genie.ts',
   '.github/workflows/deploy-prod.yml',
   '.github/workflows/deploy-prod.yml.genie.ts',
   'genie/repo.ts',
@@ -205,77 +207,53 @@ fi`,
       ],
     },
 
-    'validate-release-plan': {
+    /**
+     * Stable release validation. Delegates to the reusable
+     * `validate-publish-substance.yml` workflow so the plan-source selection
+     * + version/tag/deploy-target derivation is shared with the snapshot
+     * substance check in `ci.yml`. Decides between the checked-in
+     * `release/release-plan.json` and a synthetic plan based on whether the
+     * PR actually edits the plan file.
+     */
+    'select-plan-source': {
       if: "github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'validate-release-plan')",
       'runs-on': 'ubuntu-24.04',
       defaults: bashShellDefaults,
-      steps: withNixDiagnosticsOnFailure([
-        ...livestoreSetupSteps,
+      outputs: {
+        'release-plan-source': '${{ steps.choose.outputs.release-plan-source }}',
+      },
+      steps: [
+        { name: 'Checkout', uses: 'actions/checkout@v4' },
         {
-          name: 'Select release plan for validation',
+          id: 'choose',
+          name: 'Decide whether to use the committed plan or a synthetic one',
           run: `set -euo pipefail
-use_synthetic_plan=false
+source="plan-file"
 
 if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
   git fetch origin "\${{ github.base_ref }}" --depth=1
   if ! git diff --name-only "origin/\${{ github.base_ref }}...HEAD" | grep -qx 'release/release-plan.json'; then
-    use_synthetic_plan=true
+    source="synthetic"
   fi
 elif [ ! -f release/release-plan.json ]; then
-  use_synthetic_plan=true
+  source="synthetic"
 fi
 
-if [ "$use_synthetic_plan" = "false" ]; then
-  exit 0
-fi
+echo "release-plan-source=$source" >> "$GITHUB_OUTPUT"
+echo "Selected release-plan-source=$source"`,
+        },
+      ],
+    },
 
-mkdir -p release
-# PRs that touch release machinery but do not carry an actual release plan still
-# need to exercise package publishing and DevTools repacking. Use a unique,
-# unpublished prerelease instead of the checked-in package version: current dev
-# versions can already exist on npm, while snapshot versions intentionally
-# belong to the separate snapshot publisher.
-short_sha="\${GITHUB_SHA:0:12}"
-version="0.0.0-ci.release-validation.$short_sha"
-npm_tag="next"
-jq -n \\
-  --arg version "$version" \\
-  --arg npmTag "$npm_tag" \\
-  '{
-    schemaVersion: 1,
-    version: $version,
-    npmTag: $npmTag
-  }' > release/release-plan.json`,
-        },
-        {
-          name: 'Dry-run stable package publish',
-          run: runDevenvTasksBefore('release:stable:dryrun'),
-        },
-        {
-          name: 'Read release plan',
-          run: `set -euo pipefail
-release_version="$(jq -r '.version' release/release-plan.json)"
-npm_tag="$(jq -r '.npmTag' release/release-plan.json)"
-: "\${release_version:?Missing release version}"
-: "\${npm_tag:?Missing npm tag}"
-echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
-echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
-if [ "$npm_tag" = "latest" ]; then
-  echo "LIVESTORE_RELEASE_DEPLOY_TARGET=prod" >> "$GITHUB_ENV"
-else
-  echo "LIVESTORE_RELEASE_DEPLOY_TARGET=dev" >> "$GITHUB_ENV"
-fi`,
-        },
-        {
-          name: 'Certify DevTools artifact liveness',
-          run: runDevenvTasksBefore('release:devtools-artifact:certify-liveness:no-install'),
-        },
-        devtoolsCertificationArtifactsStep,
-        {
-          name: 'Dry-run DevTools artifact repack',
-          run: runDevenvTasksBefore('release:devtools-artifact:repack-dryrun:no-install'),
-        },
-      ]),
+    'validate-release-plan': {
+      if: "github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'validate-release-plan')",
+      needs: 'select-plan-source',
+      uses: './.github/workflows/validate-publish-substance.yml',
+      with: {
+        'release-plan-source': '${{ needs.select-plan-source.outputs.release-plan-source }}',
+        'target-scope': 'stable',
+      },
+      secrets: 'inherit',
     },
 
     'publish-release': {
@@ -293,6 +271,20 @@ fi`,
       steps: withNixDiagnosticsOnFailure([
         ...livestoreSetupSteps,
         {
+          /**
+           * TODO(#1278-followup): Migrate this job to `uses:
+           * ./.github/workflows/validate-publish-substance.yml` so the version /
+           * tag / deploy-target triple is sourced from typed workflow_call
+           * outputs instead of re-derived here. Kept inline for now because the
+           * publish-release job has many downstream steps that still read these
+           * values as `env.LIVESTORE_RELEASE_DEPLOY_TARGET` — migrating them is
+           * a separate change.
+           *
+           * The duplicated jq/case block below intentionally mirrors the
+           * `Derive release-version / npm-tag / deploy-target outputs` step in
+           * `validate-publish-substance.yml`. Any change to the mapping must be
+           * applied in both places until the migration completes.
+           */
           name: 'Read release plan',
           run: `set -euo pipefail
 release_version="$(jq -r '.version' release/release-plan.json)"
@@ -302,13 +294,14 @@ npm_tag="$(jq -r '.npmTag' release/release-plan.json)"
 echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
 echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
 # Env vars do not carry across jobs in GitHub Actions, so the deploy-target
-# gate that the validate-release-plan job sets must be re-derived here for the
-# Deploy production docs/examples and Sync production docs search steps below.
-if [ "$npm_tag" = "latest" ]; then
-  echo "LIVESTORE_RELEASE_DEPLOY_TARGET=prod" >> "$GITHUB_ENV"
-else
-  echo "LIVESTORE_RELEASE_DEPLOY_TARGET=dev" >> "$GITHUB_ENV"
-fi`,
+# gate that the validate-release-plan job derives must be re-derived here for
+# the Deploy production docs/examples and Sync production docs search steps
+# below. Tracked by #1278 follow-up above.
+case "$npm_tag" in
+  latest) echo "LIVESTORE_RELEASE_DEPLOY_TARGET=prod" >> "$GITHUB_ENV" ;;
+  dev)    echo "LIVESTORE_RELEASE_DEPLOY_TARGET=dev"  >> "$GITHUB_ENV" ;;
+  *)      echo "LIVESTORE_RELEASE_DEPLOY_TARGET=none" >> "$GITHUB_ENV" ;;
+esac`,
         },
         /*
          * Stable package publishing uses the NPM_TOKEN secret. npm currently

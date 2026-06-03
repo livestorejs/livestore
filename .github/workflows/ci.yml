@@ -3458,6 +3458,14 @@ jobs:
           path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
+  validate-snapshot-substance:
+    if: github.event.pull_request.head.repo.fork != true
+    uses: ./.github/workflows/validate-publish-substance.yml
+    with:
+      release-plan-source: synthetic
+      synthetic-version-prefix: 0.0.0-ci.snapshot-validation
+      target-scope: snapshot
+    secrets: inherit
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
     runs-on: ubuntu-24.04

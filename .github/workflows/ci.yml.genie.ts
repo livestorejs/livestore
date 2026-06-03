@@ -418,6 +418,30 @@ done`,
     },
 
     /**
+     * Snapshot substance validation. Shares the
+     * `validate-publish-substance.yml` reusable workflow with the stable
+     * release path (`release.yml#validate-release-plan`), so the
+     * version/tag/deploy-target derivation and the stable-publish dry-run +
+     * DevTools repack-dryrun + liveness certification are validated once and
+     * stay in sync between snapshot and stable. Uses a synthetic plan so PRs
+     * don't depend on a checked-in `release/release-plan.json`.
+     *
+     * The actual snapshot publish in `publish-snapshot-version` below remains
+     * separate because it's the OIDC trusted-publish boundary; bundling that
+     * into a reusable workflow would change the npm trust contract.
+     */
+    'validate-snapshot-substance': {
+      if: IS_NOT_FORK,
+      uses: './.github/workflows/validate-publish-substance.yml',
+      with: {
+        'release-plan-source': 'synthetic',
+        'synthetic-version-prefix': '0.0.0-ci.snapshot-validation',
+        'target-scope': 'snapshot',
+      },
+      secrets: 'inherit',
+    },
+
+    /**
      * Keep only the publish boundary on GitHub-hosted runners. The heavy tests
      * above may use Namespace/self-hosted runners, but npm trusted publishing
      * currently requires GitHub-hosted OIDC and does not support self-hosted

@@ -7,9 +7,11 @@ inputs:
       nixpkgs:
         follows: nixpkgs
   playwright:
-    url: github:overengineeringstudio/effect-utils/main?dir=nix/playwright-flake
+    # TODO(#1278-followup): Revert to main once effect-utils#735 is merged.
+    url: github:overengineeringstudio/effect-utils/schickling-assistant/2026-06-03-workflow-call-job?dir=nix/playwright-flake
     inputs:
       nixpkgs:
         follows: nixpkgs
   effect-utils:
-    url: github:overengineeringstudio/effect-utils/main
+    # TODO(#1278-followup): Revert to main once effect-utils#735 is merged.
+    url: github:overengineeringstudio/effect-utils/schickling-assistant/2026-06-03-workflow-call-job
