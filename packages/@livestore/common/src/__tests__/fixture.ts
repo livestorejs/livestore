@@ -1,45 +1,23 @@
-import { Schema } from '@livestore/utils/effect'
-
-import { SessionIdSymbol } from '../adapter-types.ts'
 import { makeSchema, State } from '../schema/mod.ts'
 
-export const UiState = State.SQLite.clientDocument({
+export const UiState = State.SQLite.table({
   name: 'UiState',
-  schema: Schema.Struct({
-    showSidebar: Schema.Boolean,
-  }),
-  default: {
-    value: { showSidebar: true },
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    showSidebar: State.SQLite.boolean({ default: true }),
   },
 })
 
-const Config = Schema.Struct({
-  fontSize: Schema.Number,
-  theme: Schema.Literal('light', 'dark'),
-})
-
-export const appConfig = State.SQLite.clientDocument({
+export const appConfig = State.SQLite.table({
   name: 'AppConfig',
-  schema: Config,
-  default: {
-    id: 'static',
-    value: { fontSize: 13, theme: 'light' },
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    fontSize: State.SQLite.integer({ default: 13 }),
+    theme: State.SQLite.text({ default: 'light' }),
   },
 })
 
-export const appConfig2 = State.SQLite.clientDocument({
-  name: 'AppConfig',
-  schema: Config,
-  default: {
-    id: SessionIdSymbol,
-    value: { fontSize: 13, theme: 'light' },
-  },
-})
-
-const events = {
-  uiStateSet: UiState.set,
-  appConfigSet: appConfig.set,
-}
+const events = {}
 
 export const tables = { UiState, appConfig }
 

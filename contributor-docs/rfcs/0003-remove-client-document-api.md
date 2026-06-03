@@ -41,7 +41,6 @@ const tables = {
       filter: Schema.Literal('All', 'Active', 'Completed'),
     }),
     default: {
-      id: SessionIdSymbol,
       value: { input: '', filter: 'All' },
     },
   }),
@@ -109,7 +108,7 @@ The React integration needs its own `useClientDocument` API surface and type beh
 - A query.
 - A setter.
 - Default id resolution.
-- `SessionIdSymbol` resolution.
+- Current-session id resolution.
 - Partial update typing.
 - Access to the underlying `LiveQuery`.
 
@@ -206,7 +205,6 @@ const tables = {
       filter: Schema.Literal('All', 'Active', 'Completed'),
     }),
     default: {
-      id: SessionIdSymbol,
       value: { input: '', filter: 'All' },
     },
   }),

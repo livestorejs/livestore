@@ -38,25 +38,6 @@ const comments = State.SQLite.table({
   },
 })
 
-const UiState = State.SQLite.clientDocument({
-  name: 'UiState',
-  schema: Schema.Struct({
-    filter: Schema.Literal('all', 'active', 'completed'),
-  }),
-  default: { value: { filter: 'all' } },
-})
-
-const UiStateWithDefaultId = State.SQLite.clientDocument({
-  name: 'UiState',
-  schema: Schema.Struct({
-    filter: Schema.Literal('all', 'active', 'completed'),
-  }),
-  default: {
-    id: 'static',
-    value: { filter: 'all' },
-  },
-})
-
 const issue = State.SQLite.table({
   name: 'issue',
   columns: {
@@ -98,7 +79,7 @@ const personProfiles = State.SQLite.table({
   },
 })
 
-const db = { todos, todosWithIntId, comments, issue, selections, UiState, UiStateWithDefaultId, personProfiles }
+const db = { todos, todosWithIntId, comments, issue, selections, personProfiles }
 
 const dump = (qb: QueryBuilder<any, any, any>) => ({
   bindValues: qb.asSql().bindValues,
@@ -507,41 +488,6 @@ describe('query builder', () => {
       ).toThrow('JSON_CONTAINS operator can only be used on JSON array columns')
     })
   })
-
-  // describe('getOrCreate queries', () => {
-  //   it('should handle getOrCreate queries', () => {
-  //     expect(dump(db.UiState.getOrCreate('sessionid-1'))).toMatchInlineSnapshot(`
-  //         {
-  //           "bindValues": [
-  //             "sessionid-1",
-  //           ],
-  //           "query": "SELECT * FROM 'UiState' WHERE id = ?",
-  //           "schema": "...", // TODO determine schema
-  //         }
-  //       `)
-  //   })
-
-  //   it('should handle getOrCreate queries with default id', () => {
-  //     expect(dump(db.UiStateWithDefaultId.getOrCreate())).toMatchInlineSnapshot(`
-  //       {
-  //         "bindValues": [],
-  //         "query": "SELECT * FROM 'UiState' WHERE id = ?",
-  //         "schema": "...", // TODO determine schema
-  //       }
-  //     `)
-  //   })
-  //   // it('should handle row queries with numbers', () => {
-  //   //   expect(dump(db.todosWithIntId.getOrCreate(123, { insertValues: { status: 'active' } }))).toMatchInlineSnapshot(`
-  //   //     {
-  //   //       "bindValues": [
-  //   //         123,
-  //   //       ],
-  //   //       "query": "SELECT * FROM 'todos_with_int_id' WHERE id = ?",
-  //   //       "schema": "...", // TODO determine schema
-  //   //     }
-  //   //   `)
-  //   // })
-  // })
 
   describe('write operations', () => {
     it('should handle INSERT queries', () => {

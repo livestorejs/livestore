@@ -7,7 +7,6 @@ description: How to integrate LiveStore with React.
 
 import AppSnippet from '../../_assets/code/reference/framework-integrations/react/App.tsx?snippet'
 import StoreSnippet from '../../_assets/code/reference/framework-integrations/react/store.ts?snippet'
-import ReactUseClientDocumentSnippet from '../../_assets/code/reference/framework-integrations/react/use-client-document.tsx?snippet'
 import ReactUseQuerySnippet from '../../_assets/code/reference/framework-integrations/react/use-query.tsx?snippet'
 import ReactUseStoreSnippet from '../../_assets/code/reference/framework-integrations/react/use-store.tsx?snippet'
 import IssueStoreOptionsSnippet from '../../_assets/code/reference/framework-integrations/react/issue.store.ts?snippet'
@@ -67,12 +66,6 @@ Components can now access the store via your custom hook:
 Use [`store.useQuery()`](#storeusequeryqueryable) to subscribe to reactive queries:
 
 <ReactUseQuerySnippet />
-
-## Client Documents
-
-Use [`store.useClientDocument()`](#storeuseclientdocumenttable-id-options) for client-specific state:
-
-<ReactUseClientDocumentSnippet />
 
 ## Advanced Patterns
 
@@ -142,7 +135,7 @@ Options:
 
 ### `useStore(options)`
 
-Returns a store instance augmented with hooks ([`store.useQuery()`](#storeusequeryqueryable) and [`store.useClientDocument()`](#storeuseclientdocumenttable-id-options)) for reactive queries.
+Returns a store instance augmented with hooks ([`store.useQuery()`](#storeusequeryqueryable) and [`store.useSyncStatus()`](#storeusesyncstatus)) for reactive queries.
 
 - Suspends until the store is loaded.
 - Throws an error if loading fails.
@@ -169,14 +162,6 @@ Subscribes to a reactive query. Re-renders the component when the result changes
 
 - Takes any `Queryable`: `QueryBuilder`, `LiveQueryDef`, `SignalDef`, or `LiveQuery` instance
 - Returns the query result
-
-### `store.useClientDocument(table, id?, options?)`
-
-React.useState-like hook for client-document tables.
-
-- Returns `[row, setRow, id, query$]` tuple
-- Works only with tables defined via `State.SQLite.clientDocument()`
-- If the table has a default id, the `id` argument is optional
 
 ### `store.useSyncStatus()`
 
@@ -299,5 +284,5 @@ See the <a href={`https://github.com/livestorejs/livestore/tree/${getBranchName(
 
 ## Technical Notes
 
-- `@livestore/react` uses `React.useState()` under the hood for `useQuery()` / `useClientDocument()` to bind LiveStore's reactivity to React's reactivity. Some libraries use `React.useSyncExternalStore()` for similar purposes but `React.useState()` is more efficient for LiveStore's architecture.
+- `@livestore/react` uses `React.useState()` under the hood for `useQuery()` to bind LiveStore's reactivity to React's reactivity. Some libraries use `React.useSyncExternalStore()` for similar purposes but `React.useState()` is more efficient for LiveStore's architecture.
 - `@livestore/react` supports React Strict Mode.

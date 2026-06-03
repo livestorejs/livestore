@@ -70,10 +70,7 @@ export namespace TableDef {
   export type Any = TableDef<any, any>
 }
 
-export type TableOptions = {
-  /** Derived based on whether the table definition has one or more columns (besides the `id` column) */
-  readonly isClientDocumentTable: boolean
-}
+export type TableOptions = {}
 
 /**
  * Creates a SQLite table definition from columns or an Effect Schema.
@@ -246,9 +243,7 @@ export function table<
     return shouldNeverHappen('Either `columns` or `schema` must be provided when calling `table()`')
   }
 
-  const options_: TableOptions = {
-    isClientDocumentTable: false,
-  }
+  const options_: TableOptions = {}
 
   // Combine user-provided indexes with unique column indexes
   const allIndexes = [...(options?.indexes ?? []), ...additionalIndexes]
@@ -355,7 +350,6 @@ export type SqliteTableDefForSchemaInput<
 > = TableDefInput.ForSchema<TName, TType, TEncoded, _TSchema>
 
 export type WithDefaults<TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition.Any> = {
-  isClientDocumentTable: false
   requiredInsertColumnNames: SqliteDsl.FromColumns.RequiredInsertColumnNames<ToColumns<TColumns>>
 }
 

@@ -1,7 +1,6 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, SchemaAST } from '@livestore/utils/effect'
 
-import { SessionIdSymbol } from '../../../../adapter-types.ts'
 import type { SqlValue } from '../../../../util.ts'
 import type { State } from '../../../mod.ts'
 import type { QueryBuilderAst } from './api.ts'
@@ -276,24 +275,6 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
       .join(' ')
 
     return { query, bindValues, usedTables }
-  }
-
-  // ROW query
-  if (ast._tag === 'RowQuery') {
-    // Handle the id value by encoding it with the id column schema
-    const idColDef = ast.tableDef.sqliteDef.columns.id
-    if (idColDef === undefined) {
-      throw new Error('Column id not found for ROW query')
-    }
-
-    // NOTE we're not encoding the id if it's the session id symbol, which needs to be taken care of by the caller
-    const encodedId = ast.id === SessionIdSymbol ? ast.id : Schema.encodeSync(idColDef.schema)(ast.id)
-
-    return {
-      query: `SELECT * FROM '${ast.tableDef.sqliteDef.name}' WHERE ${quoteIdentifier('id')} = ?`,
-      bindValues: [encodedId as SqlValue],
-      usedTables,
-    }
   }
 
   // SELECT query

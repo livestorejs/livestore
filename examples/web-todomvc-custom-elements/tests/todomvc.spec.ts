@@ -42,7 +42,7 @@ test.describe('TodoMVC (custom-elements)', () => {
 
     const draftText = `Playwright draft ${Date.now()}`
 
-    // Persist draft text (clientDocument) so we can assert it gets cleared by `?reset`.
+    // Persist draft text so we can assert it gets cleared by `?reset`.
     await input.fill(draftText)
     await expect(input).toHaveValue(draftText)
 
@@ -63,7 +63,7 @@ test.describe('TodoMVC (custom-elements)', () => {
 
     expect(page.url()).not.toContain('reset')
 
-    // Assert LiveStore state was reset: the persisted clientDocument draft should be cleared.
+    // Assert LiveStore state was reset: the persisted draft should be cleared.
     await expect(inputAfterReset).toHaveValue('')
 
     // Double-check by reloading without `?reset` again: draft must stay cleared.

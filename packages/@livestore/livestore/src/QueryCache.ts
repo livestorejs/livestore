@@ -1,5 +1,5 @@
 import type { Bindable } from '@livestore/common'
-import { BoundMap, BoundSet, SessionIdSymbol } from '@livestore/common'
+import { BoundMap, BoundSet } from '@livestore/common'
 
 const SymbolsBase = Symbol('base')
 const SymbolsBrand = Symbol('brand')
@@ -25,16 +25,14 @@ export default class QueryCache {
       return sql as CacheKey
     }
 
-    const formatValue = (value: any) => (value === SessionIdSymbol ? 'SessionIdSymbol' : String(value))
-
     if (Array.isArray(bindValues) === true) {
-      return `${sql}\n${bindValues.map(formatValue).join('\n')}` as CacheKey
+      return `${sql}\n${bindValues.map(String).join('\n')}` as CacheKey
     }
 
     return (sql +
       '\n' +
       Object.entries(bindValues)
-        .map(([key, value]) => `${key}:${formatValue(value)}`)
+        .map(([key, value]) => `${key}:${String(value)}`)
         .join('\n')) as CacheKey
   }
   get = (key: CacheKey) => {

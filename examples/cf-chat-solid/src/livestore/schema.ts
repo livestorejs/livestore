@@ -50,21 +50,12 @@ export const tables = {
       processedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
     },
   }),
-  uiState: State.SQLite.clientDocument({
+  uiState: State.SQLite.table({
     name: 'uiState',
-    schema: Schema.Struct({
-      userContext: Schema.Struct({
-        username: Schema.String,
-        userId: Schema.String,
-        hasJoined: Schema.Boolean,
-        avatarEmoji: Schema.String.pipe(Schema.UndefinedOr),
-        avatarColor: Schema.String.pipe(Schema.UndefinedOr),
-      }).pipe(Schema.UndefinedOr),
-      lastSeenMessageId: Schema.String.pipe(Schema.NullOr),
-    }),
-    default: {
-      id: 'singleton',
-      value: { userContext: undefined, lastSeenMessageId: null },
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      userContext: State.SQLite.json({ schema: Schema.UndefinedOr(UserContext), nullable: true }),
+      lastSeenMessageId: State.SQLite.text({ nullable: true }),
     },
   }),
 }
@@ -125,6 +116,13 @@ export const events = {
       processedAt: Schema.Date,
     }),
   }),
+  uiStateSet: Events.clientOnly({
+    name: 'v1.UiStateSet',
+    schema: Schema.Struct({
+      userContext: Schema.UndefinedOr(UserContext).pipe(Schema.optional),
+      lastSeenMessageId: Schema.NullOr(Schema.String).pipe(Schema.optional),
+    }),
+  }),
 }
 
 // Materializers map events to state changes
@@ -142,6 +140,13 @@ const materializers = State.SQLite.materializers(events, {
     tables.readReceipts.insert({ id, messageId, userId, username, timestamp }).onConflict('id', 'ignore'),
   'v1.BotProcessedMessage': ({ messageId, processedAt }) =>
     tables.botProcessedMessages.insert({ messageId, processedAt }),
+  'v1.UiStateSet': ({ userContext, lastSeenMessageId }) =>
+    tables.uiState
+      .insert({ id: 'singleton', userContext, lastSeenMessageId: lastSeenMessageId ?? null })
+      .onConflict('id', 'update', {
+        ...(userContext === undefined ? {} : { userContext }),
+        ...(lastSeenMessageId === undefined ? {} : { lastSeenMessageId }),
+      }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

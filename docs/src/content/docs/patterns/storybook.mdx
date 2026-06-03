@@ -83,7 +83,13 @@ import { tables, events, schema } from './schema'
 const adapter = makeInMemoryAdapter()
 
 // Define queries (like in TodoMVC)
-const uiState$ = queryDb(tables.uiState.get(), { label: 'uiState' })
+const uiState$ = queryDb(
+  tables.uiState
+    .select('newTodoText')
+    .where({ id: 'default' })
+    .first({ fallback: () => ({ newTodoText: '' }) }),
+  { label: 'uiState' },
+)
 
 const useAppStore = () => useStore({
   storeId: 'todo-app',
@@ -129,7 +135,7 @@ export const TodoInput = () => {
   )
 }`,
 
-  schema: `import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+  schema: `import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 // Define tables (based on TodoMVC example)
 export const tables = {
@@ -142,16 +148,13 @@ export const tables = {
       deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
     },
   }),
-  // Client document for UI state
-  uiState: State.SQLite.clientDocument({
+  // Client-only UI state
+  uiState: State.SQLite.table({
     name: 'uiState',
-    schema: Schema.Struct({
-      newTodoText: Schema.String,
-      filter: Schema.Literal('all', 'active', 'completed')
-    }),
-    default: {
-      id: SessionIdSymbol,
-      value: { newTodoText: '', filter: 'all' }
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      newTodoText: State.SQLite.text({ default: '' }),
+      filter: State.SQLite.text({ schema: Schema.Literal('all', 'active', 'completed'), default: 'all' }),
     },
   }),
 }
@@ -178,8 +181,13 @@ export const events = {
     name: 'v1.TodoClearedCompleted',
     schema: Schema.Struct({ deletedAt: Schema.Date }),
   }),
-  // Auto-generated client document event
-  uiStateSet: tables.uiState.set,
+  uiStateSet: Events.clientOnly({
+    name: 'v1.UiStateSet',
+    schema: Schema.Struct({
+      newTodoText: Schema.String.pipe(Schema.optional),
+      filter: Schema.Literal('all', 'active', 'completed').pipe(Schema.optional),
+    }),
+  }),
 }
 
 // Define materializers to map events to state
@@ -189,6 +197,13 @@ const materializers = State.SQLite.materializers(events, {
   'v1.TodoUncompleted': ({ id }) => tables.todos.update({ completed: false }).where({ id }),
   'v1.TodoDeleted': ({ id, deletedAt }) => tables.todos.update({ deletedAt }).where({ id }),
   'v1.TodoClearedCompleted': ({ deletedAt }) => tables.todos.update({ deletedAt }).where({ completed: true }),
+  'v1.UiStateSet': ({ newTodoText, filter }) =>
+    tables.uiState
+      .insert({ id: 'default', newTodoText: newTodoText ?? '', filter: filter ?? 'all' })
+      .onConflict('id', 'update', {
+        ...(newTodoText === undefined ? {} : { newTodoText }),
+        ...(filter === undefined ? {} : { filter }),
+      }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })
@@ -225,5 +240,3 @@ Create a decorator that wraps stories with a fresh LiveStore instance and use th
 <Code code={CODE.schema} lang="ts" title="src/schema.ts" />
 </TabItem>
 </Tabs>
-
-

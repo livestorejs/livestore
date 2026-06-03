@@ -15,7 +15,7 @@ export const Footer = () => {
   const { filter } = store.useQuery(uiState$)
   const incompleteCount = store.useQuery(incompleteCount$)
   const setFilter = useCallback(
-    (filter: (typeof tables.uiState.Value)['filter']) => store.commit(events.uiStateSet({ filter })),
+    (filter: (typeof tables.uiState.Type)['filter']) => store.commit(events.uiStateSet({ filter })),
     [store],
   )
   const handleAllClick = useCallback(() => setFilter('all'), [setFilter])

@@ -11,7 +11,7 @@ const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, 
   label: 'incompleteCount',
 })
 
-type Filter = (typeof tables.uiState.Value)['filter']
+type Filter = (typeof tables.uiState.Type)['filter']
 
 export const Footer = () => {
   const store = useAppStore()

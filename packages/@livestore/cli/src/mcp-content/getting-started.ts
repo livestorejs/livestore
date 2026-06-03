@@ -22,7 +22,7 @@ LiveStore uses an event-driven architecture where all changes are recorded as im
 
 \`\`\`typescript
 // schema.ts
-import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 // Define your state as SQLite tables
 export const tables = {
@@ -38,13 +38,13 @@ export const tables = {
   }),
   
   // Client-only state (not synced)
-  uiState: State.SQLite.clientDocument({
+  uiState: State.SQLite.table({
     name: 'uiState',
-    schema: Schema.Struct({ 
-      newTodoText: Schema.String, 
-      filter: Schema.Literal('all', 'active', 'completed') 
-    }),
-    default: { id: SessionIdSymbol, value: { newTodoText: '', filter: 'all' } },
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      newTodoText: State.SQLite.text({ default: '' }),
+      filter: State.SQLite.text({ schema: Schema.Literal('all', 'active', 'completed'), default: 'all' }),
+    },
   }),
 }
 
@@ -72,7 +72,13 @@ export const events = {
   }),
   
   // UI state events (local only)
-  uiStateSet: tables.uiState.set,
+  uiStateSet: Events.clientOnly({
+    name: 'v1.UiStateSet',
+    schema: Schema.Struct({
+      newTodoText: Schema.String.pipe(Schema.optional),
+      filter: Schema.Literal('all', 'active', 'completed').pipe(Schema.optional),
+    }),
+  }),
 }
 
 // Materializers map events to state changes
@@ -88,6 +94,14 @@ const materializers = State.SQLite.materializers(events, {
     
   'v1.TodoDeleted': ({ id, deletedAt }) => 
     tables.todos.update({ deletedAt }).where({ id }),
+
+  'v1.UiStateSet': ({ newTodoText, filter }) =>
+    tables.uiState
+      .insert({ id: 'default', newTodoText: newTodoText ?? '', filter: filter ?? 'all' })
+      .onConflict('id', 'update', {
+        ...(newTodoText === undefined ? {} : { newTodoText }),
+        ...(filter === undefined ? {} : { filter }),
+      }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })
@@ -124,7 +138,10 @@ export const completedTodos$ = queryDb(
 
 // UI state query
 export const uiState$ = queryDb(
-  tables.uiState.get(),
+  tables.uiState
+    .select('newTodoText', 'filter')
+    .where({ id: 'default' })
+    .first({ behaviour: 'fallback', fallback: () => ({ newTodoText: '', filter: 'all' }) }),
   { label: 'uiState' }
 )
 \`\`\`

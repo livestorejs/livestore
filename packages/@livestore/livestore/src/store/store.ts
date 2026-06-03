@@ -14,7 +14,6 @@ import {
   type PreparedBindValues,
   prepareBindValues,
   QueryBuilderAstSymbol,
-  replaceSessionIdSymbol,
   type StorageMode,
   type SyncState,
   UnknownError,
@@ -41,7 +40,6 @@ import * as otel from '@opentelemetry/api'
 
 import type { LiveQuery, ReactivityGraphContext, SignalDef } from '../live-queries/base-class.ts'
 import { makeReactivityGraph } from '../live-queries/base-class.ts'
-import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.ts'
 import { queryDb } from '../live-queries/db-query.ts'
 import type { Ref } from '../reactive.ts'
 import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
@@ -627,23 +625,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       }
       return res
     } else if (isQueryBuilder(query) === true) {
-      const ast = query[QueryBuilderAstSymbol]
-      if (ast._tag === 'RowQuery') {
-        makeExecBeforeFirstRun({
-          table: ast.tableDef,
-          id: ast.id,
-          explicitDefaultValues: ast.explicitDefaultValues,
-          otelContext: options?.otelContext,
-        })(this[StoreInternalsSymbol].reactivityGraph.context!)
-      }
-
       const sqlRes = query.asSql()
       const schema = getResultSchema(query)
-
-      // Replace SessionIdSymbol in bind values before executing the query
-      if (sqlRes.bindValues !== undefined) {
-        replaceSessionIdSymbol(sqlRes.bindValues, this[StoreInternalsSymbol].clientSession.sessionId)
-      }
 
       const rawRes = this[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
         sqlRes.query,
@@ -793,10 +776,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       commitsSpan?.addEvent('commit')
       const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
       commitsSpan?.addLink({ context: currentSpan.spanContext() })
-
-      for (const event of events) {
-        replaceSessionIdSymbol(event.args, this[StoreInternalsSymbol].clientSession.sessionId)
-      }
 
       if (events.length === 0) return
 
@@ -1214,12 +1193,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     } else {
       events = [firstEventOrTxnFnOrOptions, ...restEvents]
     }
-
-    // for (const event of events) {
-    //   if (event.args.id === SessionIdSymbol) {
-    //     event.args.id = this.sessionId
-    //   }
-    // }
 
     return { events, options }
   }

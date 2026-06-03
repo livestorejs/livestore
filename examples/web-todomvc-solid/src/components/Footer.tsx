@@ -15,7 +15,7 @@ export const Footer: Component = () => {
   const uiState = store.useQuery(uiState$)
   const incompleteCount = store.useQuery(incompleteCount$)
 
-  const setFilter = (filter: (typeof tables.uiState.Value)['filter']) => store()?.commit(events.uiStateSet({ filter }))
+  const setFilter = (filter: (typeof tables.uiState.Type)['filter']) => store()?.commit(events.uiStateSet({ filter }))
 
   const handleFilterClick = createMemo(() => (event: MouseEvent & { currentTarget: HTMLAnchorElement }) => {
     const nextFilter = event.currentTarget.dataset.filter

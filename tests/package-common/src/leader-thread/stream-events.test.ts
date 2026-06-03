@@ -11,14 +11,9 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Chunk, Effect, Fiber, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
-import { appConfigSetEvent, events as fixtureEvents, schema as fixtureSchema } from './fixture.ts'
+import { events as fixtureEvents, schema as fixtureSchema } from './fixture.ts'
 
-const allFixtureEvents = {
-  ...fixtureEvents,
-  app_configSet: appConfigSetEvent,
-} as const
-
-const makeFixtureEventFactory = EventFactory.makeFactory(allFixtureEvents)
+const makeFixtureEventFactory = EventFactory.makeFactory(fixtureEvents)
 
 const withNodeFs = <R, E, A>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(Effect.provide(PlatformNode.NodeFileSystem.layer))
@@ -393,12 +388,12 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         ]
 
         let clientBase = backendApproved[backendApproved.length - 1]!.seqNum
-        const appConfigSetFactory = eventFactory.app_configSet
+        const appConfigSetFactory = eventFactory.appConfigSet
 
         const clientOnlyEvents = [
-          { value: { theme: 'dark' } },
+          { value: { theme: 'dark' as const } },
           { value: { fontSize: 18 } },
-          { value: { theme: 'light', fontSize: 20 } },
+          { value: { theme: 'light' as const, fontSize: 20 } },
         ].map((payload) => {
           const { encoded, nextBase } = makeClientOnlyEvent({
             base: clientBase,

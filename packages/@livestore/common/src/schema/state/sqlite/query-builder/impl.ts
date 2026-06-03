@@ -40,8 +40,6 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
     },
     where: function () {
       if (ast._tag === 'InsertQuery') return invalidQueryBuilder('Cannot use where with insert')
-      if (ast._tag === 'RowQuery') return invalidQueryBuilder('Cannot use where with row')
-
       if (arguments.length === 1) {
         const params = arguments[0]
         const newOps = Object.entries(params)
@@ -125,7 +123,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       return makeQueryBuilder(tableDef, { ...ast, offset: Option.some(offset) })
     },
     count: () => {
-      if (isRowQuery(ast) === true || ast._tag === 'InsertQuery' || ast._tag === 'UpdateQuery' || ast._tag === 'DeleteQuery')
+      if (ast._tag === 'InsertQuery' || ast._tag === 'UpdateQuery' || ast._tag === 'DeleteQuery')
         return invalidQueryBuilder()
 
       return makeQueryBuilder(tableDef, {
@@ -150,33 +148,6 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         pickFirst: { _tag: 'enabled', ...(behaviour ?? { behaviour: 'undefined' }) },
       })
     },
-    //
-    // getOrCreate() {
-    //   if (tableDef.options.isClientDocumentTable === false) {
-    //     return invalidQueryBuilder(`getOrCreate() is not allowed when table is not a client document table`)
-    //   }
-
-    //
-    //   const params = [...arguments]
-
-    //   let id: string | number
-
-    //   // TODO refactor to handle default id
-    //   id = params[0] as string | number
-    //   if (id === undefined) {
-    //     invalidQueryBuilder(`Id missing for row query on non-singleton table ${tableDef.sqliteDef.name}`)
-    //   }
-
-    //   // TODO validate all required columns are present and values are matching the schema
-    //   const insertValues: Record<string, unknown> = params[1]?.insertValues ?? {}
-
-    //   return makeQueryBuilder(tableDef, {
-    //     _tag: 'RowQuery',
-    //     id,
-    //     tableDef,
-    //     insertValues,
-    //   }) as any
-    // },
     insert: (values) => {
       const filteredValues = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined))
 
@@ -310,8 +281,6 @@ const assertWriteQueryBuilderAst: (ast: QueryBuilderAst) => asserts ast is Query
   }
 }
 
-const isRowQuery = (ast: QueryBuilderAst): ast is QueryBuilderAst.RowQuery => ast._tag === 'RowQuery'
-
 export const invalidQueryBuilder = (msg?: string) => {
   return shouldNeverHappen(`Invalid query builder${msg !== undefined ? `: ${msg}` : ''}`)
 }
@@ -350,14 +319,6 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
 
       // For write operations without RETURNING, the result is the number of affected rows
       return Schema.Number
-    }
-    case 'RowQuery': {
-      return queryAst.tableDef.rowSchema.pipe(
-        Schema.pluck('value'),
-        Schema.annotations({ title: `${queryAst.tableDef.sqliteDef.name}.value` }),
-        Schema.Array,
-        Schema.headOrElse(),
-      )
     }
     default:
       return casesHandled(queryAst)

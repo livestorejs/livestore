@@ -18,13 +18,6 @@ export type Todo = {
   completed: boolean
 }
 
-export type Filter = 'all' | 'active' | 'completed'
-
-export type AppState = {
-  newTodoText: string
-  filter: Filter
-}
-
 // ============================================================================
 // Tables
 // ============================================================================
@@ -36,41 +29,6 @@ const todos = State.SQLite.table({
     text: State.SQLite.text({ default: '', nullable: false }),
     completed: State.SQLite.boolean({ default: false, nullable: false }),
   },
-})
-
-const app = State.SQLite.table({
-  name: 'app',
-  columns: {
-    id: State.SQLite.text({ primaryKey: true, default: 'static' }),
-    newTodoText: State.SQLite.text({ default: '', nullable: true }),
-    filter: State.SQLite.text({ default: 'all', nullable: false }),
-  },
-})
-
-const userInfo = State.SQLite.clientDocument({
-  name: 'UserInfo',
-  schema: Schema.Struct({
-    username: Schema.String,
-    text: Schema.String,
-  }),
-  default: { value: { username: '', text: '' } },
-})
-
-const AppRouterSchema = State.SQLite.clientDocument({
-  name: 'AppRouter',
-  schema: Schema.Struct({
-    currentTaskId: Schema.String.pipe(Schema.NullOr),
-  }),
-  default: {
-    value: { currentTaskId: null },
-    id: 'singleton',
-  },
-})
-
-const kv = State.SQLite.clientDocument({
-  name: 'Kv',
-  schema: Schema.Any,
-  default: { value: null },
 })
 
 // ============================================================================
@@ -90,9 +48,6 @@ export const events = {
       completed: Schema.Boolean.pipe(Schema.optional),
     }),
   }),
-  AppRouterSet: AppRouterSchema.set,
-  UserInfoSet: userInfo.set,
-  KvSet: kv.set,
 }
 
 // ============================================================================
@@ -104,7 +59,7 @@ const materializers = State.SQLite.materializers(events, {
   todoUpdated: ({ id, text, completed }) => todos.update({ ...omitUndefineds({ completed, text }) }).where({ id }),
 })
 
-export const tables = { todos, app, userInfo, AppRouterSchema, kv }
+export const tables = { todos }
 
 const state = State.SQLite.makeState({ tables, materializers })
 export const schema = makeSchema({ state, events })

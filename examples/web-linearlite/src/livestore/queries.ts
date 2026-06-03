@@ -2,17 +2,37 @@ import React from 'react'
 
 import { queryDb } from '@livestore/livestore'
 
-import { tables } from './schema/index.ts'
+import { defaultFilterState, defaultFrontendState, defaultScrollState, events, tables } from './schema/index.ts'
 import { useAppStore } from './store.ts'
 
 export const useFilterState = () => {
   const appStore = useAppStore()
-  return appStore.useClientDocument(tables.filterState)
+  const state = appStore.useQuery(filterState$)
+  const setState = React.useCallback(
+    (value: typeof defaultFilterState) => appStore.commit(events.filterStateSet({ id: 'default', value })),
+    [appStore],
+  )
+  return [state, setState] as const
 }
 
 export const useDebouncedScrollState = (id: string, { debounce = 100 }: { debounce?: number } = {}) => {
   const appStore = useAppStore()
-  const [initialState, setPersistedState] = appStore.useClientDocument(tables.scrollState, id)
+  const scrollState$ = React.useMemo(
+    () =>
+      queryDb(
+        tables.scrollState
+          .select('value')
+          .where({ id })
+          .first({ behaviour: 'fallback', fallback: () => defaultScrollState }),
+        { label: `scrollState:${id}`, deps: [id] },
+      ),
+    [id],
+  )
+  const initialState = appStore.useQuery(scrollState$)
+  const setPersistedState = React.useCallback(
+    (value: typeof defaultScrollState) => appStore.commit(events.scrollStateSet({ id, value })),
+    [appStore, id],
+  )
   const [state, setReactState] = React.useState(initialState)
 
   const debounceTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -36,7 +56,23 @@ export const useDebouncedScrollState = (id: string, { debounce = 100 }: { deboun
 
 export const useFrontendState = () => {
   const appStore = useAppStore()
-  return appStore.useClientDocument(tables.frontendState)
+  const frontendState$ = React.useMemo(
+    () =>
+      queryDb(
+        tables.frontendState
+          .select('value')
+          .where({ id: 'default' })
+          .first({ behaviour: 'fallback', fallback: () => defaultFrontendState }),
+        { label: 'frontendState' },
+      ),
+    [],
+  )
+  const state = appStore.useQuery(frontendState$)
+  const setState = React.useCallback(
+    (value: typeof defaultFrontendState) => appStore.commit(events.frontendStateSet({ id: 'default', value })),
+    [appStore],
+  )
+  return [state, setState] as const
 }
 
 export const issueCount$ = queryDb(tables.issue.count().where({ deleted: null }), { label: 'global.issueCount' })
@@ -58,4 +94,10 @@ export const highestKanbanOrder$ = queryDb(
     label: 'global.highestKanbanOrder',
   },
 )
-export const filterState$ = queryDb(tables.filterState.get(), { label: 'global.filterState' })
+export const filterState$ = queryDb(
+  tables.filterState
+    .select('value')
+    .where({ id: 'default' })
+    .first({ behaviour: 'fallback', fallback: () => defaultFilterState }),
+  { label: 'global.filterState' },
+)

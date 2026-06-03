@@ -6,7 +6,8 @@ import { ScrollView, StyleSheet, useColorScheme, View } from 'react-native'
 import { RowPropertySwitch } from '../components/RowPropertySwitch.tsx'
 import { ThemedText } from '../components/ThemedText.tsx'
 import { darkSecondary } from '../constants/Colors.ts'
-import { tables } from '../livestore/schema.ts'
+import { events } from '../livestore/schema.ts'
+import { uiState$ } from '../livestore/queries.ts'
 import { useAppStore } from '../livestore/store.ts'
 
 const tabGroupingOptions = ['NoGrouping', 'Assignee', 'Priority', 'Status']
@@ -20,24 +21,25 @@ const FilterSettingsScreen = () => {
   const isDark = colorScheme === 'dark'
 
   const store = useAppStore()
-  const [
-    {
-      selectedHomeTab,
-      assignedTabGrouping,
-      assignedTabOrdering,
-      // assignedTabCompletedIssues,
-      assignedTabShowAssignee,
-      assignedTabShowStatus,
-      assignedTabShowPriority,
-      createdTabGrouping,
-      createdTabOrdering,
-      // createdTabCompletedIssues,
-      createdTabShowAssignee,
-      createdTabShowStatus,
-      createdTabShowPriority,
-    },
-    setUiState,
-  ] = store.useClientDocument(tables.uiState)
+  const {
+    selectedHomeTab,
+    assignedTabGrouping,
+    assignedTabOrdering,
+    // assignedTabCompletedIssues,
+    assignedTabShowAssignee,
+    assignedTabShowStatus,
+    assignedTabShowPriority,
+    createdTabGrouping,
+    createdTabOrdering,
+    // createdTabCompletedIssues,
+    createdTabShowAssignee,
+    createdTabShowStatus,
+    createdTabShowPriority,
+  } = store.useQuery(uiState$)
+  const setUiState = useCallback(
+    (patch: Parameters<typeof events.uiStateSet>[0]) => store.commit(events.uiStateSet(patch)),
+    [store],
+  )
 
   const containerStyle = useMemo(
     () => StyleSheet.compose(styles.container, isDark ? styles.containerDark : styles.containerLight),

@@ -156,12 +156,12 @@ This state is ephemeral, meaning it won't survive page refreshes. In a small app
 
 With LiveStore, you can persist the state of the currently active tab across browser refreshes. Let's do it!
 
-## Update the LiveStore schema with a client document
+## Update the LiveStore schema with client-only UI state
 
-In your `schema.ts` file, add another table definition to the `tables` object. This time, it won't be of type `State.SQLite.table` though, but rather use LiveStore's special [`clientDocument`](/api/livestore/livestore/namespaces/state/namespaces/sqlite/variables/clientdocument/) type for this:
+In your `schema.ts` file, add another table definition to the `tables` object for persisted client-only UI state:
 
 ```diff title="src/livestore/schema.ts" lang="ts"
-+import { Events, makeSchema, Schema, State, SessionIdSymbol } from '@livestore/livestore'
++import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 +export const Filter = Schema.Literal('All', 'Active', 'Completed')
 +export type Filter = typeof Filter.Type
@@ -175,23 +175,26 @@ export const tables = {
       completed: State.SQLite.boolean({ default: false }),
     },
   }),
-+  uiState: State.SQLite.clientDocument({
++  uiState: State.SQLite.table({
 +    name: 'uiState',
-+    schema: Schema.Struct({ input: Schema.String, filter: Filter }),
-+    default: { id: SessionIdSymbol, value: { input: '', filter: 'All' } },
++    columns: {
++      id: State.SQLite.text({ primaryKey: true }),
++      input: State.SQLite.text({ default: '' }),
++      filter: State.SQLite.text({ schema: Filter, default: 'All' }),
++    },
 +  }),
 }
 ```
 
 On this table, you define:
 
-- A name for this client document.
-- The structure of the client document via `schema`; in your case:
+- A name for this UI state table.
+- The columns for persisted UI state; in your case:
     - The current state of the `input` text field for adding a new todo.
     - The `filter` that'll be used to filter the todos according to their `completed` status.
-- Default values for this client document.
+- Default values for those columns.
 
-Unlike with other application state, you don't need to define custom events and materializers. The only thing you need to do is add the following event to your `events` object:
+Define an explicit client-only event for this state:
 
 ```diff title="src/livestore/schema.ts" lang="ts"
 export const events = {
@@ -212,23 +215,35 @@ export const events = {
     name: 'v1.TodoUncompleted',
     schema: Schema.Struct({ id: Schema.Number }),
   }),
-+  uiStateSet: tables.uiState.set,
++  uiStateSet: Events.clientOnly({
++    name: 'v1.UiStateSet',
++    schema: Schema.Struct({
++      input: Schema.String.pipe(Schema.optional),
++      filter: Filter.pipe(Schema.optional),
++    }),
++  }),
 }
 ```
 
-Here, both the event definition and materializer are automatically derived from the client document schema, with the materializer implementing upsert semantics.
+Then add a materializer that upserts the UI state row.
 
 ## Implement local state with LiveStore
 
 In this step, you need to add the local state for the tabbed UI element to the `<App>` component. Additionally, you're going to replace the `useState()` hook that you currently use for the `input` state with LiveStore's approach as well.
 
-Replace the `useState()` usage for `input` and `filter` with LiveStore's [`useClientDocument()`](/framework-integrations/react-integration#storeuseclientdocumenttable-id-options):
+Replace the `useState()` usage for `input` and `filter` with a LiveStore query and explicit setter events:
 
 ```diff title="src/App.tsx" lang="tsx"
-+const [{ input, filter }, setUiState, , uiState$] = store.useClientDocument(tables.uiState)
++const uiState$ = queryDb(
++  tables.uiState
++    .select('input', 'filter')
++    .where({ id: 'default' })
++    .first({ behaviour: 'fallback', fallback: () => ({ input: '', filter: 'All' }) }),
++)
++const { input, filter } = store.useQuery(uiState$)
 
-+const updatedInput = (input: string) => setUiState((state) => ({ ...state, input }))
-+const updatedFilter = (filter: Filter) => setUiState((state) => ({ ...state, filter }))
++const updatedInput = (input: string) => store.commit(events.uiStateSet({ input }))
++const updatedFilter = (filter: Filter) => store.commit(events.uiStateSet({ filter }))
 -const [input, setInput] = useState('')
 -const [filter, setFilter] = useState<'All' | 'Active' | 'Completed'>('All')
 -const updatedInput = (input: string) => store.commit(events.uiStateSet({ input }))
@@ -244,7 +259,7 @@ import { useAppStore } from './livestore/store'
 import { queryDb } from '@livestore/livestore'
 ```
 
-`useClientDocument()` persists the UI state inside LiveStore while giving you a React-friendly setter function similar to `useState()`.
+The client-only event persists the UI state inside LiveStore while keeping writes explicit.
 
 Since you've renamed the functions to update the values of `input` and `filter` you need to adjust the parts of the `<App>` component where they are used:
 
@@ -289,7 +304,7 @@ const todos$ = queryDb((
 const todos = store.useQuery(todos$)
 ```
 
-Here, `uiState$` comes from `useClientDocument()`, ensuring that the todos query automatically reacts whenever the persisted UI state changes.
+Here, `uiState$` is the query for persisted UI state, ensuring that the todos query automatically reacts whenever that state changes.
 
 This is the final code for the `<App>` component:
 
@@ -303,7 +318,13 @@ function App() {
 
   const store = useAppStore()
 
-  const [{ input, filter }, setUiState, , uiState$] = store.useClientDocument(tables.uiState)
+  const uiState$ = queryDb(
+    tables.uiState
+      .select('input', 'filter')
+      .where({ id: 'default' })
+      .first({ behaviour: 'fallback', fallback: () => ({ input: '', filter: 'All' }) }),
+  )
+  const { input, filter } = store.useQuery(uiState$)
 
   const todos$ = queryDb(
     (get) => {
