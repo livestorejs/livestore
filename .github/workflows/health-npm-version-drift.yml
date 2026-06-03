@@ -1,0 +1,31 @@
+# Generated file - DO NOT EDIT
+# Source: health-npm-version-drift.yml.genie.ts
+
+name: 'Health: npm version drift'
+
+on:
+  schedule:
+    - cron: 0 8 * * *
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Compare npm latest vs release/version.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bun scripts/src/commands/health/npm-version-drift.ts
