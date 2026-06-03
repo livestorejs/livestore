@@ -99,7 +99,6 @@
       "packages/@livestore/cli",
       "packages/@livestore/common",
       "packages/@livestore/common-cf",
-      "packages/@livestore/devtools-web-common",
       "packages/@livestore/livestore",
       "packages/@livestore/peer-deps",
       "packages/@livestore/sqlite-wasm",

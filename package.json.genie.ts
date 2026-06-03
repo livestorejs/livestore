@@ -10,7 +10,6 @@ import cliPkg from './packages/@livestore/cli/package.json.genie.ts'
 import commonPkg from './packages/@livestore/common/package.json.genie.ts'
 import commonCfPkg from './packages/@livestore/common-cf/package.json.genie.ts'
 import devtoolsExpoPkg from './packages/@livestore/devtools-expo/package.json.genie.ts'
-import devtoolsWebCommonPkg from './packages/@livestore/devtools-web-common/package.json.genie.ts'
 import effectPlaywrightPkg from './packages/@livestore/effect-playwright/package.json.genie.ts'
 import frameworkToolkitPkg from './packages/@livestore/framework-toolkit/package.json.genie.ts'
 import graphqlPkg from './packages/@livestore/graphql/package.json.genie.ts'
@@ -50,7 +49,6 @@ export const rootWorkspacePackages = [
   commonCfPkg,
   commonPkg,
   devtoolsExpoPkg,
-  devtoolsWebCommonPkg,
   effectPlaywrightPkg,
   frameworkToolkitPkg,
   graphqlPkg,

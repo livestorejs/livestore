@@ -51,6 +51,12 @@ Contrib imports core genie helpers through `../repos/livestore/...`, not
 enter core's source tree first, allowing core's internal `#mr/effect-utils/...`
 imports to resolve against core's materialized members.
 
+Core does not own the final contrib package or example manifest. Core exports
+core package metadata and reusable generator helpers; contrib owns its local
+package/example membership and composes that with materialized core package
+metadata. This avoids making every contrib package-set change a core PR while
+still keeping shared tooling centralized.
+
 ## `framework-toolkit` Stays Core-Owned
 
 `@livestore/react` imports `framework-toolkit`, and React is core-owned. Moving

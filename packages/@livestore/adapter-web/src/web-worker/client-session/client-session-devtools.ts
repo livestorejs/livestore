@@ -1,11 +1,14 @@
 import { Devtools, liveStoreVersion } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import { isDevEnv } from '@livestore/utils'
 import type { Worker } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
 import { WebChannelBrowser } from '@livestore/utils/effect/browser'
 import * as Webmesh from '@livestore/webmesh'
+import * as WebmeshWorker from '@livestore/webmesh/worker'
+
+import * as DevtoolsWeb from './devtools-web-channel.ts'
+import { makeSharedWorkerNodeName } from '../common/webmesh-node-names.ts'
 
 export const logDevtoolsUrl = Effect.fn('@livestore/adapter-web:client-session:devtools:logDevtoolsUrl')(function* ({
   schema,
@@ -58,7 +61,7 @@ export const connectWebmeshNodeClientSession = Effect.fn(function* ({
 }: {
   webmeshNode: Webmesh.MeshNode
   sessionInfo: Devtools.SessionInfo.SessionInfo
-  sharedWorker: Worker.SerializedWorkerPool<typeof DevtoolsWeb.WorkerSchema.Request.Type>
+  sharedWorker: Worker.SerializedWorkerPool<typeof WebmeshWorker.Schema.Request.Type>
   devtoolsEnabled: boolean
   schema: LiveStoreSchema
 }) {
@@ -82,7 +85,7 @@ export const connectWebmeshNodeClientSession = Effect.fn(function* ({
 
       const { tabId } = yield* clientSessionStaticChannel.listen.pipe(Stream.flatten(), Stream.runHead, Effect.flatten)
 
-      const contentscriptMainNodeName = DevtoolsWeb.makeNodeName.browserExtension.contentscriptMain(tabId)
+      const contentscriptMainNodeName = DevtoolsWeb.makeBrowserExtensionNodeName.contentscriptMain(tabId)
 
       const contentscriptMainChannel = yield* WebChannelBrowser.windowChannel({
         listenWindow: window,
@@ -98,9 +101,9 @@ export const connectWebmeshNodeClientSession = Effect.fn(function* ({
       Effect.forkScoped,
     )
 
-    yield* DevtoolsWeb.connectViaWorker({
+    yield* WebmeshWorker.connectViaWorker({
       node: webmeshNode,
-      target: DevtoolsWeb.makeNodeName.sharedWorker({ storeId }),
+      target: makeSharedWorkerNodeName({ storeId }),
       worker: sharedWorker,
     })
   }

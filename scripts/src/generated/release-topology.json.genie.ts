@@ -4,7 +4,7 @@ import {
   changesetsIgnoredPackageJsonNames,
   publishableLivestorePackageDescriptors,
   publishableLivestorePackageJsonNames,
-} from '../../../genie/repo-topology.ts'
+} from '../../../genie/release-topology.ts'
 
 export default jsonArtifact({
   data: {

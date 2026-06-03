@@ -1,6 +1,6 @@
 import { Schema, Transferable } from '@livestore/utils/effect'
 
-export class CreateConnection extends Schema.TaggedRequest<CreateConnection>()('DevtoolsWebCommon.CreateConnection', {
+export class CreateConnection extends Schema.TaggedRequest<CreateConnection>()('WebmeshWorker.CreateConnection', {
   payload: {
     from: Schema.String,
     port: Transferable.MessagePort,

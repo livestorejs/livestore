@@ -75,7 +75,6 @@ core's unpinned contrib reference. This satisfies R07-R09.
 | `adapter-node`        | contrib | Node platform adapter                                     |
 | `adapter-expo`        | contrib | Expo platform adapter                                     |
 | `devtools-expo`       | contrib | Expo devtools surface                                     |
-| `devtools-web-common` | contrib | Shared contrib devtools surface                           |
 | `sync-electric`       | contrib | Additional sync provider                                  |
 | `sync-s2`             | contrib | Additional sync provider                                  |
 | `graphql`             | contrib | Optional integration                                      |
@@ -164,14 +163,17 @@ version already published by core.
 
 ## Tooling Composition
 
-Contrib's generated files are composed from the same helper stack as core:
+Contrib's generated files are composed from the same helper stack as core, but
+contrib owns its package and example membership locally. Core exports core
+package metadata and reusable generator helpers; it does not carry the final
+contrib package manifest.
 
 | Surface           | Source of truth                                                  |
 | ----------------- | ---------------------------------------------------------------- |
 | devenv            | effect-utils modules, imported by contrib                        |
-| pnpm workspace    | contrib projection using core/effect-utils helpers               |
-| package manifests | contrib projection using core/effect-utils helpers               |
-| tsconfig          | contrib projection using core/effect-utils helpers               |
+| pnpm workspace    | contrib-local package/example manifest plus core/effect-utils helpers |
+| package manifests | contrib-local package manifest plus core/effect-utils helpers     |
+| tsconfig          | contrib-local workspace shape plus core/effect-utils helpers      |
 | oxlint/oxfmt      | effect-utils base config plus contrib-local ignores              |
 | labels/settings   | effect-utils catalog plus contrib-local labels                   |
 | CI workflow       | effect-utils workflow builders plus core re-exported setup atoms |

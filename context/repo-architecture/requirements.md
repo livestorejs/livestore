@@ -93,9 +93,11 @@ Builds on [vision.md](./vision.md). Implementation details live in
 
 - **R16 Same devenv stack:** Contrib imports the same effect-utils devenv
   modules as core.
-- **R17 Same genie source of truth:** Contrib's generated workspace, package,
-  TypeScript, lint/format, CI, labels, and repo settings files are composed from
-  core/effect-utils helpers rather than handwritten copies.
+- **R17 Shared genie helpers, local ownership manifests:** Contrib's generated
+  workspace, package, TypeScript, lint/format, CI, labels, and repo settings
+  files are composed from core/effect-utils helpers rather than handwritten
+  copies. Final contrib package and example membership is owned by contrib, not
+  by core's package topology.
 - **R18 Contrib-specific CI identifiers:** Contrib CI uses contrib-scoped cache,
   Cachix, and pnpm state identifiers even when it reuses core's setup atoms.
 - **R19 Same lint and format policy:** Contrib derives oxlint and oxfmt

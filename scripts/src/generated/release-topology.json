@@ -33,10 +33,6 @@
       "dir": "packages/@livestore/devtools-expo"
     },
     {
-      "name": "@livestore/devtools-web-common",
-      "dir": "packages/@livestore/devtools-web-common"
-    },
-    {
       "name": "@livestore/framework-toolkit",
       "dir": "packages/@livestore/framework-toolkit"
     },
@@ -106,7 +102,6 @@
     "@livestore/common",
     "@livestore/common-cf",
     "@livestore/devtools-expo",
-    "@livestore/devtools-web-common",
     "@livestore/framework-toolkit",
     "@livestore/graphql",
     "@livestore/livestore",

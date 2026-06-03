@@ -1,6 +1,4 @@
 import { Devtools, isWorkerTransportError, LogConfig, liveStoreVersion, UnknownError } from '@livestore/common'
-import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
-import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
 import {
   Deferred,
@@ -20,8 +18,10 @@ import {
   WorkerRunner,
 } from '@livestore/utils/effect'
 import { BrowserWorker, BrowserWorkerRunner } from '@livestore/utils/effect/browser'
+import * as WebmeshWorker from '@livestore/webmesh/worker'
 
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
+import { makeSharedWorkerNodeName } from '../common/webmesh-node-names.ts'
 import * as WorkerSchema from '../common/worker-schema.ts'
 
 // Extract from `livestore-shared-worker-${storeId}`
@@ -202,7 +202,7 @@ const makeWorkerRunner = Effect.gen(function* () {
           const { node } = yield* WebmeshWorker.CacheService
           const { storeId, clientId } = initial
 
-          yield* DevtoolsWeb.connectViaWorker({
+          yield* WebmeshWorker.connectViaWorker({
             node,
             worker,
             target: Devtools.makeNodeName.client.leader({ storeId, clientId }),
@@ -230,14 +230,14 @@ const makeWorkerRunner = Effect.gen(function* () {
     ExtraDevtoolsMessage: forwardRequest,
 
     // Accept devtools connections (from leader and client sessions)
-    'DevtoolsWebCommon.CreateConnection': WebmeshWorker.CreateConnection,
+    'WebmeshWorker.CreateConnection': WebmeshWorker.CreateConnection,
   })
 }).pipe(Layer.unwrapScoped)
 
 export const makeWorker = (options?: LogConfig.WithLoggerOptions): void => {
   const runtimeLayer = Layer.mergeAll(
     FetchHttpClient.layer,
-    WebmeshWorker.CacheService.layer({ nodeName: DevtoolsWeb.makeNodeName.sharedWorker({ storeId }) }),
+    WebmeshWorker.CacheService.layer({ nodeName: makeSharedWorkerNodeName({ storeId }) }),
   )
 
   // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- propagated from `makeWorkerRunner`

@@ -5,17 +5,12 @@
  * can import it without requiring nested megarepo sync.
  */
 
-import { livestoreCurrentPackageNames, workspaceCatalogForProjection } from './repo-topology.ts'
+import { livestoreCurrentPackageNames, workspaceCatalogForPackageNames } from './repo-topology.ts'
 
 export {
-  changesetsIgnoredPackageNames,
-  changesetsIgnoredPackageJsonNames,
-  livestoreContribExampleMembers,
-  livestoreContribPackageNames,
   livestoreCorePackageNames,
   livestoreCurrentPackageNames,
   livestoreEffectUtilsPackageNames,
-  livestoreOwnedPackageNames,
   livestorePackageTopology,
   materializedMemberPathsForProjection,
   memberPathsForProjection,
@@ -24,22 +19,17 @@ export {
   packageJsonNameForPackageName,
   packageNamesForOwner,
   packageNamesForProjection,
-  publishableLivestorePackageDescriptors,
-  publishableLivestorePackageJsonNames,
-  releaseGroupPackageDescriptors,
-  releaseGroupPackageJsonNames,
-  releaseGroupPackageNames,
+  workspaceCatalogForPackageNames,
   workspaceCatalogForProjection,
   type LivestorePackageName,
   type LivestorePackageOwner,
   type LivestorePackageProjection,
   type LivestorePackageTopologyEntry,
-  type LivestoreReleaseGroup,
 } from './repo-topology.ts'
 
 /** Workspace packages exposed by LiveStore. */
 export const livestoreWorkspaceCatalog = {
-  ...workspaceCatalogForProjection('root'),
+  ...workspaceCatalogForPackageNames(livestoreCurrentPackageNames),
   '@local/astro-tldraw': 'workspace:*',
   '@local/astro-twoslash-code': 'workspace:*',
   '@local/shared': 'workspace:*',

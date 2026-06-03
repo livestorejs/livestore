@@ -28,7 +28,6 @@ export default tsconfigJson({
     { path: './packages/@livestore/common' },
     { path: './packages/@livestore/common-cf' },
     { path: './packages/@livestore/devtools-expo' },
-    { path: './packages/@livestore/devtools-web-common' },
     { path: './packages/@livestore/effect-playwright' },
     { path: './packages/@livestore/framework-toolkit' },
     { path: './packages/@livestore/graphql' },
