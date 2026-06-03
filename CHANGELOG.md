@@ -511,6 +511,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Add GitHub issue templates to improve issue quality (#602)
 - Reworked the documentation tooling so maintainers continuously publish token-efficient, TypeScript-backed snippets that stay reliable for coding agents (#715)
 - **Snapshot release confirmation prompt:** The `mono release snapshot` command now prompts for confirmation before publishing. Pass `--yes` to skip the prompt in scripts and CI. The prompt is also auto-skipped when `CI` is set (#1049).
+- **Release health check — docs.livestore.dev version:** Docs builds now emit a `<meta name="livestore-version" content="…">` tag and a daily workflow + post-release hook compares it against the npm `latest` dist-tag. Mismatch outside a 30m post-release grace window opens (or warms) a `bug`-labelled issue so a stale docs deploy never goes unnoticed.
 
 #### wa-sqlite Integration
 

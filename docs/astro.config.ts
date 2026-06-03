@@ -84,6 +84,16 @@ export default defineConfig({
     createCopyPageClipboardFallbackIntegration(),
     starlight({
       title: `LiveStore (${liveStoreVersion})`,
+      // Stable, machine-readable version marker for the docs health check
+      // (`.github/workflows/health-docs-version.yml`). Unlike the dynamic
+      // `og:site_name`, this tag is reserved for the deployed-vs-npm check
+      // so renaming the site title cannot accidentally break the probe.
+      head: [
+        {
+          tag: 'meta',
+          attrs: { name: 'livestore-version', content: liveStoreVersion },
+        },
+      ],
       social: [
         {
           icon: 'github',

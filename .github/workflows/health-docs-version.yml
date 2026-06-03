@@ -1,0 +1,37 @@
+# Generated file - DO NOT EDIT
+# Source: health-docs-version.yml.genie.ts
+
+name: 'Health: docs version'
+
+on:
+  schedule:
+    - cron: 15 8 * * *
+  release:
+    types: [published]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Compare docs version vs npm latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bun scripts/src/commands/health/docs-version.ts \
+            --trigger="${{ github.event_name }}" \
+            --release-published-at="${{ github.event.release.published_at }}" \
+            --release-grace-min=30
