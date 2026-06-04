@@ -193,9 +193,24 @@ export const merge = Effect.fnUntraced(function* ({
 }: {
   syncState: SyncState
   payload: typeof Payload.Type
+  /**
+   * `LiveStoreEvent.Client.EncodedWithMeta` does not carry the event definition's
+   * `clientOnly` flag. The caller supplies this schema-aware predicate so `merge`
+   * can preserve the correct sequence-number shape when rebasing: client-only
+   * events advance the client component, synced events advance the global component.
+   */
   isClientEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
+  /**
+   * Pending events are confirmed by comparing their logical encoded identity with
+   * upstream events. This is caller-supplied because comparing encoded args may
+   * require event-schema knowledge that the generic merge algorithm does not own.
+   * Implementations should ignore transport/runtime metadata.
+   */
   isEqualEvent: (a: LiveStoreEvent.Client.EncodedWithMeta, b: LiveStoreEvent.Client.EncodedWithMeta) => boolean
-  /** This is used in the leader which should ignore client events when receiving an upstream-advance payload */
+  /**
+   * This is used in the leader which should ignore client events when
+   * receiving an upstream-advance payload
+   */
   ignoreClientEvents?: boolean
 }) {
   yield* validateSyncState(syncState)
@@ -475,6 +490,8 @@ const rebaseEvents = ({
   let prevEventSequenceNumber = baseEventSequenceNumber
   const rebaseGeneration = baseEventSequenceNumber.rebaseGeneration + 1
   return events.map((event) => {
+    // Rebasing must preserve whether an event is client-only: client-only
+    // events become eN.1/eN.2, while synced events become eN+1.
     const isClient = isClientEvent(event)
     const newEvent = event.rebase({
       parentSeqNum: prevEventSequenceNumber,
