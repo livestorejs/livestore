@@ -1,4 +1,4 @@
 ---
 ---
 
-No release impact. Formats configured files only.
+No release impact. Formats files only.
