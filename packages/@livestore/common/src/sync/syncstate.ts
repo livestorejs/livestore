@@ -201,9 +201,10 @@ export const merge = Effect.fnUntraced(function* ({
    */
   isClientEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
   /**
-   * Pending events are confirmed by comparing their encoded identity with
-   * upstream events. This is caller-supplied because equality ignores
-   * transport/meta differences and may eventually become schema-aware.
+   * Pending events are confirmed by comparing their logical encoded identity with
+   * upstream events. This is caller-supplied because comparing encoded args may
+   * require event-schema knowledge that the generic merge algorithm does not own.
+   * Implementations should ignore transport/runtime metadata.
    */
   isEqualEvent: (a: LiveStoreEvent.Client.EncodedWithMeta, b: LiveStoreEvent.Client.EncodedWithMeta) => boolean
   /**
