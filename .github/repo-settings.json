@@ -26,6 +26,9 @@
         "do_not_enforce_on_create": false,
         "required_status_checks": [
           {
+            "context": "source-policy"
+          },
+          {
             "context": "lint"
           },
           {
@@ -78,6 +81,12 @@
           },
           {
             "context": "wa-sqlite-test"
+          },
+          {
+            "context": "build-deploy-docs"
+          },
+          {
+            "context": "build-and-deploy-examples-src"
           }
         ]
       }

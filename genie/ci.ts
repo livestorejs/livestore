@@ -19,6 +19,7 @@ export const syncProviderMatrix = [
 export const playwrightSuites = ['misc', 'todomvc', 'devtools'] as const
 
 export const requiredCIJobs = [
+  'source-policy',
   'lint',
   'changeset-check',
   'type-check',
@@ -27,4 +28,6 @@ export const requiredCIJobs = [
   ...syncProviderMatrix.map((provider) => `test-integration-sync-provider (${provider})`),
   ...playwrightSuites.map((suite) => `test-integration-playwright (${suite})`),
   'wa-sqlite-test',
+  'build-deploy-docs',
+  'build-and-deploy-examples-src',
 ] as const

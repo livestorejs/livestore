@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { isNotUndefined } from '@livestore/utils'
 import { CurrentWorkingDirectory, cmdText } from '@livestore/utils-dev/node'
-import { Effect, Fiber, HttpClient, HttpClientRequest, Schema, Stream } from '@livestore/utils/effect'
+import { Duration, Effect, Fiber, HttpClient, HttpClientRequest, Schema, Stream } from '@livestore/utils/effect'
 import { ChildProcess } from 'effect/unstable/process'
 import { ChildProcessSpawner } from 'effect/unstable/process/ChildProcessSpawner'
 
@@ -70,19 +70,19 @@ const NETLIFY_API_URL = 'https://api.netlify.com/api/v1/purge'
  * - Deploy uses config‑driven publish (reads docs/netlify.toml) with --no-build
  * - This ensures Edge Functions are attached without rebuilding
  */
-export const deployToNetlify = ({
-  site,
-  target,
-  message,
-  debug,
-}: {
-  site: string
-  target: Target
-  message?: string
-  /** When true, passes --debug to Netlify CLI and increases logging. */
-  debug?: boolean
-}) =>
-  Effect.gen(function* () {
+export const deployToNetlify = Effect.fn('netlify.deploy')(
+  function* ({
+    site,
+    target,
+    message,
+    debug,
+  }: {
+    site: string
+    target: Target
+    message?: string
+    /** When true, passes --debug to Netlify CLI and increases logging. */
+    debug?: boolean
+  }) {
     const cwd = yield* CurrentWorkingDirectory
     const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { stderr: 'pipe' })
 
@@ -186,7 +186,19 @@ export const deployToNetlify = ({
     )
 
     return result
-  })
+  },
+  // Netlify upload occasionally hangs (CDN edge tarball commit). 15 minutes is a
+  // generous backstop while still well below the shell-level `timeout(1)` wrapper.
+  Effect.timeout(Duration.minutes(15)),
+  Effect.catchTag(
+    'TimeoutError',
+    () =>
+      new NetlifyError({
+        message: 'Netlify deploy timed out after 15 minutes',
+        reason: 'unknown',
+      }),
+  ),
+)
 
 const resolveNetlifyAuthToken = Effect.gen(function* () {
   const envToken = process.env.NETLIFY_AUTH_TOKEN
@@ -295,40 +307,45 @@ const resolveSiteIdViaApi = Effect.fn('resolveSiteIdViaApi')(function* (siteName
   return match !== undefined ? match.id : siteName
 })
 
-export const purgeNetlifyCdn = ({ siteId, siteSlug }: { siteId?: string; siteSlug?: string }) =>
-  Effect.gen(function* () {
-    if (siteId == null && siteSlug == null) {
-      return yield* new NetlifyError({
-        message: 'A site identifier is required to purge the Netlify CDN cache',
-        reason: 'unknown',
-      })
-    }
+export const purgeNetlifyCdn = Effect.fn('netlify.purge-cdn')(function* ({
+  siteId,
+  siteSlug,
+}: {
+  siteId?: string
+  siteSlug?: string
+}) {
+  if (siteId == null && siteSlug == null) {
+    return yield* new NetlifyError({
+      message: 'A site identifier is required to purge the Netlify CDN cache',
+      reason: 'unknown',
+    })
+  }
 
-    const token = yield* resolveNetlifyAuthToken
-    yield* Effect.log(`Purging Netlify CDN cache for ${siteSlug ?? siteId ?? 'site'}`)
+  const token = yield* resolveNetlifyAuthToken
+  yield* Effect.log(`Purging Netlify CDN cache for ${siteSlug ?? siteId ?? 'site'}`)
 
-    const httpClient = yield* HttpClient.HttpClient
+  const httpClient = yield* HttpClient.HttpClient
 
-    yield* HttpClientRequest.schemaBodyJson(NetlifyPurgeRequestSchema)(
-      HttpClientRequest.post(NETLIFY_API_URL).pipe(HttpClientRequest.setHeader('authorization', `Bearer ${token}`)),
-      {
-        site_id: siteId,
-        site_slug: siteSlug,
-      },
-    ).pipe(
-      Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
-      Effect.mapError(
-        (error) =>
-          new NetlifyError({
-            message: 'Failed to purge Netlify CDN cache',
-            reason: 'unknown',
-            cause: error,
-          }),
-      ),
-    )
+  yield* HttpClientRequest.schemaBodyJson(NetlifyPurgeRequestSchema)(
+    HttpClientRequest.post(NETLIFY_API_URL).pipe(HttpClientRequest.setHeader('authorization', `Bearer ${token}`)),
+    {
+      site_id: siteId,
+      site_slug: siteSlug,
+    },
+  ).pipe(
+    Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
+    Effect.mapError(
+      (error) =>
+        new NetlifyError({
+          message: 'Failed to purge Netlify CDN cache',
+          reason: 'unknown',
+          cause: error,
+        }),
+    ),
+  )
 
-    yield* Effect.log(`Requested Netlify CDN purge for ${siteSlug ?? siteId ?? 'site'}`)
-  })
+  yield* Effect.log(`Requested Netlify CDN purge for ${siteSlug ?? siteId ?? 'site'}`)
+})
 
 const determineNetlifyConfigCandidates = (homeDirectory: string): readonly string[] => {
   const configPaths = [] as string[]

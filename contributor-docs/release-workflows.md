@@ -112,6 +112,35 @@ release data self-contained: the DevTools artifact identity remains the
 artifact build id, while the LiveStore package version is assigned by release
 automation and then validated by CI before auto-merge.
 
+### Release notes artifact
+
+Alongside `release/release-plan.json`, the release PR generator extracts the
+current version's `CHANGELOG.md` section into `release/release-notes.md` via
+the `release:notes:extract` task (which calls
+`mono release extract-release-notes`). The extracted file is committed to the
+release-plan PR so reviewers see exactly what will land on the GitHub Release
+page.
+
+The DevTools artifact publish step then uses that file when it creates or
+updates the GitHub Release tag:
+
+- On `gh release create`, it passes `--notes-file release/release-notes.md`
+  instead of the legacy hardcoded `Release <version>` body.
+- On subsequent reruns (the release already exists), it also calls
+  `gh release edit --notes-file release/release-notes.md` so a corrected
+  `CHANGELOG.md` section actually lands on the GitHub Release page.
+
+If `release/release-notes.md` is missing at publish time, the publish step
+falls back to the legacy `Release <version>` body and logs a warning. To
+refresh it locally for a planned release:
+
+```bash
+mono release extract-release-notes
+```
+
+This reads the version from `release/release-plan.json` and writes
+`release/release-notes.md`.
+
 Release plans are validated against the npm dist-tag before dry-run or publish:
 
 - `latest` only accepts stable versions such as `0.4.0`.
@@ -130,8 +159,60 @@ After merge to `main`, the push-triggered workflow runs:
 
 - `release:stable:publish`
 - `release:devtools-artifact:publish:no-install`
-- For stable `latest` releases only: `docs:deploy:prod`,
+- For stable `latest` releases only: docs prod deploy (phase-split, see below),
   `examples:deploy:prod`, and the production docs search sync.
+
+### Prod docs deploy phase split
+
+The prod docs deploy was previously a single `mono docs deploy --prod --build
+--purge-cdn` invocation. It hung reproducibly for the 0.4.0 release because the
+tldraw diagram renderer (via `@kitschpatrol/tldraw-cli` + Puppeteer) can leave
+an orphan Chromium child that keeps the parent Bun/Node process alive
+indefinitely. See [#1279](https://github.com/livestorejs/livestore/issues/1279)
+for the original incident.
+
+The deploy is now split into six phases, each run as a separate
+`docs:deploy:prod:phase:*` Nix task. Every phase wraps its mono invocation with
+`timeout --signal=TERM --kill-after=2m N`, so the OS reaps the entire process
+group (including orphan Chromium) regardless of what the Effect-level handler
+is doing. A background heartbeat writes `[docs-prod-heartbeat] <iso8601>
+<pgrep-output>` every 30–60 s to keep CI logs anchored to wall-clock and to
+make hangs greppable in retrospect.
+
+| Phase      | Task                                  | Purpose                                                       |
+| ---------- | ------------------------------------- | ------------------------------------------------------------- |
+| `snippets` | `docs:deploy:prod:phase:snippets`     | Run `mono docs snippets build`                                |
+| `diagrams` | `docs:deploy:prod:phase:diagrams`     | Run tldraw diagram renderer                                   |
+| `astro`    | `docs:deploy:prod:phase:astro`        | `mono docs build --api-docs --skip-deps`                      |
+| `upload`   | `docs:deploy:prod:phase:upload`       | `mono docs deploy --prod --step=upload`, writes `deploy-state.json` |
+| `verify`   | `docs:deploy:prod:phase:verify`       | `mono docs deploy --prod --step=verify`, posts job summary    |
+| `purge`    | `docs:deploy:prod:phase:purge`        | `mono docs deploy --prod --step=purge`, purges Netlify CDN    |
+
+The `upload` phase writes Netlify identifiers to `tmp/ci-docs-prod/deploy-state.json`
+so `verify` and `purge` can run as independent processes (and independent Actions
+steps / jobs) without re-uploading the build. The state file plus per-phase logs
+are uploaded as a `docs-prod-deploy-logs-*` artifact on every run for retrospective
+debugging.
+
+The deploy handler emits OpenTelemetry spans (`docs.deploy.upload`,
+`docs.deploy.verify.markdown-negotiation`, `netlify.deploy`, `netlify.purge-cdn`)
+under the shared `OTEL_EXPORTER_OTLP_ENDPOINT` already wired in `genie/repo.ts`'s
+`otelSetupStep`.
+
+### Operator recovery: re-running a single deploy target
+
+When the publish-release run has succeeded the npm publish and DevTools artifact
+stages but the docs / examples / search deploy fails or times out, re-dispatch
+just the failing target via `.github/workflows/deploy-prod.yml` instead of
+re-running the entire publish chain:
+
+```bash
+gh workflow run deploy-prod.yml -f target=docs    # or examples / search / all
+```
+
+This workflow is `workflow_dispatch`-only. The forward path during a release
+still runs inline in `release.yml#publish-release` so dev-tag and stable
+releases share the same per-phase task definitions.
 
 CI snapshot publishing still republishes the public DevTools npm package for
 the exact snapshot version. Snapshot Chrome ZIPs are retained as workflow

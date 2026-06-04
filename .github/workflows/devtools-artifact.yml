@@ -59,11 +59,17 @@ env:
   BASE_BRANCH: ${{ github.event.repository.default_branch }}
 
 jobs:
-  update-manifest-pr:
-    runs-on: ubuntu-latest
+  source-policy:
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    permissions:
+      contents: read
     defaults:
       run:
         shell: bash
+    env:
+      FORCE_SETUP: '1'
+      CI: 'true'
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v6
       - name: Install Nix
@@ -75,21 +81,7 @@ jobs:
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             access-tokens = github.com=${{ github.token }}
-            extra-substituters = https://cache.nixos.org
-            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
-      - name: Provide cachix CLI from nixpkgs
-        shell: bash
-        run: |
-          set -euo pipefail
-          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
-          echo "$out/bin" >> "$GITHUB_PATH"
-      - name: Enable Cachix cache
-        uses: cachix/cachix-action@v17
-        with:
-          name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
-          skipPush: true
       - name: Check first-party default refs
         env:
           FIRST_PARTY_OWNERS_JSON: '["overengineeringstudio"]'
@@ -98,7 +90,7 @@ jobs:
           VERIFY_REACHABLE: '1'
           NORMALIZE_GIT_BRANCH_REFS: '1'
         run: |
-          node <<'NODE'
+          nix shell nixpkgs#nodejs_24 -c node <<'NODE'
           const fs = require('node:fs')
           const path = require('node:path')
           const os = require('node:os')
@@ -436,6 +428,37 @@ jobs:
           process.exit(1)
           NODE
         shell: bash
+  update-manifest-pr:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
+      - name: Provide cachix CLI from nixpkgs
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
+          echo "$out/bin" >> "$GITHUB_PATH"
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v17
+        with:
+          name: livestore
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -467,6 +490,7 @@ jobs:
         shell: bash
         run: |
           echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_CONFIG_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
       - id: restore-pnpm-state
         name: Restore pnpm state

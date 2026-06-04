@@ -24,15 +24,16 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1779603561,
-        "narHash": "sha256-CBStRAdivbnhYiY3eh3KVZQGFoP8JNfKPPztzSvyJEc=",
+        "lastModified": 1780403834,
+        "narHash": "sha256-kqDwgBq0LxpigfaxbJbhXEkZ0ubeIgvx/GLLh7hMpDg=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "21774b60d1924e477325a8eab29a24951cbce5d6",
+        "rev": "f29b791b25f080bcf73438c9dfa5434f2572d2c4",
         "type": "github"
       },
       "original": {
         "owner": "overengineeringstudio",
+        "ref": "main",
         "repo": "effect-utils",
         "type": "github"
       }
@@ -134,16 +135,16 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1775036866,
-        "narHash": "sha256-ZojAnPuCdy657PbTq5V0Y+AHKhZAIwSIT2cb8UgAz/U=",
+        "lastModified": 1780125817,
+        "narHash": "sha256-A44psESF9sRBg5kkkYwPPKcDakheLDnpwWMguKpA2xw=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "6201e203d09599479a3b3450ed24fa81537ebc4e",
+        "rev": "cc8609d47cd9ddda67f70bd4729b0c1dfb2e7f21",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
-        "ref": "nixos-unstable",
+        "ref": "release-26.05",
         "repo": "nixpkgs",
         "type": "github"
       }
@@ -189,16 +190,17 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
-        "lastModified": 1779333665,
-        "narHash": "sha256-F4Ytzu05q1xytQEcnZAoKCXMNzDu5GFjs/s19MoyBME=",
+        "lastModified": 1780403834,
+        "narHash": "sha256-kqDwgBq0LxpigfaxbJbhXEkZ0ubeIgvx/GLLh7hMpDg=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "b3f33c5802fee99e74da73ebe7301f2c2490265a",
+        "rev": "f29b791b25f080bcf73438c9dfa5434f2572d2c4",
         "type": "github"
       },
       "original": {
         "dir": "nix/playwright-flake",
         "owner": "overengineeringstudio",
+        "ref": "main",
         "repo": "effect-utils",
         "type": "github"
       }

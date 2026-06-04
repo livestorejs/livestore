@@ -1,12 +1,12 @@
 {
   "name": "livestore-example-node-todomvc-sync-cf",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-node": "0.4.0-dev.27",
-    "@livestore/livestore": "0.4.0-dev.27",
-    "@livestore/sync-cf": "0.4.0-dev.27"
+    "@livestore/adapter-node": "0.4.0",
+    "@livestore/livestore": "0.4.0",
+    "@livestore/sync-cf": "0.4.0"
   },
   "devDependencies": {
     "@types/node": "25.3.3",

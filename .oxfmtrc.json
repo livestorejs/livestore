@@ -19,6 +19,7 @@
     "**/dist/**",
     "**/storybook-static/**",
     "**/.turbo/**",
+    "**/tmp/**",
     "**/*.gen.ts",
     "**/*.gen.tsx",
     "**/*.generated.ts",

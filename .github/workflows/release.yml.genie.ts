@@ -2,7 +2,9 @@ import {
   bashShellDefaults,
   defaultActionlintConfig,
   githubWorkflow,
+  livestoreDefaultRefPolicyJob,
   livestoreSetupSteps,
+  otelSetupStep,
   runDevenvTasksBefore,
   savePnpmStateStep,
   nixDiagnosticsArtifactStep,
@@ -29,14 +31,19 @@ tests/integration/test-results/devtools/`,
 const releasePlanPaths = [
   '.github/workflows/release.yml',
   '.github/workflows/release.yml.genie.ts',
+  '.github/workflows/deploy-prod.yml',
+  '.github/workflows/deploy-prod.yml.genie.ts',
   'genie/repo.ts',
   'nix/devenv-modules/tasks/local/mono-wrappers.nix',
   'release/release-plan.json',
+  'release/release-notes.md',
   'release/version.json',
   'release/devtools-artifact.json',
   'scripts/src/commands/release.ts',
   'scripts/src/commands/devtools-artifact.ts',
   'scripts/src/commands/changesets.ts',
+  'scripts/src/commands/docs.ts',
+  'scripts/src/shared/netlify.ts',
 ]
 
 export default githubWorkflow({
@@ -82,6 +89,7 @@ export default githubWorkflow({
   },
 
   jobs: {
+    'source-policy': livestoreDefaultRefPolicyJob,
     'create-release-pr': {
       if: "github.event_name == 'workflow_dispatch' && inputs.mode == 'create-release-pr'",
       'runs-on': 'ubuntu-latest',
@@ -109,6 +117,16 @@ export default githubWorkflow({
           },
         },
         {
+          /**
+           * Extract the changelog section for this release into a reviewable
+           * `release/release-notes.md` artifact. The publish job uses this
+           * file via `gh release create|edit --notes-file` so the GitHub
+           * Release body matches what reviewers approved on the release PR.
+           */
+          name: 'Extract release notes',
+          run: runDevenvTasksBefore('release:notes:extract'),
+        },
+        {
           name: 'Open release plan PR',
           env: {
             GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
@@ -129,6 +147,7 @@ git add \\
   package.json \\
   pnpm-lock.yaml \\
   release/devtools-artifact.json \\
+  release/release-notes.md \\
   release/release-plan.json \\
   release/version.json \\
   docs/package.json \\
@@ -172,7 +191,12 @@ gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$branch" \\
   -f mode=validate-release-plan \\
   -f npm_tag="$LIVESTORE_NPM_TAG"
 
-if gh pr view "$branch" --repo "$GITHUB_REPOSITORY" --json autoMergeRequest --jq '.autoMergeRequest != null' | grep -qx true; then
+# Stable (npm_tag=latest) release PRs are gated by a human reviewer. For
+# prerelease channels (dev, next, etc.) the release PR is fully automated, so
+# auto-merge is enabled to drive the publish on green CI.
+if [ "$LIVESTORE_NPM_TAG" = "latest" ]; then
+  echo "npm_tag=latest: leaving auto-merge disabled; this PR requires a human ready-for-review and merge."
+elif gh pr view "$branch" --repo "$GITHUB_REPOSITORY" --json autoMergeRequest --jq '.autoMergeRequest != null' | grep -qx true; then
   echo "Auto-merge already enabled for $branch."
 else
   gh pr merge "$branch" --repo "$GITHUB_REPOSITORY" --auto --merge
@@ -272,9 +296,29 @@ fi`,
           name: 'Read release plan',
           run: `set -euo pipefail
 release_version="$(jq -r '.version' release/release-plan.json)"
+npm_tag="$(jq -r '.npmTag' release/release-plan.json)"
 : "\${release_version:?Missing release version}"
-echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"`,
+: "\${npm_tag:?Missing npm tag}"
+echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
+echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
+# Env vars do not carry across jobs in GitHub Actions, so the deploy-target
+# gate that the validate-release-plan job sets must be re-derived here for the
+# Deploy production docs/examples and Sync production docs search steps below.
+if [ "$npm_tag" = "latest" ]; then
+  echo "LIVESTORE_RELEASE_DEPLOY_TARGET=prod" >> "$GITHUB_ENV"
+else
+  echo "LIVESTORE_RELEASE_DEPLOY_TARGET=dev" >> "$GITHUB_ENV"
+fi`,
         },
+        /*
+         * Stable package publishing uses the NPM_TOKEN secret. npm currently
+         * allows only one trusted publisher workflow per package, and
+         * `ci.yml` already owns that slot for snapshot publishing. Moving
+         * stable releases to trusted publishing would require consolidating
+         * the snapshot + stable publish into a single workflow file or
+         * giving up snapshot OIDC — neither is worth doing right now.
+         * See .github/workflows/README.md `release.yml` section.
+         */
         {
           name: 'Configure npm token fallback',
           run: `set -euo pipefail
@@ -286,6 +330,7 @@ printf '%s\\n' "NPM_CONFIG_USERCONFIG=$npmrc" >> "$GITHUB_ENV"
 printf '%s\\n' "NPM_CONFIG_REGISTRY=https://registry.npmjs.org/" >> "$GITHUB_ENV"
 NPM_CONFIG_USERCONFIG="$npmrc" NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ npm whoami >/dev/null`,
         },
+        otelSetupStep,
         {
           name: 'Publish stable package release',
           run: runDevenvTasksBefore('release:stable:publish'),
@@ -299,17 +344,81 @@ NPM_CONFIG_USERCONFIG="$npmrc" NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ n
           name: 'Publish DevTools artifact release',
           run: runDevenvTasksBefore('release:devtools-artifact:publish:no-install'),
         },
+        /*
+         * Prod docs deploy — phase-split with OS-level shell timeouts +
+         * heartbeats to cap orphan Chromium children from the tldraw render
+         * step (livestorejs/livestore#1279). Each phase has its own
+         * `timeout-minutes` backstop above the per-task `timeout(1)` wrapper.
+         *
+         * If a phase fails or hangs, an operator can recover with
+         * `gh workflow run deploy-prod.yml -f target=docs` instead of
+         * re-running the entire publish chain.
+         */
         {
-          name: 'Deploy production docs',
+          name: 'Deploy production docs — snippets',
           if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
-          run: runDevenvTasksBefore('docs:deploy:prod'),
+          'timeout-minutes': 25,
+          run: runDevenvTasksBefore('docs:deploy:prod:phase:snippets'),
+        },
+        {
+          name: 'Deploy production docs — diagrams',
+          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          'timeout-minutes': 25,
+          run: runDevenvTasksBefore('docs:deploy:prod:phase:diagrams'),
+        },
+        {
+          name: 'Deploy production docs — astro build',
+          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          'timeout-minutes': 25,
+          run: runDevenvTasksBefore('docs:deploy:prod:phase:astro'),
+        },
+        {
+          name: 'Deploy production docs — upload',
+          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          'timeout-minutes': 25,
+          run: runDevenvTasksBefore('docs:deploy:prod:phase:upload'),
           env: {
             NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
           },
         },
         {
+          name: 'Deploy production docs — verify',
+          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          'timeout-minutes': 15,
+          run: runDevenvTasksBefore('docs:deploy:prod:phase:verify'),
+          env: {
+            NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
+          },
+        },
+        {
+          name: 'Deploy production docs — purge CDN',
+          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          'timeout-minutes': 15,
+          run: runDevenvTasksBefore('docs:deploy:prod:phase:purge'),
+          env: {
+            NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
+          },
+        },
+        {
+          name: 'Collect docs deploy diagnostics on failure',
+          if: "${{ failure() && env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod' }}",
+          run: runDevenvTasksBefore('docs:deploy:prod:diagnostics'),
+        },
+        {
+          name: 'Upload docs prod deploy logs',
+          if: "${{ always() && env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod' }}",
+          uses: 'actions/upload-artifact@v4',
+          with: {
+            name: 'docs-prod-deploy-logs-${{ github.run_id }}-${{ github.run_attempt }}',
+            path: 'tmp/ci-docs-prod/',
+            'if-no-files-found': 'ignore',
+            'retention-days': 14,
+          },
+        },
+        {
           name: 'Deploy production examples',
           if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
+          'timeout-minutes': 30,
           run: runDevenvTasksBefore('examples:deploy:prod'),
           env: {
             CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
@@ -319,13 +428,11 @@ NPM_CONFIG_USERCONFIG="$npmrc" NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ n
         {
           name: 'Sync production docs search',
           if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
-          run: `set -euo pipefail
-: "\${MXBAI_API_KEY:?Missing MXBAI_API_KEY secret}"
-: "\${MXBAI_VECTOR_STORE_ID_PROD:?Missing MXBAI_VECTOR_STORE_ID_PROD secret}"
-pnpm --dir docs exec mxbai store sync "$MXBAI_VECTOR_STORE_ID_PROD" "./src/content/**/*.mdx" "./src/content/**/*.md" --yes --strategy fast`,
+          'timeout-minutes': 15,
+          run: runDevenvTasksBefore('docs:search:sync:prod'),
           env: {
             MXBAI_API_KEY: '${{ secrets.MXBAI_API_KEY }}',
-            MXBAI_VECTOR_STORE_ID_PROD: '${{ secrets.MXBAI_VECTOR_STORE_ID_PROD }}',
+            MXBAI_VECTOR_STORE_ID: '${{ secrets.MXBAI_VECTOR_STORE_ID }}',
           },
         },
       ]),
