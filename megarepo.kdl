@@ -1,4 +1,4 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils#main"
+    effect-utils "overengineeringstudio/effect-utils#schickling-assistant/2026-06-03-workflow-call-job"
     effect "effect-ts/effect"
 }
