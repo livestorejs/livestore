@@ -7,8 +7,7 @@ import pkg from '../package.json' with { type: 'json' }
  */
 export const liveStoreVersion: string = (globalThis as any).__LIVESTORE_VERSION_OVERRIDE__ ?? pkg.version
 
-export const devtoolsProtocolVersion: number =
-  (globalThis as any).__LIVESTORE_DEVTOOLS_PROTOCOL_VERSION_OVERRIDE__ ?? 1
+export const devtoolsProtocolVersion: number = (globalThis as any).__LIVESTORE_DEVTOOLS_PROTOCOL_VERSION_OVERRIDE__ ?? 1
 
 export const supportedDevtoolsProtocolVersions: ReadonlyArray<number> = [devtoolsProtocolVersion]
 

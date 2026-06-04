@@ -1,6 +1,5 @@
-import * as React from 'react'
-
 import type { StoreRegistry } from '@livestore/livestore'
+import * as React from 'react'
 
 export const StoreRegistryContext = React.createContext<StoreRegistry | undefined>(undefined)
 

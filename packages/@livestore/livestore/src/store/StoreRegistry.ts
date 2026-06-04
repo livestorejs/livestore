@@ -17,7 +17,7 @@ import {
   type Scope,
 } from '@livestore/utils/effect'
 
-import { createStore, type CreateStoreOptions } from './create-store.ts'
+import { type CreateStoreOptions, createStore } from './create-store.ts'
 import type { Store } from './store.ts'
 import type { OtelOptions } from './store-types.ts'
 
@@ -205,7 +205,8 @@ export class StoreRegistry {
           ),
         )
       },
-      idleTimeToLive: ({ options }: StoreCacheKey) => options.unusedCacheTime ?? config.defaultOptions?.unusedCacheTime ?? DEFAULT_UNUSED_CACHE_TIME,
+      idleTimeToLive: ({ options }: StoreCacheKey) =>
+        options.unusedCacheTime ?? config.defaultOptions?.unusedCacheTime ?? DEFAULT_UNUSED_CACHE_TIME,
     }).pipe(Runtime.runSync(this.#runtime))
   }
 

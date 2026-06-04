@@ -4,21 +4,13 @@ import commonPkg from '../../packages/@livestore/common/package.json.genie.ts'
 import livestorePkg from '../../packages/@livestore/livestore/package.json.genie.ts'
 import reactPkg from '../../packages/@livestore/react/package.json.genie.ts'
 import sqliteWasmPkg from '../../packages/@livestore/sqlite-wasm/package.json.genie.ts'
-import utilsDevPkg from '../../packages/@livestore/utils-dev/package.json.genie.ts'
 import utilsPkg from '../../packages/@livestore/utils/package.json.genie.ts'
+import utilsDevPkg from '../../packages/@livestore/utils-dev/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
-  workspace: workspaceMember("tests/perf-eventlog"),
+  workspace: workspaceMember('tests/perf-eventlog'),
   dependencies: {
-    workspace: [
-      adapterWebPkg,
-      commonPkg,
-      livestorePkg,
-      reactPkg,
-      sqliteWasmPkg,
-      utilsPkg,
-      utilsDevPkg,
-    ],
+    workspace: [adapterWebPkg, commonPkg, livestorePkg, reactPkg, sqliteWasmPkg, utilsPkg, utilsDevPkg],
     external: catalog.pick(
       '@opentelemetry/api',
       '@opentelemetry/core',

@@ -1,6 +1,3 @@
-import type * as otel from '@opentelemetry/api'
-import * as Solid from 'solid-js'
-
 import {
   captureStackInfo,
   computeRcRefKey,
@@ -12,6 +9,8 @@ import {
 import type { LiveQuery, Queryable, Store } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
 import { deepEqual } from '@livestore/utils'
+import type * as otel from '@opentelemetry/api'
+import * as Solid from 'solid-js'
 
 import { type AccessorMaybe, resolve } from './utils.ts'
 

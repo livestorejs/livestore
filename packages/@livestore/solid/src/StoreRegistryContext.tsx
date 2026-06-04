@@ -1,6 +1,5 @@
-import * as Solid from 'solid-js'
-
 import type { StoreRegistry } from '@livestore/livestore'
+import * as Solid from 'solid-js'
 
 export const StoreRegistryContext = Solid.createContext<StoreRegistry | undefined>(undefined)
 

@@ -1,11 +1,6 @@
-import {
-  BackendIdMismatchError,
-  ServerAheadError,
-  SyncBackend,
-  UnknownError,
-} from '@livestore/common'
-import { type CfTypes, emitStreamResponse } from '@livestore/common-cf'
+import { BackendIdMismatchError, ServerAheadError, SyncBackend, UnknownError } from '@livestore/common'
 import { splitChunkBySize } from '@livestore/common/sync'
+import { type CfTypes, emitStreamResponse } from '@livestore/common-cf'
 import { Chunk, Effect, Option, type RpcMessage, Schema } from '@livestore/utils/effect'
 
 import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
@@ -55,9 +50,7 @@ export const makePush =
             ...(payload !== undefined ? { payload } : {}),
             ...(headers !== undefined ? { headers } : {}),
           }),
-        ).pipe(
-          UnknownError.mapToUnknownError,
-        )
+        ).pipe(UnknownError.mapToUnknownError)
       }
 
       if (pushRequest.backendId._tag === 'Some' && pushRequest.backendId.value !== backendId) {

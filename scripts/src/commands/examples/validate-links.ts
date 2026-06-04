@@ -1,6 +1,6 @@
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { exampleDeployments, type ExampleDeploymentEnvironment } from '@local/shared'
+import { type ExampleDeploymentEnvironment, exampleDeployments } from '@local/shared'
 
 class ExampleLinkValidationError extends Schema.TaggedError<ExampleLinkValidationError>()(
   'ExampleLinkValidationError',

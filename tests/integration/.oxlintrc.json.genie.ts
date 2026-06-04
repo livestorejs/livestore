@@ -1,3 +1,4 @@
+import { oxlintConfig } from '#mr/effect-utils/genie/external.ts'
 import {
   livestoreOxlintCategories,
   livestoreOxlintIgnorePatterns,
@@ -5,18 +6,11 @@ import {
   livestoreOxlintPlugins,
   livestoreOxlintRules,
 } from '../../.oxlintrc.json.genie.ts'
-import { oxlintConfig } from '#mr/effect-utils/genie/external.ts'
 
 export default oxlintConfig({
   plugins: livestoreOxlintPlugins,
   categories: livestoreOxlintCategories,
   rules: livestoreOxlintRules,
   overrides: livestoreOxlintOverrides,
-  ignorePatterns: [
-    ...livestoreOxlintIgnorePatterns,
-    'node_modules/**',
-    'dist/**',
-    '.cache/**',
-    '.pnpm/**',
-  ],
+  ignorePatterns: [...livestoreOxlintIgnorePatterns, 'node_modules/**', 'dist/**', '.cache/**', '.pnpm/**'],
 })

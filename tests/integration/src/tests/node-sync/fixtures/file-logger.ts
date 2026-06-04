@@ -3,8 +3,6 @@ import * as http from 'node:http'
 import path from 'node:path'
 
 import { shouldNeverHappen, sluggify } from '@livestore/utils'
-import { FileLogger } from '@livestore/utils-dev/node'
-import type { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Effect,
   FetchHttpClient,
@@ -20,6 +18,8 @@ import {
   Schema,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
+import { FileLogger } from '@livestore/utils-dev/node'
+import type { Vitest } from '@livestore/utils-dev/node-vitest'
 
 /*
  * ## Why is this custom file logger needed?

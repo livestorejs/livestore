@@ -1,16 +1,15 @@
 import { performance } from 'node:perf_hooks'
 
 import * as OtelNodeSdk from '@effect/opentelemetry/NodeSdk'
+import { IS_BUN, isNonEmptyString } from '@livestore/utils'
+import type { Tracer } from '@livestore/utils/effect'
+import { Config, Effect, FiberRef, Layer, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
+import { OtelLiveDummy } from '@livestore/utils/node'
 import * as otel from '@opentelemetry/api'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
-
-import { IS_BUN, isNonEmptyString } from '@livestore/utils'
-import type { Tracer } from '@livestore/utils/effect'
-import { Config, Effect, FiberRef, Layer, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
-import { OtelLiveDummy } from '@livestore/utils/node'
 
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
@@ -47,12 +46,14 @@ export const OtelLiveHttp = ({
       exporterUrl: Config.string('OTEL_EXPORTER_OTLP_ENDPOINT').pipe(
         Config.validate({ message: 'OTEL_EXPORTER_OTLP_ENDPOINT must be set', validation: isNonEmptyString }),
       ),
-      serviceName: serviceName !== undefined
-        ? Config.succeed(serviceName)
-        : Config.string('OTEL_SERVICE_NAME').pipe(Config.withDefault('livestore-utils-dev')),
-      rootSpanName: rootSpanName !== undefined
-        ? Config.succeed(rootSpanName)
-        : Config.string('OTEL_ROOT_SPAN_NAME').pipe(Config.withDefault('RootSpan')),
+      serviceName:
+        serviceName !== undefined
+          ? Config.succeed(serviceName)
+          : Config.string('OTEL_SERVICE_NAME').pipe(Config.withDefault('livestore-utils-dev')),
+      rootSpanName:
+        rootSpanName !== undefined
+          ? Config.succeed(rootSpanName)
+          : Config.string('OTEL_ROOT_SPAN_NAME').pipe(Config.withDefault('RootSpan')),
     }).pipe(Effect.option)
 
     if (configRes._tag === 'None') {
@@ -190,29 +191,32 @@ const computeBootstrapTiming = () => {
   const nodeTiming = performance.nodeTiming
 
   // Absolute start time in ms since epoch.
-  const startAbs = IS_BUN === true
-    ? typeof nodeTiming.nodeStart === 'number'
-      ? nodeTiming.nodeStart
-      : performance.timeOrigin
-    : performance.timeOrigin + nodeTiming.nodeStart
+  const startAbs =
+    IS_BUN === true
+      ? typeof nodeTiming.nodeStart === 'number'
+        ? nodeTiming.nodeStart
+        : performance.timeOrigin
+      : performance.timeOrigin + nodeTiming.nodeStart
 
   // Absolute end time.
-  const endAbs = IS_BUN === true
-    ? (() => {
-        const { loopStart, bootstrapComplete } = nodeTiming
-        if (typeof loopStart === 'number' && loopStart > 0) return startAbs + loopStart
-        if (typeof bootstrapComplete === 'number' && bootstrapComplete >= startAbs) return bootstrapComplete
-        return startAbs + 1
-      })()
-    : startAbs + nodeTiming.duration
+  const endAbs =
+    IS_BUN === true
+      ? (() => {
+          const { loopStart, bootstrapComplete } = nodeTiming
+          if (typeof loopStart === 'number' && loopStart > 0) return startAbs + loopStart
+          if (typeof bootstrapComplete === 'number' && bootstrapComplete >= startAbs) return bootstrapComplete
+          return startAbs + 1
+        })()
+      : startAbs + nodeTiming.duration
 
   // Duration attribute value for the span.
-  const durationAttr = IS_BUN === true
-    ? (() => {
-        const { loopStart } = nodeTiming
-        return typeof loopStart === 'number' && loopStart > 0 ? loopStart : 0
-      })()
-    : nodeTiming.duration
+  const durationAttr =
+    IS_BUN === true
+      ? (() => {
+          const { loopStart } = nodeTiming
+          return typeof loopStart === 'number' && loopStart > 0 ? loopStart : 0
+        })()
+      : nodeTiming.duration
 
   return { nodeTiming, startAbs, endAbs, durationAttr } as const
 }

@@ -43,10 +43,13 @@ export const ExportFileSchema = Schema.Struct({
 
 export type ExportFile = typeof ExportFileSchema.Type
 
-export class ConnectionError extends Schema.TaggedError<ConnectionError>('~@livestore/cli/ConnectionError')('ConnectionError', {
-  cause: Schema.Defect,
-  note: Schema.String,
-}) {}
+export class ConnectionError extends Schema.TaggedError<ConnectionError>('~@livestore/cli/ConnectionError')(
+  'ConnectionError',
+  {
+    cause: Schema.Defect,
+    note: Schema.String,
+  },
+) {}
 
 export class ExportError extends Schema.TaggedError<ExportError>('~@livestore/cli/ExportError')('ExportError', {
   cause: Schema.Defect,

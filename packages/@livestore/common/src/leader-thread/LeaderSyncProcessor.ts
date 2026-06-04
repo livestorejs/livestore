@@ -26,11 +26,16 @@ import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 import type { BackendIdMismatchError, IsOfflineError, SyncBackend } from '../sync/sync.ts'
-import { isRejectedPushError, LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError } from './RejectedPushError.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
 import { rollback } from './materialize-event.ts'
+import {
+  isRejectedPushError,
+  LeaderAheadError,
+  NonMonotonicBatchError,
+  StaleRebaseGenerationError,
+} from './RejectedPushError.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
@@ -213,7 +218,9 @@ export const makeLeaderSyncProcessor = ({
         const waitForProcessing = options?.waitForProcessing ?? false
 
         if (waitForProcessing === true) {
-          const deferreds = yield* Effect.forEach(newEvents, () => Deferred.make<void, LeaderAheadError | StaleRebaseGenerationError>())
+          const deferreds = yield* Effect.forEach(newEvents, () =>
+            Deferred.make<void, LeaderAheadError | StaleRebaseGenerationError>(),
+          )
 
           const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
 
@@ -307,12 +314,7 @@ export const makeLeaderSyncProcessor = ({
       const handleBackendIdMismatchError = (error: BackendIdMismatchError) =>
         handleBackendIdMismatch({ error, onBackendIdMismatch, shutdownChannel })
 
-      const maybeShutdownOnError = (
-        cause: Cause.Cause<
-          | UnknownError
-          | MaterializeError
-        >,
-      ) =>
+      const maybeShutdownOnError = (cause: Cause.Cause<UnknownError | MaterializeError>) =>
         Effect.gen(function* () {
           if (onError === 'ignore') {
             if (LS_DEV === true) {
@@ -342,10 +344,7 @@ export const makeLeaderSyncProcessor = ({
         testing: {
           delay: testing?.delays?.localPushProcessing,
         },
-      }).pipe(
-        Effect.catchAllCause(maybeShutdownOnError),
-        Effect.forkScoped,
-      )
+      }).pipe(Effect.catchAllCause(maybeShutdownOnError), Effect.forkScoped)
 
       const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
       const backendPushingEffect = backgroundBackendPushing({
@@ -422,9 +421,7 @@ export const makeLeaderSyncProcessor = ({
     const pullQueue: LeaderSyncProcessor['pullQueue'] = ({ cursor }) =>
       Effect.fromNullable(ctxRef.current?.runtime).pipe(
         Effect.orDieDebugger,
-        Effect.flatMap((runtime) =>
-          connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))
-        )
+        Effect.flatMap((runtime) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))),
       )
 
     const syncState = Subscribable.make({
@@ -488,18 +485,22 @@ const backgroundApplyLocalPushes = ({
 
         if (droppedItems.length > 0) {
           yield* Effect.spanEvent(`push:drop-old-generation`, {
-          droppedCount: droppedItems.length,
-          currentRebaseGeneration,
-        })
+            droppedCount: droppedItems.length,
+            currentRebaseGeneration,
+          })
 
-        /**
-         * Dropped pushes may still have a deferred awaiting completion.
-         * Fail it so the caller learns the leader advanced and resubmits with the updated generation.
-         */
-        yield* Effect.forEach(
-          droppedItems.filter(
-            (item): item is [LiveStoreEvent.Client.EncodedWithMeta, Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>] =>
-                item[1] !== undefined,
+          /**
+           * Dropped pushes may still have a deferred awaiting completion.
+           * Fail it so the caller learns the leader advanced and resubmits with the updated generation.
+           */
+          yield* Effect.forEach(
+            droppedItems.filter(
+              (
+                item,
+              ): item is [
+                LiveStoreEvent.Client.EncodedWithMeta,
+                Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>,
+              ] => item[1] !== undefined,
             ),
             ([eventEncoded, deferred]) =>
               Deferred.fail(
@@ -507,7 +508,7 @@ const backgroundApplyLocalPushes = ({
                 StaleRebaseGenerationError.make({
                   currentRebaseGeneration,
                   providedRebaseGeneration: eventEncoded.seqNum.rebaseGeneration,
-                sessionId: eventEncoded.sessionId,
+                  sessionId: eventEncoded.sessionId,
                 }),
               ),
           )
@@ -520,8 +521,8 @@ const backgroundApplyLocalPushes = ({
         const [newEvents, deferreds] = ReadonlyArray.unzip(filteredItems)
 
         yield* Effect.annotateCurrentSpan({
-        'batchSize': newEvents.length,
-        ...(TRACE_VERBOSE === true ? { 'newEvents': jsonStringify(newEvents) } : {}),
+          batchSize: newEvents.length,
+          ...(TRACE_VERBOSE === true ? { newEvents: jsonStringify(newEvents) } : {}),
         })
 
         const mergeResult = yield* SyncState.merge({
@@ -568,7 +569,11 @@ const backgroundApplyLocalPushes = ({
             yield* Effect.forEach(allDeferredsToReject, (deferred) =>
               Deferred.fail(
                 deferred,
-                LeaderAheadError.make({ minimumExpectedNum: mergeResult.expectedMinimumId, providedNum, sessionId: newEvents.at(0)!.sessionId }),
+                LeaderAheadError.make({
+                  minimumExpectedNum: mergeResult.expectedMinimumId,
+                  providedNum,
+                  sessionId: newEvents.at(0)!.sessionId,
+                }),
               ),
             )
 
@@ -593,7 +598,7 @@ const backgroundApplyLocalPushes = ({
 
         yield* Effect.spanEvent(`push:advance`, {
           batchSize: newEvents.length,
-        ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+          ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
         })
 
         // Don't sync client-local events
@@ -615,7 +620,9 @@ type MaterializeEventsBatch = (_: {
    * The deferreds are used by the caller to know when the mutation has been processed.
    * Indexes are aligned with `batchItems`
    */
-  deferreds: ReadonlyArray<Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError> | undefined> | undefined
+  deferreds:
+    | ReadonlyArray<Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError> | undefined>
+    | undefined
 }) => Effect.Effect<void, MaterializeError, LeaderThreadCtx>
 
 // TODO how to handle errors gracefully
@@ -720,21 +727,21 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
 
         yield* Effect.annotateCurrentSpan({
-        'merge.newEventsCount': newEvents.length,
-        ...(TRACE_VERBOSE === true ? { 'merge.newEvents': jsonStringify(newEvents) } : {}),
-      })
+          'merge.newEventsCount': newEvents.length,
+          ...(TRACE_VERBOSE === true ? { 'merge.newEvents': jsonStringify(newEvents) } : {}),
+        })
 
-      const mergeResult = yield* SyncState.merge({
-        syncState,
-        payload: SyncState.PayloadUpstreamAdvance.make({ newEvents }),
-        isClientEvent,
-        isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-        ignoreClientEvents: true,
-      })
+        const mergeResult = yield* SyncState.merge({
+          syncState,
+          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents }),
+          isClientEvent,
+          isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+          ignoreClientEvents: true,
+        })
 
-      if (mergeResult._tag === 'reject') {
-        return yield* Effect.dieDebugger('The leader thread should never reject upstream advances')
-      }
+        if (mergeResult._tag === 'reject') {
+          return yield* Effect.dieDebugger('The leader thread should never reject upstream advances')
+        }
 
         const newBackendHead = newEvents.at(-1)!.seqNum
 
@@ -742,10 +749,10 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
 
         if (mergeResult._tag === 'rebase') {
           yield* Effect.spanEvent(`pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`, {
-          newEventsCount: newEvents.length,
-          ...(TRACE_VERBOSE === true ? { newEvents: jsonStringify(newEvents) } : {}),
-          rollbackCount: mergeResult.rollbackEvents.length,
-          ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+            newEventsCount: newEvents.length,
+            ...(TRACE_VERBOSE === true ? { newEvents: jsonStringify(newEvents) } : {}),
+            rollbackCount: mergeResult.rollbackEvents.length,
+            ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
           })
 
           const globalRebasedPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
@@ -769,7 +776,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         } else {
           yield* Effect.spanEvent(`pull:advance`, {
             newEventsCount: newEvents.length,
-          ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+            ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
           })
 
           // Ensure push fiber is active after advance by restarting with current pending (non-client) events
@@ -915,7 +922,7 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
       // Retry transient errors
       Effect.retry({
         schedule: Schedule.exponential(Duration.seconds(1)).pipe(
-          Schedule.modifyDelay((_, delay) => Duration.min(delay, Duration.seconds(30))) // Cap delay at 30s intervals.
+          Schedule.modifyDelay((_, delay) => Duration.min(delay, Duration.seconds(30))), // Cap delay at 30s intervals.
         ),
         while: (error) => error._tag === 'IsOfflineError' || error._tag === 'UnknownError',
       }),

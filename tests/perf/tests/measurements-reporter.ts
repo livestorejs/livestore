@@ -1,10 +1,20 @@
 import os from 'node:os'
 import process from 'node:process'
-
-import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
+import {
+  Data,
+  Effect,
+  ManagedRuntime,
+  Metric,
+  type MetricState,
+  Option,
+  ParseResult,
+  Pretty,
+  ReadonlyArray,
+  Schema,
+} from '@livestore/utils/effect'
 
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import { Data, Effect, ManagedRuntime, Metric, type MetricState, Option, ParseResult, Pretty, ReadonlyArray, Schema } from '@livestore/utils/effect'
+import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
 
 import { printConsoleTable } from './print-console-table.ts'
 
@@ -59,7 +69,9 @@ const getRequiredAnnotationSync = <T extends AnyAnnotation['type']>(
   type: T,
   testTitle: string,
 ): Extract<AnyAnnotation, { type: T }> => {
-  const annotation = decodedAnnotations.find((value): value is Extract<AnyAnnotation, { type: T }> => value.type === type)
+  const annotation = decodedAnnotations.find(
+    (value): value is Extract<AnyAnnotation, { type: T }> => value.type === type,
+  )
   if (annotation === undefined) {
     throw new MissingAnnotationError({ annotationType: type, testTitle })
   }
@@ -375,7 +387,11 @@ export default class MeasurementsReporter implements Reporter {
       Metric.tagged('system.memory.usage', (this.systemInfo.memory.total - this.systemInfo.memory.free).toString()),
     )
 
-    if (process.env.CI !== undefined && process.env.COMMIT_SHA !== undefined && process.env.GITHUB_REF_NAME !== undefined) {
+    if (
+      process.env.CI !== undefined &&
+      process.env.COMMIT_SHA !== undefined &&
+      process.env.GITHUB_REF_NAME !== undefined
+    ) {
       metric = metric.pipe(
         Metric.tagged('github.commit_sha', process.env.COMMIT_SHA),
         Metric.tagged('github.ref_name', process.env.GITHUB_REF_NAME),

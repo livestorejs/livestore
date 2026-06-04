@@ -1,10 +1,10 @@
 import {
   catalog,
+  getUtilsPeerDeps,
   livestorePackageDefaults,
   packageJson,
   utilsEffectPeerDeps,
   workspaceMember,
-  getUtilsPeerDeps,
 } from '../../../genie/repo.ts'
 import commonPkg from '../common/package.json.genie.ts'
 import livestorePkg from '../livestore/package.json.genie.ts'

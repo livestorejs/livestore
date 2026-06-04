@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  type ArtifactManifest,
+  type ArtifactMetadata,
   assertCertifiedDevtoolsArtifactForLivestore,
   assertUncertifiedRepackMode,
   containsForbiddenPattern,
-  type ArtifactManifest,
   type DevtoolsArtifactCertification,
-  type ArtifactMetadata,
   forbiddenPatterns,
 } from './devtools-artifact.ts'
 

@@ -160,7 +160,6 @@ test.describe('Node adapter devtools timeout', () => {
       ) {
         console.log(`[browser console:${msg.type()}] ${text}`)
       }
-
     })
     page.on('pageerror', (error) => console.log(`[browser pageerror] ${error.message}`))
     page.on('requestfailed', (request) => {
@@ -200,7 +199,10 @@ test.describe('Node adapter devtools timeout', () => {
     } catch (error) {
       console.log(`[devtools diagnostics] url=${page.url()}`)
       console.log(`[devtools diagnostics] title=${await page.title().catch(() => '<unavailable>')}`)
-      const bodyText = await page.locator('body').innerText({ timeout: 1000 }).catch(() => '<unavailable>')
+      const bodyText = await page
+        .locator('body')
+        .innerText({ timeout: 1000 })
+        .catch(() => '<unavailable>')
       console.log(`[devtools diagnostics] body=${bodyText.slice(0, 2000)}`)
       throw error
     }

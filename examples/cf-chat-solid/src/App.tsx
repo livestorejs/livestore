@@ -1,9 +1,8 @@
 /// <reference types="vite/client" />
 
 import { createEffect, createMemo, createSignal, type JSX, onMount, Show } from 'solid-js'
-
-import { ChatHeader, MessageInput, MessagesContainer, UserSidebar } from './components.tsx'
 import { VersionBadge } from './components/VersionBadge.tsx'
+import { ChatHeader, MessageInput, MessagesContainer, UserSidebar } from './components.tsx'
 import { useChat } from './hooks.ts'
 import { events, tables } from './livestore/schema.ts'
 import { useAppStore } from './livestore/store.ts'

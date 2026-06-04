@@ -1,9 +1,8 @@
-import { unstable_batchedUpdates as batchUpdates } from 'react-native'
-
 import { makePersistedAdapter } from '@livestore/adapter-expo'
 import { nanoid } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
 import { makeWsSync } from '@livestore/sync-cf/client'
+import { unstable_batchedUpdates as batchUpdates } from 'react-native'
 
 import { events, SyncPayload, schema, tables } from './schema.ts'
 

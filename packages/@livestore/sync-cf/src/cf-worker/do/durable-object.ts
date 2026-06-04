@@ -90,15 +90,16 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
   const Logging = Logger.consoleWithThread('SyncDo')
 
-  const Observability: Layer.Layer<never> = options?.otel?.baseUrl !== undefined
-    ? (Otlp.layer({
-        baseUrl: options.otel.baseUrl,
-        tracerExportInterval: 50,
-        resource: {
-          serviceName: options.otel.serviceName ?? 'sync-cf-do',
-        },
-      }).pipe(Layer.provide(FetchHttpClient.layer)) as Layer.Layer<never>)
-    : Layer.empty
+  const Observability: Layer.Layer<never> =
+    options?.otel?.baseUrl !== undefined
+      ? (Otlp.layer({
+          baseUrl: options.otel.baseUrl,
+          tracerExportInterval: 50,
+          resource: {
+            serviceName: options.otel.serviceName ?? 'sync-cf-do',
+          },
+        }).pipe(Layer.provide(FetchHttpClient.layer)) as Layer.Layer<never>)
+      : Layer.empty
 
   return class SyncBackendDOBase extends DurableObjectBase implements SyncBackendRpcInterface {
     __DURABLE_OBJECT_BRAND = 'SyncBackendDOBase' as never

@@ -23,19 +23,16 @@ export const RejectedPushErrorTypeId = '~@livestore/common/RejectedPushError' as
  */
 export class NonMonotonicBatchError extends Schema.TaggedError<NonMonotonicBatchError>(
   `${RejectedPushErrorTypeId}/NonMonotonicBatchError`,
-)(
-  'NonMonotonicBatchError',
-  {
-    /** The sequence number that broke the monotonic invariant (i.e. the one that is >= the next). */
-    precedingSeqNum: EventSequenceNumber.Client.Composite,
-    /** The sequence number that was expected to be greater than `precedingSeqNum`. */
-    violatingSeqNum: EventSequenceNumber.Client.Composite,
-    /** The index in the batch where the violation occurred. */
-    violationIndex: Schema.Number,
-    /** The session that produced the malformed batch. */
-    sessionId: Schema.String,
-  },
-) {
+)('NonMonotonicBatchError', {
+  /** The sequence number that broke the monotonic invariant (i.e. the one that is >= the next). */
+  precedingSeqNum: EventSequenceNumber.Client.Composite,
+  /** The sequence number that was expected to be greater than `precedingSeqNum`. */
+  violatingSeqNum: EventSequenceNumber.Client.Composite,
+  /** The index in the batch where the violation occurred. */
+  violationIndex: Schema.Number,
+  /** The session that produced the malformed batch. */
+  sessionId: Schema.String,
+}) {
   readonly [RejectedPushErrorTypeId] = RejectedPushErrorTypeId
 
   override get message(): string {
@@ -52,17 +49,14 @@ export class NonMonotonicBatchError extends Schema.TaggedError<NonMonotonicBatch
  */
 export class StaleRebaseGenerationError extends Schema.TaggedError<StaleRebaseGenerationError>(
   `${RejectedPushErrorTypeId}/StaleRebaseGenerationError`,
-)(
-  'StaleRebaseGenerationError',
-  {
-    /** The leader's current rebase generation. */
-    currentRebaseGeneration: Schema.Number,
-    /** The rebase generation carried by the dropped events. */
-    providedRebaseGeneration: Schema.Number,
-    /** The session that produced the stale batch. */
-    sessionId: Schema.String,
-  },
-) {
+)('StaleRebaseGenerationError', {
+  /** The leader's current rebase generation. */
+  currentRebaseGeneration: Schema.Number,
+  /** The rebase generation carried by the dropped events. */
+  providedRebaseGeneration: Schema.Number,
+  /** The session that produced the stale batch. */
+  sessionId: Schema.String,
+}) {
   readonly [RejectedPushErrorTypeId] = RejectedPushErrorTypeId
 
   override get message(): string {
@@ -94,11 +88,7 @@ export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>(
   }
 }
 
-export const RejectedPushError = Schema.Union(
-  LeaderAheadError,
-  NonMonotonicBatchError,
-  StaleRebaseGenerationError,
-)
+export const RejectedPushError = Schema.Union(LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError)
 
 export type RejectedPushError = typeof RejectedPushError.Type
 

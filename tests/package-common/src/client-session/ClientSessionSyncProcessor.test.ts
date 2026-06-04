@@ -1,5 +1,3 @@
-import  { expect, assert } from 'vitest'
-
 import { makeAdapter } from '@livestore/adapter-node'
 import type { LockStatus, MockSyncBackend } from '@livestore/common'
 import {
@@ -19,7 +17,6 @@ import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, StoreInternalsSymbol } from '@livestore/livestore'
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import type { OtelTracer } from '@livestore/utils/effect'
 import {
   Cause,
@@ -41,6 +38,8 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { assert, expect } from 'vitest'
 
 import { events, schema, tables } from '../leader-thread/fixture.ts'
 
@@ -344,7 +343,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     Effect.gen(function* () {
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
-
       const baseHead = EventSequenceNumber.Client.Composite.make({ global: 10, client: 0, rebaseGeneration: 4 })
       const recordedEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
 
@@ -467,7 +465,9 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       // Create an event that comes from the leader with a specific hash that won't match the client-side materializer's computed hash.
       const eventFromLeader = LiveStoreEvent.Client.EncodedWithMeta.make({
-        ...(yield* Schema.encode(eventSchema)(events.todoCreated({ id: 'test-id', text: 'from-leader', completed: false }))),
+        ...(yield* Schema.encode(eventSchema)(
+          events.todoCreated({ id: 'test-id', text: 'from-leader', completed: false }),
+        )),
         seqNum: EventSequenceNumber.Client.Composite.make({ global: 0, client: 1 }),
         parentSeqNum: EventSequenceNumber.Client.ROOT,
         clientId: 'this-client',
@@ -496,7 +496,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const upstreamQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
       const materializedEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
       const materialized = yield* Deferred.make<void>()
-
 
       const lockStatus = yield* SubscriptionRef.make<'has-lock' | 'no-lock'>('has-lock')
 

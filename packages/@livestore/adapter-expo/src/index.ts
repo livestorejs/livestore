@@ -1,7 +1,4 @@
 import './polyfill.ts'
-import * as ExpoApplication from 'expo-application'
-import * as SQLite from 'expo-sqlite'
-import * as RN from 'react-native'
 
 import {
   type Adapter,
@@ -38,6 +35,9 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
+import * as ExpoApplication from 'expo-application'
+import * as SQLite from 'expo-sqlite'
+import * as RN from 'react-native'
 
 import type { MakeExpoSqliteDb } from './make-sqlite-db.ts'
 import { makeSqliteDb } from './make-sqlite-db.ts'
@@ -177,9 +177,8 @@ export const makePersistedAdapter =
         devtoolsUrl,
       })
 
-      const sqliteDb = yield* Effect.acquireRelease(
-        makeSqliteDb({ _tag: 'in-memory' }),
-        (db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)
+      const sqliteDb = yield* Effect.acquireRelease(makeSqliteDb({ _tag: 'in-memory' }), (db) =>
+        Effect.try(() => db.close()).pipe(Effect.ignoreLogged),
       )
       sqliteDb.import(initialSnapshot)
 
@@ -314,11 +313,10 @@ const makeLeaderThread = ({
         events: {
           pull: ({ cursor }) => syncProcessor.pull({ cursor }),
           push: (batch) =>
-            syncProcessor
-              .push(
-                batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
-                { waitForProcessing: true },
-              ),
+            syncProcessor.push(
+              batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
+              { waitForProcessing: true },
+            ),
           stream: (options) =>
             streamEventsWithSyncState({
               dbEventlog,

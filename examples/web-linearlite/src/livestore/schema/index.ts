@@ -9,18 +9,18 @@ import { type Issue, issue } from './issue.ts'
 import { type ScrollState, scrollState } from './scroll-state.ts'
 
 export {
-  comment,
-  description,
-  filterState,
-  frontendState,
-  issue,
-  scrollState,
   type Comment,
+  comment,
   type Description,
+  description,
   type FilterState,
   type FrontendState,
+  filterState,
+  frontendState,
   type Issue,
+  issue,
   type ScrollState,
+  scrollState,
 }
 
 export const events = {

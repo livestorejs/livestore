@@ -1,14 +1,13 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
-import * as otel from '@opentelemetry/api'
-import type { GraphQLSchema } from 'graphql'
-import * as graphql from 'graphql'
-
 import { getDurationMsFromSpan } from '@livestore/common'
 import type { RefreshReason, SqliteDbWrapper, Store } from '@livestore/livestore'
 import { StoreInternalsSymbol } from '@livestore/livestore'
 import { LiveQueries, ReactiveGraph } from '@livestore/livestore/internal'
 import { objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
+import * as otel from '@opentelemetry/api'
+import type { GraphQLSchema } from 'graphql'
+import * as graphql from 'graphql'
 
 export type BaseGraphQLContext = {
   queriedTables: Set<string>
@@ -50,9 +49,10 @@ export const queryGraphQL = <
   } = {},
 ): LiveQueries.LiveQueryDef<TResultMapped> => {
   const documentName = graphql.getOperationAST(document)?.name?.value
-  const hash = options.deps !== undefined
-    ? LiveQueries.depsToString(options.deps)
-    : (documentName ?? shouldNeverHappen('No document name found and no deps provided'))
+  const hash =
+    options.deps !== undefined
+      ? LiveQueries.depsToString(options.deps)
+      : (documentName ?? shouldNeverHappen('No document name found and no deps provided'))
   const label = options.label ?? documentName ?? 'graphql'
   const map = options.map
 
@@ -144,7 +144,7 @@ export class LiveStoreGraphQLQuery<
             }
           : typeof map === 'function'
             ? map
-          : shouldNeverHappen(`Invalid map function ${objectToString(map)}`)
+            : shouldNeverHappen(`Invalid map function ${objectToString(map)}`)
 
     // TODO don't even create a thunk if variables are static
     let variableValues$OrvariableValues:
@@ -169,9 +169,10 @@ export class LiveStoreGraphQLQuery<
     this.results$ = this.reactivityGraph.makeThunk<TResultMapped>(
       (get, setDebugInfo, ctx, otelContext, debugRefreshReason) => {
         const { store, otelTracer, rootOtelContext } = ctx
-        const variableValues = ReactiveGraph.isThunk(variableValues$OrvariableValues) === true
-          ? (get(variableValues$OrvariableValues, otelContext, debugRefreshReason) as TVariableValues)
-          : (variableValues$OrvariableValues as TVariableValues)
+        const variableValues =
+          ReactiveGraph.isThunk(variableValues$OrvariableValues) === true
+            ? (get(variableValues$OrvariableValues, otelContext, debugRefreshReason) as TVariableValues)
+            : (variableValues$OrvariableValues as TVariableValues)
         const { result, queriedTables, durationMs } = this.queryOnce({
           document,
           variableValues,

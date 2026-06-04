@@ -48,7 +48,10 @@ export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skip
           const parentSeqNumStr = dag.source(parentEdge)
           const parentNode = dag.getNodeAttributes(parentSeqNumStr)
 
-          if (parentNode.factsGroup.modifySet.has(factKey) === true || parentNode.factsGroup.modifyUnset.has(factKey) === true) {
+          if (
+            parentNode.factsGroup.modifySet.has(factKey) === true ||
+            parentNode.factsGroup.modifyUnset.has(factKey) === true
+          ) {
             return parentNode
           }
 

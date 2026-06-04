@@ -2,11 +2,11 @@ import { catalog, effectDevDeps, localPackageDefaults, packageJson, workspaceMem
 import adapterWebPkg from '../../packages/@livestore/adapter-web/package.json.genie.ts'
 import livestorePkg from '../../packages/@livestore/livestore/package.json.genie.ts'
 import reactPkg from '../../packages/@livestore/react/package.json.genie.ts'
-import utilsDevPkg from '../../packages/@livestore/utils-dev/package.json.genie.ts'
 import utilsPkg from '../../packages/@livestore/utils/package.json.genie.ts'
+import utilsDevPkg from '../../packages/@livestore/utils-dev/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
-  workspace: workspaceMember("tests/perf"),
+  workspace: workspaceMember('tests/perf'),
   dependencies: {
     workspace: [adapterWebPkg, livestorePkg, reactPkg, utilsPkg, utilsDevPkg],
     external: catalog.pick(

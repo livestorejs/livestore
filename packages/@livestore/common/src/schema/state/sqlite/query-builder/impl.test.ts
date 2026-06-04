@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { objectToString } from '@livestore/utils'
 
 import { Schema } from '@livestore/utils/effect'
-import { objectToString } from '@livestore/utils'
+import { describe, expect, it } from 'vitest'
 
 import { State } from '../../../mod.ts'
 import type { QueryBuilder } from './api.ts'

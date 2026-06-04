@@ -204,8 +204,7 @@ export const isEqualEncoded = (a: Encoded, b: Encoded) =>
   a.sessionId === b.sessionId &&
   deepEqual(canonicalizeArgs(a.args), canonicalizeArgs(b.args)) // TODO use schema equality here
 
-const canonicalizeArgs = (args: unknown): unknown =>
-  args === undefined ? args : JSON.parse(JSON.stringify(args))
+const canonicalizeArgs = (args: unknown): unknown => (args === undefined ? args : JSON.parse(JSON.stringify(args)))
 
 /**
  * Creates an Effect Schema union for all event types in a schema (with composite sequence numbers).

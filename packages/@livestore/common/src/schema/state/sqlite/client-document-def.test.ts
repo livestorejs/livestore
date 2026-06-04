@@ -1,6 +1,5 @@
-import { describe, expect, test } from 'vitest'
-
 import { Schema } from '@livestore/utils/effect'
+import { describe, expect, test } from 'vitest'
 
 import { tables } from '../../../__tests__/fixture.ts'
 import type * as LiveStoreEvent from '../../LiveStoreEvent/mod.ts'

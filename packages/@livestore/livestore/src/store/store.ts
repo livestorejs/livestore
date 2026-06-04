@@ -807,10 +807,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       const { writeTables } = yield* Effect.try({
         try: () => {
           const materialize = () =>
-            this[StoreInternalsSymbol].syncProcessor.materializeEvents(encodedEvents).pipe(Runtime.runSync(localRuntime))
-          return events.length > 1
-            ? this[StoreInternalsSymbol].sqliteDbWrapper.txn(materialize)
-            : materialize()
+            this[StoreInternalsSymbol].syncProcessor
+              .materializeEvents(encodedEvents)
+              .pipe(Runtime.runSync(localRuntime))
+          return events.length > 1 ? this[StoreInternalsSymbol].sqliteDbWrapper.txn(materialize) : materialize()
         },
         catch: (cause) => UnknownError.make({ cause }),
       })

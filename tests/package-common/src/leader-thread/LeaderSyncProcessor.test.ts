@@ -4,12 +4,12 @@ import {
   type MockSyncBackend,
   type MockSyncBackendOptions,
   makeMockSyncBackend,
-  ServerAheadError,
-  type SyncBackend,
-  type SyncState,
   type RejectedPushError,
+  ServerAheadError,
   StaleRebaseGenerationError,
+  type SyncBackend,
   type SyncOptions,
+  type SyncState,
   UnknownError,
 } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
@@ -36,7 +36,7 @@ import {
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect, assert } from 'vitest'
+import { assert, expect } from 'vitest'
 
 import { events, schema, tables } from './fixture.ts'
 
@@ -217,9 +217,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
                 Stream.concat(
                   syncBackend.pull(cursor, pullOptions).pipe(Stream.take(1)),
                   Stream.fromEffect(
-                    Effect.fail(
-                      new UnknownError({ cause: new Error('Simulated mid-pagination pull failure') }),
-                    ),
+                    Effect.fail(new UnknownError({ cause: new Error('Simulated mid-pagination pull failure') })),
                   ),
                 ),
             }

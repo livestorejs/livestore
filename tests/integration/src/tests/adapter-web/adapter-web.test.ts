@@ -1,13 +1,11 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-
-import { expect } from 'vitest'
-
 import { BrowserContext, browserContextLayer } from '@livestore/effect-playwright'
-import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Duration, Effect, FetchHttpClient, HttpClient, Layer, Schedule } from '@livestore/utils/effect'
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
+import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { expect } from 'vitest'
 
 const testDir = path.dirname(fileURLToPath(import.meta.url))
 const integrationRoot = path.resolve(testDir, '../../..')

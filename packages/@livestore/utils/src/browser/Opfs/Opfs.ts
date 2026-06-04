@@ -110,9 +110,8 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
       WebError.NotAllowedError | WebError.NotFoundError | WebError.UnknownError,
       never
     > =>
-      Stream.fromAsyncIterable(
-        (directory as unknown as { values(): AsyncIterable<FileSystemHandle> }).values(),
-        (u) => WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
+      Stream.fromAsyncIterable((directory as unknown as { values(): AsyncIterable<FileSystemHandle> }).values(), (u) =>
+        WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
       )
 
     /**

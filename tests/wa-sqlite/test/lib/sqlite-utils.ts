@@ -4,8 +4,9 @@ import { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
 
 import { type PreparedBindValues, SqliteError } from './lib.ts'
-export { SqliteConstants }
+
 export { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
+export { SqliteConstants }
 // export { AccessHandlePoolVFS } from '@livestore/wa-sqlite/src/examples/AccessHandlePoolVFS.js'
 // export { AccessHandlePoolVFS } from './wa-sqlite/AccessHandlePoolVFS.js'
 

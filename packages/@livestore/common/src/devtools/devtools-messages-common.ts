@@ -89,13 +89,14 @@ export const LeaderReqResMessage = <
     ...fields.success,
   }).annotations({ identifier: `${tag}.Response.Success` })
 
-  const Error = fields.error !== undefined
-    ? Schema.TaggedStruct(`${tag}.Response.Error`, {
-        requestId,
-        liveStoreVersion,
-        ...fields.error,
-      }).annotations({ identifier: `${tag}.Response.Error` })
-    : Schema.Never
+  const Error =
+    fields.error !== undefined
+      ? Schema.TaggedStruct(`${tag}.Response.Error`, {
+          requestId,
+          liveStoreVersion,
+          ...fields.error,
+        }).annotations({ identifier: `${tag}.Response.Error` })
+      : Schema.Never
 
   return {
     Request: Schema.TaggedStruct(`${tag}.Request`, {

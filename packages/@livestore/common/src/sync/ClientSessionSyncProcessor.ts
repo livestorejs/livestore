@@ -157,10 +157,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
             isClientEvent,
             isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
           }).pipe(
-            Effect.filterOrDieMessage(
-              (r) => r._tag !== 'reject',
-              'Unexpected reject in client-session-sync-processor',
-            ),
+            Effect.filterOrDieMessage((r) => r._tag !== 'reject', 'Unexpected reject in client-session-sync-processor'),
           )
 
           syncStateRef.current = mergeResult.newSyncState
@@ -263,9 +260,9 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     )
   })()
 
-  const encodeEvents: ClientSessionSyncProcessor['encodeEvents'] = Effect.fn('client-session-sync-processor:encode-events')(function* (
-    events,
-  ) {
+  const encodeEvents: ClientSessionSyncProcessor['encodeEvents'] = Effect.fn(
+    'client-session-sync-processor:encode-events',
+  )(function* (events) {
     let baseEventSequenceNumber = syncStateRef.current.localHead
     return yield* Effect.forEach(events, ({ name, args }) =>
       Effect.gen(function* () {
@@ -289,9 +286,9 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     )
   })
 
-  const materializeEvents: ClientSessionSyncProcessor['materializeEvents'] = Effect.fn('client-session-sync-processor:materialize-events')(function* (
-    events,
-  ) {
+  const materializeEvents: ClientSessionSyncProcessor['materializeEvents'] = Effect.fn(
+    'client-session-sync-processor:materialize-events',
+  )(function* (events) {
     const writeTables = new Set<string>()
     for (const event of events) {
       const {
@@ -311,35 +308,30 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     return { writeTables }
   })
 
-  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (
-    encodedEvents,
-  ) {
-    const mergeResult = yield* SyncState.merge({
-      syncState: syncStateRef.current,
-      payload: { _tag: 'local-push', newEvents: encodedEvents },
-      isClientEvent,
-      isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-    }).pipe(
-      Effect.filterOrDieMessage(
-        (r) => r._tag === 'advance',
-        'Expected advance from local-push merge',
-      ),
-    )
+  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(
+    function* (encodedEvents) {
+      const mergeResult = yield* SyncState.merge({
+        syncState: syncStateRef.current,
+        payload: { _tag: 'local-push', newEvents: encodedEvents },
+        isClientEvent,
+        isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+      }).pipe(Effect.filterOrDieMessage((r) => r._tag === 'advance', 'Expected advance from local-push merge'))
 
-    yield* Effect.annotateCurrentSpan({
-      batchSize: encodedEvents.length,
-      mergeResultTag: mergeResult._tag,
-      eventCounts: encodedEvents.reduce<Record<string, number>>((acc, event) => {
-        acc[event.name] = (acc[event.name] ?? 0) + 1
-        return acc
-      }, {}),
-      ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
-    })
+      yield* Effect.annotateCurrentSpan({
+        batchSize: encodedEvents.length,
+        mergeResultTag: mergeResult._tag,
+        eventCounts: encodedEvents.reduce<Record<string, number>>((acc, event) => {
+          acc[event.name] = (acc[event.name] ?? 0) + 1
+          return acc
+        }, {}),
+        ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+      })
 
-    syncStateRef.current = mergeResult.newSyncState
-    yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
-    yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
-  })
+      syncStateRef.current = mergeResult.newSyncState
+      yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+      yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
+    },
+  )
 
   const debugInfo = {
     rebaseCount: 0,
@@ -379,9 +371,7 @@ export interface ClientSessionSyncProcessor {
   encodeEvents: (
     events: ReadonlyArray<LiveStoreEvent.Input.Decoded>,
   ) => Effect.Effect<ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>>
-  push: (
-    events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
-  ) => Effect.Effect<void>
+  push: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
   materializeEvents: (
     events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
   ) => Effect.Effect<{ writeTables: Set<string> }, MaterializeError>

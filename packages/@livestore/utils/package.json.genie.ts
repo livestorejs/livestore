@@ -1,9 +1,9 @@
 import {
   catalog,
+  getUtilsPeerDeps,
   livestorePackageDefaults,
   packageJson,
   utilsEffectPeerDeps,
-  getUtilsPeerDeps,
   workspaceMember,
 } from '../../../genie/repo.ts'
 

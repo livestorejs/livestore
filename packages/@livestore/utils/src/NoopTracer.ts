@@ -1,8 +1,7 @@
 /** biome-ignore-all lint/complexity/noArguments: using arguments is fine here */
 
-import type * as otel from '@opentelemetry/api'
-
 import { cuid } from '@livestore/utils/cuid'
+import type * as otel from '@opentelemetry/api'
 
 export const makeNoopSpan = () => {
   const performanceStartTime = performance.now()

@@ -64,10 +64,12 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
         }
 
         // SELECT page_data FROM vfs_pages WHERE file_path = ? AND page_no = ?
-        if (normalizedQuery.startsWith('SELECT PAGE_DATA FROM VFS_PAGES WHERE FILE_PATH = ? AND PAGE_NO = ?') === true) {
+        if (
+          normalizedQuery.startsWith('SELECT PAGE_DATA FROM VFS_PAGES WHERE FILE_PATH = ? AND PAGE_NO = ?') === true
+        ) {
           const [filePath, pageNo] = bindings
           const data = mockPages.get(filePath as string)?.get(pageNo as number)
-          return createMockCursor(data !== undefined ? [{ page_data: data }] as any : [] as any)
+          return createMockCursor(data !== undefined ? ([{ page_data: data }] as any) : ([] as any))
         }
 
         // SELECT 1 AS x FROM vfs_pages LIMIT 1

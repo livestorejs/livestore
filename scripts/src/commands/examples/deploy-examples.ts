@@ -19,8 +19,8 @@ import {
 } from '../../shared/cloudflare.ts'
 import {
   assertProductionDeployAllowed,
-  isPrimaryIntegrationBranch,
   type DeploymentKind,
+  isPrimaryIntegrationBranch,
 } from '../../shared/deploy-target.ts'
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../../shared/misc.ts'
 import { emitWorkflowReportRecord, nowIsoUtc } from '../../shared/workflow-report.ts'

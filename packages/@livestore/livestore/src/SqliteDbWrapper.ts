@@ -1,5 +1,3 @@
-import type * as otel from '@opentelemetry/api'
-
 import {
   BoundArray,
   BoundMap,
@@ -17,6 +15,7 @@ import {
   sql,
 } from '@livestore/common'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
+import type * as otel from '@opentelemetry/api'
 
 import QueryCache from './QueryCache.ts'
 
@@ -123,7 +122,8 @@ export class SqliteDbWrapper implements SqliteDb {
 
     return {
       result,
-      changeset: changeset !== undefined ? { _tag: 'sessionChangeset', data: changeset, debug: null } : { _tag: 'no-op' },
+      changeset:
+        changeset !== undefined ? { _tag: 'sessionChangeset', data: changeset, debug: null } : { _tag: 'no-op' },
     }
   }
 
@@ -162,7 +162,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
   cachedExecute(
     queryStr: string,
-    bindValues?: PreparedBindValues  ,
+    bindValues?: PreparedBindValues,
     options?: {
       hasNoEffects?: boolean
       otelContext?: otel.Context
@@ -231,7 +231,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
   cachedSelect<T = any>(
     queryStr: string,
-    bindValues?: PreparedBindValues  ,
+    bindValues?: PreparedBindValues,
     options?: {
       queriedTables?: ReadonlySet<string>
       skipCache?: boolean

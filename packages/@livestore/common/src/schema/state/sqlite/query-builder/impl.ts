@@ -48,8 +48,8 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
           .filter(([, value]) => value !== undefined)
           .map<QueryBuilderAst.Where>(([col, value]) =>
             Predicate.hasProperty(value, 'op') === true && Predicate.hasProperty(value, 'value') === true
-              // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- where clause construction; shape validated at runtime
-              ? ({ col, op: value.op, value: value.value } as any)
+              ? // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- where clause construction; shape validated at runtime
+                ({ col, op: value.op, value: value.value } as any)
               : { col, op: '=', value },
           )
 
@@ -125,7 +125,12 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       return makeQueryBuilder(tableDef, { ...ast, offset: Option.some(offset) })
     },
     count: () => {
-      if (isRowQuery(ast) === true || ast._tag === 'InsertQuery' || ast._tag === 'UpdateQuery' || ast._tag === 'DeleteQuery')
+      if (
+        isRowQuery(ast) === true ||
+        ast._tag === 'InsertQuery' ||
+        ast._tag === 'UpdateQuery' ||
+        ast._tag === 'DeleteQuery'
+      )
         return invalidQueryBuilder()
 
       return makeQueryBuilder(tableDef, {

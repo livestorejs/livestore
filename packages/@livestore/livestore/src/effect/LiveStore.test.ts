@@ -1,6 +1,6 @@
-import { describe, it } from 'vitest'
-import { Effect, Layer } from '@livestore/utils/effect'
 import type { OtelTracer } from '@livestore/utils/effect'
+import { Effect, Layer } from '@livestore/utils/effect'
+import { describe, it } from 'vitest'
 import { schema } from '../utils/tests/fixture.ts'
 import { Store, type StoreTagClass } from './LiveStore.ts'
 
@@ -27,18 +27,14 @@ describe('Store.Tag R channel consistency', () => {
     })
 
     /** Providing the store layer must fully eliminate MainStore from R */
-    const _provided: Effect.Effect<void, unknown, OtelTracer.OtelTracer> = prog.pipe(
-      Effect.provide(storeLayer),
-    )
+    const _provided: Effect.Effect<void, unknown, OtelTracer.OtelTracer> = prog.pipe(Effect.provide(storeLayer))
     void _provided
   })
 
   it('use() helper R channel is satisfied by the same layer', () => {
     const prog = MainStore.use(({ store }) => Effect.succeed(store))
 
-    const _provided: Effect.Effect<unknown, unknown, OtelTracer.OtelTracer> = prog.pipe(
-      Effect.provide(storeLayer),
-    )
+    const _provided: Effect.Effect<unknown, unknown, OtelTracer.OtelTracer> = prog.pipe(Effect.provide(storeLayer))
     void _provided
   })
 
@@ -48,9 +44,7 @@ describe('Store.Tag R channel consistency', () => {
     })
 
     /** fromDeferred + DeferredLayer should satisfy MainStore in R */
-    const _provided = prog.pipe(
-      Effect.provide(Layer.merge(MainStore.fromDeferred, MainStore.DeferredLayer)),
-    )
+    const _provided = prog.pipe(Effect.provide(Layer.merge(MainStore.fromDeferred, MainStore.DeferredLayer)))
 
     type _R = Effect.Effect.Context<typeof _provided>
     /** MainStore should not be in R after providing fromDeferred */

@@ -1,7 +1,6 @@
-import { describe, expect, it } from 'vitest'
-
 import { State } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
+import { describe, expect, it } from 'vitest'
 
 describe('Client Document Optimistic Schema', () => {
   describe('Full Set Operations', () => {

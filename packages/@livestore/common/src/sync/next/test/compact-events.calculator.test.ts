@@ -1,7 +1,6 @@
-import { describe, expect, it } from 'vitest'
-
 import { defineEvent } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
+import { describe, expect, it } from 'vitest'
 
 import { compactEvents } from '../compact-events.ts'
 import { historyDagFromNodes } from '../history-dag.ts'

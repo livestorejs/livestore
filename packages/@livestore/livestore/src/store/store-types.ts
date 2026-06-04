@@ -1,6 +1,5 @@
-import type * as otel from '@opentelemetry/api'
-
 import {
+  type BackendIdMismatchError,
   type ClientSession,
   type ClientSessionSyncProcessor,
   type ClientSessionSyncProcessorSimulationParams,
@@ -9,13 +8,13 @@ import {
   type MaterializeError,
   type QueryBuilder,
   type StoreInterrupted,
-  type BackendIdMismatchError,
   type UnknownError,
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import type { Effect, Runtime, Schema, Scope } from '@livestore/utils/effect'
 import { Deferred, Predicate } from '@livestore/utils/effect'
+import type * as otel from '@opentelemetry/api'
 
 import type {
   LiveQuery,
