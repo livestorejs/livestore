@@ -1,7 +1,7 @@
-import { expect } from 'vitest'
+import { Effect } from '@livestore/utils/effect'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect } from '@livestore/utils/effect'
+import { expect } from 'vitest'
 
 import { makeTodoMvc } from '../utils/tests/fixture.ts'
 import { computed } from './computed.ts'

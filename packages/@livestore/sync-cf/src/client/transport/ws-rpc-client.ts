@@ -183,7 +183,9 @@ export const makeWsSync =
               backendId: backendIdHelper.get(),
             }).pipe(
               Effect.mapError((cause) =>
-                cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
+                cause._tag === 'UnknownError' ||
+                cause._tag === 'ServerAheadError' ||
+                cause._tag === 'BackendIdMismatchError'
                   ? cause
                   : new UnknownError({ cause }),
               ),

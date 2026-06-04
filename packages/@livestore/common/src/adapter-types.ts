@@ -34,10 +34,7 @@ export interface ClientSession {
   /** Status info whether current session is leader or not */
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
   shutdown: (
-    cause: Exit.Exit<
-      IntentionalShutdownCause,
-      UnknownError | MaterializeError | BackendIdMismatchError
-    >,
+    cause: Exit.Exit<IntentionalShutdownCause, UnknownError | MaterializeError | BackendIdMismatchError>,
   ) => Effect.Effect<void>
   /** A proxy API to communicate with the leader thread */
   leaderThread: ClientSessionLeaderThreadProxy
@@ -163,10 +160,7 @@ export interface AdapterArgs {
   debugInstanceId: string
   bootStatusQueue: Queue.Queue<BootStatus>
   shutdown: (
-    exit: Exit.Exit<
-      IntentionalShutdownCause,
-      UnknownError | MaterializeError | BackendIdMismatchError
-    >,
+    exit: Exit.Exit<IntentionalShutdownCause, UnknownError | MaterializeError | BackendIdMismatchError>,
   ) => Effect.Effect<void>
   connectDevtoolsToStore: ConnectDevtoolsToStore
   /**

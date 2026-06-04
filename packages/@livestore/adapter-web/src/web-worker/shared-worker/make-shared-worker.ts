@@ -85,9 +85,9 @@ const makeWorkerRunner = Effect.gen(function* () {
     Effect.gen(function* () {
       yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
       const { worker, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined)
-      const stream = worker.execute(req).pipe(
-        Stream.refineOrDie((e) => isWorkerTransportError(e) === true ? Option.none() : Option.some(e)),
-      )
+      const stream = worker
+        .execute(req)
+        .pipe(Stream.refineOrDie((e) => (isWorkerTransportError(e) === true ? Option.none() : Option.some(e))))
       // It seems the request stream is not automatically interrupted when the scope shuts down
       // so we need to manually interrupt it when the scope shuts down
       const shutdownDeferred = yield* Deferred.make<void>()
@@ -210,10 +210,7 @@ const makeWorkerRunner = Effect.gen(function* () {
 
           yield* SubscriptionRef.set(leaderWorkerContextSubRef, { worker, scope })
         }).pipe(Effect.tapCauseLogPretty, Scope.extend(scope), Effect.forkIn(scope))
-      }).pipe(
-        Effect.withSpan('@livestore/adapter-web:shared-worker:updateMessagePort'),
-        Effect.tapCauseLogPretty,
-      ),
+      }).pipe(Effect.withSpan('@livestore/adapter-web:shared-worker:updateMessagePort'), Effect.tapCauseLogPretty),
 
     // Proxied requests
     BootStatusStream: forwardRequestStream,

@@ -3,7 +3,7 @@ import { Effect, Mailbox, Option, Queue, Ref, Stream, SubscriptionRef } from '@l
 
 import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
-import { type BackendIdMismatchError, type ServerAheadError } from './errors.ts'
+import type { BackendIdMismatchError, ServerAheadError } from './errors.ts'
 import * as SyncBackend from './sync-backend.ts'
 import { validatePushPayload } from './validate-push-payload.ts'
 
@@ -53,7 +53,10 @@ export const makeMockSyncBackend = (
 
     // Failure simulation state
     const failPushRef = yield* Ref.make<
-      FailureState<UnknownError | ServerAheadError | BackendIdMismatchError, [ReadonlyArray<LiveStoreEvent.Global.Encoded>]>
+      FailureState<
+        UnknownError | ServerAheadError | BackendIdMismatchError,
+        [ReadonlyArray<LiveStoreEvent.Global.Encoded>]
+      >
     >({ remaining: 0, error: undefined })
     const failPullRef = yield* Ref.make<FailureState<UnknownError | BackendIdMismatchError, []>>({
       remaining: 0,
@@ -203,10 +206,8 @@ export const makeMockSyncBackend = (
       ) => Effect.Effect<never, UnknownError | ServerAheadError | BackendIdMismatchError>,
     ) => Ref.set(failPushRef, { remaining: count, error })
 
-    const failNextPulls = (
-      count: number,
-      error?: () => Effect.Effect<never, UnknownError | BackendIdMismatchError>,
-    ) => Ref.set(failPullRef, { remaining: count, error })
+    const failNextPulls = (count: number, error?: () => Effect.Effect<never, UnknownError | BackendIdMismatchError>) =>
+      Ref.set(failPullRef, { remaining: count, error })
 
     return {
       pushedEvents: Mailbox.toStream(pushedEventsQueue),

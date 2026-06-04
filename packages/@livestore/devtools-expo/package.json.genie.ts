@@ -1,9 +1,9 @@
 import {
   catalog,
+  getUtilsPeerDeps,
   livestorePackageDefaults,
   packageJson,
   workspaceMember,
-  getUtilsPeerDeps,
 } from '../../../genie/repo.ts'
 import adapterNodePkg from '../adapter-node/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'

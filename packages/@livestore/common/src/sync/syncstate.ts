@@ -159,11 +159,7 @@ export class MergeResultReject extends Schema.Class<MergeResultReject>('MergeRes
   }
 }
 
-export class MergeResult extends Schema.Union(
-  MergeResultAdvance,
-  MergeResultRebase,
-  MergeResultReject,
-) {}
+export class MergeResult extends Schema.Union(MergeResultAdvance, MergeResultRebase, MergeResultReject) {}
 
 export const payloadFromMergeResult = (
   mergeResult: typeof MergeResultAdvance.Type | typeof MergeResultRebase.Type,
@@ -422,7 +418,7 @@ export const merge = Effect.fnUntraced(function* ({
     default:
       return casesHandled(payload)
   }
-  })
+})
 
 /**
  * Gets the index relative to `existingEvents` where the divergence point is
@@ -515,9 +511,7 @@ const validatePayload = (payload: typeof Payload.Type) =>
     }
   })
 
-const validateSyncState = Effect.fnUntraced(function* (
-  syncState: SyncState,
-) {
+const validateSyncState = Effect.fnUntraced(function* (syncState: SyncState) {
   for (let i = 0; i < syncState.pending.length; i++) {
     const event = syncState.pending[i]!
     const nextEvent = syncState.pending[i + 1]
@@ -553,9 +547,7 @@ const validateSyncState = Effect.fnUntraced(function* (
   }
 })
 
-const validateMergeResult = Effect.fnUntraced(function* (
-  mergeResult: typeof MergeResult.Type,
-) {
+const validateMergeResult = Effect.fnUntraced(function* (mergeResult: typeof MergeResult.Type) {
   if (mergeResult._tag === 'reject') return mergeResult
 
   yield* validateSyncState(mergeResult.newSyncState)

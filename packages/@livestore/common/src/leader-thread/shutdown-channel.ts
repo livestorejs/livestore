@@ -1,12 +1,7 @@
 import type { WebChannel } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
-import {
-  BackendIdMismatchError,
-  IntentionalShutdownCause,
-  MaterializeError,
-  UnknownError,
-} from '../index.ts'
+import { BackendIdMismatchError, IntentionalShutdownCause, MaterializeError, UnknownError } from '../index.ts'
 
 export class All extends Schema.Union(
   IntentionalShutdownCause,

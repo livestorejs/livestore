@@ -11,11 +11,7 @@ export const replace = <A>(self: BucketQueue<A>, elements: ReadonlyArray<A>) => 
 
 export const clear = <A>(self: BucketQueue<A>) => TRef.set(self, [])
 
-export const takeBetween = <A>(
-  bucket: BucketQueue<A>,
-  min: number,
-  max: number,
-): STM.STM<ReadonlyArray<A>> =>
+export const takeBetween = <A>(bucket: BucketQueue<A>, min: number, max: number): STM.STM<ReadonlyArray<A>> =>
   STM.gen(function* () {
     const bucketValue = yield* TRef.get(bucket)
     if (bucketValue.length < min) {

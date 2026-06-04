@@ -1,8 +1,7 @@
-import type { Accessor, JSX } from 'solid-js'
-import * as Solid from 'solid-js'
-
 import type { LiveQueryDef, Store } from '@livestore/livestore'
 import { computed } from '@livestore/livestore'
+import type { Accessor, JSX } from 'solid-js'
+import * as Solid from 'solid-js'
 
 import { useQuery } from '../../useQuery.ts'
 

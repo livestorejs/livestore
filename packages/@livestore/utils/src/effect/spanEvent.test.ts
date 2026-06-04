@@ -1,4 +1,4 @@
-import { it, describe, expect } from '@effect/vitest'
+import { describe, expect, it } from '@effect/vitest'
 import { Effect, Tracer } from 'effect'
 
 import { spanEvent } from './spanEvent.ts'

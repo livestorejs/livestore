@@ -1,7 +1,6 @@
+import { useStore } from '@livestore/react'
 import type React from 'react'
 import { useCallback } from 'react'
-
-import { useStore } from '@livestore/react'
 
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { archiveThread, trashThread } from '../stores/thread/commands.ts'

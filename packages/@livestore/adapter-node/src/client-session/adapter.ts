@@ -464,7 +464,14 @@ const makeWorkerLeaderThread = ({
   Effect.gen(function* () {
     const nodeWorker = new WT.Worker(workerUrl, {
       execArgv: process.env.DEBUG_WORKER !== undefined ? ['--inspect --enable-source-maps'] : ['--enable-source-maps'],
-      argv: [yield* Schema.encode(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId, extraArgs: workerExtraArgs }).pipe(Effect.orDie)],
+      argv: [
+        yield* Schema.encode(WorkerSchema.WorkerArgv)({
+          storeId,
+          clientId,
+          sessionId,
+          extraArgs: workerExtraArgs,
+        }).pipe(Effect.orDie),
+      ],
     })
     const nodeWorkerLayer = yield* Layer.build(PlatformNode.NodeWorker.layer(() => nodeWorker))
 
@@ -502,14 +509,16 @@ const makeWorkerLeaderThread = ({
       req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
     ): Stream.Stream<A, E, R> =>
       worker.execute(req).pipe(
-        Stream.refineOrDie((e) => isWorkerTransportError(e) === true ? Option.none() : Option.some(e)),
+        Stream.refineOrDie((e) => (isWorkerTransportError(e) === true ? Option.none() : Option.some(e))),
         Stream.withSpan(`@livestore/adapter-node:client-session:runInWorkerStream:${req._tag}`),
       )
 
     const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
       Stream.tap((bootStatus) => Queue.offer(bootStatusQueue, bootStatus)),
       Stream.runDrain,
-      Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)))),
+      Effect.tapErrorCause((cause) =>
+        Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
+      ),
       Effect.interruptible,
       Effect.tapCauseLogPretty,
       Effect.forkScoped,

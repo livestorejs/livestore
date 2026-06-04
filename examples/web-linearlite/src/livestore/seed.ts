@@ -1,6 +1,5 @@
-import { generateKeyBetween } from 'fractional-indexing'
-
 import type { Store } from '@livestore/livestore'
+import { generateKeyBetween } from 'fractional-indexing'
 
 import { priorityOptions } from '../data/priority-options.ts'
 import { statusOptions } from '../data/status-options.ts'

@@ -2,18 +2,18 @@ import { catalog, effectDevDeps, localPackageDefaults, packageJson, workspaceMem
 import adapterCloudflarePkg from '../../packages/@livestore/adapter-cloudflare/package.json.genie.ts'
 import adapterNodePkg from '../../packages/@livestore/adapter-node/package.json.genie.ts'
 import adapterWebPkg from '../../packages/@livestore/adapter-web/package.json.genie.ts'
-import commonCfPkg from '../../packages/@livestore/common-cf/package.json.genie.ts'
 import commonPkg from '../../packages/@livestore/common/package.json.genie.ts'
+import commonCfPkg from '../../packages/@livestore/common-cf/package.json.genie.ts'
 import effectPlaywrightPkg from '../../packages/@livestore/effect-playwright/package.json.genie.ts'
 import livestorePkg from '../../packages/@livestore/livestore/package.json.genie.ts'
 import reactPkg from '../../packages/@livestore/react/package.json.genie.ts'
 import syncCfPkg from '../../packages/@livestore/sync-cf/package.json.genie.ts'
-import utilsDevPkg from '../../packages/@livestore/utils-dev/package.json.genie.ts'
 import utilsPkg from '../../packages/@livestore/utils/package.json.genie.ts'
+import utilsDevPkg from '../../packages/@livestore/utils-dev/package.json.genie.ts'
 import sharedPkg from '../../packages/@local/shared/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
-  workspace: workspaceMember("tests/integration"),
+  workspace: workspaceMember('tests/integration'),
   dependencies: {
     workspace: [
       adapterCloudflarePkg,

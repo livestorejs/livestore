@@ -1,15 +1,5 @@
 import * as OtelTracer from '@effect/opentelemetry/Tracer'
-import {
-  Cause,
-  type Context,
-  Deferred,
-  Duration,
-  Effect,
-  Fiber,
-  pipe,
-  Scope,
-  type Stream,
-} from 'effect'
+import { Cause, type Context, Deferred, Duration, Effect, Fiber, pipe, Scope, type Stream } from 'effect'
 import type { UnknownException } from 'effect/Cause'
 import { log } from 'effect/Console'
 import { dual, type LazyArg } from 'effect/Function'
@@ -264,11 +254,12 @@ export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>>
  * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
  * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
  */
-export const timeoutOrDie = (duration: Duration.DurationInput) =>
+export const timeoutOrDie =
+  (duration: Duration.DurationInput) =>
   <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.timeoutFailCause(self, {
       duration,
-      onTimeout: () => Cause.die(new Cause.TimeoutException())
+      onTimeout: () => Cause.die(new Cause.TimeoutException()),
     })
 
 /**
@@ -292,11 +283,12 @@ export const timeoutOrDie = (duration: Duration.DurationInput) =>
  * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
  * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
  */
-export const timeoutOrDieMessage = (duration: Duration.DurationInput, message: string) =>
+export const timeoutOrDieMessage =
+  (duration: Duration.DurationInput, message: string) =>
   <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.timeoutFailCause(self, {
       duration,
-      onTimeout: () => Cause.die(new Cause.TimeoutException(message))
+      onTimeout: () => Cause.die(new Cause.TimeoutException(message)),
     })
 
 export const toForkedDeferred = <R, E, A>(

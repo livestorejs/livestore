@@ -51,9 +51,10 @@ export const makeClientSession = <R>({
   origin: string | undefined
 }): Effect.Effect<ClientSession, never, Scope.Scope | R> =>
   Effect.gen(function* () {
-    const devtools: ClientSession['devtools'] = devtoolsEnabled === true
-      ? { enabled: true, pullLatch: yield* Effect.makeLatch(true), pushLatch: yield* Effect.makeLatch(true) }
-      : { enabled: false }
+    const devtools: ClientSession['devtools'] =
+      devtoolsEnabled === true
+        ? { enabled: true, pullLatch: yield* Effect.makeLatch(true), pushLatch: yield* Effect.makeLatch(true) }
+        : { enabled: false }
 
     if (devtoolsEnabled === true) {
       yield* Effect.gen(function* () {

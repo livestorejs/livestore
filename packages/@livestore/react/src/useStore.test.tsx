@@ -7,7 +7,15 @@ import {
   storeOptions,
 } from '@livestore/livestore'
 import { shouldNeverHappen } from '@livestore/utils'
-import { act, type RenderHookResult, type RenderResult, fireEvent, render, renderHook, waitFor } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  type RenderHookResult,
+  type RenderResult,
+  render,
+  renderHook,
+  waitFor,
+} from '@testing-library/react'
 import * as React from 'react'
 import { describe, expect, it, vi } from 'vitest'
 

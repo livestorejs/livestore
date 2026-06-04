@@ -1,6 +1,5 @@
-import { type Component, createMemo, For } from 'solid-js'
-
 import { queryDb } from '@livestore/livestore'
+import { type Component, createMemo, For } from 'solid-js'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'

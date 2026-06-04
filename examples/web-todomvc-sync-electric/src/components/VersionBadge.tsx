@@ -1,6 +1,5 @@
-import { useEffect } from 'react'
-
 import { liveStoreVersion } from '@livestore/livestore'
+import { useEffect } from 'react'
 
 const versionBadgeStyle = {
   position: 'fixed',

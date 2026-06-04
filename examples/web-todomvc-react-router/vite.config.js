@@ -1,8 +1,7 @@
-import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
-
 // @ts-check
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
 
 const isProdBuild = process.env.NODE_ENV === 'production'
 

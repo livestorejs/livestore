@@ -20,6 +20,7 @@ export const DevtoolsButton = ({ className }: { className?: string }) => {
         href={devtoolsUrl}
         target="_blank"
         className="h-6 px-1.5 flex items-center gap-1 bg-orange-500 text-white rounded hover:bg-orange-400 focus:outline-none focus:bg-orange-400"
+        rel="noopener"
       >
         <CodeBracketIcon className="size-3.5 shrink-0" />
         <span>Devtools</span>

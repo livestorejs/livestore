@@ -25,111 +25,112 @@ export const rematerializeFromEventlog = Effect.fn('@livestore/common:rematerial
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>
   materializeEvent: MaterializeEvent
 }) {
-    const eventsCount = dbEventlog.select<{ count: number }>(
-      `SELECT COUNT(*) AS count FROM ${SystemTables.EVENTLOG_META_TABLE}`,
-    )[0]!.count
+  const eventsCount = dbEventlog.select<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM ${SystemTables.EVENTLOG_META_TABLE}`,
+  )[0]!.count
 
-    const hashEventDef = memoizeByRef((event: EventDef.AnyWithoutFn) => Schema.hash(event.schema))
+  const hashEventDef = memoizeByRef((event: EventDef.AnyWithoutFn) => Schema.hash(event.schema))
 
-    const processEvent = Effect.fn(`@livestore/common:rematerializeFromEventlog:processEvent`)(function* (
-      row: SystemTables.EventlogMetaRow,
-    ) {
-      const args = jsonParse(row.argsJson)
-      const eventEncoded = LiveStoreEvent.Client.EncodedWithMeta.make({
-        name: row.name,
-        args,
-        seqNum: {
-          global: row.seqNumGlobal,
-          client: row.seqNumClient,
-          rebaseGeneration: row.seqNumRebaseGeneration,
-        },
-        parentSeqNum: {
-          global: row.parentSeqNumGlobal,
-          client: row.parentSeqNumClient,
-          rebaseGeneration: row.parentSeqNumRebaseGeneration,
-        },
-        clientId: row.clientId,
-        sessionId: row.sessionId,
-      })
+  const processEvent = Effect.fn(`@livestore/common:rematerializeFromEventlog:processEvent`)(function* (
+    row: SystemTables.EventlogMetaRow,
+  ) {
+    const args = jsonParse(row.argsJson)
+    const eventEncoded = LiveStoreEvent.Client.EncodedWithMeta.make({
+      name: row.name,
+      args,
+      seqNum: {
+        global: row.seqNumGlobal,
+        client: row.seqNumClient,
+        rebaseGeneration: row.seqNumRebaseGeneration,
+      },
+      parentSeqNum: {
+        global: row.parentSeqNumGlobal,
+        client: row.parentSeqNumClient,
+        rebaseGeneration: row.parentSeqNumRebaseGeneration,
+      },
+      clientId: row.clientId,
+      sessionId: row.sessionId,
+    })
 
-      const resolution = yield* resolveEventDef(schema, {
-        operation: '@livestore/common:rematerializeFromEventlog:processEvent',
-        event: eventEncoded,
-      }).pipe(UnknownError.mapToUnknownError)
+    const resolution = yield* resolveEventDef(schema, {
+      operation: '@livestore/common:rematerializeFromEventlog:processEvent',
+      event: eventEncoded,
+    }).pipe(UnknownError.mapToUnknownError)
 
-      if (resolution._tag === 'unknown') {
-        // Old snapshots can contain newer events. Skip until the runtime has
-        // been updated; the event stays in the log for future replays.
-        return
-      }
+    if (resolution._tag === 'unknown') {
+      // Old snapshots can contain newer events. Skip until the runtime has
+      // been updated; the event stays in the log for future replays.
+      return
+    }
 
-      const { eventDef } = resolution
+    const { eventDef } = resolution
 
-      if (hashEventDef(eventDef) !== row.schemaHash) {
-        yield* Effect.logWarning(
-          `Schema hash mismatch for event definition ${row.name}. Trying to materialize event anyway.`,
-        )
-      }
+    if (hashEventDef(eventDef) !== row.schemaHash) {
+      yield* Effect.logWarning(
+        `Schema hash mismatch for event definition ${row.name}. Trying to materialize event anyway.`,
+      )
+    }
 
-      // Checking whether the schema has changed in an incompatible way
-      yield* Schema.decodeUnknown(eventDef.schema)(args).pipe(
-        Effect.mapError((cause) =>
-          UnknownError.make({
-            cause,
-            note: `\
+    // Checking whether the schema has changed in an incompatible way
+    yield* Schema.decodeUnknown(eventDef.schema)(args).pipe(
+      Effect.mapError((cause) =>
+        UnknownError.make({
+          cause,
+          note: `\
 There was an error during rematerializing from the eventlog while decoding
 the persisted event args for event definition "${row.name}".
 This likely means the schema has changed in an incompatible way.
 `,
-          }),
-        ),
-      )
+        }),
+      ),
+    )
 
-      yield* materializeEvent(eventEncoded, { skipEventlog: true })
-    })
+    yield* materializeEvent(eventEncoded, { skipEventlog: true })
+  })
 
-    const CHUNK_SIZE = 100
+  const CHUNK_SIZE = 100
 
-    const stmt = dbEventlog.prepare(sql`\
+  const stmt = dbEventlog.prepare(sql`\
 SELECT * FROM ${SystemTables.EVENTLOG_META_TABLE} 
 WHERE seqNumGlobal > $seqNumGlobal OR (seqNumGlobal = $seqNumGlobal AND seqNumClient > $seqNumClient)
 ORDER BY seqNumGlobal ASC, seqNumClient ASC
 LIMIT ${CHUNK_SIZE}
 `)
 
-    let processedEvents = 0
+  let processedEvents = 0
 
-    yield* Stream.unfoldChunk<
-      Chunk.Chunk<SystemTables.EventlogMetaRow> | { _tag: 'Initial' },
-      SystemTables.EventlogMetaRow
-    >({ _tag: 'Initial' }, (item) => {
-      // End stream if no more rows
-      if (Chunk.isChunk(item) === true && item.length === 0) return Option.none()
+  yield* Stream.unfoldChunk<
+    Chunk.Chunk<SystemTables.EventlogMetaRow> | { _tag: 'Initial' },
+    SystemTables.EventlogMetaRow
+  >({ _tag: 'Initial' }, (item) => {
+    // End stream if no more rows
+    if (Chunk.isChunk(item) === true && item.length === 0) return Option.none()
 
-      const lastId = Chunk.isChunk(item) === true
+    const lastId =
+      Chunk.isChunk(item) === true
         ? Chunk.last(item).pipe(
             Option.map((_) => ({ global: _.seqNumGlobal, client: _.seqNumClient })),
             Option.getOrElse(() => EventSequenceNumber.Client.ROOT),
           )
         : EventSequenceNumber.Client.ROOT
-      const nextItem = Chunk.fromIterable(
-        stmt.select<SystemTables.EventlogMetaRow>({
-          $seqNumGlobal: lastId?.global,
-          $seqNumClient: lastId?.client,
-        } as any as PreparedBindValues),
-      )
-      const prevItem = Chunk.isChunk(item) === true ? item : Chunk.empty()
-      return Option.some([prevItem, nextItem])
-    }).pipe(
-      Stream.bufferChunks({ capacity: 2 }),
-      Stream.tap((row) =>
-        Effect.gen(function* () {
-          yield* processEvent(row)
-
-          processedEvents++
-          yield* onProgress({ done: processedEvents, total: eventsCount })
-        }),
-      ),
-      Stream.runDrain,
+    const nextItem = Chunk.fromIterable(
+      stmt.select<SystemTables.EventlogMetaRow>({
+        $seqNumGlobal: lastId?.global,
+        $seqNumClient: lastId?.client,
+      } as any as PreparedBindValues),
     )
+    const prevItem = Chunk.isChunk(item) === true ? item : Chunk.empty()
+    return Option.some([prevItem, nextItem])
+  }).pipe(
+    Stream.bufferChunks({ capacity: 2 }),
+    Stream.tap((row) =>
+      Effect.gen(function* () {
+        yield* processEvent(row)
+
+        processedEvents++
+        yield* onProgress({ done: processedEvents, total: eventsCount })
+      }),
+    ),
+    Stream.runDrain,
+  )
 }, Effect.withPerformanceMeasure('@livestore/common:rematerializeFromEventlog'))

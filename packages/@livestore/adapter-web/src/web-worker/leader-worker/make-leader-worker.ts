@@ -1,5 +1,3 @@
-import type * as otel from '@opentelemetry/api'
-
 import type { BootStatus, BootWarningReason, SqliteDb, SyncOptions } from '@livestore/common'
 import { Devtools, LogConfig, UnknownError } from '@livestore/common'
 import type { DevtoolsOptions, StreamEventsOptions } from '@livestore/common/leader-thread'
@@ -30,6 +28,7 @@ import {
   WorkerRunner,
 } from '@livestore/utils/effect'
 import { BrowserWorkerRunner, Opfs, WebError } from '@livestore/utils/effect/browser'
+import type * as otel from '@opentelemetry/api'
 
 import { cleanupOldStateDbFiles, getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.ts'
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
@@ -59,11 +58,12 @@ export const makeWorker = (options: WorkerOptions) => {
 }
 
 export const makeWorkerEffect = (options: WorkerOptions) => {
-  const TracingLive = options.otelOptions?.tracer !== undefined
-    ? Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
-        Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
-      )
-    : undefined
+  const TracingLive =
+    options.otelOptions?.tracer !== undefined
+      ? Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+          Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
+        )
+      : undefined
 
   const runtimeLayer = Layer.mergeAll(FetchHttpClient.layer, TracingLive ?? Layer.empty)
 
@@ -161,9 +161,10 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
 
         // Use OPFS if available, otherwise fall back to in-memory
-        const [dbState, dbEventlog] = useOpfs === true
-          ? yield* Effect.all([makeOpfsDb('state'), makeOpfsDb('eventlog')], { concurrency: 2 })
-          : yield* Effect.all([makeInMemoryDb(), makeInMemoryDb()], { concurrency: 2 })
+        const [dbState, dbEventlog] =
+          useOpfs === true
+            ? yield* Effect.all([makeOpfsDb('state'), makeOpfsDb('eventlog')], { concurrency: 2 })
+            : yield* Effect.all([makeInMemoryDb(), makeInMemoryDb()], { concurrency: 2 })
 
         // Clean up old state database files after successful database creation
         // This prevents OPFS file pool capacity exhaustion from accumulated state db files after schema changes/migrations

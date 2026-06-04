@@ -1,23 +1,14 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
-const { Effect, Logger, LogLevel, Layer } = require('@livestore/utils/effect') as typeof import(
-  '@livestore/utils/effect',
-  {
-    with: {
-      'resolution-mode': 'import',
-    },
-  }
-)
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
-const { PlatformNode } = require('@livestore/utils/node') as typeof import('@livestore/utils/node', {
-  with: {
-    'resolution-mode': 'import',
-  },
-})
-
+import type * as EffectModule from '@livestore/utils/effect' with { 'resolution-mode': 'import' }
+import type * as PlatformNodeModule from '@livestore/utils/node' with { 'resolution-mode': 'import' }
 import type { MetroConfig } from 'expo/metro-config'
 
 import type { Middleware, Options } from './types.ts'
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
+const { Effect, Logger, LogLevel, Layer } = require('@livestore/utils/effect') as typeof EffectModule
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
+const { PlatformNode } = require('@livestore/utils/node') as typeof PlatformNodeModule
 
 /**
  * Patches the Metro config to add a middleware via `config.server.enhanceMiddleware`.
@@ -96,5 +87,5 @@ module.exports = {
   addLiveStoreDevtoolsMiddleware,
 }
 
-export type { addLiveStoreDevtoolsMiddleware }
 export type { Options } from './types.ts'
+export type { addLiveStoreDevtoolsMiddleware }

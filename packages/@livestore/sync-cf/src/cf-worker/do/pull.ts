@@ -37,9 +37,7 @@ export const makeEndingPullStream = ({
           ...(payload !== undefined ? { payload } : {}),
           ...(headers !== undefined ? { headers } : {}),
         }),
-      ).pipe(
-        UnknownError.mapToUnknownError,
-      )
+      ).pipe(UnknownError.mapToUnknownError)
     }
 
     if (req.cursor._tag === 'Some' && req.cursor.value.backendId !== backendId) {
@@ -86,9 +84,7 @@ export const makeEndingPullStream = ({
   }).pipe(
     Stream.unwrap,
     Stream.mapError((cause) =>
-      cause._tag === 'BackendIdMismatchError' || cause._tag === 'UnknownError'
-        ? cause
-        : new UnknownError({ cause }),
+      cause._tag === 'BackendIdMismatchError' || cause._tag === 'UnknownError' ? cause : new UnknownError({ cause }),
     ),
     Stream.withSpan('cloudflare-provider:pull'),
   )

@@ -6,10 +6,8 @@ if (process.execArgv.includes('--inspect') === true) {
   inspector.waitForDebugger()
 }
 
-import type * as otel from '@opentelemetry/api'
-
 import type { SyncOptions } from '@livestore/common'
-import { LogConfig, UnknownError } from '@livestore/common'
+import { LogConfig } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import { Eventlog, LeaderThreadCtx, streamEventsWithSyncState } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -18,6 +16,7 @@ import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { Effect, FetchHttpClient, Layer, OtelTracer, Schema, Stream, WorkerRunner } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
+import type * as otel from '@opentelemetry/api'
 
 import type { TestingOverrides } from './leader-thread-shared.ts'
 import { makeLeaderThread } from './leader-thread-shared.ts'
@@ -42,11 +41,12 @@ export const makeWorker = (options: WorkerOptions) => {
 }
 
 export const makeWorkerEffect = (options: WorkerOptions) => {
-  const TracingLive = options.otelOptions?.tracer !== undefined
-    ? Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
-        Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
-      )
-    : undefined
+  const TracingLive =
+    options.otelOptions?.tracer !== undefined
+      ? Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+          Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
+        )
+      : undefined
 
   // Merge the runtime dependencies once so we can provide them together without chaining Effect.provide.
   const runtimeLayer = Layer.mergeAll(

@@ -20,9 +20,7 @@ let parentDeathTimer: NodeJS.Timeout | null = null
 type SetupParentDeathDetectionMessage = ['setup-parent-death-detection', { parentPid: number }]
 type RunnerMessage<I> = Runner.BackingRunner.Message<I> | SetupParentDeathDetectionMessage
 
-const isSetupParentDeathDetectionMessage = (
-  message: unknown,
-): message is SetupParentDeathDetectionMessage =>
+const isSetupParentDeathDetectionMessage = (message: unknown): message is SetupParentDeathDetectionMessage =>
   Array.isArray(message) &&
   message[0] === 'setup-parent-death-detection' &&
   typeof message[1] === 'object' &&
@@ -103,7 +101,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             Deferred.unsafeDone(closeLatch, Exit.die(exit.cause))
           }
         }
-         port.on('message', (message: RunnerMessage<I>) => {
+        port.on('message', (message: RunnerMessage<I>) => {
           // console.log('message', message)
 
           // Handle parent death detection setup messages

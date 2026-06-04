@@ -115,23 +115,25 @@ export const makeInMemoryAdapter =
       const clientId = options.clientId ?? nanoid(6)
       const sessionId = options.sessionId ?? nanoid(6)
 
-      const sharedWebWorker = options.devtools?.sharedWorker !== undefined
-        ? tryAsFunctionAndNew(options.devtools.sharedWorker, {
-            name: `livestore-shared-worker-${storeId}`,
-          })
-        : undefined
+      const sharedWebWorker =
+        options.devtools?.sharedWorker !== undefined
+          ? tryAsFunctionAndNew(options.devtools.sharedWorker, {
+              name: `livestore-shared-worker-${storeId}`,
+            })
+          : undefined
 
-      const sharedWorkerFiber = sharedWebWorker !== undefined
-        ? yield* Worker.makePoolSerialized<typeof WebmeshWorker.Schema.Request.Type>({
-            size: 1,
-            concurrency: 100,
-          }).pipe(
-            Effect.provide(BrowserWorker.layer(() => sharedWebWorker)),
-            Effect.tapCauseLogPretty,
-            UnknownError.mapToUnknownError,
-            Effect.forkScoped,
-          )
-        : undefined
+      const sharedWorkerFiber =
+        sharedWebWorker !== undefined
+          ? yield* Worker.makePoolSerialized<typeof WebmeshWorker.Schema.Request.Type>({
+              size: 1,
+              concurrency: 100,
+            }).pipe(
+              Effect.provide(BrowserWorker.layer(() => sharedWebWorker)),
+              Effect.tapCauseLogPretty,
+              UnknownError.mapToUnknownError,
+              Effect.forkScoped,
+            )
+          : undefined
 
       const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
         schema,

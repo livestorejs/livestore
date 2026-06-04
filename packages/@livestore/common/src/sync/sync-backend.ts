@@ -61,7 +61,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
        */
       live?: boolean
     },
-  ) => Stream.Stream<PullResItem<TSyncMetadata>, IsOfflineError | BackendIdMismatchError | UnknownError >
+  ) => Stream.Stream<PullResItem<TSyncMetadata>, IsOfflineError | BackendIdMismatchError | UnknownError>
   // TODO support transactions (i.e. group of mutation events which need to be applied together)
   push: (
     /**

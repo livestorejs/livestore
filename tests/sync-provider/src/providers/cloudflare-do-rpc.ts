@@ -3,7 +3,6 @@ import path from 'node:path'
 import { SyncBackend, UnknownError } from '@livestore/common'
 import { MAX_DO_RPC_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST, splitChunkBySize } from '@livestore/sync-cf/common'
 import { omit } from '@livestore/utils'
-import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
 import {
   Chunk,
   Effect,
@@ -17,6 +16,7 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
+import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
 
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 import { DoRpcProxyRpcs } from './cloudflare/do-rpc-proxy-schema.ts'

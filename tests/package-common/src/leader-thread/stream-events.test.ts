@@ -1,5 +1,3 @@
-import { expect } from 'vitest'
-
 import type { BootStatus } from '@livestore/common'
 import { SyncState } from '@livestore/common'
 import { Eventlog, makeMaterializeEvent, recreateDb, streamEventsWithSyncState } from '@livestore/common/leader-thread'
@@ -7,9 +5,10 @@ import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Chunk, Effect, Fiber, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { expect } from 'vitest'
 
 import { appConfigSetEvent, events as fixtureEvents, schema as fixtureSchema } from './fixture.ts'
 

@@ -1,9 +1,8 @@
 import process from 'node:process'
 
 import { cloudflare } from '@cloudflare/vite-plugin'
-import { defineConfig } from 'vite'
-
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
   server: {

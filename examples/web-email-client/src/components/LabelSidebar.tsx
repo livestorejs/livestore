@@ -1,7 +1,6 @@
+import { queryDb } from '@livestore/livestore'
 import type React from 'react'
 import { useCallback, useMemo } from 'react'
-
-import { queryDb } from '@livestore/livestore'
 
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'

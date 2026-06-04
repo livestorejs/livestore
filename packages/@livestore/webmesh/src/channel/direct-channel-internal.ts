@@ -1,16 +1,6 @@
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import type { PubSub } from '@livestore/utils/effect'
-import {
-  Deferred,
-  Effect,
-  Exit,
-  Predicate,
-  Queue,
-  Schema,
-  Scope,
-  Stream,
-  WebChannel,
-} from '@livestore/utils/effect'
+import { Deferred, Effect, Exit, Predicate, Queue, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
 
 import { type ChannelName, type MeshNodeName, type MessageQueueItem, packetAsOtelAttributes } from '../common.ts'
 import * as MeshSchema from '../mesh-schema.ts'
@@ -105,7 +95,9 @@ export const makeDirectChannelInternal = ({
           channelState: channelState._tag,
           packetId: packet.id,
           packetReqId: packet.reqId,
-          ...(Predicate.hasProperty('channelVersion')(packet) === true ? { packetChannelVersion: packet.channelVersion } : {}),
+          ...(Predicate.hasProperty('channelVersion')(packet) === true
+            ? { packetChannelVersion: packet.channelVersion }
+            : {}),
         })
 
         // const reqIdStr =
@@ -185,7 +177,9 @@ export const makeDirectChannelInternal = ({
                 remainingHops: packet.hops,
                 reqId: packet.id,
               })
-              yield* Effect.spanEvent(`Re-sending new request (${newRequestPacket.id}) for incoming request (${packet.id})`)
+              yield* Effect.spanEvent(
+                `Re-sending new request (${newRequestPacket.id}) for incoming request (${packet.id})`,
+              )
 
               yield* sendPacket(newRequestPacket)
             }

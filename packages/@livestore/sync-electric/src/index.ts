@@ -17,7 +17,9 @@ import {
 
 import * as ApiSchema from './api-schema.ts'
 
-export class InvalidOperationError extends Schema.TaggedError<InvalidOperationError>('~@livestore/sync-electric/InvalidOperationError')('InvalidOperationError', {
+export class InvalidOperationError extends Schema.TaggedError<InvalidOperationError>(
+  '~@livestore/sync-electric/InvalidOperationError',
+)('InvalidOperationError', {
   operation: Schema.Literal('delete', 'update'),
   message: Schema.String,
 }) {}
@@ -292,9 +294,7 @@ export const makeSyncBackend =
           return Option.some([items, Option.some(nextHandle)] as const)
         }).pipe(
           Effect.scoped,
-          Effect.mapError((cause) =>
-            cause._tag === 'UnknownError' ? cause : new UnknownError({ cause }),
-          ),
+          Effect.mapError((cause) => (cause._tag === 'UnknownError' ? cause : new UnknownError({ cause }))),
           Effect.withSpan('electric-provider:runPull', { attributes: { handle, live } }),
         )
 

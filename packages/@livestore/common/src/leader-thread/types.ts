@@ -24,9 +24,9 @@ import type {
   UnknownError,
   UnknownEventError,
 } from '../index.ts'
-import type { RejectedPushError } from './RejectedPushError.ts'
 import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
+import type { RejectedPushError } from './RejectedPushError.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 
 export type ShutdownState = 'running' | 'shutting-down'

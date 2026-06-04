@@ -42,9 +42,7 @@ export const checkConnectionRemainsActive = async (options: {
   durationMs: number
 }) => {
   await expect(
-    options.devtools
-      .getByText('Connection to app lost', { exact: false })
-      .describe(`${options.label}:connection-lost`),
+    options.devtools.getByText('Connection to app lost', { exact: false }).describe(`${options.label}:connection-lost`),
   ).not.toBeVisible()
 
   try {

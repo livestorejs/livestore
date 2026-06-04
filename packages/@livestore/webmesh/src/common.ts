@@ -23,14 +23,17 @@ export type ChannelKey = `target:${MeshNodeName}, channelName:${ChannelName}`
 //   '~@livestore/webmesh/NoConnectionRouteSignal',
 // )('NoConnectionRouteSignal', {}) {}
 
-export class EdgeAlreadyExistsError extends Schema.TaggedError<EdgeAlreadyExistsError>('~@livestore/webmesh/EdgeAlreadyExistsError')('EdgeAlreadyExistsError', {
+export class EdgeAlreadyExistsError extends Schema.TaggedError<EdgeAlreadyExistsError>(
+  '~@livestore/webmesh/EdgeAlreadyExistsError',
+)('EdgeAlreadyExistsError', {
   target: Schema.String,
 }) {}
 
 export const packetAsOtelAttributes = (packet: typeof Packet.Type) => ({
   packetId: packet.id,
   'span.label':
-    packet.id + (Predicate.hasProperty(packet, 'reqId') === true && packet.reqId !== undefined ? ` for ${packet.reqId}` : ''),
+    packet.id +
+    (Predicate.hasProperty(packet, 'reqId') === true && packet.reqId !== undefined ? ` for ${packet.reqId}` : ''),
   ...omitUndefineds({
     packet:
       packet._tag !== 'DirectChannelResponseSuccess' && packet._tag !== 'ProxyChannelPayload' ? packet : undefined,

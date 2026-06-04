@@ -1,8 +1,8 @@
 import {
   BootStatus,
   Devtools,
-  RejectedPushError,
   MigrationsReport,
+  RejectedPushError,
   SyncBackend,
   SyncState,
   UnknownError,

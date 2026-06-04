@@ -103,7 +103,11 @@ export const queryDb: {
 } = (queryInput, options) => {
   const { queryString, extraDeps } = getQueryStringAndExtraDeps(queryInput)
 
-  const hash = [queryString, options?.deps !== undefined ? depsToString(options.deps) : undefined, depsToString(extraDeps)]
+  const hash = [
+    queryString,
+    options?.deps !== undefined ? depsToString(options.deps) : undefined,
+    depsToString(extraDeps),
+  ]
     .filter(Boolean)
     .join('-')
 
@@ -112,7 +116,7 @@ export const queryDb: {
   }
 
   if (hash.trim() === '') {
-      return shouldNeverHappen('Invalid query hash for query:', objectToString(queryInput))
+    return shouldNeverHappen('Invalid query hash for query:', objectToString(queryInput))
   }
 
   const label = options?.label ?? queryString
@@ -216,7 +220,11 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
     const schemaRef: { current: Schema.Schema<any, any> | undefined } = {
       current:
-        typeof queryInput === 'function' ? undefined : isQueryBuilder(queryInput) === true ? undefined : queryInput.schema,
+        typeof queryInput === 'function'
+          ? undefined
+          : isQueryBuilder(queryInput) === true
+            ? undefined
+            : queryInput.schema,
     }
 
     const execBeforeFirstRunRef: {
@@ -342,9 +350,10 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
           'db:...', // NOTE span name will be overridden further down
           {
             attributes: {
-              'livestore.debugRefreshReason': Predicate.hasProperty(debugRefreshReason, 'label') === true
-                ? (debugRefreshReason.label as string)
-                : debugRefreshReason?._tag,
+              'livestore.debugRefreshReason':
+                Predicate.hasProperty(debugRefreshReason, 'label') === true
+                  ? (debugRefreshReason.label as string)
+                  : debugRefreshReason?._tag,
             },
           },
           otelContext ?? queryContext.rootOtelContext,
@@ -357,9 +366,10 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
               execBeforeFirstRunRef.current = undefined
             }
 
-            const queryInputResult = isThunk(queryInputRaw$OrQueryInputRaw) === true
-              ? (get(queryInputRaw$OrQueryInputRaw, otelContext, debugRefreshReason) as TQueryInputRaw)
-              : (queryInputRaw$OrQueryInputRaw as TQueryInputRaw)
+            const queryInputResult =
+              isThunk(queryInputRaw$OrQueryInputRaw) === true
+                ? (get(queryInputRaw$OrQueryInputRaw, otelContext, debugRefreshReason) as TQueryInputRaw)
+                : (queryInputRaw$OrQueryInputRaw as TQueryInputRaw)
 
             const sqlString = queryInputResult.query
             const bindValues = queryInputResult.bindValues
