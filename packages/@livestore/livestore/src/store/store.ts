@@ -11,10 +11,9 @@ import {
   MaterializeError,
   MaterializerHashMismatchError,
   makeClientSessionSyncProcessor,
-  type PreparedBindValues,
   prepareBindValues,
   QueryBuilderAstSymbol,
-  replaceSessionIdSymbol,
+  resolveSessionIdSymbolInBindValues,
   type StorageMode,
   type SyncState,
   UnknownError,
@@ -640,14 +639,15 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       const sqlRes = query.asSql()
       const schema = getResultSchema(query)
 
-      // Replace SessionIdSymbol in bind values before executing the query
-      if (sqlRes.bindValues !== undefined) {
-        replaceSessionIdSymbol(sqlRes.bindValues, this[StoreInternalsSymbol].clientSession.sessionId)
-      }
+      // Query builders preserve SessionIdSymbol so client-document queries can be reused across sessions.
+      // SQLite bind values must be concrete primitives, so resolve the symbol only at execution time.
+      const resolvedBindValues = sqlRes.bindValues === undefined
+        ? undefined
+        : resolveSessionIdSymbolInBindValues(sqlRes.bindValues, this[StoreInternalsSymbol].clientSession.sessionId)
 
       const rawRes = this[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
         sqlRes.query,
-        sqlRes.bindValues as any as PreparedBindValues,
+        resolvedBindValues === undefined ? undefined : prepareBindValues(resolvedBindValues, sqlRes.query),
         {
           ...omitUndefineds({ otelContext: options?.otelContext }),
           queriedTables: new Set([query[QueryBuilderAstSymbol].tableDef.sqliteDef.name]),
@@ -793,10 +793,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       commitsSpan?.addEvent('commit')
       const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
       commitsSpan?.addLink({ context: currentSpan.spanContext() })
-
-      for (const event of events) {
-        replaceSessionIdSymbol(event.args, this[StoreInternalsSymbol].clientSession.sessionId)
-      }
 
       if (events.length === 0) return
 
@@ -1214,12 +1210,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     } else {
       events = [firstEventOrTxnFnOrOptions, ...restEvents]
     }
-
-    // for (const event of events) {
-    //   if (event.args.id === SessionIdSymbol) {
-    //     event.args.id = this.sessionId
-    //   }
-    // }
 
     return { events, options }
   }

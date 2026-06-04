@@ -11,6 +11,11 @@ export * from './rematerialize-from-eventlog.ts'
 export * from './schema/state/sqlite/query-builder/mod.ts'
 export * from './schema/state/sqlite/system-tables/mod.ts'
 export * from './schema-management/migrations.ts'
+export {
+  resolveSessionIdSymbolInBindValues,
+  SessionIdSymbol,
+  type BindableWithSessionIdSymbol,
+} from './session-id-symbol.ts'
 export * as SqliteDbHelper from './sqlite-db-helper.ts'
 export * from './sync/index.ts'
 export * as SyncState from './sync/syncstate.ts'

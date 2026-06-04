@@ -5,7 +5,7 @@ import {
   isQueryBuilder,
   prepareBindValues,
   QueryBuilderAstSymbol,
-  replaceSessionIdSymbol,
+  resolveSessionIdSymbolInBindValues,
   SessionIdSymbol,
   UnknownError,
 } from '@livestore/common'
@@ -378,9 +378,11 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
               queriedTablesRef.current = store[StoreInternalsSymbol].sqliteDbWrapper.getTablesUsed(sqlString)
             }
 
-            if (bindValues !== undefined) {
-              replaceSessionIdSymbol(bindValues, store.sessionId)
-            }
+            // Live query inputs may be cached and re-run as reactive dependencies change.
+            // Resolve SessionIdSymbol per execution so the cached input stays symbolic and session-agnostic.
+            const resolvedBindValues = bindValues === undefined
+              ? undefined
+              : resolveSessionIdSymbolInBindValues(bindValues, store.sessionId)
 
             // Establish a reactive dependency on the tables used in the query
             for (const tableName of queriedTablesRef.current) {
@@ -395,7 +397,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
             const rawDbResults = store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
               sqlString,
-              bindValues !== undefined ? prepareBindValues(bindValues, sqlString) : undefined,
+              resolvedBindValues !== undefined ? prepareBindValues(resolvedBindValues, sqlString) : undefined,
               {
                 otelContext,
                 ...(queriedTablesRef.current !== undefined ? { queriedTables: queriedTablesRef.current } : {}),

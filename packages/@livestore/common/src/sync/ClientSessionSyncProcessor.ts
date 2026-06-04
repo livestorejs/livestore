@@ -19,6 +19,7 @@ import { isRejectedPushError } from '../leader-thread/RejectedPushError.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
+import { resolveSessionIdSymbolInEventArgs } from '../session-id-symbol.ts'
 import * as SyncState from './syncstate.ts'
 
 /** Serialize value to JSON string for trace attributes */
@@ -276,7 +277,9 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         return new LiveStoreEvent.Client.EncodedWithMeta(
           Schema.encodeUnknownSync(eventSchema)({
             name,
-            args,
+            // Client-document events expose SessionIdSymbol as an input placeholder, but encoded events are persisted
+            // and replayed by concrete id. Resolve during schema encoding so commit never mutates the caller's event.
+            args: resolveSessionIdSymbolInEventArgs(args, clientSession.sessionId),
             ...nextNumPair,
             clientId: clientSession.clientId,
             sessionId: clientSession.sessionId,
