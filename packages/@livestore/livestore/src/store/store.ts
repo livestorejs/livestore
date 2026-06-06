@@ -8,12 +8,14 @@ import {
   IntentionalShutdownCause,
   isQueryBuilder,
   liveStoreVersion,
+  MaterializationJournal,
   MaterializeError,
   MaterializerHashMismatchError,
   makeClientSessionSyncProcessor,
   prepareBindValues,
   QueryBuilderAstSymbol,
   resolveSessionIdSymbolInBindValues,
+  StateHead,
   type StorageMode,
   type SyncState,
   UnknownError,
@@ -29,6 +31,7 @@ import {
   Exit,
   Fiber,
   Inspectable,
+  Layer,
   Option,
   OtelTracer,
   Runtime,
@@ -205,6 +208,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.storageMode = clientSession.leaderThread.initialState.storageMode
 
     const reactivityGraph = makeReactivityGraph()
+    const sqliteDbWrapper = new SqliteDbWrapper({ otel: otelOptions, db: clientSession.sqliteDb })
+    const materializationLayer = Layer.mergeAll(
+      MaterializationJournal.layer({ dbState: sqliteDbWrapper }),
+      StateHead.layer({ dbState: sqliteDbWrapper }),
+    )
 
     const syncProcessor = makeClientSessionSyncProcessor({
       schema,
@@ -213,6 +221,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         (eventEncoded, { withChangeset, materializerHashLeader }) =>
           // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
           Effect.gen(this, function* () {
+            const journal = yield* MaterializationJournal.MaterializationJournal
+            const stateHead = yield* StateHead.StateHead
             const resolution = yield* resolveEventDef(schema, {
               operation: '@livestore/livestore:store:materializeEvent',
               event: eventEncoded,
@@ -221,10 +231,13 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             if (resolution._tag === 'unknown') {
               // Runtime schema doesn't know this event yet; skip materialization but
               // keep the log entry so upgraded clients can replay it later.
+              yield* journal.record({
+                key: eventEncoded.seqNum,
+                sessionChangeset: { _tag: 'no-op' as const },
+              })
+              yield* stateHead.set(eventEncoded.seqNum)
               return {
                 writeTables: new Set<string>(),
-                sessionChangeset: { _tag: 'no-op' as const },
-                materializerHash: Option.none(),
               }
             }
 
@@ -251,6 +264,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             ) {
               return yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
             }
+
+            eventEncoded.meta.materializerHashSession = materializerHash
 
             const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
             const otelContext = otel.trace.setSpan(otel.context.active(), span)
@@ -285,22 +300,25 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               }
             }
 
-            let sessionChangeset:
-              | { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any }
-              | { _tag: 'no-op' }
-              | { _tag: 'unset' } = { _tag: 'unset' }
             if (withChangeset === true) {
-              sessionChangeset = this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset
+              const sessionChangeset = this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset
+              yield* journal.record({
+                key: eventEncoded.seqNum,
+                sessionChangeset,
+              })
             } else {
               exec()
             }
 
-            return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
-          }).pipe(Effect.mapError((cause) => MaterializeError.make({ cause }))),
+            this[StoreInternalsSymbol].sqliteDbWrapper.debug.head = eventEncoded.seqNum
+            yield* stateHead.set(eventEncoded.seqNum)
+
+            return { writeTables: writeTablesForEvent }
+          }).pipe(
+            Effect.provide(materializationLayer),
+            Effect.mapError((cause) => MaterializeError.make({ cause })),
+          ),
       ),
-      rollback: (changeset) => {
-        this[StoreInternalsSymbol].sqliteDbWrapper.rollback(changeset)
-      },
       refreshTables: (tables) => {
         const tablesToUpdate = [] as [Ref<null, ReactivityGraphContext, RefreshReason>, null][]
         for (const tableName of tables) {
@@ -319,7 +337,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           : {}),
       },
       confirmUnsavedChanges,
-    }).pipe(Runtime.runSync(effectContext.runtime))
+    }).pipe(Effect.provide(materializationLayer), Runtime.runSync(effectContext.runtime))
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     const tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> } = {}
@@ -387,9 +405,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       yield* syncProcessor.boot
     })
-
-    // Build Sqlite wrapper last to avoid using getters before internals are set
-    const sqliteDbWrapper = new SqliteDbWrapper({ otel: otelOptions, db: clientSession.sqliteDb })
 
     // Initialize internals bag
     this[StoreInternalsSymbol] = {
@@ -641,9 +656,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       // Query builders preserve SessionIdSymbol so client-document queries can be reused across sessions.
       // SQLite bind values must be concrete primitives, so resolve the symbol only at execution time.
-      const resolvedBindValues = sqlRes.bindValues === undefined
-        ? undefined
-        : resolveSessionIdSymbolInBindValues(sqlRes.bindValues, this[StoreInternalsSymbol].clientSession.sessionId)
+      const resolvedBindValues =
+        sqlRes.bindValues === undefined
+          ? undefined
+          : resolveSessionIdSymbolInBindValues(sqlRes.bindValues, this[StoreInternalsSymbol].clientSession.sessionId)
 
       const rawRes = this[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
         sqlRes.query,

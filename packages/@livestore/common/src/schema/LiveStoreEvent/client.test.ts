@@ -15,7 +15,6 @@ Vitest.describe('EncodedWithMeta', () => {
       clientId: 'client-1',
       sessionId: 'session-1',
       meta: {
-        sessionChangeset: { _tag: 'unset' },
         syncMetadata: Option.none(),
         materializerHashLeader: Option.none(),
         materializerHashSession: Option.none(),

@@ -18,11 +18,10 @@ import {
   IntentionalShutdownCause,
   isWorkerTransportError,
   makeClientSession,
+  StateHead,
   StoreInterrupted,
-  sessionChangesetMetaTable,
   UnknownError,
 } from '@livestore/common'
-import { EventSequenceNumber } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
@@ -320,25 +319,7 @@ export const makeSingleTabAdapter =
         })
       }
 
-      // Restore leader head from SESSION_CHANGESET_META_TABLE
-      const initialLeaderHeadRes = sqliteDb.select(
-        sessionChangesetMetaTable
-          .select('seqNumClient', 'seqNumGlobal', 'seqNumRebaseGeneration')
-          .orderBy([
-            { col: 'seqNumGlobal', direction: 'desc' },
-            { col: 'seqNumClient', direction: 'desc' },
-          ])
-          .first(),
-      )
-
-      const initialLeaderHead =
-        initialLeaderHeadRes !== undefined
-          ? EventSequenceNumber.Client.Composite.make({
-              global: initialLeaderHeadRes.seqNumGlobal,
-              client: initialLeaderHeadRes.seqNumClient,
-              rebaseGeneration: initialLeaderHeadRes.seqNumRebaseGeneration,
-            })
-          : EventSequenceNumber.Client.ROOT
+      const initialLeaderHead = yield* StateHead.make({ dbState: sqliteDb }).get()
 
       yield* Effect.addFinalizer((ex) =>
         Effect.gen(function* () {

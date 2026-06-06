@@ -22,6 +22,8 @@ import {
 } from '../adapter-types.ts'
 import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
+import * as MaterializationJournal from '../MaterializationJournal.ts'
+import * as StateHead from '../StateHead.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
 import type { SyncBackend, SyncOptions } from '../sync/sync.ts'
@@ -152,7 +154,11 @@ export const makeLeaderThreadLayer = ({
       bootStatusQueue,
     })
 
-    const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
+    const materializationLayer = Layer.mergeAll(MaterializationJournal.layer({ dbState }), StateHead.layer({ dbState }))
+
+    const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog }).pipe(
+      Effect.provide(materializationLayer),
+    )
 
     // Recreate state database if needed BEFORE creating sync processor
     // This ensures all system tables exist before any queries are made
@@ -164,7 +170,7 @@ export const makeLeaderThreadLayer = ({
     const syncProcessor = yield* makeLeaderSyncProcessor({
       schema,
       dbState,
-      initialSyncState: getInitialSyncState({ dbEventlog, dbState, dbEventlogMissing }),
+      initialSyncState: getInitialSyncState({ dbEventlog, dbEventlogMissing }),
       initialBlockingSyncContext,
       onError: syncOptions?.onSyncError ?? 'ignore',
       onBackendIdMismatch: syncOptions?.onBackendIdMismatch ?? 'reset',
@@ -178,7 +184,7 @@ export const makeLeaderThreadLayer = ({
       testing: {
         ...omitUndefineds({ delays: testing?.syncProcessor?.delays }),
       },
-    })
+    }).pipe(Effect.provide(materializationLayer))
 
     const extraIncomingMessagesQueue = yield* Queue.unbounded<Devtools.Leader.MessageToApp>().pipe(
       Effect.acquireRelease(Queue.shutdown),
@@ -260,11 +266,9 @@ const isSubsetOf = (a: Set<string>, b: Set<string>): boolean => {
 
 const getInitialSyncState = ({
   dbEventlog,
-  dbState,
   dbEventlogMissing,
 }: {
   dbEventlog: SqliteDb
-  dbState: SqliteDb
   dbEventlogMissing: boolean
 }) => {
   const initialBackendHead =
@@ -291,7 +295,6 @@ const getInitialSyncState = ({
         ? []
         : Eventlog.getEventsSince({
             dbEventlog,
-            dbState,
             since: {
               global: initialBackendHead,
               client: EventSequenceNumber.Client.DEFAULT,
