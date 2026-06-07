@@ -1,24 +1,20 @@
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Fiber, Rpc, RpcClient, RpcGroup, Schema, Stream } from '@livestore/utils/effect'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 
 import type * as CfTypes from '../cf-types.ts'
 import { layerProtocolDurableObject } from './client.ts'
 import { toDurableObjectHandler } from './server.ts'
 
-/**
- * Exercises interleaved streaming and unary DO-RPC responses with a stream read
- * that ends in the middle of a msgpack frame. The gate makes Echo decode before
- * the stream tail is delivered.
- */
-
-const Row = Schema.Struct({
-  seqNum: Schema.Number,
-  name: Schema.String,
-  args: Schema.Struct({ a: Schema.Number, b: Schema.String }),
-})
-
 class Rpcs extends RpcGroup.make(
-  Rpc.make('BigStream', { payload: Schema.Struct({ n: Schema.Number }), success: Row, stream: true }),
+  Rpc.make('BigStream', {
+    payload: Schema.Struct({ n: Schema.Number }),
+    success: Schema.Struct({
+      seqNum: Schema.Number,
+      name: Schema.String,
+      args: Schema.Struct({ a: Schema.Number, b: Schema.String }),
+    }),
+    stream: true,
+  }),
   Rpc.make('Echo', {
     payload: Schema.Struct({ text: Schema.String }),
     success: Schema.Struct({ echo: Schema.String }),
