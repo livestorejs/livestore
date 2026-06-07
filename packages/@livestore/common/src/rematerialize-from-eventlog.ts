@@ -4,7 +4,7 @@ import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 import { type SqliteDb, UnknownError } from './adapter-types.ts'
 import type { MaterializeEvent } from './leader-thread/mod.ts'
 import type { EventDef, LiveStoreSchema } from './schema/mod.ts'
-import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from './schema/mod.ts'
+import { EventSequenceNumber, LiveStoreEvent, SystemTables } from './schema/mod.ts'
 import type { PreparedBindValues } from './util.ts'
 import { sql } from './util.ts'
 
@@ -52,18 +52,16 @@ export const rematerializeFromEventlog = Effect.fn('@livestore/common:rematerial
       sessionId: row.sessionId,
     })
 
-    const resolution = yield* resolveEventDef(schema, {
-      operation: '@livestore/common:rematerializeFromEventlog:processEvent',
-      event: eventEncoded,
-    }).pipe(UnknownError.mapToUnknownError)
+    const eventDef = schema.eventsDefsMap.get(row.name)
+    const materializer = schema.state.materializers.get(row.name)
 
-    if (resolution._tag === 'unknown') {
-      // Old snapshots can contain newer events. Skip until the runtime has
-      // been updated; the event stays in the log for future replays.
+    if (eventDef === undefined || materializer === undefined) {
+      // Old snapshots can contain newer events. Route them through the normal
+      // materialization boundary so unknown-event policy, no-op journal records,
+      // and state-head advancement stay consistent with live materialization.
+      yield* materializeEvent(eventEncoded, { skipEventlog: true })
       return
     }
-
-    const { eventDef } = resolution
 
     if (hashEventDef(eventDef) !== row.schemaHash) {
       yield* Effect.logWarning(

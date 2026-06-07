@@ -4,14 +4,13 @@ import {
   isWorkerTransportError,
   liveStoreVersion,
   makeClientSession,
+  StateHead,
   StoreInterrupted,
-  sessionChangesetMetaTable,
   UnknownError,
 } from '@livestore/common'
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
-import { EventSequenceNumber } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { isDevEnv, omitUndefineds, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
@@ -451,26 +450,9 @@ export const makePersistedAdapter =
         })
       }
 
-      // We're restoring the leader head from the SESSION_CHANGESET_META_TABLE, not from the eventlog db/table
-      // in order to avoid exporting/transferring the eventlog db/table, which is important to speed up the fast path.
-      const initialLeaderHeadRes = sqliteDb.select(
-        sessionChangesetMetaTable
-          .select('seqNumClient', 'seqNumGlobal', 'seqNumRebaseGeneration')
-          .orderBy([
-            { col: 'seqNumGlobal', direction: 'desc' },
-            { col: 'seqNumClient', direction: 'desc' },
-          ])
-          .first(),
-      )
-
-      const initialLeaderHead =
-        initialLeaderHeadRes !== undefined
-          ? EventSequenceNumber.Client.Composite.make({
-              global: initialLeaderHeadRes.seqNumGlobal,
-              client: initialLeaderHeadRes.seqNumClient,
-              rebaseGeneration: initialLeaderHeadRes.seqNumRebaseGeneration,
-            })
-          : EventSequenceNumber.Client.ROOT
+      // We're restoring the leader head from the state db to avoid exporting/transferring
+      // the eventlog db/table, which is important to speed up the fast path.
+      const initialLeaderHead = yield* StateHead.make({ dbState: sqliteDb }).get()
 
       // console.debug('[@livestore/adapter-web:client-session] initialLeaderHead', initialLeaderHead)
 

@@ -35,6 +35,8 @@ LiveStore operates two SQLite databases by default: a state database (your mater
   - Tracks the schema hash and last update time per materialized table. Used for migrations and compatibility checks.
 - `__livestore_schema_event_defs`
   - Tracks the schema hash and last update time per event definition. Used to detect incompatible event schema changes during rematerialization.
+- `__livestore_state_head`
+  - Stores the latest event sequence number reflected by the state database snapshot.
 - `__livestore_session_changeset`
   - Stores SQLite session changeset blobs keyed by event sequence numbers. Used to efficiently roll back and re‑apply state during rebases.
 - Your application tables

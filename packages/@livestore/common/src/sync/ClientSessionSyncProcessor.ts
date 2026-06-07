@@ -16,10 +16,13 @@ import {
 import type { ClientSession } from '../adapter-types.ts'
 import type { MaterializeError } from '../errors.ts'
 import { isRejectedPushError } from '../leader-thread/RejectedPushError.ts'
+import * as MaterializationJournal from '../MaterializationJournal.ts'
+import * as StateHead from '../StateHead.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { resolveSessionIdSymbolInEventArgs } from '../session-id-symbol.ts'
+import * as SqliteDbHelper from '../sqlite-db-helper.ts'
 import * as SyncState from './syncstate.ts'
 
 /** Serialize value to JSON string for trace attributes */
@@ -44,7 +47,6 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   schema,
   clientSession,
   materializeEvent,
-  rollback,
   refreshTables,
   params,
   confirmUnsavedChanges,
@@ -57,15 +59,9 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   ) => Effect.Effect<
     {
       writeTables: Set<string>
-      sessionChangeset:
-        | { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any }
-        | { _tag: 'no-op' }
-        | { _tag: 'unset' }
-      materializerHash: Option.Option<number>
     },
     MaterializeError
   >
-  rollback: (changeset: Uint8Array<ArrayBuffer>) => void
   refreshTables: (tables: Set<string>) => void
   params: {
     leaderPushBatchSize: number
@@ -76,7 +72,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
    * If true, registers a beforeunload event listener to confirm unsaved changes.
    */
   confirmUnsavedChanges: boolean
-}): Effect.fn.Return<ClientSessionSyncProcessor> {
+}) {
+  const materializationJournal = yield* MaterializationJournal.MaterializationJournal
   const eventSchema = LiveStoreEvent.Client.makeSchemaMemo(schema)
 
   const simSleep = <TKey extends keyof ClientSessionSyncProcessorSimulationParams>(
@@ -193,12 +190,17 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
               )
             }
 
-            for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
-              const event = mergeResult.rollbackEvents[i]!
-              if (event.meta.sessionChangeset._tag !== 'no-op' && event.meta.sessionChangeset._tag !== 'unset') {
-                rollback(event.meta.sessionChangeset.data)
-                event.meta.sessionChangeset = { _tag: 'unset' }
-              }
+            if (mergeResult.rollbackEvents.length > 0) {
+              const headAfterRollback = mergeResult.rollbackEvents[0]!.parentSeqNum
+
+              yield* SqliteDbHelper.withSavepoint({
+                db: clientSession.sqliteDb,
+                savepointName: 'livestore_materialization_rollback',
+                effect: Effect.gen(function* () {
+                  yield* materializationJournal.rollback(mergeResult.rollbackEvents.map((event) => event.seqNum))
+                  yield* StateHead.make({ dbState: clientSession.sqliteDb }).set(headAfterRollback)
+                }),
+              })
             }
 
             if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
@@ -227,20 +229,13 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
           const writeTables = new Set<string>()
           for (const event of mergeResult.newEvents) {
-            const {
-              writeTables: newWriteTables,
-              sessionChangeset,
-              materializerHash,
-            } = yield* materializeEvent(event, {
+            const { writeTables: newWriteTables } = yield* materializeEvent(event, {
               withChangeset: true,
               materializerHashLeader: event.meta.materializerHashLeader,
             })
             for (const table of newWriteTables) {
               writeTables.add(table)
             }
-
-            event.meta.sessionChangeset = sessionChangeset
-            event.meta.materializerHashSession = materializerHash
           }
 
           refreshTables(writeTables)
@@ -294,19 +289,13 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   )(function* (events) {
     const writeTables = new Set<string>()
     for (const event of events) {
-      const {
-        writeTables: newWriteTables,
-        sessionChangeset,
-        materializerHash,
-      } = yield* materializeEvent(event, {
+      const { writeTables: newWriteTables } = yield* materializeEvent(event, {
         withChangeset: true,
         materializerHashLeader: Option.none(),
       })
       for (const table of newWriteTables) {
         writeTables.add(table)
       }
-      event.meta.sessionChangeset = sessionChangeset
-      event.meta.materializerHashSession = materializerHash
     }
     return { writeTables }
   })

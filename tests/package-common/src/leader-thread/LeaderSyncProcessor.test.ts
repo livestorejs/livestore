@@ -4,9 +4,11 @@ import {
   type MockSyncBackend,
   type MockSyncBackendOptions,
   makeMockSyncBackend,
+  MATERIALIZATION_JOURNAL_META_TABLE,
   type RejectedPushError,
   ServerAheadError,
   StaleRebaseGenerationError,
+  sql,
   type SyncBackend,
   type SyncOptions,
   type SyncState,
@@ -112,6 +114,32 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       ])
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
+    }).pipe(withTestCtx()(test)),
+  )
+
+  Vitest.scopedLive('prunes materialization journal rows for confirmed events', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      yield* testContext.pushEncoded(
+        testContext.eventFactory.todoCreated.next({ id: 'confirmed-leader', text: 'confirmed', completed: false }),
+      )
+
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
+
+      yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.filter((state) => state.pending.length === 0),
+        Stream.take(1),
+        Stream.runDrain,
+        Effect.timeout('5 seconds'),
+      )
+
+      const remainingJournalRows = leaderThreadCtx.dbState.select<{ count: number }>(
+        sql`SELECT COUNT(*) AS count FROM ${MATERIALIZATION_JOURNAL_META_TABLE}`,
+      )[0]!.count
+
+      expect(remainingJournalRows).toEqual(0)
     }).pipe(withTestCtx()(test)),
   )
 

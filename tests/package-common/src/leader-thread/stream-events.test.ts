@@ -1,11 +1,11 @@
 import type { BootStatus } from '@livestore/common'
-import { SyncState } from '@livestore/common'
+import { MaterializationJournal, StateHead, SyncState } from '@livestore/common'
 import { Eventlog, makeMaterializeEvent, recreateDb, streamEventsWithSyncState } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
-import { Chunk, Effect, Fiber, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
+import { Chunk, Effect, Fiber, Layer, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
@@ -30,7 +30,7 @@ const withNodeFs = <R, E, A>(effect: Effect.Effect<A, E, R>) =>
  * (mock sync backend, shutdown plumbing, queues, etc.) because it verifies the
  * processor end-to-end. Here we only need three pieces:
  *   1. sqlite eventlog
- *   2. sqlite state DB (for the session changeset join)
+ *   2. sqlite state DB (for the materialization journal)
  *   3. a controllable `syncState` subscription
  * Pulling those together directly keeps the unit test fast and focused while
  * still relying on the real persistence layer.
@@ -45,7 +45,9 @@ const makeTestEnvironment = Effect.gen(function* () {
   yield* Eventlog.initEventlogDb(dbEventlog)
 
   const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
-  const materializeEvent = yield* makeMaterializeEvent({ schema: fixtureSchema, dbState, dbEventlog })
+  const materializeEvent = yield* makeMaterializeEvent({ schema: fixtureSchema, dbState, dbEventlog }).pipe(
+    Effect.provide(Layer.mergeAll(MaterializationJournal.layer({ dbState }), StateHead.layer({ dbState }))),
+  )
   yield* recreateDb({ dbState, dbEventlog, schema: fixtureSchema, bootStatusQueue, materializeEvent })
   yield* Queue.shutdown(bootStatusQueue)
 

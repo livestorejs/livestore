@@ -122,13 +122,7 @@ export type MaterializeEvent = (
     /** Needed for rematerializeFromEventlog */
     skipEventlog?: boolean
   },
-) => Effect.Effect<
-  {
-    sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any } | { _tag: 'no-op' }
-    hash: Option.Option<number>
-  },
-  MaterializeError
->
+) => Effect.Effect<void, MaterializeError>
 
 export type InitialBlockingSyncContext = {
   blockingDeferred: Deferred.Deferred<void> | undefined

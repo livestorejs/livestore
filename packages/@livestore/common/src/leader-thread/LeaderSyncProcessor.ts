@@ -21,15 +21,17 @@ import {
 
 import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
+import * as MaterializationJournal from '../MaterializationJournal.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
+import * as StateHead from '../StateHead.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
-import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
+import { EventSequenceNumber, LiveStoreEvent, resolveEventDef } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
+import * as SqliteDbHelper from '../sqlite-db-helper.ts'
 import type { BackendIdMismatchError, IsOfflineError, SyncBackend } from '../sync/sync.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
-import { rollback } from './materialize-event.ts'
 import {
   isRejectedPushError,
   LeaderAheadError,
@@ -162,8 +164,9 @@ export const makeLeaderSyncProcessor = ({
       localPushProcessing?: Effect.Effect<void>
     }
   }
-}): Effect.Effect<LeaderSyncProcessor, never, Scope.Scope> =>
+}): Effect.Effect<LeaderSyncProcessor, never, Scope.Scope | MaterializationJournal.MaterializationJournal> =>
   Effect.gen(function* () {
+    const materializationJournal = yield* MaterializationJournal.MaterializationJournal
     const syncBackendPushQueue = yield* BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>()
     const localPushBatchSize = params.localPushBatchSize ?? 10
     const backendPushBatchSize = params.backendPushBatchSize ?? 50
@@ -376,6 +379,7 @@ export const makeLeaderSyncProcessor = ({
         localPushBackendPullMutex,
         livePull,
         dbState,
+        materializationJournal,
         initialBlockingSyncContext,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         connectedClientSessionPullQueues,
@@ -645,9 +649,7 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
     )
 
     for (let i = 0; i < batchItems.length; i++) {
-      const { sessionChangeset, hash } = yield* materializeEvent(batchItems[i]!)
-      batchItems[i]!.meta.sessionChangeset = sessionChangeset
-      batchItems[i]!.meta.materializerHashLeader = hash
+      yield* materializeEvent(batchItems[i]!)
 
       if (deferreds?.[i] !== undefined) {
         yield* Deferred.succeed(deferreds[i]!, void 0)
@@ -669,6 +671,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
   isClientEvent,
   restartBackendPushing,
   dbState,
+  materializationJournal,
   syncStateSref,
   localPushBackendPullMutex,
   livePull,
@@ -683,6 +686,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
   ) => Effect.Effect<void, never, LeaderThreadCtx | HttpClient.HttpClient>
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   dbState: SqliteDb
+  materializationJournal: MaterializationJournal.MaterializationJournalService
   localPushBackendPullMutex: Effect.Semaphore
   livePull: boolean
   devtoolsLatch: Effect.Latch | undefined
@@ -762,11 +766,18 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
           yield* restartBackendPushing(globalRebasedPendingEvents)
 
           if (mergeResult.rollbackEvents.length > 0) {
-            yield* rollback({
-              dbState: db,
-              dbEventlog,
-              eventNumsToRollback: mergeResult.rollbackEvents.map((_) => _.seqNum),
+            const rollbackSeqNums = mergeResult.rollbackEvents.map((_) => _.seqNum)
+            const headAfterRollback = mergeResult.rollbackEvents[0]!.parentSeqNum
+
+            yield* SqliteDbHelper.withSavepoint({
+              db,
+              savepointName: 'livestore_materialization_rollback',
+              effect: Effect.gen(function* () {
+                yield* materializationJournal.rollback(rollbackSeqNums)
+                yield* StateHead.make({ dbState: db }).set(headAfterRollback)
+              }),
             })
+            Eventlog.deleteEvents(dbEventlog, rollbackSeqNums)
           }
 
           yield* connectedClientSessionPullQueues.offer({
@@ -803,8 +814,8 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
           }
         }
 
-        // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
-        trimChangesetRows(db, newBackendHead)
+        // Removes leader materialization journal records which are no longer needed as we'll never have to rollback beyond this point
+        yield* materializationJournal.removeThrough(newBackendHead)
 
         advancePushHead(mergeResult.newSyncState.localHead)
 
@@ -931,12 +942,6 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
     )
   }
 }, Effect.interruptible)
-
-const trimChangesetRows = (db: SqliteDb, newHead: EventSequenceNumber.Client.Composite) => {
-  // Since we're using the session changeset rows to query for the current head,
-  // we're keeping at least one row for the current head, and thus are using `<` instead of `<=`
-  db.execute(sql`DELETE FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE seqNumGlobal < ${newHead.global}`)
-}
 
 interface PullQueueSet {
   makeQueue: (
