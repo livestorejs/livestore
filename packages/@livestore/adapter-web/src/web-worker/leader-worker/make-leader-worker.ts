@@ -10,7 +10,6 @@ import {
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
-import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
@@ -29,6 +28,7 @@ import {
 } from '@livestore/utils/effect'
 import { BrowserWorkerRunner, Opfs, WebError } from '@livestore/utils/effect/browser'
 import type * as otel from '@opentelemetry/api'
+import * as WebmeshWorker from '@livestore/webmesh/worker'
 
 import { cleanupOldStateDbFiles, getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.ts'
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
@@ -287,7 +287,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
         Effect.withSpan('@livestore/adapter-web:worker:ExtraDevtoolsMessage'),
       ),
-    'DevtoolsWebCommon.CreateConnection': WebmeshWorker.CreateConnection,
+    'WebmeshWorker.CreateConnection': WebmeshWorker.CreateConnection,
   })
 
 const makeDevtoolsOptions = ({

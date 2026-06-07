@@ -14,5 +14,5 @@ export default tsconfigJson({
   },
   include: ['./src'],
   exclude: [...packageTsconfigExclude],
-  references: [refs.common, refs.utils, refs.sqliteWasm, refs.webmesh, refs.devtoolsWebCommon],
+  references: [refs.common, refs.utils, refs.sqliteWasm, refs.webmesh],
 })

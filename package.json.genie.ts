@@ -1,5 +1,6 @@
 import docsPkg from './docs/package.json.genie.ts'
 import docsCodeSnippetsPkg from './docs/src/content/_assets/code/package.json.genie.ts'
+import { memberPathsForProjection, type LivestorePackageProjection } from './genie/repo-topology.ts'
 import { packageJson } from './genie/repo.ts'
 import adapterCloudflarePkg from './packages/@livestore/adapter-cloudflare/package.json.genie.ts'
 import adapterExpoPkg from './packages/@livestore/adapter-expo/package.json.genie.ts'
@@ -9,7 +10,6 @@ import cliPkg from './packages/@livestore/cli/package.json.genie.ts'
 import commonPkg from './packages/@livestore/common/package.json.genie.ts'
 import commonCfPkg from './packages/@livestore/common-cf/package.json.genie.ts'
 import devtoolsExpoPkg from './packages/@livestore/devtools-expo/package.json.genie.ts'
-import devtoolsWebCommonPkg from './packages/@livestore/devtools-web-common/package.json.genie.ts'
 import effectPlaywrightPkg from './packages/@livestore/effect-playwright/package.json.genie.ts'
 import frameworkToolkitPkg from './packages/@livestore/framework-toolkit/package.json.genie.ts'
 import graphqlPkg from './packages/@livestore/graphql/package.json.genie.ts'
@@ -49,7 +49,6 @@ export const rootWorkspacePackages = [
   commonCfPkg,
   commonPkg,
   devtoolsExpoPkg,
-  devtoolsWebCommonPkg,
   effectPlaywrightPkg,
   frameworkToolkitPkg,
   graphqlPkg,
@@ -79,48 +78,28 @@ export const rootWorkspacePackages = [
   testsWaSqlitePkg,
 ] as const
 
-const coreWorkspaceExclusions = [
-  'docs',
-  'scripts',
-  'tests',
-  'packages/@local/astro-tldraw',
-  'packages/@local/astro-twoslash-code',
-] as const
+const workspacePackagesByMemberPath = new Map(
+  rootWorkspacePackages.map((workspacePackage) => [workspacePackage.meta.workspace.memberPath, workspacePackage]),
+)
 
-const isWorkspacePackageExcluded = (
-  excludedPaths: readonly string[],
-  workspacePackage: (typeof rootWorkspacePackages)[number],
-) =>
-  excludedPaths.some(
-    (excludedPath) =>
-      workspacePackage.meta.workspace.memberPath === excludedPath ||
-      workspacePackage.meta.workspace.memberPath.startsWith(`${excludedPath}/`),
-  )
-
-const isCoreWorkspacePackage = (workspacePackage: (typeof rootWorkspacePackages)[number]) =>
-  isWorkspacePackageExcluded(coreWorkspaceExclusions, workspacePackage) === false
+const packagesForLivestoreProjection = (projection: Extract<LivestorePackageProjection, 'core' | 'tooling'>) =>
+  memberPathsForProjection(projection).map((memberPath) => {
+    const workspacePackage = workspacePackagesByMemberPath.get(memberPath)
+    if (workspacePackage === undefined) {
+      throw new Error(`Missing workspace package for topology member path: ${memberPath}`)
+    }
+    return workspacePackage
+  })
 
 /**
  * Livestore core workspace packages.
  *
  * This is the install-projection used by the core workspace root in
  * `genie/projections/core/`.
- * It intentionally excludes examples, docs, tests, scripts, and local demo packages
- * so downstream consumers can install the production/library graph without the
- * full repo breadth.
+ * It follows the topology `core` projection instead of filtering the current
+ * pre-split root package list by path.
  */
-export const coreWorkspacePackages = rootWorkspacePackages.filter(isCoreWorkspacePackage)
-
-const toolingWorkspacePackagesByPath = new Set([
-  ...coreWorkspacePackages.map((workspacePackage) => workspacePackage.meta.workspace.memberPath),
-  'docs',
-  'docs/src/content/_assets/code',
-  'packages/@local/astro-tldraw',
-  'packages/@local/astro-twoslash-code',
-  'scripts',
-  'tests/integration',
-  'tests/sync-provider',
-])
+export const coreWorkspacePackages = packagesForLivestoreProjection('core')
 
 /**
  * Livestore tooling workspace packages.
@@ -129,9 +108,17 @@ const toolingWorkspacePackagesByPath = new Set([
  * by downstream devtools and release workflows without pulling in the full repo
  * workspace breadth.
  */
-export const toolingWorkspacePackages = rootWorkspacePackages.filter((workspacePackage) =>
-  toolingWorkspacePackagesByPath.has(workspacePackage.meta.workspace.memberPath),
-)
+export const toolingWorkspacePackages = [
+  ...packagesForLivestoreProjection('tooling'),
+  docsPkg,
+  docsCodeSnippetsPkg,
+  astroTldrawPkg,
+  astroTwoslashCodePkg,
+  localSharedPkg,
+  scriptsPkg,
+  testsIntegrationPkg,
+  testsSyncProviderPkg,
+] as const
 
 const rootWorkspaceBase = packageJson.aggregateFromPackages({
   packages: rootWorkspacePackages,

@@ -179,14 +179,14 @@ is doing. A background heartbeat writes `[docs-prod-heartbeat] <iso8601>
 <pgrep-output>` every 30–60 s to keep CI logs anchored to wall-clock and to
 make hangs greppable in retrospect.
 
-| Phase      | Task                                  | Purpose                                                       |
-| ---------- | ------------------------------------- | ------------------------------------------------------------- |
-| `snippets` | `docs:deploy:prod:phase:snippets`     | Run `mono docs snippets build`                                |
-| `diagrams` | `docs:deploy:prod:phase:diagrams`     | Run tldraw diagram renderer                                   |
-| `astro`    | `docs:deploy:prod:phase:astro`        | `mono docs build --api-docs --skip-deps`                      |
-| `upload`   | `docs:deploy:prod:phase:upload`       | `mono docs deploy --prod --step=upload`, writes `deploy-state.json` |
-| `verify`   | `docs:deploy:prod:phase:verify`       | `mono docs deploy --prod --step=verify`, posts job summary    |
-| `purge`    | `docs:deploy:prod:phase:purge`        | `mono docs deploy --prod --step=purge`, purges Netlify CDN    |
+| Phase      | Task                              | Purpose                                                             |
+| ---------- | --------------------------------- | ------------------------------------------------------------------- |
+| `snippets` | `docs:deploy:prod:phase:snippets` | Run `mono docs snippets build`                                      |
+| `diagrams` | `docs:deploy:prod:phase:diagrams` | Run tldraw diagram renderer                                         |
+| `astro`    | `docs:deploy:prod:phase:astro`    | `mono docs build --api-docs --skip-deps`                            |
+| `upload`   | `docs:deploy:prod:phase:upload`   | `mono docs deploy --prod --step=upload`, writes `deploy-state.json` |
+| `verify`   | `docs:deploy:prod:phase:verify`   | `mono docs deploy --prod --step=verify`, posts job summary          |
+| `purge`    | `docs:deploy:prod:phase:purge`    | `mono docs deploy --prod --step=purge`, purges Netlify CDN          |
 
 The `upload` phase writes Netlify identifiers to `tmp/ci-docs-prod/deploy-state.json`
 so `verify` and `purge` can run as independent processes (and independent Actions

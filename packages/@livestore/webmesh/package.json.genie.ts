@@ -30,11 +30,13 @@ export default packageJson(
     ...livestorePackageDefaults,
     exports: {
       '.': './src/mod.ts',
+      './worker': './src/worker/mod.ts',
     },
     publishConfig: {
       access: 'public',
       exports: {
         '.': './dist/mod.js',
+        './worker': './dist/worker/mod.js',
       },
     },
     scripts: {

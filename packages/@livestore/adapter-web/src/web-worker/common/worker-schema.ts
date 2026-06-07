@@ -10,8 +10,8 @@ import {
 } from '@livestore/common'
 import { StreamEventsOptionsFields } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
-import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { Schema, Transferable } from '@livestore/utils/effect'
+import * as WebmeshWorker from '@livestore/webmesh/worker'
 
 export const StorageTypeOpfs = Schema.Struct({
   type: Schema.Literal('opfs'),

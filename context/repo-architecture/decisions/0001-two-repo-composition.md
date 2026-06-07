@@ -7,11 +7,11 @@ repository architecture.
 
 Core records contrib unpinned; contrib records core pinned.
 
-| Option | Rejected because |
-|---|---|
-| Bidirectional pinned locks | Every push in either repo forces a coordinated lock bump in the other |
-| No core -> contrib member | Core's docs build still needs contrib source, and `mr` is the shared fetch mechanism |
-| Custom shallow clone in docs build | Introduces a second cross-repo fetch pattern |
+| Option                             | Rejected because                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------ |
+| Bidirectional pinned locks         | Every push in either repo forces a coordinated lock bump in the other                |
+| No core -> contrib member          | Core's docs build still needs contrib source, and `mr` is the shared fetch mechanism |
+| Custom shallow clone in docs build | Introduces a second cross-repo fetch pattern                                         |
 
 The asymmetric graph lets contrib test against deterministic core source while
 core docs can read current contrib source without creating a lock ratchet.
@@ -21,10 +21,10 @@ core docs can read current contrib source without creating a lock ratchet.
 Contrib consumes core through pnpm workspace links over the materialized
 `repos/livestore` symlink.
 
-| Option | Rejected because |
-|---|---|
-| Published npm versions during development | Contrib can drift silently from core source |
-| npm in CI, workspace locally | Adds environment divergence and keeps both failure modes |
+| Option                                    | Rejected because                                         |
+| ----------------------------------------- | -------------------------------------------------------- |
+| Published npm versions during development | Contrib can drift silently from core source              |
+| npm in CI, workspace locally              | Adds environment divergence and keeps both failure modes |
 
 The materialized checkout must be writable because pnpm can write
 `node_modules` into resolved workspace package directories.
@@ -34,10 +34,10 @@ The materialized checkout must be writable because pnpm can write
 Contrib mirrors core's version stamp and rewrites `workspace:*` dependencies to
 exact versions during publish.
 
-| Option | Rejected because |
-|---|---|
+| Option                       | Rejected because                                           |
+| ---------------------------- | ---------------------------------------------------------- |
 | Independent contrib versions | Users lose the simple "same version tested together" model |
-| Version ranges for core deps | Published graphs become non-deterministic |
+| Version ranges for core deps | Published graphs become non-deterministic                  |
 
 Lockstep releases cost extra publish events, but remove ambiguity from the
 package graph.
@@ -50,6 +50,12 @@ Contrib imports core genie helpers through `../repos/livestore/...`, not
 `#mr` specifiers resolve against the file's own megarepo root. Relative imports
 enter core's source tree first, allowing core's internal `#mr/effect-utils/...`
 imports to resolve against core's materialized members.
+
+Core does not own the final contrib package or example manifest. Core exports
+core package metadata and reusable generator helpers; contrib owns its local
+package/example membership and composes that with materialized core package
+metadata. This avoids making every contrib package-set change a core PR while
+still keeping shared tooling centralized.
 
 ## `framework-toolkit` Stays Core-Owned
 

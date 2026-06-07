@@ -18,8 +18,6 @@ import {
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
-import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
-import type * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import type { MakeWebSqliteDb } from '@livestore/sqlite-wasm/browser'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { tryAsFunctionAndNew } from '@livestore/utils'
@@ -28,10 +26,12 @@ import { Effect, FetchHttpClient, Fiber, Layer, type Schema, SubscriptionRef, Wo
 import { BrowserWorker } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as Webmesh from '@livestore/webmesh'
+import * as WebmeshWorker from '@livestore/webmesh/worker'
 
 import { connectWebmeshNodeClientSession } from '../web-worker/client-session/client-session-devtools.ts'
 import { loadSqlite3 } from '../web-worker/client-session/sqlite-loader.ts'
 import { makeShutdownChannel } from '../web-worker/common/shutdown-channel.ts'
+import { makeSharedWorkerNodeName } from '../web-worker/common/webmesh-node-names.ts'
 
 export interface InMemoryAdapterOptions {
   importSnapshot?: Uint8Array<ArrayBuffer>
@@ -341,10 +341,10 @@ const makeDevtoolsOptions = ({
         // basic idea: instead of also connecting to the shared worker,
         // connect to the client session node above which will already connect to the shared worker + browser extension
 
-        yield* DevtoolsWeb.connectViaWorker({
+        yield* WebmeshWorker.connectViaWorker({
           node,
           worker: sharedWorker,
-          target: DevtoolsWeb.makeNodeName.sharedWorker({ storeId }),
+          target: makeSharedWorkerNodeName({ storeId }),
         }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
         return { node, persistenceInfo, mode: 'direct' }
