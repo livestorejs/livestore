@@ -3,7 +3,7 @@
 
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { createStorePromise, liveStoreVersion, queryDb, type BootStatus } from '@livestore/livestore'
+import { type BootStatus, createStorePromise, liveStoreVersion, queryDb } from '@livestore/livestore'
 
 import LiveStoreWorker from './livestore.worker.ts?worker'
 import { events, SyncPayload, schema, tables } from './schema.ts'

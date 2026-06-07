@@ -1,11 +1,10 @@
-import type * as otel from '@opentelemetry/api'
-
 import { isNotNil } from '@livestore/utils'
 import { Equal, Hash, Predicate } from '@livestore/utils/effect'
+import type * as otel from '@opentelemetry/api'
 
 import * as RG from '../reactive.ts'
-import type { QueryDebugInfo, RefreshReason } from '../store/store-types.ts'
 import type { Store } from '../store/store.ts'
+import type { QueryDebugInfo, RefreshReason } from '../store/store-types.ts'
 import type { StackInfo } from '../utils/stack-info.ts'
 
 export type ReactivityGraph = RG.ReactiveGraph<RefreshReason, QueryDebugInfo, ReactivityGraphContext>
@@ -273,8 +272,8 @@ export abstract class LiveStoreQueryBase<TResult> implements LiveQuery<TResult> 
  */
 export type GetAtomResult = <T>(
   atom: RG.Atom<T, any, RefreshReason> | LiveQueryDef<T> | LiveQuery<T> | ISignal<T> | SignalDef<T>,
-  otelContext?: otel.Context  ,
-  debugRefreshReason?: RefreshReason  ,
+  otelContext?: otel.Context,
+  debugRefreshReason?: RefreshReason,
 ) => T
 
 export type DependencyQueriesRef = Set<RcRef<LiveQuery.Any | ISignal<any>>>

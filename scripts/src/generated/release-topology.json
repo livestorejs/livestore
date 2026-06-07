@@ -1,0 +1,122 @@
+{
+  "publishablePackages": [
+    {
+      "name": "@livestore/adapter-cloudflare",
+      "dir": "packages/@livestore/adapter-cloudflare"
+    },
+    {
+      "name": "@livestore/adapter-expo",
+      "dir": "packages/@livestore/adapter-expo"
+    },
+    {
+      "name": "@livestore/adapter-node",
+      "dir": "packages/@livestore/adapter-node"
+    },
+    {
+      "name": "@livestore/adapter-web",
+      "dir": "packages/@livestore/adapter-web"
+    },
+    {
+      "name": "@livestore/cli",
+      "dir": "packages/@livestore/cli"
+    },
+    {
+      "name": "@livestore/common",
+      "dir": "packages/@livestore/common"
+    },
+    {
+      "name": "@livestore/common-cf",
+      "dir": "packages/@livestore/common-cf"
+    },
+    {
+      "name": "@livestore/devtools-expo",
+      "dir": "packages/@livestore/devtools-expo"
+    },
+    {
+      "name": "@livestore/framework-toolkit",
+      "dir": "packages/@livestore/framework-toolkit"
+    },
+    {
+      "name": "@livestore/graphql",
+      "dir": "packages/@livestore/graphql"
+    },
+    {
+      "name": "@livestore/livestore",
+      "dir": "packages/@livestore/livestore"
+    },
+    {
+      "name": "@livestore/peer-deps",
+      "dir": "packages/@livestore/peer-deps"
+    },
+    {
+      "name": "@livestore/react",
+      "dir": "packages/@livestore/react"
+    },
+    {
+      "name": "@livestore/solid",
+      "dir": "packages/@livestore/solid"
+    },
+    {
+      "name": "@livestore/sqlite-wasm",
+      "dir": "packages/@livestore/sqlite-wasm"
+    },
+    {
+      "name": "@livestore/svelte",
+      "dir": "packages/@livestore/svelte"
+    },
+    {
+      "name": "@livestore/sync-cf",
+      "dir": "packages/@livestore/sync-cf"
+    },
+    {
+      "name": "@livestore/sync-electric",
+      "dir": "packages/@livestore/sync-electric"
+    },
+    {
+      "name": "@livestore/sync-s2",
+      "dir": "packages/@livestore/sync-s2"
+    },
+    {
+      "name": "@livestore/utils",
+      "dir": "packages/@livestore/utils"
+    },
+    {
+      "name": "@livestore/utils-dev",
+      "dir": "packages/@livestore/utils-dev"
+    },
+    {
+      "name": "@livestore/wa-sqlite",
+      "dir": "packages/@livestore/wa-sqlite"
+    },
+    {
+      "name": "@livestore/webmesh",
+      "dir": "packages/@livestore/webmesh"
+    }
+  ],
+  "publishablePackageNames": [
+    "@livestore/adapter-cloudflare",
+    "@livestore/adapter-expo",
+    "@livestore/adapter-node",
+    "@livestore/adapter-web",
+    "@livestore/cli",
+    "@livestore/common",
+    "@livestore/common-cf",
+    "@livestore/devtools-expo",
+    "@livestore/framework-toolkit",
+    "@livestore/graphql",
+    "@livestore/livestore",
+    "@livestore/peer-deps",
+    "@livestore/react",
+    "@livestore/solid",
+    "@livestore/sqlite-wasm",
+    "@livestore/svelte",
+    "@livestore/sync-cf",
+    "@livestore/sync-electric",
+    "@livestore/sync-s2",
+    "@livestore/utils",
+    "@livestore/utils-dev",
+    "@livestore/wa-sqlite",
+    "@livestore/webmesh"
+  ],
+  "changesetsIgnoredPackageNames": ["@livestore/effect-playwright"]
+}

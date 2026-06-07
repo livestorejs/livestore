@@ -58,7 +58,8 @@ type CoachToolResult = {
 export const coachToolHandler: (input: CoachToolHandlerInput) => Effect.Effect<CoachToolResult, AiError.AiError> =
   Effect.fn('mcp-coach-handler')(({ code, codeType }) => {
     const effect = Effect.gen(function* () {
-      const codeTypeContext = codeType !== undefined ? `This is ${codeType} code using LiveStore. ` : 'This is LiveStore code. '
+      const codeTypeContext =
+        codeType !== undefined ? `This is ${codeType} code using LiveStore. ` : 'This is LiveStore code. '
 
       const prompt = Prompt.makeMessage('user', {
         content: [

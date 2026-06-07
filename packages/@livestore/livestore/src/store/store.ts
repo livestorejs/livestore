@@ -14,7 +14,8 @@ import {
   type PreparedBindValues,
   prepareBindValues,
   QueryBuilderAstSymbol,
-  replaceSessionIdSymbol,
+  resolveSessionIdSymbolInBindValues,
+  resolveSessionIdSymbolInEventArgs,
   type StorageMode,
   type SyncState,
   UnknownError,
@@ -703,14 +704,17 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       const sqlRes = query.asSql()
       const schema = getResultSchema(query)
 
-      // Replace SessionIdSymbol in bind values before executing the query
-      if (sqlRes.bindValues !== undefined) {
-        replaceSessionIdSymbol(sqlRes.bindValues, this[StoreInternalsSymbol].clientSession.sessionId)
-      }
+      const bindValues =
+        sqlRes.bindValues === undefined
+          ? undefined
+          : resolveSessionIdSymbolInBindValues(
+              sqlRes.bindValues,
+              this[StoreInternalsSymbol].clientSession.sessionId,
+            )
 
       const rawRes = this[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
         sqlRes.query,
-        sqlRes.bindValues as any as PreparedBindValues,
+        bindValues as any as PreparedBindValues,
         {
           ...omitUndefineds({ otelContext: options?.otelContext }),
           queriedTables: new Set([query[QueryBuilderAstSymbol].tableDef.sqliteDef.name]),
@@ -858,7 +862,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       commitsSpan?.addLink({ context: currentSpan.spanContext() })
 
       for (const event of events) {
-        replaceSessionIdSymbol(event.args, this[StoreInternalsSymbol].clientSession.sessionId)
+        event.args = resolveSessionIdSymbolInEventArgs(
+          event.args,
+          this[StoreInternalsSymbol].clientSession.sessionId,
+        ) as typeof event.args
       }
 
       if (events.length === 0) return

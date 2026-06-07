@@ -14,12 +14,14 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/mod.ts"
+    ".": "./src/mod.ts",
+    "./worker": "./src/worker/mod.ts"
   },
   "publishConfig": {
     "access": "public",
     "exports": {
-      ".": "./dist/mod.js"
+      ".": "./dist/mod.js",
+      "./worker": "./dist/worker/mod.js"
     }
   },
   "scripts": {

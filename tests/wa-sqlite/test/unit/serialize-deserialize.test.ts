@@ -1,9 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import * as path from 'node:path'
-
-import { beforeAll, describe, expect, it } from 'vitest'
-
 import type { SQLiteAPI } from '@livestore/wa-sqlite'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 import { exportDb, importDb, loadSqlite3Wasm, select } from '../lib/sqlite-utils.ts'
 

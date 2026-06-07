@@ -63,7 +63,6 @@
       "packages/@livestore/adapter-web",
       "packages/@livestore/common",
       "packages/@livestore/common-cf",
-      "packages/@livestore/devtools-web-common",
       "packages/@livestore/livestore",
       "packages/@livestore/sqlite-wasm",
       "packages/@livestore/sync-s2",

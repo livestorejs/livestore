@@ -1,6 +1,5 @@
-import ReactMarkdown from 'react-markdown'
-
 import { queryDb } from '@livestore/livestore'
+import ReactMarkdown from 'react-markdown'
 
 import { tables } from '../../../livestore/schema/index.ts'
 import { useAppStore } from '../../../livestore/store.ts'

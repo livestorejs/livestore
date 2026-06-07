@@ -1,8 +1,7 @@
+import { queryDb } from '@livestore/livestore'
 import type React from 'react'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-
-import { queryDb } from '@livestore/livestore'
 
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'

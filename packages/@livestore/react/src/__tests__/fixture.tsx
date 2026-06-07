@@ -15,9 +15,9 @@ import React from 'react'
 
 import * as LiveStoreReact from '../mod.ts'
 
+export type { AppState, Filter, Todo }
 // Re-export shared types and schema
 export { events, schema, tables }
-export type { AppState, Filter, Todo }
 
 export type MakeTodoMvcReactOptions = CreateTodoMvcStoreOptions & {
   strictMode?: boolean | undefined

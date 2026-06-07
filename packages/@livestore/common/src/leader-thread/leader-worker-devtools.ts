@@ -181,7 +181,9 @@ const listenToDevtools = ({
                     appVersion: liveStoreVersion,
                     receivedVersion: decodedEvent.liveStoreVersion,
                     appDevtoolsProtocolVersion: devtoolsProtocolVersion,
-                    receivedDevtoolsProtocolVersion: resolveDevtoolsProtocolVersion(decodedEvent.devtoolsProtocolVersion),
+                    receivedDevtoolsProtocolVersion: resolveDevtoolsProtocolVersion(
+                      decodedEvent.devtoolsProtocolVersion,
+                    ),
                   }),
                 )
                 return

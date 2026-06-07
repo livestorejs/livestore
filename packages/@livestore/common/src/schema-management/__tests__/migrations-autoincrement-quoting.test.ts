@@ -1,6 +1,5 @@
-import { describe, expect, it } from 'vitest'
-
 import { Effect, Option, Schema } from '@livestore/utils/effect'
+import { describe, expect, it } from 'vitest'
 
 import { SqliteAst } from '../../schema/state/sqlite/db-schema/mod.ts'
 import type { PreparedStatement, SqliteDb } from '../../sqlite-types.ts'

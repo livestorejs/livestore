@@ -5,6 +5,7 @@
 In LiveStore, a **store** combines an [eventlog](https://dev.docs.livestore.dev/building-with-livestore/events/#eventlog) and a [state DB](https://dev.docs.livestore.dev/overview/concepts/#overview) that are kept **strongly consistent** with each other within a single client session.
 
 In event sourcing vocabulary, a store can be thought as an [**aggregate**](#aggregate) where:
+
 - The **eventlog** is a single [event stream](#event-stream)
 - The **state DB** is a [projection](#projection) that serves as both the aggregate's state and also as a [read model](#read-model)
 - [**Materializers**](https://dev.docs.livestore.dev/building-with-livestore/state/materializers/) are [projectors](#projector) that build the state DB out of the eventlog
@@ -16,6 +17,7 @@ In event sourcing vocabulary, a store can be thought as an [**aggregate**](#aggr
 ### 1. Events as the record of changes
 
 Instead of mutating the state DB directly, the user commits [events](#event) to the store:
+
 ```ts
 store.commit(events.todoCreated({ id: 'todo-1', text: 'Buy groceries' }))
 store.commit(events.todoCompleted({ id: 'todo-1' }))
@@ -24,10 +26,11 @@ store.commit(events.todoCompleted({ id: 'todo-1' }))
 ### 2. Materializers process events and build the state DB
 
 Events are immediately appended to the eventlog and processed by user-defined materializers that update the state DB:
+
 ```ts
 State.SQLite.materializers(events, {
-   'v1.TodoCreated': ({ id, text }) => tables.todos.insert({ id, text, completed: false }),
-   'v1.TodoCompleted': ({ id }) => tables.todos.update({ completed: true }).where({ id }),
+  'v1.TodoCreated': ({ id, text }) => tables.todos.insert({ id, text, completed: false }),
+  'v1.TodoCompleted': ({ id }) => tables.todos.update({ completed: true }).where({ id }),
 })
 ```
 
@@ -45,7 +48,7 @@ A client must have pulled the latest remote events before being able to push eve
 
 > **Problem Statement**: Rebasing re-parents events without re-validating whether the assumptions that justified their creation still hold, resulting in potentially invalid states.
 
-When a client commits an event, it does so based on its current local state (the state DB). This event represents a valid state transition *given that specific context*. For example, a `MoneyWithdrawn($100)` event is only committed if the balance contains sufficient funds.
+When a client commits an event, it does so based on its current local state (the state DB). This event represents a valid state transition _given that specific context_. For example, a `MoneyWithdrawn($100)` event is only committed if the balance contains sufficient funds.
 
 Rebasing changes the **base state** against which an event will be applied. An event that was valid in Context A may be invalid, nonsensical, or catastrophically wrong in Context B.
 
@@ -151,17 +154,17 @@ Commands live entirely on the client. The sync backend continues to exchange eve
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
-| Component              | Description                                                                                  |
-|------------------------|----------------------------------------------------------------------------------------------|
-| Command                | User intention executed by the command handler                                               |
-| Command Handler        | Validates commands against current state and produces events                                 |
-| Command Journal        | Commands for which events are still pending confirmation; replayed during reconciliation     |
-| Pending Events         | Events produced locally, not yet pushed and confirmed by the sync backend                    |
-| Confirmed Events       | Events that have been confirmed by the sync backend                                          |
-| Materializer(s)        | Processes events to update State                                                             |
-| State                  | Queryable projection consumed by the UI for presentation and command handlers for validation |
-| Push                   | Client pushes pending events to the sync backend                                             |
-| Pull                   | Client pulls confirmed events from the sync backend                                          |
+| Component        | Description                                                                                  |
+| ---------------- | -------------------------------------------------------------------------------------------- |
+| Command          | User intention executed by the command handler                                               |
+| Command Handler  | Validates commands against current state and produces events                                 |
+| Command Journal  | Commands for which events are still pending confirmation; replayed during reconciliation     |
+| Pending Events   | Events produced locally, not yet pushed and confirmed by the sync backend                    |
+| Confirmed Events | Events that have been confirmed by the sync backend                                          |
+| Materializer(s)  | Processes events to update State                                                             |
+| State            | Queryable projection consumed by the UI for presentation and command handlers for validation |
+| Push             | Client pushes pending events to the sync backend                                             |
+| Pull             | Client pulls confirmed events from the sync backend                                          |
 
 ### Command Journal
 
@@ -193,10 +196,12 @@ Command execution is atomic. When a command handler runs:
 All four steps happen as a single atomic operation. Without this, the state could change between validation and commit—meaning events get applied to a different state than the one they were validated against.
 
 **Example:** A room has capacity for 2 guests and currently has 1. Two commands are executed concurrently on the same client:
+
 - Command A: Check in Guest-A
 - Command B: Check in Guest-B
 
 If materialization runs async (not atomic with event commit):
+
 1. Handler A reads state DB: 1 guest → room has space ✓
 2. Handler A commits `GuestCheckedIn(Guest-A)` to event log
 3. Handler B reads state DB: still shows 1 guest (materializer hasn't run yet) → room has space ✓
@@ -217,19 +222,19 @@ import { defineCommand, Schema } from '@livestore/livestore'
 class RoomAtCapacity extends Schema.TaggedErrorClass<RoomAtCapacity>()('RoomAtCapacity', {}) {}
 
 export const commands = {
-   checkInGuest: defineCommand({
-      name: 'CheckInGuest',
-      schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
-      handler: ({ roomId, guestId }, ctx) => {
-         const room = ctx.query(tables.rooms.get(roomId))
-         if (!room) throw new Error('Room not found') // Throw for unexpected, non-recoverable errors
+  checkInGuest: defineCommand({
+    name: 'CheckInGuest',
+    schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
+    handler: ({ roomId, guestId }, ctx) => {
+      const room = ctx.query(tables.rooms.get(roomId))
+      if (!room) throw new Error('Room not found') // Throw for unexpected, non-recoverable errors
 
-         const guestCount = ctx.query(tables.roomGuests.where({ roomId }).count())
-         if (guestCount >= room.capacity) return new RoomAtCapacity() // Return for expected, recoverable errors
+      const guestCount = ctx.query(tables.roomGuests.where({ roomId }).count())
+      if (guestCount >= room.capacity) return new RoomAtCapacity() // Return for expected, recoverable errors
 
-         return events.guestCheckedIn({ roomId, guestId })
-      },
-   }),
+      return events.guestCheckedIn({ roomId, guestId })
+    },
+  }),
 }
 ```
 
@@ -284,12 +289,10 @@ console.log('Check-in confirmed')
 
 ```ts
 type ExecuteResult<TError> =
-    | { _tag: 'pending'; confirmation: Promise<CommandConfirmation<TError>> }
-    | { _tag: 'failed'; error: TError; confirmation: Promise<CommandConfirmation<TError>> }
+  | { _tag: 'pending'; confirmation: Promise<CommandConfirmation<TError>> }
+  | { _tag: 'failed'; error: TError; confirmation: Promise<CommandConfirmation<TError>> }
 
-type CommandConfirmation<TError> =
-    | { _tag: 'confirmed' }
-    | { _tag: 'conflict'; error: TError }
+type CommandConfirmation<TError> = { _tag: 'confirmed' } | { _tag: 'conflict'; error: TError }
 ```
 
 > [!NOTE]
@@ -307,18 +310,18 @@ If a command handler returns an error, the result is `{ _tag: 'failed' }` with a
 const result = store.execute(commands.checkInGuest({ roomId, guestId }))
 
 if (result._tag === 'failed') {
-   // result.error is typed with a union of all possible returned errors (RoomAtCapacity, GuestNotFound, etc.)
-   switch (result.error._tag) {
-      case 'RoomAtCapacity':
-         console.error('Room is full:', result.error)
-         break
-      case 'GuestNotFound':
-         console.error('Guest not found:', result.error)
-         break
-      default:
-         console.error('Could not check in guest:', result.error)
-         break
-   }
+  // result.error is typed with a union of all possible returned errors (RoomAtCapacity, GuestNotFound, etc.)
+  switch (result.error._tag) {
+    case 'RoomAtCapacity':
+      console.error('Room is full:', result.error)
+      break
+    case 'GuestNotFound':
+      console.error('Guest not found:', result.error)
+      break
+    default:
+      console.error('Could not check in guest:', result.error)
+      break
+  }
 }
 ```
 
@@ -354,7 +357,7 @@ When you don't need to handle initial execution failures, await `.confirmation` 
 ```ts
 const confirmation = await store.execute(commands.checkInGuest({ roomId, guestId })).confirmation
 if (confirmation._tag === 'conflict' && confirmation.error._tag === 'RoomAtCapacity') {
-   console.error('Check-in rolled back: room is full')
+  console.error('Check-in rolled back: room is full')
 }
 ```
 
@@ -365,13 +368,13 @@ When you need to handle both phases:
 ```ts
 const result = store.execute(commands.checkInGuest({ roomId, guestId }))
 if (result._tag === 'failed' && result.error._tag === 'RoomAtCapacity') {
-   console.error('Room is full')
-   return
+  console.error('Room is full')
+  return
 }
 
 const confirmation = await result.confirmation
 if (confirmation._tag === 'conflict' && confirmation.error._tag === 'RoomAtCapacity') {
-   console.error('Check-in rolled back: room is full')
+  console.error('Check-in rolled back: room is full')
 }
 ```
 
@@ -436,19 +439,19 @@ Instead of introducing commands, keep the current direct-event-commit model but 
 
 ```ts
 State.SQLite.materializers(events, {
-   'v1.GuestCheckedIn': ({ roomId, guestId }, ctx) => {
-      const guestCount = ctx.query(tables.roomGuests.where({ roomId }).count())
-      const room = ctx.query(tables.rooms.get(roomId))
-      if (guestCount >= room.capacity) {
-         // Option 1: Skip — don't apply the event's state change
-         return []
-         // Option 2: Compensate — apply alternative state instead
-         return tables.waitlist.insert({ roomId, guestId })
-         // Option 3: Flag — apply and mark as conflicted
-         return tables.roomGuests.insert({ roomId, guestId, status: 'conflicted' })
-      }
-      return tables.roomGuests.insert({ roomId, guestId })
-   },
+  'v1.GuestCheckedIn': ({ roomId, guestId }, ctx) => {
+    const guestCount = ctx.query(tables.roomGuests.where({ roomId }).count())
+    const room = ctx.query(tables.rooms.get(roomId))
+    if (guestCount >= room.capacity) {
+      // Option 1: Skip — don't apply the event's state change
+      return []
+      // Option 2: Compensate — apply alternative state instead
+      return tables.waitlist.insert({ roomId, guestId })
+      // Option 3: Flag — apply and mark as conflicted
+      return tables.roomGuests.insert({ roomId, guestId, status: 'conflicted' })
+    }
+    return tables.roomGuests.insert({ roomId, guestId })
+  },
 })
 ```
 
@@ -472,23 +475,23 @@ Instead of introducing commands, keep direct event commits but add user-defined 
 
 ```ts
 const rebaseHooks = defineRebaseHooks(events, {
-   'v1.GuestCheckedIn': ({ roomId, guestId }, ctx) => {
-      const guestCount = ctx.query(tables.roomGuests.where({ roomId }).count())
-      const room = ctx.query(tables.rooms.get(roomId))
-      if (guestCount >= room.capacity) {
-         // Option 1: Drop the event
-         return skip()
-         // Option 2: Replace with alternative event(s)
-         return replace(events.guestWaitlisted({ roomId, guestId }))
-      }
-      return allow()
-   },
+  'v1.GuestCheckedIn': ({ roomId, guestId }, ctx) => {
+    const guestCount = ctx.query(tables.roomGuests.where({ roomId }).count())
+    const room = ctx.query(tables.rooms.get(roomId))
+    if (guestCount >= room.capacity) {
+      // Option 1: Drop the event
+      return skip()
+      // Option 2: Replace with alternative event(s)
+      return replace(events.guestWaitlisted({ roomId, guestId }))
+    }
+    return allow()
+  },
 
-   'v1.CommentCreated': ({ taskId, commentId, text }, ctx) => {
-      const task = ctx.query(tables.tasks.get(taskId))
-      if (!task) return skip()
-      return allow()
-   },
+  'v1.CommentCreated': ({ taskId, commentId, text }, ctx) => {
+    const task = ctx.query(tables.tasks.get(taskId))
+    if (!task) return skip()
+    return allow()
+  },
 })
 ```
 
@@ -496,7 +499,7 @@ const rebaseHooks = defineRebaseHooks(events, {
 
 This is closer to the root cause than [Alternative A](#alternative-a-invariant-validation-in-materializers) because validation runs during rebase rather than during general materialization, and hooks can produce replacement events rather than only compensating state. However, it still falls short:
 
-1. **Hooks lack the original intent.** Like materializers, hooks only see the event, not the user's intention that produced it. A `GuestCheckedIn` event tells the hook *what* happened but not *why*—whether the user specifically wanted that room, would accept any available room, or should be waitlisted. Without the intent, hook logic must guess at the appropriate resolution. In the proposed solution, the command handler has access to the full command payload and can make informed decisions about alternatives.
+1. **Hooks lack the original intent.** Like materializers, hooks only see the event, not the user's intention that produced it. A `GuestCheckedIn` event tells the hook _what_ happened but not _why_—whether the user specifically wanted that room, would accept any available room, or should be waitlisted. Without the intent, hook logic must guess at the appropriate resolution. In the proposed solution, the command handler has access to the full command payload and can make informed decisions about alternatives.
 
 2. **Duplicate validation.** Events are validated once at creation time (before commit) and again during rebase (in hooks). These two validation paths must stay in sync—if you add a new invariant to one but forget the other, violations slip through. The proposed solution consolidates validation into a single command handler that runs in both phases.
 
@@ -512,39 +515,39 @@ LiveStore already has an experimental [`facts` system](../../packages/@livestore
 
 ```ts
 const facts = defineFacts({
-   todoExists: (id: string) => [`todo:${id}`, true] as const,
-   seatAvailable: (seatId: string) => [`seat:${seatId}:available`, true] as const,
-   roomGuestCount: (roomId: string, count: number) => [`room:${roomId}:guests`, count] as const,
+  todoExists: (id: string) => [`todo:${id}`, true] as const,
+  seatAvailable: (seatId: string) => [`seat:${seatId}:available`, true] as const,
+  roomGuestCount: (roomId: string, count: number) => [`room:${roomId}:guests`, count] as const,
 })
 
 const todoCreated = Events.synced({
-   name: 'v1.TodoCreated',
-   schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
-   facts: ({ id }) => ({
-      modify: { set: [facts.todoExists(id)], unset: [] },
-      require: [],
-   }),
+  name: 'v1.TodoCreated',
+  schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+  facts: ({ id }) => ({
+    modify: { set: [facts.todoExists(id)], unset: [] },
+    require: [],
+  }),
 })
 
 const commentCreated = Events.synced({
-   name: 'v1.CommentCreated',
-   schema: Schema.Struct({ taskId: Schema.String, text: Schema.String }),
-   facts: ({ taskId }) => ({
-      modify: { set: [], unset: [] },
-      require: [facts.todoExists(taskId)], // Fails during rebase if todo was deleted
-   }),
+  name: 'v1.CommentCreated',
+  schema: Schema.Struct({ taskId: Schema.String, text: Schema.String }),
+  facts: ({ taskId }) => ({
+    modify: { set: [], unset: [] },
+    require: [facts.todoExists(taskId)], // Fails during rebase if todo was deleted
+  }),
 })
 
 const guestCheckedIn = Events.synced({
-   name: 'v1.GuestCheckedIn',
-   schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
-   facts: ({ roomId }, currentFacts) => {
-      const currentCount = currentFacts.get(`room:${roomId}:guests`) ?? 0
-      return {
-         modify: { set: [facts.roomGuestCount(roomId, currentCount + 1)], unset: [] },
-         require: [facts.roomGuestCount(roomId, currentCount)], // Fails if count changed
-      }
-   },
+  name: 'v1.GuestCheckedIn',
+  schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
+  facts: ({ roomId }, currentFacts) => {
+    const currentCount = currentFacts.get(`room:${roomId}:guests`) ?? 0
+    return {
+      modify: { set: [facts.roomGuestCount(roomId, currentCount + 1)], unset: [] },
+      require: [facts.roomGuestCount(roomId, currentCount)], // Fails if count changed
+    }
+  },
 })
 ```
 
@@ -622,7 +625,7 @@ Introducing server-side command execution to solve problem 1 would also change h
 
 ### Alternative E: Client-Authoritative Events
 
-In this approach, every event a client produces is treated as an **immutable historical fact**—never discarded, reordered, or replaced during sync. Instead of rebasing onto a single total order, each client maintains its own local event log and replicates events asynchronously using **causal ordering**: causally related events maintain the same order everywhere, while concurrent events (produced independently) may differ in order across clients. Causality is tracked via vector clocks. Conflicts—which arise exclusively from concurrent events—are resolved *forward* by appending **compensating events** rather than by rewriting history.
+In this approach, every event a client produces is treated as an **immutable historical fact**—never discarded, reordered, or replaced during sync. Instead of rebasing onto a single total order, each client maintains its own local event log and replicates events asynchronously using **causal ordering**: causally related events maintain the same order everywhere, while concurrent events (produced independently) may differ in order across clients. Causality is tracked via vector clocks. Conflicts—which arise exclusively from concurrent events—are resolved _forward_ by appending **compensating events** rather than by rewriting history.
 
 **Example:** A doctor prescribes medication A offline while another prescribes medication B that has a known interaction with medication A. With command replay, one prescription event may be discarded during reconciliation—erasing a clinical decision. With client-authoritative events, both `MedicationPrescribed` events are always preserved. The system detects the interaction and appends a `DrugInteractionDetected` event, triggering review while preserving the full audit trail.
 

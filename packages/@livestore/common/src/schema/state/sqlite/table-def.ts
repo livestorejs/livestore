@@ -378,7 +378,8 @@ export declare namespace SchemaToColumns {
   export type FromTypes<TType, TEncoded> =
     TEncoded extends Record<string, any>
       ? {
-          [K in keyof TEncoded]-?: ColumnDefForType<TEncoded[K],
+          [K in keyof TEncoded]-?: ColumnDefForType<
+            TEncoded[K],
             TType extends Record<string, any> ? (K extends keyof TType ? TType[K] : TEncoded[K]) : TEncoded[K]
           >
         }

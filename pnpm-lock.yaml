@@ -1990,9 +1990,6 @@ importers:
       '@livestore/common':
         specifier: workspace:^
         version: link:../common
-      '@livestore/devtools-web-common':
-        specifier: workspace:^
-        version: link:../devtools-web-common
       '@livestore/sqlite-wasm':
         specifier: workspace:^
         version: link:../sqlite-wasm
@@ -2142,18 +2139,6 @@ importers:
       vite:
         specifier: 7.3.1
         version: 7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
-
-  packages/@livestore/devtools-web-common:
-    dependencies:
-      '@livestore/common':
-        specifier: workspace:^
-        version: link:../common
-      '@livestore/utils':
-        specifier: workspace:^
-        version: link:../utils
-      '@livestore/webmesh':
-        specifier: workspace:^
-        version: link:../webmesh
 
   packages/@livestore/effect-playwright:
     dependencies:

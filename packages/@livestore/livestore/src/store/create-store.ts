@@ -1,7 +1,6 @@
-import * as otel from '@opentelemetry/api'
-
 import {
   type Adapter,
+  type BackendIdMismatchError,
   type BootStatus,
   type ClientSession,
   type ClientSessionDevtoolsChannel,
@@ -9,7 +8,6 @@ import {
   type IntentionalShutdownCause,
   LogConfig,
   type MaterializeError,
-  type BackendIdMismatchError,
   type MigrationsReport,
   provideOtel,
   UnknownError,
@@ -31,15 +29,16 @@ import {
   TaskTracing,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
+import * as otel from '@opentelemetry/api'
 
 import { connectDevtoolsToStore } from './devtools.ts'
+import { STORE_DEFAULT_PARAMS, Store } from './store.ts'
 import type {
   LiveStoreContextRunning as LiveStoreContextRunning_,
   OtelOptions,
   ShutdownDeferred,
 } from './store-types.ts'
 import { StoreInternalsSymbol } from './store-types.ts'
-import { STORE_DEFAULT_PARAMS, Store } from './store.ts'
 
 declare global {
   /** Store instances for console debugging */
@@ -321,10 +320,7 @@ export const createStore = <
       const effectContext = yield* Effect.context<Scope.Scope>()
 
       const shutdown = (
-        exit: Exit.Exit<
-          IntentionalShutdownCause,
-          UnknownError | MaterializeError | BackendIdMismatchError
-        >,
+        exit: Exit.Exit<IntentionalShutdownCause, UnknownError | MaterializeError | BackendIdMismatchError>,
       ) =>
         Effect.gen(function* () {
           yield* Scope.close(lifetimeScope, exit).pipe(
@@ -385,7 +381,7 @@ export const createStore = <
         effectContext: { lifetimeScope, context: effectContext },
         // TODO find a better way to detect if we're running LiveStore in the LiveStore devtools
         // But for now this is a good enough approximation with little downsides
-        __runningInDevtools: ! getDevtoolsEnabled(disableDevtools),
+        __runningInDevtools: !getDevtoolsEnabled(disableDevtools),
         confirmUnsavedChanges,
         // NOTE during boot we're not yet executing events in a batched context
         // but only set the provided `batchUpdates` function after boot

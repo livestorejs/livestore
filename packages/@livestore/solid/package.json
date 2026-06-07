@@ -65,7 +65,6 @@
       "packages/@livestore/adapter-web",
       "packages/@livestore/common",
       "packages/@livestore/common-cf",
-      "packages/@livestore/devtools-web-common",
       "packages/@livestore/framework-toolkit",
       "packages/@livestore/livestore",
       "packages/@livestore/solid",

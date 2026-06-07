@@ -113,7 +113,8 @@ export const findDeprecatedFieldsWithValues = (
         // Also check deprecation on the type (for direct field deprecation)
         const typeDeprecation = getAstAnnotation<string>(prop.type, DeprecatedId)
 
-        const reason = deprecationReason ?? (Option.isSome(typeDeprecation) === true ? typeDeprecation.value : undefined)
+        const reason =
+          deprecationReason ?? (Option.isSome(typeDeprecation) === true ? typeDeprecation.value : undefined)
         if (reason !== undefined) {
           result.push({ field: fieldName, reason })
         }

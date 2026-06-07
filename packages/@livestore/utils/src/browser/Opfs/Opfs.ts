@@ -111,9 +111,8 @@ const make = () => {
       WebError.NotAllowedError | WebError.NotFoundError | WebError.UnknownError,
       never
     > =>
-      Stream.fromAsyncIterable(
-        (directory as unknown as { values(): AsyncIterable<FileSystemHandle> }).values(),
-        (u) => WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
+      Stream.fromAsyncIterable((directory as unknown as { values(): AsyncIterable<FileSystemHandle> }).values(), (u) =>
+        WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
       )
 
     /**

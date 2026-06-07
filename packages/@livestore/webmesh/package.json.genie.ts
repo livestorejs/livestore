@@ -1,10 +1,10 @@
 import {
   catalog,
+  getUtilsPeerDeps,
   livestorePackageDefaults,
   packageJson,
   utilsEffectPeerDeps,
   workspaceMember,
-  getUtilsPeerDeps,
 } from '../../../genie/repo.ts'
 import utilsDevPkg from '../utils-dev/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
@@ -30,11 +30,13 @@ export default packageJson(
     ...livestorePackageDefaults,
     exports: {
       '.': './src/mod.ts',
+      './worker': './src/worker/mod.ts',
     },
     publishConfig: {
       access: 'public',
       exports: {
         '.': './dist/mod.js',
+        './worker': './dist/worker/mod.js',
       },
     },
     scripts: {

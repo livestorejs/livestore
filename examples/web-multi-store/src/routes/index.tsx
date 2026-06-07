@@ -1,9 +1,8 @@
+import { queryDb } from '@livestore/livestore'
+import { StoreRegistryProvider, useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Suspense, useCallback } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-
-import { queryDb } from '@livestore/livestore'
-import { StoreRegistryProvider, useStore } from '@livestore/react'
 
 import { ErrorFallback } from '../components/ErrorFallback.tsx'
 import { workspaceStoreOptions } from '../stores/workspace/index.ts'

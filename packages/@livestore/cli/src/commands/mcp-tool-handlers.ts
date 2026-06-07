@@ -59,13 +59,14 @@ export const schema = Schema.create({
         }
 
         // Generate a basic custom schema based on description
-        const tableName = customDescription.toLowerCase().includes('user') === true
-          ? 'users'
-          : customDescription.toLowerCase().includes('product') === true
-            ? 'products'
-            : customDescription.toLowerCase().includes('post') === true
-              ? 'posts'
-              : 'items'
+        const tableName =
+          customDescription.toLowerCase().includes('user') === true
+            ? 'users'
+            : customDescription.toLowerCase().includes('product') === true
+              ? 'products'
+              : customDescription.toLowerCase().includes('post') === true
+                ? 'posts'
+                : 'items'
 
         schemaCode = `// Custom schema based on: ${customDescription}
 import { Schema } from '@livestore/livestore'

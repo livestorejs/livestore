@@ -1,10 +1,9 @@
-import { expect } from 'vitest'
-
 import { makeAdapter } from '@livestore/adapter-node'
 import { Events, makeSchema, State } from '@livestore/common/schema'
 import { createStore } from '@livestore/livestore'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Schema } from '@livestore/utils/effect'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { expect } from 'vitest'
 
 const events = {
   todoCreated: Events.synced({

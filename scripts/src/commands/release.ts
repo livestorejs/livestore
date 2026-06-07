@@ -31,6 +31,10 @@ const ReleasePlan = Schema.Struct({
 
 type TReleasePlan = Schema.Schema.Type<typeof ReleasePlan>
 
+type TReleaseTopology = {
+  publishablePackages: readonly { name: string; dir: string }[]
+}
+
 const toErrorMessage = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause))
 
 const dependencyFields = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'] as const
@@ -264,29 +268,30 @@ export const rewriteSnapshotInternalDependencyRanges = ({
   })
 
 /**
- * Enumerates the publishable `@livestore/*` packages for snapshot releases.
- * We intentionally read from the generated `package.json` files so the summary
- * and publish loop follow the exact publish surface for the current checkout.
+ * Enumerates the publishable LiveStore release group packages for snapshot releases.
+ * Topology is the package graph authority; generated package manifests are still
+ * checked so a missing/private/misnamed package cannot be published silently.
  */
 const listSnapshotPackages = (cwd: string) =>
   Effect.gen(function* () {
     const fsEffect = yield* FileSystem.FileSystem
-    const baseDir = `${cwd}/packages/@livestore`
+    const topology = yield* fsEffect.readFileString(`${cwd}/scripts/src/generated/release-topology.json`).pipe(
+      Effect.flatMap((content) =>
+        Effect.try({
+          try: () => JSON.parse(content) as TReleaseTopology,
+          catch: (cause) =>
+            new PackageJsonParseError({
+              message: 'Failed to parse scripts/src/generated/release-topology.json',
+              cause,
+            }),
+        }),
+      ),
+    )
     const packages: string[] = []
 
-    const baseExists = yield* fsEffect.exists(baseDir)
-    if (baseExists === false) {
-      yield* Effect.logWarning(`Snapshot packages directory not found at ${baseDir}`)
-      return packages
-    }
-
-    const entries = yield* fsEffect.readDirectory(baseDir)
-
-    for (const entry of entries) {
-      /** `effect-playwright` is consumed as a workspace helper and is not part of the public snapshot set. */
-      if (entry === 'effect-playwright') continue
-
-      const packageJsonPath = `${baseDir}/${entry}/package.json`
+    for (const { dir, name: expectedName } of topology.publishablePackages) {
+      const packageDir = `${cwd}/${dir}`
+      const packageJsonPath = `${packageDir}/package.json`
       const hasPackageJson = yield* fsEffect.exists(packageJsonPath)
       if (hasPackageJson === false) continue
 
@@ -313,6 +318,13 @@ const listSnapshotPackages = (cwd: string) =>
       const name = typeof pkgJson.name === 'string' ? pkgJson.name : undefined
       if (name == null) {
         yield* Effect.logWarning(`Skipping ${packageJsonPath} while preparing snapshot summary: missing package name`)
+        continue
+      }
+
+      if (name !== expectedName) {
+        yield* Effect.logWarning(
+          `Skipping ${packageJsonPath} while preparing snapshot summary: expected ${expectedName}, found ${name}`,
+        )
         continue
       }
 

@@ -1,5 +1,3 @@
-import type * as Solid from 'solid-js'
-
 import type { UnknownError } from '@livestore/common'
 import {
   type AppState,
@@ -14,12 +12,13 @@ import {
 import type { Store } from '@livestore/livestore'
 import { StoreInternalsSymbol } from '@livestore/livestore'
 import { Effect, type Scope } from '@livestore/utils/effect'
+import type * as Solid from 'solid-js'
 
 import * as LiveStoreSolid from '../mod.ts'
 
-// Re-export shared types, schema, and StoreInternalsSymbol for tests
-export { events, schema, StoreInternalsSymbol, tables }
 export type { AppState, Filter, Todo }
+// Re-export shared types, schema, and StoreInternalsSymbol for tests
+export { events, StoreInternalsSymbol, schema, tables }
 
 export const makeTodoMvcSolid = (
   opts: CreateTodoMvcStoreOptions = {},

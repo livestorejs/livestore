@@ -2,7 +2,6 @@ import { isDevEnv, isNil, isReadonlyArray } from '@livestore/utils'
 import { Hash, Option, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from './adapter-types.ts'
-import { SessionIdSymbol } from './adapter-types.ts'
 import type { EventDef, Materializer, MaterializerContextQuery, MaterializerResult } from './schema/EventDef/mod.ts'
 import type * as LiveStoreEvent from './schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from './schema/schema.ts'
@@ -39,9 +38,8 @@ export const getExecStatementsFromMaterializer = ({
         }
       : event.decoded
 
-  const eventArgsEncoded = isNil(event.decoded?.args) === true
-    ? undefined
-    : Schema.encodeUnknownSync(eventDef.schema)(event.decoded.args)
+  const eventArgsEncoded =
+    isNil(event.decoded?.args) === true ? undefined : Schema.encodeUnknownSync(eventDef.schema)(event.decoded.args)
 
   const query: MaterializerContextQuery = (
     rawQueryOrQueryBuilder:
@@ -142,34 +140,5 @@ const fromMaterializerResult = (
         writeTables: materializerResult.writeTables,
       },
     ]
-  }
-}
-
-// NOTE we should explore whether there is a more elegant solution
-// e.g. by leveraging the schema to replace the sessionIdSymbol
-export const replaceSessionIdSymbol = (
-  bindValues: Record<string, unknown> | ReadonlyArray<unknown>,
-  sessionId: string,
-) => {
-  deepReplaceValue(bindValues, SessionIdSymbol, sessionId)
-}
-
-const deepReplaceValue = <S, R>(input: any, searchValue: S, replaceValue: R): void => {
-  if (Array.isArray(input) === true) {
-    for (const i in input) {
-      if (input[i] === searchValue) {
-        input[i] = replaceValue
-      } else {
-        deepReplaceValue(input[i], searchValue, replaceValue)
-      }
-    }
-  } else if (typeof input === 'object' && input !== null) {
-    for (const key in input) {
-      if (input[key] === searchValue) {
-        input[key] = replaceValue
-      } else {
-        deepReplaceValue(input[key], searchValue, replaceValue)
-      }
-    }
   }
 }

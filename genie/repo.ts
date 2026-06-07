@@ -46,6 +46,7 @@ import {
 import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from '#mr/effect-utils/genie/oxfmt-base.ts'
 
 import { livestoreOnlyCatalog, livestoreWorkspaceCatalog } from './external.ts'
+import { livestoreCurrentPackageNames, type LivestorePackageName } from './repo-topology.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
 export {
@@ -325,36 +326,6 @@ echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV`,
 // TypeScript Reference Helpers
 // =============================================================================
 
-/** All @livestore package short names (directory names under packages/@livestore/) */
-const livestorePackageNames = [
-  'utils',
-  'utils-dev',
-  'common',
-  'common-cf',
-  'livestore',
-  'react',
-  'solid',
-  'svelte',
-  'adapter-web',
-  'adapter-node',
-  'adapter-expo',
-  'adapter-cloudflare',
-  'sqlite-wasm',
-  'webmesh',
-  'devtools-web-common',
-  'devtools-expo',
-  'graphql',
-  'sync-cf',
-  'sync-s2',
-  'sync-electric',
-  'cli',
-  'effect-playwright',
-  'framework-toolkit',
-  'peer-deps',
-  'wa-sqlite',
-] as const
-
-type LivestorePackageName = (typeof livestorePackageNames)[number]
 type LivestoreRefKey = {
   [K in LivestorePackageName]: K extends `${infer A}-${infer B}`
     ? `${A}${Capitalize<B>}` extends `${infer A2}-${infer B2}`
@@ -371,5 +342,5 @@ const toCamelCase = (s: string) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCas
  * All packages are siblings, so paths are simple relative refs.
  */
 export const refs = Object.fromEntries(
-  livestorePackageNames.map((name) => [toCamelCase(name), { path: `../${name}` }]),
+  livestoreCurrentPackageNames.map((name) => [toCamelCase(name), { path: `../${name}` }]),
 ) as { [K in LivestoreRefKey]: { path: string } }

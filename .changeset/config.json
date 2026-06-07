@@ -12,7 +12,6 @@
       "@livestore/common",
       "@livestore/common-cf",
       "@livestore/devtools-expo",
-      "@livestore/devtools-web-common",
       "@livestore/framework-toolkit",
       "@livestore/graphql",
       "@livestore/livestore",

@@ -56,10 +56,7 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
   Effect.gen(function* () {
     const client = (yield* HttpClient.HttpClient).pipe(
       HttpClient.mapRequest((req) =>
-        req.pipe(
-          HttpClientRequest.prependUrl(serverUrl),
-          HttpClientRequest.setUrlParam('storeId', storeId),
-        ),
+        req.pipe(HttpClientRequest.prependUrl(serverUrl), HttpClientRequest.setUrlParam('storeId', storeId)),
       ),
       HttpClient.filterStatusOk,
     )
@@ -73,19 +70,19 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
         ),
 
       listTodos: () =>
-        client.get('/store/todos').pipe(
-          Effect.flatMap(
-            HttpClientResponse.schemaBodyJson(
-              Schema.Array(Schema.Struct({ id: Schema.String, title: Schema.String })),
+        client
+          .get('/store/todos')
+          .pipe(
+            Effect.flatMap(
+              HttpClientResponse.schemaBodyJson(
+                Schema.Array(Schema.Struct({ id: Schema.String, title: Schema.String })),
+              ),
             ),
           ),
-        ),
 
       getPersistenceSnapshot: () =>
         client.get('/store/persistence').pipe(
-          Effect.flatMap(
-            HttpClientResponse.schemaBodyJson(Schema.Struct({ persistence: PersistenceSnapshotSchema })),
-          ),
+          Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Struct({ persistence: PersistenceSnapshotSchema }))),
           Effect.map((_) => _.persistence),
         ),
 
@@ -103,27 +100,31 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
         ),
 
       getMetrics: () =>
-        client.get('/store/metrics').pipe(
-          Effect.flatMap(
-            HttpClientResponse.schemaBodyJson(
-              Schema.Struct({ totalRowsWritten: Schema.Number, totalRowsRead: Schema.Number }),
+        client
+          .get('/store/metrics')
+          .pipe(
+            Effect.flatMap(
+              HttpClientResponse.schemaBodyJson(
+                Schema.Struct({ totalRowsWritten: Schema.Number, totalRowsRead: Schema.Number }),
+              ),
             ),
           ),
-        ),
 
       resetMetrics: () =>
-        client.del('/store/metrics').pipe(
-          Effect.flatMap(
-            HttpClientResponse.schemaBodyJson(
-              Schema.Struct({ totalRowsWritten: Schema.Number, totalRowsRead: Schema.Number }),
+        client
+          .del('/store/metrics')
+          .pipe(
+            Effect.flatMap(
+              HttpClientResponse.schemaBodyJson(
+                Schema.Struct({ totalRowsWritten: Schema.Number, totalRowsRead: Schema.Number }),
+              ),
             ),
           ),
-        ),
 
       shutdownStore: () =>
-        client.post('/store/shutdown').pipe(
-          Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Struct({ ok: Schema.Boolean }))),
-        ),
+        client
+          .post('/store/shutdown')
+          .pipe(Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Struct({ ok: Schema.Boolean })))),
     }
   })
 
@@ -158,10 +159,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
       const storeId = `cf-reset-${nanoid(6)}`
-      const { createTodo, listTodos, getPersistenceSnapshot, resetStore } = yield* makeStoreHelpers(
-        server.url,
-        storeId,
-      )
+      const { createTodo, listTodos, getPersistenceSnapshot, resetStore } = yield* makeStoreHelpers(server.url, storeId)
 
       yield* createTodo('todo-1', 'first item')
       yield* createTodo('todo-2', 'second item')
@@ -261,9 +259,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
       expect(restartMetrics.totalRowsWritten).toBe(0)
 
       yield* Effect.promise(() =>
-        test.annotate(
-          `${restartMetrics.totalRowsWritten} writes, ${restartMetrics.totalRowsRead} reads on cold start`,
-        ),
+        test.annotate(`${restartMetrics.totalRowsWritten} writes, ${restartMetrics.totalRowsRead} reads on cold start`),
       )
     }).pipe(withTestCtx(test)),
   )
@@ -321,9 +317,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
       expect(writesPerTodo).toBeGreaterThan(0)
       expect(writesPerTodo).toBeLessThan(20)
 
-      yield* Effect.promise(() =>
-        test.annotate(`${writesPerTodo.toFixed(1)} writes/todo after cold start`),
-      )
+      yield* Effect.promise(() => test.annotate(`${writesPerTodo.toFixed(1)} writes/todo after cold start`))
     }).pipe(withTestCtx(test)),
   )
 })

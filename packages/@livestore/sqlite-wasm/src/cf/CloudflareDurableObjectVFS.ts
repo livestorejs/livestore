@@ -223,10 +223,9 @@ export class CloudflareDurableObjectVFS extends FacadeVFS {
   override jFileSize(fileId: number, pSize64: DataView): number {
     try {
       const { path } = this.#getOpenFile(fileId)
-      const row = this.#sql.exec<{ max_page: number | null }>(
-        'SELECT MAX(page_no) AS max_page FROM vfs_pages WHERE file_path = ?',
-        path,
-      ).one()
+      const row = this.#sql
+        .exec<{ max_page: number | null }>('SELECT MAX(page_no) AS max_page FROM vfs_pages WHERE file_path = ?', path)
+        .one()
       const fileSize = row.max_page === null ? 0 : (row.max_page + 1) * PAGE_SIZE
       pSize64.setBigInt64(0, BigInt(fileSize), true)
       return VFS.SQLITE_OK

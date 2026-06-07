@@ -2,7 +2,7 @@ import { catalog, localPackageDefaults, packageJson, workspaceMember } from '../
 import waSqlitePkg from '../../packages/@livestore/wa-sqlite/package.json.genie.ts'
 
 const composition = catalog.compose({
-  workspace: workspaceMember("tests/wa-sqlite"),
+  workspace: workspaceMember('tests/wa-sqlite'),
   devDependencies: {
     workspace: [waSqlitePkg],
     external: catalog.pick('vitest'),

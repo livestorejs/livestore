@@ -1,7 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-
-import { type SQLiteAPI } from '@livestore/wa-sqlite'
+import type { SQLiteAPI } from '@livestore/wa-sqlite'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { makeSynchronousDatabase } from '../lib/lib.ts'
 import { loadSqlite3Wasm, makeInMemoryDb } from '../lib/sqlite-utils.ts'
@@ -272,7 +271,7 @@ describe('SQLite Session Extension', () => {
     expect(conflicts[0]).toBe(SqliteConstants.SQLITE_CHANGESET_CONFLICT)
 
     // REPLACE means the changeset's insert overwrites Mallory with Eve
-    const users = syncDb.select<{ name: string }>("SELECT name FROM users WHERE id = 100")
+    const users = syncDb.select<{ name: string }>('SELECT name FROM users WHERE id = 100')
     expect(users[0]?.name).toBe('Eve')
 
     sqlite3.session_delete(session)

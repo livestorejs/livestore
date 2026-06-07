@@ -342,21 +342,97 @@ describe('table function overloads', () => {
       .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: undefined })
       .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string' })
       .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: null })
-      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string' })
-      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string' })
-      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string', optionalNullOrString: null })
-      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string', optionalNullOrString: 'string' })
+      .toBeCallableWith({
+        id: '1',
+        undefined: undefined,
+        null: null,
+        undefinedOrString: 'string',
+        nullOrString: 'string',
+      })
+      .toBeCallableWith({
+        id: '1',
+        undefined: undefined,
+        null: null,
+        undefinedOrString: 'string',
+        nullOrString: 'string',
+        optionalString: 'string',
+      })
+      .toBeCallableWith({
+        id: '1',
+        undefined: undefined,
+        null: null,
+        undefinedOrString: 'string',
+        nullOrString: 'string',
+        optionalString: 'string',
+        optionalNullOrString: null,
+      })
+      .toBeCallableWith({
+        id: '1',
+        undefined: undefined,
+        null: null,
+        undefinedOrString: 'string',
+        nullOrString: 'string',
+        optionalString: 'string',
+        optionalNullOrString: 'string',
+      })
 
     expect(() => usersTable.insert({ id: '1' }).asSql()).not.toThrow()
     expect(() => usersTable.insert({ id: '1', undefined: undefined }).asSql()).not.toThrow()
     expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null }).asSql()).not.toThrow()
-    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: undefined }).asSql()).not.toThrow()
-    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string' }).asSql()).not.toThrow()
-    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: null }).asSql()).not.toThrow()
-    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string' }).asSql()).not.toThrow()
-    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string' }).asSql()).not.toThrow()
-    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string', optionalNullOrString: null }).asSql()).not.toThrow()
-    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string', optionalNullOrString: 'string' }).asSql()).not.toThrow()
+    expect(() =>
+      usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: undefined }).asSql(),
+    ).not.toThrow()
+    expect(() =>
+      usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string' }).asSql(),
+    ).not.toThrow()
+    expect(() =>
+      usersTable
+        .insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: null })
+        .asSql(),
+    ).not.toThrow()
+    expect(() =>
+      usersTable
+        .insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string' })
+        .asSql(),
+    ).not.toThrow()
+    expect(() =>
+      usersTable
+        .insert({
+          id: '1',
+          undefined: undefined,
+          null: null,
+          undefinedOrString: 'string',
+          nullOrString: 'string',
+          optionalString: 'string',
+        })
+        .asSql(),
+    ).not.toThrow()
+    expect(() =>
+      usersTable
+        .insert({
+          id: '1',
+          undefined: undefined,
+          null: null,
+          undefinedOrString: 'string',
+          nullOrString: 'string',
+          optionalString: 'string',
+          optionalNullOrString: null,
+        })
+        .asSql(),
+    ).not.toThrow()
+    expect(() =>
+      usersTable
+        .insert({
+          id: '1',
+          undefined: undefined,
+          null: null,
+          undefinedOrString: 'string',
+          nullOrString: 'string',
+          optionalString: 'string',
+          optionalNullOrString: 'string',
+        })
+        .asSql(),
+    ).not.toThrow()
   })
 
   it('supports discriminated unions with parsed JSON payloads', () => {

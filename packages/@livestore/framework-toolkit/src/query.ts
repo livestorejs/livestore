@@ -1,10 +1,9 @@
-import * as otel from '@opentelemetry/api'
-
 import { isQueryBuilder } from '@livestore/common'
 import type { LiveQuery, LiveQueryDef, Queryable, SignalDef, StackInfo, Store } from '@livestore/livestore'
 import { isQueryable, queryDb, StoreInternalsSymbol, stackInfoToString } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
 import { indent, shouldNeverHappen } from '@livestore/utils'
+import * as otel from '@opentelemetry/api'
 
 import type { NormalizedQueryable } from './types.ts'
 
@@ -66,12 +65,7 @@ export const computeRcRefKey = <TResult>(store: Store, normalized: NormalizedQue
  * @param framework - The framework name (e.g., 'react', 'solid')
  * @returns A formatted Error with enhanced message
  */
-export const formatQueryError = (
-  cause: Error,
-  label: string,
-  stackInfo: StackInfo,
-  framework: string,
-): Error => {
+export const formatQueryError = (cause: Error, label: string, stackInfo: StackInfo, framework: string): Error => {
   return new Error(
     `\
 [@livestore/${framework}:useQuery] Error running query: ${cause.name}

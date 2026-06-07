@@ -15,6 +15,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./devtools-web-channel": "./src/web-worker/client-session/devtools-web-channel.ts",
     "./shared-worker": "./src/web-worker/shared-worker/make-shared-worker.ts",
     "./worker": "./src/web-worker/leader-worker/make-leader-worker.ts",
     "./worker-vite-dev-polyfill": "./src/web-worker/vite-dev-polyfill.ts"
@@ -23,6 +24,7 @@
     "access": "public",
     "exports": {
       ".": "./dist/index.js",
+      "./devtools-web-channel": "./dist/web-worker/client-session/devtools-web-channel.js",
       "./worker": "./dist/web-worker/leader-worker/make-leader-worker.js",
       "./worker-vite-dev-polyfill": "./dist/web-worker/vite-dev-polyfill.js",
       "./shared-worker": "./dist/web-worker/shared-worker/make-shared-worker.js"
@@ -33,7 +35,6 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:^",
-    "@livestore/devtools-web-common": "workspace:^",
     "@livestore/sqlite-wasm": "workspace:^",
     "@livestore/utils": "workspace:^",
     "@livestore/webmesh": "workspace:^",
@@ -62,7 +63,6 @@
       "packages/@livestore/adapter-web",
       "packages/@livestore/common",
       "packages/@livestore/common-cf",
-      "packages/@livestore/devtools-web-common",
       "packages/@livestore/sqlite-wasm",
       "packages/@livestore/utils",
       "packages/@livestore/utils-dev",

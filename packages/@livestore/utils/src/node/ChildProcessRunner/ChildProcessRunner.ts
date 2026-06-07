@@ -16,9 +16,7 @@ let parentDeathTimer: NodeJS.Timeout | null = null
 type SetupParentDeathDetectionMessage = ['setup-parent-death-detection', { parentPid: number }]
 type RunnerMessage<I> = Runner.PlatformMessage<I> | SetupParentDeathDetectionMessage
 
-const isSetupParentDeathDetectionMessage = (
-  message: unknown,
-): message is SetupParentDeathDetectionMessage =>
+const isSetupParentDeathDetectionMessage = (message: unknown): message is SetupParentDeathDetectionMessage =>
   Array.isArray(message) &&
   message[0] === 'setup-parent-death-detection' &&
   typeof message[1] === 'object' &&

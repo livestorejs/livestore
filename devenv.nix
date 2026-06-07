@@ -40,7 +40,6 @@ let
     "packages/@livestore/common"
     "packages/@livestore/common-cf"
     "packages/@livestore/devtools-expo"
-    "packages/@livestore/devtools-web-common"
     "packages/@livestore/effect-playwright"
     "packages/@livestore/graphql"
     "packages/@livestore/livestore"

@@ -1,12 +1,7 @@
 import type { WebChannel } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
-import {
-  BackendIdMismatchError,
-  IntentionalShutdownCause,
-  MaterializeError,
-  UnknownError,
-} from '../index.ts'
+import { BackendIdMismatchError, IntentionalShutdownCause, MaterializeError, UnknownError } from '../index.ts'
 
 export const All = Schema.Union([IntentionalShutdownCause, UnknownError, BackendIdMismatchError, MaterializeError])
 export type All = typeof All.Type

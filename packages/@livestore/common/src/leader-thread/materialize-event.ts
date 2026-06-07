@@ -147,13 +147,14 @@ export const makeMaterializeEvent = ({
         }
 
         return {
-          sessionChangeset: changeset !== undefined
-            ? {
-                _tag: 'sessionChangeset' as const,
-                data: changeset,
-                debug: LS_DEV === true ? execArgsArr : null,
-              }
-            : { _tag: 'no-op' as const },
+          sessionChangeset:
+            changeset !== undefined
+              ? {
+                  _tag: 'sessionChangeset' as const,
+                  data: changeset,
+                  debug: LS_DEV === true ? execArgsArr : null,
+                }
+              : { _tag: 'no-op' as const },
           hash: materializerHash,
         }
       }).pipe(

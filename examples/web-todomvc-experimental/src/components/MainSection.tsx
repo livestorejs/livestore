@@ -1,8 +1,7 @@
-import React from 'react'
-
 import type { Store } from '@livestore/livestore'
 import { queryDb } from '@livestore/livestore'
 import { LiveList } from '@livestore/react'
+import React from 'react'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'

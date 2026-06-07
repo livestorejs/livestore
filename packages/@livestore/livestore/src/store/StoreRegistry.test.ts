@@ -4,8 +4,8 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Fiber, Layer, ManagedRuntime, Scope, TestClock } from '@livestore/utils/effect'
 
 import { schema } from '../utils/tests/fixture.ts'
-import { StoreInternalsSymbol } from './store-types.ts'
 import { type RegistryStoreOptions, StoreRegistry, storeOptions } from './StoreRegistry.ts'
+import { StoreInternalsSymbol } from './store-types.ts'
 
 const { describe, expect, it } = Vitest
 

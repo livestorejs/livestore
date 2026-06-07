@@ -1,13 +1,11 @@
 /// <reference types="vite/client" />
 
-import React, { Suspense, useCallback, useMemo, useRef, useState } from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
-
 import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
-
-import { ChatHeader, MessageInput, MessagesContainer, UserSidebar } from './components.tsx'
+import React, { Suspense, useCallback, useMemo, useRef, useState } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 import { VersionBadge } from './components/VersionBadge.tsx'
+import { ChatHeader, MessageInput, MessagesContainer, UserSidebar } from './components.tsx'
 import { useChat } from './hooks.ts'
 import { events, tables } from './livestore/schema.ts'
 import { useAppStore } from './livestore/store.ts'

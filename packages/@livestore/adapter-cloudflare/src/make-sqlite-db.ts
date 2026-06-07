@@ -8,8 +8,8 @@ import type {
   SqliteDbSession,
 } from '@livestore/common'
 import { SqliteDbHelper, SqliteError } from '@livestore/common'
-import type { CfTypes } from '@livestore/common-cf'
 import { EventSequenceNumber } from '@livestore/common/schema'
+import type { CfTypes } from '@livestore/common-cf'
 import { Effect } from '@livestore/utils/effect'
 
 // Simplified prepared statement implementation using only public API
@@ -25,7 +25,6 @@ class CloudflarePreparedStatement implements PreparedStatement {
   execute = (bindValues?: PreparedBindValues, options?: { onRowsChanged?: (count: number) => void }) => {
     try {
       if (isTransactionControlStatement(this.sql) === true) return
-
 
       const cursor = this.sqlStorage.exec(this.sql, ...(bindValues !== undefined ? Object.values(bindValues) : []))
 

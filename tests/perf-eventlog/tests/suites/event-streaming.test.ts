@@ -114,11 +114,9 @@ const loadSnapshots = async (page: Page, count: number) => {
   await page.setInputFiles('[data-testid="snapshot-state-input"]', state)
   await page.setInputFiles('[data-testid="snapshot-eventlog-input"]', eventlog)
   await page.getByTestId('load-snapshots').click()
-  await page.waitForFunction(
-    () => document.body.innerText.includes('Shutdown: IntentionalShutdownCause'),
-    undefined,
-    { timeout: 60_000 },
-  )
+  await page.waitForFunction(() => document.body.innerText.includes('Shutdown: IntentionalShutdownCause'), undefined, {
+    timeout: 60_000,
+  })
 }
 
 const prepareSnapshots = async (page: Page, eventCount: number) => {
