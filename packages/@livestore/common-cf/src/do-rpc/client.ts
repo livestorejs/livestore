@@ -85,7 +85,7 @@ const makeProtocolDurableObject = ({
           return Effect.void
         }
 
-        // One parser per send (like `makeProtocolHttp`); a shared one lets concurrent decodes corrupt each other (#1266).
+        // One parser per send, matching `makeProtocolHttp`.
         const parser = RpcSerialization.msgPack.unsafeMake()
 
         // Wrap single Request in array to match server expected format

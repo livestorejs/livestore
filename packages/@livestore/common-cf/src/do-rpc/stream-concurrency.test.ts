@@ -6,18 +6,9 @@ import { layerProtocolDurableObject } from './client.ts'
 import { toDurableObjectHandler } from './server.ts'
 
 /**
- * Regression for the DO-RPC catchup stall (PR #1266): pre-fix the client shared
- * one stateful msgpack parser across the stream and unary paths, so an interleaved
- * unary decode clobbered a straddling frame's stashed tail and froze the sync head.
- * The fix isolates each stream's decoder. Reproduced in-process (no workerd):
- *
- *   Test ──BigStream (stream)─┐   ──Echo (unary)─┐
- *                             ▼                   ▼
- *     RpcClient ▸ layerProtocolDurableObject  (one shared parser)
- *                             │ callRpc
- *                             ▼
- *     real toDurableObjectHandler frames ▸ re-chunked into straddling 4KB reads,
- *     gated after read #1 so the Echo decode lands on the stashed tail.
+ * Exercises interleaved streaming and unary DO-RPC responses with a stream read
+ * that ends in the middle of a msgpack frame. The gate makes Echo decode before
+ * the stream tail is delivered.
  */
 
 const Row = Schema.Struct({
