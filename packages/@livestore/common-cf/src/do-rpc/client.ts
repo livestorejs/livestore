@@ -56,9 +56,8 @@ interface MakeDoRpcProtocolArgs {
  * Creates a Protocol layer that uses Cloudflare Durable Object RPC calls.
  * This enables direct RPC communication with Durable Objects using Cloudflare's native RPC.
  */
-export const layerProtocolDurableObject = (
-  args: MakeDoRpcProtocolArgs,
-): Layer.Layer<RpcClient.Protocol> => Layer.scoped(RpcClient.Protocol, makeProtocolDurableObject(args))
+export const layerProtocolDurableObject = (args: MakeDoRpcProtocolArgs): Layer.Layer<RpcClient.Protocol> =>
+  Layer.scoped(RpcClient.Protocol, makeProtocolDurableObject(args))
 
 /**
  * Implementation of the RPC Protocol interface using Cloudflare Durable Object RPC calls.
@@ -73,7 +72,7 @@ const makeProtocolDurableObject = ({
       // const fiberMap = new Map<string, Fiber.RuntimeFiber<void, never>>()
       const fiberMap = yield* FiberMap.make<string, void, never>()
 
-  const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void> => {
+      const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void> => {
         if (message._tag !== 'Request') {
           if (message._tag === 'Interrupt') {
             return Effect.gen(function* () {
@@ -85,7 +84,7 @@ const makeProtocolDurableObject = ({
           return Effect.void
         }
 
-        // One parser per send, matching `makeProtocolHttp`.
+        // MessagePack parsers buffer incomplete frames, so scope one parser to one DO RPC call.
         const parser = RpcSerialization.msgPack.unsafeMake()
 
         // Wrap single Request in array to match server expected format
