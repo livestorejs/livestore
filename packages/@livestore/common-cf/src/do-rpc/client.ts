@@ -11,10 +11,7 @@ import {
 
 import type * as CfTypes from '../cf-types.ts'
 
-/**
- * Processes a ReadableStream response from streaming RPCs.
- * Reads chunks from the stream and writes them as RPC responses.
- */
+/** Decodes a streaming-RPC `ReadableStream`'s msgpack frames, writing each out as it arrives. */
 const processReadableStream = (
   stream: CfTypes.ReadableStream,
   parser: ReturnType<typeof RpcSerialization.msgPack.unsafeMake>,
@@ -31,21 +28,10 @@ const processReadableStream = (
           break
         }
 
-        // Decode the chunk
+        // Server encodes `[message]` per enqueue; merged enqueues arrive as
+        // `[[msg1], [msg2], ...]`. `flat(1)` normalizes both to `[msg1, ...]`.
         const decoded = parser.decode(value as Uint8Array)
-
-        // Handle array of messages from server.
-        // Server sends `parser.encode([message])` per enqueue, so each decoded value is `[message]`.
-        // When CF DO RPC merges enqueues in production, we get `[[msg1], [msg2], ...]`.
-        // `flat(1)` normalizes both single and merged cases to `[msg1, msg2, ...]`.
-        let messages: any[]
-        if (Array.isArray(decoded) === true) {
-          messages = decoded.flat(1)
-        } else {
-          messages = [decoded]
-        }
-
-        // Write each message
+        const messages = Array.isArray(decoded) === true ? decoded.flat(1) : [decoded]
         for (const message of messages) {
           yield* writeResponse(message)
         }
@@ -83,7 +69,6 @@ const makeProtocolDurableObject = ({
 }: MakeDoRpcProtocolArgs): Effect.Effect<RpcClient.Protocol['Type'], never, Scope.Scope> =>
   RpcClient.Protocol.make(
     Effect.fnUntraced(function* (writeResponse) {
-      const parser = RpcSerialization.msgPack.unsafeMake()
       // Not using an actual `FiberMap` here because it seems to shutdown to early
       // const fiberMap = new Map<string, Fiber.RuntimeFiber<void, never>>()
       const fiberMap = yield* FiberMap.make<string, void, never>()
@@ -99,6 +84,9 @@ const makeProtocolDurableObject = ({
 
           return Effect.void
         }
+
+        // One parser per send (like `makeProtocolHttp`); a shared one lets concurrent decodes corrupt each other (#1266).
+        const parser = RpcSerialization.msgPack.unsafeMake()
 
         // Wrap single Request in array to match server expected format
         const serializedPayload = parser.encode([message]) as Uint8Array

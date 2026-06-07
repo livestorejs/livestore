@@ -458,6 +458,10 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Fix event equality check failing when args key order differs, which caused duplicate events when syncing with backends that reorder JSON keys (e.g. PostgreSQL `jsonb`) (#1160)
 - Fix event equality check failing when args use `Schema.UndefinedOr` or loose `Schema.optional` and the field is omitted at commit time, which caused the sync merge to falsely take the rebase path and trigger `MaterializerHashMismatchError` for state-dependent materializers ([#1217](https://github.com/livestorejs/livestore/issues/1217))
 
+##### Cloudflare
+
+- Fix a Durable Object running as a LiveStore client whose sync head could permanently freeze after a cold-boot catchup over the DO-RPC transport. Concurrent push and catchup-pull traffic shared a single msgpack parser, so a multi-chunk catchup pull could be silently truncated — stalling sync below the eventlog head and, in some cases, shrinking the local eventlog. The client now uses one parser per request/response instead of one shared across all calls, so concurrent decodes can't corrupt each other. ([#1266](https://github.com/livestorejs/livestore/pull/1266))
+
 ##### TypeScript & Build
 
 - Fix TypeScript build issues and examples restructuring
