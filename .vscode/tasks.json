@@ -86,10 +86,9 @@
       "label": "lint",
       "type": "shell",
       "command": "direnv exec . mono lint",
-      // TODO add biome problem matcher once available https://github.com/biomejs/biome-vscode/discussions/121
       "problemMatcher": {
-        "owner": "biome",
-        "source": "biome",
+        "owner": "livestore-lint",
+        "source": "livestore-lint",
         "pattern": [
           {
             "regexp": "^::(?<severity>\\S+)\\s+title=(?<title>.+),file=(?<file>.+),line=(?<line>\\d+),endLine=(?<endLine>\\d+),col=(?<col>\\d+),endColumn=(?<endColumn>\\d+)::(?<message>.+)$",
