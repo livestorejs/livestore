@@ -156,12 +156,6 @@
       }
     },
     {
-      "files": ["packages/@livestore/react/src/useRcResource.ts"],
-      "rules": {
-        "react-hooks/exhaustive-deps": "off"
-      }
-    },
-    {
       "files": ["**/wa-sqlite/**"],
       "rules": {
         "func-style": "off",

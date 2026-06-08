@@ -87,7 +87,7 @@ export const useRcResource = <T>(
   createRef.current = create
   disposeRef.current = dispose
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Dependencies are deliberately limited to `scope` and `key` to avoid unintended re-creations.
+  // oxlint-disable-next-line react/exhaustive-deps -- dependencies are deliberately limited to `scope` and `key` to avoid unintended re-creations
   const resource = React.useMemo(() => {
     const bucket = getBucket(scope)
 
@@ -130,7 +130,7 @@ export const useRcResource = <T>(
     return resource
   }, [scope, key])
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: We assume the `dispose` function is stable and won't change across renders
+  // oxlint-disable-next-line react/exhaustive-deps -- `disposeRef` keeps the latest dispose function without re-running cleanup
   React.useEffect(() => {
     return () => {
       if (didDisposeInMemo.current === true) {
