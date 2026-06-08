@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/correctness/noUnusedVariables: docs snippet keeps inline adapter */
 // ---cut---
 import { makeSingleTabAdapter } from '@livestore/adapter-web'
 

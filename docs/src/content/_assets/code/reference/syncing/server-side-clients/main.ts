@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/correctness/noUnusedVariables: docs snippet keeps inline setup */
 // ---cut---
 import { makeAdapter } from '@livestore/adapter-node'
 import { createStorePromise } from '@livestore/livestore'

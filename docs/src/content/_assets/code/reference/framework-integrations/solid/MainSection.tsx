@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/a11y/noLabelWithoutControl: TODO 🫠 */
 /** @jsxImportSource solid-js */
 import { type Component, For } from 'solid-js'
 

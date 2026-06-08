@@ -4,8 +4,6 @@ import * as ReactTesting from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, expect, it } from 'vitest'
 
-/** biome-ignore-all lint/a11y/useValidAriaRole: not needed for testing */
-/** biome-ignore-all lint/a11y/noStaticElementInteractions: not needed for testing */
 import * as LiveStore from '@livestore/livestore'
 import { StoreInternalsSymbol } from '@livestore/livestore'
 import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'

@@ -2,7 +2,6 @@ import * as SolidTesting from '@solidjs/testing-library'
 import * as Solid from 'solid-js'
 import { expect } from 'vitest'
 
-/** biome-ignore-all lint/a11y: test */
 import * as LiveStore from '@livestore/livestore'
 import { queryDb, signal } from '@livestore/livestore'
 import { RG } from '@livestore/livestore/internal/testing-utils'

@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/a11y: testing */
 import React from 'react'
 
 import { uiState$ } from '../livestore/queries.ts'

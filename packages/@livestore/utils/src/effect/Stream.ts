@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/suspicious/useIterableCallbackReturn: Biome bug */
 export * from 'effect/Stream'
 
 import { type Cause, Chunk, Effect, Option, pipe, Ref, Stream } from 'effect'
