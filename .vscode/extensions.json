@@ -1,3 +1,3 @@
 {
-  "recommendations": ["biomejs.biome", "mkhl.direnv", "ms-playwright.playwright", "vitest.explorer"]
+  "recommendations": ["mkhl.direnv", "ms-playwright.playwright", "vitest.explorer"]
 }
