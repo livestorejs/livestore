@@ -193,18 +193,14 @@ export interface LeaderSyncProcessor {
     cursor: EventSequenceNumber.Client.Composite
   }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, never, Scope.Scope>
 
-  /** Used by client sessions to push events to the leader thread */
+  /**
+   * Used by client sessions to push events to the leader thread.
+   * The effect only finishes when the local push has been processed (i.e. succeeded or was rejected).
+   * This doesn't mean the events have been pushed to the sync backend.
+   */
   push: (
     /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
     batch: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
-    options?: {
-      /**
-       * If true, the effect will only finish when the local push has been processed (i.e. succeeded or was rejected).
-       * `true` doesn't mean the events have been pushed to the sync backend.
-       * @default false
-       */
-      waitForProcessing?: boolean
-    },
   ) => Effect.Effect<void, RejectedPushError>
 
   /** Currently only used by devtools which don't provide their own event numbers */

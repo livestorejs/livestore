@@ -111,11 +111,7 @@ export const makeAdapter =
           {
             events: {
               pull: ({ cursor }) => syncProcessor.pull({ cursor }),
-              push: (batch) =>
-                syncProcessor.push(
-                  batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
-                  { waitForProcessing: true },
-                ),
+              push: (batch) => syncProcessor.push(batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item))),
               stream: (options) =>
                 streamEventsWithSyncState({
                   dbEventlog,
