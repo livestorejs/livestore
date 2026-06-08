@@ -1,5 +1,5 @@
-import { Effect, Fiber, Rpc, RpcClient, RpcGroup, Schema, Stream } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { Effect, Fiber, Rpc, RpcClient, RpcGroup, Schema, Stream } from '@livestore/utils/effect'
 
 import type * as CfTypes from '../cf-types.ts'
 import { layerProtocolDurableObject } from './client.ts'
