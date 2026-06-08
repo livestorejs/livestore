@@ -17,6 +17,13 @@ const activeRules = {
   'typescript/consistent-type-imports': 'warn',
   // Enforce explicit boolean comparisons in condition positions
   'overeng/explicit-boolean-compare': 'warn',
+  // Keep Biome-era lint behavior that diverges from oxlint defaults.
+  'no-param-reassign': 'error',
+  'default-param-last': 'error',
+  'typescript/prefer-enum-initializers': 'error',
+  'react/self-closing-comp': 'error',
+  'typescript/prefer-namespace-keyword': 'error',
+  'typescript/no-inferrable-types': 'error',
 } as const
 
 // ── Permanently disabled (incompatible with Effect / livestore patterns) ────
@@ -214,6 +221,7 @@ export const livestoreOxlintOverrides = [
       'unicorn/no-array-sort': 'off',
       'unicorn/consistent-function-scoping': 'off',
       'overeng/explicit-boolean-compare': 'off',
+      'no-param-reassign': 'off',
     },
   },
 
