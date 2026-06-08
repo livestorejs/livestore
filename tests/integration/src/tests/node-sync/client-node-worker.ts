@@ -6,6 +6,7 @@ import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, queryDb } from '@livestore/livestore'
 import { makeWsSync } from '@livestore/sync-cf/client'
 import { IS_CI } from '@livestore/utils'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import {
   Context,
   Effect,
@@ -20,7 +21,6 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessRunner, OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
 
 import { makeFileLogger } from './fixtures/file-logger.ts'
 import { events, schema, tables } from './schema.ts'

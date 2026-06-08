@@ -2,9 +2,9 @@ import path from 'node:path'
 
 import { UnknownError } from '@livestore/common'
 import { makeWsSync } from '@livestore/sync-cf/client'
+import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
 import { Effect, Layer } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
 
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 

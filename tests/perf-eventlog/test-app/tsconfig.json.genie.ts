@@ -1,5 +1,4 @@
 import { tsconfigJson } from '../../../genie/repo.ts'
-
 import baseTsconfig from '../tsconfig.json.genie.ts'
 
 export default tsconfigJson({

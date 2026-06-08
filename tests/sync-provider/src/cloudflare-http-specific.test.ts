@@ -1,5 +1,9 @@
+import { expect } from 'vitest'
+
 import { nanoid } from '@livestore/livestore'
 import { objectToString } from '@livestore/utils'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Effect,
   FetchHttpClient,
@@ -11,9 +15,6 @@ import {
   LogLevel,
   ManagedRuntime,
 } from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
 
 import * as CloudflareHttpProvider from './providers/cloudflare-http-rpc.ts'
 import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'

@@ -1,10 +1,10 @@
 import path from 'node:path'
 
 import { UnknownError } from '@livestore/common'
+import { type CmdError, CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import type { CommandExecutor, Option, PlatformError } from '@livestore/utils/effect'
 import { Effect, FetchHttpClient, Layer, Logger, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
-import { type CmdError, CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 
 import { downloadChromeExtension } from './download-chrome-extension.ts'
