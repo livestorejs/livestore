@@ -1,5 +1,9 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { expect } from 'vitest'
+
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Duration,
   Effect,
@@ -12,8 +16,6 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
 
 const testDir = path.dirname(fileURLToPath(import.meta.url))
 const fixturesDir = path.join(testDir, 'fixtures')

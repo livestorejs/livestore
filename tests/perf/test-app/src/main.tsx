@@ -1,7 +1,8 @@
-import { StoreRegistry } from '@livestore/livestore'
-import { StoreRegistryProvider } from '@livestore/react'
 import React, { StrictMode, Suspense, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 
 import { allItems$, uiState$ } from './queries.ts'
 import { events, type Item, type Items } from './schema.ts'

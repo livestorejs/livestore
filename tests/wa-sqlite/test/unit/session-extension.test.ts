@@ -1,6 +1,7 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
 import type { SQLiteAPI } from '@livestore/wa-sqlite'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { makeSynchronousDatabase } from '../lib/lib.ts'
 import { loadSqlite3Wasm, makeInMemoryDb } from '../lib/sqlite-utils.ts'

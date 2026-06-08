@@ -1,4 +1,5 @@
 import { oxlintConfig } from '#mr/effect-utils/genie/external.ts'
+
 import {
   livestoreOxlintCategories,
   livestoreOxlintIgnorePatterns,

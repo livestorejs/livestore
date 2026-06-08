@@ -1,3 +1,5 @@
+import { assert, expect } from 'vitest'
+
 import {
   BackendIdMismatchError,
   type IntentionalShutdownCause,
@@ -19,6 +21,7 @@ import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Chunk,
   Context,
@@ -35,8 +38,6 @@ import {
   WebChannel,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { assert, expect } from 'vitest'
 
 import { events, schema, tables } from './fixture.ts'
 
