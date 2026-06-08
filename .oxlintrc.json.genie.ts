@@ -203,12 +203,6 @@ export const livestoreOxlintOverrides = [
     },
   },
 
-  // Deliberate resource lifecycle semantics in useRcResource rely on key-only invalidation
-  {
-    files: ['packages/@livestore/react/src/useRcResource.ts'],
-    rules: { 'react-hooks/exhaustive-deps': 'off' },
-  },
-
   // wa-sqlite is a fork with its own style
   {
     files: ['**/wa-sqlite/**'],
