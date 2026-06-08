@@ -3,8 +3,6 @@ import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '
 import * as SolidTesting from '@solidjs/testing-library'
 import * as Solid from 'solid-js'
 
-/** biome-ignore-all lint/a11y/useValidAriaRole: not needed for testing */
-/** biome-ignore-all lint/a11y/noStaticElementInteractions: not needed for testing */
 import * as LiveStore from '@livestore/livestore'
 import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'

@@ -4,7 +4,6 @@ import { useStore } from 'vue-livestore'
 
 import { events } from './livestore/schema.ts'
 
-// biome-ignore lint/correctness/useHookAtTopLevel: Vue composables run at script setup level
 const { store } = useStore()
 
 const newTodoText = ref('')

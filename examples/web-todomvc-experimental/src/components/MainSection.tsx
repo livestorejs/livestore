@@ -86,7 +86,6 @@ const Item = ({
     <li style={itemStyle} onTransitionEnd={handleTransitionEnd}>
       <div className="view">
         <input type="checkbox" className="toggle" checked={todo.completed} onChange={handleToggle} />
-        {/** biome-ignore lint/a11y/noLabelWithoutControl: otherwise breaks TODO MVC CSS 🙈 */}
         <label>{todo.text}</label>
         <button type="button" className="destroy" onClick={handleDelete} />
       </div>

@@ -7,7 +7,6 @@ import { tables } from './livestore/schema.ts'
 
 const visibleTodos$ = queryDb(() => tables.todos.where({ completed: false }), { label: 'visibleTodos' })
 
-// biome-ignore lint/correctness/useHookAtTopLevel: Vue composables run at script setup level
 const todos = useQuery(visibleTodos$)
 
 void todos

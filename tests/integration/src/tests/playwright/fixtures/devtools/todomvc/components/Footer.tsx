@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/a11y: testing */
 import { queryDb } from '@livestore/livestore'
 import React from 'react'
 

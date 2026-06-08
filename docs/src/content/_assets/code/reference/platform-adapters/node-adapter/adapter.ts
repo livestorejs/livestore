@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/correctness/noUnusedVariables: docs snippet keeps inline adapter */
 // ---cut---
 import { makeAdapter } from '@livestore/adapter-node'
 import { makeWsSync } from '@livestore/sync-cf/client'

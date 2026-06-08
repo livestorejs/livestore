@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/correctness/noUnusedVariables: docs snippet exposes intermediate streams */
 // ---cut---
 import { queryDb, signal } from '@livestore/livestore'
 

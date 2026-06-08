@@ -66,6 +66,5 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
   }
 
   // true if both NaN, false otherwise
-  // biome-ignore lint/suspicious/noSelfCompare: comparing to itself is fine here
   return a !== a && b !== b
 }

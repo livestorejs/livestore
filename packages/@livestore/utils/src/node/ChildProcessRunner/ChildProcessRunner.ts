@@ -87,7 +87,6 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
         Effect.sync(() => port.postMessage([1, message] /*, transfers as any*/))
 
       const run = Effect.fnUntraced(function* <A, E, R>(
-        // biome-ignore lint/suspicious/noConfusingVoidType: need to support void
         handler: (portId: number, message: I) => Effect.Effect<A, E, R> | void,
       ) {
         const runtime = (yield* Effect.interruptible(Effect.runtime<R | Scope.Scope>())).pipe(

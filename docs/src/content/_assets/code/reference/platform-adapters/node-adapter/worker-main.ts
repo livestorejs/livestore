@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/correctness/noUnusedVariables: snippet keeps adapter inline for docs */
 // ---cut---
 import { makeWorkerAdapter } from '@livestore/adapter-node'
 

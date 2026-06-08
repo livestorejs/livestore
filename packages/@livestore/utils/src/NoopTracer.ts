@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/complexity/noArguments: using arguments is fine here */
-
 import type * as otel from '@opentelemetry/api'
 
 import { cuid } from '@livestore/utils/cuid'

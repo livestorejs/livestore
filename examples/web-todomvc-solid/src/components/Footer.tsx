@@ -32,7 +32,6 @@ export const Footer: Component = () => {
       <span class="todo-count">{incompleteCount() ?? 0} items left</span>
       <ul class="filters">
         <li>
-          {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}
           <a
             href="#/"
             class={uiState()?.filter === 'all' ? 'selected' : undefined}
@@ -43,7 +42,6 @@ export const Footer: Component = () => {
           </a>
         </li>
         <li>
-          {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}
           <a
             href="#/"
             class={uiState()?.filter === 'active' ? 'selected' : undefined}
@@ -54,7 +52,6 @@ export const Footer: Component = () => {
           </a>
         </li>
         <li>
-          {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}
           <a
             href="#/"
             class={uiState()?.filter === 'completed' ? 'selected' : undefined}
