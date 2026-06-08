@@ -1,6 +1,7 @@
+import type { MetroConfig } from 'expo/metro-config'
+
 import type * as EffectModule from '@livestore/utils/effect' with { 'resolution-mode': 'import' }
 import type * as PlatformNodeModule from '@livestore/utils/node' with { 'resolution-mode': 'import' }
-import type { MetroConfig } from 'expo/metro-config'
 
 import type { Middleware, Options } from './types.ts'
 

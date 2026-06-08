@@ -6,6 +6,8 @@ if (process.execArgv.includes('--inspect') === true) {
   inspector.waitForDebugger()
 }
 
+import type * as otel from '@opentelemetry/api'
+
 import type { SyncOptions } from '@livestore/common'
 import { LogConfig } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
@@ -16,7 +18,6 @@ import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { Effect, FetchHttpClient, Layer, OtelTracer, Schema, Stream, WorkerRunner } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import type * as otel from '@opentelemetry/api'
 
 import type { TestingOverrides } from './leader-thread-shared.ts'
 import { makeLeaderThread } from './leader-thread-shared.ts'

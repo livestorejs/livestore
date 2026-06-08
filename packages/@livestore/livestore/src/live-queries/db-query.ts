@@ -1,3 +1,5 @@
+import * as otel from '@opentelemetry/api'
+
 import type { Bindable, QueryBuilder } from '@livestore/common'
 import {
   getDurationMsFromSpan,
@@ -11,7 +13,6 @@ import {
 } from '@livestore/common'
 import { deepEqual, objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
-import * as otel from '@opentelemetry/api'
 
 import type { Thunk } from '../reactive.ts'
 import { isThunk, NOT_REFRESHED_YET } from '../reactive.ts'
@@ -380,9 +381,8 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
             // Live query inputs may be cached and re-run as reactive dependencies change.
             // Resolve SessionIdSymbol per execution so the cached input stays symbolic and session-agnostic.
-            const resolvedBindValues = bindValues === undefined
-              ? undefined
-              : resolveSessionIdSymbolInBindValues(bindValues, store.sessionId)
+            const resolvedBindValues =
+              bindValues === undefined ? undefined : resolveSessionIdSymbolInBindValues(bindValues, store.sessionId)
 
             // Establish a reactive dependency on the tables used in the query
             for (const tableName of queriedTablesRef.current) {

@@ -1,7 +1,8 @@
-import { omitUndefineds } from '@livestore/utils'
-import { identity } from '@livestore/utils/effect'
 import type { Attributes } from '@opentelemetry/api'
 import type { InMemorySpanExporter, ReadableSpan } from '@opentelemetry/sdk-trace-base'
+
+import { omitUndefineds } from '@livestore/utils'
+import { identity } from '@livestore/utils/effect'
 
 type SimplifiedNestedSpan = { _name: string; attributes: any; children: SimplifiedNestedSpan[] }
 

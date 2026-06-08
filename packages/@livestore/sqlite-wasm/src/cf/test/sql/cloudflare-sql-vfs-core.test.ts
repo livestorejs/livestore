@@ -1,8 +1,9 @@
 /// <reference types="vitest/globals" />
 
+import { beforeEach, describe, expect, it } from 'vitest'
+
 import type { CfTypes } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
-import { beforeEach, describe, expect, it } from 'vitest'
 
 import { CF_SQL_VFS_PAGE_SIZE, CloudflareDurableObjectVFS } from '../../mod.ts'
 

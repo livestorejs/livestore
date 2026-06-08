@@ -1,6 +1,7 @@
-import { Cause, Effect, Exit, Schema } from '@livestore/utils/effect'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { assert, expect } from 'vitest'
+
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { Cause, Effect, Exit, Schema } from '@livestore/utils/effect'
 
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'

@@ -383,13 +383,10 @@ export const WebLocksMixin = (superclass) =>
           // Add a timeout to the lock request.
           const controller = new AbortController()
           options = Object.assign({}, options, { signal: controller.signal })
-          setTimeout(
-            () => {
-              controller.abort()
-              resolve?.(false)
-            },
-            this.#options.lockTimeout,
-          )
+          setTimeout(() => {
+            controller.abort()
+            resolve?.(false)
+          }, this.#options.lockTimeout)
         }
 
         const lockName = `lock##${lockState.baseName}##${name}`

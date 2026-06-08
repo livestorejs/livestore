@@ -1,6 +1,6 @@
 import { SyncBackend, UnknownError } from '@livestore/common'
-import { splitChunkBySize } from '@livestore/common/sync'
 import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
+import { splitChunkBySize } from '@livestore/common/sync'
 import { omit, shouldNeverHappen } from '@livestore/utils'
 import {
   Chunk,

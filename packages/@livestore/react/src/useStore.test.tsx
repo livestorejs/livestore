@@ -1,12 +1,3 @@
-import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import {
-  type RegistryStoreOptions,
-  type Store,
-  StoreInternalsSymbol,
-  StoreRegistry,
-  storeOptions,
-} from '@livestore/livestore'
-import { shouldNeverHappen } from '@livestore/utils'
 import {
   act,
   fireEvent,
@@ -18,6 +9,16 @@ import {
 } from '@testing-library/react'
 import * as React from 'react'
 import { describe, expect, it, vi } from 'vitest'
+
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
+import {
+  type RegistryStoreOptions,
+  type Store,
+  StoreInternalsSymbol,
+  StoreRegistry,
+  storeOptions,
+} from '@livestore/livestore'
+import { shouldNeverHappen } from '@livestore/utils'
 
 import { schema } from './__tests__/fixture.tsx'
 import { StoreRegistryProvider } from './StoreRegistryContext.tsx'

@@ -7,6 +7,7 @@ import {
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
+import type { CfTypes } from '@livestore/common-cf'
 import {
   type DevtoolsOptions,
   Eventlog,
@@ -14,11 +15,11 @@ import {
   makeLeaderThreadLayer,
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
-import type { CfTypes } from '@livestore/common-cf'
 import { LiveStoreEvent } from '@livestore/livestore'
 import { CF_SQL_VFS_REQUIRED_PRAGMAS, sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { Effect, FetchHttpClient, Layer, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
+
 import { makeSqliteDb as makeDoSqliteDb } from './make-sqlite-db.ts'
 
 export const makeAdapter =

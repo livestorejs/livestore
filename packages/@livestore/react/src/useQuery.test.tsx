@@ -1,15 +1,16 @@
+import * as ReactTesting from '@testing-library/react'
+import React from 'react'
+import * as ReactWindow from 'react-window'
+import { expect } from 'vitest'
+
 /** biome-ignore-all lint/a11y: test */
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel } from '@livestore/common'
 import * as LiveStore from '@livestore/livestore'
 import { createStore, queryDb, StoreInternalsSymbol, signal } from '@livestore/livestore'
 import { RG } from '@livestore/livestore/internal/testing-utils'
-import { Effect, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import * as ReactTesting from '@testing-library/react'
-import React from 'react'
-import * as ReactWindow from 'react-window'
-import { expect } from 'vitest'
+import { Effect, Schema } from '@livestore/utils/effect'
 
 import { events, makeTodoMvcReact, schema, tables } from './__tests__/fixture.tsx'
 import { __resetUseRcResourceCache } from './useRcResource.ts'

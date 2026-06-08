@@ -1,12 +1,13 @@
+import * as SolidTesting from '@solidjs/testing-library'
+import * as Solid from 'solid-js'
+import { expect } from 'vitest'
+
 /** biome-ignore-all lint/a11y: test */
 import * as LiveStore from '@livestore/livestore'
 import { queryDb, signal } from '@livestore/livestore'
 import { RG } from '@livestore/livestore/internal/testing-utils'
-import { Effect, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import * as SolidTesting from '@solidjs/testing-library'
-import * as Solid from 'solid-js'
-import { expect } from 'vitest'
+import { Effect, Schema } from '@livestore/utils/effect'
 
 import { events, makeTodoMvcSolid, StoreInternalsSymbol, tables } from './__tests__/fixture.tsx'
 
