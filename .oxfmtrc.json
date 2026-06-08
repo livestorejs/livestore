@@ -34,6 +34,7 @@
     "**/*.mdx",
     "docs/.astro/**",
     "docs/.netlify/**",
-    "tests/**"
+    "**/playwright-report/**",
+    "**/test-results/**"
   ]
 }
