@@ -75,11 +75,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       }).pipe(Layer.unwrapScoped),
     PushToLeader: ({ batch }) =>
       Effect.andThen(LeaderThreadCtx, (_) =>
-        _.syncProcessor.push(
-          batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
-          // We'll wait in order to keep back pressure on the client session
-          { waitForProcessing: true },
-        ),
+        _.syncProcessor.push(batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item))),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-node:worker:PushToLeader')),
     BootStatusStream: () =>
       Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),

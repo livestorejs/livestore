@@ -45,7 +45,7 @@ const jsonStringify = Schema.encodeSync(Schema.parseJson())
 
 type LocalPushQueueItem = [
   event: LiveStoreEvent.Client.EncodedWithMeta,
-  deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError> | undefined,
+  deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>,
 ]
 
 /**
@@ -205,7 +205,7 @@ export const makeLeaderSyncProcessor = ({
     }
 
     // NOTE: New events are only pushed to sync backend after successful local push processing
-    const push: LeaderSyncProcessor['push'] = (newEvents, options) =>
+    const push: LeaderSyncProcessor['push'] = (newEvents) =>
       Effect.gen(function* () {
         if (newEvents.length === 0) return
 
@@ -215,22 +215,15 @@ export const makeLeaderSyncProcessor = ({
 
         advancePushHead(newEvents.at(-1)!.seqNum)
 
-        const waitForProcessing = options?.waitForProcessing ?? false
+        const deferreds = yield* Effect.forEach(newEvents, () =>
+          Deferred.make<void, LeaderAheadError | StaleRebaseGenerationError>(),
+        )
 
-        if (waitForProcessing === true) {
-          const deferreds = yield* Effect.forEach(newEvents, () =>
-            Deferred.make<void, LeaderAheadError | StaleRebaseGenerationError>(),
-          )
+        const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
 
-          const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
+        yield* BucketQueue.offerAll(localPushesQueue, items)
 
-          yield* BucketQueue.offerAll(localPushesQueue, items)
-
-          yield* Effect.all(deferreds)
-        } else {
-          const items = newEvents.map((eventEncoded) => [eventEncoded, undefined] as LocalPushQueueItem)
-          yield* BucketQueue.offerAll(localPushesQueue, items)
-        }
+        yield* Effect.all(deferreds)
       }).pipe(
         Effect.withSpan('@livestore/common:LeaderSyncProcessor:push', {
           attributes: {
@@ -489,28 +482,15 @@ const backgroundApplyLocalPushes = ({
             currentRebaseGeneration,
           })
 
-          /**
-           * Dropped pushes may still have a deferred awaiting completion.
-           * Fail it so the caller learns the leader advanced and resubmits with the updated generation.
-           */
-          yield* Effect.forEach(
-            droppedItems.filter(
-              (
-                item,
-              ): item is [
-                LiveStoreEvent.Client.EncodedWithMeta,
-                Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>,
-              ] => item[1] !== undefined,
+          yield* Effect.forEach(droppedItems, ([eventEncoded, deferred]) =>
+            Deferred.fail(
+              deferred,
+              StaleRebaseGenerationError.make({
+                currentRebaseGeneration,
+                providedRebaseGeneration: eventEncoded.seqNum.rebaseGeneration,
+                sessionId: eventEncoded.sessionId,
+              }),
             ),
-            ([eventEncoded, deferred]) =>
-              Deferred.fail(
-                deferred,
-                StaleRebaseGenerationError.make({
-                  currentRebaseGeneration,
-                  providedRebaseGeneration: eventEncoded.seqNum.rebaseGeneration,
-                  sessionId: eventEncoded.sessionId,
-                }),
-              ),
           )
         }
 
@@ -564,7 +544,7 @@ const backgroundApplyLocalPushes = ({
             const allDeferredsToReject = [
               ...deferreds,
               ...remainingEventsMatchingGeneration.map(([_, deferred]) => deferred),
-            ].filter(isNotUndefined)
+            ]
 
             yield* Effect.forEach(allDeferredsToReject, (deferred) =>
               Deferred.fail(

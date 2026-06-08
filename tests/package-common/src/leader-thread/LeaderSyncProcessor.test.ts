@@ -147,7 +147,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         parentSeqNum: nextPair.parentSeqNum,
       })
 
-      yield* leaderThreadCtx.syncProcessor.push([localEvent], { waitForProcessing: true })
+      yield* leaderThreadCtx.syncProcessor.push([localEvent])
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(5000))
 
@@ -200,7 +200,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         parentSeqNum: nextPair.parentSeqNum,
       })
 
-      yield* leaderThreadCtx.syncProcessor.push([localEvent], { waitForProcessing: true })
+      yield* leaderThreadCtx.syncProcessor.push([localEvent])
 
       const rows = leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)
       expect(rows.map((row) => row.id).toSorted()).toEqual(['backend-1', 'local-after-pull-failure'])
@@ -265,7 +265,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         parentSeqNum: nextPair.parentSeqNum,
       })
 
-      yield* leaderThreadCtx.syncProcessor.push([localEvent], { waitForProcessing: true })
+      yield* leaderThreadCtx.syncProcessor.push([localEvent])
 
       const rows = leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)
       expect(rows.map((row) => row.id).toSorted()).toEqual(['backend-1', 'local-after-pull-interrupt'])
@@ -315,16 +315,14 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         rebaseGeneration: syncStateBefore.localHead.rebaseGeneration - 1,
       })
 
-      // The waitForProcessing flag ensures push waits on the deferred, so we observe the rejection path.
+      // push waits on the deferred, so we observe the rejection path.
       const staleEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
         ...LiveStoreEvent.Global.toClientEncoded(baseEvent),
         seqNum: staleSeq,
         parentSeqNum: staleParent,
       })
 
-      const error = yield* leaderThreadCtx.syncProcessor
-        .push([staleEvent], { waitForProcessing: true })
-        .pipe(Effect.flip)
+      const error = yield* leaderThreadCtx.syncProcessor.push([staleEvent]).pipe(Effect.flip)
 
       expect(error._tag).toBe('StaleRebaseGenerationError')
       assert(error instanceof StaleRebaseGenerationError)
@@ -664,11 +662,12 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       // First create some data
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }))
 
-      // Wait for sync to complete
+      // Wait for local processing and backend sync to complete before arming the next push failure.
       yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
         Stream.takeUntil((_) => _.localHead.global === 1),
         Stream.runDrain,
       )
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(3000))
 
       // Verify data exists in eventlog before the error
       const beforeRows = leaderThreadCtx.dbEventlog.select<{ name: string }>(`SELECT name FROM eventlog`)
