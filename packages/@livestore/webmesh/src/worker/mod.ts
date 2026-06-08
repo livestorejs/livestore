@@ -13,7 +13,10 @@ declare global {
   var __debugWebmeshNode: any
 }
 
-export class CacheService extends Context.Tag('@livestore/webmesh:worker:CacheService')<CacheService, { node: MeshNode }>() {
+export class CacheService extends Context.Tag('@livestore/webmesh:worker:CacheService')<
+  CacheService,
+  { node: MeshNode }
+>() {
   static layer = ({ nodeName }: { nodeName: string }) =>
     Effect.gen(function* () {
       const node = yield* makeMeshNode(nodeName)
@@ -58,9 +61,7 @@ export const connectViaWorker = ({
     const isConnected = yield* Deferred.make<boolean>()
 
     if (LS_DEV === true) {
-      yield* Effect.addFinalizerLog(
-        `@livestore/webmesh:worker: closing message channel ${node.nodeName} -> ${target}`,
-      )
+      yield* Effect.addFinalizerLog(`@livestore/webmesh:worker: closing message channel ${node.nodeName} -> ${target}`)
     }
 
     yield* worker.execute(WorkerSchema.CreateConnection.make({ from: node.nodeName, port: mc.port1 })).pipe(

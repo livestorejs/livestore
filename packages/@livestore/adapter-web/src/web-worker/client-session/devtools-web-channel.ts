@@ -29,18 +29,12 @@ export const ClientSessionContentscriptMainRes = Schema.TaggedStruct('ClientSess
 
 export const makeStaticClientSessionChannel: {
   contentscriptMain: Effect.Effect<
-    WebChannel.WebChannel<
-      typeof ClientSessionContentscriptMainReq.Type,
-      typeof ClientSessionContentscriptMainRes.Type
-    >,
+    WebChannel.WebChannel<typeof ClientSessionContentscriptMainReq.Type, typeof ClientSessionContentscriptMainRes.Type>,
     never,
     Scope.Scope
   >
   clientSession: Effect.Effect<
-    WebChannel.WebChannel<
-      typeof ClientSessionContentscriptMainRes.Type,
-      typeof ClientSessionContentscriptMainReq.Type
-    >,
+    WebChannel.WebChannel<typeof ClientSessionContentscriptMainRes.Type, typeof ClientSessionContentscriptMainReq.Type>,
     never,
     Scope.Scope
   >

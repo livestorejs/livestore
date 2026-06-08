@@ -7,8 +7,8 @@ import { WebChannelBrowser } from '@livestore/utils/effect/browser'
 import * as Webmesh from '@livestore/webmesh'
 import * as WebmeshWorker from '@livestore/webmesh/worker'
 
-import * as DevtoolsWeb from './devtools-web-channel.ts'
 import { makeSharedWorkerNodeName } from '../common/webmesh-node-names.ts'
+import * as DevtoolsWeb from './devtools-web-channel.ts'
 
 export const logDevtoolsUrl = Effect.fn('@livestore/adapter-web:client-session:devtools:logDevtoolsUrl')(function* ({
   schema,
