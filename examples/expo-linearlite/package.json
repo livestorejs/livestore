@@ -60,7 +60,6 @@
   "scripts": {
     "android": "expo start --clear --android",
     "ios": "expo start --clear --ios",
-    "lint": "biome lint .",
     "start": "expo start"
   },
   "pnpm": {

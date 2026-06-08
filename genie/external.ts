@@ -59,7 +59,6 @@ export const livestoreOnlyCatalog = {
   '@tanstack/start-plugin-core': '1.145.7',
   '@tanstack/start-server-core': '1.145.7',
   '@tanstack/start-client-core': '1.145.7',
-  '@biomejs/biome': '2.3.8',
   '@types/chrome': '0.1.4',
   '@types/web': '0.0.264',
   '@types/hast': '3.0.4',
