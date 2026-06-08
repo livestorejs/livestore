@@ -20,7 +20,7 @@ Given that assumption, the current session-to-leader protocol is more complicate
 - Calling `store.commit(...)` immediately and synchronously updates the client-session's in-memory state database.
 - The client leader is the only client-local persistence authority.
 - Keep a rebase mechanism at the "Leader Thread → SyncBackend" boundary.
-- Keep client sessions able to reconcile optimistic state with concurrent changes originating from the same client or the sync backend. 
+- Keep client sessions able to reconcile optimistic state with concurrent changes originating from the same client or the sync backend.
 
 ## Proposed Solution
 
@@ -29,7 +29,9 @@ The system keeps two durable ordering authorities:
 - Sync Backend's eventlog
 - Client Leader's eventlog
 
-Client sessions keep only a non-durable optimistic state: Optimistic commits applied to this session's state DB but not yet confirmed.
+Client sessions keep only a non-durable optimistic state: commits applied to the session's in-memory state DB but not yet observed back from the leader. A session no longer owns an independent event ordering protocol with the leader. Instead, the leader serializes all client-local commits, assigns the client-local event order, persists that order, and broadcasts the resulting events back to all sessions.
+
+The session-to-leader boundary should therefore become a local optimistic commit protocol rather than a nested sync protocol. The existing leader-to-sync-backend protocol remains a sync protocol and continues to handle backend conflicts through rebasing.
 
 ### Commit Flow
 
