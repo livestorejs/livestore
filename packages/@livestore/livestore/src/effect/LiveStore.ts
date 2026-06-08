@@ -6,8 +6,8 @@ import { Context, Deferred, Duration, Effect, Layer, pipe } from '@livestore/uti
 
 import type { LiveStoreContextProps } from '../store/create-store.ts'
 import { createStore, DeferredStoreContext, LiveStoreContextRunning } from '../store/create-store.ts'
-import type { Store as StoreClass } from '../store/store.ts'
 import type { LiveStoreContextRunning as LiveStoreContextRunningType, Queryable } from '../store/store-types.ts'
+import type { Store as StoreClass } from '../store/store.ts'
 
 export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext = {}>({
   schema,
@@ -117,8 +117,10 @@ export type StoreLayerProps<TSchema extends LiveStoreSchema, TContext = {}> = Om
  * Uses `interface` (not `type`) to allow the self-referential identifier without
  * triggering TS2456 (circular type alias).
  */
-export interface StoreTagClass<TSchema extends LiveStoreSchema, TStoreId extends string>
-  extends Context.Tag<StoreTagClass<TSchema, TStoreId>, LiveStoreContextRunningType<TSchema>> {
+export interface StoreTagClass<TSchema extends LiveStoreSchema, TStoreId extends string> extends Context.Tag<
+  StoreTagClass<TSchema, TStoreId>,
+  LiveStoreContextRunningType<TSchema>
+> {
   /** Constructor signature (makes the type extendable as a class) */
   new (): Context.Tag<StoreTagClass<TSchema, TStoreId>, LiveStoreContextRunningType<TSchema>>
 

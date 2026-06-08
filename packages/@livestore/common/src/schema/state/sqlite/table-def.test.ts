@@ -1,7 +1,7 @@
-import { objectToString } from '@livestore/utils'
-
-import { Schema } from '@livestore/utils/effect'
 import { describe, expect, expectTypeOf, it } from 'vitest'
+
+import { objectToString } from '@livestore/utils'
+import { Schema } from '@livestore/utils/effect'
 
 import { State } from '../../mod.ts'
 

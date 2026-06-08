@@ -5,8 +5,8 @@ import { OtelLiveDummy, UnknownError } from '@livestore/common'
 import { Effect, Fiber, type OtelTracer, type Scope, TestClock } from '@livestore/utils/effect'
 
 import { schema } from '../utils/tests/fixture.ts'
-import { type RegistryStoreOptions, StoreRegistry, storeOptions } from './StoreRegistry.ts'
 import { StoreInternalsSymbol } from './store-types.ts'
+import { type RegistryStoreOptions, StoreRegistry, storeOptions } from './StoreRegistry.ts'
 
 describe('StoreRegistry', () => {
   it('returns a promise when the store is loading', async () => {

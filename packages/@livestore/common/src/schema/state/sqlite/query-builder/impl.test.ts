@@ -1,7 +1,7 @@
-import { objectToString } from '@livestore/utils'
-
-import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
+
+import { objectToString } from '@livestore/utils'
+import { Schema } from '@livestore/utils/effect'
 
 import { State } from '../../../mod.ts'
 import type { QueryBuilder } from './api.ts'
@@ -155,9 +155,8 @@ describe('query builder', () => {
         }
       `)
 
-      expect(
-        dump(db.todos.select('id', 'text').first({ behaviour: 'fallback', fallback: () => undefined })),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.todos.select('id', 'text').first({ behaviour: 'fallback', fallback: () => undefined })))
+        .toMatchInlineSnapshot(`
         {
           "bindValues": [
             1,
@@ -203,9 +202,8 @@ describe('query builder', () => {
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
-      expect(
-        dump(db.todos.select('id', 'text').where({ deletedAt: { op: '<=', value: new Date('2024-01-01') } })),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.todos.select('id', 'text').where({ deletedAt: { op: '<=', value: new Date('2024-01-01') } })))
+        .toMatchInlineSnapshot(`
         {
           "bindValues": [
             "2024-01-01T00:00:00.000Z",
@@ -214,9 +212,8 @@ describe('query builder', () => {
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
-      expect(
-        dump(db.todos.select('id', 'text').where({ status: { op: 'IN', value: ['active'] } })),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.todos.select('id', 'text').where({ status: { op: 'IN', value: ['active'] } })))
+        .toMatchInlineSnapshot(`
         {
           "bindValues": [
             "active",
@@ -225,9 +222,8 @@ describe('query builder', () => {
           "schema": "ReadonlyArray<{ readonly id: string; readonly text: string }>",
         }
       `)
-      expect(
-        dump(db.todos.select('id', 'text').where({ status: { op: 'NOT IN', value: ['active', 'completed'] } })),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.todos.select('id', 'text').where({ status: { op: 'NOT IN', value: ['active', 'completed'] } })))
+        .toMatchInlineSnapshot(`
         {
           "bindValues": [
             "active",
@@ -383,9 +379,8 @@ describe('query builder', () => {
     })
 
     it('should handle JSON_CONTAINS operator for JSON array columns', () => {
-      expect(
-        dump(db.personProfiles.where({ sources: { op: 'JSON_CONTAINS', value: 'google' } })),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.personProfiles.where({ sources: { op: 'JSON_CONTAINS', value: 'google' } })))
+        .toMatchInlineSnapshot(`
         {
           "bindValues": [
             "google",
@@ -396,9 +391,8 @@ describe('query builder', () => {
       `)
 
       // With select
-      expect(
-        dump(db.personProfiles.select('personId').where({ sources: { op: 'JSON_CONTAINS', value: 'linkedin' } })),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.personProfiles.select('personId').where({ sources: { op: 'JSON_CONTAINS', value: 'linkedin' } })))
+        .toMatchInlineSnapshot(`
         {
           "bindValues": [
             "linkedin",
@@ -409,9 +403,8 @@ describe('query builder', () => {
       `)
 
       // With plain string array column
-      expect(
-        dump(db.personProfiles.where({ tags: { op: 'JSON_CONTAINS', value: 'important' } })),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.personProfiles.where({ tags: { op: 'JSON_CONTAINS', value: 'important' } })))
+        .toMatchInlineSnapshot(`
         {
           "bindValues": [
             "important",
@@ -423,9 +416,8 @@ describe('query builder', () => {
     })
 
     it('should handle JSON_NOT_CONTAINS operator for JSON array columns', () => {
-      expect(
-        dump(db.personProfiles.where({ sources: { op: 'JSON_NOT_CONTAINS', value: 'google' } })),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.personProfiles.where({ sources: { op: 'JSON_NOT_CONTAINS', value: 'google' } })))
+        .toMatchInlineSnapshot(`
         {
           "bindValues": [
             "google",
@@ -474,9 +466,8 @@ describe('query builder', () => {
     })
 
     it('should handle JSON_CONTAINS on nullable JSON array columns', () => {
-      expect(
-        dump(db.personProfiles.where({ optionalTags: { op: 'JSON_CONTAINS', value: 'important' } })),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.personProfiles.where({ optionalTags: { op: 'JSON_CONTAINS', value: 'important' } })))
+        .toMatchInlineSnapshot(`
         {
           "bindValues": [
             "important",
@@ -487,9 +478,8 @@ describe('query builder', () => {
       `)
 
       // With JSON_NOT_CONTAINS
-      expect(
-        dump(db.personProfiles.where({ optionalTags: { op: 'JSON_NOT_CONTAINS', value: 'archived' } })),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.personProfiles.where({ optionalTags: { op: 'JSON_NOT_CONTAINS', value: 'archived' } })))
+        .toMatchInlineSnapshot(`
         {
           "bindValues": [
             "archived",
@@ -665,9 +655,8 @@ describe('query builder', () => {
     })
 
     it('should handle INSERT with ON CONFLICT', () => {
-      expect(
-        dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'ignore')),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'ignore')))
+        .toMatchInlineSnapshot(`
         {
           "bindValues": [
             "123",
@@ -699,9 +688,8 @@ describe('query builder', () => {
         }
       `)
 
-      expect(
-        dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'replace')),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'replace')))
+        .toMatchInlineSnapshot(`
         {
           "bindValues": [
             "123",
@@ -755,9 +743,8 @@ describe('query builder', () => {
     })
 
     it('should handle RETURNING clause', () => {
-      expect(
-        dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).returning('id')),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).returning('id')))
+        .toMatchInlineSnapshot(`
         {
           "bindValues": [
             "123",
@@ -769,9 +756,8 @@ describe('query builder', () => {
         }
       `)
 
-      expect(
-        dump(db.todos.update({ status: 'completed' }).where({ id: '123' }).returning('id')),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.todos.update({ status: 'completed' }).where({ id: '123' }).returning('id')))
+        .toMatchInlineSnapshot(`
         {
           "bindValues": [
             "completed",
@@ -829,9 +815,8 @@ describe('query builder', () => {
       `)
 
       // Multiple where clauses
-      expect(
-        dump(db.todos.where({ id: '123' }).where({ deletedAt: null }).update({ status: 'completed' })),
-      ).toMatchInlineSnapshot(`
+      expect(dump(db.todos.where({ id: '123' }).where({ deletedAt: null }).update({ status: 'completed' })))
+        .toMatchInlineSnapshot(`
         {
           "bindValues": [
             "completed",

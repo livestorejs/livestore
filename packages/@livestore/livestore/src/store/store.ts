@@ -1,3 +1,5 @@
+import * as otel from '@opentelemetry/api'
+
 import {
   type Bindable,
   type ClientSession,
@@ -36,7 +38,6 @@ import {
   Stream,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import * as otel from '@opentelemetry/api'
 
 import type { LiveQuery, ReactivityGraphContext, SignalDef } from '../live-queries/base-class.ts'
 import { makeReactivityGraph } from '../live-queries/base-class.ts'
@@ -641,9 +642,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       // Query builders preserve SessionIdSymbol so client-document queries can be reused across sessions.
       // SQLite bind values must be concrete primitives, so resolve the symbol only at execution time.
-      const resolvedBindValues = sqlRes.bindValues === undefined
-        ? undefined
-        : resolveSessionIdSymbolInBindValues(sqlRes.bindValues, this[StoreInternalsSymbol].clientSession.sessionId)
+      const resolvedBindValues =
+        sqlRes.bindValues === undefined
+          ? undefined
+          : resolveSessionIdSymbolInBindValues(sqlRes.bindValues, this[StoreInternalsSymbol].clientSession.sessionId)
 
       const rawRes = this[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
         sqlRes.query,

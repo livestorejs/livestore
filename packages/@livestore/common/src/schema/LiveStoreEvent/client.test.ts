@@ -1,6 +1,7 @@
-import { Option, Schema } from '@livestore/utils/effect'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
+
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { Option, Schema } from '@livestore/utils/effect'
 
 import * as EventSequenceNumber from '../EventSequenceNumber/mod.ts'
 import { type Encoded, EncodedWithMeta, isEqualEncoded } from './client.ts'

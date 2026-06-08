@@ -1,6 +1,7 @@
+import React from 'react'
+
 import type { LiveQueryDef, Store } from '@livestore/livestore'
 import { computed } from '@livestore/livestore'
-import React from 'react'
 
 import { useQuery } from '../../useQuery.ts'
 

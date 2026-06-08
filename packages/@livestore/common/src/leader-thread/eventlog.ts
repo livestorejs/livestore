@@ -2,6 +2,7 @@ import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
+import { migrateTable } from '../schema-management/migrations.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import {
@@ -11,7 +12,6 @@ import {
   SYNC_STATUS_TABLE,
 } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 import { sessionChangesetMetaTable } from '../schema/state/sqlite/system-tables/state-tables.ts'
-import { migrateTable } from '../schema-management/migrations.ts'
 import { insertRow, updateRows } from '../sql-queries/sql-queries.ts'
 import type { PreparedBindValues } from '../util.ts'
 import { sql } from '../util.ts'

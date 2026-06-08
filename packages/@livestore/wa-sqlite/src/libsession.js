@@ -26,8 +26,8 @@
   Module['changeset_apply'] = function (db, nChangeset, pChangeset, xFilter, xConflict) {
     const pAsyncFlags = Module['_sqlite3_malloc'](4)
     let asyncFlags = 0
-    if (xFilter && xFilter instanceof AsyncFunction) asyncFlags |= (1 << 0)
-    if (xConflict instanceof AsyncFunction) asyncFlags |= (1 << 1)
+    if (xFilter && xFilter instanceof AsyncFunction) asyncFlags |= 1 << 0
+    if (xConflict instanceof AsyncFunction) asyncFlags |= 1 << 1
     setValue(pAsyncFlags, asyncFlags, 'i32')
 
     const target = {}
@@ -39,9 +39,10 @@
     Module['setCallback'](pAsyncFlags, target)
 
     const result = ccall(
-      'libsession_changeset_apply', 'number',
+      'libsession_changeset_apply',
+      'number',
       ['number', 'number', 'number', 'number', 'number', 'number'],
-      [db, nChangeset, pChangeset, xFilter ? 1 : 0, 1, pAsyncFlags]
+      [db, nChangeset, pChangeset, xFilter ? 1 : 0, 1, pAsyncFlags],
     )
 
     Module['deleteCallback'](pAsyncFlags)

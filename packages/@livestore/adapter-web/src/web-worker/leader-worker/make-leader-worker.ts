@@ -1,3 +1,5 @@
+import type * as otel from '@opentelemetry/api'
+
 import type { BootStatus, BootWarningReason, SqliteDb, SyncOptions } from '@livestore/common'
 import { Devtools, LogConfig, UnknownError } from '@livestore/common'
 import type { DevtoolsOptions, StreamEventsOptions } from '@livestore/common/leader-thread'
@@ -27,7 +29,6 @@ import {
   WorkerRunner,
 } from '@livestore/utils/effect'
 import { BrowserWorkerRunner, Opfs, WebError } from '@livestore/utils/effect/browser'
-import type * as otel from '@opentelemetry/api'
 import * as WebmeshWorker from '@livestore/webmesh/worker'
 
 import { cleanupOldStateDbFiles, getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.ts'
