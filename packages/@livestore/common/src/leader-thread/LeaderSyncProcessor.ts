@@ -226,6 +226,10 @@ export const make = Effect.fnUntraced(function* ({
         },
   }
 
+  type LocalPushQueueItem = [
+    event: LiveStoreEvent.Client.EncodedWithMeta,
+    deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>,
+  ]
   const localPushesQueue = yield* BucketQueue.make<LocalPushQueueItem>()
   // Ensures mutual exclusion between local push and backend pull processing.
   const localPushBackendPullMutex = yield* Effect.makeSemaphore(1)
@@ -1104,8 +1108,3 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
 
 /** Serialize value to JSON string for trace attributes */
 const jsonStringify = Schema.encodeSync(Schema.parseJson())
-
-type LocalPushQueueItem = [
-  event: LiveStoreEvent.Client.EncodedWithMeta,
-  deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>,
-]
