@@ -292,15 +292,12 @@ export const makeLeaderSyncProcessor = ({
 
       // Rehydrate sync queue
       if (initialSyncState.pending.length > 0) {
-        const globalPendingEvents = initialSyncState.pending
-          // Don't sync client-local events
-          .filter((eventEncoded) => {
-            const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
-            return eventDef === undefined ? true : eventDef.options.clientOnly === false
-          })
+        const globalOrUnknownPendingEvents = initialSyncState.pending
+          // Don't sync client-only events
+          .filter((eventEncoded) => !isClientOnlyEvent(eventEncoded))
 
-        if (globalPendingEvents.length > 0) {
-          yield* BucketQueue.offerAll(syncBackendPushQueue, globalPendingEvents)
+        if (globalOrUnknownPendingEvents.length > 0) {
+          yield* BucketQueue.offerAll(syncBackendPushQueue, globalOrUnknownPendingEvents)
         }
       }
 
@@ -330,7 +327,6 @@ export const makeLeaderSyncProcessor = ({
         localPushesQueue,
         syncStateSref,
         syncBackendPushQueue,
-        schema,
         isClientOnlyEvent,
         connectedClientSessionPullQueues,
         localPushBatchSize,
@@ -437,7 +433,6 @@ const backgroundApplyLocalPushes = ({
   localPushesQueue,
   syncStateSref,
   syncBackendPushQueue,
-  schema,
   isClientOnlyEvent,
   connectedClientSessionPullQueues,
   localPushBatchSize,
@@ -447,7 +442,6 @@ const backgroundApplyLocalPushes = ({
   localPushesQueue: BucketQueue.BucketQueue<LocalPushQueueItem>
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   syncBackendPushQueue: BucketQueue.BucketQueue<LiveStoreEvent.Client.EncodedWithMeta>
-  schema: LiveStoreSchema
   isClientOnlyEvent: (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) => boolean
   connectedClientSessionPullQueues: PullQueueSet
   localPushBatchSize: number
@@ -581,13 +575,10 @@ const backgroundApplyLocalPushes = ({
           ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
         })
 
-        // Don't sync client-local events
-        const filteredBatch = mergeResult.newEvents.filter((eventEncoded) => {
-          const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
-          return eventDef === undefined ? true : eventDef.options.clientOnly === false
-        })
+        // Don't sync client-only events
+        const globalOrUnknownEvents = mergeResult.newEvents.filter((e) => !isClientOnlyEvent(e))
 
-        yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
+        yield* BucketQueue.offerAll(syncBackendPushQueue, globalOrUnknownEvents)
 
         yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
       }).pipe(localPushBackendPullMutex.withPermits(1))
@@ -735,11 +726,10 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
             ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
           })
 
-          const globalRebasedPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
-            const eventDef = schema.eventsDefsMap.get(event.name)
-            return eventDef === undefined ? true : eventDef.options.clientOnly === false
-          })
-          yield* restartBackendPushing(globalRebasedPendingEvents)
+          const globalOrUnknownRebasedPendingEvents = mergeResult.newSyncState.pending.filter(
+            (e) => !isClientOnlyEvent(e),
+          )
+          yield* restartBackendPushing(globalOrUnknownRebasedPendingEvents)
 
           if (mergeResult.rollbackEvents.length > 0) {
             yield* rollback({
@@ -759,12 +749,9 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
             ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
           })
 
-          // Ensure push fiber is active after advance by restarting with current pending (non-client) events
-          const globalPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
-            const eventDef = schema.eventsDefsMap.get(event.name)
-            return eventDef === undefined ? true : eventDef.options.clientOnly === false
-          })
-          yield* restartBackendPushing(globalPendingEvents)
+          // Ensure push fiber is active after advance by restarting with current pending (non-client-only) events
+          const globalOrUnknownPendingEvents = mergeResult.newSyncState.pending.filter((e) => !isClientOnlyEvent(e))
+          yield* restartBackendPushing(globalOrUnknownPendingEvents)
 
           yield* connectedClientSessionPullQueues.offer({
             payload: SyncState.payloadFromMergeResult(mergeResult),
