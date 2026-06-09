@@ -3,6 +3,7 @@ import type { HttpClient, Runtime, Scope, Tracer } from '@livestore/utils/effect
 import {
   BucketQueue,
   Cause,
+  Context,
   Deferred,
   Duration,
   Effect,
@@ -19,6 +20,7 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 
+import type { UnknownEventError } from '../adapter-types.ts';
 import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
@@ -34,19 +36,15 @@ import {
   isRejectedPushError,
   LeaderAheadError,
   NonMonotonicBatchError,
+  type RejectedPushError,
   StaleRebaseGenerationError,
 } from './RejectedPushError.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
-import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
+import type { InitialBlockingSyncContext } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
 
-/** Serialize value to JSON string for trace attributes */
-const jsonStringify = Schema.encodeSync(Schema.parseJson())
-
-type LocalPushQueueItem = [
-  event: LiveStoreEvent.Client.EncodedWithMeta,
-  deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>,
-]
+export const TypeId = '~@livestore/common/LeaderSyncProcessor' as const
+export type TypeId = typeof TypeId
 
 /**
  * The LeaderSyncProcessor manages synchronization of events between
@@ -78,29 +76,60 @@ type LocalPushQueueItem = [
  *
  * See ClientSessionSyncProcessor for how the leader and session sync processors are similar/different.
  */
-export const makeLeaderSyncProcessor = ({
-  schema,
-  dbState,
-  initialBlockingSyncContext,
-  initialSyncState,
-  onError,
-  onBackendIdMismatch,
-  livePull,
-  params,
-  testing,
-}: {
-  schema: LiveStoreSchema
-  dbState: SqliteDb
-  initialBlockingSyncContext: InitialBlockingSyncContext
+export class LeaderSyncProcessor extends Context.Tag('@livestore/common/LeaderSyncProcessor')<
+  LeaderSyncProcessor,
+  Service
+>() {}
+
+export interface Service {
+  readonly [TypeId]: TypeId
+  /** Used by client sessions to subscribe to upstream sync state changes */
+  readonly pull: (args: {
+    cursor: EventSequenceNumber.Client.Composite
+  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }>
+  /** The `pullQueue` API can be used instead of `pull` when more convenient */
+  readonly pullQueue: (args: {
+    cursor: EventSequenceNumber.Client.Composite
+  }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, never, Scope.Scope>
+
+  /**
+   * Used by client sessions to push events to the leader thread.
+   * The effect only finishes when the local push has been processed (i.e. succeeded or was rejected).
+   * This doesn't mean the events have been pushed to the sync backend.
+   */
+  readonly push: (
+    /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
+    batch: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+  ) => Effect.Effect<void, RejectedPushError>
+
+  /** Currently only used by devtools which don't provide their own event numbers */
+  readonly pushPartial: (args: {
+    event: LiveStoreEvent.Input.Encoded
+    clientId: string
+    sessionId: string
+  }) => Effect.Effect<void, UnknownEventError>
+
+  readonly boot: Effect.Effect<
+    { initialLeaderHead: EventSequenceNumber.Client.Composite },
+    never,
+    LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
+  >
+  readonly syncState: Subscribable.Subscribable<SyncState.SyncState>
+}
+
+interface MakeOptions {
+  readonly schema: LiveStoreSchema
+  readonly dbState: SqliteDb
+  readonly initialBlockingSyncContext: InitialBlockingSyncContext
   /** Initial sync state rehydrated from the persisted eventlog or initial sync state */
-  initialSyncState: SyncState.SyncState
+  readonly initialSyncState: SyncState.SyncState
   /**
    * What to do when a failure (any cause) occurs (except `BackendIdMismatchError`).
    *
    * - `'shutdown'`: Send the error to the shutdown channel and terminate the sync processor.
    * - `'ignore'`: Continue running.
    */
-  onError: 'shutdown' | 'ignore'
+  readonly onError: 'shutdown' | 'ignore'
   /**
    * What to do when the sync backend identity has changed (i.e. the backend was reset).
    *
@@ -108,8 +137,8 @@ export const makeLeaderSyncProcessor = ({
    * - `'shutdown'`: Send a shutdown signal without clearing local storage.
    * - `'ignore'`: Continue running with stale data.
    */
-  onBackendIdMismatch: 'reset' | 'shutdown' | 'ignore'
-  params: {
+  readonly onBackendIdMismatch: 'reset' | 'shutdown' | 'ignore'
+  readonly params: {
     /**
      * Maximum number of local events to process per batch cycle.
      *
@@ -131,7 +160,7 @@ export const makeLeaderSyncProcessor = ({
      *
      * @default 10
      */
-    localPushBatchSize?: number
+    readonly localPushBatchSize?: number
     /**
      * Maximum number of events to push to the sync backend per batch.
      *
@@ -150,133 +179,108 @@ export const makeLeaderSyncProcessor = ({
      *
      * @default 50
      */
-    backendPushBatchSize?: number
+    readonly backendPushBatchSize?: number
   }
   /**
    * Whether the sync backend should reactively pull new events from the sync backend
    * When `false`, the sync processor will only do an initial pull
    */
-  livePull: boolean
-  testing: {
-    delays?: {
-      localPushProcessing?: Effect.Effect<void>
+  readonly livePull: boolean
+  readonly testing: {
+    readonly delays?: {
+      readonly localPushProcessing?: Effect.Effect<void>
     }
   }
-}): Effect.Effect<LeaderSyncProcessor, never, Scope.Scope> =>
-  Effect.gen(function* () {
-    const syncBackendPushQueue = yield* BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>()
-    const localPushBatchSize = params.localPushBatchSize ?? 10
-    const backendPushBatchSize = params.backendPushBatchSize ?? 50
+}
 
-    const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
+export const make = Effect.fnUntraced(function* ({
+  schema,
+  dbState,
+  initialBlockingSyncContext,
+  initialSyncState,
+  onError,
+  onBackendIdMismatch,
+  livePull,
+  params,
+  testing,
+}: MakeOptions) {
+  const syncBackendPushQueue = yield* BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>()
+  const localPushBatchSize = params.localPushBatchSize ?? 10
+  const backendPushBatchSize = params.backendPushBatchSize ?? 50
 
-    const isClientOnlyEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
-      schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
+  const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
-    const connectedClientSessionPullQueues = yield* makePullQueueSet
+  const isClientOnlyEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
+    schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
-    // This context depends on data from `boot`, we should find a better implementation to avoid this ref indirection.
-    const ctxRef = {
-      current: undefined as
-        | undefined
-        | {
-            span: Tracer.Span
-            devtoolsLatch: Effect.Latch | undefined
-            runtime: Runtime.Runtime<LeaderThreadCtx>
-          },
-    }
+  const connectedClientSessionPullQueues = yield* makePullQueueSet
 
-    const localPushesQueue = yield* BucketQueue.make<LocalPushQueueItem>()
-    // Ensures mutual exclusion between local push and backend pull processing.
-    const localPushBackendPullMutex = yield* Effect.makeSemaphore(1)
+  // This context depends on data from `boot`, we should find a better implementation to avoid this ref indirection.
+  const ctxRef = {
+    current: undefined as
+      | undefined
+      | {
+          span: Tracer.Span
+          devtoolsLatch: Effect.Latch | undefined
+          runtime: Runtime.Runtime<LeaderThreadCtx>
+        },
+  }
 
-    /**
-     * Additionally to the `syncStateSref` we also need the `pushHeadRef` in order to prevent old/duplicate
-     * events from being pushed in a scenario like this:
-     * - client session A pushes e1
-     * - leader sync processor takes a bit and hasn't yet taken e1 from the localPushesQueue
-     * - client session B also pushes e1 (which should be rejected)
-     *
-     * Thus the purpose of the pushHeadRef is the guard the integrity of the local push queue
-     */
-    const pushHeadRef = { current: EventSequenceNumber.Client.ROOT }
-    const advancePushHead = (eventNum: EventSequenceNumber.Client.Composite) => {
-      pushHeadRef.current = EventSequenceNumber.Client.max(pushHeadRef.current, eventNum)
-    }
+  const localPushesQueue = yield* BucketQueue.make<LocalPushQueueItem>()
+  // Ensures mutual exclusion between local push and backend pull processing.
+  const localPushBackendPullMutex = yield* Effect.makeSemaphore(1)
 
-    // NOTE: New events are only pushed to sync backend after successful local push processing
-    const push: LeaderSyncProcessor['push'] = (newEvents) =>
-      Effect.gen(function* () {
-        if (newEvents.length === 0) return
+  /**
+   * Additionally to the `syncStateSref` we also need the `pushHeadRef` in order to prevent old/duplicate
+   * events from being pushed in a scenario like this:
+   * - client session A pushes e1
+   * - leader sync processor takes a bit and hasn't yet taken e1 from the localPushesQueue
+   * - client session B also pushes e1 (which should be rejected)
+   *
+   * Thus the purpose of the pushHeadRef is the guard the integrity of the local push queue
+   */
+  const pushHeadRef = { current: EventSequenceNumber.Client.ROOT }
+  const advancePushHead = (eventNum: EventSequenceNumber.Client.Composite) => {
+    pushHeadRef.current = EventSequenceNumber.Client.max(pushHeadRef.current, eventNum)
+  }
 
-        // console.debug('push', newEvents)
+  // NOTE: New events are only pushed to sync backend after successful local push processing
+  const push: Service['push'] = (newEvents) =>
+    Effect.gen(function* () {
+      if (newEvents.length === 0) return
 
-        yield* validatePushBatch(newEvents, pushHeadRef.current)
+      // console.debug('push', newEvents)
 
-        advancePushHead(newEvents.at(-1)!.seqNum)
+      yield* validatePushBatch(newEvents, pushHeadRef.current)
 
-        const deferreds = yield* Effect.forEach(newEvents, () =>
-          Deferred.make<void, LeaderAheadError | StaleRebaseGenerationError>(),
-        )
+      advancePushHead(newEvents.at(-1)!.seqNum)
 
-        const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
-
-        yield* BucketQueue.offerAll(localPushesQueue, items)
-
-        yield* Effect.all(deferreds)
-      }).pipe(
-        Effect.withSpan('@livestore/common:LeaderSyncProcessor:push', {
-          attributes: {
-            batchSize: newEvents.length,
-            batch: TRACE_VERBOSE === true ? newEvents : undefined,
-          },
-          links:
-            ctxRef.current?.span !== undefined
-              ? [{ _tag: 'SpanLink', span: ctxRef.current.span, attributes: {} }]
-              : undefined,
-        }),
+      const deferreds = yield* Effect.forEach(newEvents, () =>
+        Deferred.make<void, LeaderAheadError | StaleRebaseGenerationError>(),
       )
 
-    const pushPartial: LeaderSyncProcessor['pushPartial'] = ({ event: { name, args }, clientId, sessionId }) =>
-      Effect.gen(function* () {
-        const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
+      const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
 
-        const resolution = yield* resolveEventDef(schema, {
-          operation: '@livestore/common:LeaderSyncProcessor:pushPartial',
-          event: {
-            name,
-            args,
-            clientId,
-            sessionId,
-            seqNum: syncState.localHead,
-          },
-        })
+      yield* BucketQueue.offerAll(localPushesQueue, items)
 
-        if (resolution._tag === 'unknown') {
-          // Ignore partial pushes for unrecognised events – they are still
-          // persisted server-side once a schema update ships.
-          return
-        }
+      yield* Effect.all(deferreds)
+    }).pipe(
+      Effect.withSpan('@livestore/common:LeaderSyncProcessor:push', {
+        attributes: {
+          batchSize: newEvents.length,
+          batch: TRACE_VERBOSE === true ? newEvents : undefined,
+        },
+        links:
+          ctxRef.current?.span !== undefined
+            ? [{ _tag: 'SpanLink', span: ctxRef.current.span, attributes: {} }]
+            : undefined,
+      }),
+    )
 
-        const eventEncoded = new LiveStoreEvent.Client.EncodedWithMeta({
-          name,
-          args,
-          clientId,
-          sessionId,
-          ...EventSequenceNumber.Client.nextPair({
-            seqNum: syncState.localHead,
-            isClientOnly: resolution.eventDef.options.clientOnly,
-          }),
-        })
-
-        yield* push([eventEncoded])
-      }).pipe(
-        // pushPartial constructs the event sequence number internally, so these errors should never happen.
-        Effect.catchIf(isRejectedPushError, Effect.die),
-      )
-
+  return LeaderSyncProcessor.of({
+    [TypeId]: TypeId,
     // Starts various background loops
-    const boot: LeaderSyncProcessor['boot'] = Effect.gen(function* () {
+    boot: Effect.gen(function* () {
       const span = yield* Effect.currentSpan.pipe(Effect.orDie)
       const { devtools, shutdownChannel } = yield* LeaderThreadCtx
       const runtime = yield* Effect.runtime<LeaderThreadCtx>()
@@ -385,48 +389,81 @@ export const makeLeaderSyncProcessor = ({
       )
 
       return { initialLeaderHead: initialSyncState.localHead }
-    }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot'))
-
-    const pull: LeaderSyncProcessor['pull'] = ({ cursor }) =>
+    }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot')),
+    push,
+    pushPartial: ({ event: { name, args }, clientId, sessionId }) =>
       Effect.gen(function* () {
-        const queue = yield* pullQueue({ cursor })
+        const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
+
+        const resolution = yield* resolveEventDef(schema, {
+          operation: '@livestore/common:LeaderSyncProcessor:pushPartial',
+          event: {
+            name,
+            args,
+            clientId,
+            sessionId,
+            seqNum: syncState.localHead,
+          },
+        })
+
+        if (resolution._tag === 'unknown') {
+          // Ignore partial pushes for unrecognised events – they are still
+          // persisted server-side once a schema update ships.
+          return
+        }
+
+        const eventEncoded = new LiveStoreEvent.Client.EncodedWithMeta({
+          name,
+          args,
+          clientId,
+          sessionId,
+          ...EventSequenceNumber.Client.nextPair({
+            seqNum: syncState.localHead,
+            isClientOnly: resolution.eventDef.options.clientOnly,
+          }),
+        })
+
+        yield* push([eventEncoded])
+      }).pipe(
+        // pushPartial constructs the event sequence number internally, so these errors should never happen.
+        Effect.catchIf(isRejectedPushError, Effect.die),
+      ),
+    pull: ({ cursor }) =>
+      Effect.gen(function* () {
+        const queue = yield* Effect.fromNullable(ctxRef.current?.runtime).pipe(
+          Effect.orDieDebugger,
+          Effect.flatMap((runtime) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))),
+        )
         return Stream.fromQueue(queue)
-      }).pipe(Stream.unwrapScoped)
-
+      }).pipe(Stream.unwrapScoped),
     /*
-    Notes for a potential new `LeaderSyncProcessor.pull` implementation:
+      Notes for a potential new `LeaderSyncProcessor.pull` implementation:
 
-    - Doesn't take cursor but is "atomically called" in the leader during the snapshot phase
-      - TODO: how is this done "atomically" in the web adapter where the snapshot is read optimistically?
-    - Would require a new kind of "boot-phase" API which is stream based:
-      - initial message: state snapshot + seq num head
-      - subsequent messages: sync state payloads
+      - Doesn't take cursor but is "atomically called" in the leader during the snapshot phase
+        - TODO: how is this done "atomically" in the web adapter where the snapshot is read optimistically?
+      - Would require a new kind of "boot-phase" API which is stream based:
+        - initial message: state snapshot + seq num head
+        - subsequent messages: sync state payloads
 
-    - alternative: instead of session pulling sync state payloads from leader, we could send
-      - events in the "advance" case
-      - full new state db snapshot in the "rebase" case
-        - downside: importing the snapshot is expensive
-    */
-    const pullQueue: LeaderSyncProcessor['pullQueue'] = ({ cursor }) =>
+      - alternative: instead of session pulling sync state payloads from leader, we could send
+        - events in the "advance" case
+        - full new state db snapshot in the "rebase" case
+          - downside: importing the snapshot is expensive
+      */
+    pullQueue: ({ cursor }) =>
       Effect.fromNullable(ctxRef.current?.runtime).pipe(
         Effect.orDieDebugger,
         Effect.flatMap((runtime) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))),
-      )
-
-    const syncState = Subscribable.make({
+      ),
+    syncState: Subscribable.make({
       get: syncStateSref.pipe(Effect.flatMap(Effect.fromNullable), Effect.orDieDebugger),
       changes: syncStateSref.changes.pipe(Stream.filter(isNotUndefined)),
-    })
-
-    return {
-      pull,
-      pullQueue,
-      push,
-      pushPartial,
-      boot,
-      syncState,
-    } satisfies LeaderSyncProcessor
+    }),
   })
+})
+
+export const layer = (params: MakeOptions): Layer.Layer<LeaderSyncProcessor, never, Scope.Scope> =>
+  Layer.scoped(LeaderSyncProcessor, make(params))
 
 const backgroundApplyLocalPushes = ({
   localPushBackendPullMutex,
@@ -1132,3 +1169,11 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
       dbState.execute(`DROP TABLE IF EXISTS "${name}"`)
     }
   })
+
+/** Serialize value to JSON string for trace attributes */
+const jsonStringify = Schema.encodeSync(Schema.parseJson())
+
+type LocalPushQueueItem = [
+  event: LiveStoreEvent.Client.EncodedWithMeta,
+  deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>,
+]

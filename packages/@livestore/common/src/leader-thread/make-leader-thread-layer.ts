@@ -29,7 +29,7 @@ import { SyncState } from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
 import { bootDevtools } from './leader-worker-devtools.ts'
-import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.ts'
+import * as LeaderSyncProcessor from './LeaderSyncProcessor.ts'
 import { makeMaterializeEvent } from './materialize-event.ts'
 import { recreateDb } from './recreate-db.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
@@ -161,7 +161,7 @@ export const makeLeaderThreadLayer = ({
         ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
         : { migrationsReport: { migrations: [] } }
 
-    const syncProcessor = yield* makeLeaderSyncProcessor({
+    const syncProcessor = yield* LeaderSyncProcessor.make({
       schema,
       dbState,
       initialSyncState: getInitialSyncState({ dbEventlog, dbState, dbEventlogMissing }),

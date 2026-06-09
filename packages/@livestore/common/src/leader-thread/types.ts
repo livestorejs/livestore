@@ -22,11 +22,10 @@ import type {
   SqliteDb,
   SyncBackend,
   UnknownError,
-  UnknownEventError,
 } from '../index.ts'
 import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
-import type { RejectedPushError } from './RejectedPushError.ts'
+import type * as LeaderSyncProcessor from './LeaderSyncProcessor.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 
 export type ShutdownState = 'running' | 'shutting-down'
@@ -100,7 +99,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     eventSchema: LiveStoreEvent.ForEventDef.ForRecord<any>
     devtools: DevtoolsContext
     syncBackend: SyncBackend.SyncBackend | undefined
-    syncProcessor: LeaderSyncProcessor
+    syncProcessor: LeaderSyncProcessor.Service
     materializeEvent: MaterializeEvent
     initialState: {
       leaderHead: EventSequenceNumber.Client.Composite
@@ -181,39 +180,4 @@ export interface StreamEventsOptions {
    * Include client-only events (i.e. events with a positive client sequence number).
    */
   includeClientOnly?: boolean
-}
-
-export interface LeaderSyncProcessor {
-  /** Used by client sessions to subscribe to upstream sync state changes */
-  pull: (args: {
-    cursor: EventSequenceNumber.Client.Composite
-  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }>
-  /** The `pullQueue` API can be used instead of `pull` when more convenient */
-  pullQueue: (args: {
-    cursor: EventSequenceNumber.Client.Composite
-  }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, never, Scope.Scope>
-
-  /**
-   * Used by client sessions to push events to the leader thread.
-   * The effect only finishes when the local push has been processed (i.e. succeeded or was rejected).
-   * This doesn't mean the events have been pushed to the sync backend.
-   */
-  push: (
-    /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
-    batch: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
-  ) => Effect.Effect<void, RejectedPushError>
-
-  /** Currently only used by devtools which don't provide their own event numbers */
-  pushPartial: (args: {
-    event: LiveStoreEvent.Input.Encoded
-    clientId: string
-    sessionId: string
-  }) => Effect.Effect<void, UnknownEventError>
-
-  boot: Effect.Effect<
-    { initialLeaderHead: EventSequenceNumber.Client.Composite },
-    never,
-    LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
-  >
-  syncState: Subscribable.Subscribable<SyncState.SyncState>
 }
