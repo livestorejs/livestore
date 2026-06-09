@@ -20,8 +20,8 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 
-import type { UnknownEventError } from '../errors.ts'
 import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
+import type { UnknownEventError } from '../errors.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
