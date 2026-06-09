@@ -20,7 +20,7 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 
-import type { UnknownEventError } from '../adapter-types.ts';
+import type { UnknownEventError } from '../adapter-types.ts'
 import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
@@ -244,252 +244,10 @@ export const make = Effect.fnUntraced(function* ({
     pushHeadRef.current = EventSequenceNumber.Client.max(pushHeadRef.current, eventNum)
   }
 
-  // NOTE: New events are only pushed to sync backend after successful local push processing
-  const push: Service['push'] = (newEvents) =>
-    Effect.gen(function* () {
-      if (newEvents.length === 0) return
-
-      // console.debug('push', newEvents)
-
-      yield* validatePushBatch(newEvents, pushHeadRef.current)
-
-      advancePushHead(newEvents.at(-1)!.seqNum)
-
-      const deferreds = yield* Effect.forEach(newEvents, () =>
-        Deferred.make<void, LeaderAheadError | StaleRebaseGenerationError>(),
-      )
-
-      const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
-
-      yield* BucketQueue.offerAll(localPushesQueue, items)
-
-      yield* Effect.all(deferreds)
-    }).pipe(
-      Effect.withSpan('@livestore/common:LeaderSyncProcessor:push', {
-        attributes: {
-          batchSize: newEvents.length,
-          batch: TRACE_VERBOSE === true ? newEvents : undefined,
-        },
-        links:
-          ctxRef.current?.span !== undefined
-            ? [{ _tag: 'SpanLink', span: ctxRef.current.span, attributes: {} }]
-            : undefined,
-      }),
-    )
-
-  return LeaderSyncProcessor.of({
-    [TypeId]: TypeId,
-    // Starts various background loops
-    boot: Effect.gen(function* () {
-      const span = yield* Effect.currentSpan.pipe(Effect.orDie)
-      const { devtools, shutdownChannel } = yield* LeaderThreadCtx
-      const runtime = yield* Effect.runtime<LeaderThreadCtx>()
-
-      ctxRef.current = {
-        span,
-        devtoolsLatch: devtools.enabled === true ? devtools.syncBackendLatch : undefined,
-        runtime,
-      }
-
-      /** State transitions need to happen atomically, so we use a Ref to track the state */
-      yield* SubscriptionRef.set(syncStateSref, initialSyncState)
-
-      // Rehydrate sync queue
-      if (initialSyncState.pending.length > 0) {
-        const globalOrUnknownPendingEvents = initialSyncState.pending
-          // Don't sync client-only events
-          .filter((eventEncoded) => !isClientOnlyEvent(eventEncoded))
-
-        if (globalOrUnknownPendingEvents.length > 0) {
-          yield* BucketQueue.offerAll(syncBackendPushQueue, globalOrUnknownPendingEvents)
-        }
-      }
-
-      const handleBackendIdMismatchError = (error: BackendIdMismatchError) =>
-        handleBackendIdMismatch({ error, onBackendIdMismatch, shutdownChannel })
-
-      const maybeShutdownOnError = (cause: Cause.Cause<UnknownError | MaterializeError>) =>
-        Effect.gen(function* () {
-          if (onError === 'ignore') {
-            if (LS_DEV === true) {
-              yield* Effect.logDebug(
-                `Ignoring sync error (${cause._tag === 'Fail' ? cause.error._tag : cause._tag})`,
-                Cause.pretty(cause),
-              )
-            }
-            return
-          }
-
-          const errorToSend = Cause.isFailType(cause) === true ? cause.error : UnknownError.make({ cause })
-          yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
-
-          return yield* Effect.failCause(cause).pipe(Effect.orDie)
-        })
-
-      yield* backgroundApplyLocalPushes({
-        localPushBackendPullMutex,
-        localPushesQueue,
-        syncStateSref,
-        syncBackendPushQueue,
-        isClientOnlyEvent,
-        connectedClientSessionPullQueues,
-        localPushBatchSize,
-        testing: {
-          delay: testing?.delays?.localPushProcessing,
-        },
-      }).pipe(Effect.catchAllCause(maybeShutdownOnError), Effect.forkScoped)
-
-      const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
-      const backendPushingEffect = backgroundBackendPushing({
-        syncBackendPushQueue,
-        devtoolsLatch: ctxRef.current?.devtoolsLatch,
-        backendPushBatchSize,
-      }).pipe(
-        Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
-        Effect.catchAllCause(maybeShutdownOnError),
-      )
-
-      yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
-
-      yield* backgroundBackendPulling({
-        isClientOnlyEvent,
-        restartBackendPushing: (filteredRebasedPending) =>
-          Effect.gen(function* () {
-            // Stop current pushing fiber
-            yield* FiberHandle.clear(backendPushingFiberHandle)
-
-            // Reset the sync backend push queue
-            yield* BucketQueue.clear(syncBackendPushQueue)
-            yield* BucketQueue.offerAll(syncBackendPushQueue, filteredRebasedPending)
-
-            // Restart pushing fiber
-            yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
-          }),
-        syncStateSref,
-        localPushBackendPullMutex,
-        livePull,
-        dbState,
-        initialBlockingSyncContext,
-        devtoolsLatch: ctxRef.current?.devtoolsLatch,
-        connectedClientSessionPullQueues,
-        advancePushHead,
-      }).pipe(
-        Effect.retry({
-          // Retry pulling when we've lost connection to the sync backend
-          // We're using `until` with a refinement instead of `while` to narrow `IsOfflineError` out of the error type.
-          // See https://github.com/Effect-TS/effect/issues/6122
-          until: (error): error is Exclude<typeof error, IsOfflineError> => error._tag !== 'IsOfflineError',
-        }),
-        Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
-        Effect.catchAllCause(maybeShutdownOnError),
-        // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
-        // This might be a bug in Effect. Only seems to happen in the browser.
-        Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),
-        Effect.forkScoped,
-      )
-
-      return { initialLeaderHead: initialSyncState.localHead }
-    }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot')),
-    push,
-    pushPartial: ({ event: { name, args }, clientId, sessionId }) =>
-      Effect.gen(function* () {
-        const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
-
-        const resolution = yield* resolveEventDef(schema, {
-          operation: '@livestore/common:LeaderSyncProcessor:pushPartial',
-          event: {
-            name,
-            args,
-            clientId,
-            sessionId,
-            seqNum: syncState.localHead,
-          },
-        })
-
-        if (resolution._tag === 'unknown') {
-          // Ignore partial pushes for unrecognised events – they are still
-          // persisted server-side once a schema update ships.
-          return
-        }
-
-        const eventEncoded = new LiveStoreEvent.Client.EncodedWithMeta({
-          name,
-          args,
-          clientId,
-          sessionId,
-          ...EventSequenceNumber.Client.nextPair({
-            seqNum: syncState.localHead,
-            isClientOnly: resolution.eventDef.options.clientOnly,
-          }),
-        })
-
-        yield* push([eventEncoded])
-      }).pipe(
-        // pushPartial constructs the event sequence number internally, so these errors should never happen.
-        Effect.catchIf(isRejectedPushError, Effect.die),
-      ),
-    pull: ({ cursor }) =>
-      Effect.gen(function* () {
-        const queue = yield* Effect.fromNullable(ctxRef.current?.runtime).pipe(
-          Effect.orDieDebugger,
-          Effect.flatMap((runtime) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))),
-        )
-        return Stream.fromQueue(queue)
-      }).pipe(Stream.unwrapScoped),
-    /*
-      Notes for a potential new `LeaderSyncProcessor.pull` implementation:
-
-      - Doesn't take cursor but is "atomically called" in the leader during the snapshot phase
-        - TODO: how is this done "atomically" in the web adapter where the snapshot is read optimistically?
-      - Would require a new kind of "boot-phase" API which is stream based:
-        - initial message: state snapshot + seq num head
-        - subsequent messages: sync state payloads
-
-      - alternative: instead of session pulling sync state payloads from leader, we could send
-        - events in the "advance" case
-        - full new state db snapshot in the "rebase" case
-          - downside: importing the snapshot is expensive
-      */
-    pullQueue: ({ cursor }) =>
-      Effect.fromNullable(ctxRef.current?.runtime).pipe(
-        Effect.orDieDebugger,
-        Effect.flatMap((runtime) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))),
-      ),
-    syncState: Subscribable.make({
-      get: syncStateSref.pipe(Effect.flatMap(Effect.fromNullable), Effect.orDieDebugger),
-      changes: syncStateSref.changes.pipe(Stream.filter(isNotUndefined)),
-    }),
-  })
-})
-
-export const layer = (params: MakeOptions): Layer.Layer<LeaderSyncProcessor, never, Scope.Scope> =>
-  Layer.scoped(LeaderSyncProcessor, make(params))
-
-const backgroundApplyLocalPushes = ({
-  localPushBackendPullMutex,
-  localPushesQueue,
-  syncStateSref,
-  syncBackendPushQueue,
-  isClientOnlyEvent,
-  connectedClientSessionPullQueues,
-  localPushBatchSize,
-  testing,
-}: {
-  localPushBackendPullMutex: Effect.Semaphore
-  localPushesQueue: BucketQueue.BucketQueue<LocalPushQueueItem>
-  syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
-  syncBackendPushQueue: BucketQueue.BucketQueue<LiveStoreEvent.Client.EncodedWithMeta>
-  isClientOnlyEvent: (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) => boolean
-  connectedClientSessionPullQueues: PullQueueSet
-  localPushBatchSize: number
-  testing: {
-    delay: Effect.Effect<void> | undefined
-  }
-}) =>
-  Effect.gen(function* () {
+  const backgroundApplyLocalPushes = Effect.gen(function* () {
     while (true) {
-      if (testing.delay !== undefined) {
-        yield* testing.delay.pipe(Effect.withSpan('localPushProcessingDelay'))
+      if (testing.delays?.localPushProcessing !== undefined) {
+        yield* testing.delays.localPushProcessing.pipe(Effect.withSpan('localPushProcessingDelay'))
       }
 
       const batchItems = yield* BucketQueue.takeBetween(localPushesQueue, 1, localPushBatchSize)
@@ -622,6 +380,443 @@ const backgroundApplyLocalPushes = ({
     }
   })
 
+  const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcessor:backend-pulling')(function* ({
+    restartBackendPushing,
+  }: {
+    restartBackendPushing: (
+      filteredRebasedPending: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+    ) => Effect.Effect<void, never, LeaderThreadCtx | HttpClient.HttpClient>
+  }) {
+    const { syncBackend, dbState: db, dbEventlog, schema } = yield* LeaderThreadCtx
+
+    if (syncBackend === undefined) return
+
+    let pullMutexHeld = false
+
+    const releasePullMutexIfHeld = Effect.gen(function* () {
+      if (pullMutexHeld === false) return
+      pullMutexHeld = false
+      yield* localPushBackendPullMutex.release(1)
+    })
+
+    const isPullPaginationComplete = (pageInfo: SyncBackend.PullResPageInfo) => pageInfo._tag === 'NoMore'
+
+    const onNewPullChunk = (
+      newEvents: LiveStoreEvent.Client.EncodedWithMeta[],
+      pageInfo: SyncBackend.PullResPageInfo,
+    ) =>
+      Effect.gen(function* () {
+        if (ctxRef.current?.devtoolsLatch !== undefined) {
+          yield* ctxRef.current.devtoolsLatch.await
+        }
+
+        if (newEvents.length === 0) {
+          if (isPullPaginationComplete(pageInfo) === true) {
+            yield* releasePullMutexIfHeld
+          }
+          return
+        }
+
+        // Prevent more local pushes from being processed until this pull pagination sequence is finished.
+        if (pullMutexHeld === false) {
+          yield* localPushBackendPullMutex.take(1)
+          pullMutexHeld = true
+        }
+
+        const chunkExit = yield* Effect.gen(function* () {
+          const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
+
+          yield* Effect.annotateCurrentSpan({
+            'merge.newEventsCount': newEvents.length,
+            ...(TRACE_VERBOSE === true ? { 'merge.newEvents': jsonStringify(newEvents) } : {}),
+          })
+
+          const mergeResult = yield* SyncState.merge({
+            syncState,
+            payload: SyncState.PayloadUpstreamAdvance.make({ newEvents }),
+            isClientOnlyEvent,
+            isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+            ignoreClientOnlyEvents: true,
+          })
+
+          if (mergeResult._tag === 'reject') {
+            return yield* Effect.dieDebugger('The leader thread should never reject upstream advances')
+          }
+
+          const newBackendHead = newEvents.at(-1)!.seqNum
+
+          Eventlog.updateBackendHead(dbEventlog, newBackendHead)
+
+          if (mergeResult._tag === 'rebase') {
+            yield* Effect.spanEvent(`pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`, {
+              newEventsCount: newEvents.length,
+              ...(TRACE_VERBOSE === true ? { newEvents: jsonStringify(newEvents) } : {}),
+              rollbackCount: mergeResult.rollbackEvents.length,
+              ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+            })
+
+            const globalOrUnknownRebasedPendingEvents = mergeResult.newSyncState.pending.filter(
+              (e) => !isClientOnlyEvent(e),
+            )
+            yield* restartBackendPushing(globalOrUnknownRebasedPendingEvents)
+
+            if (mergeResult.rollbackEvents.length > 0) {
+              yield* rollback({
+                dbState: db,
+                dbEventlog,
+                eventNumsToRollback: mergeResult.rollbackEvents.map((_) => _.seqNum),
+              })
+            }
+
+            yield* connectedClientSessionPullQueues.offer({
+              payload: SyncState.payloadFromMergeResult(mergeResult),
+              leaderHead: mergeResult.newSyncState.localHead,
+            })
+          } else {
+            yield* Effect.spanEvent(`pull:advance`, {
+              newEventsCount: newEvents.length,
+              ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+            })
+
+            // Ensure push fiber is active after advance by restarting with current pending (non-client-only) events
+            const globalOrUnknownPendingEvents = mergeResult.newSyncState.pending.filter((e) => !isClientOnlyEvent(e))
+            yield* restartBackendPushing(globalOrUnknownPendingEvents)
+
+            yield* connectedClientSessionPullQueues.offer({
+              payload: SyncState.payloadFromMergeResult(mergeResult),
+              leaderHead: mergeResult.newSyncState.localHead,
+            })
+
+            if (mergeResult.confirmedEvents.length > 0) {
+              // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
+              // `newEvents` instead which we filter via `mergeResult.confirmedEvents`
+              const confirmedNewEvents = newEvents.filter((event) =>
+                mergeResult.confirmedEvents.some((confirmedEvent) =>
+                  EventSequenceNumber.Client.isEqual(event.seqNum, confirmedEvent.seqNum),
+                ),
+              )
+              yield* Eventlog.updateSyncMetadata(confirmedNewEvents).pipe(Effect.orDieDebugger)
+            }
+          }
+
+          // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
+          trimChangesetRows(db, newBackendHead)
+
+          advancePushHead(mergeResult.newSyncState.localHead)
+
+          yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
+
+          yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
+        }).pipe(Effect.exit)
+
+        if (Exit.isFailure(chunkExit) === true) {
+          yield* releasePullMutexIfHeld
+          return yield* Effect.failCause(chunkExit.cause)
+        }
+
+        if (isPullPaginationComplete(pageInfo) === true) {
+          yield* releasePullMutexIfHeld
+        }
+      })
+
+    const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
+    const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo({ remoteHead: syncState.upstreamHead.global })
+
+    const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
+
+    yield* syncBackend.pull(cursorInfo, { live: livePull }).pipe(
+      // TODO only take from queue while connected
+      Stream.tap(({ batch, pageInfo }) =>
+        Effect.gen(function* () {
+          // NOTE we only want to take process events when the sync backend is connected
+          // (e.g. needed for simulating being offline)
+          // TODO remove when there's a better way to handle this in stream above
+          yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
+          yield* onNewPullChunk(
+            batch.map((_) =>
+              LiveStoreEvent.Client.EncodedWithMeta.fromGlobal(_.eventEncoded, {
+                syncMetadata: _.metadata,
+                // TODO we can't really know the materializer result here yet beyond the first event batch item as we need to materialize it one by one first
+                // This is a bug and needs to be fixed https://github.com/livestorejs/livestore/issues/503#issuecomment-3114533165
+                materializerHashLeader: hashMaterializerResult(LiveStoreEvent.Global.toClientEncoded(_.eventEncoded)),
+                materializerHashSession: Option.none(),
+              }),
+            ),
+            pageInfo,
+          )
+          yield* initialBlockingSyncContext.update({ processed: batch.length, pageInfo })
+        }),
+      ),
+      Stream.runDrain,
+      Effect.interruptible,
+      Effect.ensuring(releasePullMutexIfHeld),
+    )
+
+    // Should only ever happen when livePull is false
+    yield* Effect.logDebug('backend-pulling finished', { livePull })
+  })
+
+  const backgroundBackendPushing = Effect.gen(function* () {
+    const { syncBackend } = yield* LeaderThreadCtx
+    if (syncBackend === undefined) return
+
+    while (true) {
+      yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
+
+      const queueItems = yield* BucketQueue.takeBetween(syncBackendPushQueue, 1, backendPushBatchSize)
+
+      yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
+
+      if (ctxRef.current?.devtoolsLatch !== undefined) {
+        yield* ctxRef.current.devtoolsLatch.await
+      }
+
+      yield* Effect.spanEvent('backend-push', {
+        batchSize: queueItems.length,
+        ...(TRACE_VERBOSE === true ? { batch: jsonStringify(queueItems) } : {}),
+      })
+
+      // Push with declarative retry/backoff using Effect schedules
+      // - Exponential backoff starting at 1s and doubling (1s, 2s, 4s, 8s, 16s, 30s ...)
+      // - Delay clamped at 30s (continues retrying at 30s)
+      // - Resets automatically after successful push
+      // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
+      yield* Effect.gen(function* () {
+        const iteration = yield* Schedule.CurrentIterationMetadata
+
+        const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.either)
+
+        const retries = iteration.recurrence
+        if (retries > 0 && pushResult._tag === 'Right') {
+          yield* Effect.spanEvent('backend-push-retry-success', { retries, batchSize: queueItems.length })
+        }
+
+        if (pushResult._tag === 'Left') {
+          yield* Effect.spanEvent('backend-push-error', {
+            error: pushResult.left.toString(),
+            retries,
+            batchSize: queueItems.length,
+          })
+          const error = pushResult.left
+          if (error._tag === 'ServerAheadError') {
+            // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
+            yield* Effect.logDebug('handled backend-push-error (waiting for interupt caused by pull)', { error })
+            return yield* Effect.never
+          }
+
+          return yield* error
+        }
+      }).pipe(
+        // Retry transient errors
+        Effect.retry({
+          schedule: Schedule.exponential(Duration.seconds(1)).pipe(
+            Schedule.modifyDelay((_, delay) => Duration.min(delay, Duration.seconds(30))), // Cap delay at 30s intervals.
+          ),
+          while: (error) => error._tag === 'IsOfflineError' || error._tag === 'UnknownError',
+        }),
+        // This is needed to narrow the Error type. Our retry policy runs indefinitely, but Effect.retry does not narrow the Error type.
+        Effect.catchIf((error) => error._tag === 'IsOfflineError' || error._tag === 'UnknownError', Effect.die),
+      )
+    }
+  }).pipe(Effect.interruptible)
+
+  // NOTE: New events are only pushed to sync backend after successful local push processing
+  const push: Service['push'] = (newEvents) =>
+    Effect.gen(function* () {
+      if (newEvents.length === 0) return
+
+      // console.debug('push', newEvents)
+
+      yield* validatePushBatch(newEvents, pushHeadRef.current)
+
+      advancePushHead(newEvents.at(-1)!.seqNum)
+
+      const deferreds = yield* Effect.forEach(newEvents, () =>
+        Deferred.make<void, LeaderAheadError | StaleRebaseGenerationError>(),
+      )
+
+      const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
+
+      yield* BucketQueue.offerAll(localPushesQueue, items)
+
+      yield* Effect.all(deferreds)
+    }).pipe(
+      Effect.withSpan('@livestore/common:LeaderSyncProcessor:push', {
+        attributes: {
+          batchSize: newEvents.length,
+          batch: TRACE_VERBOSE === true ? newEvents : undefined,
+        },
+        links:
+          ctxRef.current?.span !== undefined
+            ? [{ _tag: 'SpanLink', span: ctxRef.current.span, attributes: {} }]
+            : undefined,
+      }),
+    )
+
+  return LeaderSyncProcessor.of({
+    [TypeId]: TypeId,
+    // Starts various background loops
+    boot: Effect.gen(function* () {
+      const span = yield* Effect.currentSpan.pipe(Effect.orDie)
+      const { devtools, shutdownChannel } = yield* LeaderThreadCtx
+      const runtime = yield* Effect.runtime<LeaderThreadCtx>()
+
+      ctxRef.current = {
+        span,
+        devtoolsLatch: devtools.enabled === true ? devtools.syncBackendLatch : undefined,
+        runtime,
+      }
+
+      /** State transitions need to happen atomically, so we use a Ref to track the state */
+      yield* SubscriptionRef.set(syncStateSref, initialSyncState)
+
+      // Rehydrate sync queue
+      if (initialSyncState.pending.length > 0) {
+        const globalOrUnknownPendingEvents = initialSyncState.pending
+          // Don't sync client-only events
+          .filter((eventEncoded) => !isClientOnlyEvent(eventEncoded))
+
+        if (globalOrUnknownPendingEvents.length > 0) {
+          yield* BucketQueue.offerAll(syncBackendPushQueue, globalOrUnknownPendingEvents)
+        }
+      }
+
+      const handleBackendIdMismatchError = (error: BackendIdMismatchError) =>
+        handleBackendIdMismatch({ error, onBackendIdMismatch, shutdownChannel })
+
+      const maybeShutdownOnError = (cause: Cause.Cause<UnknownError | MaterializeError>) =>
+        Effect.gen(function* () {
+          if (onError === 'ignore') {
+            if (LS_DEV === true) {
+              yield* Effect.logDebug(
+                `Ignoring sync error (${cause._tag === 'Fail' ? cause.error._tag : cause._tag})`,
+                Cause.pretty(cause),
+              )
+            }
+            return
+          }
+
+          const errorToSend = Cause.isFailType(cause) === true ? cause.error : UnknownError.make({ cause })
+          yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
+
+          return yield* Effect.failCause(cause).pipe(Effect.orDie)
+        })
+
+      yield* backgroundApplyLocalPushes.pipe(Effect.catchAllCause(maybeShutdownOnError), Effect.forkScoped)
+
+      const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
+      const backendPushingEffect = backgroundBackendPushing.pipe(
+        Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
+        Effect.catchAllCause(maybeShutdownOnError),
+      )
+
+      yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
+
+      yield* backgroundBackendPulling({
+        restartBackendPushing: (filteredRebasedPending) =>
+          Effect.gen(function* () {
+            // Stop current pushing fiber
+            yield* FiberHandle.clear(backendPushingFiberHandle)
+
+            // Reset the sync backend push queue
+            yield* BucketQueue.clear(syncBackendPushQueue)
+            yield* BucketQueue.offerAll(syncBackendPushQueue, filteredRebasedPending)
+
+            // Restart pushing fiber
+            yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
+          }),
+      }).pipe(
+        Effect.retry({
+          // Retry pulling when we've lost connection to the sync backend
+          // We're using `until` with a refinement instead of `while` to narrow `IsOfflineError` out of the error type.
+          // See https://github.com/Effect-TS/effect/issues/6122
+          until: (error): error is Exclude<typeof error, IsOfflineError> => error._tag !== 'IsOfflineError',
+        }),
+        Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
+        Effect.catchAllCause(maybeShutdownOnError),
+        // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
+        // This might be a bug in Effect. Only seems to happen in the browser.
+        Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),
+        Effect.forkScoped,
+      )
+
+      return { initialLeaderHead: initialSyncState.localHead }
+    }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot')),
+    push,
+    pushPartial: ({ event: { name, args }, clientId, sessionId }) =>
+      Effect.gen(function* () {
+        const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
+
+        const resolution = yield* resolveEventDef(schema, {
+          operation: '@livestore/common:LeaderSyncProcessor:pushPartial',
+          event: {
+            name,
+            args,
+            clientId,
+            sessionId,
+            seqNum: syncState.localHead,
+          },
+        })
+
+        if (resolution._tag === 'unknown') {
+          // Ignore partial pushes for unrecognised events – they are still
+          // persisted server-side once a schema update ships.
+          return
+        }
+
+        const eventEncoded = new LiveStoreEvent.Client.EncodedWithMeta({
+          name,
+          args,
+          clientId,
+          sessionId,
+          ...EventSequenceNumber.Client.nextPair({
+            seqNum: syncState.localHead,
+            isClientOnly: resolution.eventDef.options.clientOnly,
+          }),
+        })
+
+        yield* push([eventEncoded])
+      }).pipe(
+        // pushPartial constructs the event sequence number internally, so these errors should never happen.
+        Effect.catchIf(isRejectedPushError, Effect.die),
+      ),
+    pull: ({ cursor }) =>
+      Effect.gen(function* () {
+        const queue = yield* Effect.fromNullable(ctxRef.current?.runtime).pipe(
+          Effect.orDieDebugger,
+          Effect.flatMap((runtime) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))),
+        )
+        return Stream.fromQueue(queue)
+      }).pipe(Stream.unwrapScoped),
+    /*
+      Notes for a potential new `LeaderSyncProcessor.pull` implementation:
+
+      - Doesn't take cursor but is "atomically called" in the leader during the snapshot phase
+        - TODO: how is this done "atomically" in the web adapter where the snapshot is read optimistically?
+      - Would require a new kind of "boot-phase" API which is stream based:
+        - initial message: state snapshot + seq num head
+        - subsequent messages: sync state payloads
+
+      - alternative: instead of session pulling sync state payloads from leader, we could send
+        - events in the "advance" case
+        - full new state db snapshot in the "rebase" case
+          - downside: importing the snapshot is expensive
+      */
+    pullQueue: ({ cursor }) =>
+      Effect.fromNullable(ctxRef.current?.runtime).pipe(
+        Effect.orDieDebugger,
+        Effect.flatMap((runtime) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))),
+      ),
+    syncState: Subscribable.make({
+      get: syncStateSref.pipe(Effect.flatMap(Effect.fromNullable), Effect.orDieDebugger),
+      changes: syncStateSref.changes.pipe(Stream.filter(isNotUndefined)),
+    }),
+  })
+})
+
+export const layer = (params: MakeOptions): Layer.Layer<LeaderSyncProcessor, never, Scope.Scope> =>
+  Layer.scoped(LeaderSyncProcessor, make(params))
+
 type MaterializeEventsBatch = (_: {
   batchItems: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
   /**
@@ -672,269 +867,6 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
     }),
     Effect.tapCauseLogPretty,
   )
-
-const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcessor:backend-pulling')(function* ({
-  isClientOnlyEvent,
-  restartBackendPushing,
-  dbState,
-  syncStateSref,
-  localPushBackendPullMutex,
-  livePull,
-  devtoolsLatch,
-  initialBlockingSyncContext,
-  connectedClientSessionPullQueues,
-  advancePushHead,
-}: {
-  isClientOnlyEvent: (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) => boolean
-  restartBackendPushing: (
-    filteredRebasedPending: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
-  ) => Effect.Effect<void, never, LeaderThreadCtx | HttpClient.HttpClient>
-  syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
-  dbState: SqliteDb
-  localPushBackendPullMutex: Effect.Semaphore
-  livePull: boolean
-  devtoolsLatch: Effect.Latch | undefined
-  initialBlockingSyncContext: InitialBlockingSyncContext
-  connectedClientSessionPullQueues: PullQueueSet
-  advancePushHead: (eventNum: EventSequenceNumber.Client.Composite) => void
-}) {
-  const { syncBackend, dbState: db, dbEventlog, schema } = yield* LeaderThreadCtx
-
-  if (syncBackend === undefined) return
-
-  let pullMutexHeld = false
-
-  const releasePullMutexIfHeld = Effect.gen(function* () {
-    if (pullMutexHeld === false) return
-    pullMutexHeld = false
-    yield* localPushBackendPullMutex.release(1)
-  })
-
-  const isPullPaginationComplete = (pageInfo: SyncBackend.PullResPageInfo) => pageInfo._tag === 'NoMore'
-
-  const onNewPullChunk = (newEvents: LiveStoreEvent.Client.EncodedWithMeta[], pageInfo: SyncBackend.PullResPageInfo) =>
-    Effect.gen(function* () {
-      if (devtoolsLatch !== undefined) {
-        yield* devtoolsLatch.await
-      }
-
-      if (newEvents.length === 0) {
-        if (isPullPaginationComplete(pageInfo) === true) {
-          yield* releasePullMutexIfHeld
-        }
-        return
-      }
-
-      // Prevent more local pushes from being processed until this pull pagination sequence is finished.
-      if (pullMutexHeld === false) {
-        yield* localPushBackendPullMutex.take(1)
-        pullMutexHeld = true
-      }
-
-      const chunkExit = yield* Effect.gen(function* () {
-        const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
-
-        yield* Effect.annotateCurrentSpan({
-          'merge.newEventsCount': newEvents.length,
-          ...(TRACE_VERBOSE === true ? { 'merge.newEvents': jsonStringify(newEvents) } : {}),
-        })
-
-        const mergeResult = yield* SyncState.merge({
-          syncState,
-          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents }),
-          isClientOnlyEvent,
-          isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-          ignoreClientOnlyEvents: true,
-        })
-
-        if (mergeResult._tag === 'reject') {
-          return yield* Effect.dieDebugger('The leader thread should never reject upstream advances')
-        }
-
-        const newBackendHead = newEvents.at(-1)!.seqNum
-
-        Eventlog.updateBackendHead(dbEventlog, newBackendHead)
-
-        if (mergeResult._tag === 'rebase') {
-          yield* Effect.spanEvent(`pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`, {
-            newEventsCount: newEvents.length,
-            ...(TRACE_VERBOSE === true ? { newEvents: jsonStringify(newEvents) } : {}),
-            rollbackCount: mergeResult.rollbackEvents.length,
-            ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
-          })
-
-          const globalOrUnknownRebasedPendingEvents = mergeResult.newSyncState.pending.filter(
-            (e) => !isClientOnlyEvent(e),
-          )
-          yield* restartBackendPushing(globalOrUnknownRebasedPendingEvents)
-
-          if (mergeResult.rollbackEvents.length > 0) {
-            yield* rollback({
-              dbState: db,
-              dbEventlog,
-              eventNumsToRollback: mergeResult.rollbackEvents.map((_) => _.seqNum),
-            })
-          }
-
-          yield* connectedClientSessionPullQueues.offer({
-            payload: SyncState.payloadFromMergeResult(mergeResult),
-            leaderHead: mergeResult.newSyncState.localHead,
-          })
-        } else {
-          yield* Effect.spanEvent(`pull:advance`, {
-            newEventsCount: newEvents.length,
-            ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
-          })
-
-          // Ensure push fiber is active after advance by restarting with current pending (non-client-only) events
-          const globalOrUnknownPendingEvents = mergeResult.newSyncState.pending.filter((e) => !isClientOnlyEvent(e))
-          yield* restartBackendPushing(globalOrUnknownPendingEvents)
-
-          yield* connectedClientSessionPullQueues.offer({
-            payload: SyncState.payloadFromMergeResult(mergeResult),
-            leaderHead: mergeResult.newSyncState.localHead,
-          })
-
-          if (mergeResult.confirmedEvents.length > 0) {
-            // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
-            // `newEvents` instead which we filter via `mergeResult.confirmedEvents`
-            const confirmedNewEvents = newEvents.filter((event) =>
-              mergeResult.confirmedEvents.some((confirmedEvent) =>
-                EventSequenceNumber.Client.isEqual(event.seqNum, confirmedEvent.seqNum),
-              ),
-            )
-            yield* Eventlog.updateSyncMetadata(confirmedNewEvents).pipe(Effect.orDieDebugger)
-          }
-        }
-
-        // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
-        trimChangesetRows(db, newBackendHead)
-
-        advancePushHead(mergeResult.newSyncState.localHead)
-
-        yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
-
-        yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
-      }).pipe(Effect.exit)
-
-      if (Exit.isFailure(chunkExit) === true) {
-        yield* releasePullMutexIfHeld
-        return yield* Effect.failCause(chunkExit.cause)
-      }
-
-      if (isPullPaginationComplete(pageInfo) === true) {
-        yield* releasePullMutexIfHeld
-      }
-    })
-
-  const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
-  const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo({ remoteHead: syncState.upstreamHead.global })
-
-  const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
-
-  yield* syncBackend.pull(cursorInfo, { live: livePull }).pipe(
-    // TODO only take from queue while connected
-    Stream.tap(({ batch, pageInfo }) =>
-      Effect.gen(function* () {
-        // NOTE we only want to take process events when the sync backend is connected
-        // (e.g. needed for simulating being offline)
-        // TODO remove when there's a better way to handle this in stream above
-        yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
-        yield* onNewPullChunk(
-          batch.map((_) =>
-            LiveStoreEvent.Client.EncodedWithMeta.fromGlobal(_.eventEncoded, {
-              syncMetadata: _.metadata,
-              // TODO we can't really know the materializer result here yet beyond the first event batch item as we need to materialize it one by one first
-              // This is a bug and needs to be fixed https://github.com/livestorejs/livestore/issues/503#issuecomment-3114533165
-              materializerHashLeader: hashMaterializerResult(LiveStoreEvent.Global.toClientEncoded(_.eventEncoded)),
-              materializerHashSession: Option.none(),
-            }),
-          ),
-          pageInfo,
-        )
-        yield* initialBlockingSyncContext.update({ processed: batch.length, pageInfo })
-      }),
-    ),
-    Stream.runDrain,
-    Effect.interruptible,
-    Effect.ensuring(releasePullMutexIfHeld),
-  )
-
-  // Should only ever happen when livePull is false
-  yield* Effect.logDebug('backend-pulling finished', { livePull })
-})
-
-const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcessor:backend-pushing')(function* ({
-  syncBackendPushQueue,
-  devtoolsLatch,
-  backendPushBatchSize,
-}: {
-  syncBackendPushQueue: BucketQueue.BucketQueue<LiveStoreEvent.Client.EncodedWithMeta>
-  devtoolsLatch: Effect.Latch | undefined
-  backendPushBatchSize: number
-}) {
-  const { syncBackend } = yield* LeaderThreadCtx
-  if (syncBackend === undefined) return
-
-  while (true) {
-    yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
-
-    const queueItems = yield* BucketQueue.takeBetween(syncBackendPushQueue, 1, backendPushBatchSize)
-
-    yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
-
-    if (devtoolsLatch !== undefined) {
-      yield* devtoolsLatch.await
-    }
-
-    yield* Effect.spanEvent('backend-push', {
-      batchSize: queueItems.length,
-      ...(TRACE_VERBOSE === true ? { batch: jsonStringify(queueItems) } : {}),
-    })
-
-    // Push with declarative retry/backoff using Effect schedules
-    // - Exponential backoff starting at 1s and doubling (1s, 2s, 4s, 8s, 16s, 30s ...)
-    // - Delay clamped at 30s (continues retrying at 30s)
-    // - Resets automatically after successful push
-    // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
-    yield* Effect.gen(function* () {
-      const iteration = yield* Schedule.CurrentIterationMetadata
-
-      const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.either)
-
-      const retries = iteration.recurrence
-      if (retries > 0 && pushResult._tag === 'Right') {
-        yield* Effect.spanEvent('backend-push-retry-success', { retries, batchSize: queueItems.length })
-      }
-
-      if (pushResult._tag === 'Left') {
-        yield* Effect.spanEvent('backend-push-error', {
-          error: pushResult.left.toString(),
-          retries,
-          batchSize: queueItems.length,
-        })
-        const error = pushResult.left
-        if (error._tag === 'ServerAheadError') {
-          // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
-          yield* Effect.logDebug('handled backend-push-error (waiting for interupt caused by pull)', { error })
-          return yield* Effect.never
-        }
-
-        return yield* error
-      }
-    }).pipe(
-      // Retry transient errors
-      Effect.retry({
-        schedule: Schedule.exponential(Duration.seconds(1)).pipe(
-          Schedule.modifyDelay((_, delay) => Duration.min(delay, Duration.seconds(30))), // Cap delay at 30s intervals.
-        ),
-        while: (error) => error._tag === 'IsOfflineError' || error._tag === 'UnknownError',
-      }),
-      // This is needed to narrow the Error type. Our retry policy runs indefinitely, but Effect.retry does not narrow the Error type.
-      Effect.catchIf((error) => error._tag === 'IsOfflineError' || error._tag === 'UnknownError', Effect.die),
-    )
-  }
-}, Effect.interruptible)
 
 const trimChangesetRows = (db: SqliteDb, newHead: EventSequenceNumber.Client.Composite) => {
   // Since we're using the session changeset rows to query for the current head,
