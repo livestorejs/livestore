@@ -170,7 +170,7 @@ export const makeLeaderSyncProcessor = ({
 
     const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
-    const isClientEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
+    const isClientOnlyEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
       schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
     const connectedClientSessionPullQueues = yield* makePullQueueSet
@@ -265,7 +265,7 @@ export const makeLeaderSyncProcessor = ({
           sessionId,
           ...EventSequenceNumber.Client.nextPair({
             seqNum: syncState.localHead,
-            isClient: resolution.eventDef.options.clientOnly,
+            isClientOnly: resolution.eventDef.options.clientOnly,
           }),
         })
 
@@ -331,7 +331,7 @@ export const makeLeaderSyncProcessor = ({
         syncStateSref,
         syncBackendPushQueue,
         schema,
-        isClientEvent,
+        isClientOnlyEvent,
         connectedClientSessionPullQueues,
         localPushBatchSize,
         testing: {
@@ -352,7 +352,7 @@ export const makeLeaderSyncProcessor = ({
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 
       yield* backgroundBackendPulling({
-        isClientEvent,
+        isClientOnlyEvent,
         restartBackendPushing: (filteredRebasedPending) =>
           Effect.gen(function* () {
             // Stop current pushing fiber
@@ -438,7 +438,7 @@ const backgroundApplyLocalPushes = ({
   syncStateSref,
   syncBackendPushQueue,
   schema,
-  isClientEvent,
+  isClientOnlyEvent,
   connectedClientSessionPullQueues,
   localPushBatchSize,
   testing,
@@ -448,7 +448,7 @@ const backgroundApplyLocalPushes = ({
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   syncBackendPushQueue: BucketQueue.BucketQueue<LiveStoreEvent.Client.EncodedWithMeta>
   schema: LiveStoreSchema
-  isClientEvent: (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) => boolean
+  isClientOnlyEvent: (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) => boolean
   connectedClientSessionPullQueues: PullQueueSet
   localPushBatchSize: number
   testing: {
@@ -508,7 +508,7 @@ const backgroundApplyLocalPushes = ({
         const mergeResult = yield* SyncState.merge({
           syncState,
           payload: { _tag: 'local-push', newEvents },
-          isClientEvent,
+          isClientOnlyEvent,
           isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
         })
 
@@ -646,7 +646,7 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
   )
 
 const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcessor:backend-pulling')(function* ({
-  isClientEvent,
+  isClientOnlyEvent,
   restartBackendPushing,
   dbState,
   syncStateSref,
@@ -657,7 +657,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
   connectedClientSessionPullQueues,
   advancePushHead,
 }: {
-  isClientEvent: (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) => boolean
+  isClientOnlyEvent: (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) => boolean
   restartBackendPushing: (
     filteredRebasedPending: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
   ) => Effect.Effect<void, never, LeaderThreadCtx | HttpClient.HttpClient>
@@ -714,9 +714,9 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         const mergeResult = yield* SyncState.merge({
           syncState,
           payload: SyncState.PayloadUpstreamAdvance.make({ newEvents }),
-          isClientEvent,
+          isClientOnlyEvent,
           isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-          ignoreClientEvents: true,
+          ignoreClientOnlyEvents: true,
         })
 
         if (mergeResult._tag === 'reject') {

@@ -9,13 +9,13 @@ import * as SyncState from './syncstate.ts'
 
 class TestEvent extends LiveStoreEvent.Client.EncodedWithMeta {
   public payload = 'uninitialized'
-  public isClient = false
+  public isClientOnly = false
 
   static new = (
     seqNum: EventSequenceNumber.Client.CompositeInput,
     parentSeqNum: EventSequenceNumber.Client.CompositeInput,
     payload: string,
-    isClient: boolean,
+    isClientOnly: boolean,
   ) => {
     const event = new TestEvent({
       seqNum: EventSequenceNumber.Client.Composite.make(seqNum),
@@ -26,12 +26,12 @@ class TestEvent extends LiveStoreEvent.Client.EncodedWithMeta {
       sessionId: 'static-session-id',
     })
     event.payload = payload
-    event.isClient = isClient
+    event.isClientOnly = isClientOnly
     return event
   }
 
   rebase_ = (parentSeqNum: EventSequenceNumber.Client.Composite, rebaseGeneration: number) => {
-    return this.rebase({ parentSeqNum, isClient: this.isClient, rebaseGeneration })
+    return this.rebase({ parentSeqNum, isClientOnly: this.isClientOnly, rebaseGeneration })
   }
 
   // Only used for Vitest printing
@@ -49,19 +49,19 @@ const e2_1 = TestEvent.new({ global: 2, client: 1 }, e2_0.seqNum, 'a', true)
 
 const isEqualEvent = LiveStoreEvent.Client.isEqualEncoded
 
-const isClientEvent = (event: LiveStoreEvent.Client.EncodedWithMeta) => (event as TestEvent).isClient
+const isClientOnlyEvent = (event: LiveStoreEvent.Client.EncodedWithMeta) => (event as TestEvent).isClientOnly
 
 Vitest.describe('syncstate', () => {
   Vitest.describe('merge', () => {
     const merge = ({
       syncState,
       payload,
-      ignoreClientEvents = false,
+      ignoreClientOnlyEvents = false,
     }: {
       syncState: SyncState.SyncState
       payload: typeof SyncState.Payload.Type
-      ignoreClientEvents?: boolean
-    }) => SyncState.merge({ syncState, payload, isClientEvent, isEqualEvent, ignoreClientEvents })
+      ignoreClientOnlyEvents?: boolean
+    }) => SyncState.merge({ syncState, payload, isClientOnlyEvent, isEqualEvent, ignoreClientOnlyEvents })
 
     Vitest.describe('upstream-rebase', () => {
       Vitest.it.effect('should rollback until start', () =>
@@ -305,7 +305,7 @@ Vitest.describe('syncstate', () => {
           const result = yield* merge({
             syncState,
             payload: { _tag: 'upstream-advance', newEvents: [e1_0] },
-            ignoreClientEvents: true,
+            ignoreClientOnlyEvents: true,
           })
           expectAdvance(result)
           expectEventArraysEqual(result.newSyncState.pending, [])
@@ -326,7 +326,7 @@ Vitest.describe('syncstate', () => {
           const result = yield* merge({
             syncState,
             payload: { _tag: 'upstream-advance', newEvents: [e1_0] },
-            ignoreClientEvents: true,
+            ignoreClientOnlyEvents: true,
           })
           expectAdvance(result)
           expectEventArraysEqual(result.newSyncState.pending, [e2_0])
@@ -347,7 +347,7 @@ Vitest.describe('syncstate', () => {
           const result = yield* merge({
             syncState,
             payload: { _tag: 'upstream-advance', newEvents: [e1_0, e2_0] },
-            ignoreClientEvents: true,
+            ignoreClientOnlyEvents: true,
           })
 
           expectAdvance(result)
@@ -570,7 +570,7 @@ Vitest.describe('syncstate', () => {
               const result = yield* merge({
                 syncState,
                 payload: SyncState.PayloadLocalPush.make({ newEvents: [e0_1] }),
-                ignoreClientEvents: true,
+                ignoreClientOnlyEvents: true,
               })
 
               expectAdvance(result)
@@ -592,7 +592,7 @@ Vitest.describe('syncstate', () => {
               const result = yield* merge({
                 syncState,
                 payload: SyncState.PayloadLocalPush.make({ newEvents: [e0_1, e1_0] }),
-                ignoreClientEvents: true,
+                ignoreClientOnlyEvents: true,
               })
 
               expectAdvance(result)

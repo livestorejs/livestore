@@ -134,16 +134,16 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
    */
   rebase = ({
     parentSeqNum,
-    isClient,
+    isClientOnly,
     rebaseGeneration,
   }: {
     parentSeqNum: EventSequenceNumber.Client.Composite
-    isClient: boolean
+    isClientOnly: boolean
     rebaseGeneration: number
   }) =>
     new EncodedWithMeta({
       ...this,
-      ...EventSequenceNumber.Client.nextPair({ seqNum: parentSeqNum, isClient, rebaseGeneration }),
+      ...EventSequenceNumber.Client.nextPair({ seqNum: parentSeqNum, isClientOnly, rebaseGeneration }),
     })
 
   static fromGlobal = (

@@ -146,7 +146,7 @@ export const toEventNodes = (
     const eventDef = eventDefs[partialEvent.name]!
     const eventNum = EventSequenceNumber.Client.nextPair({
       seqNum: currentEventSequenceNumber,
-      isClient: eventDef.options.clientOnly,
+      isClientOnly: eventDef.options.clientOnly,
     }).seqNum
     currentEventSequenceNumber = eventNum
 

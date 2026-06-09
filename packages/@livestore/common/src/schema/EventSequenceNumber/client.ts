@@ -222,19 +222,19 @@ export const ROOT = {
 /**
  * Computes the next sequence number and its parent based on the current position.
  *
- * For client-local events (isClient=true): increments the client component, keeps global.
- * For global events (isClient=false): increments global, resets client to 0.
+ * For client-only events (isClientOnly=true): increments the client component, keeps global.
+ * For global events (isClientOnly=false): increments global, resets client to 0.
  */
 export const nextPair = ({
   seqNum,
-  isClient,
+  isClientOnly,
   rebaseGeneration,
 }: {
   seqNum: Composite
-  isClient: boolean
+  isClientOnly: boolean
   rebaseGeneration?: number
 }): CompositePair => {
-  if (isClient === true) {
+  if (isClientOnly === true) {
     return {
       seqNum: {
         global: seqNum.global,

@@ -187,9 +187,9 @@ TODO: possibly even keep the client events in a separate table in the client lea
 export const merge = Effect.fnUntraced(function* ({
   syncState,
   payload,
-  isClientEvent,
+  isClientOnlyEvent,
   isEqualEvent,
-  ignoreClientEvents = false,
+  ignoreClientOnlyEvents = false,
 }: {
   syncState: SyncState
   payload: typeof Payload.Type
@@ -199,7 +199,7 @@ export const merge = Effect.fnUntraced(function* ({
    * can preserve the correct sequence-number shape when rebasing: client-only
    * events advance the client component, synced events advance the global component.
    */
-  isClientEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
+  isClientOnlyEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
   /**
    * Pending events are confirmed by comparing their logical encoded identity with
    * upstream events. This is caller-supplied because comparing encoded args may
@@ -211,7 +211,7 @@ export const merge = Effect.fnUntraced(function* ({
    * This is used in the leader which should ignore client events when
    * receiving an upstream-advance payload
    */
-  ignoreClientEvents?: boolean
+  ignoreClientOnlyEvents?: boolean
 }) {
   yield* validateSyncState(syncState)
   yield* validatePayload(payload)
@@ -229,7 +229,7 @@ export const merge = Effect.fnUntraced(function* ({
       const rebasedPending = rebaseEvents({
         events: syncState.pending,
         baseEventSequenceNumber: newUpstreamHead,
-        isClientEvent,
+        isClientOnlyEvent,
       })
 
       return yield* validateMergeResult(
@@ -293,8 +293,8 @@ export const merge = Effect.fnUntraced(function* ({
         existingEvents: syncState.pending,
         incomingEvents: payload.newEvents,
         isEqualEvent,
-        isClientEvent,
-        ignoreClientEvents,
+        isClientOnlyEvent,
+        ignoreClientOnlyEvents,
       })
 
       // No divergent pending events, thus we can just advance (some of) the pending events
@@ -315,7 +315,7 @@ export const merge = Effect.fnUntraced(function* ({
         const [pendingMatching, pendingRemaining] = ReadonlyArray.splitWhere(
           syncState.pending,
           (pendingEvent, index) => {
-            if (ignoreClientEvents === true && isClientEvent(pendingEvent) === true) {
+            if (ignoreClientOnlyEvents === true && isClientOnlyEvent(pendingEvent) === true) {
               clientIndexOffset++
               return false
             }
@@ -347,15 +347,15 @@ export const merge = Effect.fnUntraced(function* ({
         const rebasedPending = rebaseEvents({
           events: divergentPending,
           baseEventSequenceNumber: newUpstreamHead,
-          isClientEvent,
+          isClientOnlyEvent: isClientOnlyEvent,
         })
 
         const divergentNewEventsIndex = findDivergencePoint({
           existingEvents: payload.newEvents,
           incomingEvents: syncState.pending,
           isEqualEvent,
-          isClientEvent,
-          ignoreClientEvents,
+          isClientOnlyEvent: isClientOnlyEvent,
+          ignoreClientOnlyEvents: ignoreClientOnlyEvents,
         })
 
         return yield* validateMergeResult(
@@ -398,7 +398,7 @@ export const merge = Effect.fnUntraced(function* ({
       if (invalidEventSequenceNumber === true) {
         const expectedMinimumId = EventSequenceNumber.Client.nextPair({
           seqNum: syncState.localHead,
-          isClient: true,
+          isClientOnly: true,
         }).seqNum
         return yield* validateMergeResult(
           MergeResultReject.make({
@@ -408,9 +408,11 @@ export const merge = Effect.fnUntraced(function* ({
           }),
         )
       } else {
-        const nonClientEvents =
-          ignoreClientEvents === true ? payload.newEvents.filter((event) => !isClientEvent(event)) : payload.newEvents
-        const newPending = [...syncState.pending, ...nonClientEvents]
+        const nonClientOnlyEvents =
+          ignoreClientOnlyEvents === true
+            ? payload.newEvents.filter((event) => !isClientOnlyEvent(event))
+            : payload.newEvents
+        const newPending = [...syncState.pending, ...nonClientOnlyEvents]
         const newLocalHead =
           newPending.at(-1)?.seqNum ?? EventSequenceNumber.Client.max(syncState.localHead, syncState.upstreamHead)
 
@@ -443,28 +445,28 @@ export const findDivergencePoint = ({
   existingEvents,
   incomingEvents,
   isEqualEvent,
-  isClientEvent,
-  ignoreClientEvents,
+  isClientOnlyEvent,
+  ignoreClientOnlyEvents,
 }: {
   existingEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
   incomingEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
   isEqualEvent: (a: LiveStoreEvent.Client.EncodedWithMeta, b: LiveStoreEvent.Client.EncodedWithMeta) => boolean
-  isClientEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
-  ignoreClientEvents: boolean
+  isClientOnlyEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
+  ignoreClientOnlyEvents: boolean
 }): number => {
-  if (ignoreClientEvents === true) {
-    const filteredExistingEvents = existingEvents.filter((event) => !isClientEvent(event))
-    const divergencePointWithoutClientEvents = findDivergencePoint({
+  if (ignoreClientOnlyEvents === true) {
+    const filteredExistingEvents = existingEvents.filter((event) => !isClientOnlyEvent(event))
+    const divergencePointWithoutClientOnlyEvents = findDivergencePoint({
       existingEvents: filteredExistingEvents,
       incomingEvents,
       isEqualEvent,
-      isClientEvent,
-      ignoreClientEvents: false,
+      isClientOnlyEvent,
+      ignoreClientOnlyEvents: false,
     })
 
-    if (divergencePointWithoutClientEvents === -1) return -1
+    if (divergencePointWithoutClientOnlyEvents === -1) return -1
 
-    const divergencePointEventSequenceNumber = existingEvents[divergencePointWithoutClientEvents]!.seqNum
+    const divergencePointEventSequenceNumber = existingEvents[divergencePointWithoutClientOnlyEvents]!.seqNum
     // Now find the divergence point in the original array
     return existingEvents.findIndex((event) =>
       EventSequenceNumber.Client.isEqual(event.seqNum, divergencePointEventSequenceNumber),
@@ -481,21 +483,20 @@ export const findDivergencePoint = ({
 const rebaseEvents = ({
   events,
   baseEventSequenceNumber,
-  isClientEvent,
+  isClientOnlyEvent,
 }: {
   events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
   baseEventSequenceNumber: EventSequenceNumber.Client.Composite
-  isClientEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
+  isClientOnlyEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
 }): ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> => {
   let prevEventSequenceNumber = baseEventSequenceNumber
   const rebaseGeneration = baseEventSequenceNumber.rebaseGeneration + 1
   return events.map((event) => {
     // Rebasing must preserve whether an event is client-only: client-only
     // events become eN.1/eN.2, while synced events become eN+1.
-    const isClient = isClientEvent(event)
     const newEvent = event.rebase({
       parentSeqNum: prevEventSequenceNumber,
-      isClient,
+      isClientOnly: isClientOnlyEvent(event),
       rebaseGeneration,
     })
     prevEventSequenceNumber = newEvent.seqNum

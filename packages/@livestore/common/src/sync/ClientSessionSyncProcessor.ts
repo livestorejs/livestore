@@ -96,7 +96,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
   /** Only used for debugging / observability / testing, it's not relied upon for correctness of the sync processor. */
   const syncStateUpdateQueue = yield* Queue.unbounded<SyncState.SyncState>()
-  const isClientEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
+  const isClientOnlyEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
@@ -155,7 +155,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           const mergeResult = yield* SyncState.merge({
             syncState: syncStateRef.current,
             payload,
-            isClientEvent,
+            isClientOnlyEvent,
             isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
           }).pipe(
             Effect.filterOrDieMessage((r) => r._tag !== 'reject', 'Unexpected reject in client-session-sync-processor'),
@@ -270,7 +270,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         const eventDef = yield* Effect.fromNullable(schema.eventsDefsMap.get(name)).pipe(Effect.orDieDebugger)
         const nextNumPair = EventSequenceNumber.Client.nextPair({
           seqNum: baseEventSequenceNumber,
-          isClient: eventDef.options.clientOnly,
+          isClientOnly: eventDef.options.clientOnly,
           rebaseGeneration: baseEventSequenceNumber.rebaseGeneration,
         })
         baseEventSequenceNumber = nextNumPair.seqNum
@@ -316,7 +316,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       const mergeResult = yield* SyncState.merge({
         syncState: syncStateRef.current,
         payload: { _tag: 'local-push', newEvents: encodedEvents },
-        isClientEvent,
+        isClientOnlyEvent,
         isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
       }).pipe(Effect.filterOrDieMessage((r) => r._tag === 'advance', 'Expected advance from local-push merge'))
 
