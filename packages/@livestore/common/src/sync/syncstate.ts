@@ -394,7 +394,7 @@ export const merge = Effect.fnUntraced(function* ({
       if (invalidEventSequenceNumber === true) {
         const expectedMinimumId = EventSequenceNumber.Client.nextPair({
           seqNum: syncState.localHead,
-          isClient: true,
+          isClientOnly: true,
         }).seqNum
         return yield* validateMergeResult(
           MergeResultReject.make({
@@ -486,10 +486,10 @@ const rebaseEvents = ({
   let prevEventSequenceNumber = baseEventSequenceNumber
   const rebaseGeneration = baseEventSequenceNumber.rebaseGeneration + 1
   return events.map((event) => {
-    const isClient = isClientEvent(event)
+    const isClientOnly = isClientEvent(event)
     const newEvent = event.rebase({
       parentSeqNum: prevEventSequenceNumber,
-      isClient,
+      isClientOnly,
       rebaseGeneration,
     })
     prevEventSequenceNumber = newEvent.seqNum

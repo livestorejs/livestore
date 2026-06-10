@@ -2,30 +2,6 @@ import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Effect } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 
-// Create biome debug subcommands
-const debugBiomeCommand = Cli.Command.make('biome').pipe(
-  Cli.Command.withSubcommands([
-    // Show statistics and unknown files
-    Cli.Command.make(
-      'stats',
-      {},
-      Effect.fn(function* () {
-        yield* cmd('biome check . --reporter=summary', { shell: true }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-        yield* Effect.log('\nFiles with unknown handlers:')
-        yield* cmd(
-          "biome check . --verbose 2>&1 | grep 'files/missingHandler' | awk '{print $1}' | sort | uniq || echo 'None (ignoreUnknown: true is working correctly)'",
-          {
-            shell: true,
-          },
-        ).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-      }),
-    ),
-
-    // Debug information (biome rage)
-    Cli.Command.make('rage', {}, () => cmd('biome rage').pipe(Effect.provide(LivestoreWorkspace.toCwd()))),
-  ]),
-)
-
 // TypeScript debug commands
 const debugTsCommand = Cli.Command.make('ts').pipe(
   Cli.Command.withSubcommands([
@@ -70,5 +46,5 @@ const debugDepsCommand = Cli.Command.make('deps').pipe(
 
 // Create main debug command
 export const debugCommand = Cli.Command.make('debug').pipe(
-  Cli.Command.withSubcommands([debugBiomeCommand, debugTsCommand, debugDepsCommand]),
+  Cli.Command.withSubcommands([debugTsCommand, debugDepsCommand]),
 )

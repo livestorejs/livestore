@@ -3,7 +3,6 @@ import { useClientDocument } from 'vue-livestore'
 
 import { tables } from './schema.ts'
 
-// biome-ignore lint/correctness/useHookAtTopLevel: Vue composables run at script setup level
 const { newTodoText, filter } = useClientDocument(tables.uiState)
 
 void newTodoText

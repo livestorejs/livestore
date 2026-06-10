@@ -126,11 +126,11 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
    */
   rebase = ({
     parentSeqNum,
-    isClient,
+    isClientOnly,
     rebaseGeneration,
   }: {
     parentSeqNum: EventSequenceNumber.Client.Composite
-    isClient: boolean
+    isClientOnly: boolean
     rebaseGeneration: number
   }) => {
     const EventConstructor = this.constructor as new (
@@ -139,7 +139,7 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
 
     return new EventConstructor({
       ...this,
-      ...EventSequenceNumber.Client.nextPair({ seqNum: parentSeqNum, isClient, rebaseGeneration }),
+      ...EventSequenceNumber.Client.nextPair({ seqNum: parentSeqNum, isClientOnly, rebaseGeneration }),
     })
   }
 

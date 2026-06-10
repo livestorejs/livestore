@@ -34,8 +34,7 @@
     "**/*.mdx",
     "docs/.astro/**",
     "docs/.netlify/**",
-    "packages/@livestore/*/src/**",
-    "packages/@livestore/*/test/**",
-    "tests/**"
+    "**/playwright-report/**",
+    "**/test-results/**"
   ]
 }

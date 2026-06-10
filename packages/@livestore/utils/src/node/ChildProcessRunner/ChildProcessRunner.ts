@@ -87,7 +87,6 @@ const platformRunnerImpl = Runner.WorkerRunnerPlatform.of({
         Effect.sync(() => sendUnsafe(_portId, [1, message] as any))
 
       const run = Effect.fnUntraced(function* <A, E, R>(
-        // biome-ignore lint/suspicious/noConfusingVoidType: need to support void
         handler: (portId: number, message: I) => Effect.Effect<A, E, R> | void,
       ) {
         const services = yield* Effect.context<R>()

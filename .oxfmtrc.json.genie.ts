@@ -25,11 +25,7 @@ export default oxfmtConfig({
     // Exclude Netlify build artifacts — bundled .mjs files trigger oxfmt sort_imports panic (oxc#17788)
     // TODO(oep-c28): Remove once oxfmt ≥0.24.0 lands in nixpkgs (also add **/.netlify/** to effect-utils base)
     'docs/.netlify/**',
-    // Phase 1: Skip library source files to avoid biome↔oxfmt formatting flip-flop.
-    // These files are biome-formatted to keep the PR #996 diff minimal.
-    // TODO(oep-lp9): Remove these ignores when completing the oxfmt migration.
-    'packages/@livestore/*/src/**',
-    'packages/@livestore/*/test/**',
-    'tests/**',
+    '**/playwright-report/**',
+    '**/test-results/**',
   ],
 })

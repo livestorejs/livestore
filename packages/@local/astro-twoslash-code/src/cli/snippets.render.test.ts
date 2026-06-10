@@ -270,7 +270,6 @@ describe('renderSnippet integration', () => {
 
     const dataCode = rendered.html?.match(/data-code="([^"]*)"/)?.[1] ?? ''
     const decoded = dataCode.replace(/\u007f/g, '\n')
-    // biome-ignore lint/complexity/noUselessEscapeInRegex: readability when matching Expressive Code markup
     const blankLines = rendered.html?.match(/<div class="ec-line"><div class="code">\n<\/div><\/div>/g) ?? []
 
     expect(decoded).toContain('\n\nexport const message')

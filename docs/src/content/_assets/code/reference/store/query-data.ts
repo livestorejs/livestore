@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/correctness/noUnusedVariables: docs snippet shows query result */
 // ---cut---
 import type { Store } from '@livestore/livestore'
 

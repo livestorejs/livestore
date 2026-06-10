@@ -35,7 +35,7 @@ import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
 import { rollback } from './materialize-event.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
-import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
+import type { InitialBlockingSyncContext } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
 
 /** Serialize value to JSON string for trace attributes */
@@ -45,6 +45,32 @@ type LocalPushQueueItem = [
   event: LiveStoreEvent.Client.EncodedWithMeta,
   deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError> | undefined,
 ]
+
+export interface Service {
+  /** Used by client sessions to subscribe to upstream sync state changes */
+  readonly pull: (args: {
+    cursor: EventSequenceNumber.Client.Composite
+  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }>
+  /** The `pullQueue` API can be used instead of `pull` when more convenient */
+  readonly pullQueue: (args: {
+    cursor: EventSequenceNumber.Client.Composite
+  }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, never, Scope.Scope>
+  readonly push: (
+    batch: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+    options?: { waitForProcessing?: boolean },
+  ) => Effect.Effect<void, LeaderAheadError | NonMonotonicBatchError | StaleRebaseGenerationError>
+  readonly pushPartial: (args: {
+    event: LiveStoreEvent.Input.Encoded
+    clientId: string
+    sessionId: string
+  }) => Effect.Effect<void>
+  readonly boot: Effect.Effect<
+    { initialLeaderHead: EventSequenceNumber.Client.Composite },
+    never,
+    LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
+  >
+  readonly syncState: Subscribable.Subscribable<SyncState.SyncState>
+}
 
 /**
  * The LeaderSyncProcessor manages synchronization of events between
@@ -160,7 +186,7 @@ export const makeLeaderSyncProcessor = ({
       localPushProcessing?: Effect.Effect<void>
     }
   }
-}): Effect.Effect<LeaderSyncProcessor, never, Scope.Scope> =>
+}): Effect.Effect<Service, never, Scope.Scope> =>
   Effect.gen(function* () {
     const syncBackendPushQueue = yield* BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>()
     const localPushBatchSize = params.localPushBatchSize ?? 10
@@ -203,7 +229,7 @@ export const makeLeaderSyncProcessor = ({
     }
 
     // NOTE: New events are only pushed to sync backend after successful local push processing
-    const push: LeaderSyncProcessor['push'] = (newEvents, options) =>
+    const push: Service['push'] = (newEvents, options) =>
       Effect.gen(function* () {
         if (newEvents.length === 0) return
 
@@ -240,7 +266,7 @@ export const makeLeaderSyncProcessor = ({
         }),
       )
 
-    const pushPartial: LeaderSyncProcessor['pushPartial'] = ({ event: { name, args }, clientId, sessionId }) =>
+    const pushPartial: Service['pushPartial'] = ({ event: { name, args }, clientId, sessionId }) =>
       Effect.gen(function* () {
         const syncState = yield* SubscriptionRef.get(syncStateSref).pipe(
           Effect.flatMap(Effect.fromNullable),
@@ -271,7 +297,7 @@ export const makeLeaderSyncProcessor = ({
           sessionId,
           ...EventSequenceNumber.Client.nextPair({
             seqNum: syncState.localHead,
-            isClient: resolution.eventDef.options.clientOnly,
+            isClientOnly: resolution.eventDef.options.clientOnly,
           }),
         })
 
@@ -282,7 +308,7 @@ export const makeLeaderSyncProcessor = ({
       )
 
     // Starts various background loops
-    const boot: LeaderSyncProcessor['boot'] = Effect.gen(function* () {
+    const boot: Service['boot'] = Effect.gen(function* () {
       const span = yield* Effect.currentSpan.pipe(Effect.orDie)
       const { devtools, shutdownChannel } = yield* LeaderThreadCtx
       const context = yield* Effect.context<LeaderThreadCtx>()
@@ -411,7 +437,7 @@ export const makeLeaderSyncProcessor = ({
       return { initialLeaderHead: initialSyncState.localHead }
     }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot'))
 
-    const pull: LeaderSyncProcessor['pull'] = ({ cursor }) =>
+    const pull: Service['pull'] = ({ cursor }) =>
       Effect.gen(function* () {
         const queue = yield* pullQueue({ cursor })
         return Stream.fromQueue(queue)
@@ -431,7 +457,7 @@ export const makeLeaderSyncProcessor = ({
       - full new state db snapshot in the "rebase" case
         - downside: importing the snapshot is expensive
     */
-    const pullQueue: LeaderSyncProcessor['pullQueue'] = ({ cursor }) =>
+    const pullQueue: Service['pullQueue'] = ({ cursor }) =>
       Effect.fromNullable(ctxRef.current?.context).pipe(
         Effect.orDieDebugger,
         Effect.flatMap((context) =>
@@ -451,8 +477,10 @@ export const makeLeaderSyncProcessor = ({
       pushPartial,
       boot,
       syncState,
-    } satisfies LeaderSyncProcessor
+    } satisfies Service
   })
+
+export const make = makeLeaderSyncProcessor
 
 const backgroundApplyLocalPushes = ({
   localPushBackendPullMutex,

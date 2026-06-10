@@ -223,7 +223,6 @@ export function Search() {
     return () => document.removeEventListener('keydown', handleGlobalKeyDown)
   }, [openModal, closeModal])
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: -
   useEffect(() => {
     if (resultsRef.current) {
       focusableLinksRef.current = Array.from(

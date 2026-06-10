@@ -67,7 +67,6 @@
     "build": "vite build",
     "deploy": "pnpm run build && bunx wrangler deploy",
     "dev": "vite --force",
-    "lint": "biome lint .",
     "preview": "vite preview",
     "test": "playwright test",
     "wrangler:deploy": "wrangler deploy -c dist/server/wrangler.json",

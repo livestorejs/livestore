@@ -79,9 +79,7 @@ export type WebAdapterOptions = {
    */
   sharedWorker:
     | ((options: { name: string }) => globalThis.SharedWorker)
-    | (new (options: {
-        name: string
-      }) => globalThis.SharedWorker)
+    | (new (options: { name: string }) => globalThis.SharedWorker)
   /**
    * Specifies where to persist data for this adapter
    */

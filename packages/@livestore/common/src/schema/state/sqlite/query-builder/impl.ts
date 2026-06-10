@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/complexity/noArguments: using arguments is fine here */
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Match, Option, Predicate, Schema, SchemaGetter, SchemaTransformation, Struct } from '@livestore/utils/effect'
 

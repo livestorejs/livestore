@@ -1,17 +1,18 @@
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
+
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 
 import { EventSequenceNumber } from './mod.ts'
 
 Vitest.describe('EventSequenceNumber', () => {
   Vitest.test('nextPair (no rebase)', () => {
     const e_0_0 = EventSequenceNumber.Client.Composite.make({ global: 0, client: 0 })
-    expect(EventSequenceNumber.Client.nextPair({ seqNum: e_0_0, isClient: false }).seqNum).toStrictEqual({
+    expect(EventSequenceNumber.Client.nextPair({ seqNum: e_0_0, isClientOnly: false }).seqNum).toStrictEqual({
       global: 1,
       client: 0,
       rebaseGeneration: 0,
     })
-    expect(EventSequenceNumber.Client.nextPair({ seqNum: e_0_0, isClient: true }).seqNum).toStrictEqual({
+    expect(EventSequenceNumber.Client.nextPair({ seqNum: e_0_0, isClientOnly: true }).seqNum).toStrictEqual({
       global: 0,
       client: 1,
       rebaseGeneration: 0,
@@ -21,14 +22,14 @@ Vitest.describe('EventSequenceNumber', () => {
   Vitest.test('nextPair (rebase)', () => {
     const e_0_0 = EventSequenceNumber.Client.Composite.make({ global: 0, client: 0 })
     expect(
-      EventSequenceNumber.Client.nextPair({ seqNum: e_0_0, isClient: false, rebaseGeneration: 1 }).seqNum,
+      EventSequenceNumber.Client.nextPair({ seqNum: e_0_0, isClientOnly: false, rebaseGeneration: 1 }).seqNum,
     ).toStrictEqual({
       global: 1,
       client: 0,
       rebaseGeneration: 1,
     })
     expect(
-      EventSequenceNumber.Client.nextPair({ seqNum: e_0_0, isClient: true, rebaseGeneration: 1 }).seqNum,
+      EventSequenceNumber.Client.nextPair({ seqNum: e_0_0, isClientOnly: true, rebaseGeneration: 1 }).seqNum,
     ).toStrictEqual({
       global: 0,
       client: 1,
@@ -36,7 +37,7 @@ Vitest.describe('EventSequenceNumber', () => {
     })
 
     const e_0_0_g1 = EventSequenceNumber.Client.Composite.make({ global: 0, client: 0, rebaseGeneration: 2 })
-    expect(EventSequenceNumber.Client.nextPair({ seqNum: e_0_0_g1, isClient: false }).seqNum).toStrictEqual({
+    expect(EventSequenceNumber.Client.nextPair({ seqNum: e_0_0_g1, isClientOnly: false }).seqNum).toStrictEqual({
       global: 1,
       client: 0,
       rebaseGeneration: 2,

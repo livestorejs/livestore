@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/correctness/noUnusedVariables: docs snippet highlights derived signal */
 // ---cut---
 import { computed, signal } from '@livestore/livestore'
 

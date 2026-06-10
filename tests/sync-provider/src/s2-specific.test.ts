@@ -1,5 +1,8 @@
+import { expect } from 'vitest'
+
 import { EventSequenceNumber, LiveStoreEvent, nanoid } from '@livestore/livestore'
 import { events } from '@livestore/livestore/internal/testing-utils'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Effect,
   FetchHttpClient,
@@ -12,8 +15,6 @@ import {
   Schema,
   Stream,
 } from '@livestore/utils/effect'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
 
 import * as S2Provider from './providers/s2.ts'
 import { SyncProviderImpl } from './types.ts'

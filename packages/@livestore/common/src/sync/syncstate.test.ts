@@ -8,13 +8,13 @@ import * as SyncState from './syncstate.ts'
 
 class TestEvent extends LiveStoreEvent.Client.EncodedWithMeta {
   public payload = 'uninitialized'
-  public isClient = false
+  public isClientOnly = false
 
   static new = (
     seqNum: EventSequenceNumber.Client.CompositeInput,
     parentSeqNum: EventSequenceNumber.Client.CompositeInput,
     payload: string,
-    isClient: boolean,
+    isClientOnly: boolean,
   ) => {
     const event = new TestEvent({
       seqNum: EventSequenceNumber.Client.Composite.make(seqNum),
@@ -25,12 +25,12 @@ class TestEvent extends LiveStoreEvent.Client.EncodedWithMeta {
       sessionId: 'static-session-id',
     })
     event.payload = payload
-    event.isClient = isClient
+    event.isClientOnly = isClientOnly
     return event
   }
 
   rebase_ = (parentSeqNum: EventSequenceNumber.Client.Composite, rebaseGeneration: number) => {
-    return this.rebase({ parentSeqNum, isClient: this.isClient, rebaseGeneration })
+    return this.rebase({ parentSeqNum, isClientOnly: this.isClientOnly, rebaseGeneration })
   }
 
   // Only used for Vitest printing
@@ -48,7 +48,7 @@ const e2_1 = TestEvent.new({ global: 2, client: 1 }, e2_0.seqNum, 'a', true)
 
 const isEqualEvent = LiveStoreEvent.Client.isEqualEncoded
 
-const isClientEvent = (event: LiveStoreEvent.Client.EncodedWithMeta) => (event as TestEvent).isClient
+const isClientEvent = (event: LiveStoreEvent.Client.EncodedWithMeta) => (event as TestEvent).isClientOnly
 
 Vitest.describe('syncstate', () => {
   Vitest.describe('merge', () => {

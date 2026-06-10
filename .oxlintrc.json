@@ -39,6 +39,12 @@
     "import/no-commonjs": "error",
     "typescript/consistent-type-imports": "warn",
     "overeng/explicit-boolean-compare": "warn",
+    "no-param-reassign": "error",
+    "default-param-last": "error",
+    "typescript/prefer-enum-initializers": "error",
+    "react/self-closing-comp": "error",
+    "typescript/prefer-namespace-keyword": "error",
+    "typescript/no-inferrable-types": "error",
     "unicorn/no-array-callback-reference": "off",
     "typescript/no-explicit-any": "off",
     "typescript/no-deprecated": "off",
@@ -146,12 +152,6 @@
       }
     },
     {
-      "files": ["packages/@livestore/react/src/useRcResource.ts"],
-      "rules": {
-        "react-hooks/exhaustive-deps": "off"
-      }
-    },
-    {
       "files": ["**/wa-sqlite/**"],
       "rules": {
         "func-style": "off",
@@ -160,7 +160,8 @@
         "unicorn/no-new-array": "off",
         "unicorn/no-array-sort": "off",
         "unicorn/consistent-function-scoping": "off",
-        "overeng/explicit-boolean-compare": "off"
+        "overeng/explicit-boolean-compare": "off",
+        "no-param-reassign": "off"
       }
     },
     {

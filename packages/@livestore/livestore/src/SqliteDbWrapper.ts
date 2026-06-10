@@ -1,3 +1,5 @@
+import type * as otel from '@opentelemetry/api'
+
 import {
   BoundArray,
   BoundMap,
@@ -15,7 +17,6 @@ import {
   sql,
 } from '@livestore/common'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
-import type * as otel from '@opentelemetry/api'
 
 import QueryCache from './QueryCache.ts'
 

@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/correctness/noUnusedVariables: docs snippet demonstrates shutdown helpers */
 // ---cut---
 
 import { Effect } from 'effect'

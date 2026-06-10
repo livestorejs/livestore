@@ -965,9 +965,7 @@ const patchJsModules = (modules: readonly string[]): string[] =>
           }
           if (patched.includes('s.style.visibility="visible",s.setAttribute') === false) {
             patched = patched.replace(
-              // biome-ignore lint/suspicious/noTemplateCurlyInString: it's ok
               'Object.assign(s.style,{display:"block",left:`${o?20:e}px`,top:t+"px"})',
-              // biome-ignore lint/suspicious/noTemplateCurlyInString: it's ok
               'Object.assign(s.style,{left:`${o?20:e}px`,top:t+"px"}),s.style.visibility="visible"',
             )
           }

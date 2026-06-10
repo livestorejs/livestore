@@ -1,14 +1,15 @@
-/** biome-ignore-all lint/correctness/noEmptyPattern: playwright expects destructuring */
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import * as Playwright from '@livestore/effect-playwright'
-import type { Scope } from '@livestore/utils/effect'
-import { Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
+
 import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
 import { test } from '@playwright/test'
+
+import * as Playwright from '@livestore/effect-playwright'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import type { Scope } from '@livestore/utils/effect'
+import { Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
 
 import { checkConnectionRemainsActive, checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
 

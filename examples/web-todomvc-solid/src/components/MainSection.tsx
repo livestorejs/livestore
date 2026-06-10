@@ -53,7 +53,6 @@ export const MainSection: Component = () => {
                   data-todo-id={todo.id}
                   onChange={handleToggleChange()}
                 />
-                {/* biome-ignore lint/a11y/noLabelWithoutControl: otherwise breaks TODO MVC CSS */}
                 <label>{todo.text}</label>
                 <button type="button" class="destroy" data-todo-id={todo.id} onClick={handleDeleteClick()} />
               </div>

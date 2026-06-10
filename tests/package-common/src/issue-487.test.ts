@@ -1,9 +1,10 @@
+import { expect } from 'vitest'
+
 import { makeAdapter } from '@livestore/adapter-node'
 import { makeSchema, State } from '@livestore/common/schema'
 import { createStore, SessionIdSymbol } from '@livestore/livestore'
-import { Effect, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+import { Effect, Schema } from '@livestore/utils/effect'
 
 Vitest.describe('issue #487 - Optional fields without defaults cause errors', () => {
   Vitest.scopedLive('reproduces livestore-optional-field-bug repo scenario', (test) =>

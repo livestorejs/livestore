@@ -61,7 +61,6 @@ export const MainSection: React.FC = () => {
                 data-todo-id={todo.id}
                 onChange={handleTodoToggle}
               />
-              {/** biome-ignore lint/a11y/noLabelWithoutControl: otherwise breaks TODO MVC CSS 🙈 */}
               <label>{todo.text}</label>
               <button type="button" className="destroy" data-todo-id={todo.id} onClick={handleTodoDelete} />
             </div>

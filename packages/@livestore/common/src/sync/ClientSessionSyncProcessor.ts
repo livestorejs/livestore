@@ -278,7 +278,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         const eventDef = yield* Effect.fromNullable(schema.eventsDefsMap.get(name)).pipe(Effect.orDieDebugger)
         const nextNumPair = EventSequenceNumber.Client.nextPair({
           seqNum: baseEventSequenceNumber,
-          isClient: eventDef.options.clientOnly,
+          isClientOnly: eventDef.options.clientOnly,
           rebaseGeneration: baseEventSequenceNumber.rebaseGeneration,
         })
         baseEventSequenceNumber = nextNumPair.seqNum
@@ -409,7 +409,7 @@ const resequenceEvents = ({
   return events.map((event) => {
     const nextEvent = event.rebase({
       parentSeqNum,
-      isClient: isClientEvent(event),
+      isClientOnly: isClientEvent(event),
       rebaseGeneration: baseEventSequenceNumber.rebaseGeneration,
     })
     parentSeqNum = nextEvent.seqNum

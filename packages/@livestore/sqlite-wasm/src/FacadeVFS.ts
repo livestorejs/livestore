@@ -4,10 +4,6 @@
 // - @livestore/wa-sqlite is a direct wrapper of upstream wa-sqlite (kept as JavaScript for easier upstream sync)
 // - @livestore/sqlite-wasm is where we add TypeScript abstractions on top of wa-sqlite
 
-/** biome-ignore-all lint/complexity/useLiteralKeys: not needed for this file */
-/** biome-ignore-all lint/correctness/noUnusedFunctionParameters: not needed for this file */
-/** biome-ignore-all lint/complexity/noUselessConstructor: keep constructor for compatibility */
-
 // @ts-nocheck
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 

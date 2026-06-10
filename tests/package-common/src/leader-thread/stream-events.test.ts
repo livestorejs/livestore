@@ -99,7 +99,7 @@ const makeClientOnlyEvent = ({
 } => {
   const nextPair = EventSequenceNumber.Client.nextPair({
     seqNum: base,
-    isClient: true,
+    isClientOnly: true,
     rebaseGeneration: base.rebaseGeneration,
   })
 

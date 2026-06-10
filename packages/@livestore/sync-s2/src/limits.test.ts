@@ -1,5 +1,6 @@
-import type { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { describe, expect, it } from 'vitest'
+
+import type { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 
 import {
   chunkEventsForS2,

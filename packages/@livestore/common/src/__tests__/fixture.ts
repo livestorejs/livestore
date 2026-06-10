@@ -1,7 +1,7 @@
 import { Schema } from '@livestore/utils/effect'
 
-import { SessionIdSymbol } from '../session-id-symbol.ts'
 import { makeSchema, State } from '../schema/mod.ts'
+import { SessionIdSymbol } from '../session-id-symbol.ts'
 
 export const UiState = State.SQLite.clientDocument({
   name: 'UiState',

@@ -1,6 +1,6 @@
 import { UnknownError } from '@livestore/common'
-import { EventSequenceNumber, State } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
+import { EventSequenceNumber, State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Context, Effect, Layer, Predicate } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'

@@ -135,7 +135,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
       const nextPair = EventSequenceNumber.Client.nextPair({
         seqNum: syncState.localHead,
-        isClient: false,
+        isClientOnly: false,
       })
 
       const localEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
@@ -184,7 +184,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
       const nextPair = EventSequenceNumber.Client.nextPair({
         seqNum: syncState.localHead,
-        isClient: false,
+        isClientOnly: false,
       })
 
       const localEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
@@ -249,7 +249,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
       const nextPair = EventSequenceNumber.Client.nextPair({
         seqNum: syncState.localHead,
-        isClient: false,
+        isClientOnly: false,
       })
 
       const localEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
@@ -566,7 +566,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       const syncStateBefore = yield* leaderThreadCtx.syncProcessor.syncState.get
       const nextPair = EventSequenceNumber.Client.nextPair({
         seqNum: syncStateBefore.localHead,
-        isClient: true,
+        isClientOnly: true,
         rebaseGeneration: syncStateBefore.localHead.rebaseGeneration + 1,
       })
 

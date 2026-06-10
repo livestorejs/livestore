@@ -4,9 +4,9 @@ import type { EventDef } from '../../../schema/EventDef/mod.ts'
 import { defineEvent, defineFacts } from '../../../schema/EventDef/mod.ts'
 import * as EventSequenceNumber from '../../../schema/EventSequenceNumber/mod.ts'
 import { factsSnapshotForDag, getFactsGroupForEventArgs } from '../facts.ts'
-import { historyDagFromNodes } from '../history-dag.ts'
 import type { HistoryDagNode } from '../history-dag-common.ts'
 import { rootEventNode } from '../history-dag-common.ts'
+import { historyDagFromNodes } from '../history-dag.ts'
 
 export const printEvent = ({ seqNum, parentSeqNum, factsGroup, ...rest }: HistoryDagNode) => ({
   seqNum: EventSequenceNumber.Client.toString(seqNum),
@@ -146,7 +146,7 @@ export const toEventNodes = (
     const eventDef = eventDefs[partialEvent.name]!
     const eventNum = EventSequenceNumber.Client.nextPair({
       seqNum: currentEventSequenceNumber,
-      isClient: eventDef.options.clientOnly,
+      isClientOnly: eventDef.options.clientOnly,
     }).seqNum
     currentEventSequenceNumber = eventNum
 

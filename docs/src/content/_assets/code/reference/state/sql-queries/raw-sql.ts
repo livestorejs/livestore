@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/correctness/noUnusedVariables: docs snippet keeps reactive references */
 // ---cut---
 import { queryDb, Schema, State, sql } from '@livestore/livestore'
 
