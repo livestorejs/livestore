@@ -86,9 +86,9 @@ export type TableOptions = {
  * })
  * ```
  *
- * Each column declares its SQLite affinity and nullability explicitly. A column can still carry a
- * per-value Effect Schema for encode/decode (e.g. `State.SQLite.text({ schema })`, `json`, `datetime`,
- * `boolean`) — the schema applies to that single column's value, not to the table shape.
+ * Each column declares its SQLite type and nullability. A column may also provide an Effect Schema
+ * to encode/decode its value (e.g. `State.SQLite.text({ schema })`, `json`, `datetime`, `boolean`),
+ * which lets you read and write richer types while storing them in a single SQLite column.
  *
  * ```ts
  * // Adding indexes
