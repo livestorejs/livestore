@@ -140,6 +140,7 @@ export const repoPnpmOnlyBuiltDependencies = Object.entries(repoPnpmAllowBuilds)
 
 /** Repo-specific pnpm packageExtensions for starlight/typedoc peer resolution */
 export const repoPackageExtensions = {
+  '@effect/vitest': { dependencies: { '@vitest/runner': '3.2.4' } },
   'starlight-auto-sidebar': { dependencies: { astro: '>=5.0.0' } },
   'starlight-links-validator': { dependencies: { astro: '>=5.0.0' } },
   'starlight-sidebar-topics': { dependencies: { astro: '>=5.0.0' } },

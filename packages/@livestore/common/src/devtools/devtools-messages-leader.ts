@@ -81,7 +81,7 @@ export const LoadDatabaseFile = LeaderReqResMessage('LSD.Leader.LoadDatabaseFile
   },
   success: {},
   error: {
-    cause: Schema.Union([Schema.TaggedStruct('unsupported-file', {}), Schema.TaggedStruct('unsupported-database', {}), Schema.TaggedStruct('unknown-error', { cause: Schema.Defect })]),
+    cause: Schema.Union([Schema.TaggedStruct('unsupported-file', {}), Schema.TaggedStruct('unsupported-database', {}), Schema.TaggedStruct('unknown-error', { cause: Schema.Defect() })]),
   },
 })
 

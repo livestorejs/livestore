@@ -15,7 +15,7 @@ export class NetlifyError extends Schema.TaggedErrorClass<NetlifyError>()('Netli
 }) {}
 
 class FileReadError extends Schema.TaggedErrorClass<FileReadError>()('FileReadError', {
-  cause: Schema.Defect,
+  cause: Schema.Defect(),
   path: Schema.String,
 }) {}
 

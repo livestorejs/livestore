@@ -648,7 +648,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
    *
    * This test creates the error, encodes it to JSON, and verifies all fields
    * are preserved - which was broken before the fix for issue #981 where
-   * Schema.Defect lost the structured error fields during serialization.
+   * Schema.Defect() lost the structured error fields during serialization.
    *
    * @see https://github.com/livestorejs/livestore/issues/981
    */

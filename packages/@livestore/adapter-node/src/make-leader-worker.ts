@@ -90,8 +90,6 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
           batch.map(
             (item: typeof LiveStoreEvent.Client.Encoded.Type) => new LiveStoreEvent.Client.EncodedWithMeta(item),
           ),
-          // We'll wait in order to keep back pressure on the client session
-          { waitForProcessing: true },
         ),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-node:worker:PushToLeader')),
     BootStatusStream: () =>

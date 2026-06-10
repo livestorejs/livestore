@@ -1023,7 +1023,7 @@ describe('query builder', () => {
     it('fails to encode nested inserts because flat columns are required', () => {
       const contactsTable = makeContactsTable()
 
-      expect(() =>
+      try {
         contactsTable
           .insert({
             id: 'person-1',
@@ -1034,11 +1034,25 @@ describe('query builder', () => {
               email: 'ada@example.com',
             },
           })
-          .asSql(),
-      ).toThrowErrorMatchingInlineSnapshot(`
-        [Error: Missing key
-          at ["contactFirstName"]]
-      `)
+          .asSql()
+
+        expect.fail('Expected nested insert to fail')
+      } catch (error) {
+        expect(error).toMatchObject({
+          _tag: 'SchemaError',
+          name: 'SchemaError',
+          issue: {
+            _tag: 'Composite',
+            issues: [
+              {
+                _tag: 'Pointer',
+                path: ['contactFirstName'],
+                issue: { _tag: 'MissingKey' },
+              },
+            ],
+          },
+        })
+      }
     })
   })
 })

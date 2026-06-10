@@ -115,7 +115,6 @@ export const makeAdapter =
               push: (batch) =>
                 syncProcessor.push(
                   batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
-                  { waitForProcessing: true },
                 ),
               stream: (options) =>
                 streamEventsWithSyncState({

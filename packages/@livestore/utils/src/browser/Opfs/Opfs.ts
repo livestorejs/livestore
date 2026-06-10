@@ -495,5 +495,5 @@ export const noopOpfs: OpfsOperations = {
  */
 export class OpfsError extends Schema.TaggedErrorClass<OpfsError>()('OpfsError', {
   message: Schema.String,
-  cause: Schema.optional(Schema.Defect),
+  cause: Schema.optional(Schema.Defect()),
 }) {}

@@ -861,18 +861,19 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
       commitsSpan?.addLink({ context: currentSpan.spanContext() })
 
-      for (const event of events) {
-        event.args = resolveSessionIdSymbolInEventArgs(
-          event.args,
-          this[StoreInternalsSymbol].clientSession.sessionId,
-        ) as typeof event.args
-      }
-
       if (events.length === 0) return
 
       const localContext = yield* Effect.context()
 
-      const encodedEvents = yield* this[StoreInternalsSymbol].syncProcessor.encodeEvents(events)
+      const eventsForCommit = events.map((event) => ({
+        ...event,
+        args: resolveSessionIdSymbolInEventArgs(
+          event.args,
+          this[StoreInternalsSymbol].clientSession.sessionId,
+        ) as typeof event.args,
+      }))
+
+      const encodedEvents = yield* this[StoreInternalsSymbol].syncProcessor.encodeEvents(eventsForCommit)
 
       const { writeTables } = yield* Effect.try({
         try: () => {

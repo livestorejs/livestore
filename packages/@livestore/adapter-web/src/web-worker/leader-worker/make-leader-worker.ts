@@ -259,8 +259,6 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           batch.map(
             (event: typeof LiveStoreEvent.Client.Encoded.Type) => new LiveStoreEvent.Client.EncodedWithMeta(event),
           ),
-          // We'll wait in order to keep back pressure on the client session
-          { waitForProcessing: true },
         ),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-web:worker:PushToLeader')),
     StreamEvents: (options) =>

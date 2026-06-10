@@ -3,7 +3,7 @@ import { Cause, Effect, Layer, Result, Schema, Stream, Struct } from '@livestore
 import * as LiveStoreEvent from './schema/LiveStoreEvent/mod.ts'
 
 export class UnknownError extends Schema.TaggedErrorClass<UnknownError>()('UnknownError', {
-  cause: Schema.Defect,
+  cause: Schema.Defect(),
   note: Schema.optional(Schema.String),
   payload: Schema.optional(Schema.Any),
 }) {
@@ -58,7 +58,7 @@ export class SqliteError extends Schema.TaggedErrorClass<SqliteError>()('SqliteE
   // Added string support for Expo SQLite (we should refactor this to have a unified error type)
   code: Schema.optional(Schema.Union([Schema.Number, Schema.String])),
   /** The original SQLite3 error */
-  cause: Schema.Defect,
+  cause: Schema.Defect(),
   note: Schema.optional(Schema.String),
 }) {}
 

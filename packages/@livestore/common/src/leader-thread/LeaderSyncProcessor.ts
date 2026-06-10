@@ -43,7 +43,7 @@ const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
 
 type LocalPushQueueItem = [
   event: LiveStoreEvent.Client.EncodedWithMeta,
-  deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError> | undefined,
+  deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>,
 ]
 
 export interface Service {
@@ -57,7 +57,6 @@ export interface Service {
   }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, never, Scope.Scope>
   readonly push: (
     batch: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
-    options?: { waitForProcessing?: boolean },
   ) => Effect.Effect<void, LeaderAheadError | NonMonotonicBatchError | StaleRebaseGenerationError>
   readonly pushPartial: (args: {
     event: LiveStoreEvent.Input.Encoded
@@ -229,7 +228,7 @@ export const makeLeaderSyncProcessor = ({
     }
 
     // NOTE: New events are only pushed to sync backend after successful local push processing
-    const push: Service['push'] = (newEvents, options) =>
+    const push: Service['push'] = (newEvents) =>
       Effect.gen(function* () {
         if (newEvents.length === 0) return
 
@@ -239,20 +238,15 @@ export const makeLeaderSyncProcessor = ({
 
         advancePushHead(newEvents.at(-1)!.seqNum)
 
-        const waitForProcessing = options?.waitForProcessing ?? false
+        const deferreds = yield* Effect.forEach(newEvents, () =>
+          Deferred.make<void, LeaderAheadError | StaleRebaseGenerationError>(),
+        )
 
-        if (waitForProcessing === true) {
-          const deferreds = yield* Effect.forEach(newEvents, () => Deferred.make<void, LeaderAheadError | StaleRebaseGenerationError>())
+        const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]!] as LocalPushQueueItem)
 
-          const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
+        yield* BucketQueue.offerAll(localPushesQueue, items)
 
-          yield* BucketQueue.offerAll(localPushesQueue, items)
-
-          yield* Effect.forEach(deferreds, Deferred.await)
-        } else {
-          const items = newEvents.map((eventEncoded) => [eventEncoded, undefined] as LocalPushQueueItem)
-          yield* BucketQueue.offerAll(localPushesQueue, items)
-        }
+        yield* Effect.forEach(deferreds, Deferred.await)
       }).pipe(
         Effect.withSpan('@livestore/common:LeaderSyncProcessor:push', {
           attributes: {
@@ -282,7 +276,11 @@ export const makeLeaderSyncProcessor = ({
             sessionId,
             seqNum: syncState.localHead,
           },
-        })
+        }).pipe(
+          Effect.catchTag('UnknownEventError', (error) =>
+            Effect.succeed({ _tag: 'unknown' as const, reason: error.reason }),
+          ),
+        )
 
         if (resolution._tag === 'unknown') {
           // Ignore partial pushes for unrecognised events – they are still
@@ -533,28 +531,19 @@ const backgroundApplyLocalPushes = ({
 
         if (droppedItems.length > 0) {
           yield* Effect.spanEvent(`push:drop-old-generation`, {
-          droppedCount: droppedItems.length,
-          currentRebaseGeneration,
-        })
+            droppedCount: droppedItems.length,
+            currentRebaseGeneration,
+          })
 
-        /**
-         * Dropped pushes may still have a deferred awaiting completion.
-         * Fail it so the caller learns the leader advanced and resubmits with the updated generation.
-         */
-        yield* Effect.forEach(
-          droppedItems.filter(
-            (item): item is [LiveStoreEvent.Client.EncodedWithMeta, Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>] =>
-                item[1] !== undefined,
-            ),
-            ([eventEncoded, deferred]) =>
-              Deferred.fail(
-                deferred,
-                StaleRebaseGenerationError.make({
-                  currentRebaseGeneration,
-                  providedRebaseGeneration: eventEncoded.seqNum.rebaseGeneration,
+          yield* Effect.forEach(droppedItems, ([eventEncoded, deferred]) =>
+            Deferred.fail(
+              deferred,
+              StaleRebaseGenerationError.make({
+                currentRebaseGeneration,
+                providedRebaseGeneration: eventEncoded.seqNum.rebaseGeneration,
                 sessionId: eventEncoded.sessionId,
-                }),
-              ),
+              }),
+            ),
           )
         }
 
@@ -565,8 +554,8 @@ const backgroundApplyLocalPushes = ({
         const [newEvents, deferreds] = ReadonlyArray.unzip(filteredItems)
 
         yield* Effect.annotateCurrentSpan({
-        'batchSize': newEvents.length,
-        ...(TRACE_VERBOSE === true ? { 'newEvents': jsonStringify(newEvents) } : {}),
+          batchSize: newEvents.length,
+          ...(TRACE_VERBOSE === true ? { newEvents: jsonStringify(newEvents) } : {}),
         })
 
         const mergeResult = yield* SyncState.merge({
@@ -608,12 +597,16 @@ const backgroundApplyLocalPushes = ({
             const allDeferredsToReject = [
               ...deferreds,
               ...remainingEventsMatchingGeneration.map(([_, deferred]) => deferred),
-            ].filter(isNotUndefined)
+            ]
 
             yield* Effect.forEach(allDeferredsToReject, (deferred) =>
               Deferred.fail(
                 deferred,
-                LeaderAheadError.make({ minimumExpectedNum: mergeResult.expectedMinimumId, providedNum, sessionId: newEvents.at(0)!.sessionId }),
+                LeaderAheadError.make({
+                  minimumExpectedNum: mergeResult.expectedMinimumId,
+                  providedNum,
+                  sessionId: newEvents.at(0)!.sessionId,
+                }),
               ),
             )
 
@@ -631,7 +624,7 @@ const backgroundApplyLocalPushes = ({
 
         yield* Effect.spanEvent(`push:advance`, {
           batchSize: newEvents.length,
-        ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+          ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
         })
 
         // Don't sync client-local events

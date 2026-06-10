@@ -3,7 +3,7 @@ import type { Schedule, Scope } from 'effect'
 import { Effect, Exit, identity, Schema } from 'effect'
 
 export class WebSocketError extends Schema.TaggedErrorClass<WebSocketError>()('WebSocketError', {
-  cause: Schema.Defect,
+  cause: Schema.Defect(),
 }) {}
 
 // TODO refactor using Effect socket implementation

@@ -50,6 +50,9 @@ allowBuilds:
   workerd: true
 
 packageExtensions:
+  '@effect/vitest':
+    dependencies:
+      '@vitest/runner': 3.2.4
   react-error-boundary:
     dependencies:
       '@types/react': 19.2.7

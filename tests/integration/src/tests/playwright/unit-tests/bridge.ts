@@ -8,12 +8,12 @@ export class ResultBootStatus extends Schema.TaggedClass<ResultBootStatus>()('Br
       migrationsReport: MigrationsReport,
     }),
     UnknownError,
-    Schema.Defect,
+    Schema.Defect(),
   ),
 }) {}
 
 export class ResultStoreBootError extends Schema.TaggedClass<ResultStoreBootError>()('Bridge.ResultStoreBootError', {
-  exit: Schema.Exit(Schema.Any, UnknownError, Schema.Defect),
+  exit: Schema.Exit(Schema.Any, UnknownError, Schema.Defect()),
 }) {}
 
 export class ResultMultipleMigrations extends Schema.TaggedClass<ResultMultipleMigrations>()('Bridge.ResultMultipleMigrations', {
@@ -29,6 +29,6 @@ export class ResultMultipleMigrations extends Schema.TaggedClass<ResultMultipleM
       ),
     }),
     UnknownError,
-    Schema.Defect,
+    Schema.Defect(),
   ),
 }) {}

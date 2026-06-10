@@ -341,7 +341,7 @@ export class UnknownError extends Schema.TaggedErrorClass<UnknownError>()('Unkno
   module: Schema.optional(Schema.String),
   method: Schema.optional(Schema.String),
   description: Schema.optional(Schema.String),
-  cause: Schema.optional(Schema.Defect),
+  cause: Schema.optional(Schema.Defect()),
 }) {
   readonly [TypeId] = TypeId
   override get message(): string {

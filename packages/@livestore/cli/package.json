@@ -33,32 +33,32 @@
     "dev": "bun src/bin.ts"
   },
   "dependencies": {
-    "@effect/ai-openai": "4.0.0-beta.70",
-    "@effect/opentelemetry": "4.0.0-beta.70",
+    "@effect/ai-openai": "4.0.0-beta.78",
+    "@effect/opentelemetry": "4.0.0-beta.78",
     "@livestore/adapter-node": "workspace:^",
     "@livestore/common": "workspace:^",
     "@livestore/livestore": "workspace:^",
     "@livestore/peer-deps": "workspace:^",
     "@livestore/utils": "workspace:^",
-    "effect": "4.0.0-beta.70"
+    "effect": "4.0.0-beta.78"
   },
   "devDependencies": {
-    "@effect/platform-node": "4.0.0-beta.70",
+    "@effect/platform-node": "4.0.0-beta.78",
     "@livestore/utils-dev": "workspace:^",
     "@types/node": "25.3.3",
     "typescript": "5.9.3",
     "vitest": "3.2.4"
   },
   "peerDependencies": {
-    "@effect/opentelemetry": "^4.0.0-beta.70",
-    "@effect/platform-browser": "^4.0.0-beta.70",
-    "@effect/platform-bun": "^4.0.0-beta.70",
-    "@effect/platform-node": "^4.0.0-beta.70",
-    "@effect/vitest": "^4.0.0-beta.70",
+    "@effect/opentelemetry": "^4.0.0-beta.78",
+    "@effect/platform-browser": "^4.0.0-beta.78",
+    "@effect/platform-bun": "^4.0.0-beta.78",
+    "@effect/platform-node": "^4.0.0-beta.78",
+    "@effect/vitest": "^4.0.0-beta.78",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/resources": "^2.2.0",
     "@standard-schema/spec": "^1.1.0",
-    "effect": "^4.0.0-beta.70"
+    "effect": "^4.0.0-beta.78"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

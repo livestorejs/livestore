@@ -15,7 +15,7 @@ import { ChildProcess } from 'effect/unstable/process'
 import * as ChildProcessSpawner from 'effect/unstable/process/ChildProcessSpawner'
 
 export class DockerComposeError extends Schema.TaggedErrorClass<DockerComposeError>()('DockerComposeError', {
-  cause: Schema.Defect,
+  cause: Schema.Defect(),
   note: Schema.String,
 }) {}
 

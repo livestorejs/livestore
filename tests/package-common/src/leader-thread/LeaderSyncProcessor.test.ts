@@ -146,7 +146,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         parentSeqNum: nextPair.parentSeqNum,
       })
 
-      yield* leaderThreadCtx.syncProcessor.push([localEvent], { waitForProcessing: true })
+      yield* leaderThreadCtx.syncProcessor.push([localEvent])
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(5000))
 
@@ -199,7 +199,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         parentSeqNum: nextPair.parentSeqNum,
       })
 
-      yield* leaderThreadCtx.syncProcessor.push([localEvent], { waitForProcessing: true })
+      yield* leaderThreadCtx.syncProcessor.push([localEvent])
 
       const rows = leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)
       expect(rows.map((row) => row.id).toSorted()).toEqual(['backend-1', 'local-after-pull-failure'])
@@ -264,7 +264,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         parentSeqNum: nextPair.parentSeqNum,
       })
 
-      yield* leaderThreadCtx.syncProcessor.push([localEvent], { waitForProcessing: true })
+      yield* leaderThreadCtx.syncProcessor.push([localEvent])
 
       const rows = leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)
       expect(rows.map((row) => row.id).toSorted()).toEqual(['backend-1', 'local-after-pull-interrupt'])
@@ -314,7 +314,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         rebaseGeneration: syncStateBefore.localHead.rebaseGeneration - 1,
       })
 
-      // The waitForProcessing flag ensures push waits on the deferred, so we observe the rejection path.
+      // Push waits on the deferred, so we observe the rejection path.
       const staleEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
         ...LiveStoreEvent.Global.toClientEncoded(baseEvent),
         seqNum: staleSeq,
@@ -322,7 +322,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       })
 
       const error = yield* leaderThreadCtx.syncProcessor
-        .push([staleEvent], { waitForProcessing: true })
+        .push([staleEvent])
         .pipe(Effect.flip)
 
       expect(error._tag).toBe('StaleRebaseGenerationError')

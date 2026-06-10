@@ -31,6 +31,11 @@ const examplesWorkspaceSettings = {
 }
 
 export const repoPackageExtensions = {
+  '@effect/vitest': {
+    dependencies: {
+      '@vitest/runner': '3.2.4',
+    },
+  },
   'starlight-auto-sidebar': {
     dependencies: {
       astro: '>=5.0.0',
