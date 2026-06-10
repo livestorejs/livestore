@@ -842,7 +842,6 @@ describe('query builder', () => {
       expect(pattern1).toEqual(pattern2)
     })
   })
-
 })
 
 // TODO nested queries
