@@ -107,7 +107,7 @@ export type TableOptions = {
  * - Primary key columns are automatically non-nullable
  * - Default values can be literal values or SQL expressions
  */
-export function table<
+export const table = <
   TName extends string,
   TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition.Any,
   const TOptionsInput extends TableOptionsInput = TableOptionsInput,
@@ -116,7 +116,7 @@ export function table<
     name: TName
     columns: TColumns
   } & Partial<TOptionsInput>,
-): TableDef<SqliteTableDefForInput<TName, TColumns>, WithDefaults<TColumns>> {
+): TableDef<SqliteTableDefForInput<TName, TColumns>, WithDefaults<TColumns>> => {
   const { ...options } = args
 
   const tableName = args.name
