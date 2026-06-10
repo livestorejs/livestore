@@ -3,7 +3,7 @@ import path from 'node:path'
 import { SyncBackend, UnknownError } from '@livestore/common'
 import { MAX_DO_RPC_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST, splitChunkBySize } from '@livestore/sync-cf/common'
 import { omit } from '@livestore/utils'
-import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
+import { WranglerDevServerService, makeWranglerDevServerLayer } from '@livestore/utils-dev/wrangler'
 import {
   Chunk,
   Effect,
@@ -16,17 +16,17 @@ import {
   Stream,
   SubscriptionRef,
 } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 import { DoRpcProxyRpcs } from './cloudflare/do-rpc-proxy-schema.ts'
 
+import * as NodeServices from '@effect/platform-node/NodeServices'
 export const name = 'Cloudflare Durable Object RPC'
 
 export const prepare = Effect.void
 
 const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): SyncProviderLayer =>
-  Layer.scoped(
+  Layer.effect(
     SyncProviderImpl,
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
@@ -44,13 +44,13 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
     }),
   ).pipe(
     Layer.provide(
-      WranglerDevServerService.Default({
+      makeWranglerDevServerLayer({
         cwd: path.join(import.meta.dirname, 'cloudflare'),
         ...(config?.wranglerConfigPath && { wranglerConfigPath: config.wranglerConfigPath }),
-      }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+      }).pipe(Layer.provide(NodeServices.layer)),
     ),
     UnknownError.mapToUnknownErrorLayer,
-  )
+  ) as SyncProviderLayer
 
 export const d1 = {
   name: `${name} (D1)`,
@@ -114,7 +114,7 @@ const makeProxyDoRpcSync = ({
     const client = yield* RpcClient.make(DoRpcProxyRpcs).pipe(Effect.provide(ctx))
 
     const isConnected = yield* SubscriptionRef.fromStream(
-      client.IsConnected({ clientId, storeId, payload }).pipe(Stream.catchTag('RpcClientError', (e) => Effect.die(e))),
+      client.IsConnected({ clientId, storeId, payload }).pipe(Stream.catchTag('RpcClientError', (e) => Stream.die(e))) as Stream.Stream<boolean>,
       false,
     )
 
@@ -135,7 +135,7 @@ const makeProxyDoRpcSync = ({
             cursor: cursor.pipe(
               Option.map((a) => ({
                 eventSequenceNumber: a.eventSequenceNumber,
-                backendId: backendIdHelper.get().pipe(Option.getOrThrow),
+                backendId: Option.fromNullable(backendIdHelper.get()).pipe(Option.getOrThrow),
               })),
             ),
             live: options?.live ?? false,
@@ -144,7 +144,7 @@ const makeProxyDoRpcSync = ({
             Stream.tap((msg) => backendIdHelper.lazySet(msg.backendId).pipe(Effect.orDie)),
             Stream.map((res) => omit(res, ['backendId'])),
             Stream.catchTag('RpcClientError', (e) => Stream.die(e)),
-          ),
+          ) as unknown as ReturnType<SyncBackend.SyncBackend['pull']>,
       push: (batch) =>
         Effect.gen(function* () {
           if (batch.length === 0) {
@@ -172,8 +172,12 @@ const makeProxyDoRpcSync = ({
               batch: Chunk.toReadonlyArray(chunk),
             })
           }
-        }).pipe(Effect.withSpan('proxy-do-rpc-sync:push'), Effect.orDie),
-      ping: client.Ping({ clientId, storeId, payload }).pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
+        }).pipe(Effect.withSpan('proxy-do-rpc-sync:push'), Effect.orDie) as unknown as ReturnType<
+          SyncBackend.SyncBackend['push']
+        >,
+      ping: client.Ping({ clientId, storeId, payload }).pipe(
+        Effect.catchTag('RpcClientError', (e) => Effect.die(e)),
+      ) as SyncBackend.SyncBackend['ping'],
       metadata,
       supports: {
         pullPageInfoKnown: true,

@@ -14,6 +14,7 @@ import {
   RpcClient,
   RpcSerialization,
   Schedule,
+  Semaphore,
   Schema,
   Stream,
   SubscriptionRef,
@@ -41,7 +42,7 @@ export interface HttpSyncOptions {
      * How often to poll for new events
      * @default 5 seconds
      */
-    pollInterval?: Duration.DurationInput
+    pollInterval?: Duration.Input
   }
   ping?: {
     /**
@@ -52,12 +53,12 @@ export interface HttpSyncOptions {
      * How long to wait for a ping response before timing out
      * @default 10 seconds
      */
-    requestTimeout?: Duration.DurationInput
+    requestTimeout?: Duration.Input
     /**
      * How often to send ping requests
      * @default 10 seconds
      */
-    requestInterval?: Duration.DurationInput
+    requestInterval?: Duration.Input
   }
 }
 
@@ -73,7 +74,7 @@ export const makeHttpSync =
 
       const livePullInterval = options.livePull?.pollInterval ?? 5_000
 
-      const urlParamsData = yield* Schema.encode(SearchParamsSchema)({
+      const urlParamsData = yield* Schema.encodeEffect(SearchParamsSchema)({
         storeId,
         payload,
         transport: 'http',
@@ -100,14 +101,14 @@ export const makeHttpSync =
       const pingTimeout = options.ping?.requestTimeout ?? 10_000
 
       const ping: SyncBackend.SyncBackend<SyncMetadata>['ping'] = Effect.gen(function* () {
-        yield* rpcClient.SyncHttpRpc.Ping({ storeId, payload })
+        yield* rpcClient['SyncHttpRpc.Ping']({ storeId, payload })
 
         yield* SubscriptionRef.set(isConnected, true)
       }).pipe(
         UnknownError.mapToUnknownError,
         Effect.timeout(pingTimeout),
-        Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
-      )
+        Effect.catchTag('TimeoutError', () => SubscriptionRef.set(isConnected, false)),
+      ) as SyncBackend.SyncBackend<SyncMetadata>['ping']
 
       const pingInterval = options.ping?.requestInterval ?? 10_000
 
@@ -125,12 +126,12 @@ export const makeHttpSync =
         cursor.pipe(
           Option.map((a) => ({
             eventSequenceNumber: a.eventSequenceNumber as EventSequenceNumber.Global.Type,
-            backendId: backendIdHelper.get().pipe(Option.getOrThrow),
+            backendId: Option.getOrThrow(Option.fromNullable(backendIdHelper.get())),
           })),
         )
 
       const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (cursor, options) =>
-        rpcClient.SyncHttpRpc.Pull({
+        rpcClient['SyncHttpRpc.Pull']({
           storeId,
           payload,
           cursor: mapCursor(cursor),
@@ -145,22 +146,23 @@ export const makeHttpSync =
                   mapCursor,
                 )
 
-                return Stream.unfoldChunkEffect(initialPhase2Cursor, (currentCursor) =>
+                return Stream.paginate(initialPhase2Cursor, (currentCursor) =>
                   Effect.gen(function* () {
                     yield* Effect.sleep(livePullInterval)
 
-                    const items = yield* rpcClient.SyncHttpRpc.Pull({ storeId, payload, cursor: currentCursor }).pipe(
+                    const items = yield* rpcClient['SyncHttpRpc.Pull']({ storeId, payload, cursor: currentCursor }).pipe(
                       Stream.runCollect,
                     )
 
-                    const nextCursor = Chunk.last(items).pipe(
+                    const itemsArray = [...items]
+                    const nextCursor = Option.fromNullable(itemsArray.at(-1)).pipe(
                       Option.flatMap((item) => Option.fromNullable(item.batch.at(-1)?.eventEncoded.seqNum)),
                       Option.map((eventSequenceNumber) => ({ eventSequenceNumber })),
                       Option.orElse(() => currentCursor),
                       mapCursor,
                     )
 
-                    return Option.some([items, nextCursor])
+                    return [itemsArray, Option.some(nextCursor)] as const
                   }),
                 )
               })
@@ -173,9 +175,9 @@ export const makeHttpSync =
               : new UnknownError({ cause }),
           ),
           Stream.withSpan('http-sync-client:pull'),
-        )
+        ) as ReturnType<SyncBackend.SyncBackend<SyncMetadata>['pull']>
 
-      const pushSemaphore = yield* Effect.makeSemaphore(1)
+      const pushSemaphore = yield* Semaphore.make(1)
 
       const push: SyncBackend.SyncBackend<SyncMetadata>['push'] = Effect.fn('http-sync-client:push')(
         function* (batch) {
@@ -183,7 +185,7 @@ export const makeHttpSync =
             return
           }
 
-          const backendId = backendIdHelper.get()
+          const backendId = Option.fromNullable(backendIdHelper.get())
           const batchChunks = yield* Chunk.fromIterable(batch).pipe(
             splitChunkBySize({
               maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
@@ -200,7 +202,7 @@ export const makeHttpSync =
 
           for (const chunk of Chunk.toReadonlyArray(batchChunks)) {
             const chunkArray = Chunk.toReadonlyArray(chunk)
-            yield* rpcClient.SyncHttpRpc.Push({ storeId, payload, batch: chunkArray, backendId })
+            yield* rpcClient['SyncHttpRpc.Push']({ storeId, payload, batch: chunkArray, backendId })
           }
         },
         pushSemaphore.withPermits(1),
@@ -209,7 +211,7 @@ export const makeHttpSync =
             ? cause
             : new UnknownError({ cause }),
         ),
-      )
+      ) as SyncBackend.SyncBackend<SyncMetadata>['push']
 
       return SyncBackend.of({
         connect,

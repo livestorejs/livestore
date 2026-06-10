@@ -1,6 +1,14 @@
 import { LS_DEV } from '@livestore/utils'
-import { Context, Deferred, Effect, Layer, Stream, WebChannel } from '@livestore/utils/effect'
-import type { Worker } from '@livestore/utils/effect'
+import {
+  Context,
+  Deferred,
+  Effect,
+  EffectRpcClient,
+  Layer,
+  RpcClientError,
+  Stream,
+  WebChannel,
+} from '@livestore/utils/effect'
 
 import * as WebmeshSchema from '../mesh-schema.ts'
 import type { MeshNode } from '../node.ts'
@@ -13,10 +21,9 @@ declare global {
   var __debugWebmeshNode: any
 }
 
-export class CacheService extends Context.Tag('@livestore/webmesh:worker:CacheService')<
-  CacheService,
-  { node: MeshNode }
->() {
+export class CacheService extends Context.Service<CacheService, { node: MeshNode }>()(
+  '@livestore/webmesh:worker:CacheService',
+) {
   static layer = ({ nodeName }: { nodeName: string }) =>
     Effect.gen(function* () {
       const node = yield* makeMeshNode(nodeName)
@@ -24,11 +31,18 @@ export class CacheService extends Context.Tag('@livestore/webmesh:worker:CacheSe
       globalThis.__debugWebmeshNode = node
 
       return { node }
-    }).pipe(Layer.scoped(CacheService))
+    }).pipe(Layer.effect(CacheService))
 }
 
-export const CreateConnection = ({ from, port }: typeof WorkerSchema.CreateConnection.Type) =>
-  Stream.asyncScoped<{}, never, CacheService>((emit) =>
+export type WorkerClient = EffectRpcClient.FromGroup<typeof WorkerSchema.Rpcs, RpcClientError.RpcClientError>
+
+type CreateConnectionPayload = {
+  from: string
+  port: MessagePort
+}
+
+export const CreateConnection = ({ from, port }: CreateConnectionPayload) =>
+  Stream.fromEffect(
     Effect.gen(function* () {
       const { node } = yield* CacheService
 
@@ -40,9 +54,8 @@ export const CreateConnection = ({ from, port }: typeof WorkerSchema.CreateConne
         yield* Effect.logDebug(`@livestore/webmesh:worker: accepted edge: ${node.nodeName} <- ${from}`)
       }
 
-      emit.single({})
-
       yield* Effect.spanEvent({ connectedTo: [...node.edgeKeys] })
+      return {}
     }).pipe(Effect.orDie),
   ).pipe(Stream.withSpan(`@livestore/webmesh:worker:create-connection:${from}`))
 
@@ -53,7 +66,7 @@ export const connectViaWorker = ({
 }: {
   node: MeshNode
   target: string
-  worker: Worker.SerializedWorkerPool<typeof WorkerSchema.Request.Type>
+  worker: WorkerClient
 }) =>
   Effect.gen(function* () {
     const mc = new MessageChannel()
@@ -61,17 +74,19 @@ export const connectViaWorker = ({
     const isConnected = yield* Deferred.make<boolean>()
 
     if (LS_DEV === true) {
-      yield* Effect.addFinalizerLog(`@livestore/webmesh:worker: closing message channel ${node.nodeName} -> ${target}`)
+      yield* Effect.addFinalizerLog(
+        `@livestore/webmesh:worker: closing message channel ${node.nodeName} -> ${target}`,
+      )
     }
 
-    yield* worker.execute(WorkerSchema.CreateConnection.make({ from: node.nodeName, port: mc.port1 })).pipe(
+    yield* worker.CreateConnection({ from: node.nodeName, port: mc.port1 }).pipe(
       Stream.tap(() => Deferred.succeed(isConnected, true)),
       Stream.runDrain,
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
 
-    yield* isConnected
+    yield* Deferred.await(isConnected)
 
     const workerConnection = yield* WebChannel.messagePortChannel({
       port: mc.port2,

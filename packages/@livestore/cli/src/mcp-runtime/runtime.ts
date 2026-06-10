@@ -3,8 +3,8 @@ import { UnknownError } from '@livestore/common'
 import { LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
 import { createStorePromise } from '@livestore/livestore'
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 import { Effect, FetchHttpClient, Layer, Option, Schema } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
 import { loadModuleConfig } from '../module-loader.ts'
 
@@ -12,7 +12,7 @@ import { loadModuleConfig } from '../module-loader.ts'
 let store: Store<any> | undefined
 
 /** Layer providing FileSystem and HttpClient for module loading */
-const ModuleLoaderLayer = Layer.mergeAll(PlatformNode.NodeFileSystem.layer, FetchHttpClient.layer)
+const ModuleLoaderLayer = Layer.mergeAll(NodeFileSystem.layer, FetchHttpClient.layer)
 
 /**
  * Dynamically imports a module that exports a `makeStore({ storeId }): Promise<Store>` function,

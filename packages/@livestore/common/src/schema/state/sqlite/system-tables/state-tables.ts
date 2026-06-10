@@ -1,6 +1,7 @@
 import * as EventSequenceNumber from '../../../EventSequenceNumber/mod.ts'
 import { SqliteDsl } from '../db-schema/mod.ts'
 import { table } from '../table-def.ts'
+import type { TableDef } from '../table-def.ts'
 
 /**
  * STATE DATABASE SYSTEM TABLES
@@ -14,7 +15,7 @@ export const SCHEMA_META_TABLE = '__livestore_schema'
 /**
  * Tracks schema hashes for user-defined tables to detect schema changes.
  */
-export const schemaMetaTable = table({
+export const schemaMetaTable: TableDef.Any = table({
   name: SCHEMA_META_TABLE,
   columns: {
     tableName: SqliteDsl.text({ primaryKey: true }),
@@ -31,7 +32,7 @@ export const SCHEMA_EVENT_DEFS_META_TABLE = '__livestore_schema_event_defs'
 /**
  * Tracks schema hashes for event definitions to detect event schema changes.
  */
-export const schemaEventDefsMetaTable = table({
+export const schemaEventDefsMetaTable: TableDef.Any = table({
   name: SCHEMA_EVENT_DEFS_META_TABLE,
   columns: {
     eventName: SqliteDsl.text({ primaryKey: true }),
@@ -49,7 +50,7 @@ export type SchemaEventDefsMetaRow = typeof schemaEventDefsMetaTable.Type
  */
 export const SESSION_CHANGESET_META_TABLE = '__livestore_session_changeset'
 
-export const sessionChangesetMetaTable = table({
+export const sessionChangesetMetaTable: TableDef.Any = table({
   name: SESSION_CHANGESET_META_TABLE,
   columns: {
     // TODO bring back primary key
@@ -64,6 +65,10 @@ export const sessionChangesetMetaTable = table({
 
 export type SessionChangesetMetaRow = typeof sessionChangesetMetaTable.Type
 
-export const stateSystemTables = [schemaMetaTable, schemaEventDefsMetaTable, sessionChangesetMetaTable] as const
+export const stateSystemTables: ReadonlyArray<TableDef.Any> = [
+  schemaMetaTable,
+  schemaEventDefsMetaTable,
+  sessionChangesetMetaTable,
+]
 
 export const isStateSystemTable = (tableName: string) => stateSystemTables.some((_) => _.sqliteDef.name === tableName)

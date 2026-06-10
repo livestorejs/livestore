@@ -8,11 +8,11 @@ import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Chunk, Effect, Fiber, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
+import { Effect, FastCheck, Fiber, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
 
 import { appConfigSetEvent, events as fixtureEvents, schema as fixtureSchema } from './fixture.ts'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 const allFixtureEvents = {
   ...fixtureEvents,
   app_configSet: appConfigSetEvent,
@@ -21,7 +21,7 @@ const allFixtureEvents = {
 const makeFixtureEventFactory = EventFactory.makeFactory(allFixtureEvents)
 
 const withNodeFs = <R, E, A>(effect: Effect.Effect<A, E, R>) =>
-  effect.pipe(Effect.provide(PlatformNode.NodeFileSystem.layer))
+  effect.pipe(Effect.provide(NodeFileSystem.layer))
 
 /**
  * Minimal runtime for exercising `streamEventsWithSyncState` in isolation.
@@ -173,7 +173,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         yield* advanceHead(laterEvents[1]!.seqNum)
 
         const collected = yield* collectFiber.pipe(Fiber.join)
-        const emitted = Chunk.toReadonlyArray(collected)
+        const emitted = collected
 
         expect(emitted.map((event) => event.name)).toEqual([
           fixtureEvents.todoCreated.name,
@@ -222,7 +222,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
 
         yield* advanceHead(encodedEvents.at(-1)!.seqNum)
 
-        const emitted = Chunk.toReadonlyArray(yield* collectedFiber.pipe(Fiber.join))
+        const emitted = yield* collectedFiber.pipe(Fiber.join)
         expect(emitted.map((event) => event.name)).toEqual(['todoCompleted', 'todoCompleted'])
         yield* closeHeads
       }).pipe(Vitest.withTestCtx(test)),
@@ -259,7 +259,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         // Stream.take(n) here is omitted to verify that the stream finalizes when reaching until cursor
         const collectFiber = yield* stream.pipe(Stream.runCollect, Effect.forkScoped)
 
-        const emitted = Chunk.toReadonlyArray(yield* collectFiber.pipe(Fiber.join))
+        const emitted = yield* collectFiber.pipe(Fiber.join)
         yield* closeHeads
         expect(emitted.length).toEqual(2)
       }).pipe(Vitest.withTestCtx(test)),
@@ -291,7 +291,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
 
         yield* advanceHead(second.seqNum)
 
-        const emitted = Chunk.toReadonlyArray(yield* collectedFiber.pipe(Fiber.join))
+        const emitted = yield* collectedFiber.pipe(Fiber.join)
         expect(emitted.map((event) => event.seqNum)).toEqual([second.seqNum])
         yield* closeHeads
       }).pipe(Vitest.withTestCtx(test)),
@@ -329,7 +329,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
 
         yield* advanceHead(eventB.seqNum)
 
-        const emitted = Chunk.toReadonlyArray(yield* collectedFiber.pipe(Fiber.join))
+        const emitted = yield* collectedFiber.pipe(Fiber.join)
         expect(emitted.map((event) => event.clientId)).toEqual(['client-b'])
         yield* closeHeads
       }).pipe(Vitest.withTestCtx(test)),
@@ -371,7 +371,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
 
         yield* advanceHead(eventSessionTwo.seqNum)
 
-        const emitted = Chunk.toReadonlyArray(yield* collectedFiber.pipe(Fiber.join))
+        const emitted = yield* collectedFiber.pipe(Fiber.join)
         expect(emitted.map((event) => event.sessionId)).toEqual(['session-2'])
         yield* closeHeads
       }).pipe(Vitest.withTestCtx(test)),
@@ -426,7 +426,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
 
         yield* advanceHead(backendApproved[backendApproved.length - 1]!.seqNum)
 
-        const emitted = Chunk.toReadonlyArray(yield* collectFiber.pipe(Fiber.join))
+        const emitted = yield* collectFiber.pipe(Fiber.join)
 
         expect(emitted).toHaveLength(backendApproved.length)
         expect(emitted.map((event) => event.seqNum.global)).toEqual(backendApproved.map((event) => event.seqNum.global))
@@ -476,7 +476,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         yield* advanceHead(allEvents[allEvents.length - 1]!.seqNum)
 
         const collected = yield* stream.pipe(Stream.runCollect)
-        const emitted = Chunk.toReadonlyArray(collected)
+        const emitted = collected
 
         // Should only emit events 1-5 (5 events total), not 1-10
         expect(emitted.length).toEqual(5)
@@ -487,17 +487,17 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
     ),
   )
 
-  const batchSizeSampleSchema = Schema.Literal(1, 5, 12, 25, 50, 100)
-  const eventCountSampleSchema = Schema.Literal(0, 1, 6, 10, 100)
-  const batchesPerTickSampleSchema = Schema.Literal(1, 3, 10, 100)
+  const batchSizeSample = FastCheck.constantFrom(1, 5, 12, 25, 50, 100)
+  const eventCountSample = FastCheck.constantFrom(0, 1, 6, 10, 100)
+  const batchesPerTickSample = FastCheck.constantFrom(1, 3, 10, 100)
 
   Vitest.asProp(
     Vitest.scopedLive,
     'property: streams events across batches',
     {
-      batchSize: batchSizeSampleSchema,
-      eventCount: eventCountSampleSchema,
-      batchesPerTick: batchesPerTickSampleSchema,
+      batchSize: batchSizeSample,
+      eventCount: eventCountSample,
+      batchesPerTick: batchesPerTickSample,
     },
     ({ batchSize, eventCount, batchesPerTick }, test) =>
       withNodeFs(
@@ -542,7 +542,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
             yield* advanceHead(generatedEvents.at(-1)!.seqNum)
           }
 
-          const emitted = Chunk.toReadonlyArray(yield* collectFiber.pipe(Fiber.join))
+          const emitted = yield* collectFiber.pipe(Fiber.join)
 
           expect(emitted.length).toEqual(eventCount)
           expect(emitted.map((event) => event.seqNum.global)).toEqual(

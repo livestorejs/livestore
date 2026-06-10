@@ -111,9 +111,9 @@ export const defineEvent = <TName extends string, TType, TEncoded = TType, TDeri
   const { name, schema, ...options } = args
 
   const makePartialEvent = (args: TType) => {
-    const res = Schema.validateEither(schema)(args)
-    if (res._tag === 'Left') {
-      shouldNeverHappen(`Invalid event args for event '${name}':`, res.left.message, '\n')
+    const res = Schema.decodeExit(Schema.toType(schema))(args)
+    if (res._tag === 'Failure') {
+      shouldNeverHappen(`Invalid event args for event '${name}':`, String(res.cause), '\n')
     }
     return { name: name, args }
   }
@@ -202,7 +202,7 @@ export const synced = <TName extends string, TType, TEncoded = TType>(
  *   name: 'UiStateSet',
  *   schema: Schema.Struct({
  *     selectedTodoId: Schema.NullOr(Schema.String),
- *     filterMode: Schema.Literal('all', 'active', 'completed'),
+ *     filterMode: Schema.Literals(['all', 'active', 'completed']),
  *   }),
  * })
  *

@@ -1,5 +1,5 @@
 import type { Subscribable } from '@livestore/utils/effect'
-import { Chunk, Effect, Option, Queue, Stream } from '@livestore/utils/effect'
+import { Effect, Option, Queue, Stream } from '@livestore/utils/effect'
 
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
@@ -101,9 +101,15 @@ export const streamEventsWithSyncState = ({
         Effect.forkScoped,
       )
 
-      return Stream.paginateChunkEffect(
+      return Stream.paginate(
         { cursor: initialCursor, head: EventSequenceNumber.Client.ROOT },
-        ({ cursor, head }) =>
+        ({
+          cursor,
+          head,
+        }: {
+          cursor: EventSequenceNumber.Client.Composite
+          head: EventSequenceNumber.Client.Composite
+        }) =>
           Effect.gen(function* () {
             /**
              * Early check guards agains:
@@ -114,7 +120,7 @@ export const streamEventsWithSyncState = ({
               options.until !== undefined &&
               EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, options.until) === true
             ) {
-              return [Chunk.empty(), Option.none()]
+              return [[], Option.none()]
             }
 
             /**
@@ -195,8 +201,8 @@ export const streamEventsWithSyncState = ({
               'livestore.streamEvents.waitedForHead': waitForHead,
             }
 
-            return yield* Effect.succeed<[Chunk.Chunk<LiveStoreEvent.Client.Encoded>, typeof nextState]>([
-              chunk,
+            return yield* Effect.succeed<[ReadonlyArray<LiveStoreEvent.Client.Encoded>, typeof nextState]>([
+              [...chunk],
               nextState,
             ]).pipe(Effect.withSpan('@livestore/common:streamEvents:segment', { attributes: spanAttributes }))
           }),

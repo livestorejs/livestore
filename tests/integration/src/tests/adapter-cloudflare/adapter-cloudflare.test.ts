@@ -1,9 +1,5 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-
-import { expect } from 'vitest'
-
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Duration,
   Effect,
@@ -15,8 +11,10 @@ import {
   Schema,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import { PlatformNode } from '@livestore/utils/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { expect } from 'vitest'
 
+import * as NodeServices from '@effect/platform-node/NodeServices'
 const testDir = path.dirname(fileURLToPath(import.meta.url))
 const fixturesDir = path.join(testDir, 'fixtures')
 const testTimeout = Duration.toMillis(Duration.seconds(45))
@@ -30,16 +28,16 @@ delete process.env.https_proxy
 delete process.env.ALL_PROXY
 delete process.env.all_proxy
 
-const { WranglerDevServerService } = await import('@livestore/utils-dev/wrangler')
+const { WranglerDevServerService, makeWranglerDevServerLayer } = await import('@livestore/utils-dev/wrangler')
 
 const withTestCtx = Vitest.makeWithTestCtx({
   timeout: testTimeout,
   makeLayer: () =>
     Layer.mergeAll(
-      WranglerDevServerService.Default({
+      makeWranglerDevServerLayer({
         cwd: fixturesDir,
         readiness: { connectTimeout: Duration.seconds(15) },
-      }).pipe(Layer.provide(Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer))),
+      }).pipe(Layer.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer))),
       FetchHttpClient.layer,
     ),
 })
@@ -95,7 +93,7 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
               Schema.Struct({
                 todos: Schema.Array(Schema.Struct({ id: Schema.String, title: Schema.String })),
                 persistence: PersistenceSnapshotSchema,
-                resetSnapshot: Schema.Union(Schema.Null, ResetPersistenceSnapshotSchema),
+                resetSnapshot: Schema.Union([Schema.Null, ResetPersistenceSnapshotSchema]),
               }),
             ),
           ),

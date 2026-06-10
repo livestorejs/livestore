@@ -1,12 +1,13 @@
-import { Schema, Transferable } from '@livestore/utils/effect'
+import { Rpc, RpcGroup, Schema, Transferable } from '@livestore/utils/effect'
 
-export class CreateConnection extends Schema.TaggedRequest<CreateConnection>()('WebmeshWorker.CreateConnection', {
+export const CreateConnection = Rpc.make('CreateConnection', {
   payload: {
     from: Schema.String,
     port: Transferable.MessagePort,
   },
   success: Schema.Struct({}),
-  failure: Schema.Never,
-}) {}
+  stream: true,
+})
 
-export class Request extends Schema.Union(CreateConnection) {}
+export const Rpcs = RpcGroup.make(CreateConnection)
+export type Request = Rpc.Payload<RpcGroup.Rpcs<typeof Rpcs>>

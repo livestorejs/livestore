@@ -18,6 +18,7 @@ import {
   Cause,
   Deferred,
   Effect,
+  EffectRpcClient,
   Exit,
   Fiber,
   Layer,
@@ -27,7 +28,7 @@ import {
   Stream,
   Subscribable,
   SubscriptionRef,
-  Worker,
+  RpcWorker,
 } from '@livestore/utils/effect'
 import { BrowserWorker, Opfs, WebError, WebLock } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -203,7 +204,7 @@ export const makePersistedAdapter =
       const LIVESTORE_TAB_LOCK = `livestore-tab-lock-${storeId}`
       const LIVESTORE_SHARED_WORKER_TERMINATION_LOCK = `livestore-shared-worker-termination-lock-${storeId}`
 
-      const storageOptions = yield* Schema.decode(WorkerSchema.StorageType)(options.storage)
+      const storageOptions = yield* Schema.decodeEffect(WorkerSchema.StorageType)(options.storage)
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
@@ -251,7 +252,7 @@ export const makePersistedAdapter =
       const workerDisconnectChannel = yield* makeWorkerDisconnectChannel(storeId)
 
       yield* shutdownChannel.listen.pipe(
-        Stream.flatten(),
+        Stream.mapEffect(Effect.fromResult),
         Stream.tap((cause) =>
           shutdown(cause._tag === 'IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
         ),
@@ -269,15 +270,17 @@ export const makePersistedAdapter =
         yield* Effect.addFinalizer(() => WebLock.waitForLock(LIVESTORE_SHARED_WORKER_TERMINATION_LOCK))
       }
 
-      const sharedWorkerContext = yield* Layer.build(BrowserWorker.layer(() => sharedWebWorker))
-      const sharedWorkerFiber = yield* Worker.makePoolSerialized<typeof WorkerSchema.SharedWorkerRequest.Type>({
-        size: 1,
-        concurrency: 100,
+      const sharedWorkerLayer = EffectRpcClient.layerProtocolWorker({ size: 1, concurrency: 100 }).pipe(
+        Layer.provide(BrowserWorker.layer(() => sharedWebWorker)),
+      )
+      const sharedWorkerFiber = yield* Effect.gen(function* () {
+        const scope = yield* Effect.scope
+        const protocolContext = yield* Layer.buildWithScope(sharedWorkerLayer, scope)
+        return yield* EffectRpcClient.make(WorkerSchema.SharedWorkerRpcs).pipe(Effect.provide(protocolContext))
       }).pipe(
-        Effect.provide(sharedWorkerContext),
         Effect.tapCauseLogPretty,
         Effect.orDie,
-        Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+        Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
         Effect.withSpan('@livestore/adapter-web:client-session:setupSharedWorker'),
         Effect.forkScoped,
       )
@@ -314,12 +317,27 @@ export const makePersistedAdapter =
         // and adding the `sessionId` to make it easier to debug which session a worker belongs to in logs
         const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker-${storeId}-${sessionId}` })
 
-        yield* Worker.makeSerialized<WorkerSchema.LeaderWorkerOuterRequest>({
-          initialMessage: () => new WorkerSchema.LeaderWorkerOuterInitialMessage({ port: mc.port1, storeId, clientId }),
+        const outerWorkerLayer = EffectRpcClient.layerProtocolWorker({ size: 1, concurrency: 1 }).pipe(
+          Layer.provide(
+            RpcWorker.layerInitialMessage(
+              WorkerSchema.LeaderWorkerOuterInitialMessage,
+              Effect.succeed(new WorkerSchema.LeaderWorkerOuterInitialMessage({ port: mc.port1, storeId, clientId })),
+            ),
+          ),
+          Layer.provide(BrowserWorker.layer(() => worker)),
+        )
+
+        yield* Effect.gen(function* () {
+          const scope = yield* Effect.scope
+          const protocolContext = yield* Layer.buildWithScope(outerWorkerLayer, scope)
+          const outerWorker = yield* EffectRpcClient.make(WorkerSchema.LeaderWorkerOuterRpcs).pipe(
+            Effect.provide(protocolContext),
+          )
+          yield* outerWorker.Ready(undefined)
+          return yield* Effect.never
         }).pipe(
-          Effect.provide(BrowserWorker.layer(() => worker)),
           UnknownError.mapToUnknownError,
-          Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+          Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
           Effect.withSpan('@livestore/adapter-web:client-session:setupDedicatedWorker'),
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
@@ -329,8 +347,7 @@ export const makePersistedAdapter =
 
         const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
         yield* sharedWorker
-          .executeEffect(
-            new WorkerSchema.SharedWorkerUpdateMessagePort({
+          .UpdateMessagePort({
               port: mc.port2,
               liveStoreVersion,
               initial: new WorkerSchema.LeaderWorkerInnerInitialMessage({
@@ -341,11 +358,10 @@ export const makePersistedAdapter =
                 debugInstanceId,
                 syncPayloadEncoded,
               }),
-            }),
-          )
+            })
           .pipe(
             UnknownError.mapToUnknownError,
-            Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+            Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
           )
 
         yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
@@ -373,40 +389,38 @@ export const makePersistedAdapter =
         yield* runLocked.pipe(Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
       }
 
-      const runInWorker = <A, I, E, EI, R>(
-        req: WorkerSchema.SharedWorkerRequest & Schema.WithResult<A, I, E, EI, R>,
-      ): Effect.Effect<A, E, R> =>
+      const runInWorker = <A, E>(tag: string, effect: Effect.Effect<A, E, any>): Effect.Effect<A, never, never> =>
         Fiber.join(sharedWorkerFiber).pipe(
           // NOTE we need to wait for the shared worker to be initialized before we can send requests to it
-          Effect.tap(() => waitForSharedWorkerInitialized),
-          Effect.flatMap((worker) => worker.executeEffect(req)),
+          Effect.tap(() => Deferred.await(waitForSharedWorkerInitialized)),
+          Effect.flatMap(() => effect),
           Effect.catchIf(isWorkerTransportError, (e) => Effect.die(e)),
           // NOTE we want to treat worker requests as atomic and therefore not allow them to be interrupted
           // Interruption usually only happens during leader re-election or store shutdown
           // Effect.uninterruptible,
           Effect.logWarnIfTakesLongerThan({
-            label: `@livestore/adapter-web:client-session:runInWorker:${req._tag}`,
+            label: `@livestore/adapter-web:client-session:runInWorker:${tag}`,
             duration: 2000,
           }),
-          Effect.withSpan(`@livestore/adapter-web:client-session:runInWorker:${req._tag}`),
-        )
+          Effect.withSpan(`@livestore/adapter-web:client-session:runInWorker:${tag}`),
+        ) as Effect.Effect<A, never, never>
 
-      const runInWorkerStream = <A, I, E, EI, R>(
-        req: WorkerSchema.SharedWorkerRequest & Schema.WithResult<A, I, E, EI, R>,
-      ): Stream.Stream<A, E, R> =>
+      const runInWorkerStream = <A, E>(tag: string, stream: Stream.Stream<A, E, any>): Stream.Stream<A, never, never> =>
         Effect.gen(function* () {
-          const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
-          return sharedWorker.execute(req).pipe(
-            Stream.refineOrDie((e) => (isWorkerTransportError(e) === true ? Option.none() : Option.some(e))),
-            Stream.withSpan(`@livestore/adapter-web:client-session:runInWorkerStream:${req._tag}`),
+          yield* Fiber.join(sharedWorkerFiber)
+          yield* Deferred.await(waitForSharedWorkerInitialized)
+          return stream.pipe(
+            Stream.catchIf(isWorkerTransportError, (e) => Stream.die(e)),
+            Stream.withSpan(`@livestore/adapter-web:client-session:runInWorkerStream:${tag}`),
           )
-        }).pipe(Stream.unwrap)
+        }).pipe(Stream.unwrap) as Stream.Stream<A, never, never>
 
-      const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
+      const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
+      const bootStatusFiber = yield* runInWorkerStream('BootStatusStream', sharedWorker.BootStatusStream(undefined)).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
-        Effect.tapErrorCause((cause) =>
-          Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
+        Effect.tapCause((cause) =>
+          Cause.hasInterruptsOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
         ),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
@@ -423,7 +437,7 @@ export const makePersistedAdapter =
       // re-exporting the db
       const initialResult =
         dataFromFile === undefined
-          ? yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()).pipe(
+          ? yield* runInWorker('GetRecreateSnapshot', sharedWorker.GetRecreateSnapshot(undefined)).pipe(
               Effect.map(({ snapshot, migrationsReport }) => ({
                 _tag: 'from-leader-worker' as const,
                 snapshot,
@@ -476,7 +490,7 @@ export const makePersistedAdapter =
         Effect.gen(function* () {
           if (
             Exit.isFailure(ex) === true &&
-            Exit.isInterrupted(ex) === false &&
+            Cause.hasInterruptsOnly(ex.cause) === false &&
             Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) === false &&
             Schema.is(StoreInterrupted)(Cause.squash(ex.cause)) === false
           ) {
@@ -492,22 +506,22 @@ export const makePersistedAdapter =
       )
 
       const leaderThread: ClientSession['leaderThread'] = {
-        export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
+        export: runInWorker('Export', sharedWorker.Export(undefined)).pipe(
           Effect.timeoutOrDie(10_000),
           Effect.withSpan('@livestore/adapter-web:client-session:export'),
         ),
 
         events: {
           pull: ({ cursor }) =>
-            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerPullStream({ cursor })).pipe(Stream.orDie),
+            runInWorkerStream('PullStream', sharedWorker.PullStream({ cursor })).pipe(Stream.orDie),
           push: (batch) =>
-            runInWorker(new WorkerSchema.LeaderWorkerInnerPushToLeader({ batch })).pipe(
+            runInWorker('PushToLeader', sharedWorker.PushToLeader({ batch })).pipe(
               Effect.withSpan('@livestore/adapter-web:client-session:pushToLeader', {
                 attributes: { batchSize: batch.length },
               }),
             ),
           stream: (options) =>
-            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerStreamEvents(options)).pipe(
+            runInWorkerStream('StreamEvents', sharedWorker.StreamEvents(options)).pipe(
               Stream.withSpan('@livestore/adapter-web:client-session:streamEvents'),
               Stream.orDie,
             ),
@@ -519,29 +533,27 @@ export const makePersistedAdapter =
           storageMode: opfsWarning === undefined ? 'persisted' : 'in-memory',
         },
 
-        getEventlogData: runInWorker(new WorkerSchema.LeaderWorkerInnerExportEventlog()).pipe(
+        getEventlogData: runInWorker('ExportEventlog', sharedWorker.ExportEventlog(undefined)).pipe(
           Effect.timeoutOrDie(10_000),
           Effect.withSpan('@livestore/adapter-web:client-session:getEventlogData'),
         ),
 
         syncState: Subscribable.make({
-          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
+          get: runInWorker('GetLeaderSyncState', sharedWorker.GetLeaderSyncState(undefined)).pipe(
             Effect.withSpan('@livestore/adapter-web:client-session:getLeaderSyncState'),
           ),
-          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
+          changes: runInWorkerStream('SyncStateStream', sharedWorker.SyncStateStream(undefined)).pipe(Stream.orDie),
         }),
 
         sendDevtoolsMessage: (message) =>
-          runInWorker(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })).pipe(
+          runInWorker('ExtraDevtoolsMessage', sharedWorker.ExtraDevtoolsMessage({ message })).pipe(
             Effect.withSpan('@livestore/adapter-web:client-session:devtoolsMessageForLeader'),
           ),
         networkStatus: Subscribable.make({
-          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()),
-          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()),
+          get: runInWorker('GetNetworkStatus', sharedWorker.GetNetworkStatus(undefined)),
+          changes: runInWorkerStream('NetworkStatusStream', sharedWorker.NetworkStatusStream(undefined)),
         }),
       }
-
-      const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
 
       const clientSession = yield* makeClientSession({
         ...adapterArgs,
@@ -567,7 +579,7 @@ export const makePersistedAdapter =
       })
 
       return clientSession
-    }).pipe(Effect.provide(Opfs.Opfs.Default), UnknownError.mapToUnknownError)
+    }).pipe(Effect.provide(Opfs.layer), UnknownError.mapToUnknownError)
 
 // NOTE for `local` storage we could also use the eventlog db to store the data
 const getPersistedId = (key: string, storageType: 'session' | 'local') => {
@@ -631,7 +643,7 @@ const checkOpfsAvailability = Effect.gen(function* () {
   const opfs = yield* Opfs.Opfs
   return yield* opfs.getRootDirectoryHandle.pipe(
     Effect.as(undefined),
-    Effect.catchAll((error) => {
+    Effect.catch((error) => {
       const reason: BootWarningReason =
         Schema.is(WebError.SecurityError)(error) === true || Schema.is(WebError.NotAllowedError)(error) === true
           ? 'private-browsing'

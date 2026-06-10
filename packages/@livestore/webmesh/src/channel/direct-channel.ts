@@ -2,14 +2,14 @@ import {
   Cause,
   Deferred,
   Effect,
-  Either,
+  Result,
   Exit,
-  Option,
+  Fiber,
   Queue,
+  References,
   Schema,
   Scope,
   Stream,
-  TQueue,
   WebChannel,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -49,7 +49,7 @@ export const makeDirectChannel = ({
       const sourceId = nanoid()
 
       const listenQueue = yield* Queue.unbounded<any>()
-      const sendQueue = yield* TQueue.unbounded<[msg: any, deferred: Deferred.Deferred<void>]>()
+      const sendQueue = yield* Queue.unbounded<[msg: any, deferred: Deferred.Deferred<void>]>()
 
       const initialEdgeDeferred = yield* Deferred.make<void>()
 
@@ -66,7 +66,7 @@ export const makeDirectChannel = ({
         const resultDeferred = yield* Deferred.make<{
           channel: WebChannel.WebChannel<any, any>
           channelVersion: number
-          makeDirectChannelScope: Scope.CloseableScope
+          makeDirectChannelScope: Scope.Closeable
         }>()
 
         while (true) {
@@ -95,14 +95,15 @@ export const makeDirectChannel = ({
            *   - We need to make sure that "interruption" isn't "bubbling out"
            */
           const waitForNewEdgeFiber = yield* Stream.fromPubSub(newEdgeAvailablePubSub).pipe(
+            Stream.filter((edgeName) => edgeName === target),
             Stream.tap((edgeName) => Effect.spanEvent(`new-conn:${edgeName}`)),
             Stream.take(1),
             Stream.runDrain,
             Effect.as('new-edge' as const),
-            Effect.fork,
+            Effect.forkChild,
           )
 
-          const makeChannel = makeDirectChannelInternal({
+          const makeChannelFiber = yield* makeDirectChannelInternal({
             nodeName,
             sourceId,
             incomingPacketsQueue,
@@ -115,29 +116,35 @@ export const makeDirectChannel = ({
             sendPacket,
             scope: makeDirectChannelScope,
           }).pipe(
-            Scope.extend(makeDirectChannelScope),
+            Scope.provide(makeDirectChannelScope),
             Effect.forkIn(makeDirectChannelScope),
             // Given we only call `Effect.exit` later when joining the fiber,
             // we don't want Effect to produce a "unhandled error" log message
-            Effect.withUnhandledErrorLogLevel(Option.none()),
+            Effect.provideService(References.UnhandledLogLevel, undefined),
           )
 
-          const raceResult = yield* Effect.raceFirst(makeChannel, waitForNewEdgeFiber.pipe(Effect.disconnect))
+          const raceResult = yield* Effect.raceFirst(Fiber.await(makeChannelFiber), Fiber.join(waitForNewEdgeFiber))
 
           if (raceResult === 'new-edge') {
             yield* Scope.close(makeDirectChannelScope, Exit.fail('new-edge'))
             // We'll try again
           } else {
-            const channelExit = yield* raceResult.pipe(Effect.exit)
+            const channelExit = raceResult
             if (channelExit._tag === 'Failure') {
               yield* Scope.close(makeDirectChannelScope, channelExit)
 
+              const fail = Cause.findFail(channelExit.cause)
+
               if (
-                Cause.isFailType(channelExit.cause) === true &&
-                Schema.is(WebmeshSchema.DirectChannelResponseNoTransferables)(channelExit.cause.error) === true
+                Result.isSuccess(fail) === true &&
+                Schema.is(WebmeshSchema.DirectChannelResponseNoTransferables)(fail.success.error) === true
               ) {
                 // Only retry when there is a new edge available
-                yield* waitForNewEdgeFiber.pipe(Effect.exit)
+                yield* Stream.fromPubSub(newEdgeAvailablePubSub).pipe(
+                  Stream.tap((edgeName) => Effect.spanEvent(`retry-on-new-conn:${edgeName}`)),
+                  Stream.take(1),
+                  Stream.runDrain,
+                )
               }
             } else {
               const channel = channelExit.value
@@ -149,7 +156,7 @@ export const makeDirectChannel = ({
         }
 
         // Now we wait until the first channel is established
-        const { channel, makeDirectChannelScope, channelVersion } = yield* resultDeferred
+        const { channel, makeDirectChannelScope, channelVersion } = yield* Deferred.await(resultDeferred)
 
         yield* Effect.spanEvent(`Connected#${channelVersion}`)
         debugInfo.isConnected = true
@@ -159,7 +166,7 @@ export const makeDirectChannel = ({
 
         // We'll now forward all incoming messages to the listen queue
         yield* channel.listen.pipe(
-          Stream.flatten(),
+          Stream.mapEffect(Effect.fromResult),
           // Stream.tap((msg) => Effect.log(`${target}→${channelName}→${nodeName}:message:${msg.message}`)),
           Stream.tapChunk((chunk) => Queue.offerAll(listenQueue, chunk)),
           Stream.runDrain,
@@ -169,18 +176,18 @@ export const makeDirectChannel = ({
 
         yield* Effect.gen(function* () {
           while (true) {
-            const [msg, deferred] = yield* TQueue.peek(sendQueue)
+            const [msg, deferred] = yield* Queue.peek(sendQueue)
             // NOTE we don't need an explicit retry flow here since in case of the channel being closed,
             // the send will never succeed. Meanwhile the send-loop fiber will be interrupted and
             // given we only peeked at the queue, the message to send is still there.
             yield* channel.send(msg)
             yield* Deferred.succeed(deferred, void 0)
-            yield* TQueue.take(sendQueue) // Remove the message from the queue
+            yield* Queue.take(sendQueue) // Remove the message from the queue
           }
         }).pipe(Effect.forkIn(makeDirectChannelScope))
 
         // Wait until the channel is closed and then try to reconnect
-        yield* channel.closedDeferred
+        yield* Deferred.await(channel.closedDeferred)
 
         yield* Scope.close(makeDirectChannelScope, Exit.succeed('channel-closed'))
 
@@ -204,16 +211,16 @@ export const makeDirectChannel = ({
           debugInfo.pendingSends++
           debugInfo.totalSends++
 
-          yield* TQueue.offer(sendQueue, [message, sentDeferred])
+          yield* Queue.offer(sendQueue, [message, sentDeferred])
 
-          yield* sentDeferred
+          yield* Deferred.await(sentDeferred)
 
           debugInfo.pendingSends--
         }).pipe(Effect.scoped, Effect.withParentSpan(parentSpan))
 
-      const listen = Stream.fromQueue(listenQueue, { maxChunkSize: 1 }).pipe(Stream.map(Either.right))
+      const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Result.succeed))
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
       const webChannel = {
         [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,

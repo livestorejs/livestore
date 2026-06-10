@@ -14,13 +14,13 @@ const MAX_RETRIES = 3
 /** Delay between retries - 2s to allow system resources to stabilize */
 const RETRY_DELAY_MS = 2_000
 
-export class RenderTimeoutError extends Schema.TaggedError<RenderTimeoutError>()('Tldraw.RenderTimeoutError', {
+export class RenderTimeoutError extends Schema.TaggedErrorClass<RenderTimeoutError>()('Tldraw.RenderTimeoutError', {
   message: Schema.String,
   diagram: Schema.String,
   theme: Schema.String,
 }) {}
 
-export class RenderInvocationError extends Schema.TaggedError<RenderInvocationError>()('Tldraw.RenderInvocationError', {
+export class RenderInvocationError extends Schema.TaggedErrorClass<RenderInvocationError>()('Tldraw.RenderInvocationError', {
   message: Schema.String,
   diagram: Schema.String,
   theme: Schema.String,
@@ -117,14 +117,16 @@ const renderSvgWithTheme = (
             cause,
           }),
       }).pipe(
-        Effect.timeoutFail({
-          onTimeout: () =>
-            new RenderTimeoutError({
+        Effect.timeoutOrElse({
+          duration: Duration.millis(RENDER_TIMEOUT_MS),
+          orElse: () =>
+            Effect.fail(
+              new RenderTimeoutError({
               message: `Tldraw render timed out after ${RENDER_TIMEOUT_MS}ms`,
               diagram: tldrPath,
               theme,
-            }),
-          duration: Duration.millis(RENDER_TIMEOUT_MS),
+              }),
+            ),
         }),
       )
 
@@ -132,10 +134,10 @@ const renderSvgWithTheme = (
       // retry loop with capped attempts and delay
       // using explicit loop keeps retry logging and delay simple and Effect-friendly
       while (true) {
-        const attemptResult = yield* Effect.either(renderEffect)
+        const attemptResult = yield* Effect.result(renderEffect)
 
-        if (attemptResult._tag === 'Right') {
-          const outputPaths = attemptResult.right.map((value) => (typeof value === 'string' ? value : value.toString()))
+        if (attemptResult._tag === 'Success') {
+          const outputPaths = attemptResult.success.map((value) => (typeof value === 'string' ? value : value.toString()))
 
           if (outputPaths.length === 0) {
             return shouldNeverHappen(`No SVG generated for ${tldrPath}`)
@@ -180,9 +182,9 @@ const renderSvgWithTheme = (
           }
         }
 
-        const error = attemptResult.left
+        const error = attemptResult.failure
         if (attempt >= MAX_RETRIES) {
-          return yield* error
+          return yield* Effect.fail(error)
         }
 
         yield* Effect.logWarning(

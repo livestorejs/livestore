@@ -48,12 +48,12 @@ export interface WsSyncOptions {
      * How long to wait for a ping response before timing out
      * @default 10 seconds
      */
-    requestTimeout?: Duration.DurationInput
+    requestTimeout?: Duration.Input
     /**
      * How often to send ping requests
      * @default 10 seconds
      */
-    requestInterval?: Duration.DurationInput
+    requestInterval?: Duration.Input
   }
 }
 
@@ -70,7 +70,7 @@ export const makeWsSync =
   (options: WsSyncOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
     Effect.gen(function* () {
-      const urlParamsData = yield* Schema.encode(SearchParamsSchema)({
+      const urlParamsData = yield* Schema.encodeEffect(SearchParamsSchema)({
         storeId,
         payload,
         transport: 'ws',
@@ -96,11 +96,8 @@ export const makeWsSync =
 
       const ProtocolLive = RpcClient.layerProtocolSocketWithIsConnected({
         isConnected,
-        retryTransientErrors: Schedule.exponential('1 seconds').pipe(
-          Schedule.union(Schedule.fixed('30 seconds')),
-          Schedule.jittered,
-        ),
-        pingSchedule: Schedule.once.pipe(Schedule.andThen(Schedule.fixed(pingInterval))),
+        retryTransientErrors: Schedule.exponential('1 seconds').pipe(Schedule.jittered),
+        pingSchedule: Schedule.fixed(pingInterval),
         url: wsUrl,
       }).pipe(
         Layer.provide(Socket.layerWebSocket(wsUrl)),
@@ -122,7 +119,7 @@ export const makeWsSync =
         yield* SubscriptionRef.set(isConnected, true)
       }).pipe(
         Effect.timeout(pingTimeout),
-        Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
+        Effect.catchTag('TimeoutError', () => SubscriptionRef.set(isConnected, false)),
         UnknownError.mapToUnknownError,
         Effect.withSpan('ping'),
       )
@@ -133,13 +130,13 @@ export const makeWsSync =
         isConnected,
         connect: ping,
         pull: (cursor, options) =>
-          rpcClient.SyncWsRpc.Pull({
+          rpcClient['SyncWsRpc.Pull']({
             storeId,
             payload,
             cursor: cursor.pipe(
               Option.map((a) => ({
                 eventSequenceNumber: a.eventSequenceNumber,
-                backendId: backendIdHelper.get().pipe(Option.getOrThrow),
+                backendId: Option.getOrThrow(Option.fromNullable(backendIdHelper.get())),
               })),
             ),
             live: options?.live === true,
@@ -154,7 +151,7 @@ export const makeWsSync =
                   : new UnknownError({ cause }),
             ),
             Stream.withSpan('pull'),
-          ),
+          ) as ReturnType<SyncBackend.SyncBackend<SyncMetadata>['pull']>,
 
         push: Effect.fn('push')(function* (batch) {
           if (batch.length === 0) return
@@ -163,7 +160,7 @@ export const makeWsSync =
             storeId,
             payload,
             batch,
-            backendId: backendIdHelper.get(),
+            backendId: Option.fromNullable(backendIdHelper.get()),
           })
 
           const chunksChunk = yield* Chunk.fromIterable(batch).pipe(
@@ -176,11 +173,11 @@ export const makeWsSync =
           )
 
           for (const sub of chunksChunk) {
-            yield* rpcClient.SyncWsRpc.Push({
+            yield* rpcClient['SyncWsRpc.Push']({
               storeId,
               payload,
               batch: Chunk.toReadonlyArray(sub),
-              backendId: backendIdHelper.get(),
+              backendId: Option.fromNullable(backendIdHelper.get()),
             }).pipe(
               Effect.mapError((cause) =>
                 cause._tag === 'UnknownError' ||
@@ -191,7 +188,7 @@ export const makeWsSync =
               ),
             )
           }
-        }),
+        }) as SyncBackend.SyncBackend<SyncMetadata>['push'],
         ping,
         metadata: {
           name: '@livestore/cf-sync',

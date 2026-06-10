@@ -2,7 +2,7 @@
 
 import { DurableObject } from 'cloudflare:workers'
 
-import { Effect, Layer, Option, RpcServer, Schedule, Stream } from '@livestore/utils/effect'
+import { Effect, Layer, Option, RpcMessage, RpcServer, Schedule, Stream } from '@livestore/utils/effect'
 
 import type * as CfTypes from '../../cf-types.ts'
 import { setupDurableObjectWebSocketRpc } from '../ws-rpc-server.ts'
@@ -14,47 +14,16 @@ export interface Env {
 
 export class TestRpcDurableObject extends DurableObject<Env, unknown> {
   override __DURABLE_OBJECT_BRAND = 'TestRpcDurableObject' as never
+  readonly webSocketRpcHandlers: ReturnType<typeof setupDurableObjectWebSocketRpc>
 
   constructor(state: DurableObjectState, env: Env) {
     super(state, env)
 
     this.ctx = state
 
-    const handlersLayer = TestRpcs.toLayer({
-      Ping: ({ message }) => Effect.succeed({ response: `Pong: ${message}` }),
-      Echo: ({ text }) => Effect.succeed({ echo: `Echo: ${text}` }),
-      Add: ({ a, b }) => Effect.succeed({ result: a + b }),
-      Defect: ({ message }) => Effect.die(`some defect: ${message}`),
-      Fail: ({ message }) => Effect.fail(`RPC failure: ${message}`),
-      Stream: () =>
-        Stream.iterate(1, (n) => n + 1).pipe(
-          Stream.map((n) => ({ maybeNumber: Option.some(n * n) })), // Stream squares: 1, 4, 9, 16, ...
-          Stream.schedule(Schedule.spaced(10)),
-        ),
-      StreamError: ({ count, errorAfter }) =>
-        Stream.range(1, count).pipe(
-          Stream.map((n) => n * n),
-          Stream.mapEffect((n) =>
-            n > errorAfter ? Effect.fail(`Stream error after ${errorAfter}: got ${n}`) : Effect.succeed(n),
-          ),
-        ),
-      StreamDefect: ({ count, defectAfter }) =>
-        Stream.range(1, count).pipe(
-          Stream.map((n) => n * n),
-          Stream.mapEffect((n) =>
-            n > defectAfter ? Effect.die(`Stream defect after ${defectAfter}: got ${n}`) : Effect.succeed(n),
-          ),
-        ),
-      StreamInterruptible: ({ delay }) =>
-        Stream.iterate(1, (n) => n + 1).pipe(
-          Stream.map((n) => n),
-          Stream.schedule(Schedule.spaced(delay)),
-        ),
-    })
+    const ServerLive = RpcServer.layer(TestRpcs).pipe(Layer.provide(makeHandlersLayer()))
 
-    const ServerLive = RpcServer.layer(TestRpcs).pipe(Layer.provide(handlersLayer))
-
-    setupDurableObjectWebSocketRpc({
+    this.webSocketRpcHandlers = setupDurableObjectWebSocketRpc({
       doSelf: this as unknown as CfTypes.DurableObject,
       rpcLayer: ServerLive,
       webSocketMode: 'hibernate',
@@ -71,13 +40,60 @@ export class TestRpcDurableObject extends DurableObject<Env, unknown> {
 
     // Hibernate the server; DurableObjectState is stored on ctx
     this.ctx.acceptWebSocket(server)
+    this.ctx.setWebSocketAutoResponse(
+      new WebSocketRequestResponsePair(
+        JSON.stringify(RpcMessage.constPing),
+        JSON.stringify(RpcMessage.constPong),
+      ),
+    )
 
     return new Response(null, {
       status: 101,
       webSocket: client,
     })
   }
+
+  override async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    return this.webSocketRpcHandlers.webSocketMessage(ws, message)
+  }
+
+  override async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean): Promise<void> {
+    return this.webSocketRpcHandlers.webSocketClose(ws, code, reason, wasClean)
+  }
 }
+
+const makeHandlersLayer = () =>
+  TestRpcs.toLayer({
+    Ping: ({ message }) => Effect.succeed({ response: `Pong: ${message}` }),
+    Echo: ({ text }) => Effect.succeed({ echo: `Echo: ${text}` }),
+    Add: ({ a, b }) => Effect.succeed({ result: a + b }),
+    Defect: ({ message }) => Effect.die(`some defect: ${message}`),
+    Fail: ({ message }) => Effect.fail(`RPC failure: ${message}`),
+    Stream: () =>
+      Stream.iterate(1, (n) => n + 1).pipe(
+        Stream.map((n) => ({ maybeNumber: Option.some(n * n) })), // Stream squares: 1, 4, 9, 16, ...
+        Stream.schedule(Schedule.spaced(10)),
+      ),
+    StreamError: ({ count, errorAfter }) =>
+      Stream.range(1, count).pipe(
+        Stream.map((n) => n * n),
+        Stream.mapEffect((n) =>
+          n > errorAfter ? Effect.fail(`Stream error after ${errorAfter}: got ${n}`) : Effect.succeed(n),
+        ),
+      ),
+    StreamDefect: ({ count, defectAfter }) =>
+      Stream.range(1, count).pipe(
+        Stream.map((n) => n * n),
+        Stream.mapEffect((n) =>
+          n > defectAfter ? Effect.die(`Stream defect after ${defectAfter}: got ${n}`) : Effect.succeed(n),
+        ),
+      ),
+    StreamInterruptible: ({ delay }) =>
+      Stream.iterate(1, (n) => n + 1).pipe(
+        Stream.map((n) => n),
+        Stream.schedule(Schedule.spaced(delay)),
+      ),
+  })
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {

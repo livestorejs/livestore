@@ -38,16 +38,15 @@ const makeTabPair = (
 
     const isUnused = (p: PW.Page) => !usedPages.has(p)
 
-    const newPage = Effect.tryPromise(() => browserContext.newPage()).pipe(
-      Effect.acquireRelease(
-        Effect.fn('close-page')(function* (page, exit) {
+    const newPage = Effect.acquireRelease(
+      Effect.tryPromise(() => browserContext.newPage()),
+      Effect.fn('close-page')(function* (page, exit) {
           const reason =
             exit._tag === 'Failure' ? exit.cause.toString() : `Closing ${url}#${tabName} due to ${exit._tag}`
 
           yield* Effect.log(reason)
           yield* Effect.tryPromise(() => page.close({ reason }))
         }, Effect.orDie),
-      ),
     )
 
     // Chrome opens with `about:blank` page, so we can use that for the first call
@@ -99,13 +98,15 @@ const makeTabPair = (
         page
           .waitForFunction('window.__debugLiveStore?.default !== undefined')
           .then(() => page.evaluate('window.__debugLiveStore.default._dev.otel.rootSpanContext()')),
-      ).pipe(Effect.andThen(Schema.decodeUnknown(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))))
+      ).pipe(Effect.andThen(Schema.decodeUnknownEffect(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))))
 
-      yield* Effect.linkSpanCurrent(
-        Tracer.externalSpan({
-          traceId: rootSpanContext.traceId,
-          spanId: rootSpanContext.spanId,
-        }),
+      yield* Effect.void.pipe(
+        Effect.linkSpans(
+          Tracer.externalSpan({
+            traceId: rootSpanContext.traceId,
+            spanId: rootSpanContext.spanId,
+          }),
+        ),
       )
     }
 
@@ -133,7 +134,7 @@ const PWLive = Effect.gen(function* () {
   const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
 
   return Playwright.browserContextLayer({ persistentContextPath })
-}).pipe(Layer.unwrapEffect)
+}).pipe(Layer.unwrap)
 
 const runTest =
   <E>(eff: Effect.Effect<void, E, Playwright.BrowserContext | Scope.Scope>) =>
@@ -185,9 +186,9 @@ const runTest =
 
             await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
 
-            const tab1ChannelId = await tab1.page.evaluate<string>(
+            const tab1ChannelId = await tab1.page.evaluate(
               `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
-            )
+            ) as string
             await tab1.devtools.locator(`a:text("${tab1ChannelId}")`).describe('devtools-tab-1:click').click()
 
             const tables = ['uiState (1)', 'todos (1)']
@@ -265,12 +266,12 @@ const runTest =
 
               await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
 
-              const tab1ChannelId = await tab1.page.evaluate<string>(
+              const tab1ChannelId = await tab1.page.evaluate(
                 `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
-              )
-              const tab2ChannelId = await tab2.page.evaluate<string>(
+              ) as string
+              const tab2ChannelId = await tab2.page.evaluate(
                 `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
-              )
+              ) as string
 
               const tables = ['uiState (2)', 'todos (1)']
 
@@ -415,11 +416,14 @@ test(
           await el.waitFor({ timeout: 3000 })
 
           // Click on the session in devtools to connect
-          await tab1.devtools.locator(`a:text("${tabName}:${tabName}")`).describe('devtools:click-session').click()
+          const tabChannelId = await tab1.page.evaluate(
+            `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
+          ) as string
+          await tab1.devtools.locator(`a:text("${tabChannelId}")`).describe('devtools:click-session').click()
 
-          const devtoolsVersion = await tab1.devtools.evaluate<string>(() => {
+          const devtoolsVersion = await tab1.devtools.evaluate(() => {
             return (window as any).__LIVESTORE_DEVTOOLS_VERSION__ ?? 'unknown'
-          })
+          }) as string
 
           await checkProtocolMismatchOverlay({
             devtools: tab1.devtools,

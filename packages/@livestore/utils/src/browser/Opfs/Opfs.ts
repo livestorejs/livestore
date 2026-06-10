@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { Effect, Option, Schema, Stream } from 'effect'
+import { Context, Effect, Layer, Option, Schema, Stream } from 'effect'
 
 import * as WebError from '../WebError.ts'
 
@@ -13,8 +13,9 @@ import * as WebError from '../WebError.ts'
  *
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Origin_private_file_system | MDN Reference}
  */
-export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
-  sync: () => {
+export type OpfsOperations = ReturnType<typeof make>
+
+const make = () => {
     /**
      * Acquire the OPFS root directory handle.
      *
@@ -177,7 +178,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
           Effect.tryPromise({
             try: () => stream.close(),
             catch: (u) => WebError.parseWebError(u, [WebError.TypeError]),
-          }).pipe(Effect.orElse(() => Effect.void)),
+          }).pipe(Effect.catch(() => Effect.void)),
       )
 
     /**
@@ -217,7 +218,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
           Effect.tryPromise({
             try: () => stream.close(),
             catch: (u) => WebError.parseWebError(u, [WebError.TypeError]),
-          }).pipe(Effect.orElse(() => Effect.void)),
+          }).pipe(Effect.catch(() => Effect.void)),
       )
 
     /**
@@ -250,7 +251,7 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
           Effect.tryPromise({
             try: () => stream.close(),
             catch: (u) => WebError.parseWebError(u, [WebError.TypeError]),
-          }).pipe(Effect.orElse(() => Effect.void)),
+          }).pipe(Effect.catch(() => Effect.void)),
       )
 
     /**
@@ -376,27 +377,90 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
         catch: (u) => WebError.parseWebError(u),
       })
 
-    return {
-      getRootDirectoryHandle,
-      getFileHandle,
-      getDirectoryHandle,
-      removeEntry,
-      values,
-      resolve,
-      getFile,
-      writeFile,
-      appendToFile,
-      truncateFile,
-      createSyncAccessHandle,
-      syncRead,
-      syncWrite,
-      syncTruncate,
-      syncGetSize,
-      syncFlush,
-    } as const
-  },
-  accessors: true,
-}) {}
+  return {
+    getRootDirectoryHandle,
+    getFileHandle,
+    getDirectoryHandle,
+    removeEntry,
+    values,
+    resolve,
+    getFile,
+    writeFile,
+    appendToFile,
+    truncateFile,
+    createSyncAccessHandle,
+    syncRead,
+    syncWrite,
+    syncTruncate,
+    syncGetSize,
+    syncFlush,
+  } as const
+}
+
+export class Opfs extends Context.Service<Opfs, OpfsOperations>()('@livestore/utils/Opfs') {}
+
+export const layer = Layer.succeed(Opfs)(make())
+
+export const getRootDirectoryHandle = Opfs.use((opfs) => opfs.getRootDirectoryHandle)
+
+export const getFileHandle = (
+  parent: FileSystemDirectoryHandle,
+  name: string,
+  options?: FileSystemGetFileOptions,
+) => Opfs.use((opfs) => opfs.getFileHandle(parent, name, options))
+
+export const getDirectoryHandle = (
+  parent: FileSystemDirectoryHandle,
+  name: string,
+  options?: FileSystemGetDirectoryOptions,
+) => Opfs.use((opfs) => opfs.getDirectoryHandle(parent, name, options))
+
+export const removeEntry = (
+  parent: FileSystemDirectoryHandle,
+  name: string,
+  options?: FileSystemRemoveOptions,
+) => Opfs.use((opfs) => opfs.removeEntry(parent, name, options))
+
+export const values = (directory: FileSystemDirectoryHandle) => Opfs.useSync((opfs) => opfs.values(directory))
+
+export const resolve = (parent: FileSystemDirectoryHandle, child: FileSystemHandle) =>
+  Opfs.use((opfs) => opfs.resolve(parent, child))
+
+export const getFile = (handle: FileSystemFileHandle) => Opfs.use((opfs) => opfs.getFile(handle))
+
+export const writeFileHandle = (
+  handle: FileSystemFileHandle,
+  data: FileSystemWriteChunkType,
+  options?: FileSystemCreateWritableOptions,
+) => Opfs.use((opfs) => opfs.writeFile(handle, data, options))
+
+export const appendToFile = (handle: FileSystemFileHandle, data: FileSystemWriteChunkType) =>
+  Opfs.use((opfs) => opfs.appendToFile(handle, data))
+
+export const truncateFile = (handle: FileSystemFileHandle, size: number) =>
+  Opfs.use((opfs) => opfs.truncateFile(handle, size))
+
+export const createSyncAccessHandle = (handle: FileSystemFileHandle) =>
+  Opfs.use((opfs) => opfs.createSyncAccessHandle(handle))
+
+export const syncRead = (
+  handle: FileSystemSyncAccessHandle,
+  buffer: ArrayBuffer | ArrayBufferView,
+  options?: FileSystemReadWriteOptions,
+) => Opfs.use((opfs) => opfs.syncRead(handle, buffer, options))
+
+export const syncWrite = (
+  handle: FileSystemSyncAccessHandle,
+  buffer: AllowSharedBufferSource,
+  options?: FileSystemReadWriteOptions,
+) => Opfs.use((opfs) => opfs.syncWrite(handle, buffer, options))
+
+export const syncTruncate = (handle: FileSystemSyncAccessHandle, size: number) =>
+  Opfs.use((opfs) => opfs.syncTruncate(handle, size))
+
+export const syncGetSize = (handle: FileSystemSyncAccessHandle) => Opfs.use((opfs) => opfs.syncGetSize(handle))
+
+export const syncFlush = (handle: FileSystemSyncAccessHandle) => Opfs.use((opfs) => opfs.syncFlush(handle))
 
 const notFoundError = new WebError.NotFoundError({
   cause: new DOMException('The object can not be found here.', 'NotFoundError'),
@@ -407,12 +471,12 @@ const unknownError = (message: string) => new WebError.UnknownError({ descriptio
 /**
  * A no-op Opfs service that can be used for testing.
  */
-export const noopOpfs = new Opfs({
+export const noopOpfs: OpfsOperations = {
   getRootDirectoryHandle: Effect.fail(unknownError('OPFS is not supported in this environment')),
   getFileHandle: () => Effect.fail(notFoundError),
   getDirectoryHandle: () => Effect.fail(notFoundError),
   removeEntry: () => Effect.fail(notFoundError),
-  values: () => Effect.fail(notFoundError),
+  values: () => Stream.fail(notFoundError),
   resolve: () => Effect.succeed(Option.none()),
   getFile: () => Effect.fail(notFoundError),
   writeFile: () => Effect.fail(notFoundError),
@@ -424,12 +488,12 @@ export const noopOpfs = new Opfs({
   syncTruncate: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
   syncGetSize: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
   syncFlush: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
-})
+}
 
 /**
  * Error raised when OPFS operations fail.
  */
-export class OpfsError extends Schema.TaggedError<OpfsError>('~@livestore/utils/OpfsError')('OpfsError', {
+export class OpfsError extends Schema.TaggedErrorClass<OpfsError>()('OpfsError', {
   message: Schema.String,
-  cause: Schema.optional(Schema.Defect),
+  cause: Schema.optional(Schema.Defect()),
 }) {}

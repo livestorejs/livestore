@@ -1,6 +1,6 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import type { Option, Types } from '@livestore/utils/effect'
-import { Schema } from '@livestore/utils/effect'
+import { Schema, SchemaTransformation, Struct } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../session-id-symbol.ts'
 import { sql } from '../../../util.ts'
@@ -11,6 +11,16 @@ import type { QueryBuilder, QueryBuilderAst } from './query-builder/mod.ts'
 import { QueryBuilderAstSymbol, QueryBuilderTypeId } from './query-builder/mod.ts'
 import type { TableDef, TableDefBase } from './table-def.ts'
 import { table } from './table-def.ts'
+
+const partialStructSchema = (schema: Schema.Top): Schema.Top =>
+  typeof (schema as { mapFields?: unknown }).mapFields === 'function'
+    ? ((schema as any).mapFields(Struct.map(Schema.optional)) as Schema.Top)
+    : schema
+
+const pickStructSchema = (schema: Schema.Top, keys: ReadonlyArray<string>): Schema.Top =>
+  typeof (schema as { mapFields?: unknown }).mapFields === 'function'
+    ? ((schema as any).mapFields(Struct.pick(keys as any)) as Schema.Top)
+    : schema
 
 /**
  * Special:
@@ -95,8 +105,8 @@ export const clientDocument = <
   Object.defineProperty(setEventDef, 'schema', {
     value: Schema.Struct({
       id: Schema.String,
-      value: options.partialSet === true ? Schema.partial(valueSchema) : valueSchema,
-    }).annotations({ title: `${name}Set:Args` }),
+      value: options.partialSet === true ? partialStructSchema(valueSchema) : valueSchema,
+    }).annotate({ title: `${name}Set:Args` }),
   })
   Object.defineProperty(setEventDef, 'options', {
     value: { derived: true, clientOnly: true, facts: undefined, deprecated: undefined },
@@ -186,83 +196,84 @@ export const createOptimisticEventSchema = ({
   defaultValue: any
   partialSet: boolean
 }) => {
-  const targetSchema = partialSet === true ? Schema.partial(valueSchema) : valueSchema
+  const targetSchema = partialSet === true ? partialStructSchema(valueSchema) : valueSchema
   // The transform decode must yield values in the target schema's ENCODED shape.
   // This keeps JSON columns consistent when Encoded != Type (e.g. Option).
   const encodeTarget = Schema.encodeSync(targetSchema)
 
-  return Schema.transform(
-    Schema.Unknown, // Accept any historical event structure
-    targetSchema, // Output current schema
-    {
-      decode: (eventValue) => {
-        // Try direct decode first (for current schema events)
-        try {
-          const decoded = Schema.decodeUnknownSync(targetSchema)(eventValue)
-          // Re-encode so downstream parseJson/column decoding sees encoded values.
-          return encodeTarget(decoded)
-        } catch {
-          // Optimistic decoding for historical events
+  return Schema.Unknown.pipe(
+    Schema.decodeTo(
+      targetSchema, // Output current schema
+      SchemaTransformation.transform({
+        decode: (eventValue) => {
+          // Try direct decode first (for current schema events)
+          try {
+            const decoded = Schema.decodeUnknownSync(targetSchema)(eventValue)
+            // Re-encode so downstream parseJson/column decoding sees encoded values.
+            return encodeTarget(decoded)
+          } catch {
+            // Optimistic decoding for historical events
 
-          // Handle null/undefined/non-object cases
-          if (typeof eventValue !== 'object' || eventValue === null) {
-            console.warn(
-              `Client document: Non-object event value, using ${partialSet === true ? 'empty partial' : 'defaults'}`,
-            )
-            return encodeTarget(partialSet === true ? {} : defaultValue)
-          }
-
-          if (partialSet === true) {
-            // For partial sets: only preserve fields that exist in new schema
-            const partialResult: Record<string, unknown> = {}
-            let hasValidFields = false
-
-            for (const [key, value] of Object.entries(eventValue as Record<string, unknown>)) {
-              if (key in defaultValue) {
-                partialResult[key] = value
-                hasValidFields = true
-              }
-              // Drop fields that don't exist in new schema
+            // Handle null/undefined/non-object cases
+            if (typeof eventValue !== 'object' || eventValue === null) {
+              console.warn(
+                `Client document: Non-object event value, using ${partialSet === true ? 'empty partial' : 'defaults'}`,
+              )
+              return encodeTarget(partialSet === true ? {} : defaultValue)
             }
 
-            if (hasValidFields === true) {
+            if (partialSet === true) {
+              // For partial sets: only preserve fields that exist in new schema
+              const partialResult: Record<string, unknown> = {}
+              let hasValidFields = false
+
+              for (const [key, value] of Object.entries(eventValue as Record<string, unknown>)) {
+                if (key in defaultValue) {
+                  partialResult[key] = value
+                  hasValidFields = true
+                }
+                // Drop fields that don't exist in new schema
+              }
+
+              if (hasValidFields === true) {
+                try {
+                  const decoded = Schema.decodeUnknownSync(targetSchema)(partialResult)
+                  return encodeTarget(decoded)
+                } catch {
+                  // Even filtered fields don't match schema
+                  console.warn('Client document: Partial fields incompatible, returning empty partial')
+                  return encodeTarget({})
+                }
+              }
+              return encodeTarget({})
+            } else {
+              // Full set: merge old data with new defaults
+              const merged: Record<string, unknown> = { ...defaultValue }
+
+              // Override defaults with valid fields from old event
+              for (const [key, value] of Object.entries(eventValue as Record<string, unknown>)) {
+                if (key in defaultValue) {
+                  merged[key] = value
+                }
+                // Drop fields that don't exist in new schema
+              }
+
+              // Try to decode the merged value
               try {
-                const decoded = Schema.decodeUnknownSync(targetSchema)(partialResult)
+                const decoded = Schema.decodeUnknownSync(valueSchema)(merged)
                 return encodeTarget(decoded)
               } catch {
-                // Even filtered fields don't match schema
-                console.warn('Client document: Partial fields incompatible, returning empty partial')
-                return encodeTarget({})
+                // Merged value still doesn't match (e.g., type changes)
+                // Fall back to pure defaults
+                console.warn('Client document: Could not preserve event data, using defaults')
+                return encodeTarget(defaultValue)
               }
-            }
-            return encodeTarget({})
-          } else {
-            // Full set: merge old data with new defaults
-            const merged: Record<string, unknown> = { ...defaultValue }
-
-            // Override defaults with valid fields from old event
-            for (const [key, value] of Object.entries(eventValue as Record<string, unknown>)) {
-              if (key in defaultValue) {
-                merged[key] = value
-              }
-              // Drop fields that don't exist in new schema
-            }
-
-            // Try to decode the merged value
-            try {
-              const decoded = Schema.decodeUnknownSync(valueSchema)(merged)
-              return encodeTarget(decoded)
-            } catch {
-              // Merged value still doesn't match (e.g., type changes)
-              // Fall back to pure defaults
-              console.warn('Client document: Could not preserve event data, using defaults')
-              return encodeTarget(defaultValue)
             }
           }
-        }
-      },
-      encode: (value) => value, // Pass-through for encoding
-    },
+        },
+        encode: (value) => value, // Pass-through for encoding
+      }),
+    ),
   )
 }
 
@@ -280,9 +291,9 @@ export const deriveEventAndMaterializer = ({
   const derivedSetEventDef = defineEvent({
     name: `${name}Set`,
     schema: Schema.Struct({
-      id: Schema.Union(Schema.String, Schema.UniqueSymbolFromSelf(SessionIdSymbol)),
+      id: Schema.Union([Schema.String, Schema.UniqueSymbol(SessionIdSymbol)]),
       value: createOptimisticEventSchema({ valueSchema, defaultValue, partialSet }),
-    }).annotations({ title: `${name}Set:Args` }),
+    }).annotate({ title: `${name}Set:Args` }),
     clientOnly: true,
     derived: true,
   })
@@ -295,9 +306,9 @@ export const deriveEventAndMaterializer = ({
     // Override the full value if it's not an object or no partial set is allowed
     const schemaProps = Schema.getResolvedPropertySignatures(valueSchema)
     if (schemaProps.length === 0 || partialSet === false) {
-      const valueColJsonSchema = Schema.parseJson(valueSchema)
-      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(value ?? defaultValue)
-      const encodedUpdateValue = Schema.encodeSyncDebug(valueColJsonSchema)(value)
+      const valueColJsonSchema = Schema.fromJsonString(valueSchema)
+      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema as any)(value ?? defaultValue)
+      const encodedUpdateValue = Schema.encodeSyncDebug(valueColJsonSchema as any)(value)
 
       return {
         sql: `INSERT INTO '${name}' (id, value) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET value = ?`,
@@ -305,16 +316,16 @@ export const deriveEventAndMaterializer = ({
         writeTables: new Set([name]),
       }
     } else {
-      const valueColJsonSchema = Schema.parseJson(Schema.partial(valueSchema))
+      const valueColJsonSchema = Schema.fromJsonString(partialStructSchema(valueSchema))
 
-      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(mergeDefaultValues(defaultValue, value))
+      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema as any)(mergeDefaultValues(defaultValue, value))
 
       let jsonSetSql = 'value'
       const setBindValues: unknown[] = []
 
       const keys = Object.keys(value)
-      const partialUpdateSchema = valueSchema.pipe(Schema.pick(...keys))
-      const encodedPartialUpdate = Schema.encodeSyncDebug(partialUpdateSchema)(value)
+      const partialUpdateSchema = pickStructSchema(valueSchema, keys)
+      const encodedPartialUpdate = Schema.encodeSyncDebug(partialUpdateSchema as any)(value)
 
       for (const key in encodedPartialUpdate) {
         const encodedValueForKey = encodedPartialUpdate[key]

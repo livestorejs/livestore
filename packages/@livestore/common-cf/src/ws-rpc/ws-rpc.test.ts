@@ -1,21 +1,18 @@
 import { expect } from 'vitest'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
+import { NodeServices } from '@livestore/utils-dev/node'
+import { WranglerDevServerService, makeWranglerDevServerLayer } from '@livestore/utils-dev/wrangler'
 import {
-  Chunk,
   Effect,
   FetchHttpClient,
   Layer,
-  Logger,
-  LogLevel,
   Option,
   RpcClient,
   RpcSerialization,
   Socket,
   Stream,
 } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
 import { TestRpcs } from './test-fixtures/rpc-schema.ts'
 
@@ -24,12 +21,10 @@ const testTimeout = 60_000
 const withWranglerTest = Vitest.makeWithTestCtx({
   timeout: testTimeout,
   makeLayer: () =>
-    WranglerDevServerService.Default({
+    makeWranglerDevServerLayer({
       cwd: `${import.meta.dirname}/test-fixtures`,
     }).pipe(
-      Layer.provide(
-        Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer, Logger.minimumLogLevel(LogLevel.Debug)),
-      ),
+      Layer.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer)),
     ),
 })
 
@@ -37,11 +32,11 @@ const ProtocolLive = Layer.suspend(() =>
   Effect.gen(function* () {
     const server = yield* WranglerDevServerService
     return RpcClient.layerProtocolSocket().pipe(
-      Layer.provide(Socket.layerWebSocket(`ws://localhost:${server.port}`)),
+      Layer.provide(Socket.layerWebSocket(server.url.replace(/^http/, 'ws'))),
       Layer.provide(Socket.layerWebSocketConstructorGlobal),
       Layer.provide(RpcSerialization.layerJson),
     )
-  }).pipe(Layer.unwrapEffect),
+  }).pipe(Layer.unwrap),
 )
 
 Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => {
@@ -74,17 +69,7 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => 
     Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const error = yield* client.Fail({ message: 'test http failure' }).pipe(Effect.exit)
-      expect(error.toString()).toMatchInlineSnapshot(`
-        "{
-          "_id": "Exit",
-          "_tag": "Failure",
-          "cause": {
-            "_id": "Cause",
-            "_tag": "Fail",
-            "failure": "RPC failure: test http failure"
-          }
-        }"
-      `)
+      expect(error.toString()).toMatchInlineSnapshot(`"Failure(Cause([Fail("RPC failure: test http failure")]))"`)
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
@@ -92,17 +77,7 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => 
     Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const error = yield* client.Defect({ message: 'test http defect' }).pipe(Effect.exit)
-      expect(error.toString()).toMatchInlineSnapshot(`
-        "{
-          "_id": "Exit",
-          "_tag": "Failure",
-          "cause": {
-            "_id": "Cause",
-            "_tag": "Die",
-            "defect": "some defect: test http defect"
-          }
-        }"
-      `)
+      expect(error.toString()).toMatchInlineSnapshot(`"Failure(Cause([Die("some defect: test http defect")]))"`)
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
@@ -114,7 +89,7 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => 
         Stream.map((c) => c.maybeNumber.pipe(Option.getOrUndefined)),
       )
       const chunks = yield* Stream.runCollect(stream)
-      expect(Chunk.toReadonlyArray(chunks)).toEqual([1, 4, 9, 16]) // squares of 1,2,3,4
+      expect(chunks).toEqual([1, 4, 9, 16]) // squares of 1,2,3,4
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
@@ -123,17 +98,7 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => 
       const client = yield* RpcClient.make(TestRpcs)
       const stream = client.StreamError({ count: 5, errorAfter: 4 })
       const error = yield* Stream.runCollect(stream).pipe(Effect.exit)
-      expect(error.toString()).toMatchInlineSnapshot(`
-        "{
-          "_id": "Exit",
-          "_tag": "Failure",
-          "cause": {
-            "_id": "Cause",
-            "_tag": "Fail",
-            "failure": "Stream error after 4: got 9"
-          }
-        }"
-      `)
+      expect(error.toString()).toMatchInlineSnapshot(`"Failure(Cause([Fail("Stream error after 4: got 9")]))"`)
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
@@ -142,17 +107,7 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => 
       const client = yield* RpcClient.make(TestRpcs)
       const stream = client.StreamDefect({ count: 4, defectAfter: 1 })
       const error = yield* Stream.runCollect(stream).pipe(Effect.exit)
-      expect(error.toString()).toMatchInlineSnapshot(`
-        "{
-          "_id": "Exit",
-          "_tag": "Failure",
-          "cause": {
-            "_id": "Cause",
-            "_tag": "Die",
-            "defect": "Stream defect after 1: got 4"
-          }
-        }"
-      `)
+      expect(error.toString()).toMatchInlineSnapshot(`"Failure(Cause([Die("Stream defect after 1: got 4")]))"`)
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
@@ -161,7 +116,7 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => 
       const client = yield* RpcClient.make(TestRpcs)
       const stream = client.StreamInterruptible({ delay: 50, interruptAfterCount: 3 }).pipe(Stream.take(3))
       const chunks = yield* Stream.runCollect(stream)
-      expect(Chunk.toReadonlyArray(chunks)).toEqual([1, 2, 3])
+      expect(chunks).toEqual([1, 2, 3])
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 })
@@ -223,7 +178,7 @@ Vitest.describe('Hibernation Tests', { timeout: 25000 }, () => {
         Stream.map((c) => c.maybeNumber.pipe(Option.getOrUndefined)),
       )
       const chunks = yield* Stream.runCollect(stream)
-      expect(Chunk.toReadonlyArray(chunks)).toEqual([1, 4, 9]) // squares of 1,2,3
+      expect(chunks).toEqual([1, 4, 9]) // squares of 1,2,3
       console.log('✅ Streaming after hibernation successful')
 
       console.log('🎉 All RPC operations successful after hibernation!')

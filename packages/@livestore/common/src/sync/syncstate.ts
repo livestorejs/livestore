@@ -4,6 +4,9 @@ import { Effect, Match, ReadonlyArray, Schema } from '@livestore/utils/effect'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 
+const InternalEvent = Schema.Any as Schema.Schema<LiveStoreEvent.Client.EncodedWithMeta>
+const InternalEvents = Schema.Array(InternalEvent)
+
 /**
  * SyncState represents the current sync state of a sync node relative to an upstream node.
  * Events flow from local to upstream, with each state maintaining its own event head.
@@ -42,7 +45,7 @@ import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
  * handling cases such as upstream rebase, advance and local push.
  */
 export class SyncState extends Schema.Class<SyncState>('SyncState')({
-  pending: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  pending: InternalEvents,
   /** What this node expects the next upstream node to have as its own local head */
   upstreamHead: EventSequenceNumber.Client.Composite,
   /** Equivalent to `pending.at(-1)?.id` if there are pending events */
@@ -55,32 +58,37 @@ export class SyncState extends Schema.Class<SyncState>('SyncState')({
   })
 }
 
+const InternalSyncState = Schema.Any as Schema.Schema<SyncState>
+
 /**
  * This payload propagates a rebase from the upstream node
  */
-export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase', {
+export class PayloadUpstreamRebase extends Schema.TaggedClass<PayloadUpstreamRebase>()('upstream-rebase', {
   /** Events which need to be rolled back */
-  rollbackEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  rollbackEvents: InternalEvents,
   /** Events which need to be applied after the rollback (already rebased by the upstream node) */
-  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  newEvents: InternalEvents,
 }) {}
 
-export class PayloadUpstreamAdvance extends Schema.TaggedStruct('upstream-advance', {
-  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+export class PayloadUpstreamAdvance extends Schema.TaggedClass<PayloadUpstreamAdvance>()('upstream-advance', {
+  newEvents: InternalEvents,
 }) {}
 
-export class PayloadLocalPush extends Schema.TaggedStruct('local-push', {
-  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+export class PayloadLocalPush extends Schema.TaggedClass<PayloadLocalPush>()('local-push', {
+  newEvents: InternalEvents,
 }) {}
 
-export class Payload extends Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush) {}
+export const Payload = Schema.Union([PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush])
+export type Payload = typeof Payload.Type
+const InternalPayload = Schema.Any as Schema.Schema<Payload>
 
-export class PayloadUpstream extends Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance) {}
+export const PayloadUpstream = Schema.Union([PayloadUpstreamRebase, PayloadUpstreamAdvance])
+export type PayloadUpstream = typeof PayloadUpstream.Type
 
 /** Only used for debugging purposes */
 export class MergeContext extends Schema.Class<MergeContext>('MergeContext')({
-  payload: Payload,
-  syncState: SyncState,
+  payload: InternalPayload,
+  syncState: InternalSyncState,
 }) {
   toJSON = (): any => {
     const payload = Match.value(this.payload).pipe(
@@ -106,13 +114,15 @@ export class MergeContext extends Schema.Class<MergeContext>('MergeContext')({
   }
 }
 
+const InternalMergeContext = Schema.Any as Schema.Schema<MergeContext>
+
 export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeResultAdvance')({
   _tag: Schema.Literal('advance'),
-  newSyncState: SyncState,
-  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  newSyncState: InternalSyncState,
+  newEvents: InternalEvents,
   /** Events which were previously pending but are now confirmed */
-  confirmedEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
-  mergeContext: MergeContext,
+  confirmedEvents: InternalEvents,
+  mergeContext: InternalMergeContext,
 }) {
   toJSON = (): any => {
     return {
@@ -127,11 +137,11 @@ export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeR
 
 export class MergeResultRebase extends Schema.Class<MergeResultRebase>('MergeResultRebase')({
   _tag: Schema.Literal('rebase'),
-  newSyncState: SyncState,
-  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  newSyncState: InternalSyncState,
+  newEvents: InternalEvents,
   /** Events which need to be rolled back */
-  rollbackEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
-  mergeContext: MergeContext,
+  rollbackEvents: InternalEvents,
+  mergeContext: InternalMergeContext,
 }) {
   toJSON = (): any => {
     return {
@@ -148,7 +158,7 @@ export class MergeResultReject extends Schema.Class<MergeResultReject>('MergeRes
   _tag: Schema.Literal('reject'),
   /** The minimum id that the new events must have */
   expectedMinimumId: EventSequenceNumber.Client.Composite,
-  mergeContext: MergeContext,
+  mergeContext: InternalMergeContext,
 }) {
   toJSON = (): any => {
     return {
@@ -159,7 +169,8 @@ export class MergeResultReject extends Schema.Class<MergeResultReject>('MergeRes
   }
 }
 
-export class MergeResult extends Schema.Union(MergeResultAdvance, MergeResultRebase, MergeResultReject) {}
+export const MergeResult = Schema.Union([MergeResultAdvance, MergeResultRebase, MergeResultReject])
+export type MergeResult = typeof MergeResult.Type
 
 export const payloadFromMergeResult = (
   mergeResult: typeof MergeResultAdvance.Type | typeof MergeResultRebase.Type,
@@ -187,31 +198,16 @@ TODO: possibly even keep the client events in a separate table in the client lea
 export const merge = Effect.fnUntraced(function* ({
   syncState,
   payload,
-  isClientOnlyEvent,
+  isClientEvent,
   isEqualEvent,
-  ignoreClientOnlyEvents = false,
+  ignoreClientEvents = false,
 }: {
   syncState: SyncState
   payload: typeof Payload.Type
-  /**
-   * `LiveStoreEvent.Client.EncodedWithMeta` does not carry the event definition's
-   * `clientOnly` flag. The caller supplies this schema-aware predicate so `merge`
-   * can preserve the correct sequence-number shape when rebasing: client-only
-   * events advance the client component, synced events advance the global component.
-   */
-  isClientOnlyEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
-  /**
-   * Pending events are confirmed by comparing their logical encoded identity with
-   * upstream events. This is caller-supplied because comparing encoded args may
-   * require event-schema knowledge that the generic merge algorithm does not own.
-   * Implementations should ignore transport/runtime metadata.
-   */
+  isClientEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
   isEqualEvent: (a: LiveStoreEvent.Client.EncodedWithMeta, b: LiveStoreEvent.Client.EncodedWithMeta) => boolean
-  /**
-   * This is used in the leader which should ignore client events when
-   * receiving an upstream-advance payload
-   */
-  ignoreClientOnlyEvents?: boolean
+  /** This is used in the leader which should ignore client events when receiving an upstream-advance payload */
+  ignoreClientEvents?: boolean
 }) {
   yield* validateSyncState(syncState)
   yield* validatePayload(payload)
@@ -229,7 +225,7 @@ export const merge = Effect.fnUntraced(function* ({
       const rebasedPending = rebaseEvents({
         events: syncState.pending,
         baseEventSequenceNumber: newUpstreamHead,
-        isClientOnlyEvent,
+        isClientEvent,
       })
 
       return yield* validateMergeResult(
@@ -293,8 +289,8 @@ export const merge = Effect.fnUntraced(function* ({
         existingEvents: syncState.pending,
         incomingEvents: payload.newEvents,
         isEqualEvent,
-        isClientOnlyEvent,
-        ignoreClientOnlyEvents,
+        isClientEvent,
+        ignoreClientEvents,
       })
 
       // No divergent pending events, thus we can just advance (some of) the pending events
@@ -315,7 +311,7 @@ export const merge = Effect.fnUntraced(function* ({
         const [pendingMatching, pendingRemaining] = ReadonlyArray.splitWhere(
           syncState.pending,
           (pendingEvent, index) => {
-            if (ignoreClientOnlyEvents === true && isClientOnlyEvent(pendingEvent) === true) {
+            if (ignoreClientEvents === true && isClientEvent(pendingEvent) === true) {
               clientIndexOffset++
               return false
             }
@@ -347,15 +343,15 @@ export const merge = Effect.fnUntraced(function* ({
         const rebasedPending = rebaseEvents({
           events: divergentPending,
           baseEventSequenceNumber: newUpstreamHead,
-          isClientOnlyEvent: isClientOnlyEvent,
+          isClientEvent,
         })
 
         const divergentNewEventsIndex = findDivergencePoint({
           existingEvents: payload.newEvents,
           incomingEvents: syncState.pending,
           isEqualEvent,
-          isClientOnlyEvent: isClientOnlyEvent,
-          ignoreClientOnlyEvents: ignoreClientOnlyEvents,
+          isClientEvent,
+          ignoreClientEvents,
         })
 
         return yield* validateMergeResult(
@@ -408,11 +404,9 @@ export const merge = Effect.fnUntraced(function* ({
           }),
         )
       } else {
-        const nonClientOnlyEvents =
-          ignoreClientOnlyEvents === true
-            ? payload.newEvents.filter((event) => !isClientOnlyEvent(event))
-            : payload.newEvents
-        const newPending = [...syncState.pending, ...nonClientOnlyEvents]
+        const nonClientEvents =
+          ignoreClientEvents === true ? payload.newEvents.filter((event) => !isClientEvent(event)) : payload.newEvents
+        const newPending = [...syncState.pending, ...nonClientEvents]
         const newLocalHead =
           newPending.at(-1)?.seqNum ?? EventSequenceNumber.Client.max(syncState.localHead, syncState.upstreamHead)
 
@@ -435,7 +429,7 @@ export const merge = Effect.fnUntraced(function* ({
     default:
       return casesHandled(payload)
   }
-})
+  })
 
 /**
  * Gets the index relative to `existingEvents` where the divergence point is
@@ -445,28 +439,28 @@ export const findDivergencePoint = ({
   existingEvents,
   incomingEvents,
   isEqualEvent,
-  isClientOnlyEvent,
-  ignoreClientOnlyEvents,
+  isClientEvent,
+  ignoreClientEvents,
 }: {
   existingEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
   incomingEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
   isEqualEvent: (a: LiveStoreEvent.Client.EncodedWithMeta, b: LiveStoreEvent.Client.EncodedWithMeta) => boolean
-  isClientOnlyEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
-  ignoreClientOnlyEvents: boolean
+  isClientEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
+  ignoreClientEvents: boolean
 }): number => {
-  if (ignoreClientOnlyEvents === true) {
-    const filteredExistingEvents = existingEvents.filter((event) => !isClientOnlyEvent(event))
-    const divergencePointWithoutClientOnlyEvents = findDivergencePoint({
+  if (ignoreClientEvents === true) {
+    const filteredExistingEvents = existingEvents.filter((event) => !isClientEvent(event))
+    const divergencePointWithoutClientEvents = findDivergencePoint({
       existingEvents: filteredExistingEvents,
       incomingEvents,
       isEqualEvent,
-      isClientOnlyEvent,
-      ignoreClientOnlyEvents: false,
+      isClientEvent,
+      ignoreClientEvents: false,
     })
 
-    if (divergencePointWithoutClientOnlyEvents === -1) return -1
+    if (divergencePointWithoutClientEvents === -1) return -1
 
-    const divergencePointEventSequenceNumber = existingEvents[divergencePointWithoutClientOnlyEvents]!.seqNum
+    const divergencePointEventSequenceNumber = existingEvents[divergencePointWithoutClientEvents]!.seqNum
     // Now find the divergence point in the original array
     return existingEvents.findIndex((event) =>
       EventSequenceNumber.Client.isEqual(event.seqNum, divergencePointEventSequenceNumber),
@@ -483,35 +477,25 @@ export const findDivergencePoint = ({
 const rebaseEvents = ({
   events,
   baseEventSequenceNumber,
-  isClientOnlyEvent,
+  isClientEvent,
 }: {
   events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
   baseEventSequenceNumber: EventSequenceNumber.Client.Composite
-  isClientOnlyEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
+  isClientEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
 }): ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> => {
   let prevEventSequenceNumber = baseEventSequenceNumber
   const rebaseGeneration = baseEventSequenceNumber.rebaseGeneration + 1
   return events.map((event) => {
-    // Rebasing must preserve whether an event is client-only: client-only
-    // events become eN.1/eN.2, while synced events become eN+1.
+    const isClientOnly = isClientEvent(event)
     const newEvent = event.rebase({
       parentSeqNum: prevEventSequenceNumber,
-      isClientOnly: isClientOnlyEvent(event),
+      isClientOnly,
       rebaseGeneration,
     })
     prevEventSequenceNumber = newEvent.seqNum
     return newEvent
   })
 }
-
-/**
- * TODO: Implement this
- *
- * In certain scenarios e.g. when the client session has a queue of upstream update results,
- * it could make sense to "flatten" update results into a single update result which the client session
- * can process more efficiently which avoids push-threshing
- */
-const _flattenMergeResults = (_updateResults: ReadonlyArray<MergeResult>) => {}
 
 const validatePayload = (payload: typeof Payload.Type) =>
   Effect.gen(function* () {
@@ -529,7 +513,9 @@ const validatePayload = (payload: typeof Payload.Type) =>
     }
   })
 
-const validateSyncState = Effect.fnUntraced(function* (syncState: SyncState) {
+const validateSyncState = Effect.fnUntraced(function* (
+  syncState: SyncState,
+) {
   for (let i = 0; i < syncState.pending.length; i++) {
     const event = syncState.pending[i]!
     const nextEvent = syncState.pending[i + 1]
@@ -565,7 +551,9 @@ const validateSyncState = Effect.fnUntraced(function* (syncState: SyncState) {
   }
 })
 
-const validateMergeResult = Effect.fnUntraced(function* (mergeResult: typeof MergeResult.Type) {
+const validateMergeResult = Effect.fnUntraced(function* (
+  mergeResult: typeof MergeResult.Type,
+) {
   if (mergeResult._tag === 'reject') return mergeResult
 
   yield* validateSyncState(mergeResult.newSyncState)

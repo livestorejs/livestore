@@ -27,7 +27,7 @@ export interface PeerDepViolation {
   resolvedVersion: string
 }
 
-export class PeerDepCheckError extends Schema.TaggedError<PeerDepCheckError>()('PeerDepCheckError', {
+export class PeerDepCheckError extends Schema.TaggedErrorClass<PeerDepCheckError>()('PeerDepCheckError', {
   message: Schema.String,
   cause: Schema.optional(Schema.Unknown),
 }) {}

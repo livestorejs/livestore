@@ -12,10 +12,10 @@ export const sessionId = Schema.String
 export const liveStoreVersion = Schema.String
 
 export const LSDMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
-  Schema.TaggedStruct(tag, {
+  Schema.TaggedClass<any>()(tag, {
     liveStoreVersion,
     ...fields,
-  }).annotations({ identifier: tag })
+  }, { identifier: tag })
 
 export const LSDChannelMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
   LSDMessage(tag, {
@@ -87,24 +87,23 @@ export const LeaderReqResMessage = <
     requestId,
     liveStoreVersion,
     ...fields.success,
-  }).annotations({ identifier: `${tag}.Response.Success` })
+  }).annotate({ identifier: `${tag}.Response.Success` })
 
-  const Error =
-    fields.error !== undefined
-      ? Schema.TaggedStruct(`${tag}.Response.Error`, {
-          requestId,
-          liveStoreVersion,
-          ...fields.error,
-        }).annotations({ identifier: `${tag}.Response.Error` })
-      : Schema.Never
+  const Error = fields.error !== undefined
+    ? Schema.TaggedStruct(`${tag}.Response.Error`, {
+        requestId,
+        liveStoreVersion,
+        ...fields.error,
+      }).annotate({ identifier: `${tag}.Response.Error` })
+    : Schema.Never
 
   return {
     Request: Schema.TaggedStruct(`${tag}.Request`, {
       requestId,
       liveStoreVersion,
       ...fields.payload,
-    }).annotations({ identifier: `${tag}.Request` }),
-    Response: Schema.Union(Success, Error),
+    }).annotate({ identifier: `${tag}.Request` }),
+    Response: Schema.Union([Success, Error]),
     Success,
     Error,
   } as any

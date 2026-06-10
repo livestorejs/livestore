@@ -1,10 +1,10 @@
-import { Effect, type Scope } from '@livestore/utils/effect'
+import { Effect, Semaphore, type Scope } from '@livestore/utils/effect'
 import type { Opfs } from '@livestore/utils/effect/browser'
 import type * as WaSqlite from '@livestore/wa-sqlite'
 
 import { AccessHandlePoolVFS } from './AccessHandlePoolVFS.ts'
 
-const semaphore = Effect.makeSemaphore(1).pipe(Effect.runSync)
+const semaphore = Semaphore.makeUnsafe(1)
 const opfsVfsMap = new Map<string, AccessHandlePoolVFS>()
 
 export const makeOpfsDb = ({

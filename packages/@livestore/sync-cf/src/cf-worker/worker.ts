@@ -201,29 +201,29 @@ export const handleSyncRequest = <
       // Always decode with the supplied schema when present, even if payload is undefined.
       // This ensures required payloads are enforced by the schema.
       if (syncPayloadSchema !== undefined) {
-        const decodedEither = Schema.decodeUnknownEither(syncPayloadSchema)(payload)
-        if (decodedEither._tag === 'Left') {
-          const message = decodedEither.left.toString()
+        const decodedEither = Schema.decodeUnknownExit(syncPayloadSchema as any)(payload)
+        if (decodedEither._tag !== 'Success') {
+          const message = decodedEither.cause.toString()
           console.error('Invalid payload (decode failed)', message)
           return new Response(message, { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
 
         const result = yield* Effect.promise(async () =>
-          validatePayload(decodedEither.right, { storeId, headers: requestHeaders }),
-        ).pipe(UnknownError.mapToUnknownError, Effect.either)
+          validatePayload(decodedEither.value as TSyncPayload, { storeId, headers: requestHeaders }),
+        ).pipe(UnknownError.mapToUnknownError, Effect.result)
 
-        if (result._tag === 'Left') {
-          console.error('Invalid payload (validation failed)', result.left)
-          return new Response(result.left.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
+        if (result._tag === 'Failure') {
+          console.error('Invalid payload (validation failed)', result.failure)
+          return new Response(result.failure.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
       } else {
         const result = yield* Effect.promise(async () =>
           validatePayload(payload as TSyncPayload, { storeId, headers: requestHeaders }),
-        ).pipe(UnknownError.mapToUnknownError, Effect.either)
+        ).pipe(UnknownError.mapToUnknownError, Effect.result)
 
-        if (result._tag === 'Left') {
-          console.error('Invalid payload (validation failed)', result.left)
-          return new Response(result.left.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
+        if (result._tag === 'Failure') {
+          console.error('Invalid payload (validation failed)', result.failure)
+          return new Response(result.failure.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
       }
     }

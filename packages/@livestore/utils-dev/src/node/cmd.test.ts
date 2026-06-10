@@ -1,17 +1,16 @@
 import fs from 'node:fs'
 import path from 'node:path'
-
-import { expect } from 'vitest'
-
+import { Duration, Effect, Layer } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { CommandExecutor, Duration, Effect, Layer } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
+import * as ChildProcessSpawner from 'effect/unstable/process/ChildProcessSpawner'
+import { expect } from 'vitest'
 
 import { cmd } from './cmd.ts'
 import { CurrentWorkingDirectory } from './workspace.ts'
 
+import * as NodeServices from '@effect/platform-node/NodeServices'
 const withNode = Vitest.makeWithTestCtx({
-  makeLayer: () => Layer.mergeAll(PlatformNode.NodeContext.layer, CurrentWorkingDirectory.live),
+  makeLayer: () => Layer.mergeAll(NodeServices.layer, CurrentWorkingDirectory.live),
   timeout: 20_000,
 })
 
@@ -21,14 +20,14 @@ Vitest.describe('cmd helper', () => {
   Vitest.scopedLive('runs tokenized string without shell', (test) =>
     Effect.gen(function* () {
       const exit = yield* cmd('printf ok')
-      expect(exit).toBe(CommandExecutor.ExitCode(0))
+      expect(exit).toBe(ChildProcessSpawner.ExitCode(0))
     }).pipe(withNode(test)),
   )
 
   Vitest.scopedLive('runs array input', (test) =>
     Effect.gen(function* () {
       const exit = yield* cmd(['printf', 'ok'])
-      expect(exit).toBe(CommandExecutor.ExitCode(0))
+      expect(exit).toBe(ChildProcessSpawner.ExitCode(0))
     }).pipe(withNode(test)),
   )
 
@@ -42,7 +41,7 @@ Vitest.describe('cmd helper', () => {
 
         // first run
         const exit1 = yield* cmd('printf first', { logDir: logsDir })
-        expect(exit1).toBe(CommandExecutor.ExitCode(0))
+        expect(exit1).toBe(ChildProcessSpawner.ExitCode(0))
         const current = path.join(logsDir, 'dev.log')
         expect(fs.existsSync(current)).toBe(true)
         const firstLog = fs.readFileSync(current, 'utf8')
@@ -56,7 +55,7 @@ Vitest.describe('cmd helper', () => {
 
         // second run — archives previous
         const exit2 = yield* cmd('printf second', { logDir: logsDir })
-        expect(exit2).toBe(CommandExecutor.ExitCode(0))
+        expect(exit2).toBe(ChildProcessSpawner.ExitCode(0))
         const archiveDir = path.join(logsDir, 'archive')
         const archives = fs.readdirSync(archiveDir).filter((f) => f.endsWith('.log'))
         expect(archives.length).toBe(1)
@@ -95,7 +94,7 @@ Vitest.describe('cmd helper', () => {
       const exit = yield* cmd(['node', '-e', "console.log('out'); console.error('err')"], {
         logDir: logsDir,
       })
-      expect(exit).toBe(CommandExecutor.ExitCode(0))
+      expect(exit).toBe(ChildProcessSpawner.ExitCode(0))
 
       const current = path.join(logsDir, 'dev.log')
       const logContent = fs.readFileSync(current, 'utf8')

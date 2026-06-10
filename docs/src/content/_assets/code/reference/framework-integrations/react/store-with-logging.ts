@@ -17,6 +17,6 @@ export const useAppStore = () =>
     batchUpdates,
     // Optional: swap the logger implementation
     logger: Logger.prettyWithThread('app'),
-    // Optional: set minimum log level (use LogLevel.None to disable)
-    logLevel: LogLevel.Info,
+    // Optional: set minimum log level (use "None" to disable)
+    logLevel: 'Info' satisfies LogLevel.LogLevel,
   })

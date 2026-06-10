@@ -6,17 +6,14 @@ const examplesWorkspaceSettings = {
   /** Dedupe packages pulled in transitively by older example/peer-deps dependencies */
   overrides: catalog.pick(
     'effect',
-    '@effect/platform',
+    '@effect/ai-openai',
     '@effect/platform-browser',
     '@effect/platform-bun',
     '@effect/platform-node',
     '@effect/platform-node-shared',
-    '@effect/cli',
-    '@effect/experimental',
     '@effect/opentelemetry',
-    '@effect/printer',
-    '@effect/printer-ansi',
-    '@effect/typeclass',
+    '@effect/sql-sqlite-node',
+    '@effect/vitest',
     'react',
     'react-dom',
     '@tanstack/router-core',
@@ -34,6 +31,11 @@ const examplesWorkspaceSettings = {
 }
 
 export const repoPackageExtensions = {
+  '@effect/vitest': {
+    dependencies: {
+      '@vitest/runner': '3.2.4',
+    },
+  },
   'starlight-auto-sidebar': {
     dependencies: {
       astro: '>=5.0.0',
@@ -72,5 +74,6 @@ export default pnpmWorkspaceYaml.root({
   packageExtensions: repoPackageExtensions,
   /** Relaxed until @livestore/devtools-vite publishes with updated Effect peer ranges */
   strictPeerDependencies: false,
+  autoInstallPeers: false,
   ...examplesWorkspaceSettings,
 })

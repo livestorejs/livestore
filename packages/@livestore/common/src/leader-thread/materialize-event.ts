@@ -77,10 +77,13 @@ export const makeMaterializeEvent = ({
 
         if (
           materializerHash._tag === 'Some' &&
-          eventEncoded.meta.materializerHashSession._tag === 'Some' &&
+          eventEncoded.meta?.materializerHashSession._tag === 'Some' &&
           eventEncoded.meta.materializerHashSession.value !== materializerHash.value
         ) {
-          return yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
+          return yield* MaterializerHashMismatchError.make({
+            eventName: eventEncoded.name,
+            note: 'Please make sure your event materializer is a pure function without side effects.',
+          })
         }
 
         // NOTE we might want to bring this back if we want to debug no-op events

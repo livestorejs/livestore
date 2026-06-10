@@ -1,5 +1,5 @@
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Effect, Fiber, Latch, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { makeMockSyncBackend } from '../sync/mock-sync-backend.ts'
 import type { SyncBackend } from '../sync/sync.ts'
@@ -15,28 +15,28 @@ Vitest.describe('makeNetworkStatusSubscribable', () => {
 
       const devtoolsContext: DevtoolsContext = {
         enabled: true,
-        syncBackendLatch: yield* Effect.makeLatch(true),
+        syncBackendLatch: yield* Latch.make(true),
         syncBackendLatchState: latchStateRef,
       }
 
       const networkStatus = yield* makeNetworkStatusSubscribable({ syncBackend, devtoolsContext })
 
-      const initial = yield* networkStatus
+      const initial = yield* networkStatus.get
       Vitest.expect(initial.isConnected).toBe(false)
       Vitest.expect(initial.devtools.latchClosed).toBe(false)
 
-      const waitFor = (predicate: (status: SyncBackend.NetworkStatus) => boolean) =>
-        networkStatus.changes.pipe(Stream.filter(predicate), Stream.runHead, Effect.flatten)
+	      const waitFor = (predicate: (status: SyncBackend.NetworkStatus) => boolean) =>
+	        networkStatus.changes.pipe(Stream.filter(predicate), Stream.runHead, Effect.map(Option.getOrThrow))
 
-      const onlineFiber = yield* waitFor((status) => status.isConnected).pipe(Effect.forkScoped)
-      yield* mockBackend.connect
-      const online = yield* onlineFiber
+	      const onlineFiber = yield* waitFor((status) => status.isConnected).pipe(Effect.forkScoped)
+	      yield* mockBackend.connect
+	      const online = yield* Fiber.join(onlineFiber)
       Vitest.expect(online.isConnected).toBe(true)
       Vitest.expect(online.timestampMs).toBeGreaterThan(initial.timestampMs)
 
-      const latchedFiber = yield* waitFor((status) => status.devtools.latchClosed).pipe(Effect.forkScoped)
-      yield* SubscriptionRef.set(latchStateRef, { latchClosed: true })
-      const latched = yield* latchedFiber
+	      const latchedFiber = yield* waitFor((status) => status.devtools.latchClosed).pipe(Effect.forkScoped)
+	      yield* SubscriptionRef.set(latchStateRef, { latchClosed: true })
+	      const latched = yield* Fiber.join(latchedFiber)
       Vitest.expect(latched.devtools.latchClosed).toBe(true)
       Vitest.expect(latched.timestampMs).toBeGreaterThanOrEqual(online.timestampMs)
     }),

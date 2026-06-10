@@ -1,6 +1,6 @@
 import { Effect, Stream } from 'effect'
 
-import { Opfs, OpfsError } from './Opfs.ts'
+import * as Opfs from './Opfs.ts'
 
 /**
  * Set of path segments that are forbidden by the File System specification.
@@ -25,14 +25,14 @@ const parsePathSegments = (path: string) =>
     const segments = path.split('/').filter((segment) => segment.length > 0)
 
     if (segments.length === 0) {
-      return yield* new OpfsError({
+      return yield* new Opfs.OpfsError({
         message: `Invalid OPFS path '${path}': path must contain at least one non-empty segment`,
       })
     }
 
     for (const segment of segments) {
       if (DISALLOWED_SEGMENTS.has(segment) === true) {
-        return yield* new OpfsError({
+        return yield* new Opfs.OpfsError({
           message: `Invalid OPFS path '${path}': segment '${segment}' is not supported`,
         })
       }
@@ -164,7 +164,7 @@ export const exists = Effect.fn('@livestore/utils:Opfs.exists')(function* (path:
   if (parentDirHandle === undefined) return false
 
   return yield* Opfs.getFileHandle(parentDirHandle, targetName).pipe(
-    Effect.orElse(() => Opfs.getDirectoryHandle(parentDirHandle, targetName, { create: false })),
+    Effect.catch(() => Opfs.getDirectoryHandle(parentDirHandle, targetName, { create: false })),
     Effect.as(true),
     Effect.catchTag('NotFoundError', () => Effect.succeed(false)),
   )
@@ -217,7 +217,7 @@ export const getMetadata = Effect.fn('@livestore/utils:Opfs.getMetadata')(functi
  */
 export const writeFile = Effect.fn('@livestore/utils:Opfs.writeFile')(function* (path: string, data: Uint8Array) {
   if (isRootPath(path) === true) {
-    return yield* new OpfsError({
+    return yield* new Opfs.OpfsError({
       message: `Invalid OPFS path '${path}': cannot write file directly to the OPFS root`,
     })
   }
@@ -230,7 +230,7 @@ export const writeFile = Effect.fn('@livestore/utils:Opfs.writeFile')(function* 
       const parentDirHandle = yield* traverseDirectoryPath(parentSegments)
       const fileHandle = yield* Opfs.getFileHandle(parentDirHandle, fileName, { create: true })
 
-      yield* Opfs.writeFile(fileHandle, new Uint8Array(data), {
+      yield* Opfs.writeFileHandle(fileHandle, new Uint8Array(data), {
         keepExistingData: false,
       })
     }),
@@ -254,7 +254,7 @@ export const syncWriteFile = Effect.fn('@livestore/utils:Opfs.syncWriteFile')(fu
   data: Uint8Array,
 ) {
   if (isRootPath(path) === true) {
-    return yield* new OpfsError({
+    return yield* new Opfs.OpfsError({
       message: `Invalid OPFS path '${path}': cannot write file directly to the OPFS root`,
     })
   }
@@ -274,7 +274,7 @@ export const syncWriteFile = Effect.fn('@livestore/utils:Opfs.syncWriteFile')(fu
       while (offset < data.byteLength) {
         const wrote = yield* Opfs.syncWrite(syncHandle, data.subarray(offset), { at: offset })
         if (wrote === 0) {
-          return yield* new OpfsError({
+          return yield* new Opfs.OpfsError({
             message: `Short write: wrote ${offset} of ${data.byteLength} bytes.`,
           })
         }

@@ -1,5 +1,3 @@
-import { assert, expect } from 'vitest'
-
 import {
   BackendIdMismatchError,
   type IntentionalShutdownCause,
@@ -21,7 +19,6 @@ import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Chunk,
   Context,
@@ -37,10 +34,12 @@ import {
   Stream,
   WebChannel,
 } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { assert, expect } from 'vitest'
 
 import { events, schema, tables } from './fixture.ts'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 /*
 TODO:
 - batch queued events which are about to be pushed
@@ -67,8 +66,8 @@ const withTestCtx = (
 ) =>
   Vitest.makeWithTestCtx({
     makeLayer: () =>
-      Layer.provideMerge(LeaderThreadCtxLive(args), PlatformNode.NodeFileSystem.layer).pipe(
-        Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
+      Layer.provideMerge(LeaderThreadCtxLive(args), NodeFileSystem.layer).pipe(
+        Layer.provide(Logger.layer([Logger.consolePretty()])),
       ),
     forceOtel: true,
   })
@@ -315,14 +314,16 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         rebaseGeneration: syncStateBefore.localHead.rebaseGeneration - 1,
       })
 
-      // push waits on the deferred, so we observe the rejection path.
+      // Push waits on the deferred, so we observe the rejection path.
       const staleEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
         ...LiveStoreEvent.Global.toClientEncoded(baseEvent),
         seqNum: staleSeq,
         parentSeqNum: staleParent,
       })
 
-      const error = yield* leaderThreadCtx.syncProcessor.push([staleEvent]).pipe(Effect.flip)
+      const error = yield* leaderThreadCtx.syncProcessor
+        .push([staleEvent])
+        .pipe(Effect.flip)
 
       expect(error._tag).toBe('StaleRebaseGenerationError')
       assert(error instanceof StaleRebaseGenerationError)
@@ -371,7 +372,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         { id: '2', text: 't2', completed: 0, deletedAt: null },
       ])
 
-      const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
+      const queueResults = yield* Queue.takeAll(testContext.pullQueue)
       expect(queueResults[0]!.payload._tag).toEqual('upstream-advance')
       expect(queueResults[1]!.payload._tag).toEqual('upstream-rebase')
     }).pipe(withTestCtx()(test)),
@@ -402,7 +403,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
       expect(result.length).toEqual(numberOfPushes)
 
-      const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
+      const queueResults = yield* Queue.takeAll(testContext.pullQueue)
       expect(queueResults.every((result) => result.payload._tag === 'upstream-advance')).toBe(true)
     }).pipe(withTestCtx()(test)),
   )
@@ -418,7 +419,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       for (let i = 0; i < 5; i++) {
         yield* testContext.mockSyncBackend
           .advance(backendFactory.todoCreated.next({ id: `backend_${i}`, text: '', completed: false }))
-          .pipe(Effect.fork)
+          .pipe(Effect.forkChild)
       }
 
       for (let i = 0; i < 5; i++) {
@@ -439,7 +440,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       for (let i = 0; i < 10; i++) {
         const event = eventFactory.todoCreated.next({ id: `session_1_${i}`, text: '', completed: false })
-        yield* testContext.pushEncoded(event).pipe(Effect.repeatN(1), Effect.ignoreLogged)
+        yield* testContext.pushEncoded(event).pipe(Effect.repeat({ times: 1 }), Effect.ignoreLogged)
       }
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(10), Stream.runDrain)
@@ -492,14 +493,14 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       // Session B resumes with a stale pending mutation followed by two fresh events
       const pushResult = yield* testContext
         .pushEncoded(staleEventB, followUpB1, followUpB2)
-        .pipe(Effect.either, Effect.timeout(Duration.seconds(5)))
+        .pipe(Effect.result, Effect.timeout(Duration.seconds(5)))
 
-      expect(pushResult._tag).toBe('Left')
-      if (pushResult._tag !== 'Left') {
+      expect(pushResult._tag).toBe('Failure')
+      if (pushResult._tag !== 'Failure') {
         return
       }
 
-      const error = pushResult.left
+      const error = pushResult.failure
       expect(error._tag).toBe('LeaderAheadError')
       if (error._tag !== 'LeaderAheadError') {
         return
@@ -521,23 +522,26 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       const backendFactory = makeEventFactory({
         client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
       })
+      const backendPushAttempted = yield* Deferred.make<void>()
 
       // Cause the next push to fail with ServerAheadError so the pushing fiber parks (Effect.never)
       yield* testContext.mockSyncBackend.failNextPushes(
         1,
         () =>
-          new ServerAheadError({
-            minimumExpectedNum: EventSequenceNumber.Global.make(2),
-            providedNum: EventSequenceNumber.Global.make(1),
-          }),
+          Deferred.succeed(backendPushAttempted, void 0).pipe(
+            Effect.andThen(
+              Effect.fail(new ServerAheadError({
+                minimumExpectedNum: EventSequenceNumber.Global.make(2),
+                providedNum: EventSequenceNumber.Global.make(1),
+              })),
+            ),
+          ),
       )
 
       // Enqueue one local event which will attempt a push and hit the simulated error
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: 'stall', text: 'stall', completed: false }))
 
-      // Waiting a bit to make sure we've already attempted to push to the backend
-      // TODO replace this sleep with a an API that allows us to wait until the push was processed by the sync backend
-      yield* Effect.sleep(50)
+      yield* Deferred.await(backendPushAttempted).pipe(Effect.timeout(5000))
 
       // Sync protocol requires that the sync backend emits a new pull chunk alongside the ServerAheadError
       yield* testContext.mockSyncBackend.advance(
@@ -639,7 +643,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: 'mismatch', text: 'x', completed: false }))
 
       // Expect a shutdown message to be sent with BackendIdMismatchError
-      const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
+      const shutdownMsg = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
 
       expect(shutdownMsg._tag).toEqual('BackendIdMismatchError')
     }).pipe(
@@ -662,12 +666,11 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       // First create some data
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }))
 
-      // Wait for local processing and backend sync to complete before arming the next push failure.
+      // Wait for sync to complete
       yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
         Stream.takeUntil((_) => _.localHead.global === 1),
         Stream.runDrain,
       )
-      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(3000))
 
       // Verify data exists in eventlog before the error
       const beforeRows = leaderThreadCtx.dbEventlog.select<{ name: string }>(`SELECT name FROM eventlog`)
@@ -682,7 +685,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }))
 
       // Expect a shutdown message with IntentionalShutdownCause and reason 'backend-id-mismatch'
-      const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
+      const shutdownMsg = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
 
       expect(shutdownMsg._tag).toEqual('IntentionalShutdownCause')
       expect((shutdownMsg as IntentionalShutdownCause).reason).toEqual('backend-id-mismatch')
@@ -729,7 +732,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }))
 
       // Expect a shutdown message with BackendIdMismatchError (not IntentionalShutdownCause)
-      const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
+      const shutdownMsg = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
 
       expect(shutdownMsg._tag).toEqual('BackendIdMismatchError')
 
@@ -775,7 +778,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       // Verify no shutdown happened (deferred should still be pending)
       // We use race with a small timeout to check if deferred is still pending
       const result = yield* Effect.race(
-        testContext.shutdownDeferred.pipe(
+        Deferred.await(testContext.shutdownDeferred).pipe(
           Effect.flip,
           Effect.map(() => 'shutdown' as const),
         ),
@@ -804,7 +807,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
 type LeaderEventFactory = ReturnType<typeof makeEventFactory>
 
-class TestContext extends Context.Tag('TestContext')<
+class TestContext extends Context.Service<
   TestContext,
   {
     mockSyncBackend: MockSyncBackend
@@ -816,7 +819,7 @@ class TestContext extends Context.Tag('TestContext')<
       ...events: ReadonlyArray<LiveStoreEvent.Global.Encoded>
     ) => Effect.Effect<void, RejectedPushError, Scope.Scope | LeaderThreadCtx>
   }
->() {}
+>()('TestContext') {}
 
 const LeaderThreadCtxLive = ({
   syncProcessor,
@@ -901,10 +904,9 @@ const LeaderThreadCtxLive = ({
       const shutdownDeferred = yield* Deferred.make<void, typeof Shutdown.All.Type>()
 
       if (shutdownProxy !== undefined) {
-        yield* shutdownProxy.sendQueue.pipe(
-          Queue.take,
+        yield* Queue.take(shutdownProxy.sendQueue).pipe(
           Effect.flip,
-          Effect.intoDeferred(shutdownDeferred),
+          Deferred.into(shutdownDeferred),
           Effect.forkScoped,
         )
       }

@@ -13,6 +13,7 @@ export * from './schema/state/sqlite/system-tables/mod.ts'
 export * from './schema-management/migrations.ts'
 export {
   resolveSessionIdSymbolInBindValues,
+  resolveSessionIdSymbolInEventArgs,
   SessionIdSymbol,
   type BindableWithSessionIdSymbol,
 } from './session-id-symbol.ts'

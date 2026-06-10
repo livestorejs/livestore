@@ -37,6 +37,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import {
   type Duration,
   Effect,
+  Filter,
   HttpClient,
   HttpClientRequest,
   HttpClientResponse,
@@ -66,9 +67,9 @@ export interface SyncS2Options {
     /** Enable periodic ping; default true */
     enabled?: boolean
     /** Timeout for individual ping request; default 10s */
-    requestTimeout?: Duration.DurationInput
+    requestTimeout?: Duration.Input
     /** Interval between ping requests; default 10s */
-    requestInterval?: Duration.DurationInput
+    requestInterval?: Duration.Input
   }
   retry?: {
     /** Custom retry schedule for non-live pulls (default: 2 recurs, 100ms spaced) */
@@ -78,7 +79,10 @@ export interface SyncS2Options {
   }
 }
 
-export const defaultRetry = Schedule.compose(Schedule.recurs(2), Schedule.spaced(100))
+export const defaultRetry: Schedule.Schedule<number, UnknownError> = Schedule.recurs(2).pipe(
+  Schedule.both(Schedule.spaced(100)),
+  Schedule.map(([recurrences]) => recurrences),
+)
 
 const getBrowserOrigin = () => {
   if (typeof globalThis !== 'object' || globalThis === null || !('location' in globalThis)) {
@@ -115,7 +119,7 @@ export const makeSyncBackend =
       }).pipe(
         UnknownError.mapToUnknownError,
         Effect.timeout(pingTimeout),
-        Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
+        Effect.catchTag('TimeoutError', () => SubscriptionRef.set(isConnected, false)),
       )
 
       const pingInterval = pingOptions?.requestInterval ?? 10_000
@@ -144,13 +148,13 @@ export const makeSyncBackend =
         const argsJson = Schema.encodeSync(ApiSchema.ArgsSchema)({ storeId, payload, s2SeqNum, live })
         const url = `${pullEndpoint}?args=${argsJson}`
 
-        return httpClient
+        return (httpClient
           .execute(HttpClientRequest.get(url).pipe(HttpClientRequest.setHeaders({ accept: 'text/event-stream' })))
           .pipe(
             HttpClientResponse.stream,
             // decode text and split into lines
-            Stream.decodeText('utf8'),
-            Stream.pipeThroughChannel(Sse.makeChannel()),
+            Stream.decodeText({ encoding: 'utf8' }),
+            Stream.pipeThroughChannel(Sse.decode()),
             // Filter out pings, map errors to stream failures
             Stream.mapEffect(
               Effect.fnUntraced(function* (msg) {
@@ -160,7 +164,7 @@ export const makeSyncBackend =
                   return yield* new UnknownError({ cause: new Error(`SSE error: ${msg.data}`) })
                 }
                 if (evt === 'batch') {
-                  const readBatch = yield* Schema.decode(Schema.parseJson(HttpClientGenerated.ReadBatch))(msg.data)
+                  const readBatch = yield* Schema.decodeEffect(Schema.fromJsonString(HttpClientGenerated.ReadBatch))(msg.data)
                   const batch = decodeReadBatch(readBatch)
 
                   const lastS2SeqNum = batch.at(-1)?.metadata.pipe(
@@ -188,10 +192,12 @@ export const makeSyncBackend =
                 return shouldNeverHappen(`Unexpected SSE event: ${evt}`, msg)
               }),
             ),
-            Stream.filterMap((_) => _), // filter out Option.none()
-            Stream.mapError((cause) => (cause._tag === 'UnknownError' ? cause : new UnknownError({ cause }))),
+            Stream.filterMap(Filter.fromPredicateOption((_) => _)), // filter out Option.none()
+            Stream.mapError((cause) =>
+              cause._tag === 'UnknownError' ? cause : new UnknownError({ cause }),
+            ),
             Stream.retry(retry?.pull ?? defaultRetry),
-          )
+          ) as unknown) as Stream.Stream<SyncBackend.PullResItem<SyncMetadata>, UnknownError>
       }
 
       const ssePull = (

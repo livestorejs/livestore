@@ -21,18 +21,19 @@ export const RejectedPushErrorTypeId = '~@livestore/common/RejectedPushError' as
  * This is a defensive check — callers are expected to construct monotonic event batches.
  * The client should rebase and retry.
  */
-export class NonMonotonicBatchError extends Schema.TaggedError<NonMonotonicBatchError>(
-  `${RejectedPushErrorTypeId}/NonMonotonicBatchError`,
-)('NonMonotonicBatchError', {
-  /** The sequence number that broke the monotonic invariant (i.e. the one that is >= the next). */
-  precedingSeqNum: EventSequenceNumber.Client.Composite,
-  /** The sequence number that was expected to be greater than `precedingSeqNum`. */
-  violatingSeqNum: EventSequenceNumber.Client.Composite,
-  /** The index in the batch where the violation occurred. */
-  violationIndex: Schema.Number,
-  /** The session that produced the malformed batch. */
-  sessionId: Schema.String,
-}) {
+export class NonMonotonicBatchError extends Schema.TaggedErrorClass<NonMonotonicBatchError>()(
+  'NonMonotonicBatchError',
+  {
+    /** The sequence number that broke the monotonic invariant (i.e. the one that is >= the next). */
+    precedingSeqNum: EventSequenceNumber.Client.Composite,
+    /** The sequence number that was expected to be greater than `precedingSeqNum`. */
+    violatingSeqNum: EventSequenceNumber.Client.Composite,
+    /** The index in the batch where the violation occurred. */
+    violationIndex: Schema.Number,
+    /** The session that produced the malformed batch. */
+    sessionId: Schema.String,
+  },
+) {
   readonly [RejectedPushErrorTypeId] = RejectedPushErrorTypeId
 
   override get message(): string {
@@ -47,16 +48,17 @@ export class NonMonotonicBatchError extends Schema.TaggedError<NonMonotonicBatch
  *
  * This happens when events were enqueued before a backend-pull-triggered rebase incremented the generation.
  */
-export class StaleRebaseGenerationError extends Schema.TaggedError<StaleRebaseGenerationError>(
-  `${RejectedPushErrorTypeId}/StaleRebaseGenerationError`,
-)('StaleRebaseGenerationError', {
-  /** The leader's current rebase generation. */
-  currentRebaseGeneration: Schema.Number,
-  /** The rebase generation carried by the dropped events. */
-  providedRebaseGeneration: Schema.Number,
-  /** The session that produced the stale batch. */
-  sessionId: Schema.String,
-}) {
+export class StaleRebaseGenerationError extends Schema.TaggedErrorClass<StaleRebaseGenerationError>()(
+  'StaleRebaseGenerationError',
+  {
+    /** The leader's current rebase generation. */
+    currentRebaseGeneration: Schema.Number,
+    /** The rebase generation carried by the dropped events. */
+    providedRebaseGeneration: Schema.Number,
+    /** The session that produced the stale batch. */
+    sessionId: Schema.String,
+  },
+) {
   readonly [RejectedPushErrorTypeId] = RejectedPushErrorTypeId
 
   override get message(): string {
@@ -73,9 +75,7 @@ export class StaleRebaseGenerationError extends Schema.TaggedError<StaleRebaseGe
  * This occurs when another client session (or a backend pull) has pushed events that the current
  * session hasn't seen yet.
  */
-export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>(
-  `${RejectedPushErrorTypeId}/LeaderAheadError`,
-)('LeaderAheadError', {
+export class LeaderAheadError extends Schema.TaggedErrorClass<LeaderAheadError>()('LeaderAheadError', {
   minimumExpectedNum: EventSequenceNumber.Client.Composite,
   providedNum: EventSequenceNumber.Client.Composite,
   /** The session that produced the stale batch. */
@@ -88,7 +88,7 @@ export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>(
   }
 }
 
-export const RejectedPushError = Schema.Union(LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError)
+export const RejectedPushError = Schema.Union([LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError])
 
 export type RejectedPushError = typeof RejectedPushError.Type
 

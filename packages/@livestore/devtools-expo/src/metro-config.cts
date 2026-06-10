@@ -1,15 +1,23 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
+const { Effect, Logger, Layer } = require('@livestore/utils/effect') as typeof import(
+  '@livestore/utils/effect',
+  {
+    with: {
+      'resolution-mode': 'import',
+    },
+  }
+)
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
+const { NodeHttpClient } = require('@effect/platform-node') as typeof import('@effect/platform-node', {
+  with: {
+    'resolution-mode': 'import',
+  },
+})
+
 import type { MetroConfig } from 'expo/metro-config'
 
-import type * as EffectModule from '@livestore/utils/effect' with { 'resolution-mode': 'import' }
-import type * as PlatformNodeModule from '@livestore/utils/node' with { 'resolution-mode': 'import' }
-
 import type { Middleware, Options } from './types.ts'
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
-const { Effect, Logger, LogLevel, Layer } = require('@livestore/utils/effect') as typeof EffectModule
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
-const { PlatformNode } = require('@livestore/utils/node') as typeof PlatformNodeModule
 
 /**
  * Patches the Metro config to add a middleware via `config.server.enhanceMiddleware`.
@@ -28,7 +36,7 @@ const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, option
   import('@livestore/adapter-node/devtools')
     .then(async ({ startDevtoolsServer }) => {
       const layer = Layer.mergeAll(
-        PlatformNode.NodeHttpClient.layer,
+        NodeHttpClient.layerNodeHttp,
         Logger.prettyWithThread('@livestore/devtools-expo:metro-config'),
       )
 
@@ -39,9 +47,9 @@ const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, option
         port,
       }).pipe(
         Effect.provide(layer),
-        Logger.withMinimumLogLevel(LogLevel.Debug),
+        Logger.minimumLogLevel('Debug'),
         Effect.tapCauseLogPretty,
-        Effect.runPromise,
+        (effect: any) => Effect.runPromise(effect),
       )
     })
     .catch((error) => {
@@ -88,5 +96,5 @@ module.exports = {
   addLiveStoreDevtoolsMiddleware,
 }
 
-export type { Options } from './types.ts'
 export type { addLiveStoreDevtoolsMiddleware }
+export type { Options } from './types.ts'

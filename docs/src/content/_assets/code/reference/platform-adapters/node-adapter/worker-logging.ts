@@ -8,5 +8,5 @@ makeWorker({
   // readable console output by thread name
   logger: Logger.prettyWithThread('livestore-node-leader-thread'),
   // choose verbosity: None | Error | Warning | Info | Debug
-  logLevel: LogLevel.Info,
+  logLevel: 'Info' satisfies LogLevel.LogLevel,
 })

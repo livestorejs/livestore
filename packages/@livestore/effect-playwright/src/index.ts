@@ -1,17 +1,15 @@
 import process from 'node:process'
-
+import { envTruish } from '@livestore/utils'
+import { Cause, Context, Effect, Layer, Option, Queue, Schema, Stream } from '@livestore/utils/effect'
 import * as PW from '@playwright/test'
 
-import { envTruish } from '@livestore/utils'
-import { Context, Effect, Layer, Option, Schema, Stream } from '@livestore/utils/effect'
-
-export class BrowserContext extends Context.Tag('Playwright.BrowserContext')<
+export class BrowserContext extends Context.Service<
   BrowserContext,
   {
     browserContext: PW.BrowserContext
     // backgroundPageConsoleFiber: Fiber.Fiber<void, SiteError> | undefined
   }
->() {}
+>()('Playwright.BrowserContext') {}
 
 export type MakeBrowserContextParams = {
   extensionPath?: string
@@ -74,7 +72,7 @@ export const browserContext = ({
 
       // TODO bring back once Playwright supports console messages for workers/service workers
       // const backgroundPage = browserContext.serviceWorkers()[0] ?? (yield* Effect.promise(() => browserContext.waitForEvent('serviceworker')))
-      // backgroundPageConsoleFiber = yield* handlePageConsole(backgroundPage, 'background').pipe(Effect.fork)
+      // backgroundPageConsoleFiber = yield* handlePageConsole(backgroundPage, 'background').pipe(Effect.forkChild)
     }
 
     yield* Effect.addFinalizer(() => Effect.promise(() => browserContext.close()))
@@ -86,7 +84,7 @@ export const browserContext = ({
   })
 
 export const browserContextLayer = (params: MakeBrowserContextParams) =>
-  Layer.scoped(BrowserContext, browserContext(params))
+  Layer.effect(BrowserContext, browserContext(params))
 
 export const withPage = <T>(f: () => Promise<T>, options?: { label?: string }): Effect.Effect<T, SiteError> =>
   Effect.tryPromise({
@@ -94,8 +92,8 @@ export const withPage = <T>(f: () => Promise<T>, options?: { label?: string }): 
     catch: (cause) => new SiteError({ label: options?.label ?? f.toString(), messages: cause }),
   }).pipe(Effect.withSpan(`withPage:${options?.label ?? f.toString()}`))
 
-export class ConsoleMessage extends Schema.TaggedStruct('Playwright.ConsoleMessage', {
-  type: Schema.Literal('error', 'log', 'warn', 'info', 'debug', 'group', 'groupCollapsed', 'groupEnd'),
+export class ConsoleMessage extends Schema.TaggedClass<ConsoleMessage>()('Playwright.ConsoleMessage', {
+  type: Schema.Literals(['error', 'log', 'warn', 'info', 'debug', 'group', 'groupCollapsed', 'groupEnd']),
   message: Schema.String,
   args: Schema.Array(Schema.Any),
 }) {}
@@ -196,7 +194,7 @@ export const pageConsole = ({
   label: string
   shouldEvaluateArgs: boolean
 }) =>
-  Stream.asyncPush<typeof ConsoleMessage.Type, SiteError>((emit) =>
+  Stream.callback<typeof ConsoleMessage.Type, SiteError>((queue) =>
     Effect.acquireRelease(
       Effect.sync(() => {
         const errorGroupRef = ref<{ errorMessages: (typeof ConsoleMessage.Type)[] } | undefined>(undefined)
@@ -212,11 +210,12 @@ export const pageConsole = ({
             ) {
               errorGroupRef.current = { errorMessages: [message] }
             } else if (message.type === 'groupEnd' && errorGroupRef.current !== undefined) {
-              emit.fail(
-                new SiteError({
+              Queue.failCauseUnsafe(
+                queue,
+                Cause.fail(new SiteError({
                   label,
                   messages: errorGroupRef.current.errorMessages,
-                }),
+                })),
               )
             } else if (
               message.type === 'error' &&
@@ -229,18 +228,19 @@ export const pageConsole = ({
               message.message.includes('All fibers interrupted without errors') === false
             ) {
               if (errorGroupRef.current === undefined) {
-                emit.fail(new SiteError({ label, messages: [message] }))
+                Queue.failCauseUnsafe(queue, Cause.fail(new SiteError({ label, messages: [message] })))
               } else {
                 errorGroupRef.current.errorMessages.push(message)
               }
             } else {
-              emit.single(message)
+              Queue.offerUnsafe(queue, message)
             }
           }
         }
         page.on('console', onConsole)
 
-        const onPageError = (cause: Error) => emit.fail(new SiteError({ label, messages: [cause] }))
+        const onPageError = (cause: Error) =>
+          Queue.failCauseUnsafe(queue, Cause.fail(new SiteError({ label, messages: [cause] })))
         page.on('pageerror', onPageError)
 
         return { onConsole, onPageError }
@@ -254,8 +254,8 @@ export const pageConsole = ({
     ),
   )
 
-export class SiteError extends Schema.TaggedError<SiteError>('~@livestore/effect-playwright/SiteError')('SiteError', {
+export class SiteError extends Schema.TaggedErrorClass<SiteError>()('SiteError', {
   // TODO remove `label` again once error tracing works properly with Playwright
   label: Schema.String,
-  messages: Schema.Union(Schema.Array(ConsoleMessage), Schema.Defect),
+  messages: Schema.Union([Schema.Array(ConsoleMessage), Schema.Defect()]),
 }) {}

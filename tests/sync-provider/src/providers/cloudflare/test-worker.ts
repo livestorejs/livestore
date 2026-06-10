@@ -22,6 +22,7 @@ import {
   type RpcMessage,
   RpcServer,
   Stream,
+  SubscriptionRef,
 } from '@livestore/utils/effect'
 
 import { DoRpcProxyRpcs } from './do-rpc-proxy-schema.ts'
@@ -70,7 +71,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
     const syncBackendMap = new Map<string, SyncBackend.SyncBackend<SyncMessage.SyncMetadata>>()
 
     const getSyncBackend = ({ clientId, storeId, payload }: { clientId: string; storeId: string; payload: any }) =>
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const key = JSON.stringify({ clientId, storeId, payload })
         if (syncBackendMap.has(key) === true) {
           return syncBackendMap.get(key)!
@@ -114,7 +115,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
       IsConnected: (args) =>
         Effect.gen(function* () {
           const syncBackend = yield* getSyncBackend(args)
-          return syncBackend.isConnected.changes
+          return SubscriptionRef.changes(syncBackend.isConnected)
         }).pipe(Stream.unwrap),
       GetMetadata: (args) =>
         Effect.gen(function* () {

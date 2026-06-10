@@ -1,6 +1,6 @@
 import { cmd, LivestoreWorkspace, OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
-import { Cli, PlatformNode } from '@livestore/utils/node'
+import { Cli } from '@livestore/utils/node'
 
 import { debugCommand } from './commands/debug.ts'
 import { docsCommand } from './commands/docs.ts'
@@ -11,17 +11,19 @@ import { releaseCommand } from './commands/release.ts'
 import { testCommand } from './commands/test-commands.ts'
 import { updateDepsCommand } from './commands/update-deps.ts'
 
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 const tsCommand = Cli.Command.make(
   'ts',
   {
-    watch: Cli.Options.boolean('watch').pipe(Cli.Options.withDefault(false)),
-    clean: Cli.Options.boolean('clean').pipe(
-      Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Clean build artifacts before compilation'),
+    watch: Cli.Flag.boolean('watch').pipe(Cli.Flag.withDefault(false)),
+    clean: Cli.Flag.boolean('clean').pipe(
+      Cli.Flag.withDefault(false),
+      Cli.Flag.withDescription('Clean build artifacts before compilation'),
     ),
-    noCheck: Cli.Options.boolean('no-check').pipe(
-      Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Disable full type checking (only critical parse and emit errors will be reported)'),
+    noCheck: Cli.Flag.boolean('no-check').pipe(
+      Cli.Flag.withDefault(false),
+      Cli.Flag.withDescription('Disable full type checking (only critical parse and emit errors will be reported)'),
     ),
   },
   Effect.fn(function* ({ watch, clean, noCheck }) {
@@ -65,12 +67,11 @@ const command = Cli.Command.make('mono').pipe(
 if (import.meta.main) {
   // 'CLI for managing the Livestore monorepo',
   const cli = Cli.Command.run(command, {
-    name: 'mono',
     version: '0.0.0',
   })
 
   const layer = Layer.mergeAll(
-    PlatformNode.NodeContext.layer,
+    NodeServices.layer,
     FetchHttpClient.layer,
     OtelLiveHttp({
       serviceName: 'mono',
@@ -82,11 +83,11 @@ if (import.meta.main) {
     LivestoreWorkspace.live,
   )
 
-  cli(process.argv).pipe(
+  cli.pipe(
     Effect.provide(layer),
     Effect.annotateLogs({ thread: 'mono' }),
-    Logger.withMinimumLogLevel(LogLevel.Debug),
+    Logger.withMinimumLogLevel('Debug'),
     Effect.scoped,
-    PlatformNode.NodeRuntime.runMain,
+    NodeRuntime.runMain,
   )
 }

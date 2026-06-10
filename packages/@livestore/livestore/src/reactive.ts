@@ -31,7 +31,11 @@ import type { Types } from '@livestore/utils/effect'
 export const NOT_REFRESHED_YET = Symbol.for('NOT_REFRESHED_YET')
 export type NOT_REFRESHED_YET = typeof NOT_REFRESHED_YET
 
-export type GetAtom = <T>(atom: Atom<T, any, any>, otelContext?: otel.Context, debugRefreshReason?: TODO) => T
+export type GetAtom = <T>(
+  atom: Atom<T, any, any>,
+  otelContext?: otel.Context  ,
+  debugRefreshReason?: TODO  ,
+) => T
 
 export type Ref<T, TContext, TDebugRefreshReason extends DebugRefreshReason> = {
   _tag: 'ref'
@@ -75,7 +79,7 @@ export type Effect<TDebugRefreshReason extends DebugRefreshReason> = {
   _tag: 'effect'
   id: string
   isDestroyed: boolean
-  doEffect: (otelContext?: otel.Context, debugRefreshReason?: TDebugRefreshReason) => void
+  doEffect: (otelContext?: otel.Context  , debugRefreshReason?: TDebugRefreshReason  ) => void
   sub: Set<Atom<any, TODO, TODO>>
   label?: string | undefined
   invocations: number
@@ -242,11 +246,13 @@ export class ReactiveGraph<
       otelContext: otel.Context | undefined,
       debugRefreshReason: TDebugRefreshReason | undefined,
     ) => T,
-    options?: {
-      label?: string
-      meta?: any
-      equal?: (a: T, b: T) => boolean
-    },
+    options?:
+      | {
+          label?: string
+          meta?: any
+          equal?: (a: T, b: T) => boolean
+        }
+       ,
   ): Thunk<T, TContext, TDebugRefreshReason> {
     const thunk: Thunk<T, TContext, TDebugRefreshReason> = {
       _tag: 'thunk',
@@ -285,7 +291,7 @@ export class ReactiveGraph<
             debugRefreshReason,
           )
 
-          const resultChanged = !thunk.equal(thunk.previousResult as T, result)
+          const resultChanged = ! thunk.equal(thunk.previousResult as T, result)
 
           const debugInfoForAtom = {
             atom: serializeAtom(thunk, false),
@@ -378,7 +384,7 @@ export class ReactiveGraph<
       otelContext: otel.Context | undefined,
       debugRefreshReason: DebugRefreshReason | undefined,
     ) => void,
-    options?: { label?: string },
+    options?: { label?: string }  ,
   ): Effect<TDebugRefreshReason> {
     const effect: Effect<TDebugRefreshReason> = {
       _tag: 'effect',
@@ -416,22 +422,26 @@ export class ReactiveGraph<
   setRef<T>(
     ref: Ref<T, TContext, TDebugRefreshReason>,
     val: T,
-    options?: {
-      skipRefresh?: boolean
-      debugRefreshReason?: TDebugRefreshReason
-      otelContext?: otel.Context
-    },
+    options?:
+      | {
+          skipRefresh?: boolean
+          debugRefreshReason?: TDebugRefreshReason
+          otelContext?: otel.Context
+        }
+       ,
   ) {
     this.setRefs([[ref, val]], options)
   }
 
   setRefs<T>(
     refs: [Ref<T, TContext, TDebugRefreshReason>, T][],
-    options?: {
-      skipRefresh?: boolean
-      debugRefreshReason?: TDebugRefreshReason
-      otelContext?: otel.Context
-    },
+    options?:
+      | {
+          skipRefresh?: boolean
+          debugRefreshReason?: TDebugRefreshReason
+          otelContext?: otel.Context
+        }
+       ,
   ) {
     const effectsToRefresh = new Set<Effect<TDebugRefreshReason>>()
     for (const [ref, val] of refs) {
@@ -630,14 +640,9 @@ const serializeAtom = (atom: Atom<any, unknown, any>, includeResult: boolean): S
     super_.push(a.id)
   }
 
-  const previousResult: EncodedOption<string> =
-    includeResult === true
-      ? encodedOptionSome(
-          atom.previousResult === NOT_REFRESHED_YET
-            ? '"SYMBOL_NOT_REFRESHED_YET"'
-            : JSON.stringify(atom.previousResult),
-        )
-      : encodedOptionNone()
+  const previousResult: EncodedOption<string> = includeResult === true
+    ? encodedOptionSome(atom.previousResult === NOT_REFRESHED_YET ? '"SYMBOL_NOT_REFRESHED_YET"' : stringifyDebugResult(atom.previousResult))
+    : encodedOptionNone()
 
   if (atom._tag === 'ref') {
     return {
@@ -682,3 +687,19 @@ const serializeEffect = (effect: Effect<any>): SerializedEffect => {
     isDestroyed: effect.isDestroyed,
   }
 }
+
+const stringifyDebugResult = (value: unknown): string =>
+  JSON.stringify(value, function (key, nestedValue) {
+    if (
+      key === 'schema' &&
+      this !== null &&
+      typeof this === 'object' &&
+      'query' in this &&
+      'bindValues' in this &&
+      'queriedTables' in this
+    ) {
+      return undefined
+    }
+
+    return nestedValue
+  })

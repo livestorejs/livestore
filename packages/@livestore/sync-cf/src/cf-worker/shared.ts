@@ -1,6 +1,6 @@
 import type { UnknownError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
-import { Effect, Schema, UrlParams } from '@livestore/utils/effect'
+import { type Effect, Schema, UrlParams } from '@livestore/utils/effect'
 
 import type { SearchParams } from '../common/mod.ts'
 import { SearchParamsSchema, SyncMessage } from '../common/mod.ts'
@@ -133,8 +133,8 @@ export type DurableObjectId = string
  */
 export const PERSISTENCE_FORMAT_VERSION = 7
 
-export const encodeOutgoingMessage = Schema.encodeSync(Schema.parseJson(SyncMessage.BackendToClientMessage))
-export const encodeIncomingMessage = Schema.encodeSync(Schema.parseJson(SyncMessage.ClientToBackendMessage))
+export const encodeOutgoingMessage = Schema.encodeSync(Schema.fromJsonString(SyncMessage.BackendToClientMessage))
+export const encodeIncomingMessage = Schema.encodeSync(Schema.fromJsonString(SyncMessage.ClientToBackendMessage))
 
 /**
  * Extracts the LiveStore sync search parameters from a request. Returns
@@ -144,13 +144,15 @@ export const encodeIncomingMessage = Schema.encodeSync(Schema.parseJson(SyncMess
 export const matchSyncRequest = (request: CfTypes.Request): SearchParams | undefined => {
   const url = new URL(request.url)
   const urlParams = UrlParams.fromInput(url.searchParams)
-  const paramsResult = UrlParams.schemaStruct(SearchParamsSchema)(urlParams).pipe(Effect.option, Effect.runSync)
+  const paramsResult = Schema.decodeUnknownExit(
+    UrlParams.schemaRecord.pipe(Schema.decodeTo(SearchParamsSchema)) as any,
+  )(urlParams)
 
-  if (paramsResult._tag === 'None') {
+  if (paramsResult._tag !== 'Success') {
     return undefined
   }
 
-  return paramsResult.value
+  return paramsResult.value as SearchParams
 }
 
 // RPC subscription storage (TODO refactor)
@@ -174,17 +176,15 @@ export interface SyncBackendRpcInterface {
   rpc(payload: Uint8Array): Promise<Uint8Array | CfTypes.ReadableStream>
 }
 
-export const WebSocketAttachmentSchema = Schema.parseJson(
-  Schema.Struct({
+export const WebSocketAttachmentSchema = Schema.fromJsonString(Schema.Struct({
     // Same across all websocket connections
     storeId: Schema.String,
     // Different for each websocket connection
     payload: Schema.optional(Schema.JsonValue),
     pullRequestIds: Schema.Array(Schema.String),
     // Headers forwarded from the initial request (via forwardHeaders option)
-    headers: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
-  }),
-)
+    headers: Schema.optional(Schema.Record(Schema.String, Schema.String)),
+  }))
 
 /** Helper to extract headers from a request based on the forwardHeaders option */
 export const extractForwardedHeaders = (

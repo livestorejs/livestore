@@ -1,7 +1,7 @@
 import type * as ChildProcess from 'node:child_process'
 
-import * as Worker from '@effect/platform/Worker'
-import { WorkerError } from '@effect/platform/WorkerError'
+import * as Worker from 'effect/unstable/workers/Worker'
+import { WorkerError, WorkerReceiveError, WorkerUnknownError } from 'effect/unstable/workers/WorkerError'
 import * as Deferred from 'effect/Deferred'
 import * as Effect from 'effect/Effect'
 import * as Exit from 'effect/Exit'
@@ -73,7 +73,7 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
       childProcess.on('exit', () => {
         // Remove from tracking when process exits
         childProcesses.delete(childProcess)
-        Deferred.unsafeDone(exitDeferred, Exit.void)
+        Deferred.doneUnsafe(exitDeferred, Exit.void)
       })
 
       childProcess.send(['setup-parent-death-detection', { parentPid: process.pid }])
@@ -93,7 +93,7 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
           }).pipe(
             Effect.timeout(3000), // Reduced timeout for faster cleanup
             Effect.interruptible,
-            Effect.catchAllCause(() =>
+            Effect.catchCause(() =>
               Effect.sync(() => {
                 // Enhanced cleanup with escalating signals
                 if (childProcess.killed === false) {
@@ -130,36 +130,43 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
       emit(message)
     })
     port.on('messageerror', (cause) => {
-      Deferred.unsafeDone(deferred, new WorkerError({ reason: 'decode', cause }))
+      Deferred.doneUnsafe(
+        deferred,
+        Effect.fail(new WorkerError({ reason: new WorkerReceiveError({ message: 'received messageerror event', cause }) })),
+      )
     })
     port.on('error', (cause) => {
-      Deferred.unsafeDone(deferred, new WorkerError({ reason: 'unknown', cause }))
+      Deferred.doneUnsafe(
+        deferred,
+        Effect.fail(new WorkerError({ reason: new WorkerUnknownError({ message: 'received error event', cause }) })),
+      )
     })
     port.on('exit', (code) => {
-      Deferred.unsafeDone(
+      Deferred.doneUnsafe(
         deferred,
-        new WorkerError({ reason: 'unknown', cause: new Error(`exited with code ${code}`) }),
+        Effect.fail(new WorkerError({
+          reason: new WorkerUnknownError({ message: 'worker exited', cause: new Error(`exited with code ${code}`) }),
+        })),
       )
     })
     return Effect.void
   },
 })
 
-export const layerWorker = Layer.succeed(Worker.PlatformWorker, platformWorkerImpl)
+export const layerWorker = Layer.succeed(Worker.WorkerPlatform, platformWorkerImpl)
 
-export const layerManager = Layer.provide(Worker.layerManager, layerWorker)
+export const layerManager = layerWorker
 
 /**
  * @example
  * ```ts
  * import * as ChildProcess from 'node:child_process'
- * import { Effect, Worker } from '@effect/platform/Worker'
+ * import { Effect } from 'effect'
+ * import { RpcClient } from 'effect/unstable/rpc'
  * import { ChildProcessWorker } from '@livestore/utils/node'
  *
- * Worker.makePoolSerialized<WorkerMessage>({
- *   size: 1,
- *   initialMessage: () => new InitialMessage({ name: 'test', data: new Uint8Array([1, 2, 3]) }),
- * }).pipe(
+ * RpcClient.make(WorkerRpcs).pipe(
+ *   Effect.provide(RpcClient.layerProtocolWorker({ size: 1 })),
  *   Effect.provide(ChildProcessWorker.layer(() => ChildProcess.fork(new URL('worker.ts', import.meta.url)))),
  * )
  * ```

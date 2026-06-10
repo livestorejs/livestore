@@ -1,22 +1,43 @@
 import * as ChildProcess from 'node:child_process'
 
-import * as EffectWorker from '@effect/platform/Worker'
 import { assert, describe, it } from '@effect/vitest'
-import { Chunk, Deferred, Effect, Exit, Fiber, Schema, Scope, Stream } from 'effect'
+import { Deferred, Effect, Exit, Fiber, Layer, Schema, Scope, Stream } from 'effect'
+import { RpcClient, RpcWorker } from 'effect/unstable/rpc'
 
-export class TestError extends Schema.TaggedError<TestError>()('TestError', {
+export class TestError extends Schema.TaggedErrorClass<TestError>()('TestError', {
   message: Schema.String,
 }) {}
 
 import * as ChildProcessWorker from '../ChildProcessWorker.ts'
-import type { WorkerMessage } from './schema.ts'
-import { GetPersonById, GetUserById, InitialMessage, Person, StartStubbornWorker, User } from './schema.ts'
+import { InitialMessage, Person, User, WorkerRpcs } from './schema.ts'
 
 const WorkerLive = ChildProcessWorker.layer(() =>
   ChildProcess.fork(
     new URL('../../../../dist/node/ChildProcessRunner/ChildProcessRunnerTest/serializedWorker.js', import.meta.url),
+    { serialization: 'advanced' },
   ),
 )
+
+const makeWorkerClient = (options: {
+  readonly size: number
+  readonly concurrency?: number
+  readonly initialMessage?: () => InitialMessage
+}) => {
+  const protocolLayer = RpcClient.layerProtocolWorker({
+    size: options.size,
+    ...(options.concurrency === undefined ? {} : { concurrency: options.concurrency }),
+  }).pipe(
+    options.initialMessage === undefined
+      ? (layer) => layer
+      : Layer.provide(RpcWorker.layerInitialMessage(InitialMessage, Effect.sync(options.initialMessage))),
+  )
+
+  return Effect.gen(function* () {
+    const scope = yield* Effect.scope
+    const protocolContext = yield* Layer.buildWithScope(protocolLayer, scope)
+    return yield* RpcClient.make(WorkerRpcs).pipe(Effect.provide(protocolContext))
+  })
+}
 
 // const WorkerLive = NodeWorker.layer(
 //   () =>
@@ -28,9 +49,9 @@ const WorkerLive = ChildProcessWorker.layer(() =>
 describe('ChildProcessRunner', { timeout: 10_000 }, () => {
   it('Serialized', () =>
     Effect.gen(function* () {
-      const pool = yield* EffectWorker.makePoolSerialized({ size: 1 })
-      const people = yield* pool.execute(new GetPersonById({ id: 123 })).pipe(Stream.runCollect)
-      assert.deepStrictEqual(Chunk.toReadonlyArray(people), [
+      const client = yield* makeWorkerClient({ size: 1 })
+      const people = yield* client.GetPersonById({ id: 123 }).pipe(Stream.runCollect)
+      assert.deepStrictEqual(people, [
         new Person({ id: 123, name: 'test', data: new Uint8Array([1, 2, 3]) }),
         new Person({ id: 123, name: 'ing', data: new Uint8Array([4, 5, 6]) }),
       ])
@@ -38,16 +59,16 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
 
   it('Serialized with initialMessage', () =>
     Effect.gen(function* () {
-      const pool = yield* EffectWorker.makePoolSerialized<WorkerMessage>({
+      const client = yield* makeWorkerClient({
         size: 1,
         initialMessage: () => new InitialMessage({ name: 'custom', data: new Uint8Array([1, 2, 3]) }),
       })
 
-      let user = yield* pool.executeEffect(new GetUserById({ id: 123 }))
-      user = yield* pool.executeEffect(new GetUserById({ id: 123 }))
+      let user = yield* client.GetUserById({ id: 123 })
+      user = yield* client.GetUserById({ id: 123 })
       assert.deepStrictEqual(user, new User({ id: 123, name: 'custom' }))
-      const people = yield* pool.execute(new GetPersonById({ id: 123 })).pipe(Stream.runCollect)
-      assert.deepStrictEqual(Chunk.toReadonlyArray(people), [
+      const people = yield* client.GetPersonById({ id: 123 }).pipe(Stream.runCollect)
+      assert.deepStrictEqual(people, [
         new Person({ id: 123, name: 'test', data: new Uint8Array([1, 2, 3]) }),
         new Person({ id: 123, name: 'ing', data: new Uint8Array([4, 5, 6]) }),
       ])
@@ -68,11 +89,11 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         const workerPidDeferred = yield* Deferred.make<number>()
 
         const testEffect = Effect.gen(function* () {
-          const pool = yield* EffectWorker.makePoolSerialized<WorkerMessage>({
+          const client = yield* makeWorkerClient({
             size: 1,
             initialMessage: () => new InitialMessage({ name: 'test', data: new Uint8Array([1, 2, 3]) }),
           })
-          const result = yield* pool.executeEffect(new StartStubbornWorker({ blockDuration: 30_000 }))
+          const result = yield* client.StartStubbornWorker({ blockDuration: 30_000 })
           yield* Deferred.succeed(workerPidDeferred, result.pid)
 
           // Verify the worker process is running
@@ -88,10 +109,14 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         const workerPid = yield* Deferred.await(workerPidDeferred).pipe(
           Effect.raceFirst(
             Fiber.join(fiber).pipe(
-              Effect.flatMap(() => new TestError({ message: 'testEffect completed before reporting worker PID' })),
+              Effect.flatMap(() => Effect.fail(new TestError({ message: 'testEffect completed before reporting worker PID' }))),
             ),
           ),
-          Effect.timeout(10_000),
+          Effect.raceFirst(
+            Effect.sleep(10_000).pipe(
+              Effect.flatMap(() => Effect.fail(new TestError({ message: 'timed out waiting for worker PID' }))),
+            ),
+          ),
         )
 
         yield* Effect.sleep('2 seconds')
@@ -115,12 +140,12 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         const scope = yield* Scope.make()
 
         try {
-          const pool = yield* EffectWorker.makePoolSerialized<WorkerMessage>({
+          const client = yield* makeWorkerClient({
             size: 1,
             initialMessage: () => new InitialMessage({ name: 'test', data: new Uint8Array([1, 2, 3]) }),
-          }).pipe(Scope.extend(scope), Effect.provide(WorkerLive))
+          }).pipe(Scope.provide(scope), Effect.provide(WorkerLive))
 
-          const result = yield* pool.executeEffect(new StartStubbornWorker({ blockDuration: 30_000 }))
+          const result = yield* client.StartStubbornWorker({ blockDuration: 30_000 })
           workerPid = result.pid
 
           // Verify the worker is running
@@ -149,12 +174,12 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
       Effect.gen(function* () {
         let workerPid: number | undefined
 
-        const pool = yield* EffectWorker.makePoolSerialized<WorkerMessage>({
+        const client = yield* makeWorkerClient({
           size: 1,
           initialMessage: () => new InitialMessage({ name: 'test', data: new Uint8Array([1, 2, 3]) }),
         })
 
-        const result = yield* pool.executeEffect(new StartStubbornWorker({ blockDuration: 60_000 }))
+        const result = yield* client.StartStubbornWorker({ blockDuration: 60_000 })
         workerPid = result.pid
 
         // Verify the worker is running
@@ -162,7 +187,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
 
         // Simulate SIGINT being sent to current process (like Ctrl+C in vitest)
         // This should trigger cleanup of child processes
-        yield* Effect.async<void>((resume) => {
+        yield* Effect.callback<void>((resume) => {
           // Store current listeners before we manipulate them
           const currentSIGINTListeners = process.listeners('SIGINT').slice()
 
@@ -209,7 +234,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         let workerPids: number[] = []
 
         const testEffect = Effect.gen(function* () {
-          const pool = yield* EffectWorker.makePoolSerialized<WorkerMessage>({
+          const client = yield* makeWorkerClient({
             size: 3, // Multiple workers
             initialMessage: () => new InitialMessage({ name: 'test', data: new Uint8Array([1, 2, 3]) }),
           })
@@ -217,9 +242,9 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
           // Start multiple stubborn workers
           const workers = yield* Effect.all(
             [
-              pool.executeEffect(new StartStubbornWorker({ blockDuration: 30_000 })),
-              pool.executeEffect(new StartStubbornWorker({ blockDuration: 30_000 })),
-              pool.executeEffect(new StartStubbornWorker({ blockDuration: 30_000 })),
+              client.StartStubbornWorker({ blockDuration: 30_000 }),
+              client.StartStubbornWorker({ blockDuration: 30_000 }),
+              client.StartStubbornWorker({ blockDuration: 30_000 }),
             ],
             { concurrency: 'unbounded' },
           )
@@ -235,7 +260,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         }).pipe(Effect.scoped, Effect.provide(WorkerLive))
 
         // Run with timeout to force termination
-        const fiber = yield* Effect.fork(testEffect)
+        const fiber = yield* Effect.forkChild(testEffect)
         yield* Effect.sleep('2 seconds')
         yield* Fiber.interrupt(fiber)
 
@@ -263,19 +288,20 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
             import.meta.url,
           ),
           ['test-client'],
+          { serialization: 'advanced' },
         )
 
         childPid = nodeChildProcess.pid
 
         const testEffect = Effect.gen(function* () {
-          const worker = yield* EffectWorker.makePoolSerialized<WorkerMessage>({
+          const client = yield* makeWorkerClient({
             size: 1,
             concurrency: 100,
             initialMessage: () => new InitialMessage({ name: 'test', data: new Uint8Array([1, 2, 3]) }),
           }).pipe(Effect.provide(ChildProcessWorker.layer(() => nodeChildProcess)))
 
           // Start stubborn worker
-          yield* worker.executeEffect(new StartStubbornWorker({ blockDuration: 60_000 }))
+          yield* client.StartStubbornWorker({ blockDuration: 60_000 })
 
           // Verify process is running
           if (childPid !== undefined) {
@@ -287,7 +313,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         }).pipe(Effect.scoped)
 
         // Simulate the exact abortion pattern from node-sync
-        const fiber = yield* Effect.fork(testEffect)
+        const fiber = yield* Effect.forkChild(testEffect)
         yield* Effect.sleep('2 seconds')
 
         // Force kill the fiber without proper cleanup (simulates Ctrl+C)

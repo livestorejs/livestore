@@ -84,14 +84,13 @@ export type DbSchema = {
 export const dbSchema = (tables: Table[]): DbSchema => ({ _tag: 'dbSchema', tables })
 
 /**
- * Helper to detect if a column is a JSON column (has parseJson transformation)
+ * Helper to detect if a column is a JSON column.
  */
 const isJsonColumn = (column: Column): boolean => {
   if (column.type._tag !== 'text') return false
 
-  // Check if the schema AST is a parseJson transformation
-  const ast = column.schema.ast
-  return ast._tag === 'Transformation' && ast.annotations.schemaId === SchemaAST.ParseJsonSchemaId
+  const encodedAst = Schema.toEncoded(column.schema).ast
+  return SchemaAST.resolve(encodedAst)?.contentMediaType === 'application/json'
 }
 
 /**

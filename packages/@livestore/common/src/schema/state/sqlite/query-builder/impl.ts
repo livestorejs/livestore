@@ -1,10 +1,43 @@
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
-import { Match, Option, Predicate, Schema } from '@livestore/utils/effect'
+import { Match, Option, Predicate, Schema, SchemaGetter, SchemaTransformation, Struct } from '@livestore/utils/effect'
 
 import type { TableDefBase } from '../table-def.ts'
 import type { QueryBuilder, QueryBuilderAst } from './api.ts'
 import { QueryBuilderAstSymbol, QueryBuilderTypeId } from './api.ts'
 import { astToSql } from './astToSql.ts'
+
+const pickStructSchema = (schema: Schema.Top, keys: ReadonlyArray<string>): Schema.Top =>
+  typeof (schema as { mapFields?: unknown }).mapFields === 'function'
+    ? ((schema as any).mapFields(Struct.pick(keys as any)) as Schema.Top)
+    : schema
+
+const pluckStructSchema = (schema: any, key: string): Schema.Top =>
+  pickStructSchema(schema, [key]).pipe(
+    Schema.decodeTo(Schema.toType(schema.fields[key]), {
+      decode: SchemaGetter.transform((whole: any) => whole[key]),
+      encode: SchemaGetter.transform((value) => ({ [key]: value })),
+    }),
+  )
+
+const headOrElseSchema = <A, I>(
+  itemSchema: Schema.Schema<A, I>,
+  fallback?: () => A,
+): Schema.Schema<A, ReadonlyArray<I>> =>
+  Schema.Array(itemSchema).pipe(
+    Schema.decodeTo(
+      Schema.toType(itemSchema),
+      SchemaTransformation.transform({
+        decode: (items) => {
+          const first = items[0]
+          if (first !== undefined) return first
+          if (fallback !== undefined) return fallback()
+          throw new Error('Expected at least one row')
+        },
+        encode: (value) => [value],
+      }),
+    ),
+  )
+
 export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
   tableDef: TTableDef,
   ast: QueryBuilderAst = emptyAst(tableDef),
@@ -21,7 +54,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         const [col] = params as any as [string]
         return makeQueryBuilder(tableDef, {
           ...ast,
-          resultSchemaSingle: ast.resultSchemaSingle.pipe(Schema.pluck(col)),
+          resultSchemaSingle: pluckStructSchema(ast.resultSchemaSingle, col),
           select: { columns: [col] },
         })
       }
@@ -33,7 +66,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       return makeQueryBuilder(tableDef, {
         ...ast,
         resultSchemaSingle:
-          columns.length === 0 ? ast.resultSchemaSingle : ast.resultSchemaSingle.pipe(Schema.pick(...columns)),
+          columns.length === 0 ? ast.resultSchemaSingle : pickStructSchema(ast.resultSchemaSingle, columns),
         select: { columns },
       }) as any
     },
@@ -136,11 +169,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         _tag: 'CountQuery',
         tableDef,
         where: ast.where,
-        resultSchema: Schema.Struct({ count: Schema.Number }).pipe(
-          Schema.pluck('count'),
-          Schema.Array,
-          Schema.headOrElse(),
-        ),
+        resultSchema: headOrElseSchema(pluckStructSchema(Schema.Struct({ count: Schema.Number }), 'count') as Schema.Schema<any>),
       })
     },
     first: (behaviour) => {
@@ -227,7 +256,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       return makeQueryBuilder(tableDef, {
         ...ast,
         returning: columns,
-        resultSchema: tableDef.rowSchema.pipe(Schema.pick(...columns), Schema.Array),
+        resultSchema: pickStructSchema(tableDef.rowSchema, columns).pipe(Schema.Array),
       }) as any
     },
 
@@ -328,20 +357,17 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
       if (queryAst.pickFirst._tag === 'disabled') {
         return arraySchema
       } else if (queryAst.pickFirst.behaviour === 'undefined') {
-        const arraySchema = Schema.Array(Schema.UndefinedOr(queryAst.resultSchemaSingle))
-        return arraySchema.pipe(Schema.headOrElse(() => undefined))
+        return headOrElseSchema(Schema.UndefinedOr(queryAst.resultSchemaSingle), () => undefined)
       } else if (queryAst.pickFirst.behaviour === 'error') {
         // Will throw if the array is empty
-        return arraySchema.pipe(Schema.headOrElse())
+        return headOrElseSchema(queryAst.resultSchemaSingle)
       } else {
         const fallbackValue = queryAst.pickFirst.fallback()
-        return Schema.Union(arraySchema, Schema.Tuple(Schema.Literal(fallbackValue))).pipe(
-          Schema.headOrElse(() => fallbackValue),
-        )
+        return headOrElseSchema(queryAst.resultSchemaSingle, () => fallbackValue)
       }
     }
     case 'CountQuery': {
-      return Schema.Struct({ count: Schema.Number }).pipe(Schema.pluck('count'), Schema.Array, Schema.headOrElse())
+      return headOrElseSchema(pluckStructSchema(Schema.Struct({ count: Schema.Number }), 'count') as Schema.Schema<any>)
     }
     case 'InsertQuery':
     case 'UpdateQuery':
@@ -349,18 +375,18 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
       // For write operations with RETURNING clause, we need to return the appropriate schema
       if (queryAst.returning !== undefined && queryAst.returning.length > 0) {
         // Create a schema for the returned columns
-        return queryAst.tableDef.rowSchema.pipe(Schema.pick(...queryAst.returning), Schema.Array)
+        return pickStructSchema(queryAst.tableDef.rowSchema, queryAst.returning).pipe(Schema.Array)
       }
 
       // For write operations without RETURNING, the result is the number of affected rows
       return Schema.Number
     }
     case 'RowQuery': {
-      return queryAst.tableDef.rowSchema.pipe(
-        Schema.pluck('value'),
-        Schema.annotations({ title: `${queryAst.tableDef.sqliteDef.name}.value` }),
-        Schema.Array,
-        Schema.headOrElse(),
+      return headOrElseSchema(
+        queryAst.tableDef.rowSchema.pipe(
+          (_) => pluckStructSchema(_, 'value'),
+          Schema.annotate({ title: `${queryAst.tableDef.sqliteDef.name}.value` }),
+        ) as Schema.Schema<any>,
       )
     }
     default:

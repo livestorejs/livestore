@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@effect/vitest'
+import { assert, describe, it } from '@effect/vitest'
 import { Effect, Tracer } from 'effect'
 
 import { spanEvent } from './spanEvent.ts'
@@ -14,7 +14,7 @@ const makeTestTracer = () => {
   const spanEvents = new Map<string, Array<RecordedEvent>>()
 
   const tracer = Tracer.make({
-    span(name, parent, context, links, startTime, kind) {
+    span({ name, parent, annotations, links, startTime, kind }) {
       const events: Array<RecordedEvent> = []
       spanEvents.set(name, events)
       const attributes = new Map<string, unknown>()
@@ -24,7 +24,7 @@ const makeTestTracer = () => {
         spanId: `test-${name}`,
         traceId: 'test-trace',
         parent,
-        context,
+        annotations,
         status: { _tag: 'Started' as const, startTime },
         attributes,
         links: [...links],
@@ -40,8 +40,8 @@ const makeTestTracer = () => {
         addLinks() {},
       }
     },
-    context(f) {
-      return f()
+    context(primitive, fiber) {
+      return (primitive as any)['~effect/Effect/evaluate'](fiber)
     },
   })
 
@@ -57,8 +57,8 @@ describe('spanEvent', () => {
     return Effect.gen(function* () {
       yield* spanEvent('test-event')
       const events = getEvents('test-span')
-      expect(events).toHaveLength(1)
-      expect(events[0]!.name).toBe('test-event')
+      assert.strictEqual(events.length, 1)
+      assert.strictEqual(events[0]!.name, 'test-event')
     }).pipe(Effect.withSpan('test-span'), Effect.withTracer(tracer))
   })
 
@@ -67,9 +67,9 @@ describe('spanEvent', () => {
     return Effect.gen(function* () {
       yield* spanEvent('event-with-attrs', { key1: 'value1', key2: 42 })
       const events = getEvents('test-span')
-      expect(events).toHaveLength(1)
-      expect(events[0]!.name).toBe('event-with-attrs')
-      expect(events[0]!.attributes).toMatchObject({ key1: 'value1', key2: 42 })
+      assert.strictEqual(events.length, 1)
+      assert.strictEqual(events[0]!.name, 'event-with-attrs')
+      assert.deepStrictEqual(events[0]!.attributes, { key1: 'value1', key2: 42 })
     }).pipe(Effect.withSpan('test-span'), Effect.withTracer(tracer))
   })
 
@@ -83,11 +83,11 @@ describe('spanEvent', () => {
       const outerEvents = getEvents('outer-span')
       const innerEvents = getEvents('inner-span')
 
-      expect(outerEvents).toHaveLength(1)
-      expect(outerEvents[0]!.name).toBe('outer-event')
+      assert.strictEqual(outerEvents.length, 1)
+      assert.strictEqual(outerEvents[0]!.name, 'outer-event')
 
-      expect(innerEvents).toHaveLength(1)
-      expect(innerEvents[0]!.name).toBe('inner-event')
+      assert.strictEqual(innerEvents.length, 1)
+      assert.strictEqual(innerEvents[0]!.name, 'inner-event')
     }).pipe(Effect.withSpan('outer-span'), Effect.withTracer(tracer))
   })
 

@@ -3,6 +3,7 @@ import {
   Fiber,
   FiberMap,
   Layer,
+  Option,
   RpcClient,
   type RpcMessage,
   RpcSerialization,
@@ -11,10 +12,13 @@ import {
 
 import type * as CfTypes from '../cf-types.ts'
 
-/** Decodes a streaming-RPC `ReadableStream`'s msgpack frames, writing each out as it arrives. */
+/**
+ * Processes a ReadableStream response from streaming RPCs.
+ * Reads chunks from the stream and writes them as RPC responses.
+ */
 const processReadableStream = (
   stream: CfTypes.ReadableStream,
-  parser: ReturnType<typeof RpcSerialization.msgPack.unsafeMake>,
+  parser: ReturnType<typeof RpcSerialization.msgPack.makeUnsafe>,
   writeResponse: (response: any) => Effect.Effect<void>,
 ): Effect.Effect<void> =>
   Effect.gen(function* () {
@@ -28,10 +32,21 @@ const processReadableStream = (
           break
         }
 
-        // Server encodes `[message]` per enqueue; merged enqueues arrive as
-        // `[[msg1], [msg2], ...]`. `flat(1)` normalizes both to `[msg1, ...]`.
+        // Decode the chunk
         const decoded = parser.decode(value as Uint8Array)
-        const messages = Array.isArray(decoded) === true ? decoded.flat(1) : [decoded]
+
+        // Handle array of messages from server.
+        // Server sends `parser.encode([message])` per enqueue, so each decoded value is `[message]`.
+        // When CF DO RPC merges enqueues in production, we get `[[msg1], [msg2], ...]`.
+        // `flat(1)` normalizes both single and merged cases to `[msg1, msg2, ...]`.
+        let messages: any[]
+        if (Array.isArray(decoded) === true) {
+          messages = decoded.flat(1)
+        } else {
+          messages = [decoded]
+        }
+
+        // Write each message
         for (const message of messages) {
           yield* writeResponse(message)
         }
@@ -56,8 +71,9 @@ interface MakeDoRpcProtocolArgs {
  * Creates a Protocol layer that uses Cloudflare Durable Object RPC calls.
  * This enables direct RPC communication with Durable Objects using Cloudflare's native RPC.
  */
-export const layerProtocolDurableObject = (args: MakeDoRpcProtocolArgs): Layer.Layer<RpcClient.Protocol> =>
-  Layer.scoped(RpcClient.Protocol, makeProtocolDurableObject(args))
+export const layerProtocolDurableObject = (
+  args: MakeDoRpcProtocolArgs,
+): Layer.Layer<RpcClient.Protocol> => Layer.effect(RpcClient.Protocol)(makeProtocolDurableObject(args))
 
 /**
  * Implementation of the RPC Protocol interface using Cloudflare Durable Object RPC calls.
@@ -65,27 +81,27 @@ export const layerProtocolDurableObject = (args: MakeDoRpcProtocolArgs): Layer.L
  */
 const makeProtocolDurableObject = ({
   callRpc,
-}: MakeDoRpcProtocolArgs): Effect.Effect<RpcClient.Protocol['Type'], never, Scope.Scope> =>
+}: MakeDoRpcProtocolArgs): Effect.Effect<RpcClient.Protocol['Service'], never, Scope.Scope> =>
   RpcClient.Protocol.make(
-    Effect.fnUntraced(function* (writeResponse) {
+    Effect.fnUntraced(function* (writeResponse, _clientIds) {
+      const parser = RpcSerialization.msgPack.makeUnsafe()
       // Not using an actual `FiberMap` here because it seems to shutdown to early
       // const fiberMap = new Map<string, Fiber.RuntimeFiber<void, never>>()
       const fiberMap = yield* FiberMap.make<string, void, never>()
 
-      const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void> => {
+      const send = (clientId: number, message: RpcMessage.FromClientEncoded): Effect.Effect<void> => {
         if (message._tag !== 'Request') {
           if (message._tag === 'Interrupt') {
             return Effect.gen(function* () {
               const fiber = yield* FiberMap.get(fiberMap, message.requestId)
-              yield* Fiber.interrupt(fiber)
+              if (Option.isSome(fiber)) {
+                yield* Fiber.interrupt(fiber.value)
+              }
             }).pipe(Effect.orDie)
           }
 
           return Effect.void
         }
-
-        // MessagePack parsers buffer incomplete frames, so scope one parser to one DO RPC call.
-        const parser = RpcSerialization.msgPack.unsafeMake()
 
         // Wrap single Request in array to match server expected format
         const serializedPayload = parser.encode([message]) as Uint8Array
@@ -98,16 +114,16 @@ const makeProtocolDurableObject = ({
             const fiber = yield* processReadableStream(
               serializedResponse as CfTypes.ReadableStream,
               parser,
-              writeResponse,
+              (response) => writeResponse(clientId, response),
             ).pipe(
               // Effect.tapCauseLogPretty,
-              Effect.fork,
+              Effect.forkChild,
             )
 
             // fiberMap.set(message.id, fiber)
             yield* FiberMap.set(fiberMap, message.id, fiber)
 
-            yield* fiber
+            yield* Fiber.join(fiber)
 
             return
           }
@@ -125,7 +141,7 @@ const makeProtocolDurableObject = ({
 
           // Process each response
           for (const response of responseArray) {
-            yield* writeResponse(response)
+            yield* writeResponse(clientId, response)
           }
         }).pipe(Effect.withSpan('do-rpc-client:send'), Effect.orDie) // Ensure never error type
       }

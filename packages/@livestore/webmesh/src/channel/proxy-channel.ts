@@ -2,8 +2,9 @@ import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import type { PubSub } from '@livestore/utils/effect'
 import {
   Deferred,
+  Duration,
   Effect,
-  Either,
+  Result,
   Exit,
   Fiber,
   FiberHandle,
@@ -39,11 +40,11 @@ export const ProxyChannelSimulationParams = Schema.Struct({
    */
   onPayload: Schema.Struct({
     /** Delay before sending the ACK response (simulates slow ACK send) */
-    beforeAckSend: Schema.Int.pipe(Schema.between(0, 500)),
+    beforeAckSend: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 500 })),
     /** Delay after forking the ACK send, before adding message to listen queue */
-    afterAckFork: Schema.Int.pipe(Schema.between(0, 500)),
+    afterAckFork: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 500 })),
     /** Delay after adding message to listen queue */
-    afterListenQueueOffer: Schema.Int.pipe(Schema.between(0, 500)),
+    afterListenQueueOffer: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 500 })),
   }),
 })
 
@@ -66,8 +67,8 @@ interface MakeProxyChannelArgs {
   channelName: ChannelName
   target: MeshNodeName
   schema: {
-    send: Schema.Schema<any, any>
-    listen: Schema.Schema<any, any>
+    send: Schema.Schema<any>
+    listen: Schema.Schema<any>
   }
   /** Optional simulation parameters for testing timing-sensitive behavior */
   simulation?: ProxyChannelSimulationParams
@@ -91,7 +92,7 @@ export const makeProxyChannel = ({
         key2: keyof ProxyChannelSimulationParams[TKey],
       ) => {
         const delay = (simulation[key]?.[key2] ?? 0) as number
-        return delay > 0 ? Effect.sleep(delay) : Effect.void
+        return delay > 0 ? Effect.sleep(Duration.millis(delay)) : Effect.void
       }
       type ProxiedChannelState =
         | {
@@ -105,7 +106,7 @@ export const makeProxyChannel = ({
 
       type ProxiedChannelStateEstablished = {
         _tag: 'Established'
-        listenSchema: Schema.Schema<any, any>
+        listenSchema: Schema.Schema<any>
         listenQueue: Queue.Queue<any>
         ackMap: Map<string, Deferred.Deferred<void>>
         combinedChannelId: string
@@ -132,6 +133,15 @@ export const makeProxyChannel = ({
 
       const connectedStateRef = yield* SubscriptionRef.make<ProxiedChannelStateEstablished | false>(false)
 
+      const listenQueue = yield* Effect.acquireRelease(Queue.unbounded<any>(), Queue.shutdown)
+
+      const ackMap = new Map<string, Deferred.Deferred<void>>()
+
+      const earlyPayloadBuffer = yield* Effect.acquireRelease(
+        Queue.unbounded<typeof MeshSchema.ProxyChannelPayload.Type>(),
+        Queue.shutdown,
+      )
+
       const waitForEstablished = Effect.gen(function* () {
         const state = yield* SubscriptionRef.waitUntil(connectedStateRef, (state) => state !== false)
 
@@ -142,15 +152,32 @@ export const makeProxyChannel = ({
         Effect.gen(function* () {
           // TODO avoid "double" `Connected` events (we might call `setStateToEstablished` twice during initial edge)
           yield* Effect.spanEvent(`Connected (${channelId})`).pipe(Effect.withParentSpan(channelSpan))
-          channelStateRef.current = {
+          const establishedState = {
             _tag: 'Established',
             listenSchema: schema.listen,
             listenQueue,
             ackMap,
             combinedChannelId: channelId,
-          }
-          yield* SubscriptionRef.set(connectedStateRef, channelStateRef.current)
+          } satisfies ProxiedChannelStateEstablished
+
+          channelStateRef.current = establishedState
+          yield* SubscriptionRef.set(connectedStateRef, establishedState)
           debugInfo.isConnected = true
+
+          const bufferedPackets = yield* Queue.clear(earlyPayloadBuffer)
+          for (const bufferedPacket of bufferedPackets) {
+            if (establishedState.combinedChannelId !== bufferedPacket.combinedChannelId) {
+              yield* Effect.logWarning(
+                `[${nodeName}] Discarding buffered payload ${bufferedPacket.id}: Combined channel ID mismatch during drain. Expected ${establishedState.combinedChannelId}, got ${bufferedPacket.combinedChannelId}`,
+              )
+              continue
+            }
+
+            const decodedMessage = yield* Schema.decodeUnknownEffect(establishedState.listenSchema)(
+              bufferedPacket.payload,
+            )
+            yield* Queue.offer(establishedState.listenQueue, decodedMessage)
+          }
         })
 
       const edgeRequest = Effect.suspend(() =>
@@ -161,10 +188,6 @@ export const makeProxyChannel = ({
 
       const getCombinedChannelId = (otherSideChannelIdCandidate: string) =>
         [channelIdCandidate, otherSideChannelIdCandidate].toSorted().join('_')
-
-      const earlyPayloadBuffer = yield* Queue.unbounded<typeof MeshSchema.ProxyChannelPayload.Type>().pipe(
-        Effect.acquireRelease(Queue.shutdown),
-      )
 
       const processProxyPacket = ({ packet, respondToSender }: ProxyQueueItem) =>
         Effect.gen(function* () {
@@ -222,7 +245,7 @@ export const makeProxyChannel = ({
               // Send the response regardless of the initial state (unless an error occurred)
               yield* respondToSender(
                 MeshSchema.ProxyChannelResponseSuccess.make({
-                  reqId: packet.id,
+                  reqId: packet.id!,
                   remainingHops: packet.hops,
                   hops: [],
                   target,
@@ -264,31 +287,6 @@ export const makeProxyChannel = ({
 
               yield* setStateToEstablished(packet.combinedChannelId)
 
-              const establishedState = channelStateRef.current
-              if (establishedState._tag === 'Established') {
-                //
-                const bufferedPackets = yield* Queue.takeAll(earlyPayloadBuffer)
-                // yield* Effect.logDebug(
-                //   `[${nodeName}] Draining early payload buffer (${bufferedPackets.length}) after ResponseSuccess`,
-                // )
-                for (const bufferedPacket of bufferedPackets) {
-                  if (establishedState.combinedChannelId !== bufferedPacket.combinedChannelId) {
-                    yield* Effect.logWarning(
-                      `[${nodeName}] Discarding buffered payload ${bufferedPacket.id}: Combined channel ID mismatch during drain. Expected ${establishedState.combinedChannelId}, got ${bufferedPacket.combinedChannelId}`,
-                    )
-                    continue
-                  }
-                  const decodedMessage = yield* Schema.decodeUnknown(establishedState.listenSchema)(
-                    bufferedPacket.payload,
-                  )
-                  yield* establishedState.listenQueue.pipe(Queue.offer(decodedMessage))
-                }
-              } else {
-                yield* Effect.logError(
-                  `[${nodeName}] State is not Established immediately after setStateToEstablished was called. Cannot drain buffer. State: ${establishedState._tag}`,
-                )
-              }
-
               return
             }
             case 'ProxyChannelPayload': {
@@ -309,7 +307,7 @@ export const makeProxyChannel = ({
                 yield* simSleep('onPayload', 'beforeAckSend')
                 yield* respondToSender(
                   MeshSchema.ProxyChannelPayloadAck.make({
-                    reqId: packet.id,
+                    reqId: packet.id!,
                     remainingHops: packet.hops,
                     hops: [],
                     target,
@@ -327,8 +325,8 @@ export const makeProxyChannel = ({
               yield* simSleep('onPayload', 'afterAckFork')
 
               if (channelState._tag === 'Established') {
-                const decodedMessage = yield* Schema.decodeUnknown(channelState.listenSchema)(packet.payload)
-                yield* channelState.listenQueue.pipe(Queue.offer(decodedMessage))
+                const decodedMessage = yield* Schema.decodeUnknownEffect(channelState.listenSchema)(packet.payload)
+                yield* Queue.offer(channelState.listenQueue, decodedMessage)
 
                 // Simulation point: delay after adding to listen queue
                 yield* simSleep('onPayload', 'afterListenQueueOffer')
@@ -377,11 +375,7 @@ export const makeProxyChannel = ({
         Effect.forkScoped,
       )
 
-      const listenQueue = yield* Queue.unbounded<any>()
-
       yield* Effect.spanEvent(`Connecting`)
-
-      const ackMap = new Map<string, Deferred.Deferred<void>>()
 
       // check if already established via incoming `ProxyChannelRequest` from other side
       // which indicates we already have a edge to the target node
@@ -410,7 +404,7 @@ export const makeProxyChannel = ({
 
       const send = (message: any) =>
         Effect.gen(function* () {
-          const payload = yield* Schema.encodeUnknown(schema.send)(message)
+          const payload = yield* Schema.encodeUnknownEffect(schema.send)(message)
           const sendFiberHandle = yield* FiberHandle.make<void, never>()
 
           const sentDeferred = yield* Deferred.make<void>()
@@ -437,11 +431,10 @@ export const makeProxyChannel = ({
               })
               // TODO consider handling previous ackMap entries which might leak/fill-up memory
               // as only successful acks are removed from the map
-              ackMap.set(packet.id, ack)
+              ackMap.set(packet.id!, ack)
 
               yield* sendPacket(packet)
-
-              yield* ack
+              yield* Deferred.await(ack)
               yield* Deferred.succeed(sentDeferred, void 0)
 
               debugInfo.pendingSends--
@@ -449,19 +442,23 @@ export const makeProxyChannel = ({
 
             // TODO make this configurable
             // Schedule.exponential(10): 10, 20, 40, 80, 160, 320, ...
-            yield* innerSend.pipe(Effect.timeout(100), Effect.retry(Schedule.exponential(10)), Effect.orDie)
-          }).pipe(Effect.tapErrorCause(Effect.logError))
+            yield* innerSend.pipe(
+              Effect.timeout(Duration.millis(100)),
+              Effect.retry(Schedule.exponential(Duration.millis(10))),
+              Effect.orDie,
+            )
+          }).pipe(Effect.tapCause(Effect.logError))
 
-          const rerunOnNewChannelFiber = yield* connectedStateRef.changes.pipe(
+          const rerunOnNewChannelFiber = yield* SubscriptionRef.changes(connectedStateRef).pipe(
             Stream.filter((_) => _ === false),
             Stream.tap(() => FiberHandle.run(sendFiberHandle, trySend)),
             Stream.runDrain,
-            Effect.fork,
+            Effect.forkChild,
           )
 
           yield* FiberHandle.run(sendFiberHandle, trySend)
 
-          yield* sentDeferred
+          yield* Deferred.await(sentDeferred)
 
           yield* Fiber.interrupt(rerunOnNewChannelFiber)
         }).pipe(
@@ -470,15 +467,15 @@ export const makeProxyChannel = ({
           Effect.withParentSpan(channelSpan),
         )
 
-      const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Either.right))
+      const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Result.succeed))
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
-      const runtime = yield* Effect.runtime()
+      const context = yield* Effect.context()
 
       const webChannel = {
         [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
-        send,
+        send: send as any,
         listen,
         closedDeferred,
         supportsTransferables: false,
@@ -489,14 +486,13 @@ export const makeProxyChannel = ({
           debug: {
             ping: (message = 'ping') =>
               send(WebChannel.DebugPingMessage.make({ message })).pipe(
-                Effect.provide(runtime),
                 Effect.tapCauseLogPretty,
-                Effect.runFork,
+                Effect.runForkWith(context as any),
               ),
           },
         } as {}),
       } satisfies WebChannel.WebChannel<any, any>
 
-      return webChannel as WebChannel.WebChannel<any, any>
+      return webChannel as unknown as WebChannel.WebChannel<any, any>
     }).pipe(Effect.withSpanScoped('makeProxyChannel')),
   )

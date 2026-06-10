@@ -7,7 +7,6 @@ import { UnknownError } from '@livestore/common'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import {
   Cause,
-  Chunk,
   Effect,
   type FileSystem,
   type HttpClient,
@@ -43,21 +42,18 @@ export const ExportFileSchema = Schema.Struct({
 
 export type ExportFile = typeof ExportFileSchema.Type
 
-export class ConnectionError extends Schema.TaggedError<ConnectionError>('~@livestore/cli/ConnectionError')(
-  'ConnectionError',
-  {
-    cause: Schema.Defect,
-    note: Schema.String,
-  },
-) {}
-
-export class ExportError extends Schema.TaggedError<ExportError>('~@livestore/cli/ExportError')('ExportError', {
-  cause: Schema.Defect,
+export class ConnectionError extends Schema.TaggedErrorClass<ConnectionError>()('ConnectionError', {
+  cause: Schema.Defect(),
   note: Schema.String,
 }) {}
 
-export class ImportError extends Schema.TaggedError<ImportError>('~@livestore/cli/ImportError')('ImportError', {
-  cause: Schema.Defect,
+export class ExportError extends Schema.TaggedErrorClass<ExportError>()('ExportError', {
+  cause: Schema.Defect(),
+  note: Schema.String,
+}) {}
+
+export class ImportError extends Schema.TaggedErrorClass<ImportError>()('ImportError', {
+  cause: Schema.Defect(),
   note: Schema.String,
 }) {}
 
@@ -105,8 +101,8 @@ export const makeSyncBackend = ({
     /** Verify connectivity with a ping (with timeout) */
     yield* syncBackend.ping.pipe(
       Effect.timeout(CONNECTION_TIMEOUT_MS),
-      Effect.catchAll((cause) => {
-        if (Cause.isTimeoutException(cause) === true) {
+      Effect.catch((cause) => {
+        if (Cause.isTimeoutError(cause) === true) {
           return Effect.fail(
             new ConnectionError({
               cause,
@@ -129,7 +125,7 @@ export const makeSyncBackend = ({
 const releaseSyncBackend = (syncBackend: SyncBackend.SyncBackend): Effect.Effect<void> => {
   const maybeDisconnect = (syncBackend as { disconnect?: Effect.Effect<void> }).disconnect
   const releaseEffect = maybeDisconnect ?? SubscriptionRef.set(syncBackend.isConnected, false)
-  return releaseEffect.pipe(Effect.orElse(() => Effect.void))
+  return releaseEffect.pipe(Effect.catch(() => Effect.void))
 }
 
 export interface ExportResult {
@@ -176,9 +172,7 @@ export const pullEventsFromSyncBackend = ({
           ),
         )
 
-        const events = Chunk.toReadonlyArray(batchesChunk)
-          .flatMap((item) => item.batch)
-          .map((item) => item.eventEncoded)
+        const events = batchesChunk.flatMap((item) => item.batch).map((item) => item.eventEncoded)
 
         const exportedAt = new Date().toISOString()
         const exportData: ExportFile = {
@@ -227,7 +221,7 @@ export const validateExportData = ({
   targetStoreId: string
 }): Effect.Effect<ImportValidationResult, ImportError> =>
   Effect.gen(function* () {
-    const exportData = yield* Schema.decodeUnknown(ExportFileSchema)(data).pipe(
+    const exportData = yield* Schema.decodeUnknownEffect(ExportFileSchema)(data).pipe(
       Effect.mapError(
         (cause) =>
           new ImportError({
@@ -275,7 +269,7 @@ export const pushEventsToSyncBackend = ({
     makeSyncBackend({ configPath, storeId, clientId }),
     (syncBackend) =>
       Effect.gen(function* () {
-        const exportData = yield* Schema.decodeUnknown(ExportFileSchema)(data).pipe(
+        const exportData = yield* Schema.decodeUnknownEffect(ExportFileSchema)(data).pipe(
           Effect.mapError(
             (cause) =>
               new ImportError({
@@ -286,10 +280,10 @@ export const pushEventsToSyncBackend = ({
         )
 
         if (exportData.storeId !== storeId && force === false) {
-          return yield* new ImportError({
+          return yield* Effect.fail(new ImportError({
             cause: new Error(`Store ID mismatch: file has '${exportData.storeId}', expected '${storeId}'`),
             note: `The export file was created for a different store. Use force option to import anyway.`,
-          })
+          }))
         }
 
         if (dryRun === true) {
@@ -322,10 +316,10 @@ export const pushEventsToSyncBackend = ({
               ? existingBatch.batch.length + existingBatch.pageInfo.remaining
               : existingBatch.batch.length
 
-          return yield* new ImportError({
+          return yield* Effect.fail(new ImportError({
             cause: new Error(`Sync backend already contains at least ${estimatedCount} events`),
             note: `Cannot import into a non-empty sync backend. The sync backend must be empty.`,
-          })
+          }))
         }
 
         /** Push events in batches of 100 (sync backend constraint) */

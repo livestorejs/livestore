@@ -574,20 +574,13 @@ describe('useStore.useClientDocument', () => {
     // Switch back to store A
     setCurrentOptions(optionsA)
 
-    // Wait for store A to load and useClientDocument state to propagate
+    // Wait for store A to load
     await SolidTesting.waitFor(() => {
       expect(result.store()?.storeId).toBe('store-a')
-      expect(result.state()).toBeDefined()
     })
 
-    // Store A is re-created fresh after retain/release cycle (RcMap disposes
-    // entries eagerly on release in Effect 3.19.19+), so state resets to defaults.
-    // Verify the hook correctly reflects the new store's default state.
-    expect(result.state()?.username).toBe('')
-
-    // Verify we can write to the re-created store A
-    result.setState({ username: 'store-a-new', text: 'fresh data' })
-    expect(result.state()?.username).toBe('store-a-new')
+    // Store A should still have its original data
+    expect(result.state()?.username).toBe('store-a-user')
 
     await cleanupAfterUnmount(() => {})
   })

@@ -114,7 +114,7 @@ export type TableOptions = {
  * })
  *
  * // Option 2: With name from schema annotation (title or identifier)
- * const AnnotatedUserSchema = UserSchema.annotations({ title: 'users' })
+ * const AnnotatedUserSchema = UserSchema.annotate({ title: 'users' })
  * const usersTable2 = State.SQLite.table({
  *   schema: AnnotatedUserSchema,
  * })
@@ -127,7 +127,7 @@ export type TableOptions = {
  *   title: Schema.String,
  *   authorId: Schema.String,
  *   createdAt: Schema.Date,
- * }).annotations({ identifier: 'posts' })
+ * }).annotate({ identifier: 'posts' })
  *
  * const postsTable = State.SQLite.table({
  *   schema: PostSchema,
@@ -224,8 +224,8 @@ export function table<
       tempTableName = args.name
     } else {
       // Use title or identifier, with preference for title
-      tempTableName = SchemaAST.getTitleAnnotation(args.schema.ast).pipe(
-        Option.orElse(() => SchemaAST.getIdentifierAnnotation(args.schema.ast)),
+      tempTableName = Option.fromNullishOr(SchemaAST.resolveTitle(args.schema.ast)).pipe(
+        Option.orElse(() => Option.fromNullishOr(SchemaAST.resolveIdentifier(args.schema.ast))),
         Option.getOrElse(() =>
           shouldNeverHappen(
             'When using schema without explicit name, the schema must have a title or identifier annotation',
@@ -269,13 +269,13 @@ export function table<
   // NOTE we're currently patching the existing tableDef object
   // as it's being used as part of the query builder API
   for (const key of Object.keys(query)) {
-    // @ts-expect-error TODO properly implement this
+    // @ts-ignore TODO properly implement this
     tableDef[key] = query[key]
   }
 
-  // @ts-expect-error TODO properly type this
+  // @ts-ignore TODO properly type this
   tableDef[QueryBuilderAstSymbol] = query[QueryBuilderAstSymbol]
-  // @ts-expect-error TODO properly type this
+  // @ts-ignore TODO properly type this
   tableDef[QueryBuilderTypeId] = query[QueryBuilderTypeId]
 
   return tableDef as any

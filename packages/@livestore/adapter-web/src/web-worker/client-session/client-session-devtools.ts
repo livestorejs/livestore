@@ -1,8 +1,7 @@
 import { Devtools, liveStoreVersion } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { isDevEnv } from '@livestore/utils'
-import type { Worker } from '@livestore/utils/effect'
-import { Effect, Stream } from '@livestore/utils/effect'
+import { Effect, Option, Stream } from '@livestore/utils/effect'
 import { WebChannelBrowser } from '@livestore/utils/effect/browser'
 import * as Webmesh from '@livestore/webmesh'
 import * as WebmeshWorker from '@livestore/webmesh/worker'
@@ -22,8 +21,7 @@ export const logDevtoolsUrl = Effect.fn('@livestore/adapter-web:client-session:d
   sessionId: string
 }) {
   if (isDevEnv() === true) {
-    const devtoolsPath =
-      (globalThis as unknown as { LIVESTORE_DEVTOOLS_PATH?: string }).LIVESTORE_DEVTOOLS_PATH ?? `/_livestore`
+    const devtoolsPath = (globalThis as unknown as { LIVESTORE_DEVTOOLS_PATH?: string }).LIVESTORE_DEVTOOLS_PATH ?? `/_livestore`
     const devtoolsBaseUrl = `${location.origin}${devtoolsPath}`
 
     // Check whether devtools are available and then log the URL
@@ -61,7 +59,7 @@ export const connectWebmeshNodeClientSession = Effect.fn(function* ({
 }: {
   webmeshNode: Webmesh.MeshNode
   sessionInfo: Devtools.SessionInfo.SessionInfo
-  sharedWorker: Worker.SerializedWorkerPool<typeof WebmeshWorker.Schema.Request.Type>
+  sharedWorker: WebmeshWorker.WorkerClient
   devtoolsEnabled: boolean
   schema: LiveStoreSchema
 }) {
@@ -83,7 +81,16 @@ export const connectWebmeshNodeClientSession = Effect.fn(function* ({
         DevtoolsWeb.ClientSessionContentscriptMainReq.make({ clientId, sessionId, storeId }),
       )
 
-      const { tabId } = yield* clientSessionStaticChannel.listen.pipe(Stream.flatten(), Stream.runHead, Effect.flatten)
+      const { tabId } = yield* clientSessionStaticChannel.listen.pipe(
+        Stream.mapEffect(Effect.fromResult),
+        Stream.runHead,
+        Effect.flatMap(
+          Option.match({
+            onNone: () => Effect.die('No client-session static channel response received'),
+            onSome: Effect.succeed,
+          }),
+        ),
+      )
 
       const contentscriptMainNodeName = DevtoolsWeb.makeBrowserExtensionNodeName.contentscriptMain(tabId)
 

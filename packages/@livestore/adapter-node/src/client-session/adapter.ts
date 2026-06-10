@@ -28,17 +28,16 @@ import {
   FetchHttpClient,
   Fiber,
   FileSystem,
+  EffectRpcClient,
   Layer,
-  Option,
   Queue,
   Schedule,
   Schema,
   Stream,
   Subscribable,
   SubscriptionRef,
-  Worker,
+  RpcWorker,
 } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 import * as Webmesh from '@livestore/webmesh'
 
 import type { TestingOverrides } from '../leader-thread-shared.ts'
@@ -46,6 +45,8 @@ import { makeLeaderThread } from '../leader-thread-shared.ts'
 import { makeShutdownChannel } from '../shutdown-channel.ts'
 import * as WorkerSchema from '../worker-schema.ts'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
+import * as NodeWorker from '@effect/platform-node/NodeWorker'
 export interface NodeAdapterOptions {
   storage: WorkerSchema.StorageType
   /** The default is the hostname of the current machine */
@@ -231,7 +232,7 @@ const makeAdapterImpl = ({
       }
 
       yield* shutdownChannel.listen.pipe(
-        Stream.flatten(),
+        Stream.mapEffect(Effect.fromResult),
         Stream.tap((cause) =>
           shutdown(cause._tag === 'IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
         ),
@@ -319,7 +320,7 @@ const makeAdapterImpl = ({
       return clientSession
     }).pipe(
       Effect.withSpan('@livestore/adapter-node:adapter'),
-      Effect.provide(Layer.mergeAll(PlatformNode.NodeFileSystem.layer, FetchHttpClient.layer)),
+      Effect.provide(Layer.mergeAll(NodeFileSystem.layer, FetchHttpClient.layer)),
     )) satisfies Adapter
 
 const resetNodePersistence = ({
@@ -418,7 +419,7 @@ const makeLocalLeaderThread = ({
           export: Effect.sync(() => dbState.export()),
           getEventlogData: Effect.sync(() => dbEventlog.export()),
           syncState: syncProcessor.syncState,
-          sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+          sendDevtoolsMessage: (message) => Queue.offer(extraIncomingMessagesQueue, message),
           networkStatus,
         },
         { ...omitUndefineds({ overrides: testing?.overrides?.clientSession?.leaderThreadProxy }) },
@@ -460,61 +461,55 @@ const makeWorkerLeaderThread = ({
   Effect.gen(function* () {
     const nodeWorker = new WT.Worker(workerUrl, {
       execArgv: process.env.DEBUG_WORKER !== undefined ? ['--inspect --enable-source-maps'] : ['--enable-source-maps'],
-      argv: [
-        yield* Schema.encode(WorkerSchema.WorkerArgv)({
-          storeId,
-          clientId,
-          sessionId,
-          extraArgs: workerExtraArgs,
-        }).pipe(Effect.orDie),
-      ],
+      argv: [yield* Schema.encodeEffect(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId, extraArgs: workerExtraArgs }).pipe(Effect.orDie)],
     })
-    const nodeWorkerLayer = yield* Layer.build(PlatformNode.NodeWorker.layer(() => nodeWorker))
+    const workerLayer = NodeWorker.layer(() => nodeWorker)
+    const protocolLayer = EffectRpcClient.layerProtocolWorker({ size: 1, concurrency: 100 }).pipe(
+      Layer.provide(
+        RpcWorker.layerInitialMessage(
+          WorkerSchema.LeaderWorkerInnerInitialMessage,
+          Effect.succeed(new WorkerSchema.LeaderWorkerInnerInitialMessage({
+            storeId,
+            clientId,
+            storage,
+            devtools,
+            syncPayloadEncoded,
+          })),
+        ),
+      ),
+      Layer.provide(workerLayer),
+    )
 
-    const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.LeaderWorkerInnerRequest.Type>({
-      size: 1,
-      concurrency: 100,
-      initialMessage: () =>
-        new WorkerSchema.LeaderWorkerInnerInitialMessage({
-          storeId,
-          clientId,
-          storage,
-          devtools,
-          syncPayloadEncoded,
-        }),
+    const worker = yield* Effect.gen(function* () {
+      const scope = yield* Effect.scope
+      const protocolContext = yield* Layer.buildWithScope(protocolLayer, scope)
+      return yield* EffectRpcClient.make(WorkerSchema.LeaderWorkerInnerRpcs).pipe(Effect.provide(protocolContext))
     }).pipe(
-      Effect.provide(nodeWorkerLayer),
       UnknownError.mapToUnknownError,
-      Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+      Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
       Effect.withSpan('@livestore/adapter-node:adapter:setupLeaderThread'),
     )
 
-    const runInWorker = <A, I, E, EI, R>(
-      req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
-    ): Effect.Effect<A, E, R> =>
-      worker.executeEffect(req).pipe(
+    const runInWorker = <A, E>(tag: string, effect: Effect.Effect<A, E, any>): Effect.Effect<A, never> =>
+      effect.pipe(
         Effect.catchIf(isWorkerTransportError, (e) => Effect.die(e)),
         Effect.logWarnIfTakesLongerThan({
-          label: `@livestore/adapter-node:client-session:runInWorker:${req._tag}`,
+          label: `@livestore/adapter-node:client-session:runInWorker:${tag}`,
           duration: 2000,
         }),
-        Effect.withSpan(`@livestore/adapter-node:client-session:runInWorker:${req._tag}`),
-      )
+        Effect.withSpan(`@livestore/adapter-node:client-session:runInWorker:${tag}`),
+      ) as Effect.Effect<A, never>
 
-    const runInWorkerStream = <A, I, E, EI, R>(
-      req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
-    ): Stream.Stream<A, E, R> =>
-      worker.execute(req).pipe(
-        Stream.refineOrDie((e) => (isWorkerTransportError(e) === true ? Option.none() : Option.some(e))),
-        Stream.withSpan(`@livestore/adapter-node:client-session:runInWorkerStream:${req._tag}`),
-      )
+    const runInWorkerStream = <A, E>(tag: string, stream: Stream.Stream<A, E, any>): Stream.Stream<A, never> =>
+      stream.pipe(
+        Stream.catchIf(isWorkerTransportError, (e) => Stream.die(e)),
+        Stream.withSpan(`@livestore/adapter-node:client-session:runInWorkerStream:${tag}`),
+      ) as Stream.Stream<A, never>
 
-    const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
+    const bootStatusFiber = yield* runInWorkerStream('BootStatusStream', worker.BootStatusStream(undefined)).pipe(
       Stream.tap((bootStatus) => Queue.offer(bootStatusQueue, bootStatus)),
       Stream.runDrain,
-      Effect.tapErrorCause((cause) =>
-        Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
-      ),
+      Effect.tapCause((cause) => (Cause.hasInterruptsOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)))),
       Effect.interruptible,
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
@@ -526,9 +521,9 @@ const makeWorkerLeaderThread = ({
       Effect.forkScoped,
     )
 
-    const initialLeaderHead = yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderHead())
+    const initialLeaderHead = yield* runInWorker('GetLeaderHead', worker.GetLeaderHead(undefined))
 
-    const bootResult = yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()).pipe(
+    const bootResult = yield* runInWorker('GetRecreateSnapshot', worker.GetRecreateSnapshot(undefined)).pipe(
       Effect.timeoutOrDie(10_000),
       Effect.withSpan('@livestore/adapter-node:client-session:export'),
     )
@@ -537,15 +532,15 @@ const makeWorkerLeaderThread = ({
       {
         events: {
           pull: ({ cursor }) =>
-            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerPullStream({ cursor })).pipe(Stream.orDie),
+            runInWorkerStream('PullStream', worker.PullStream({ cursor })).pipe(Stream.orDie),
           push: (batch) =>
-            runInWorker(new WorkerSchema.LeaderWorkerInnerPushToLeader({ batch })).pipe(
+            runInWorker('PushToLeader', worker.PushToLeader({ batch })).pipe(
               Effect.withSpan('@livestore/adapter-node:client-session:pushToLeader', {
                 attributes: { batchSize: batch.length },
               }),
             ),
           stream: (options) =>
-            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerStreamEvents(options)).pipe(
+            runInWorkerStream('StreamEvents', worker.StreamEvents(options)).pipe(
               Stream.withSpan('@livestore/adapter-node:client-session:streamEvents'),
               Stream.orDie,
             ),
@@ -555,24 +550,24 @@ const makeWorkerLeaderThread = ({
           migrationsReport: bootResult.migrationsReport,
           storageMode: 'persisted',
         },
-        export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
+        export: runInWorker('Export', worker.Export(undefined)).pipe(
           Effect.timeoutOrDie(10_000),
           Effect.withSpan('@livestore/adapter-node:client-session:export'),
         ),
         getEventlogData: Effect.dieMessage('Not implemented'),
         syncState: Subscribable.make({
-          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
+          get: runInWorker('GetLeaderSyncState', worker.GetLeaderSyncState(undefined)).pipe(
             Effect.withSpan('@livestore/adapter-node:client-session:getLeaderSyncState'),
           ),
-          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
+          changes: runInWorkerStream('SyncStateStream', worker.SyncStateStream(undefined)).pipe(Stream.orDie),
         }),
         sendDevtoolsMessage: (message) =>
-          runInWorker(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })).pipe(
+          runInWorker('ExtraDevtoolsMessage', worker.ExtraDevtoolsMessage({ message })).pipe(
             Effect.withSpan('@livestore/adapter-node:client-session:devtoolsMessageForLeader'),
           ),
         networkStatus: Subscribable.make({
-          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()).pipe(Effect.orDie),
-          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()).pipe(Stream.orDie),
+          get: runInWorker('GetNetworkStatus', worker.GetNetworkStatus(undefined)).pipe(Effect.orDie),
+          changes: runInWorkerStream('NetworkStatusStream', worker.NetworkStatusStream(undefined)).pipe(Stream.orDie),
         }),
       },
       {

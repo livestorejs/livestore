@@ -14,7 +14,7 @@ const runtimeDeps = catalog.compose({
     workspace: [adapterNodePkg, utilsPkg],
   },
   devDependencies: {
-    external: catalog.pick('@types/node', 'expo', 'vite'),
+    external: catalog.pick('@effect/platform-node', '@types/node', 'expo', 'vite'),
   },
   peerDependencies: {
     external: {

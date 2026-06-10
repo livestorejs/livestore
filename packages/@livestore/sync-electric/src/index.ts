@@ -8,7 +8,6 @@ import {
   HttpClientRequest,
   HttpClientResponse,
   Option,
-  ReadonlyArray,
   Schedule,
   Schema,
   Stream,
@@ -17,10 +16,8 @@ import {
 
 import * as ApiSchema from './api-schema.ts'
 
-export class InvalidOperationError extends Schema.TaggedError<InvalidOperationError>(
-  '~@livestore/sync-electric/InvalidOperationError',
-)('InvalidOperationError', {
-  operation: Schema.Literal('delete', 'update'),
+export class InvalidOperationError extends Schema.TaggedErrorClass<InvalidOperationError>()('InvalidOperationError', {
+  operation: Schema.Literals(['delete', 'update']),
   message: Schema.String,
 }) {}
 
@@ -71,38 +68,38 @@ const LiveStoreEventGlobalFromStringRecord = Schema.Struct({
   seqNum: Schema.NumberFromString,
   parentSeqNum: Schema.NumberFromString,
   name: Schema.String,
-  args: Schema.parseJson(Schema.Any),
+  args: Schema.fromJsonString(Schema.Any),
   clientId: Schema.String,
   sessionId: Schema.String,
 })
-  .pipe(Schema.compose(LiveStoreEvent.Global.Encoded))
-  .annotations({ title: '@livestore/sync-electric:LiveStoreEventGlobalFromStringRecord' })
+  .pipe(Schema.decodeTo(LiveStoreEvent.Global.Encoded))
+  .annotate({ title: '@livestore/sync-electric:LiveStoreEventGlobalFromStringRecord' })
 
 const ResponseItemInsert = Schema.Struct({
   /** Postgres path (e.g. `"public"."events_9069baf0_b3e6_42f7_980f_188416eab3fx3"/"0"`) */
   key: Schema.optional(Schema.String),
   value: LiveStoreEventGlobalFromStringRecord,
   headers: Schema.Struct({ operation: Schema.Literal('insert'), relation: Schema.Array(Schema.String) }),
-}).annotations({ title: '@livestore/sync-electric:ResponseItemInsert' })
+}).annotate({ title: '@livestore/sync-electric:ResponseItemInsert' })
 
 const ResponseItemInvalid = Schema.Struct({
   /** Postgres path (e.g. `"public"."events_9069baf0_b3e6_42f7_980f_188416eab3fx3"/"0"`) */
   key: Schema.optional(Schema.String),
   value: Schema.Any,
-  headers: Schema.Struct({ operation: Schema.Literal('update', 'delete'), relation: Schema.Array(Schema.String) }),
-}).annotations({ title: '@livestore/sync-electric:ResponseItemInvalid' })
+  headers: Schema.Struct({ operation: Schema.Literals(['update', 'delete']), relation: Schema.Array(Schema.String) }),
+}).annotate({ title: '@livestore/sync-electric:ResponseItemInvalid' })
 
 const ResponseItemControl = Schema.Struct({
   key: Schema.optional(Schema.String),
   value: Schema.optional(Schema.Any),
   headers: Schema.Struct({ control: Schema.String }),
-}).annotations({ title: '@livestore/sync-electric:ResponseItemControl' })
+}).annotate({ title: '@livestore/sync-electric:ResponseItemControl' })
 
-const ResponseItem = Schema.Union(ResponseItemInsert, ResponseItemInvalid, ResponseItemControl)
+const ResponseItem = Schema.Union([ResponseItemInsert, ResponseItemInvalid, ResponseItemControl])
 
 const ResponseHeaders = Schema.Struct({
   'electric-handle': Schema.String,
-  // 'electric-schema': Schema.parseJson(Schema.Any),
+  // 'electric-schema': Schema.fromJsonString(Schema.Any),
   /** e.g. 26799576_0 */
   'electric-offset': Schema.String,
 })
@@ -135,12 +132,12 @@ export interface SyncBackendOptions {
      * How long to wait for a ping response before timing out
      * @default 10 seconds
      */
-    requestTimeout?: Duration.DurationInput
+    requestTimeout?: Duration.Input
     /**
      * How often to send ping requests
      * @default 10 seconds
      */
-    requestInterval?: Duration.DurationInput
+    requestInterval?: Duration.Input
   }
 }
 
@@ -151,6 +148,18 @@ export const SyncMetadata = Schema.Struct({
 })
 
 export type SyncMetadata = typeof SyncMetadata.Type
+
+type PullBatchItem = {
+  metadata: Option.Option<SyncMetadata>
+  eventEncoded: LiveStoreEvent.Global.Encoded
+}
+
+type PullResult = Option.Option<readonly [ReadonlyArray<PullBatchItem>, Option.Option<SyncMetadata>]>
+
+type PullStreamItem = {
+  batch: ReadonlyArray<PullBatchItem>
+  hasMore: boolean
+}
 
 /**
  * Creates a sync backend that uses ElectricSQL for real-time event synchronization.
@@ -207,22 +216,9 @@ export const makeSyncBackend =
       const runPull = (
         handle: Option.Option<SyncMetadata>,
         { live }: { live: boolean },
-      ): Effect.Effect<
-        Option.Option<
-          readonly [
-            /** The batch of events */
-            ReadonlyArray<{
-              metadata: Option.Option<SyncMetadata>
-              eventEncoded: LiveStoreEvent.Global.Encoded
-            }>,
-            /** The next handle to use for the next pull */
-            Option.Option<SyncMetadata>,
-          ]
-        >,
-        UnknownError | IsOfflineError
-      > =>
+      ): Effect.Effect<PullResult, UnknownError | IsOfflineError> =>
         Effect.gen(function* () {
-          const argsJson = yield* Schema.encode(ApiSchema.ArgsSchema)(
+          const argsJson = yield* Schema.encodeEffect(ApiSchema.ArgsSchema)(
             ApiSchema.PullPayload.make({ storeId, handle, payload, live }),
           )
           const url = `${pullEndpoint}?args=${argsJson}`
@@ -230,7 +226,7 @@ export const makeSyncBackend =
           const resp = yield* httpClient.get(url)
 
           if (resp.status === 401) {
-            const body = yield* resp.text.pipe(Effect.catchAll(() => Effect.succeed('-')))
+            const body = yield* resp.text.pipe(Effect.catch(() => Effect.succeed('-')))
             return yield* new UnknownError({
               cause: new Error(`Unauthorized (401): Couldn't connect to ElectricSQL: ${body}`),
             })
@@ -272,9 +268,9 @@ export const makeSyncBackend =
           })(resp)
 
           // Check for delete/update operations and throw descriptive error
-          const invalidOperations = ReadonlyArray.filterMap(allItems, (item) =>
-            Schema.is(ResponseItemInvalid)(item) === true ? Option.some(item.headers.operation) : Option.none(),
-          )
+          const invalidOperations = allItems
+            .filter(Schema.is(ResponseItemInvalid))
+            .map((item) => item.headers.operation)
 
           if (invalidOperations.length > 0) {
             const operation = invalidOperations[0]!
@@ -294,9 +290,11 @@ export const makeSyncBackend =
           return Option.some([items, Option.some(nextHandle)] as const)
         }).pipe(
           Effect.scoped,
-          Effect.mapError((cause) => (cause._tag === 'UnknownError' ? cause : new UnknownError({ cause }))),
+          Effect.mapError((cause) =>
+            cause._tag === 'UnknownError' ? cause : new UnknownError({ cause }),
+          ),
           Effect.withSpan('electric-provider:runPull', { attributes: { handle, live } }),
-        )
+        ) as unknown as Effect.Effect<PullResult, UnknownError | IsOfflineError>
 
       const pullEndpointHasSameOrigin =
         pullEndpoint.startsWith('/') ||
@@ -311,7 +309,7 @@ export const makeSyncBackend =
       }).pipe(
         UnknownError.mapToUnknownError,
         Effect.timeout(pingTimeout),
-        Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
+        Effect.catchTag('TimeoutError', () => SubscriptionRef.set(isConnected, false)),
         Effect.withSpan('electric-provider:ping'),
       )
 
@@ -332,28 +330,30 @@ export const makeSyncBackend =
         pull: (cursor, options) => {
           let hasEmittedAtLeastOnce = false
 
-          return Stream.unfoldEffect(cursor.pipe(Option.flatMap((_) => _.metadata)), (metadataOption) =>
-            Effect.gen(function* () {
+          return Stream.unfold<Option.Option<SyncMetadata>, PullStreamItem, UnknownError | IsOfflineError, never>(
+            cursor.pipe(Option.flatMap((_) => _.metadata)),
+            (metadataOption) =>
+              Effect.gen(function* () {
               const result = yield* runPull(metadataOption, { live: options?.live ?? false })
-              if (Option.isNone(result) === true) return Option.none()
+              if (Option.isNone(result) === true) return undefined
 
               const [batch, nextMetadataOption] = result.value
 
               // Continue pagination if we have data
               if (batch.length > 0) {
                 hasEmittedAtLeastOnce = true
-                return Option.some([{ batch, hasMore: true }, nextMetadataOption])
+                return [{ batch, hasMore: true } satisfies PullStreamItem, nextMetadataOption] as const
               }
 
               // Make sure we emit at least once even if there's no data or we're live-pulling
               if (hasEmittedAtLeastOnce === false || options?.live === true) {
                 hasEmittedAtLeastOnce = true
-                return Option.some([{ batch, hasMore: false }, nextMetadataOption])
+                return [{ batch, hasMore: false } satisfies PullStreamItem, nextMetadataOption] as const
               }
 
               // Stop on empty batch (when not live)
-              return Option.none()
-            }),
+              return undefined
+              }) as Effect.Effect<readonly [PullStreamItem, Option.Option<SyncMetadata>] | undefined, UnknownError | IsOfflineError>,
           ).pipe(
             Stream.map(({ batch, hasMore }) => ({
               batch,

@@ -15,7 +15,7 @@ import {
 import { DoCtx } from './layer.ts'
 
 const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
-const jsonStringify = Schema.encodeSync(Schema.parseJson())
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
 type PullBatchItem = SyncMessage.PullResponse['batch'][number]
 
 export const makePush =
@@ -140,7 +140,7 @@ export const makePush =
 
             // NOTE we're also sending the pullRes chunk to the pushing ws client as confirmation
             for (const conn of connectedClients) {
-              const attachment = yield* Schema.decode(WebSocketAttachmentSchema)(conn.deserializeAttachment())
+              const attachment = yield* Schema.decodeEffect(WebSocketAttachmentSchema)(conn.deserializeAttachment())
 
               // We're doing something a bit "advanced" here as we're directly emitting Effect RPC-compatible
               // response messsages on the Effect RPC-managed websocket connection to the WS client.
@@ -178,11 +178,11 @@ export const makePush =
         Effect.tapCauseLogPretty,
         Effect.withSpan('push-rpc-broadcast'),
         Effect.uninterruptible, // We need to make sure Effect RPC doesn't interrupt this fiber
-        Effect.fork,
+        Effect.forkChild,
       )
 
       // We need to yield here to make sure the fork above is kicked off before we let Effect RPC finish the request
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
 
       return SyncMessage.PushAck.make({})
     }).pipe(
@@ -193,11 +193,12 @@ export const makePush =
           }
         }),
       ),
-      Effect.mapError((cause) =>
-        cause._tag === 'BackendIdMismatchError' || cause._tag === 'ServerAheadError' || cause._tag === 'UnknownError'
-          ? cause
-          : new UnknownError({ cause }),
-      ),
+      Effect.mapError((cause: unknown) => {
+        const tag = (cause as { _tag?: string })._tag
+        return tag === 'BackendIdMismatchError' || tag === 'ServerAheadError' || tag === 'UnknownError'
+          ? (cause as BackendIdMismatchError | ServerAheadError | UnknownError)
+          : new UnknownError({ cause })
+      }),
       Effect.withSpan('sync-cf:do:push', { attributes: { storeId, batchSize: pushRequest.batch.length } }),
     )
 
@@ -208,9 +209,9 @@ const blockConcurrencyWhile =
   (ctx: CfTypes.DurableObjectState) =>
   <A, E, R>(eff: Effect.Effect<A, E, R>) =>
     Effect.gen(function* () {
-      const runtime = yield* Effect.runtime<R>()
+      const context = yield* Effect.context<R>()
       const exit = yield* Effect.promise(() =>
-        ctx.blockConcurrencyWhile(() => eff.pipe(Effect.provide(runtime), Effect.runPromiseExit)),
+        ctx.blockConcurrencyWhile(() => Effect.runPromiseExitWith(context)(eff)),
       )
 
       return yield* exit

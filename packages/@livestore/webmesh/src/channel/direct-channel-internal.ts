@@ -1,6 +1,18 @@
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import type { PubSub } from '@livestore/utils/effect'
-import { Deferred, Effect, Exit, Predicate, Queue, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
+import {
+	Deferred,
+	Duration,
+	Effect,
+	Exit,
+	Fiber,
+  Predicate,
+  Queue,
+  Schema,
+  Scope,
+  Stream,
+  WebChannel,
+} from '@livestore/utils/effect'
 
 import { type ChannelName, type MeshNodeName, type MessageQueueItem, packetAsOtelAttributes } from '../common.ts'
 import * as MeshSchema from '../mesh-schema.ts'
@@ -42,7 +54,7 @@ export const makeDirectChannelInternal = ({
 }: MakeDirectChannelArgs & {
   channelVersion: number
   /** We're passing in the closeable scope from the wrapping direct channel */
-  scope: Scope.CloseableScope
+  scope: Scope.Closeable
   sourceId: string
 }): Effect.Effect<
   WebChannel.WebChannel<any, any>,
@@ -79,8 +91,8 @@ export const makeDirectChannelInternal = ({
     const deferred = yield* makeDeferredResult()
 
     const schema = {
-      send: Schema.Union(schema_.send, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong),
-      listen: Schema.Union(schema_.listen, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong),
+      send: Schema.Union([schema_.send, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong]),
+      listen: Schema.Union([schema_.listen, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong]),
     }
 
     const channelStateRef: { current: ChannelState } = {
@@ -95,9 +107,7 @@ export const makeDirectChannelInternal = ({
           channelState: channelState._tag,
           packetId: packet.id,
           packetReqId: packet.reqId,
-          ...(Predicate.hasProperty('channelVersion')(packet) === true
-            ? { packetChannelVersion: packet.channelVersion }
-            : {}),
+          ...(Predicate.hasProperty('channelVersion')(packet) === true ? { packetChannelVersion: packet.channelVersion } : {}),
         })
 
         // const reqIdStr =
@@ -177,9 +187,7 @@ export const makeDirectChannelInternal = ({
                 remainingHops: packet.hops,
                 reqId: packet.id,
               })
-              yield* Effect.spanEvent(
-                `Re-sending new request (${newRequestPacket.id}) for incoming request (${packet.id})`,
-              )
+              yield* Effect.spanEvent(`Re-sending new request (${newRequestPacket.id}) for incoming request (${packet.id})`)
 
               yield* sendPacket(newRequestPacket)
             }
@@ -202,10 +210,10 @@ export const makeDirectChannelInternal = ({
 
               yield* respondToSender(
                 MeshSchema.DirectChannelResponseSuccess.make({
-                  reqId: packet.id,
+                  reqId: packet.id!,
                   target,
                   source: nodeName,
-                  channelName: packet.channelName,
+                  channelName: packet.channelName!,
                   hops: [],
                   remainingHops: packet.hops.slice(0, -1),
                   port: mc.port2,
@@ -217,7 +225,7 @@ export const makeDirectChannelInternal = ({
 
               // Now we wait for the other side to respond via the channel
               yield* channel.listen.pipe(
-                Stream.flatten(),
+                Stream.mapEffect(Effect.fromResult),
                 Stream.filter(Schema.is(MeshSchema.DirectChannelPing)),
                 Stream.take(1),
                 Stream.runDrain,
@@ -252,11 +260,11 @@ export const makeDirectChannelInternal = ({
             }).pipe(Effect.andThen(WebChannel.toOpenChannel))
 
             const waitForPongFiber = yield* channel.listen.pipe(
-              Stream.flatten(),
+              Stream.mapEffect(Effect.fromResult),
               Stream.filter(Schema.is(MeshSchema.DirectChannelPong)),
               Stream.take(1),
               Stream.runDrain,
-              Effect.fork,
+              Effect.forkChild,
             )
 
             // There seems to be some scenario where the initial ping message is lost.
@@ -265,9 +273,9 @@ export const makeDirectChannelInternal = ({
             // https://github.com/livestorejs/livestore/issues/262
             yield* channel
               .send(MeshSchema.DirectChannelPing.make({}))
-              .pipe(Effect.timeout(10), Effect.retry({ times: 2 }))
+              .pipe(Effect.timeout(Duration.seconds(1)), Effect.retry({ times: 2 }))
 
-            yield* waitForPongFiber
+            yield* Fiber.join(waitForPongFiber)
 
             yield* Effect.spanEvent(`loser side: established`)
             channelStateRef.current = { _tag: 'Established', otherSourceId: channelState.otherSourceId }
@@ -314,7 +322,7 @@ export const makeDirectChannelInternal = ({
         reqId: undefined,
       })
 
-      channelStateRef.current = { _tag: 'RequestSent', reqPacketId: packet.id }
+      channelStateRef.current = { _tag: 'RequestSent', reqPacketId: packet.id! }
 
       // yield* Effect.log(`${nodeName}→${channelName}→${target}:edgeRequest [${channelVersion}]`)
 
@@ -330,7 +338,7 @@ export const makeDirectChannelInternal = ({
 
     yield* edgeRequest
 
-    const channel = yield* deferred
+    const channel = yield* Deferred.await(deferred)
 
     return channel
   }).pipe(Effect.withSpanScoped(`makeDirectChannel:${channelVersion}`))

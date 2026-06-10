@@ -62,10 +62,7 @@ describe('logDeprecationWarnings', () => {
     Effect.runSync(
       effect.pipe(
         Effect.provide(
-          Logger.replace(
-            Logger.defaultLogger,
-            Logger.make(({ message }) => logs.push(message as unknown[])),
-          ),
+          Logger.layer([Logger.make(({ message }) => logs.push(message as unknown[]))], { mergeWithExisting: false }),
         ),
       ),
     )

@@ -83,6 +83,8 @@ export class NoopTracer {
       fn = arg4 as F
     }
 
+    void _opts
+    void _ctx
     return fn(makeNoopSpan())
   }
 }

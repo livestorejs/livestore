@@ -140,6 +140,7 @@ export const repoPnpmOnlyBuiltDependencies = Object.entries(repoPnpmAllowBuilds)
 
 /** Repo-specific pnpm packageExtensions for starlight/typedoc peer resolution */
 export const repoPackageExtensions = {
+  '@effect/vitest': { dependencies: { '@vitest/runner': '3.2.4' } },
   'starlight-auto-sidebar': { dependencies: { astro: '>=5.0.0' } },
   'starlight-links-validator': { dependencies: { astro: '>=5.0.0' } },
   'starlight-sidebar-topics': { dependencies: { astro: '>=5.0.0' } },
@@ -181,20 +182,10 @@ export const localPackageDefaults = {
  */
 export const utilsEffectPeerDeps = [
   'effect',
-  '@effect/platform',
   '@effect/platform-browser',
   '@effect/platform-bun',
   '@effect/platform-node',
-  '@effect/ai',
-  '@effect/cli',
-  '@effect/cluster',
-  '@effect/experimental',
   '@effect/opentelemetry',
-  '@effect/printer',
-  '@effect/printer-ansi',
-  '@effect/rpc',
-  '@effect/sql',
-  '@effect/typeclass',
   '@effect/vitest',
   '@opentelemetry/api',
   '@opentelemetry/resources',

@@ -151,7 +151,7 @@ export const makePersistedAdapter =
       }
 
       yield* shutdownChannel.listen.pipe(
-        Stream.flatten(),
+        Stream.mapEffect(Effect.fromResult),
         Stream.tap((cause) =>
           shutdown(cause._tag === 'IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
         ),
@@ -177,8 +177,9 @@ export const makePersistedAdapter =
         devtoolsUrl,
       })
 
-      const sqliteDb = yield* Effect.acquireRelease(makeSqliteDb({ _tag: 'in-memory' }), (db) =>
-        Effect.try(() => db.close()).pipe(Effect.ignoreLogged),
+      const sqliteDb = yield* Effect.acquireRelease(
+        makeSqliteDb({ _tag: 'in-memory' }),
+        (db) => Effect.try({ try: () => db.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged)
       )
       sqliteDb.import(initialSnapshot)
 
@@ -250,11 +251,11 @@ const makeLeaderThread = ({
 
     const dbState = yield* Effect.acquireRelease(
       makeSqliteDb({ _tag: 'file', databaseName: stateDatabaseName, directory }),
-      (db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged),
+      (db) => Effect.try({ try: () => db.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged),
     )
     const dbEventlog = yield* Effect.acquireRelease(
       makeSqliteDb({ _tag: 'file', databaseName: eventlogDatabaseName, directory }),
-      (db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged),
+      (db) => Effect.try({ try: () => db.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged),
     )
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
@@ -266,7 +267,7 @@ const makeLeaderThread = ({
       clientId,
     })
 
-    const layer = yield* Layer.memoize(
+    const layer = yield* Layer.build(
       makeLeaderThreadLayer({
         clientId,
         dbState,
@@ -312,7 +313,11 @@ const makeLeaderThread = ({
       const leaderThread = ClientSessionLeaderThreadProxy.of({
         events: {
           pull: ({ cursor }) => syncProcessor.pull({ cursor }),
-          push: (batch) => syncProcessor.push(batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item))),
+          push: (batch) =>
+            syncProcessor
+              .push(
+                batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
+              ),
           stream: (options) =>
             streamEventsWithSyncState({
               dbEventlog,
@@ -328,7 +333,7 @@ const makeLeaderThread = ({
         export: Effect.sync(() => db.export()),
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         syncState: syncProcessor.syncState,
-        sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+        sendDevtoolsMessage: (message) => Queue.offer(extraIncomingMessagesQueue, message),
         networkStatus,
       })
 

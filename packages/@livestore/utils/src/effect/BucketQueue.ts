@@ -1,29 +1,43 @@
-import { Array, Effect, STM, TRef } from 'effect'
+import { Array, Effect, Queue, Ref } from 'effect'
 
-export type BucketQueue<A> = TRef.TRef<A[]>
+export type BucketQueue<A> = {
+  readonly queue: Queue.Queue<A>
+  readonly items: Ref.Ref<ReadonlyArray<A>>
+}
 
-export const make = <A>(): STM.STM<BucketQueue<A>> => TRef.make<A[]>([])
-
-export const offerAll = <A>(self: BucketQueue<A>, elements: ReadonlyArray<A>) =>
-  TRef.update(self, (bucket) => Array.appendAll(bucket, elements))
-
-export const replace = <A>(self: BucketQueue<A>, elements: ReadonlyArray<A>) => TRef.set(self, elements as A[])
-
-export const clear = <A>(self: BucketQueue<A>) => TRef.set(self, [])
-
-export const takeBetween = <A>(bucket: BucketQueue<A>, min: number, max: number): STM.STM<ReadonlyArray<A>> =>
-  STM.gen(function* () {
-    const bucketValue = yield* TRef.get(bucket)
-    if (bucketValue.length < min) {
-      return yield* STM.retry
-    } else {
-      const elements = bucketValue.splice(0, Math.min(max, bucketValue.length))
-      yield* TRef.set(bucket, bucketValue)
-      return elements
-    }
+export const make = <A>(): Effect.Effect<BucketQueue<A>> =>
+  Effect.gen(function* () {
+    const queue = yield* Queue.unbounded<A>()
+    const items = yield* Ref.make<ReadonlyArray<A>>([])
+    return { queue, items }
   })
 
-export const peekAll = <A>(bucket: BucketQueue<A>) => TRef.get(bucket)
+export const offerAll = <A>(self: BucketQueue<A>, elements: ReadonlyArray<A>) =>
+  Ref.update(self.items, (bucket) => Array.appendAll(bucket, elements)).pipe(
+    Effect.andThen(Queue.offerAll(self.queue, elements)),
+  )
+
+export const replace = <A>(self: BucketQueue<A>, elements: ReadonlyArray<A>) =>
+  Queue.clear(self.queue).pipe(
+    Effect.andThen(Ref.set(self.items, elements)),
+    Effect.andThen(Queue.offerAll(self.queue, elements)),
+  )
+
+export const clear = <A>(self: BucketQueue<A>) =>
+  Queue.clear(self.queue).pipe(Effect.andThen(Ref.set(self.items, [])))
+
+export const takeBetween = <A>(
+  bucket: BucketQueue<A>,
+  min: number,
+  max: number,
+): Effect.Effect<ReadonlyArray<A>> =>
+  Effect.gen(function* () {
+    const elements = yield* Queue.takeBetween(bucket.queue, min, max)
+    yield* Ref.update(bucket.items, (bucketValue) => bucketValue.slice(elements.length))
+    return elements
+  })
+
+export const peekAll = <A>(bucket: BucketQueue<A>) => Ref.get(bucket.items)
 
 /** Returns the elements up to the first element that matches the predicate, the rest is left in the queue
  *
@@ -35,11 +49,22 @@ export const peekAll = <A>(bucket: BucketQueue<A>) => TRef.get(bucket)
  * ```
  */
 export const takeSplitWhere = <A>(bucket: BucketQueue<A>, predicate: (a: A) => boolean) =>
-  STM.gen(function* () {
-    const bucketValue = yield* TRef.get(bucket)
-    const [elements, rest] = Array.splitWhere(bucketValue, predicate)
-    yield* TRef.set(bucket, rest)
+  Effect.gen(function* () {
+    const [elements, rest] = yield* Ref.modify(
+      bucket.items,
+      (bucketValue): readonly [readonly [ReadonlyArray<A>, ReadonlyArray<A>], ReadonlyArray<A>] => {
+        const splitAt = bucketValue.findIndex(predicate)
+        const index = splitAt === -1 ? bucketValue.length : splitAt
+        const elements = bucketValue.slice(0, index)
+        const rest = bucketValue.slice(index)
+        return [[elements, rest] as const, rest] as const
+      },
+    )
+    if (elements.length > 0) {
+      yield* Queue.clear(bucket.queue)
+      yield* Queue.offerAll(bucket.queue, rest)
+    }
     return elements
   })
 
-export const size = <A>(bucket: BucketQueue<A>) => TRef.get(bucket).pipe(Effect.map((_) => _.length))
+export const size = <A>(bucket: BucketQueue<A>) => Ref.get(bucket.items).pipe(Effect.map((_) => _.length))

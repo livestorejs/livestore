@@ -6,14 +6,14 @@ import { Effect, Schema } from '@livestore/utils/effect'
 import { ResultStoreBootError } from './bridge.ts'
 import { schema } from './schema.ts'
 
-export class TestError extends Schema.TaggedError<TestError>()('TestError', {
+export class TestError extends Schema.TaggedErrorClass<TestError>()('TestError', {
   message: Schema.String,
 }) {}
 
 export const test = () =>
   Effect.gen(function* () {
     const adapter = makeInMemoryAdapter()
-    const boot = () => new TestError({ message: 'Boom!' })
+    const boot = () => Effect.fail(new TestError({ message: 'Boom!' }))
 
     yield* createStore({ schema, adapter, boot, storeId: 'default' })
   }).pipe(

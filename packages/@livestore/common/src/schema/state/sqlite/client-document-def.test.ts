@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { Schema } from '@livestore/utils/effect'
+import { Schema, SchemaTransformation } from '@livestore/utils/effect'
 
 import { tables } from '../../../__tests__/fixture.ts'
 import type * as LiveStoreEvent from '../../LiveStoreEvent/mod.ts'
@@ -11,6 +11,16 @@ import {
   mergeDefaultValues,
 } from './client-document-def.ts'
 import { getResultSchema } from './query-builder/impl.ts'
+
+const DateFromMillis = Schema.Number.pipe(
+  Schema.decodeTo(
+    Schema.Date,
+    SchemaTransformation.transform({
+      decode: (ms) => new Date(ms),
+      encode: (date) => date.getTime(),
+    }),
+  ),
+)
 
 describe('client document table', () => {
   test('set event', () => {
@@ -78,8 +88,9 @@ describe('client document table', () => {
     })
 
     test('struct value (partial set=true)', () => {
-      expect(forSchema(Schema.Struct({ a: Schema.String }), { a: 'hello' }, 'id1', { partialSet: true }))
-        .toMatchInlineSnapshot(`
+      expect(
+        forSchema(Schema.Struct({ a: Schema.String }), { a: 'hello' }, 'id1', { partialSet: true }),
+      ).toMatchInlineSnapshot(`
           {
             "bindValues": [
               "id1",
@@ -100,8 +111,9 @@ describe('client document table', () => {
     })
 
     test('struct value (partial set=false)', () => {
-      expect(forSchema(Schema.Struct({ a: Schema.String }), { a: 'hello' }, 'id1', { partialSet: false }))
-        .toMatchInlineSnapshot(`
+      expect(
+        forSchema(Schema.Struct({ a: Schema.String }), { a: 'hello' }, 'id1', { partialSet: false }),
+      ).toMatchInlineSnapshot(`
         {
           "bindValues": [
             "id1",
@@ -202,7 +214,7 @@ describe('client document table', () => {
     test('struct union value', () => {
       expect(
         forSchema(
-          Schema.Union(Schema.Struct({ a: Schema.String }), Schema.Struct({ b: Schema.String })),
+          Schema.Union([Schema.Struct({ a: Schema.String }), Schema.Struct({ b: Schema.String })]),
           { a: 'hello' },
           'id1',
         ),
@@ -211,9 +223,14 @@ describe('client document table', () => {
           "bindValues": [
             "id1",
             "{"a":"hello"}",
-            "{"a":"hello"}",
+            "$.a",
+            ""hello"",
           ],
-          "sql": "INSERT INTO 'test' (id, value) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET value = ?",
+          "sql": "
+              INSERT INTO 'test' (id, value)
+              VALUES (?, ?)
+              ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
+            ",
           "writeTables": Set {
             "test",
           },
@@ -258,7 +275,7 @@ describe('client document table', () => {
   describe('optimistic schema', () => {
     /** Models persisted JSON using epoch numbers + base64 while app code expects Date + Uint8Array. */
     const valueSchema = Schema.Struct({
-      createdAt: Schema.DateFromNumber,
+      createdAt: DateFromMillis,
       avatar: Schema.Uint8ArrayFromBase64,
     })
     const defaultValue = {
@@ -279,7 +296,7 @@ describe('client document table', () => {
         defaultValue,
         partialSet: false,
       })
-      const rowSchema = Schema.parseJson(optimisticSchema)
+      const rowSchema = Schema.fromJsonString(optimisticSchema)
 
       expect(Schema.decodeUnknownSync(rowSchema)(JSON.stringify(value))).toEqual(defaultValue)
     })
@@ -290,7 +307,7 @@ describe('client document table', () => {
         defaultValue,
         partialSet: false,
       })
-      const rowSchema = Schema.parseJson(optimisticSchema)
+      const rowSchema = Schema.fromJsonString(optimisticSchema)
 
       expect(Schema.decodeUnknownSync(rowSchema)(JSON.stringify(validPayload))).toEqual({
         createdAt: new Date(42),
@@ -304,7 +321,7 @@ describe('client document table', () => {
         defaultValue,
         partialSet: false,
       })
-      const rowSchema = Schema.parseJson(optimisticSchema)
+      const rowSchema = Schema.fromJsonString(optimisticSchema)
 
       expect(Schema.decodeUnknownSync(rowSchema)(JSON.stringify(extraFieldsPayload))).toEqual({
         createdAt: new Date(42),
@@ -387,6 +404,7 @@ describe('client document table', () => {
     })
   })
 })
+
 
 const patchId = (muationEvent: LiveStoreEvent.Input.Decoded) => {
   // TODO use new id paradigm

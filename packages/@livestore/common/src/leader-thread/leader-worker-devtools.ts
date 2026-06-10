@@ -47,7 +47,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
         Effect.as(Option.none()),
       ),
     ),
-    Effect.catchAllCause((cause) =>
+    Effect.catchCause((cause) =>
       Effect.logWarning(
         `[@livestore/devtools] Failed to start devtools server. Devtools will be disabled.`,
         cause,
@@ -92,7 +92,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
         )
 
         yield* listenToDevtools({
-          incomingMessages: channel.listen.pipe(Stream.flatten(), Stream.orDie),
+          incomingMessages: channel.listen.pipe(Stream.mapEffect(Effect.fromResult), Stream.orDie),
           sendMessage,
           persistenceInfo,
         })
@@ -206,10 +206,13 @@ const listenToDevtools = ({
                   Effect.sync(() => db.close()),
                 ).pipe(
                   Effect.flatMap((db) =>
-                    Effect.try(() => {
-                      db.import(data)
-                      const rows = db.select<{ name: string }>(`select name from sqlite_master where type = 'table'`)
-                      return new Set(rows.map((r) => r.name))
+                    Effect.try({
+                      try: () => {
+                        db.import(data)
+                        const rows = db.select<{ name: string }>(`select name from sqlite_master where type = 'table'`)
+                        return new Set(rows.map((r) => r.name))
+                      },
+                      catch: (cause) => cause,
                     }),
                   ),
                 )
@@ -219,10 +222,10 @@ const listenToDevtools = ({
                 if (tableNames.has(SystemTables.EVENTLOG_META_TABLE) === true) {
                   databaseKind = 'eventlog'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-                  yield* Effect.try(() => dbEventlog.import(data))
+                  yield* Effect.try({ try: () => dbEventlog.import(data), catch: (cause) => cause })
 
                   if (batchId === undefined) {
-                    yield* Effect.try(() => dbState.destroy())
+                    yield* Effect.try({ try: () => dbState.destroy(), catch: (cause) => cause })
                   }
                 } else if (
                   tableNames.has(SystemTables.SCHEMA_META_TABLE) === true &&
@@ -230,10 +233,10 @@ const listenToDevtools = ({
                 ) {
                   databaseKind = 'state'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-                  yield* Effect.try(() => dbState.import(data))
+                  yield* Effect.try({ try: () => dbState.import(data), catch: (cause) => cause })
 
                   if (batchId === undefined) {
-                    yield* Effect.try(() => dbEventlog.destroy())
+                    yield* Effect.try({ try: () => dbEventlog.destroy(), catch: (cause) => cause })
                   }
                 } else {
                   return yield* Effect.fail({ _tag: 'unsupported-database' } as const)
@@ -255,7 +258,13 @@ const listenToDevtools = ({
               })
 
               yield* handleLoadDb.pipe(
-                Effect.catchTag('unsupported-database', () =>
+                Effect.catchIf(
+                  (cause): cause is { _tag: 'unsupported-database' } =>
+                    typeof cause === 'object' &&
+                    cause !== null &&
+                    '_tag' in cause &&
+                    cause._tag === 'unsupported-database',
+                  () =>
                   sendMessage(
                     Devtools.Leader.LoadDatabaseFile.Error.make({
                       ...reqPayload,
@@ -263,7 +272,7 @@ const listenToDevtools = ({
                     }),
                   ),
                 ),
-                Effect.catchAll((cause) =>
+                Effect.catch((cause) =>
                   Effect.logWarning('Error importing database file', cause).pipe(
                     Effect.zipRight(
                       sendMessage(
@@ -390,9 +399,9 @@ const listenToDevtools = ({
                 yield* Effect.sleep(1000)
 
                 yield* Stream.zipLatest(
-                  syncBackend.isConnected.changes,
+                  SubscriptionRef.changes(syncBackend.isConnected),
                   devtools.enabled === true
-                    ? devtools.syncBackendLatchState.changes
+                    ? SubscriptionRef.changes(devtools.syncBackendLatchState)
                     : Stream.make({ latchClosed: false }),
                 ).pipe(
                   Stream.tap(([isConnected, { latchClosed }]) =>

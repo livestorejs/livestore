@@ -6,7 +6,7 @@ export type Type = Brand.Branded<number, 'GlobalEventSequenceNumber'>
 const GlobalBrand = Brand.nominal<Type>()
 
 /** Effect Schema for encoding/decoding global sequence numbers. */
-export const Schema = S.fromBrand(GlobalBrand)(S.Int)
+export const Schema = S.Int.pipe(S.fromBrand('GlobalEventSequenceNumber', GlobalBrand))
 
 /**
  * Creates a branded global sequence number from a plain number.

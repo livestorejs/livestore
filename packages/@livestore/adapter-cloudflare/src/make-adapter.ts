@@ -17,10 +17,9 @@ import {
 } from '@livestore/common/leader-thread'
 import { LiveStoreEvent } from '@livestore/livestore'
 import { CF_SQL_VFS_REQUIRED_PRAGMAS, sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
-import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { Effect, FetchHttpClient, Layer, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
-
 import { makeSqliteDb as makeDoSqliteDb } from './make-sqlite-db.ts'
+import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
+import { Effect, FetchHttpClient, Layer, Queue, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 
 export const makeAdapter =
   ({
@@ -70,7 +69,9 @@ export const makeAdapter =
         storage,
         fileName: stateDbFileName,
         configureDb: (db) =>
-          db.execute([...CF_SQL_VFS_REQUIRED_PRAGMAS, 'cache_size=-8000'].map((p) => `PRAGMA ${p}`).join(';\n')),
+          db.execute(
+            [...CF_SQL_VFS_REQUIRED_PRAGMAS, 'cache_size=-8000'].map((p) => `PRAGMA ${p}`).join(';\n'),
+          ),
       }).pipe(UnknownError.mapToUnknownError)
 
       // dbEventlog runs on DO SQLite directly (not through the VFS). SQL-level transaction
@@ -111,7 +112,10 @@ export const makeAdapter =
           {
             events: {
               pull: ({ cursor }) => syncProcessor.pull({ cursor }),
-              push: (batch) => syncProcessor.push(batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item))),
+              push: (batch) =>
+                syncProcessor.push(
+                  batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
+                ),
               stream: (options) =>
                 streamEventsWithSyncState({
                   dbEventlog,
@@ -127,7 +131,7 @@ export const makeAdapter =
             export: Effect.sync(() => dbState.export()),
             getEventlogData: Effect.sync(() => dbEventlog.export()),
             syncState: syncProcessor.syncState,
-            sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+            sendDevtoolsMessage: (message) => Queue.offer(extraIncomingMessagesQueue, message),
             networkStatus,
           },
           {

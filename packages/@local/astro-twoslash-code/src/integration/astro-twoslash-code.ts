@@ -3,12 +3,12 @@ import { fileURLToPath } from 'node:url'
 import type { AstroIntegration } from 'astro'
 
 import { Effect, Fiber } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
 import { type BuildSnippetsOptions, buildSnippets, watchSnippets } from '../cli/snippets.ts'
 import type { TwoslashRuntimeOptions } from '../expressive-code.ts'
 import { createTwoslashSnippetPlugin } from '../vite/vite-plugin-snippet.ts'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 export type AstroTwoslashCodeOptions = {
   autoBuild?: boolean
   buildOptions?: BuildSnippetsOptions
@@ -26,7 +26,7 @@ const shouldSkipSnippetAutoBuildAndWatch = () => process.env.LS_SKIP_SNIPPET_AUT
 export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOptions = {}): AstroIntegration => {
   const autoBuild = options.autoBuild ?? true
   let resolvedBuildOptions: BuildSnippetsOptions | undefined
-  let watchFiber: Fiber.RuntimeFiber<void> | null = null
+  let watchFiber: Fiber.Fiber<void> | null = null
 
   const runSnippetBuild = () => {
     if (resolvedBuildOptions == null) {
@@ -34,7 +34,7 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
     }
 
     return buildSnippets(resolvedBuildOptions).pipe(
-      Effect.provide(PlatformNode.NodeFileSystem.layer),
+      Effect.provide(NodeFileSystem.layer),
       Effect.runPromise,
     )
   }

@@ -1,4 +1,4 @@
-import { assert, expect } from 'vitest'
+import  { expect, assert } from 'vitest'
 
 import { makeAdapter } from '@livestore/adapter-node'
 import type { LockStatus, MockSyncBackend } from '@livestore/common'
@@ -7,6 +7,7 @@ import {
   type ClientSession,
   type ClientSessionLeaderThreadProxy,
   makeMockSyncBackend,
+  type SqliteDb,
   SyncState,
   type UnknownError,
 } from '@livestore/common'
@@ -40,10 +41,10 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import { PlatformNode } from '@livestore/utils/node'
 
 import { events, schema, tables } from '../leader-thread/fixture.ts'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 // TODO fix type level - derived events are missing and thus infers to `never` currently
 const eventSchema = LiveStoreEvent.Input.makeSchema(schema) as TODO as Schema.Schema<LiveStoreEvent.Input.Encoded>
 const encode = Schema.encodeSync(eventSchema)
@@ -52,9 +53,9 @@ const withTestCtx = Vitest.makeWithTestCtx({
   makeLayer: () =>
     Layer.mergeAll(
       TestContextLive,
-      PlatformNode.NodeFileSystem.layer,
+      NodeFileSystem.layer,
       FetchHttpClient.layer,
-      Logger.minimumLogLevel(LogLevel.Debug),
+      Logger.layer([Logger.consolePretty()]),
     ),
 })
 
@@ -138,7 +139,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       for (let i = 0; i < 5; i++) {
         yield* mockSyncBackend
           .advance(eventFactory.todoCreated.next({ id: `backend_${i}`, text: '', completed: false }))
-          .pipe(Effect.fork)
+          .pipe(Effect.forkChild)
       }
 
       for (let i = 0; i < 5; i++) {
@@ -224,29 +225,29 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       yield* Queue.offer(
         pullQueue,
         LiveStoreEvent.Client.EncodedWithMeta.make({
-          ...(yield* Schema.encode(eventSchema)(events.todoCreated({ id: `id_0`, text: '', completed: false }))),
+          ...(yield* Schema.encodeEffect(eventSchema)(events.todoCreated({ id: `id_0`, text: '', completed: false }))),
           seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
           parentSeqNum: EventSequenceNumber.Client.ROOT,
           clientId: 'other-client',
           sessionId: 'static-session-id',
         }),
-      ).pipe(Effect.repeatN(1))
+      ).pipe(Effect.repeat({ times: 1 }))
 
       // Merge invariant violations are defects (not typed errors), so the shutdown
       // deferred receives an Exit with a Die cause containing the error message.
-      const exit = yield* Effect.exit(shutdownDeferred)
+      const exit = yield* Effect.exit(Deferred.await(shutdownDeferred))
 
       expect(Exit.isFailure(exit)).toBe(true)
       assert(Exit.isFailure(exit))
 
-      const defect = Cause.dieOption(exit.cause)
-      expect(defect._tag).toBe('Some')
-      assert(defect._tag === 'Some')
+      const defect = Cause.findDefect(exit.cause)
+      expect(defect._tag).toBe('Success')
+      assert(defect._tag === 'Success')
 
-      expect(defect.value).toBeInstanceOf(Error)
-      assert(defect.value instanceof Error)
+      expect(defect.success).toBeInstanceOf(Error)
+      assert(defect.success instanceof Error)
 
-      expect(defect.value.message).toEqual(
+      expect(defect.success.message).toEqual(
         'Incoming events must be greater than upstream head. Expected greater than: e1. Received: [e1]',
       )
     }).pipe(withTestCtx(test)),
@@ -269,8 +270,11 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       yield* mockSyncBackend.advance(eventFactory.todoCreated.next({ id: `backend_0`, text: 't2', completed: false }))
 
-      const makeLeaderThread = yield* Effect.cachedFunction(
-        Effect.fn(function* (makeSqliteDb: MakeNodeSqliteDb) {
+      let cachedLeaderThread: { dbEventlog: SqliteDb; dbState: SqliteDb } | undefined
+      const makeLeaderThread = Effect.fn(function* (makeSqliteDb: MakeNodeSqliteDb) {
+        if (cachedLeaderThread !== undefined) return cachedLeaderThread
+
+        cachedLeaderThread = yield* Effect.gen(function* () {
           const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
 
           yield* Eventlog.initEventlogDb(dbEventlog)
@@ -296,9 +300,9 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
 
           return { dbEventlog, dbState }
-        }, Effect.orDie),
-        () => true, // always cache
-      )
+        })
+        return cachedLeaderThread
+      }, Effect.orDie)
 
       const adapter = makeAdapter({
         storage: { type: 'in-memory' },
@@ -343,6 +347,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
   Vitest.scopedLive('rebased pushes carry rebase generation forward', (test) =>
     Effect.gen(function* () {
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
+
 
       const baseHead = EventSequenceNumber.Client.Composite.make({ global: 10, client: 0, rebaseGeneration: 4 })
       const recordedEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
@@ -428,7 +433,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       store.commit(events.todoDeletedNonPure({ id: '1' }))
 
-      const error = yield* shutdownDeferred.pipe(Effect.flip)
+      const error = yield* Deferred.await(shutdownDeferred).pipe(Effect.flip)
 
       expect(error._tag).toEqual('MaterializeError')
     }).pipe(withTestCtx(test)),
@@ -466,9 +471,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       // Create an event that comes from the leader with a specific hash that won't match the client-side materializer's computed hash.
       const eventFromLeader = LiveStoreEvent.Client.EncodedWithMeta.make({
-        ...(yield* Schema.encode(eventSchema)(
-          events.todoCreated({ id: 'test-id', text: 'from-leader', completed: false }),
-        )),
+        ...(yield* Schema.encodeEffect(eventSchema)(events.todoCreated({ id: 'test-id', text: 'from-leader', completed: false }))),
         seqNum: EventSequenceNumber.Client.Composite.make({ global: 0, client: 1 }),
         parentSeqNum: EventSequenceNumber.Client.ROOT,
         clientId: 'this-client',
@@ -486,7 +489,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       yield* Queue.offer(pullQueue, eventFromLeader)
 
       // Wait for the shutdown to be triggered by the client-side hash mismatch detection
-      const error = yield* shutdownDeferred.pipe(Effect.flip)
+      const error = yield* Deferred.await(shutdownDeferred).pipe(Effect.flip)
 
       expect(error._tag).toEqual('MaterializeError')
     }).pipe(withTestCtx(test)),
@@ -497,6 +500,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const upstreamQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
       const materializedEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
       const materialized = yield* Deferred.make<void>()
+
 
       const lockStatus = yield* SubscriptionRef.make<'has-lock' | 'no-lock'>('has-lock')
 
@@ -590,7 +594,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       expect(materializedEvents).toHaveLength(1)
       expect(materializedEvents[0]?.name).toEqual('unknown_event_test')
-      expect(materializedEvents[0]?.meta.sessionChangeset._tag).toEqual('no-op')
+      expect(materializedEvents[0]!.meta!.sessionChangeset._tag).toEqual('no-op')
     }).pipe(withTestCtx(test)),
   )
 
@@ -618,17 +622,17 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       store.commit(events.todoCreated({ id: 'trigger', text: 'boom', completed: false }))
 
-      const exit = yield* Effect.exit(shutdownDeferred)
+      const exit = yield* Effect.exit(Deferred.await(shutdownDeferred))
 
       expect(Exit.isFailure(exit)).toBe(true)
       assert(Exit.isFailure(exit))
 
-      const defect = Cause.dieOption(exit.cause)
-      expect(defect._tag).toBe('Some')
-      assert(defect._tag === 'Some')
-      expect(defect.value).toBeInstanceOf(Error)
-      assert(defect.value instanceof Error)
-      expect(defect.value.message).toBe('unexpected transport failure')
+      const defect = Cause.findDefect(exit.cause)
+      expect(defect._tag).toBe('Success')
+      assert(defect._tag === 'Success')
+      expect(defect.success).toBeInstanceOf(Error)
+      assert(defect.success instanceof Error)
+      expect(defect.success.message).toBe('unexpected transport failure')
     }).pipe(withTestCtx(test)),
   )
 
@@ -636,7 +640,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
   // - leader re-election
 })
 
-class TestContext extends Context.Tag('TestContext')<
+class TestContext extends Context.Service<
   TestContext,
   {
     makeStore: (args?: {
@@ -654,9 +658,9 @@ class TestContext extends Context.Tag('TestContext')<
     mockSyncBackend: MockSyncBackend
     shutdownDeferred: ShutdownDeferred
   }
->() {}
+>()('TestContext') {}
 
-const TestContextLive = Layer.scoped(
+const TestContextLive = Layer.effect(
   TestContext,
   Effect.gen(function* () {
     const mockSyncBackend = yield* makeMockSyncBackend()

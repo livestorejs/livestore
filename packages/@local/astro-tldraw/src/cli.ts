@@ -28,7 +28,7 @@ export interface BuildDiagramsOptions {
   verbose?: boolean
 }
 
-export class DiagramDiscoveryError extends Schema.TaggedError<DiagramDiscoveryError>()('Tldraw.DiagramDiscoveryError', {
+export class DiagramDiscoveryError extends Schema.TaggedErrorClass<DiagramDiscoveryError>()('Tldraw.DiagramDiscoveryError', {
   path: Schema.String,
   cause: Schema.Any,
 }) {}
@@ -189,7 +189,7 @@ export const buildDiagrams = (
         }
       } finally {
         /* Clean up temp directory */
-        yield* fs.remove(tempDir, { recursive: true, force: true }).pipe(Effect.catchAll(() => Effect.void))
+        yield* fs.remove(tempDir, { recursive: true, force: true }).pipe(Effect.catch(() => Effect.void))
       }
     }),
   )
@@ -198,7 +198,7 @@ export const buildDiagrams = (
  * Watch Mode Implementation
  * ───────────────────────────────────────────────────────────────────────────── */
 
-const DEFAULT_WATCH_DEBOUNCE: Duration.DurationInput = '300 millis'
+const DEFAULT_WATCH_DEBOUNCE: Duration.Input = '300 millis'
 
 type WatchEventSummary = {
   absolutePath: string
@@ -214,13 +214,13 @@ export type WatchDiagramsRebuildInfo = {
 }
 
 type NormalizedWatchOptions = {
-  debounce: Duration.DurationInput
+  debounce: Duration.Input
   initialBuild: boolean
   onRebuild: (info: WatchDiagramsRebuildInfo) => Effect.Effect<void>
 }
 
 export type WatchDiagramsOptions = BuildDiagramsOptions & {
-  debounce?: Duration.DurationInput
+  debounce?: Duration.Input
   /**
    * Run an initial build on startup before processing watch events.
    *
@@ -298,7 +298,7 @@ const watchDiagramsInternal = (
     const fs = yield* FileSystem.FileSystem
     const paths = resolveCachePaths(options.projectRoot)
 
-    const diagramsRootExists = yield* fs.exists(paths.diagramsRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
+    const diagramsRootExists = yield* fs.exists(paths.diagramsRoot).pipe(Effect.catch(() => Effect.succeed(false)))
 
     if (diagramsRootExists === false) {
       yield* Effect.logWarning(`Diagrams watch: diagrams root does not exist at ${paths.diagramsRoot}`)
@@ -316,11 +316,11 @@ const watchDiagramsInternal = (
           yield* Effect.log('Diagrams watch: running initial build')
         }
 
-        const result = yield* buildDiagrams(options).pipe(Effect.either)
+        const result = yield* Effect.result(buildDiagrams(options))
         const durationMs = Date.now() - startedAt
 
-        if (result._tag === 'Left') {
-          const error = result.left
+        if (result._tag === 'Failure') {
+          const error = result.failure
           yield* Effect.logError(
             `Diagrams watch: build failed${event !== null ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
           )
@@ -348,7 +348,7 @@ const watchDiagramsInternal = (
     )
 
     yield* streamEffect.pipe(
-      Effect.catchAll((cause) =>
+      Effect.catch((cause) =>
         Effect.logWarning(`Diagrams watch: stream failed with ${String(cause)}`).pipe(Effect.zipRight(Effect.never)),
       ),
     )
