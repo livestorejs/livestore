@@ -12,7 +12,7 @@ import {
   Stream,
 } from '@livestore/utils/effect'
 
-export class DockerComposeError extends Schema.TaggedError<DockerComposeError>(
+export class DockerComposeError extends Schema.TaggedErrorClass<DockerComposeError>(
   '~@livestore/utils-dev/DockerComposeError',
 )('DockerComposeError', {
   cause: Schema.Defect,
@@ -87,13 +87,13 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         const stdoutFiber = yield* process.stdout.pipe(
           Stream.decodeText('utf8'),
           Stream.runFold('', (acc, chunk) => acc + chunk),
-          Effect.fork,
+          Effect.forkChild,
         )
 
         const stderrFiber = yield* process.stderr.pipe(
           Stream.decodeText('utf8'),
           Stream.runFold('', (acc, chunk) => acc + chunk),
-          Effect.fork,
+          Effect.forkChild,
         )
 
         const exitCode = yield* process.exitCode
@@ -275,7 +275,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
       yield* Effect.addFinalizer(() =>
         down({ volumes: true, removeOrphans: true }).pipe(
           Effect.tap(() => Effect.log(`Docker Compose cleanup completed for project ${projectName}`)),
-          Effect.catchAll((error) =>
+          Effect.catch((error) =>
             Effect.log('Docker Compose cleanup failed for project', projectName, objectToString(error)),
           ),
         ),
@@ -300,7 +300,7 @@ const performHealthCheck = ({
     const checkHealth = Command.make('curl', '-f', '-s', url).pipe(
       Command.exitCode,
       Effect.map((code: number) => code === 0),
-      Effect.catchAll(() => Effect.succeed(false)),
+      Effect.catch(() => Effect.succeed(false)),
     )
 
     const healthCheck = checkHealth.pipe(

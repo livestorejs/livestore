@@ -48,7 +48,7 @@ export const withLock =
     })
 
 export const waitForDeferredLock = (deferred: Deferred.Deferred<void>, lockName: string) =>
-  Effect.async<void>((cb, signal) => {
+  Effect.callback<void>((cb, signal) => {
     if (signal.aborted === true) return
 
     navigator.locks
@@ -71,7 +71,7 @@ export const waitForDeferredLock = (deferred: Deferred.Deferred<void>, lockName:
   })
 
 export const tryGetDeferredLock = (deferred: Deferred.Deferred<void>, lockName: string) =>
-  Effect.async<boolean>((cb, signal) => {
+  Effect.callback<boolean>((cb, signal) => {
     navigator.locks.request(lockName, { mode: 'exclusive', ifAvailable: true }, (lock: Lock | null) => {
       cb(Effect.succeed(lock !== null))
 
@@ -95,7 +95,7 @@ export const tryGetDeferredLock = (deferred: Deferred.Deferred<void>, lockName: 
   })
 
 export const stealDeferredLock = (deferred: Deferred.Deferred<void>, lockName: string) =>
-  Effect.async<boolean>((cb, signal) => {
+  Effect.callback<boolean>((cb, signal) => {
     navigator.locks.request(lockName, { mode: 'exclusive', steal: true }, (lock: Lock | null) => {
       cb(Effect.succeed(lock !== null))
 
@@ -116,7 +116,7 @@ export const stealDeferredLock = (deferred: Deferred.Deferred<void>, lockName: s
   })
 
 export const waitForLock = (lockName: string) =>
-  Effect.async<void>((cb, signal) => {
+  Effect.callback<void>((cb, signal) => {
     if (signal.aborted === true) return
 
     navigator.locks.request(lockName, { mode: 'shared', signal, ifAvailable: false }, (_lock: Lock | null) => {
@@ -126,7 +126,7 @@ export const waitForLock = (lockName: string) =>
 
 /** Attempts to get the lock if available and waits for it to be stolen */
 export const getLockAndWaitForSteal = (lockName: string) =>
-  Effect.async<void>((cb, signal) => {
+  Effect.callback<void>((cb, signal) => {
     if (signal.aborted === true) return
 
     navigator.locks

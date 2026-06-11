@@ -48,7 +48,7 @@ Vitest.describe('SQLite State', () => {
         const rawResult = db.select(sql`select * from test`)
         expect(rawResult).toEqual([{ id: 1, json: null }])
 
-        const result = yield* Schema.decodeUnknown(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(
+        const result = yield* Schema.decodeUnknownEffect(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(
           rawResult,
         )
 
@@ -75,7 +75,7 @@ Vitest.describe('SQLite State', () => {
         const rawResult = db.select(sql`select * from test`)
         expect(rawResult).toEqual([{ id: 1, json: '"null"' }])
 
-        const result = yield* Schema.decodeUnknown(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(
+        const result = yield* Schema.decodeUnknownEffect(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(
           rawResult,
         )
 

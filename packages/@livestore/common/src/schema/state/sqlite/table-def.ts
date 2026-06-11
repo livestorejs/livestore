@@ -114,7 +114,7 @@ export type TableOptions = {
  * })
  *
  * // Option 2: With name from schema annotation (title or identifier)
- * const AnnotatedUserSchema = UserSchema.annotations({ title: 'users' })
+ * const AnnotatedUserSchema = UserSchema.annotate({ title: 'users' })
  * const usersTable2 = State.SQLite.table({
  *   schema: AnnotatedUserSchema,
  * })

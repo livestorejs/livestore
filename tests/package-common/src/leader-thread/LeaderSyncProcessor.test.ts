@@ -418,7 +418,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       for (let i = 0; i < 5; i++) {
         yield* testContext.mockSyncBackend
           .advance(backendFactory.todoCreated.next({ id: `backend_${i}`, text: '', completed: false }))
-          .pipe(Effect.fork)
+          .pipe(Effect.forkChild)
       }
 
       for (let i = 0; i < 5; i++) {
@@ -439,7 +439,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       for (let i = 0; i < 10; i++) {
         const event = eventFactory.todoCreated.next({ id: `session_1_${i}`, text: '', completed: false })
-        yield* testContext.pushEncoded(event).pipe(Effect.repeatN(1), Effect.ignoreLogged)
+        yield* testContext.pushEncoded(event).pipe(Effect.repeatN(1), Effect.ignore)
       }
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(10), Stream.runDrain)
@@ -492,7 +492,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       // Session B resumes with a stale pending mutation followed by two fresh events
       const pushResult = yield* testContext
         .pushEncoded(staleEventB, followUpB1, followUpB2)
-        .pipe(Effect.either, Effect.timeout(Duration.seconds(5)))
+        .pipe(Effect.result, Effect.timeout(Duration.seconds(5)))
 
       expect(pushResult._tag).toBe('Left')
       if (pushResult._tag !== 'Left') {

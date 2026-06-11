@@ -57,7 +57,7 @@ const toSqliteColumnSpec = (column: SqliteAst.Column, opts: { inlinePrimaryKey: 
     if (resolvedDefault === null) return 'default null'
     if (SqliteDsl.isSqlDefaultValue(resolvedDefault) === true) return `default ${resolvedDefault.sql}`
 
-    const encodeValue = Schema.encodeSync(column.schema)
+    const encodeValue = Schema.encodeEffectSync(column.schema)
     const encodedDefaultValue = encodeValue(resolvedDefault)
 
     if (columnTypeStr === 'text') return `default '${encodedDefaultValue}'`

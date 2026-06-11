@@ -79,7 +79,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
               cwd: '/completely/nonexistent/directory',
             }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
           ),
-          Effect.either,
+          Effect.result,
         )
 
         expect(result._tag).toBe('Left')
@@ -95,7 +95,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
         const result = yield* WranglerDevServerService.pipe(
           // Override the timeout for this test to be shorter
           Effect.timeout('5 seconds'),
-          Effect.either,
+          Effect.result,
         )
 
         // This might succeed or fail depending on actual wrangler behavior

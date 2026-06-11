@@ -446,7 +446,7 @@ describe('table function overloads', () => {
     })
     const CircleSchema = Schema.Struct({
       kind: Schema.Literal('circle'),
-      data: Schema.parseJson(CircleDataSchema),
+      data: Schema.fromJsonString(CircleDataSchema),
     })
 
     const SquareDataSchema = Schema.Struct({
@@ -454,7 +454,7 @@ describe('table function overloads', () => {
     })
     const SquareSchema = Schema.Struct({
       kind: Schema.Literal('square'),
-      data: Schema.parseJson(SquareDataSchema),
+      data: Schema.fromJsonString(SquareDataSchema),
     })
 
     const ShapeSchema = Schema.Union(CircleSchema, SquareSchema)

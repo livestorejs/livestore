@@ -28,7 +28,7 @@ export interface BuildDiagramsOptions {
   verbose?: boolean
 }
 
-export class DiagramDiscoveryError extends Schema.TaggedError<DiagramDiscoveryError>()('Tldraw.DiagramDiscoveryError', {
+export class DiagramDiscoveryError extends Schema.TaggedErrorClass<DiagramDiscoveryError>()('Tldraw.DiagramDiscoveryError', {
   path: Schema.String,
   cause: Schema.Any,
 }) {}
@@ -189,7 +189,7 @@ export const buildDiagrams = (
         }
       } finally {
         /* Clean up temp directory */
-        yield* fs.remove(tempDir, { recursive: true, force: true }).pipe(Effect.catchAll(() => Effect.void))
+        yield* fs.remove(tempDir, { recursive: true, force: true }).pipe(Effect.catch(() => Effect.void))
       }
     }),
   )
@@ -298,7 +298,7 @@ const watchDiagramsInternal = (
     const fs = yield* FileSystem.FileSystem
     const paths = resolveCachePaths(options.projectRoot)
 
-    const diagramsRootExists = yield* fs.exists(paths.diagramsRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
+    const diagramsRootExists = yield* fs.exists(paths.diagramsRoot).pipe(Effect.catch(() => Effect.succeed(false)))
 
     if (diagramsRootExists === false) {
       yield* Effect.logWarning(`Diagrams watch: diagrams root does not exist at ${paths.diagramsRoot}`)
@@ -316,7 +316,7 @@ const watchDiagramsInternal = (
           yield* Effect.log('Diagrams watch: running initial build')
         }
 
-        const result = yield* buildDiagrams(options).pipe(Effect.either)
+        const result = yield* buildDiagrams(options).pipe(Effect.result)
         const durationMs = Date.now() - startedAt
 
         if (result._tag === 'Left') {
@@ -348,8 +348,8 @@ const watchDiagramsInternal = (
     )
 
     yield* streamEffect.pipe(
-      Effect.catchAll((cause) =>
-        Effect.logWarning(`Diagrams watch: stream failed with ${String(cause)}`).pipe(Effect.zipRight(Effect.never)),
+      Effect.catch((cause) =>
+        Effect.logWarning(`Diagrams watch: stream failed with ${String(cause)}`).pipe(Effect.andThen(Effect.never)),
       ),
     )
   })

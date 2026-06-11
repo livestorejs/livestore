@@ -16,18 +16,13 @@ export {
 } from '@effect/ai'
 // export { DevTools as EffectDevtools } from '@effect/experimental'
 export { Sse } from '@effect/experimental'
-export * as Otlp from '@effect/opentelemetry/Otlp'
+export * as Otlp from 'effect/unstable/observability/Otlp'
+export * as PlatformError from 'effect/PlatformError'
+export { FileSystem, Terminal } from 'effect'
+export { MsgPack } from 'effect/unstable/encoding'
 export {
-  Command,
-  CommandExecutor,
-  Error as PlatformError,
   FetchHttpClient,
-  FileSystem,
   Headers,
-  HttpApi,
-  HttpApiClient,
-  HttpApiEndpoint,
-  HttpApiGroup,
   HttpApp,
   HttpClient,
   HttpClientError,
@@ -38,16 +33,13 @@ export {
   HttpServer,
   HttpServerRequest,
   HttpServerResponse,
-  KeyValueStore,
-  MsgPack,
-  Socket,
-  Terminal,
-  Transferable,
   UrlParams,
-  Worker,
-  WorkerError,
-  WorkerRunner,
-} from '@effect/platform'
+} from 'effect/unstable/http'
+export { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup } from 'effect/unstable/httpapi'
+export { KeyValueStore } from 'effect/unstable/persistence'
+export { ChildProcess as Command, ChildProcessSpawner as CommandExecutor } from 'effect/unstable/process'
+export { Socket } from 'effect/unstable/socket'
+export { Transferable, Worker, WorkerError, WorkerRunner } from 'effect/unstable/workers'
 export {
   Rpc,
   // RpcClient, // TODO bring back "original" RpcClient from effect/rpc
@@ -60,7 +52,7 @@ export {
   RpcServer,
   RpcTest,
   RpcWorker,
-} from '@effect/rpc'
+} from 'effect/unstable/rpc'
 export * as StandardSchema from '@standard-schema/spec'
 export {
   Array as ReadonlyArray,
@@ -77,7 +69,7 @@ export {
   Data,
   Deferred,
   Duration,
-  Either,
+  Result,
   Equal,
   ExecutionStrategy,
   Exit,

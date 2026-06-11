@@ -43,8 +43,8 @@ const loadRulesetBody = () =>
     const fs = yield* FileSystem.FileSystem
     const filePath = getRulesetFilePath()
     const raw = yield* fs.readFileString(filePath)
-    const parser = Schema.parseJson(RulesetRequestBody)
-    return yield* Schema.decode(parser)(raw)
+    const parser = Schema.fromJsonString(RulesetRequestBody)
+    return yield* Schema.decodeEffect(parser)(raw)
   })
 
 interface TExistingRuleset {
@@ -76,12 +76,12 @@ const getViewerPermission = Effect.gen(function* () {
     stderr: 'pipe',
   }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
-  const ViewerPermissionSchema = Schema.parseJson(
+  const ViewerPermissionSchema = Schema.fromJsonString(
     Schema.Struct({
       viewerPermission: Schema.String,
     }),
   )
-  const parsed = yield* Schema.decode(ViewerPermissionSchema)(response)
+  const parsed = yield* Schema.decodeEffect(ViewerPermissionSchema)(response)
   return parsed.viewerPermission
 })
 
@@ -91,7 +91,7 @@ const getRulesetByName = (name: string) =>
       stderr: 'pipe',
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
-    const ExistingRulesetSchema = Schema.parseJson(
+    const ExistingRulesetSchema = Schema.fromJsonString(
       Schema.Array(
         Schema.Struct({
           id: Schema.Number,
@@ -100,7 +100,7 @@ const getRulesetByName = (name: string) =>
         }),
       ),
     )
-    const rulesets = yield* Schema.decode(ExistingRulesetSchema)(response)
+    const rulesets = yield* Schema.decodeEffect(ExistingRulesetSchema)(response)
     return rulesets.find((ruleset) => ruleset.name === name) ?? null
   })
 
@@ -110,8 +110,8 @@ const getRulesetDetails = (rulesetId: number) =>
       stderr: 'pipe',
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
-    const parser = Schema.parseJson(ManagedRulesetSchema)
-    return yield* Schema.decode(parser)(details)
+    const parser = Schema.fromJsonString(ManagedRulesetSchema)
+    return yield* Schema.decodeEffect(parser)(details)
   })
 
 const writeRulesetBodyToTmp = (body: TRulesetRequestBody) =>
@@ -121,7 +121,7 @@ const writeRulesetBodyToTmp = (body: TRulesetRequestBody) =>
     yield* fs.makeDirectory(tmpDir, { recursive: true })
 
     const bodyPath = path.join(tmpDir, 'ruleset-body.json')
-    const bodyJson = yield* Schema.encode(Schema.parseJson(RulesetRequestBody))(body)
+    const bodyJson = yield* Schema.encodeEffect(Schema.fromJsonString(RulesetRequestBody))(body)
     yield* fs.writeFileString(bodyPath, bodyJson)
     return bodyPath
   })
@@ -192,7 +192,7 @@ const collectDiffs = (
 const syncRulesetsCommand = Cli.Command.make(
   'sync',
   {
-    dryRun: Cli.Options.boolean('dry-run').pipe(Cli.Options.withDefault(false)),
+    dryRun: Cli.Flag.boolean('dry-run').pipe(Cli.Flag.withDefault(false)),
   },
   Effect.fn(function* ({ dryRun }) {
     yield* cmdText('gh --version', { stderr: 'pipe' }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))

@@ -19,7 +19,7 @@ export const DevtoolsMode = Schema.Union(
 
 export type DevtoolsMode = typeof DevtoolsMode.Type
 
-export const DevtoolsModeTag = DevtoolsMode.pipe(Schema.pluck('_tag'), Schema.typeSchema)
+export const DevtoolsModeTag = DevtoolsMode.pipe(Schema.pluck('_tag'), Schema.toType)
 export type DevtoolsModeTag = typeof DevtoolsModeTag.Type
 
 export const makeNodeName = {

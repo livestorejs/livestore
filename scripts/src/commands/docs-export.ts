@@ -9,17 +9,17 @@ import { docsSidebar, type TSidebarItem } from '@local/docs/sidebar'
 export const exportMarkdownCommand = Cli.Command.make(
   'export-markdown',
   {
-    out: Cli.Options.text('out').pipe(
-      Cli.Options.optional,
-      Cli.Options.withDescription('Destination directory for the exported markdown tree'),
+    out: Cli.Flag.text('out').pipe(
+      Cli.Flag.optional,
+      Cli.Flag.withDescription('Destination directory for the exported markdown tree'),
     ),
-    workspaceRoot: Cli.Options.text('workspace-root').pipe(
-      Cli.Options.optional,
-      Cli.Options.withDescription('Workspace root (defaults to WORKSPACE_ROOT)'),
+    workspaceRoot: Cli.Flag.text('workspace-root').pipe(
+      Cli.Flag.optional,
+      Cli.Flag.withDescription('Workspace root (defaults to WORKSPACE_ROOT)'),
     ),
-    includeLlms: Cli.Options.boolean('include-llms').pipe(
-      Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Also emit llms.txt alongside index.md'),
+    includeLlms: Cli.Flag.boolean('include-llms').pipe(
+      Cli.Flag.withDefault(false),
+      Cli.Flag.withDescription('Also emit llms.txt alongside index.md'),
     ),
   },
   Effect.fn(function* ({ out, includeLlms, workspaceRoot: workspaceRootOption }) {
@@ -91,7 +91,7 @@ ${llmsList}`
   }),
 )
 
-export class SnippetManifestMissing extends Schema.TaggedError<SnippetManifestMissing>()('SnippetManifestMissing', {
+export class SnippetManifestMissing extends Schema.TaggedErrorClass<SnippetManifestMissing>()('SnippetManifestMissing', {
   message: Schema.String,
   checked: Schema.Array(Schema.String),
 }) {}

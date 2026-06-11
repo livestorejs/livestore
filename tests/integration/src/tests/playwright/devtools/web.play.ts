@@ -99,7 +99,7 @@ const makeTabPair = (
         page
           .waitForFunction('window.__debugLiveStore?.default !== undefined')
           .then(() => page.evaluate('window.__debugLiveStore.default._dev.otel.rootSpanContext()')),
-      ).pipe(Effect.andThen(Schema.decodeUnknown(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))))
+      ).pipe(Effect.andThen(Schema.decodeUnknownEffect(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))))
 
       yield* Effect.linkSpanCurrent(
         Tracer.externalSpan({

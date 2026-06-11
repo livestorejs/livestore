@@ -1,7 +1,7 @@
 import type * as ChildProcess from 'node:child_process'
 
-import * as Worker from '@effect/platform/Worker'
-import { WorkerError } from '@effect/platform/WorkerError'
+import * as Worker from 'effect/unstable/workers/Worker'
+import { WorkerError } from 'effect/unstable/workers/WorkerError'
 import * as Deferred from 'effect/Deferred'
 import * as Effect from 'effect/Effect'
 import * as Exit from 'effect/Exit'
@@ -93,7 +93,7 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
           }).pipe(
             Effect.timeout(3000), // Reduced timeout for faster cleanup
             Effect.interruptible,
-            Effect.catchAllCause(() =>
+            Effect.catchCause(() =>
               Effect.sync(() => {
                 // Enhanced cleanup with escalating signals
                 if (childProcess.killed === false) {
@@ -153,7 +153,7 @@ export const layerManager = Layer.provide(Worker.layerManager, layerWorker)
  * @example
  * ```ts
  * import * as ChildProcess from 'node:child_process'
- * import { Effect, Worker } from '@effect/platform/Worker'
+ * import { Effect, Worker } from 'effect/unstable/workers/Worker'
  * import { ChildProcessWorker } from '@livestore/utils/node'
  *
  * Worker.makePoolSerialized<WorkerMessage>({

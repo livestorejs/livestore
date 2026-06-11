@@ -1,19 +1,5 @@
 import type { HttpClient } from '@livestore/utils/effect'
-import {
-  Deferred,
-  Effect,
-  Either,
-  Exit,
-  Layer,
-  MsgPack,
-  Queue,
-  Schedule,
-  Schema,
-  Scope,
-  Socket,
-  Stream,
-  WebChannel,
-} from '@livestore/utils/effect'
+import { Deferred, Effect, Result, Exit, Layer, MsgPack, Queue, Schedule, Schema, Scope, Socket, Stream, WebChannel } from '@livestore/utils/effect'
 
 import * as WebmeshSchema from './mesh-schema.ts'
 import type { MeshNode } from './node.ts'
@@ -126,11 +112,11 @@ export const makeWebSocketEdge = ({
         Stream.retry(retryOpenTimeoutSchedule),
         Stream.tap(
           Effect.fn(function* (bytes) {
-            const msg = yield* Schema.decode(MessageMsgPack)(new Uint8Array(bytes))
+            const msg = yield* Schema.decodeEffect(MessageMsgPack)(new Uint8Array(bytes))
             if (msg._tag === 'WSEdgeInit') {
               yield* Deferred.succeed(fromDeferred, msg.from)
             } else {
-              const decodedPayload = yield* Schema.decode(schema.listen)(msg.payload)
+              const decodedPayload = yield* Schema.decodeEffect(schema.listen)(msg.payload)
               yield* Queue.offer(listenQueue, decodedPayload)
             }
           }),
@@ -149,7 +135,7 @@ export const makeWebSocketEdge = ({
       )
 
       const initHandshake = (from: string) =>
-        sendToSocket(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSEdgeInit', from }))
+        sendToSocket(Schema.encodeEffectSync(MessageMsgPack)({ _tag: 'WSEdgeInit', from }))
 
       if (socketType._tag === 'leaf') {
         yield* initHandshake(socketType.from)
@@ -165,12 +151,12 @@ export const makeWebSocketEdge = ({
       const send = (message: typeof WebmeshSchema.Packet.Type) =>
         Effect.gen(function* () {
           yield* isConnectedLatch.await
-          const payload = yield* Schema.encode(schema.send)(message)
-          yield* sendToSocket(yield* Schema.encode(MessageMsgPack)({ _tag: 'WSEdgePayload', payload, from }))
+          const payload = yield* Schema.encodeEffect(schema.send)(message)
+          yield* sendToSocket(yield* Schema.encodeEffect(MessageMsgPack)({ _tag: 'WSEdgePayload', payload, from }))
         }).pipe(Effect.orDie)
 
       const listen = Stream.fromQueue(listenQueue).pipe(
-        Stream.map(Either.right),
+        Stream.map(Result.succeed),
         WebChannel.listenToDebugPing('websocket-edge'),
       )
 

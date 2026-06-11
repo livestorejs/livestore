@@ -209,7 +209,7 @@ const makeWorkerRunner = Effect.gen(function* () {
           }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
           yield* SubscriptionRef.set(leaderWorkerContextSubRef, { worker, scope })
-        }).pipe(Effect.tapCauseLogPretty, Scope.extend(scope), Effect.forkIn(scope))
+        }).pipe(Effect.tapCauseLogPretty, Scope.provide(scope), Effect.forkIn(scope))
       }).pipe(Effect.withSpan('@livestore/adapter-web:shared-worker:updateMessagePort'), Effect.tapCauseLogPretty),
 
     // Proxied requests
