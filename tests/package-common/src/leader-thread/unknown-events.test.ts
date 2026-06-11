@@ -57,7 +57,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
       const { materializeEvent } = yield* setup({ strategy: 'fail' })
       const event = makeUnknownEncodedEvent()
 
-      const result = yield* materializeEvent(event, {}).pipe(Effect.either)
+      const result = yield* materializeEvent(event, {}).pipe(Effect.result)
       if (result._tag !== 'Left') {
         throw new Error('Expected materializeEvent to fail for fail strategy')
       }

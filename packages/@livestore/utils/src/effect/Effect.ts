@@ -35,7 +35,7 @@ export const scopeWithCloseable = <R, E, A>(
     // const scope = yield* Scope.fork(parentScope, ExecutionStrategy.sequential)
     const scope = yield* Scope.make()
     yield* Effect.addFinalizer((exit) => Scope.close(scope, exit))
-    return yield* fn(scope).pipe(Scope.extend(scope))
+    return yield* fn(scope).pipe(Scope.provide(scope))
   })
 
 export type SyncOrPromiseOrEffect<TResult, TError = never, TContext = never> =
@@ -75,7 +75,7 @@ export const logBefore =
 
 /** Logs both on errors and defects */
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-  Effect.tapErrorCause(eff, (cause) =>
+  Effect.tapCause(eff, (cause) =>
     Effect.gen(function* () {
       if (Cause.isInterruptedOnly(cause) === true) {
         // console.log('interrupted', Cause.pretty(err), err)
@@ -240,7 +240,7 @@ export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>>
  *
  * This function allows you to enforce a time limit on the execution of an
  * effect. If the effect does not complete within the given duration, it dies
- * with a {@link Cause.TimeoutException} as an unchecked defect. Unlike
+ * with a {@link Cause.TimeoutError} as an unchecked defect. Unlike
  * {@link Effect.timeout}, which adds `TimeoutException` to the error channel,
  * this function keeps the error channel unchanged by treating the timeout as
  * a defect.
@@ -248,7 +248,7 @@ export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>>
  * The returned effect will either:
  * - Succeed with the original effect's result if it completes within the
  *   specified duration.
- * - Die with a {@link Cause.TimeoutException} defect if the time limit is exceeded.
+ * - Die with a {@link Cause.TimeoutError} defect if the time limit is exceeded.
  *
  * @see {@link timeoutOrDieMessage} for a version with a custom message.
  * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
@@ -259,7 +259,7 @@ export const timeoutOrDie =
   <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.timeoutFailCause(self, {
       duration,
-      onTimeout: () => Cause.die(new Cause.TimeoutException()),
+      onTimeout: () => Cause.die(new Cause.TimeoutError()),
     })
 
 /**
@@ -269,14 +269,14 @@ export const timeoutOrDie =
  * @remarks
  *
  * This function behaves like {@link timeoutOrDie}, but allows you to provide
- * a custom message for the {@link Cause.TimeoutException} defect. This is useful
+ * a custom message for the {@link Cause.TimeoutError} defect. This is useful
  * for adding context about which operation timed out, making it easier to
  * diagnose issues in logs or error reports.
  *
  * The returned effect will either:
  * - Succeed with the original effect's result if it completes within the
  *   specified duration.
- * - Die with a {@link Cause.TimeoutException} defect containing the provided
+ * - Die with a {@link Cause.TimeoutError} defect containing the provided
  *   message if the time limit is exceeded.
  *
  * @see {@link timeoutOrDie} for a version without a custom message.
@@ -288,7 +288,7 @@ export const timeoutOrDieMessage =
   <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.timeoutFailCause(self, {
       duration,
-      onTimeout: () => Cause.die(new Cause.TimeoutException(message)),
+      onTimeout: () => Cause.die(new Cause.TimeoutError(message)),
     })
 
 export const toForkedDeferred = <R, E, A>(
@@ -329,7 +329,7 @@ const getSpanTrace = () => {
   // const msg = Effect.runSync(
   //   Effect.fail({ message: '' }).pipe(
   //     Effect.withParentSpan(fiberOption.value.currentSpan),
-  //     Effect.catchAllCause((cause) => Effect.succeed(cause.toString())),
+  //     Effect.catchCause((cause) => Effect.succeed(cause.toString())),
   //   ),
   // )
 

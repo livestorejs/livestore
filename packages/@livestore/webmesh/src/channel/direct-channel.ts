@@ -1,17 +1,4 @@
-import {
-  Cause,
-  Deferred,
-  Effect,
-  Either,
-  Exit,
-  Option,
-  Queue,
-  Schema,
-  Scope,
-  Stream,
-  TQueue,
-  WebChannel,
-} from '@livestore/utils/effect'
+import { Cause, Deferred, Effect, Result, Exit, Option, Queue, Schema, Scope, Stream, TQueue, WebChannel } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
 import * as WebmeshSchema from '../mesh-schema.ts'
@@ -99,7 +86,7 @@ export const makeDirectChannel = ({
             Stream.take(1),
             Stream.runDrain,
             Effect.as('new-edge' as const),
-            Effect.fork,
+            Effect.forkChild,
           )
 
           const makeChannel = makeDirectChannelInternal({
@@ -115,7 +102,7 @@ export const makeDirectChannel = ({
             sendPacket,
             scope: makeDirectChannelScope,
           }).pipe(
-            Scope.extend(makeDirectChannelScope),
+            Scope.provide(makeDirectChannelScope),
             Effect.forkIn(makeDirectChannelScope),
             // Given we only call `Effect.exit` later when joining the fiber,
             // we don't want Effect to produce a "unhandled error" log message
@@ -211,7 +198,7 @@ export const makeDirectChannel = ({
           debugInfo.pendingSends--
         }).pipe(Effect.scoped, Effect.withParentSpan(parentSpan))
 
-      const listen = Stream.fromQueue(listenQueue, { maxChunkSize: 1 }).pipe(Stream.map(Either.right))
+      const listen = Stream.fromQueue(listenQueue, { maxChunkSize: 1 }).pipe(Stream.map(Result.succeed))
 
       const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
 

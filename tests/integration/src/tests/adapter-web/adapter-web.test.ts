@@ -91,7 +91,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
           catch: () => false,
         }).pipe(
           Effect.map(() => true),
-          Effect.catchAll(() => Effect.succeed(false)),
+          Effect.catch(() => Effect.succeed(false)),
         )
 
       const [boot1, boot2] = yield* Effect.all([didBoot(page1), didBoot(page2)])
@@ -151,7 +151,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
         catch: () => false,
       }).pipe(
         Effect.map(() => true),
-        Effect.catchAll(() => Effect.succeed(false)),
+        Effect.catch(() => Effect.succeed(false)),
       )
 
       expect(didBoot).toBe(true)
@@ -227,7 +227,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
           catch: () => false,
         }).pipe(
           Effect.map(() => true),
-          Effect.catchAll(() => Effect.succeed(false)),
+          Effect.catch(() => Effect.succeed(false)),
         )
 
       const [boot1, boot2] = yield* Effect.all([didBoot(page1), didBoot(page2)])

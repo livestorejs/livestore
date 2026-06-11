@@ -253,7 +253,7 @@ export interface WsRpcServerArgs {
  * @internal This is typically used internally by `setupDurableObjectWebSocketRpc`
  */
 export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
-  Layer.mergeAll(Layer.scoped(RpcServer.Protocol, makeSocketProtocol(args)), Layer.succeed(WsContext, { ws: args.ws }))
+  Layer.mergeAll(Layer.effect(RpcServer.Protocol, makeSocketProtocol(args)), Layer.succeed(WsContext, { ws: args.ws }))
 
 /**
  * Creates the low-level RPC protocol implementation for WebSocket communication.
@@ -317,7 +317,7 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
         }),
         Stream.runDrain,
         Effect.tapCauseLogPretty,
-        Effect.fork,
+        Effect.forkChild,
       )
 
       // Start the message processing

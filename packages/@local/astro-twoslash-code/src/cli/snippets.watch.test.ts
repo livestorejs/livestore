@@ -32,7 +32,7 @@ const writeInitialProject = (fs: FileSystem.FileSystem, projectRoot: string): Ef
 
     yield* fs.writeFileString(snippetPath, 'export const value = 1\n').pipe(Effect.orDie)
     yield* fs.writeFileString(docsPath, createDocsImportSource('../content/_assets/code/example.ts')).pipe(Effect.orDie)
-    const tsconfigJson = yield* Schema.encode(Schema.parseJson({ space: 2 }))({
+    const tsconfigJson = yield* Schema.encodeEffect(Schema.parseJson({ space: 2 }))({
       compilerOptions: {
         target: 'ESNext',
         module: 'ESNext',

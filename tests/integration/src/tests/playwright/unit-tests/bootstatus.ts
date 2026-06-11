@@ -39,7 +39,7 @@ export const test = () =>
     Effect.tapCauseLogPretty,
     Effect.exit,
     Effect.tapSync((exit) => {
-      window.postMessage(Schema.encodeSync(ResultBootStatus)(ResultBootStatus.make({ exit })))
+      window.postMessage(Schema.encodeEffectSync(ResultBootStatus)(ResultBootStatus.make({ exit })))
     }),
     Effect.scoped,
     Effect.runPromise,

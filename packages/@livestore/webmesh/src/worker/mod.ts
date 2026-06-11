@@ -24,11 +24,11 @@ export class CacheService extends Context.Tag('@livestore/webmesh:worker:CacheSe
       globalThis.__debugWebmeshNode = node
 
       return { node }
-    }).pipe(Layer.scoped(CacheService))
+    }).pipe(Layer.effect(CacheService))
 }
 
 export const CreateConnection = ({ from, port }: typeof WorkerSchema.CreateConnection.Type) =>
-  Stream.asyncScoped<{}, never, CacheService>((emit) =>
+  Stream.callback<{}, never, CacheService>((emit) =>
     Effect.gen(function* () {
       const { node } = yield* CacheService
 

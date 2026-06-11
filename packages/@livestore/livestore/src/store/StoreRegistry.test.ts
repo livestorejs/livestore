@@ -393,7 +393,7 @@ describe('StoreRegistry', () => {
         yield* TestClock.adjust(unusedCacheTime)
 
         // Start a fresh load — since the first was aborted, this should be a new entry
-        const freshLoadFiber = yield* Effect.fork(registry.getOrLoad(options).pipe(Effect.scoped))
+        const freshLoadFiber = yield* Effect.forkChild(registry.getOrLoad(options).pipe(Effect.scoped))
         yield* Effect.yieldNow()
 
         // Advance enough for the fresh load to complete

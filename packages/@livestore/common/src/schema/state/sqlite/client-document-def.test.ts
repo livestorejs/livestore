@@ -279,7 +279,7 @@ describe('client document table', () => {
         defaultValue,
         partialSet: false,
       })
-      const rowSchema = Schema.parseJson(optimisticSchema)
+      const rowSchema = Schema.fromJsonString(optimisticSchema)
 
       expect(Schema.decodeUnknownSync(rowSchema)(JSON.stringify(value))).toEqual(defaultValue)
     })
@@ -290,7 +290,7 @@ describe('client document table', () => {
         defaultValue,
         partialSet: false,
       })
-      const rowSchema = Schema.parseJson(optimisticSchema)
+      const rowSchema = Schema.fromJsonString(optimisticSchema)
 
       expect(Schema.decodeUnknownSync(rowSchema)(JSON.stringify(validPayload))).toEqual({
         createdAt: new Date(42),
@@ -304,7 +304,7 @@ describe('client document table', () => {
         defaultValue,
         partialSet: false,
       })
-      const rowSchema = Schema.parseJson(optimisticSchema)
+      const rowSchema = Schema.fromJsonString(optimisticSchema)
 
       expect(Schema.decodeUnknownSync(rowSchema)(JSON.stringify(extraFieldsPayload))).toEqual({
         createdAt: new Date(42),

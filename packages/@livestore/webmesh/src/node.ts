@@ -61,7 +61,7 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
     }): Effect.Effect<void, EdgeAlreadyExistsError, Scope.Scope>
   }
 
-  removeEdge: (targetNodeName: MeshNodeName) => Effect.Effect<void, Cause.NoSuchElementException>
+  removeEdge: (targetNodeName: MeshNodeName) => Effect.Effect<void, Cause.NoSuchElementError>
 
   hasChannel: ({
     target,
@@ -367,7 +367,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           Stream.flatten(),
           Stream.tap((message) =>
             Effect.gen(function* () {
-              const packet = yield* Schema.decodeUnknown(WebmeshSchema.Packet)(message)
+              const packet = yield* Schema.decodeUnknownEffect(WebmeshSchema.Packet)(message)
 
               // console.debug(nodeName, 'recv', packet._tag, packet.source, packet.target)
 
@@ -462,7 +462,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
     const removeEdge: MeshNode['removeEdge'] = (targetNodeName) =>
       Effect.gen(function* () {
         if (edgeChannels.has(targetNodeName) === false) {
-          return yield* new Cause.NoSuchElementException(`No edge found for ${targetNodeName}`)
+          return yield* new Cause.NoSuchElementError(`No edge found for ${targetNodeName}`)
         }
 
         yield* Fiber.interrupt(edgeChannels.get(targetNodeName)!.listenFiber)
@@ -610,7 +610,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
           const send = (message: any) =>
             Effect.gen(function* () {
-              const payload = yield* Schema.encode(schema)(message)
+              const payload = yield* Schema.encodeEffect(schema)(message)
               const packet = WebmeshSchema.BroadcastChannelPacket.make({
                 channelName,
                 payload,
@@ -624,7 +624,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
           const listen = Stream.fromQueue(queue).pipe(
             Stream.filter(Schema.is(WebmeshSchema.BroadcastChannelPacket)),
-            Stream.map((_) => Schema.decodeEither(schema)(_.payload)),
+            Stream.map((_) => Schema.decodeExit(schema)(_.payload)),
           )
 
           const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))

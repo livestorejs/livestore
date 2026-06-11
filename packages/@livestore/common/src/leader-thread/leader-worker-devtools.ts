@@ -48,7 +48,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
         Effect.as(Option.none()),
       ),
     ),
-    Effect.catchAllCause((cause) =>
+    Effect.catchCause((cause) =>
       Effect.logWarning(
         `[@livestore/devtools] Failed to start devtools server. Devtools will be disabled.`,
         cause,
@@ -81,7 +81,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
             .pipe(
               Effect.withSpan('@livestore/common:leader-thread:devtools:sendToDevtools'),
               Effect.interruptible,
-              Effect.ignoreLogged,
+              Effect.ignore,
             )
 
         const syncState = yield* syncProcessor.syncState
@@ -264,9 +264,9 @@ const listenToDevtools = ({
                     }),
                   ),
                 ),
-                Effect.catchAll((cause) =>
+                Effect.catch((cause) =>
                   Effect.logWarning('Error importing database file', cause).pipe(
-                    Effect.zipRight(
+                    Effect.andThen(
                       sendMessage(
                         Devtools.Leader.LoadDatabaseFile.Error.make({
                           ...reqPayload,
@@ -342,7 +342,7 @@ const listenToDevtools = ({
                 // TODO consider piggybacking on the existing leader-thread sync-pulling
                 yield* syncBackend.pull(Option.none(), { live: true }).pipe(
                   Stream.map((_) => _.batch),
-                  Stream.flattenIterables,
+                  Stream.flattenIterable,
                   Stream.tap(({ eventEncoded, metadata }) =>
                     sendMessage(
                       Devtools.Leader.SyncHistoryRes.make({

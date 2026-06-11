@@ -1,4 +1,4 @@
-import { FetchHttpClient } from '@effect/platform'
+import { FetchHttpClient } from 'effect/unstable/http'
 import * as Vitest from '@effect/vitest'
 import { Effect, Exit } from 'effect'
 

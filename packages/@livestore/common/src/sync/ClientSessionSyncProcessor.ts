@@ -23,7 +23,7 @@ import { resolveSessionIdSymbolInEventArgs } from '../session-id-symbol.ts'
 import * as SyncState from './syncstate.ts'
 
 /** Serialize value to JSON string for trace attributes */
-const jsonStringify = Schema.encodeSync(Schema.parseJson())
+const jsonStringify = Schema.encodeEffectSync(Schema.UnknownFromJsonString)
 
 /**
  * Rebase behaviour:
@@ -135,7 +135,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       Effect.forever,
       Effect.interruptible,
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
+      Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
     )
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
@@ -249,7 +249,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
         }).pipe(
           Effect.tapCauseLogPretty,
-          Effect.catchAllCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
+          Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
         ),
       ),
       Stream.runDrain,

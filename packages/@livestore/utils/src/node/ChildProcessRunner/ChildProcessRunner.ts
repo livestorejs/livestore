@@ -1,8 +1,8 @@
 import process from 'node:process'
 
-import { WorkerError } from '@effect/platform/WorkerError'
-import type { CloseLatch } from '@effect/platform/WorkerRunner'
-import * as Runner from '@effect/platform/WorkerRunner'
+import { WorkerError } from 'effect/unstable/workers/WorkerError'
+import type { CloseLatch } from 'effect/unstable/workers/WorkerRunner'
+import * as Runner from 'effect/unstable/workers/WorkerRunner'
 import * as Cause from 'effect/Cause'
 import * as Context from 'effect/Context'
 import * as Deferred from 'effect/Deferred'

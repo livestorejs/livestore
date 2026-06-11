@@ -256,7 +256,7 @@ export const makeDirectChannelInternal = ({
               Stream.filter(Schema.is(MeshSchema.DirectChannelPong)),
               Stream.take(1),
               Stream.runDrain,
-              Effect.fork,
+              Effect.forkChild,
             )
 
             // There seems to be some scenario where the initial ping message is lost.

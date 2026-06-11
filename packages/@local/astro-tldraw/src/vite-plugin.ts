@@ -8,7 +8,7 @@ import { PlatformNode } from '@livestore/utils/node'
 import { getCacheEntry, loadCachedDiagram, loadManifest, resolveCachePaths, type TldrawCachePaths } from './cache.ts'
 import { getSvgDimensions } from './renderer.ts'
 
-const jsonStringify = Schema.encodeSync(Schema.parseJson())
+const jsonStringify = Schema.encodeEffectSync(Schema.UnknownFromJsonString)
 
 type MinimalVitePlugin = {
   name: string
@@ -35,7 +35,7 @@ export interface TldrawDiagramPayload {
   generatedAt: string
 }
 
-export class CachedDiagramMissingError extends Schema.TaggedError<CachedDiagramMissingError>()(
+export class CachedDiagramMissingError extends Schema.TaggedErrorClass<CachedDiagramMissingError>()(
   'Tldraw.CachedDiagramMissingError',
   {
     entryRelative: Schema.String,

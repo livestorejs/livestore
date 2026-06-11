@@ -84,7 +84,7 @@ Vitest.describe('DockerComposeService', { timeout: testTimeout }, () => {
               timeout: Duration.seconds(2),
             },
           })
-          .pipe(Effect.either)
+          .pipe(Effect.result)
 
         // Should fail due to health check timeout
         expect(result._tag).toBe('Left')

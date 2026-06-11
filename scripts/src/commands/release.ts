@@ -7,7 +7,7 @@ import { Cli } from '@livestore/utils/node'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 
-class PackageJsonParseError extends Schema.TaggedError<PackageJsonParseError>()('PackageJsonParseError', {
+class PackageJsonParseError extends Schema.TaggedErrorClass<PackageJsonParseError>()('PackageJsonParseError', {
   message: Schema.String,
   cause: Schema.Defect,
 }) {}
@@ -165,7 +165,7 @@ const readReleasePlan = (cwd: string, planPath: string) =>
     const fsEffect = yield* FileSystem.FileSystem
     const absolutePlanPath = planPath.startsWith('/') === true ? planPath : `${cwd}/${planPath}`
     const content = yield* fsEffect.readFileString(absolutePlanPath)
-    const plan = yield* Schema.decodeUnknown(ReleasePlan)(JSON.parse(content))
+    const plan = yield* Schema.decodeUnknownEffect(ReleasePlan)(JSON.parse(content))
     yield* validateReleasePlan(plan)
     return plan
   })
@@ -302,7 +302,7 @@ const listSnapshotPackages = (cwd: string) =>
             catch: (cause) => new PackageJsonParseError({ message: `Failed to parse ${packageJsonPath}`, cause }),
           }),
         ),
-        Effect.either,
+        Effect.result,
       )
 
       if (pkgResult._tag === 'Left') {
@@ -338,7 +338,7 @@ const listSnapshotPackages = (cwd: string) =>
     packages.sort((a, b) => a.localeCompare(b))
     return packages
   }).pipe(
-    Effect.catchAll((error) =>
+    Effect.catch((error) =>
       Effect.gen(function* () {
         const message = toErrorMessage(error)
         yield* Effect.logWarning(`Unable to enumerate snapshot packages: ${message}`)
@@ -375,7 +375,7 @@ const restoreGeneratedReleaseFiles = (cwd: string) =>
       Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
   }).pipe(
-    Effect.catchAll((error) =>
+    Effect.catch((error) =>
       Effect.logWarning(`Failed to restore generated release files: ${toErrorMessage(error)}`),
     ),
   )
@@ -387,7 +387,7 @@ const packPackageForPublish = ({ cwd, pkg, version }: { cwd: string; pkg: string
     const safePackageName = pkg.replaceAll('/', '__').replaceAll('@', '')
     const packDir = `${cwd}/tmp/release-pack/${version}/${safePackageName}`
 
-    yield* fsEffect.remove(packDir, { recursive: true }).pipe(Effect.catchAll(() => Effect.void))
+    yield* fsEffect.remove(packDir, { recursive: true }).pipe(Effect.catch(() => Effect.void))
     yield* fsEffect.makeDirectory(packDir, { recursive: true })
 
     /**
@@ -500,7 +500,7 @@ const publishReleasePackages = ({
                   'Snapshot publishing must authenticate through npm trusted publishing from .github/workflows/release.yml.',
                   'Check that npm has this package configured for GitHub Actions trusted publishing and that this job uses a GitHub-hosted runner with id-token: write.',
                 ].join(' '),
-              ).pipe(Effect.zipRight(Effect.fail(error)))
+              ).pipe(Effect.andThen(Effect.fail(error)))
             }),
           )
         }),
@@ -523,10 +523,10 @@ const publishReleasePackages = ({
 export const releasePlanCommand = Cli.Command.make(
   'plan',
   {
-    releaseVersion: Cli.Options.text('release-version'),
-    npmTag: Cli.Options.text('npm-tag').pipe(Cli.Options.withDefault('latest')),
-    cwd: Cli.Options.text('cwd').pipe(
-      Cli.Options.withDefault(
+    releaseVersion: Cli.Flag.text('release-version'),
+    npmTag: Cli.Flag.text('npm-tag').pipe(Cli.Flag.withDefault('latest')),
+    cwd: Cli.Flag.text('cwd').pipe(
+      Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
     ),
@@ -541,19 +541,19 @@ export const releasePlanCommand = Cli.Command.make(
 export const releaseStableCommand = Cli.Command.make(
   'stable',
   {
-    plan: Cli.Options.text('plan').pipe(Cli.Options.withDefault('release/release-plan.json')),
-    dryRun: Cli.Options.boolean('dry-run').pipe(Cli.Options.withDefault(false)),
-    allowExisting: Cli.Options.boolean('allow-existing').pipe(Cli.Options.withDefault(false)),
-    yes: Cli.Options.boolean('yes').pipe(
-      Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Skip interactive confirmation prompt'),
+    plan: Cli.Flag.text('plan').pipe(Cli.Flag.withDefault('release/release-plan.json')),
+    dryRun: Cli.Flag.boolean('dry-run').pipe(Cli.Flag.withDefault(false)),
+    allowExisting: Cli.Flag.boolean('allow-existing').pipe(Cli.Flag.withDefault(false)),
+    yes: Cli.Flag.boolean('yes').pipe(
+      Cli.Flag.withDefault(false),
+      Cli.Flag.withDescription('Skip interactive confirmation prompt'),
     ),
-    cwd: Cli.Options.text('cwd').pipe(
-      Cli.Options.withDefault(
+    cwd: Cli.Flag.text('cwd').pipe(
+      Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
     ),
-    tscBin: Cli.Options.text('tsc-bin').pipe(Cli.Options.optional),
+    tscBin: Cli.Flag.text('tsc-bin').pipe(Cli.Flag.optional),
   },
   Effect.fn(function* ({ plan: planPath, dryRun, allowExisting, yes, cwd, tscBin: tscBinOption }) {
     const plan = yield* readReleasePlan(cwd, planPath)
@@ -599,19 +599,19 @@ export const releaseStableCommand = Cli.Command.make(
 export const releaseSnapshotCommand = Cli.Command.make(
   'snapshot',
   {
-    gitShaOption: Cli.Options.text('git-sha').pipe(Cli.Options.optional),
-    dryRun: Cli.Options.boolean('dry-run').pipe(Cli.Options.withDefault(false)),
-    yes: Cli.Options.boolean('yes').pipe(
-      Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Skip interactive confirmation prompt'),
+    gitShaOption: Cli.Flag.text('git-sha').pipe(Cli.Flag.optional),
+    dryRun: Cli.Flag.boolean('dry-run').pipe(Cli.Flag.withDefault(false)),
+    yes: Cli.Flag.boolean('yes').pipe(
+      Cli.Flag.withDefault(false),
+      Cli.Flag.withDescription('Skip interactive confirmation prompt'),
     ),
-    cwd: Cli.Options.text('cwd').pipe(
-      Cli.Options.withDefault(
+    cwd: Cli.Flag.text('cwd').pipe(
+      Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
     ),
-    versionOption: Cli.Options.text('version').pipe(Cli.Options.optional),
-    tscBin: Cli.Options.text('tsc-bin').pipe(Cli.Options.optional),
+    versionOption: Cli.Flag.text('version').pipe(Cli.Flag.optional),
+    tscBin: Cli.Flag.text('tsc-bin').pipe(Cli.Flag.optional),
   },
   Effect.fn(function* ({ gitShaOption, dryRun, yes, cwd, versionOption, tscBin: tscBinOption }) {
     const gitSha =
@@ -663,9 +663,9 @@ export const releaseSnapshotCommand = Cli.Command.make(
 export const releaseNotesExtractCommand = Cli.Command.make(
   'extract-release-notes',
   {
-    plan: Cli.Options.text('plan').pipe(Cli.Options.withDefault('release/release-plan.json')),
-    cwd: Cli.Options.text('cwd').pipe(
-      Cli.Options.withDefault(
+    plan: Cli.Flag.text('plan').pipe(Cli.Flag.withDefault('release/release-plan.json')),
+    cwd: Cli.Flag.text('cwd').pipe(
+      Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
     ),

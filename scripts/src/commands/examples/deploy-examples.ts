@@ -25,7 +25,7 @@ import {
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../../shared/misc.ts'
 import { emitWorkflowReportRecord, nowIsoUtc } from '../../shared/workflow-report.ts'
 
-export class ScriptError extends Schema.TaggedError<ScriptError>()('ScriptError', {
+export class ScriptError extends Schema.TaggedErrorClass<ScriptError>()('ScriptError', {
   message: Schema.String,
 }) {}
 
@@ -50,7 +50,7 @@ const ExamplePackageJsonSchema = Schema.Struct(
   Schema.Record({ key: Schema.String, value: Schema.Unknown }),
 )
 
-const parseExamplePackageJson = Schema.decodeUnknown(Schema.parseJson(ExamplePackageJsonSchema))
+const parseExamplePackageJson = Schema.decodeUnknownEffect(Schema.fromJsonString(ExamplePackageJsonSchema))
 
 export const readExampleSlugs = Effect.fn('deploy-examples/readExampleSlugs')(function* () {
   /**
@@ -64,7 +64,7 @@ export const readExampleSlugs = Effect.fn('deploy-examples/readExampleSlugs')(fu
   for (const entry of entries) {
     const info = yield* fs.stat(`${examplesDir}/${entry}`).pipe(
       Effect.map((stat) => stat.type === 'Directory'),
-      Effect.catchAll(() => Effect.succeed(false)),
+      Effect.catch(() => Effect.succeed(false)),
     )
 
     if (info === true) {
@@ -101,7 +101,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
     for (const example of examples) {
       const isDirectory = yield* fs.stat(`${examplesDir}/${example}`).pipe(
         Effect.map((stat) => stat.type === 'Directory'),
-        Effect.catchAll(() => Effect.succeed(false)),
+        Effect.catch(() => Effect.succeed(false)),
       )
 
       if (isDirectory === false) {
@@ -124,7 +124,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
       }
 
       const packageJsonContent = yield* fs.readFileString(packageJsonPath)
-      const decoded = yield* parseExamplePackageJson(packageJsonContent).pipe(Effect.either)
+      const decoded = yield* parseExamplePackageJson(packageJsonContent).pipe(Effect.result)
 
       if (decoded._tag === 'Left') {
         if (skipMissing === true) {
@@ -256,7 +256,7 @@ const deployExample = ({
     yield* Effect.log(`Deploying ${exampleSlug} as ${workerName}`)
     yield* deployCloudflareWorker({ example: manifest, kind: deploymentKind }).pipe(
       Effect.retry({ times: 2 }),
-      Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${exampleSlug}. Cause:`, cause)),
+      Effect.tapCause((cause) => Effect.logError(`Error deploying ${exampleSlug}. Cause:`, cause)),
     )
 
     yield* Effect.annotateCurrentSpan({ deployment_kind: deploymentKindLabel(deploymentKind) })
@@ -289,8 +289,8 @@ const deployExample = ({
 export const command = Cli.Command.make(
   'deploy',
   {
-    exampleFilter: Cli.Options.text('example-filter').pipe(Cli.Options.withAlias('e'), Cli.Options.optional),
-    prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false)),
+    exampleFilter: Cli.Flag.text('example-filter').pipe(Cli.Flag.withAlias('e'), Cli.Flag.optional),
+    prod: Cli.Flag.boolean('prod').pipe(Cli.Flag.withDefault(false)),
   },
   Effect.fn(function* ({ exampleFilter, prod }) {
     // Ensure credentials are present before kicking off parallel builds; wrangler fails with

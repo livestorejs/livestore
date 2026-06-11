@@ -89,7 +89,7 @@ class TestContext extends Context.Tag('TestContext')<
   }
 >() {}
 
-const TestContextLive = Layer.scoped(
+const TestContextLive = Layer.effect(
   TestContext,
   Effect.gen(function* () {
     const mockSyncBackend = yield* makeMockSyncBackend()

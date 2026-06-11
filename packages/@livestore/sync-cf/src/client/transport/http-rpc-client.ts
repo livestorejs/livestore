@@ -73,7 +73,7 @@ export const makeHttpSync =
 
       const livePullInterval = options.livePull?.pollInterval ?? 5_000
 
-      const urlParamsData = yield* Schema.encode(SearchParamsSchema)({
+      const urlParamsData = yield* Schema.encodeEffect(SearchParamsSchema)({
         storeId,
         payload,
         transport: 'http',

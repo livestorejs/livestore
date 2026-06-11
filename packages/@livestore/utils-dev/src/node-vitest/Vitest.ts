@@ -29,7 +29,7 @@ export const makeWithTestCtx: <ROut = never, E1 = never, RIn = never>(
   self: Effect.Effect<A, E, R>,
 ) => Effect.Effect<
   A,
-  E | E1 | Cause.TimeoutException,
+  E | E1 | Cause.TimeoutError,
   // Exclude dependencies provided by `withTestCtx` from the layer dependencies
   | Exclude<RIn, OtelTracer.OtelTracer | Scope.Scope>
   // Exclude dependencies provided by `withTestCtx` **and** dependencies produced
@@ -63,7 +63,7 @@ export const withTestCtx =
     self: Effect.Effect<A, E, R>,
   ): Effect.Effect<
     A,
-    E | E1 | Cause.TimeoutException,
+    E | E1 | Cause.TimeoutError,
     // Exclude dependencies provided internally from the provided layer's dependencies
     | Exclude<RIn, OtelTracer.OtelTracer | Scope.Scope>
     // Exclude dependencies provided internally **and** dependencies produced by the

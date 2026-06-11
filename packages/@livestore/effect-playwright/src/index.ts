@@ -74,7 +74,7 @@ export const browserContext = ({
 
       // TODO bring back once Playwright supports console messages for workers/service workers
       // const backgroundPage = browserContext.serviceWorkers()[0] ?? (yield* Effect.promise(() => browserContext.waitForEvent('serviceworker')))
-      // backgroundPageConsoleFiber = yield* handlePageConsole(backgroundPage, 'background').pipe(Effect.fork)
+      // backgroundPageConsoleFiber = yield* handlePageConsole(backgroundPage, 'background').pipe(Effect.forkChild)
     }
 
     yield* Effect.addFinalizer(() => Effect.promise(() => browserContext.close()))
@@ -86,7 +86,7 @@ export const browserContext = ({
   })
 
 export const browserContextLayer = (params: MakeBrowserContextParams) =>
-  Layer.scoped(BrowserContext, browserContext(params))
+  Layer.effect(BrowserContext, browserContext(params))
 
 export const withPage = <T>(f: () => Promise<T>, options?: { label?: string }): Effect.Effect<T, SiteError> =>
   Effect.tryPromise({
@@ -196,7 +196,7 @@ export const pageConsole = ({
   label: string
   shouldEvaluateArgs: boolean
 }) =>
-  Stream.asyncPush<typeof ConsoleMessage.Type, SiteError>((emit) =>
+  Stream.callback<typeof ConsoleMessage.Type, SiteError>((emit) =>
     Effect.acquireRelease(
       Effect.sync(() => {
         const errorGroupRef = ref<{ errorMessages: (typeof ConsoleMessage.Type)[] } | undefined>(undefined)
@@ -254,7 +254,7 @@ export const pageConsole = ({
     ),
   )
 
-export class SiteError extends Schema.TaggedError<SiteError>('~@livestore/effect-playwright/SiteError')('SiteError', {
+export class SiteError extends Schema.TaggedErrorClass<SiteError>('~@livestore/effect-playwright/SiteError')('SiteError', {
   // TODO remove `label` again once error tracing works properly with Playwright
   label: Schema.String,
   messages: Schema.Union(Schema.Array(ConsoleMessage), Schema.Defect),

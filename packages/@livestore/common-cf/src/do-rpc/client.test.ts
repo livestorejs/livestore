@@ -73,7 +73,7 @@ Vitest.scopedLive('keeps a straddling stream frame isolated from a concurrent un
 
     const result = yield* Effect.gen(function* () {
       const client = yield* RpcClient.make(Rpcs)
-      const streamFiber = yield* client.BigStream({ n: expectedRows.length }).pipe(Stream.runCollect, Effect.fork)
+      const streamFiber = yield* client.BigStream({ n: expectedRows.length }).pipe(Stream.runCollect, Effect.forkChild)
 
       yield* Effect.promise(() => firstStreamReadDone)
       const echo = yield* client.Echo({ text: 'hi' }).pipe(Effect.timeout('500 millis'))
