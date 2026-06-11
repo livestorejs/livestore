@@ -10,7 +10,7 @@ import { getFreePort } from '@livestore/utils/node'
 /**
  * Error type for WranglerDevServer operations
  */
-export class WranglerDevServerError extends Schema.TaggedError<WranglerDevServerError>(
+export class WranglerDevServerError extends Schema.TaggedErrorClass<WranglerDevServerError>(
   '~@livestore/utils-dev/WranglerDevServerError',
 )('WranglerDevServerError', {
   cause: Schema.Unknown,
@@ -89,7 +89,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       const fs = yield* FileSystem.FileSystem
       const configContent = yield* fs.readFileString(configPath)
       const parsedConfig = yield* Effect.try(() => Toml.parse(configContent)).pipe(
-        Effect.andThen(Schema.decodeUnknown(Schema.Struct({ main: Schema.String }))),
+        Effect.andThen(Schema.decodeUnknownEffect(Schema.Struct({ main: Schema.String }))),
         Effect.mapError(
           (error) => new WranglerDevServerError({ cause: error, message: 'Failed to parse wrangler config', port: -1 }),
         ),

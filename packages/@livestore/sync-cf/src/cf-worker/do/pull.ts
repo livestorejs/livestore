@@ -7,7 +7,7 @@ import { SyncMessage } from '../../common/mod.ts'
 import type { ForwardedHeaders } from '../shared.ts'
 import { DoCtx } from './layer.ts'
 
-const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
+const encodePullResponse = Schema.encodeEffectSync(SyncMessage.PullResponse)
 
 // Notes on stream handling:
 // We're intentionally closing the stream once we've read all existing events
@@ -49,7 +49,7 @@ export const makeEndingPullStream = ({
     )
 
     return storedEvents.pipe(
-      Stream.mapChunksEffect(
+      Stream.mapArrayEffect(
         splitChunkBySize({
           maxItems: MAX_PULL_EVENTS_PER_MESSAGE,
           maxBytes: MAX_WS_MESSAGE_BYTES,

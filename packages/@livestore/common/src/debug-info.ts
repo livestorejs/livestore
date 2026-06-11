@@ -88,7 +88,7 @@ export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Sche
       size: Schema.Number,
       items: Schema.Array(elSchema),
     }),
-    BoundArraySchemaFromSelf(Schema.typeSchema(elSchema)),
+    BoundArraySchemaFromSelf(Schema.toType(elSchema)),
     {
       encode: (_) => ({ size: _.sizeLimit, items: [..._] }),
       decode: (_) => BoundArray.make(_.size, _.items),

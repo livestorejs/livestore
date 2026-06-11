@@ -113,8 +113,8 @@ import { resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths
 import type { SnippetBundle } from '../vite/snippet-graph.ts'
 import { buildSnippetBundle, __internal as snippetGraphInternal } from '../vite/snippet-graph.ts'
 
-const jsonStringify = Schema.encodeSync(Schema.parseJson())
-const jsonStringifyPretty = Schema.encodeSync(Schema.parseJson({ space: 2 }))
+const jsonStringify = Schema.encodeEffectSync(Schema.UnknownFromJsonString)
+const jsonStringifyPretty = Schema.encodeEffectSync(Schema.parseJson({ space: 2 }))
 
 type THastRendererResult = {
   renderedGroupAst: THastElement
@@ -134,7 +134,7 @@ const SNIPPET_IMPORT_REGEX = /['"]([^'"\n]+\?snippet[^'"]*)['"]/g
 const SUPPORTED_SOURCE_EXTENSIONS = new Set(['.astro', '.md', '.mdx', '.ts', '.mts', '.tsx', '.js', '.mjs', '.jsx'])
 const EXCLUDED_DIRECTORIES = new Set(['node_modules', '.git', '.cache', 'dist', '.astro', '.netlify', 'logs'])
 
-export class SnippetBuildError extends Schema.TaggedError<SnippetBuildError>()('SnippetBuildError', {
+export class SnippetBuildError extends Schema.TaggedErrorClass<SnippetBuildError>()('SnippetBuildError', {
   message: Schema.String,
   cause: Schema.optional(Schema.Unknown),
   entry: Schema.optional(Schema.String),
@@ -1271,7 +1271,7 @@ const loadPreviousManifest = (
   expectedConfigHash: string,
 ): Effect.Effect<TPreviousManifest | null> =>
   Effect.gen(function* () {
-    const manifestExistsResult = yield* fs.exists(paths.manifestPath).pipe(Effect.either)
+    const manifestExistsResult = yield* fs.exists(paths.manifestPath).pipe(Effect.result)
     if (manifestExistsResult._tag === 'Left') {
       yield* Effect.logWarning(
         `Unable to check existing snippet manifest at ${paths.manifestPath}: ${String(manifestExistsResult.left)}`,
@@ -1282,7 +1282,7 @@ const loadPreviousManifest = (
       return null
     }
 
-    const manifestSourceResult = yield* fs.readFileString(paths.manifestPath).pipe(Effect.either)
+    const manifestSourceResult = yield* fs.readFileString(paths.manifestPath).pipe(Effect.result)
     if (manifestSourceResult._tag === 'Left') {
       yield* Effect.logWarning(
         `Unable to read existing snippet manifest at ${paths.manifestPath}: ${String(manifestSourceResult.left)}`,
@@ -1291,14 +1291,14 @@ const loadPreviousManifest = (
     }
 
     const manifestSource = manifestSourceResult.right
-    const parsedEither = yield* Effect.try(() => JSON.parse(manifestSource) as TSnippetManifest).pipe(Effect.either)
+    const parsedEither = yield* Effect.try(() => JSON.parse(manifestSource) as TSnippetManifest).pipe(Effect.result)
     if (parsedEither._tag === 'Left') {
       yield* Effect.logWarning(
-        `Unable to parse existing snippet manifest at ${paths.manifestPath}: ${String(parsedEither.left)}`,
+        `Unable to parse existing snippet manifest at ${paths.manifestPath}: ${String(parsedResult.fail)}`,
       )
       return null
     }
-    const parsed = parsedEither.right
+    const parsed = parsedResult.succeed
 
     if (parsed.version !== 1 || parsed.configHash !== expectedConfigHash) {
       return null
@@ -1646,8 +1646,8 @@ const watchSnippetsInternal = (
 
     const snippetRootExists = yield* fs
       .exists(paths.snippetAssetsRoot)
-      .pipe(Effect.catchAll(() => Effect.succeed(false)))
-    const sourceRootExists = yield* fs.exists(paths.srcRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
+      .pipe(Effect.catch(() => Effect.succeed(false)))
+    const sourceRootExists = yield* fs.exists(paths.srcRoot).pipe(Effect.catch(() => Effect.succeed(false)))
 
     const watchStreams: Array<Stream.Stream<WatchEventSummary, PlatformError.PlatformError>> = []
     if (snippetRootExists === true) {
@@ -1670,7 +1670,7 @@ const watchSnippetsInternal = (
           yield* Effect.log('Snippets watch: running initial build')
         }
 
-        const result = yield* buildSnippetsInternal(resolved).pipe(Effect.either)
+        const result = yield* buildSnippetsInternal(resolved).pipe(Effect.result)
         const durationMs = Date.now() - startedAt
 
         if (result._tag === 'Left') {
@@ -1709,8 +1709,8 @@ const watchSnippetsInternal = (
     )
 
     yield* streamEffect.pipe(
-      Effect.catchAll((cause) =>
-        Effect.logWarning(`Snippets watch: stream failed with ${String(cause)}`).pipe(Effect.zipRight(Effect.never)),
+      Effect.catch((cause) =>
+        Effect.logWarning(`Snippets watch: stream failed with ${String(cause)}`).pipe(Effect.andThen(Effect.never)),
       ),
     )
   })

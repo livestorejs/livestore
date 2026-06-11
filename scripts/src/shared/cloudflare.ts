@@ -10,7 +10,7 @@ import { type CloudflareExample, cloudflareExamplesBySlug } from './cloudflare-m
  * Tagged error used across Cloudflare deployment utilities so callers can
  * pattern match on the error reason (auth/config/dns/unknown).
  */
-export class CloudflareError extends Schema.TaggedError<CloudflareError>()('CloudflareError', {
+export class CloudflareError extends Schema.TaggedErrorClass<CloudflareError>()('CloudflareError', {
   reason: Schema.Literal('auth', 'config', 'dns', 'unknown'),
   message: Schema.String,
   cause: Schema.optional(Schema.Unknown),

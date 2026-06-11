@@ -27,7 +27,7 @@ export interface ChunkingOptions<A> {
  * both item count and encoded byte size limits. Designed for transports with
  * strict frame caps (e.g. Cloudflare hibernated WebSockets).
  */
-export class OversizeChunkItemError extends Schema.TaggedError<OversizeChunkItemError>(
+export class OversizeChunkItemError extends Schema.TaggedErrorClass<OversizeChunkItemError>(
   '~@livestore/common/OversizeChunkItemError',
 )('OversizeChunkItemError', {
   size: Schema.Number,

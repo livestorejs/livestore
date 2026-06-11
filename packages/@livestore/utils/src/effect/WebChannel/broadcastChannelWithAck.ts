@@ -47,19 +47,19 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
       const connectedLatch = yield* Effect.makeLatch(false)
       const supportsTransferables = false
 
-      const postMessage = (msg: typeof Message.Type) => channel.postMessage(Schema.encodeSync(Message)(msg))
+      const postMessage = (msg: typeof Message.Type) => channel.postMessage(Schema.encodeEffectSync(Message)(msg))
 
       const send = (message: MsgSend) =>
         Effect.gen(function* () {
           yield* connectedLatch.await
 
-          const payload = yield* Schema.encode(schema.send)(message)
+          const payload = yield* Schema.encodeEffect(schema.send)(message)
           postMessage(PayloadMessage.make({ from: connectionId, to: peerIdRef.current!, payload }))
         })
 
       const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
         Stream.map(({ data }) => data),
-        Stream.map(Schema.decodeOption(Message)),
+        Stream.map(Schema.decodeEffectOption(Message)),
         Stream.filterMap((_) => _),
         Stream.mapEffect((data) =>
           Effect.gen(function* () {
@@ -89,7 +89,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
               }
               case 'PayloadMessage': {
                 if (data.to === connectionId) {
-                  return Schema.decodeEither(schema.listen)(data.payload)
+                  return Schema.decodeExit(schema.listen)(data.payload)
                 }
                 return undefined
               }

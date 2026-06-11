@@ -128,7 +128,7 @@ export const createStoreDo = <
       },
     })
 
-    return yield* createStore({ schema, adapter, storeId }).pipe(Scope.extend(scope), provideOtel({}))
+    return yield* createStore({ schema, adapter, storeId }).pipe(Scope.provide(scope), provideOtel({}))
   })
 
 /**

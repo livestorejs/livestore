@@ -118,9 +118,9 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
             if (request._tag === 'Request' && request.tag === 'SyncWsRpc.Pull') {
               // Is Pull request: add requestId to pullRequestIds
               const attachment = ws.deserializeAttachment()
-              const { pullRequestIds, ...rest } = Schema.decodeSync(WebSocketAttachmentSchema)(attachment)
+              const { pullRequestIds, ...rest } = Schema.decodeEffectSync(WebSocketAttachmentSchema)(attachment)
               ws.serializeAttachment(
-                Schema.encodeSync(WebSocketAttachmentSchema)({
+                Schema.encodeEffectSync(WebSocketAttachmentSchema)({
                   ...rest,
                   pullRequestIds: [...pullRequestIds, request.id],
                 }),
@@ -128,9 +128,9 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
             } else if (request._tag === 'Interrupt') {
               // Is Interrupt request: remove requestId from pullRequestIds
               const attachment = ws.deserializeAttachment()
-              const { pullRequestIds, ...rest } = Schema.decodeSync(WebSocketAttachmentSchema)(attachment)
+              const { pullRequestIds, ...rest } = Schema.decodeEffectSync(WebSocketAttachmentSchema)(attachment)
               ws.serializeAttachment(
-                Schema.encodeSync(WebSocketAttachmentSchema)({
+                Schema.encodeEffectSync(WebSocketAttachmentSchema)({
                   ...rest,
                   pullRequestIds: pullRequestIds.filter((id) => id !== request.requestId),
                 }),
@@ -169,7 +169,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           // Since we're using websocket hibernation, we need to remember the storeId for subsequent `webSocketMessage` calls
           // Also store forwarded headers so they're available after hibernation resume
           server.serializeAttachment(
-            Schema.encodeSync(WebSocketAttachmentSchema)({ storeId, payload, pullRequestIds: [], headers }),
+            Schema.encodeEffectSync(WebSocketAttachmentSchema)({ storeId, payload, pullRequestIds: [], headers }),
           )
 
           // See https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server
@@ -198,7 +198,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         })
       }).pipe(
         Effect.tapCauseLogPretty, // Also log errors to console before catching them
-        Effect.catchAllCause((cause) =>
+        Effect.catchCause((cause) =>
           Effect.succeed(new Response('Error', { status: 500, statusText: cause.toString() })),
         ),
         Effect.withSpan('@livestore/sync-cf:durable-object:fetch'),

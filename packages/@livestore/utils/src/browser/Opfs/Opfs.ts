@@ -429,7 +429,7 @@ export const noopOpfs = new Opfs({
 /**
  * Error raised when OPFS operations fail.
  */
-export class OpfsError extends Schema.TaggedError<OpfsError>('~@livestore/utils/OpfsError')('OpfsError', {
+export class OpfsError extends Schema.TaggedErrorClass<OpfsError>('~@livestore/utils/OpfsError')('OpfsError', {
   message: Schema.String,
   cause: Schema.optional(Schema.Defect),
 }) {}
