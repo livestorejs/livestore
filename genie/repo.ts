@@ -45,7 +45,12 @@ import {
 } from '#mr/effect-utils/genie/external.ts'
 import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from '#mr/effect-utils/genie/oxfmt-base.ts'
 
-import { livestoreOnlyCatalog, livestoreWorkspaceCatalog } from './external.ts'
+import {
+  effectV4Catalog,
+  livestoreOnlyCatalog,
+  livestoreWorkspaceCatalog,
+  obsoleteEffectV3Packages,
+} from './external.ts'
 import { livestoreCurrentPackageNames, type LivestorePackageName } from './repo-topology.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
@@ -103,13 +108,26 @@ const releaseVersion = repo.readJson<{
   readonly version: string
 }>('release/version.json')
 
-/** Composed catalog - effect-utils base + livestore-specific + workspace packages */
+const obsoleteEffectV3PackageNames = new Set<string>(obsoleteEffectV3Packages)
+
+const effectV4CatalogPackageNames = new Set<string>(Object.keys(effectV4Catalog))
+
+/**
+ * Keep inheriting non-Effect tooling versions from effect-utils while LiveStore
+ * owns the Effect v4 package surface for this migration slice.
+ */
+const effectUtilsCatalogWithoutEffectV3 = Object.fromEntries(
+  Object.entries(effectUtilsCatalog).filter(
+    ([name]) => obsoleteEffectV3PackageNames.has(name) === false && effectV4CatalogPackageNames.has(name) === false,
+  ),
+)
+
+/** Composed catalog - effect-utils base + Effect v4 + livestore-specific + workspace packages */
 export const catalog = defineCatalog({
-  extends: effectUtilsCatalog,
-  packages: {
-    ...livestoreWorkspaceCatalog,
-    ...livestoreOnlyCatalog,
-  },
+  ...effectUtilsCatalogWithoutEffectV3,
+  ...effectV4Catalog,
+  ...livestoreWorkspaceCatalog,
+  ...livestoreOnlyCatalog,
 })
 
 const WORKSPACE_REPO_NAME = 'livestore'
@@ -174,6 +192,8 @@ export const localPackageDefaults = {
 /**
  * Peer dependencies for the public @livestore/utils surface.
  * These are the packages that utils exposes types or values from and consumers need.
+ * Effect v4 consolidated the old auxiliary Effect packages, so only surviving
+ * platform/provider packages remain public peers here.
  *
  * Usage pattern:
  * - Include in devDependencies via catalog.pick() for local development
@@ -181,20 +201,11 @@ export const localPackageDefaults = {
  */
 export const utilsEffectPeerDeps = [
   'effect',
-  '@effect/platform',
   '@effect/platform-browser',
   '@effect/platform-bun',
   '@effect/platform-node',
-  '@effect/ai',
-  '@effect/cli',
-  '@effect/cluster',
-  '@effect/experimental',
+  '@effect/platform-node-shared',
   '@effect/opentelemetry',
-  '@effect/printer',
-  '@effect/printer-ansi',
-  '@effect/rpc',
-  '@effect/sql',
-  '@effect/typeclass',
   '@effect/vitest',
   '@opentelemetry/api',
   '@opentelemetry/resources',
