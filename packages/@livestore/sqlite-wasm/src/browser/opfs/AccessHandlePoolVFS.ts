@@ -198,7 +198,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_CANTOPEN)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_CANTOPEN)),
       Runtime.runSync(this.#runtime),
     )
   }
@@ -216,7 +216,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_CLOSE)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_CLOSE)),
       Runtime.runSync(this.#runtime),
     )
   }
@@ -234,7 +234,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_READ)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_READ)),
       Runtime.runSync(this.#runtime),
     )
   }
@@ -251,7 +251,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_WRITE)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_WRITE)),
       Runtime.runSync(this.#runtime),
     )
   }
@@ -263,7 +263,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_TRUNCATE)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_TRUNCATE)),
       Runtime.runSync(this.#runtime),
     )
   }
@@ -275,7 +275,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_FSYNC)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_FSYNC)),
       Runtime.runSync(this.#runtime),
     )
   }
@@ -289,7 +289,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_FSTAT)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_FSTAT)),
       Runtime.runSync(this.#runtime),
     )
   }
@@ -309,7 +309,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_ACCESS)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_ACCESS)),
       Runtime.runSync(this.#runtime),
     )
   }
@@ -321,7 +321,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_DELETE)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_DELETE)),
       Runtime.runSync(this.#runtime),
     )
   }

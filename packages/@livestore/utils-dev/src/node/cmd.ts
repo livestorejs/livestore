@@ -141,7 +141,7 @@ export const cmdText: (
     )
   })
 
-export class CmdError extends Schema.TaggedError<CmdError>('~@livestore/utils-dev/CmdError')('CmdError', {
+export class CmdError extends Schema.TaggedErrorClass<CmdError>('~@livestore/utils-dev/CmdError')('CmdError', {
   command: Schema.String,
   args: Schema.Array(Schema.String),
   cwd: Schema.String,
@@ -231,7 +231,7 @@ const runWithLogging = ({
       const runningProcess = yield* Effect.acquireRelease(command.pipe(Command.start), (proc) =>
         proc.isRunning.pipe(
           Effect.flatMap((running) =>
-            running === true ? proc.kill().pipe(Effect.catchAll(() => Effect.void)) : Effect.void,
+            running === true ? proc.kill().pipe(Effect.catch(() => Effect.void)) : Effect.void,
           ),
           Effect.ignore,
         ),
@@ -262,7 +262,7 @@ const runWithLogging = ({
 
       // Dump any buffered data and finish both stream fibers before we return.
       const flushOutputs = Effect.gen(function* () {
-        const stillRunning = yield* runningProcess.isRunning.pipe(Effect.catchAll(() => Effect.succeed(false)))
+        const stillRunning = yield* runningProcess.isRunning.pipe(Effect.catch(() => Effect.succeed(false)))
         if (stillRunning === true) {
           yield* Effect.ignore(runningProcess.kill())
         }

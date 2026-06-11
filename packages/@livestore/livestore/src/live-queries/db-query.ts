@@ -406,7 +406,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
             span.setAttribute('sql.rowsCount', rawDbResults.length)
 
-            const parsedResult = Schema.decodeEither(schemaRef.current!)(rawDbResults)
+            const parsedResult = Schema.decodeExit(schemaRef.current!)(rawDbResults)
 
             if (parsedResult._tag === 'Left') {
               const parseErrorStr = TreeFormatter.formatErrorSync(parsedResult.left)

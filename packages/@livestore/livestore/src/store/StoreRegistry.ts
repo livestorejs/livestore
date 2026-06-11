@@ -194,7 +194,7 @@ export class StoreRegistry {
         // Merge registry defaults with call-site options (call-site takes precedence)
         const mergedOptions = { ...config.defaultOptions, ...options }
         return createStore(mergedOptions).pipe(
-          Effect.catchAllDefect((cause) => UnknownError.make({ cause })),
+          Effect.catchDefect((cause) => UnknownError.make({ cause })),
           Effect.withSpan(`StoreRegistry.lookup:${mergedOptions.storeId}`),
           LogConfig.withLoggerConfig(mergedOptions, { threadName: 'window' }),
           provideOtel(

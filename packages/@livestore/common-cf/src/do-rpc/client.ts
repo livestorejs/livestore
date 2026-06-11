@@ -57,7 +57,7 @@ interface MakeDoRpcProtocolArgs {
  * This enables direct RPC communication with Durable Objects using Cloudflare's native RPC.
  */
 export const layerProtocolDurableObject = (args: MakeDoRpcProtocolArgs): Layer.Layer<RpcClient.Protocol> =>
-  Layer.scoped(RpcClient.Protocol, makeProtocolDurableObject(args))
+  Layer.effect(RpcClient.Protocol, makeProtocolDurableObject(args))
 
 /**
  * Implementation of the RPC Protocol interface using Cloudflare Durable Object RPC calls.
@@ -101,7 +101,7 @@ const makeProtocolDurableObject = ({
               writeResponse,
             ).pipe(
               // Effect.tapCauseLogPretty,
-              Effect.fork,
+              Effect.forkChild,
             )
 
             // fiberMap.set(message.id, fiber)

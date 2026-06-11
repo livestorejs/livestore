@@ -26,7 +26,7 @@ export const name = 'Cloudflare Durable Object RPC'
 export const prepare = Effect.void
 
 const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): SyncProviderLayer =>
-  Layer.scoped(
+  Layer.effect(
     SyncProviderImpl,
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService

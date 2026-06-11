@@ -152,14 +152,14 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
                 // lockingMode: 'EXCLUSIVE',
                 foreignKeys: true,
               }).pipe(Effect.provide(runtime), Effect.runSync),
-          }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
+          }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignore)))
 
         const makeInMemoryDb = () =>
           makeSqliteDb({
             _tag: 'in-memory',
             configureDb: (db) =>
               configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
-          }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
+          }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignore)))
 
         // Use OPFS if available, otherwise fall back to in-memory
         const [dbState, dbEventlog] =
@@ -328,7 +328,7 @@ const checkOpfsAvailability = Effect.gen(function* () {
   const opfs = yield* Opfs.Opfs
   return yield* opfs.getRootDirectoryHandle.pipe(
     Effect.as(undefined),
-    Effect.catchAll((error) => {
+    Effect.catch((error) => {
       const reason: BootWarningReason =
         Schema.is(WebError.SecurityError)(error) === true || Schema.is(WebError.NotAllowedError)(error) === true
           ? 'private-browsing'

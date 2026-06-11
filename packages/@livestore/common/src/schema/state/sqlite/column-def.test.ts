@@ -26,15 +26,15 @@ describe('getColumnDefForSchema', () => {
     it('should map Schema.Date to text column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.Date)
       expect(columnDef.columnType).toBe('text')
-      expect(Schema.encodedSchema(columnDef.schema).toString()).toBe('string')
-      expect(Schema.typeSchema(columnDef.schema).toString()).toBe('Date')
+      expect(Schema.toEncoded(columnDef.schema).toString()).toBe('string')
+      expect(Schema.toType(columnDef.schema).toString()).toBe('Date')
     })
 
     it('should map Schema.DateFromNumber to integer column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.DateFromNumber)
       expect(columnDef.columnType).toBe('integer')
-      expect(Schema.encodedSchema(columnDef.schema).toString()).toBe('number')
-      expect(Schema.typeSchema(columnDef.schema).toString()).toBe('DateFromSelf')
+      expect(Schema.toEncoded(columnDef.schema).toString()).toBe('number')
+      expect(Schema.toType(columnDef.schema).toString()).toBe('DateFromSelf')
     })
 
     it('should map Schema.BigInt to text column', () => {

@@ -225,7 +225,7 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
         errorSchema: [Function: Never],
         annotations: { _id: 'Context', services: [] },
         middlewares: Set(0) {},
-        key: '@effect/rpc/Rpc/StreamBugScenarioDoServer'
+        key: 'effect/unstable/rpc/Rpc/StreamBugScenarioDoServer'
       } {}
 
       Killing wrangler process...

@@ -11,12 +11,12 @@ import { downloadChromeExtension } from './download-chrome-extension.ts'
 
 const cwd = path.resolve(import.meta.dirname, '..')
 
-const modeOption = Cli.Options.choice('mode', ['headless', 'ui', 'dev-server']).pipe(
-  Cli.Options.withDefault('headless'),
+const modeOption = Cli.Flag.choice('mode', ['headless', 'ui', 'dev-server']).pipe(
+  Cli.Flag.withDefault('headless'),
 )
 
-export const localDevtoolsPreviewOption = Cli.Options.boolean('local-devtools-preview').pipe(
-  Cli.Options.withDefault(false),
+export const localDevtoolsPreviewOption = Cli.Flag.boolean('local-devtools-preview').pipe(
+  Cli.Flag.withDefault(false),
 )
 
 const viteDevServer = ({
@@ -34,7 +34,7 @@ const viteDevServer = ({
     yield* cmd(`./node_modules/.bin/vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`, {
       env: {
         // Relative to vite config
-        TEST_LIVESTORE_SCHEMA_PATH_JSON: yield* Schema.encode(Schema.parseJson())(
+        TEST_LIVESTORE_SCHEMA_PATH_JSON: yield* Schema.encodeEffect(Schema.UnknownFromJsonString)(
           './devtools/todomvc/livestore/schema.ts',
         ).pipe(Effect.orDie),
         LSD_DEVTOOLS_LOCAL_PREVIEW: useDevtoolsLocalPreview === true ? '1' : undefined,
@@ -168,7 +168,7 @@ export const devtoolsTest: Cli.Command.Command<
 
       const spanContext = yield* OtelTracer.currentOtelSpan.pipe(
         Effect.map((span) => JSON.stringify(span.spanContext())),
-        Effect.catchAll(() => Effect.succeed(undefined)),
+        Effect.catch(() => Effect.succeed(undefined)),
       )
 
       if (mode === 'dev-server') {

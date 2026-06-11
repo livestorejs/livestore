@@ -14,8 +14,8 @@ import {
 } from '../shared.ts'
 import { DoCtx } from './layer.ts'
 
-const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
-const jsonStringify = Schema.encodeSync(Schema.parseJson())
+const encodePullResponse = Schema.encodeEffectSync(SyncMessage.PullResponse)
+const jsonStringify = Schema.encodeEffectSync(Schema.UnknownFromJsonString)
 type PullBatchItem = SyncMessage.PullResponse['batch'][number]
 
 export const makePush =
@@ -122,7 +122,7 @@ export const makePush =
 
               return {
                 response,
-                encoded: Schema.encodeSync(SyncMessage.PullResponse)(response),
+                encoded: Schema.encodeEffectSync(SyncMessage.PullResponse)(response),
               }
             }),
           ),
@@ -140,7 +140,7 @@ export const makePush =
 
             // NOTE we're also sending the pullRes chunk to the pushing ws client as confirmation
             for (const conn of connectedClients) {
-              const attachment = yield* Schema.decode(WebSocketAttachmentSchema)(conn.deserializeAttachment())
+              const attachment = yield* Schema.decodeEffect(WebSocketAttachmentSchema)(conn.deserializeAttachment())
 
               // We're doing something a bit "advanced" here as we're directly emitting Effect RPC-compatible
               // response messsages on the Effect RPC-managed websocket connection to the WS client.
@@ -178,7 +178,7 @@ export const makePush =
         Effect.tapCauseLogPretty,
         Effect.withSpan('push-rpc-broadcast'),
         Effect.uninterruptible, // We need to make sure Effect RPC doesn't interrupt this fiber
-        Effect.fork,
+        Effect.forkChild,
       )
 
       // We need to yield here to make sure the fork above is kicked off before we let Effect RPC finish the request

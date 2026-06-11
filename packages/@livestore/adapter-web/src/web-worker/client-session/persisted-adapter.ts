@@ -203,7 +203,7 @@ export const makePersistedAdapter =
       const LIVESTORE_TAB_LOCK = `livestore-tab-lock-${storeId}`
       const LIVESTORE_SHARED_WORKER_TERMINATION_LOCK = `livestore-shared-worker-termination-lock-${storeId}`
 
-      const storageOptions = yield* Schema.decode(WorkerSchema.StorageType)(options.storage)
+      const storageOptions = yield* Schema.decodeEffect(WorkerSchema.StorageType)(options.storage)
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
@@ -277,7 +277,7 @@ export const makePersistedAdapter =
         Effect.provide(sharedWorkerContext),
         Effect.tapCauseLogPretty,
         Effect.orDie,
-        Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+        Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
         Effect.withSpan('@livestore/adapter-web:client-session:setupSharedWorker'),
         Effect.forkScoped,
       )
@@ -319,7 +319,7 @@ export const makePersistedAdapter =
         }).pipe(
           Effect.provide(BrowserWorker.layer(() => worker)),
           UnknownError.mapToUnknownError,
-          Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+          Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
           Effect.withSpan('@livestore/adapter-web:client-session:setupDedicatedWorker'),
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
@@ -345,7 +345,7 @@ export const makePersistedAdapter =
           )
           .pipe(
             UnknownError.mapToUnknownError,
-            Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+            Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
           )
 
         yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
@@ -405,7 +405,7 @@ export const makePersistedAdapter =
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
-        Effect.tapErrorCause((cause) =>
+        Effect.tapCause((cause) =>
           Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
         ),
         Effect.interruptible,
@@ -631,7 +631,7 @@ const checkOpfsAvailability = Effect.gen(function* () {
   const opfs = yield* Opfs.Opfs
   return yield* opfs.getRootDirectoryHandle.pipe(
     Effect.as(undefined),
-    Effect.catchAll((error) => {
+    Effect.catch((error) => {
       const reason: BootWarningReason =
         Schema.is(WebError.SecurityError)(error) === true || Schema.is(WebError.NotAllowedError)(error) === true
           ? 'private-browsing'

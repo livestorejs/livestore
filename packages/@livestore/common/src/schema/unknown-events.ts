@@ -73,7 +73,7 @@ const handleUnknownEvent = ({
         const callback = config.onUnknownEvent
 
         yield* Effect.tryAll<void>(() => callback(context, error)).pipe(
-          Effect.catchAll((cause) =>
+          Effect.catch((cause) =>
             Effect.logWarning('@livestore/common:schema:unknown-event:callback-error', {
               event: context.event,
               reason: context.reason,

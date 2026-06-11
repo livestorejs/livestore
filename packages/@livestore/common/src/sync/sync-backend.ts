@@ -71,7 +71,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
      * */
     batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>,
   ) => Effect.Effect<void, IsOfflineError | BackendIdMismatchError | UnknownError | ServerAheadError>
-  ping: Effect.Effect<void, IsOfflineError | UnknownError | Cause.TimeoutException>
+  ping: Effect.Effect<void, IsOfflineError | UnknownError | Cause.TimeoutError>
   // TODO also expose latency information additionally to whether the backend is connected
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
   /**
