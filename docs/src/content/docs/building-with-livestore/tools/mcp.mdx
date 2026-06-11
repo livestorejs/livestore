@@ -113,7 +113,7 @@ Run a local Cloudflare sync backend:
    - `bunx @livestore/cli mcp server`
 
 3. From your MCP client (e.g., Claude Desktop), call tools:
-   - Use your own config file path and storeId. The repo also provides an example: `examples/cf-chat/livestore-cli.config.ts`.
+   - Use your own config file path and storeId. The contrib repo provides an example: [`examples/cf-chat/livestore-cli.config.ts`](https://github.com/livestorejs/livestore-contrib/tree/main/examples/cf-chat/livestore-cli.config.ts).
    - Connect: `livestore_instance_connect` with `{ "configPath": "livestore-cli.config.ts", "storeId": "<store-id>" }`
    - Commit: `livestore_instance_commit_events` with `[ { "name": "v1.EntityCreated", "args": { "id": "e1", "title": "Hello", "createdAt": "2024-01-01T00:00:00.000Z" } } ]`
    - Query: `livestore_instance_query` with `{ "sql": "SELECT * FROM my_table ORDER BY createdAt DESC LIMIT 5" }`

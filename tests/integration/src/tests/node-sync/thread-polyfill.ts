@@ -1,1 +1,0 @@
-process.stdout.isTTY = true

@@ -44,15 +44,6 @@ export const exampleDeployments = [
       dev: { url: 'https://example-web-todomvc-sync-cf-dev.livestore.workers.dev', expectedStatus: 200 },
     },
   },
-  {
-    slug: 'cf-chat',
-    sourcePath: 'examples/cf-chat',
-    workerName: 'example-cf-chat',
-    endpoints: {
-      prod: { url: 'https://example-cf-chat.livestore.workers.dev', expectedStatus: 200 },
-      dev: { url: 'https://example-cf-chat-dev.livestore.workers.dev', expectedStatus: 200 },
-    },
-  },
 ] as const satisfies readonly ExampleDeployment[]
 
 export type ExampleDeploymentSlug = (typeof exampleDeployments)[number]['slug']

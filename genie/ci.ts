@@ -6,8 +6,6 @@
 
 export const syncProviderMatrix = [
   'mock',
-  'electric',
-  's2',
   'cf-http-d1',
   'cf-http-do',
   'cf-ws-d1',
@@ -24,7 +22,6 @@ export const requiredCIJobs = [
   'changeset-check',
   'type-check',
   'test-unit',
-  'test-integration-node-sync',
   ...syncProviderMatrix.map((provider) => `test-integration-sync-provider (${provider})`),
   ...playwrightSuites.map((suite) => `test-integration-playwright (${suite})`),
   'wa-sqlite-test',

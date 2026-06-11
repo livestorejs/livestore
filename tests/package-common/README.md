@@ -1,1 +1,1 @@
-This package is only needed to avoid circular dependencies between `@livestore/common` and `@livestore/adapter-node`. Ideally we'd keep all tests in `@livestore/common`.
+This package keeps cross-module tests for core packages without coupling core test coverage to contrib-owned adapters.

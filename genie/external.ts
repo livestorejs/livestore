@@ -27,6 +27,22 @@ export {
   type LivestorePackageTopologyEntry,
 } from './repo-topology.ts'
 
+export const livestoreContribPackageJsonNames = [
+  '@livestore/adapter-expo',
+  '@livestore/adapter-node',
+  '@livestore/cli',
+  '@livestore/devtools-expo',
+  '@livestore/graphql',
+  '@livestore/solid',
+  '@livestore/svelte',
+  '@livestore/sync-electric',
+  '@livestore/sync-s2',
+] as const
+
+export const livestoreContribPackageVersions = Object.fromEntries(
+  livestoreContribPackageJsonNames.map((name) => [name, '0.4.0']),
+) as Record<(typeof livestoreContribPackageJsonNames)[number], '0.4.0'>
+
 /** Workspace packages exposed by LiveStore. */
 export const livestoreWorkspaceCatalog = {
   ...workspaceCatalogForPackageNames(livestoreCurrentPackageNames),

@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@livestore/adapter-cloudflare": "workspace:^",
-    "@livestore/adapter-node": "workspace:^",
     "@livestore/adapter-web": "workspace:^",
     "@livestore/common": "workspace:^",
     "@livestore/common-cf": "workspace:^",
@@ -67,7 +66,6 @@
     "warning": "DO NOT EDIT - changes will be overwritten",
     "workspaceClosureDirs": [
       "packages/@livestore/adapter-cloudflare",
-      "packages/@livestore/adapter-node",
       "packages/@livestore/adapter-web",
       "packages/@livestore/common",
       "packages/@livestore/common-cf",

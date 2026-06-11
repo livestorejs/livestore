@@ -7,6 +7,7 @@ import astroTldrawPkg from '../packages/@local/astro-tldraw/package.json.genie.t
 import astroTwoslashCodePkg from '../packages/@local/astro-twoslash-code/package.json.genie.ts'
 import sharedPkg from '../packages/@local/shared/package.json.genie.ts'
 import testsIntegrationPkg from '../tests/integration/package.json.genie.ts'
+import testsPackageCommonPkg from '../tests/package-common/package.json.genie.ts'
 import testsSyncProviderPkg from '../tests/sync-provider/package.json.genie.ts'
 
 const composition = catalog.compose({
@@ -23,6 +24,7 @@ const composition = catalog.compose({
       astroTwoslashCodePkg,
       docsPkg,
       testsIntegrationPkg,
+      testsPackageCommonPkg,
       testsSyncProviderPkg,
     ],
     external: {

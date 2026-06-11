@@ -60,23 +60,6 @@ in
       exec = "mono test integration wa-sqlite";
     };
 
-    "test:integration:node-sync" = {
-      description = "Run node-sync tests";
-      exec = "mono test integration node-sync";
-    };
-
-    "test:integration:node-sync:allow-flaky" = {
-      description = "Run node-sync tests, warn on flaky failure";
-      exec = ''
-        if mono test integration node-sync; then
-          exit 0
-        fi
-        echo "::warning::Node-sync integration tests failed (flaky; see https://github.com/livestorejs/livestore/issues/624 for details)"
-        exit 0
-      '';
-      after = [ "setup:strict" ];
-    };
-
     # Sync provider tests (individual providers for CI matrix)
     "test:integration:sync-provider" = {
       description = "Run all sync provider tests";
@@ -86,16 +69,6 @@ in
     "test:integration:sync-provider:mock" = {
       description = "Run mock sync provider tests";
       exec = "mono test integration sync-provider --provider mock";
-    };
-
-    "test:integration:sync-provider:electric" = {
-      description = "Run electric sync provider tests";
-      exec = "mono test integration sync-provider --provider electric";
-    };
-
-    "test:integration:sync-provider:s2" = {
-      description = "Run s2 sync provider tests";
-      exec = "mono test integration sync-provider --provider s2";
     };
 
     "test:integration:sync-provider:cf-http-d1" = {

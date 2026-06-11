@@ -1,6 +1,0 @@
-{
-  "platforms": ["devtools"],
-  "devtools": {
-    "webpageRoot": "webui"
-  }
-}

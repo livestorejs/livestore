@@ -20,7 +20,6 @@ export default tsconfigJson({
     { path: '../../packages/@livestore/common' },
     { path: '../../packages/@livestore/react' },
     { path: '../../packages/@livestore/livestore' },
-    { path: '../../packages/@livestore/adapter-node' },
     { path: '../../packages/@livestore/sync-cf' },
     { path: '../../packages/@livestore/utils' },
     { path: '../../packages/@livestore/utils-dev' },

@@ -63,9 +63,6 @@
       "path": "../../packages/@livestore/livestore"
     },
     {
-      "path": "../../packages/@livestore/adapter-node"
-    },
-    {
       "path": "../../packages/@livestore/sync-cf"
     },
     {

@@ -5,8 +5,7 @@ description: LiveStore examples built with the Cloudflare adapter for edge compu
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 import { Image } from 'astro:assets';
-import { cloudflareExamples, getExampleDemoLinks } from '../../../data/examples.ts';
-import { getBranchName } from '../../../data/data.ts';
+import { contribExamplesUrl, cloudflareExamples, getExampleDemoLinks } from '../../../data/examples.ts';
 
 # Cloudflare Durable Objects Examples
 
@@ -49,4 +48,4 @@ Examples using `@livestore/adapter-cloudflare` for Cloudflare Workers and Durabl
 - No WebSocket support - uses Durable Objects' distributed consistency
 
 ---
-<a href={`https://github.com/livestorejs/livestore/tree/${getBranchName()}/examples`}>View all examples on GitHub →</a>
+<a href={contribExamplesUrl}>View all examples on GitHub →</a>

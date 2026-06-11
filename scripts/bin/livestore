@@ -1,3 +1,0 @@
-#!/usr/bin/env sh
-
-bun $WORKSPACE_ROOT/packages/@livestore/cli/src/bin.ts "$@"

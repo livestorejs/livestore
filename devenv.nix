@@ -33,23 +33,14 @@ let
   pnpmPackages = [
     # packages/@livestore
     "packages/@livestore/adapter-cloudflare"
-    "packages/@livestore/adapter-expo"
-    "packages/@livestore/adapter-node"
     "packages/@livestore/adapter-web"
-    "packages/@livestore/cli"
     "packages/@livestore/common"
     "packages/@livestore/common-cf"
-    "packages/@livestore/devtools-expo"
     "packages/@livestore/effect-playwright"
-    "packages/@livestore/graphql"
     "packages/@livestore/livestore"
     "packages/@livestore/react"
-    "packages/@livestore/solid"
     "packages/@livestore/sqlite-wasm"
-    "packages/@livestore/svelte"
     "packages/@livestore/sync-cf"
-    "packages/@livestore/sync-electric"
-    "packages/@livestore/sync-s2"
     "packages/@livestore/utils"
     "packages/@livestore/utils-dev"
     "packages/@livestore/wa-sqlite"
@@ -60,10 +51,8 @@ let
     "packages/@local/shared"
     # tests
     "tests/integration"
-    "tests/package-common"
     "tests/perf"
     "tests/perf-eventlog"
-    "tests/sync-provider"
     "tests/wa-sqlite"
     # other
     "docs"
@@ -127,7 +116,6 @@ let
     backup_dir="$(mktemp -d)"
     package_links=(
       "tests/integration/node_modules/@livestore/devtools-vite"
-      "packages/@livestore/adapter-node/node_modules/@livestore/devtools-vite"
     )
 
     for index in "''${!package_links[@]}"; do
@@ -174,7 +162,7 @@ let
         LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
         DT_PASSTHROUGH=1 \
         ./node_modules/.bin/playwright test \
-          src/tests/playwright/devtools/node-adapter-timeout.play.ts \
+          src/tests/playwright/devtools/web.play.ts \
           --reporter=line
     )
 

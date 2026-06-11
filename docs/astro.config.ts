@@ -331,51 +331,12 @@ export default defineConfig({
                 },
               }),
               starlightTypeDoc({
-                entryPoints: ['../packages/@livestore/adapter-node/src/index.ts'],
-                tsconfig: '../packages/@livestore/adapter-node/tsconfig.json',
-                output: 'api/adapter-node',
-                typeDoc: {
-                  excludeExternals: true,
-                  externalPattern: ['**/@effect/**', '**/effect/**'],
-                  // The genie-generated tsconfigs include the @effect/language-service plugin which
-                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
-                  // and returns no reflections. skipErrorChecking bypasses this check.
-                  skipErrorChecking: true,
-                },
-              }),
-              starlightTypeDoc({
-                entryPoints: ['../packages/@livestore/adapter-expo/src/index.ts'],
-                tsconfig: '../packages/@livestore/adapter-expo/tsconfig.json',
-                output: 'api/adapter-expo',
-                typeDoc: {
-                  excludeExternals: true,
-                  externalPattern: ['**/@effect/**', '**/effect/**'],
-                  // The genie-generated tsconfigs include the @effect/language-service plugin which
-                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
-                  // and returns no reflections. skipErrorChecking bypasses this check.
-                  skipErrorChecking: true,
-                },
-              }),
-              starlightTypeDoc({
                 entryPoints: [
                   '../packages/@livestore/sync-cf/src/sync-impl/mod.ts',
                   '../packages/@livestore/sync-cf/src/cf-worker/mod.ts',
                 ],
                 tsconfig: '../packages/@livestore/sync-cf/tsconfig.json',
                 output: 'api/sync-cf',
-                typeDoc: {
-                  excludeExternals: true,
-                  externalPattern: ['**/@effect/**', '**/effect/**'],
-                  // The genie-generated tsconfigs include the @effect/language-service plugin which
-                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
-                  // and returns no reflections. skipErrorChecking bypasses this check.
-                  skipErrorChecking: true,
-                },
-              }),
-              starlightTypeDoc({
-                entryPoints: ['../packages/@livestore/sync-electric/src/index.ts'],
-                tsconfig: '../packages/@livestore/sync-electric/tsconfig.json',
-                output: 'api/sync-electric',
                 typeDoc: {
                   excludeExternals: true,
                   externalPattern: ['**/@effect/**', '**/effect/**'],

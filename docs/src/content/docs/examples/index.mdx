@@ -4,8 +4,7 @@ description: Explore LiveStore example applications across different platforms a
 ---
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
-import { webExamples, nodeExamples, expoExamples, cloudflareExamples } from '../../../data/examples.ts';
-import { getBranchName } from '../../../data/data.ts';
+import { contribExamplesUrl, webExamples, nodeExamples, expoExamples, cloudflareExamples } from '../../../data/examples.ts';
 
 # Example Applications
 
@@ -59,4 +58,4 @@ Some examples demonstrate **cross-platform synchronization** by using multiple a
 LiveStore is a local-first data layer that runs everywhere - from browsers to mobile apps to edge computing. Each adapter provides platform-optimized features while maintaining a consistent API across all environments.
 
 ---
-<a href={`https://github.com/livestorejs/livestore/tree/${getBranchName()}/examples`}>View all examples on GitHub →</a>
+<a href={contribExamplesUrl}>View all examples on GitHub →</a>

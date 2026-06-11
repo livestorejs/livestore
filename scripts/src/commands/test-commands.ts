@@ -294,16 +294,6 @@ export const syncProviderTest = Cli.Command.make(
   }),
 ).pipe(Cli.Command.withDescription('Run sync provider tests (optionally filtered by provider)'))
 
-export const nodeSyncTest = Cli.Command.make(
-  'node-sync',
-  {},
-  Effect.fn(function* () {
-    yield* cmd(['vitest', 'run', 'src/tests/node-sync/node-sync.test.ts']).pipe(
-      Effect.provide(LivestoreWorkspace.toCwd('tests/integration')),
-    )
-  }),
-)
-
 const testIntegrationAllCommand = Cli.Command.make(
   'all',
   {
@@ -320,7 +310,6 @@ const testIntegrationAllCommand = Cli.Command.make(
         integrationTests.devtoolsTest.handler({ mode: 'headless', localDevtoolsPreview }),
         syncProviderTest.handler({ provider: Option.none() }),
         waSqliteTest.handler({}),
-        nodeSyncTest.handler({}),
       ],
       { concurrency: concurrency === 'parallel' ? 'unbounded' : 1 },
     )
@@ -332,7 +321,6 @@ export const testIntegrationCommand = Cli.Command.make('integration').pipe(
     ...integrationTests.commands,
     syncProviderTest,
     waSqliteTest,
-    nodeSyncTest,
     testIntegrationAllCommand,
   ]),
 )
@@ -348,7 +336,6 @@ export const testCommand = Cli.Command.make(
       localDevtoolsPreview: false,
     })
     yield* waSqliteTest.handler({})
-    yield* nodeSyncTest.handler({})
     yield* testPerfCommand.handler({})
   }),
 ).pipe(Cli.Command.withSubcommands([testIntegrationCommand, testUnitCommand, testPerfCommand]))

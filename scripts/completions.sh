@@ -6,7 +6,7 @@
 # ============================================================================
 # Shell completion generation
 # ============================================================================
-# Generates shell completions for mono, livestore, and livestore-example-node-effect-cli CLIs.
+# Generates shell completions for the core mono CLI.
 # Supports Fish and Zsh shells.
 #
 # Fish: Installed globally to ~/.config/fish/completions (works automatically)
@@ -45,14 +45,6 @@ if command -v fish >/dev/null 2>&1; then
     "$WORKSPACE_ROOT/scripts/src/mono.ts" \
     "fish" \
     "$HOME/.config/fish/completions/mono.fish"
-  maybe_generate_completions \
-    "$WORKSPACE_ROOT/examples/node-effect-cli/src/main.ts" \
-    "fish" \
-    "$HOME/.config/fish/completions/livestore-example-node-effect-cli.fish"
-  maybe_generate_completions \
-    "$WORKSPACE_ROOT/packages/@livestore/cli/src/cli.ts" \
-    "fish" \
-    "$HOME/.config/fish/completions/livestore.fish"
 fi
 
 # Zsh completions (project-local via FPATH, loaded in devenv.nix enterShell)
@@ -64,12 +56,4 @@ if command -v zsh >/dev/null 2>&1; then
     "$WORKSPACE_ROOT/scripts/src/mono.ts" \
     "zsh" \
     "$ZSH_COMPLETIONS_DIR/_mono"
-  maybe_generate_completions \
-    "$WORKSPACE_ROOT/examples/node-effect-cli/src/main.ts" \
-    "zsh" \
-    "$ZSH_COMPLETIONS_DIR/_livestore-example-node-effect-cli"
-  maybe_generate_completions \
-    "$WORKSPACE_ROOT/packages/@livestore/cli/src/cli.ts" \
-    "zsh" \
-    "$ZSH_COMPLETIONS_DIR/_livestore"
 fi

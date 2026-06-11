@@ -37,6 +37,7 @@ export default tsconfigJson({
     { path: '../packages/@local/astro-tldraw' },
     { path: '../packages/@local/astro-twoslash-code' },
     { path: '../tests/integration' },
+    { path: '../tests/package-common' },
     { path: '../tests/sync-provider' },
   ],
 })

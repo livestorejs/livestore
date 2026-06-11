@@ -15,19 +15,17 @@ import type { LeaderSqliteDb, StreamEventsOptions } from './types.ts'
  * The batch size is set to 100 by default as this was meassured to provide the
  * best performance and 1000 as the upper limit.
  *
- * Adapters that call this helper:
+ * Adapters that call this helper include:
  * - `packages/@livestore/adapter-web/src/in-memory/in-memory-adapter.ts`
  * - `packages/@livestore/adapter-web/src/web-worker/leader-worker/make-leader-worker.ts`
- * - `packages/@livestore/adapter-node/src/client-session/adapter.ts`
- * - `packages/@livestore/adapter-node/src/make-leader-worker.ts`
  * - `packages/@livestore/adapter-cloudflare/src/make-adapter.ts`
+ * - external leader-thread adapters
  *
  * Each caller resolves dependencies inside the leader scope before invoking this helper,
  * so the stream stays environment-agnostic and does not leak `LeaderThreadCtx` into runtime
  * entry points such as `Store.eventsStream`.
  *
  * Test files:
- * Unit: `tests/package-common/src/leader-thread/stream-events.test.ts`
  * Integration: `packages/@livestore/livestore/src/store/store-eventstream.test.ts`
  * Performance: `tests/perf-eventlog/tests/suites/event-streaming.test.ts`
  *
