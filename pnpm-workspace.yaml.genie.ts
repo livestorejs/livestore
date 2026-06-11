@@ -1,22 +1,24 @@
 import { catalog, commonPnpmPolicySettings, pnpmWorkspaceYaml, repoPnpmAllowBuilds } from './genie/repo.ts'
 import { rootWorkspacePackages } from './package.json.genie.ts'
 
+/**
+ * The shared effect-utils pnpm policy still suppresses peer conflicts for
+ * obsolete Effect v3 package names. Drop those suppressions in LiveStore so
+ * stale v3 peers fail loudly during the v4 migration instead of being hidden.
+ */
+const { peerDependencyRules: _effectV3PeerDependencyRules, ...livestorePnpmPolicySettings } = commonPnpmPolicySettings
+
 const examplesWorkspaceSettings = {
   linkWorkspacePackages: true,
-  /** Dedupe packages pulled in transitively by older example/peer-deps dependencies */
+  /** Dedupe package identities pulled in transitively by older example and peer-deps packages. */
   overrides: catalog.pick(
     'effect',
-    '@effect/platform',
     '@effect/platform-browser',
     '@effect/platform-bun',
     '@effect/platform-node',
     '@effect/platform-node-shared',
-    '@effect/cli',
-    '@effect/experimental',
     '@effect/opentelemetry',
-    '@effect/printer',
-    '@effect/printer-ansi',
-    '@effect/typeclass',
+    '@effect/vitest',
     'react',
     'react-dom',
     '@tanstack/router-core',
@@ -60,7 +62,7 @@ export default pnpmWorkspaceYaml.root({
   packages: rootWorkspacePackages,
   repoName: 'livestore',
   extraMembers: ['examples/*'],
-  ...commonPnpmPolicySettings,
+  ...livestorePnpmPolicySettings,
   /**
    * LiveStore's live CI/dev workspace typechecks package source and generated
    * dist outputs together. pnpm's injected workspace snapshots are still used
