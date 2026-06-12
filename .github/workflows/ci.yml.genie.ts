@@ -15,7 +15,6 @@ import {
   savePnpmStateStep,
   workflowReportCollectorStep,
   workflowReportCommentBodyStep,
-  workflowReportProducerStep,
   workflowReportPublisherStep,
 } from '../../genie/repo.ts'
 
@@ -34,20 +33,16 @@ const PNPM_ADD_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `
 // =============================================================================
 
 /**
- * Surface PR-time deploy/publish outcomes (npm snapshot, docs preview, examples
- * previews) as a single managed PR comment. Each producer job writes one or
+ * Surface PR-time deploy outcomes (docs preview and examples previews) as a
+ * single managed PR comment. Each producer job writes one or
  * more JSONL records to its own artifact; the dedicated `report-pr-preview`
  * job aggregates every artifact into one bundle and upserts the comment.
  *
  * Records are deduped by `subject.id` downstream, so each producer owns a
- * stable subject (`livestore-npm-snapshot`, `livestore-docs-preview`,
- * `livestore-example-<slug>`) and contributors see the latest URL per surface.
+ * stable subject (`livestore-docs-preview`, `livestore-example-<slug>`) and
+ * contributors see the latest URL per surface.
  */
 const PR_PREVIEW_REPORT_STATE_ID = 'pr-preview'
-
-const SNAPSHOT_REPORT_ARTIFACT_NAME = 'snapshot-publish-workflow-report'
-const SNAPSHOT_REPORT_RECORD_PATH = '${{ runner.temp }}/workflow-reports/snapshot-publish.jsonl'
-const SNAPSHOT_REPORT_DOWNLOAD_DIR = '${{ runner.temp }}/workflow-reports/snapshot-publish-download'
 
 const DOCS_REPORT_ARTIFACT_NAME = 'docs-deploy-workflow-report'
 const DOCS_REPORT_RECORD_PATH = '${{ runner.temp }}/workflow-reports/docs-deploy.jsonl'
@@ -60,69 +55,6 @@ const EXAMPLES_REPORT_DOWNLOAD_DIR = '${{ runner.temp }}/workflow-reports/exampl
 const PR_PREVIEW_REPORT_BUNDLE_PATH = '${{ runner.temp }}/workflow-reports/pr-preview-bundle.json'
 const PR_PREVIEW_REPORT_COMMENT_BODY_PATH = '${{ runner.temp }}/workflow-reports/pr-preview-comment.md'
 const PR_PREVIEW_REPORT_SUMMARY_PATH = '${{ runner.temp }}/workflow-reports/pr-preview-summary.md'
-
-/**
- * Emit the snapshot publish report as a single JSONL line at runtime.
- *
- * `workflowReportProducerStep` from effect-utils validates the record at genie
- * codegen time, which forces every field to a literal value before GitHub
- * Actions has a chance to interpolate. The `createdAtUtc` ISO timestamp is the
- * one piece we genuinely need at runtime, so we build the record inline with
- * `jq` (mirroring the canonical `netlifyDeployStep` pattern in effect-utils).
- *
- * The bash payload writes the JSONL line to the agreed shared output path so
- * the dedicated `report-snapshot-publish` job can collect it from an uploaded
- * artifact and run the collector → comment-body → publisher pipeline.
- */
-const emitSnapshotPublishReportStep = {
-  name: 'Emit snapshot publish workflow report',
-  shell: 'bash' as const,
-  if: "${{ github.event_name == 'pull_request' && steps.publish-snapshot.outcome == 'success' }}",
-  env: {
-    WORKFLOW_REPORT_OUTPUT_PATH: SNAPSHOT_REPORT_RECORD_PATH,
-    SNAPSHOT_VERSION: `0.0.0-snapshot-${PR_HEAD_SHA}`,
-    HEAD_SHA: PR_HEAD_SHA,
-    RUN_ID: GITHUB_RUN_ID,
-    REPOSITORY: '${{ github.repository }}',
-  },
-  run: [
-    'set -euo pipefail',
-    'mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_PATH")"',
-    'created_at_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"',
-    'record_id="snapshot-publish-${HEAD_SHA}"',
-    'npm_url="https://www.npmjs.com/package/@livestore/livestore/v/${SNAPSHOT_VERSION}"',
-    'run_url="https://github.com/${REPOSITORY}/actions/runs/${RUN_ID}"',
-    'install_cmd="pnpm add @livestore/livestore@${SNAPSHOT_VERSION}"',
-    'record_json="$(jq -cn \\',
-    '  --arg id "$record_id" \\',
-    '  --arg version "$SNAPSHOT_VERSION" \\',
-    '  --arg headSha "$HEAD_SHA" \\',
-    '  --arg runId "$RUN_ID" \\',
-    '  --arg createdAtUtc "$created_at_utc" \\',
-    '  --arg npmUrl "$npm_url" \\',
-    '  --arg runUrl "$run_url" \\',
-    '  --arg installCmd "$install_cmd" \\',
-    "  '{",
-    '    _tag: "WorkflowReportRecord",',
-    '    schemaVersion: 1,',
-    '    id: $id,',
-    '    kind: "npm-snapshot-publish",',
-    '    subject: { id: "livestore-npm-snapshot", label: "LiveStore npm snapshot" },',
-    '    status: "success",',
-    '    title: ("Snapshot published as " + $version),',
-    '    summary: ("Install with `" + $installCmd + "`"),',
-    '    createdAtUtc: $createdAtUtc,',
-    '    links: [',
-    '      { label: "@livestore/livestore on npm", url: $npmUrl, primary: true },',
-    '      { label: "Chrome devtools ZIP (workflow run artifacts)", url: $runUrl }',
-    '    ],',
-    '    data: { snapshotVersion: $version, headSha: $headSha, runId: $runId }',
-    '  }\')"',
-    'workflow_report_line="WORKFLOW_REPORT_V1: ${record_json}"',
-    'printf "%s\\n" "$workflow_report_line"',
-    'printf "%s\\n" "$workflow_report_line" > "$WORKFLOW_REPORT_OUTPUT_PATH"',
-  ].join('\n'),
-}
 
 // =============================================================================
 // Job Helpers
@@ -366,78 +298,14 @@ export default githubWorkflow({
     },
 
     /**
-     * Keep only the publish boundary on GitHub-hosted runners. The heavy tests
-     * above may use Namespace/self-hosted runners, but npm trusted publishing
-     * currently requires GitHub-hosted OIDC and does not support self-hosted
-     * runners. Do not add an npm write token here; the npm package settings
-     * should trust this workflow file (`ci.yml`) for snapshot publishes.
-     */
-    'publish-snapshot-version': {
-      if: IS_NOT_FORK,
-      'runs-on': 'ubuntu-24.04',
-      permissions: {
-        contents: 'write',
-        'id-token': 'write',
-      },
-      outputs: {
-        npm_snapshot_published: "${{ steps.publish-snapshot.outcome == 'success' && '1' || '0' }}",
-      },
-      needs: ['test-unit', 'test-integration-sync-provider', 'test-integration-playwright'],
-      env: {
-        GH_TOKEN: '${{ github.token }}',
-      },
-      defaults: bashShellDefaults,
-      steps: withNixDiagnosticsOnFailure([
-        ...livestoreSetupSteps,
-        {
-          id: 'publish-snapshot',
-          name: 'Publish snapshot version',
-          run: runDevenvTasksBefore('release:snapshot:git-sha'),
-          env: { GIT_SHA: PR_HEAD_SHA },
-        },
-        {
-          name: 'Publish DevTools artifact snapshot',
-          run: runDevenvTasksBefore('release:devtools-artifact:publish'),
-          env: {
-            LIVESTORE_DEVTOOLS_OUT_DIR: '${{ runner.temp }}/livestore-devtools-snapshot',
-            LIVESTORE_RELEASE_VERSION: `0.0.0-snapshot-${PR_HEAD_SHA}`,
-          },
-        },
-        {
-          name: 'Upload DevTools Chrome snapshot artifact',
-          uses: 'actions/upload-artifact@v4',
-          with: {
-            name: `livestore-devtools-chrome-0.0.0-snapshot-${PR_HEAD_SHA}`,
-            path: '${{ runner.temp }}/livestore-devtools-snapshot/livestore-devtools-chrome-0.0.0-snapshot-${{ github.event.pull_request.head.sha || github.sha }}.zip',
-            'if-no-files-found': 'error',
-            'retention-days': 14,
-          },
-        },
-        emitSnapshotPublishReportStep,
-        {
-          name: 'Upload snapshot publish workflow report',
-          if: `\${{ github.event_name == 'pull_request' && steps.publish-snapshot.outcome == 'success' }}`,
-          uses: 'actions/upload-artifact@v4',
-          with: {
-            name: SNAPSHOT_REPORT_ARTIFACT_NAME,
-            path: SNAPSHOT_REPORT_RECORD_PATH,
-            'if-no-files-found': 'error',
-            'retention-days': 14,
-          },
-        },
-      ]),
-    },
-
-    /**
      * Aggregate every PR-time deploy/publish workflow report and upsert a
-     * single managed PR comment. Runs after the snapshot/docs/examples jobs so
-     * all producer artifacts are available; individual artifacts are allowed to
-     * be missing (e.g. snapshot is skipped on forks) so the comment still
-     * publishes whatever subset succeeded.
+     * single managed PR comment. Runs after the docs/examples jobs so all
+     * producer artifacts are available; individual artifacts are allowed to be
+     * missing so the comment still publishes whatever subset succeeded.
      */
     'report-pr-preview': {
       if: `\${{ github.event_name == 'pull_request' && !cancelled() }}`,
-      needs: ['publish-snapshot-version', 'build-deploy-docs', 'build-and-deploy-examples-src'],
+      needs: ['build-deploy-docs', 'build-and-deploy-examples-src'],
       ...namespaceRunnerConfig,
       permissions: {
         contents: 'read',
@@ -446,16 +314,6 @@ export default githubWorkflow({
       defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        {
-          name: 'Download snapshot publish workflow report',
-          if: `\${{ needs.publish-snapshot-version.outputs.npm_snapshot_published == '1' }}`,
-          uses: 'actions/download-artifact@v4',
-          'continue-on-error': true,
-          with: {
-            name: SNAPSHOT_REPORT_ARTIFACT_NAME,
-            path: SNAPSHOT_REPORT_DOWNLOAD_DIR,
-          },
-        },
         {
           name: 'Download docs deploy workflow report',
           if: `\${{ needs.build-deploy-docs.result == 'success' }}`,
@@ -479,7 +337,6 @@ export default githubWorkflow({
         workflowReportCollectorStep({
           bundleId: 'pr-preview',
           inputPaths: [
-            `${SNAPSHOT_REPORT_DOWNLOAD_DIR}/snapshot-publish.jsonl`,
             `${DOCS_REPORT_DOWNLOAD_DIR}/docs-deploy.jsonl`,
             `${EXAMPLES_REPORT_DOWNLOAD_DIR}/examples-deploy.jsonl`,
           ],
@@ -491,7 +348,7 @@ export default githubWorkflow({
           commentBodyPath: PR_PREVIEW_REPORT_COMMENT_BODY_PATH,
           summaryPath: PR_PREVIEW_REPORT_SUMMARY_PATH,
           title: 'PR preview',
-          noRecordsMessage: 'No previews or snapshot were published for this commit.',
+          noRecordsMessage: 'No previews were published for this commit.',
           stateId: PR_PREVIEW_REPORT_STATE_ID,
           entryId: PR_HEAD_SHA,
           entryLabel: `PR \${{ github.event.pull_request.number }}`,

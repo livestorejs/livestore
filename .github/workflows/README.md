@@ -11,8 +11,7 @@ workflow-dispatch runs. `main` is the canonical default and release branch.
 
 It runs the normal repository quality gates: linting, Changesets release-intent
 checks, TypeScript builds, unit tests, integration tests, Playwright tests,
-performance tests, docs/examples builds, dev docs/examples deploys, snapshot publishing, DevTools artifact
-snapshot publishing, and create-example smoke tests.
+performance tests, docs/examples builds, and dev docs/examples deploys.
 
 Docs deployment uses `mono docs deploy`. Normal `main` pushes update the dev
 Netlify site, pull requests publish sticky and commit-specific aliases on the
@@ -20,16 +19,6 @@ dev site, and stable release publishing is the only workflow path that updates
 the production docs domain. Use `mono docs deploy --plan` when changing deploy
 routing logic; it prints the resolved site and target without building or
 deploying.
-
-The snapshot and create-example jobs are intentionally part of CI. They verify
-that the exact commit under test can publish snapshot packages and that users
-can create projects from those snapshots. Forked PRs skip jobs that require
-repository secrets or publishing permissions.
-
-Snapshot DevTools Chrome ZIPs are uploaded as short-lived workflow artifacts,
-not GitHub Releases. Public GitHub Releases are reserved for dev/stable release
-versions so the releases page remains a user-facing release history rather than
-a CI snapshot log.
 
 Manual `workflow_dispatch` is used by the release workflow for generated release
 PR branches. GitHub does not recursively trigger PR workflows from branches
@@ -71,18 +60,20 @@ plan is still the intended release; the publisher is idempotent for already
 published packages, but production deploys still reflect the checked-in release
 state.
 
-Snapshot package publishing uses npm trusted publishing from `ci.yml`. Only the
-final publish job runs on a GitHub-hosted runner because npm trusted publishing
-currently requires GitHub-hosted OIDC; the heavier validation jobs may continue
-to run on Namespace/self-hosted runners. Do not configure an npm write token for
-the snapshot publish job. Each published `@livestore/*` package must trust
-`livestorejs/livestore` with workflow filename `ci.yml` in npm package settings.
+Manual dispatch with `mode=publish-snapshot`, or a successful `ci.yml` run for a
+push to `main`, publishes the matching npm snapshot and DevTools artifact
+snapshot. npm package publishing is centralized in `release.yml` because npm
+allows one trusted publisher workflow per package. Publish jobs run on
+GitHub-hosted runners with `id-token: write`; Namespace/self-hosted runners
+remain available for the heavier validation jobs. Do not configure npm write
+tokens for package publish jobs. Each published `@livestore/*` package must
+trust `livestorejs/livestore` with workflow filename `release.yml` in npm
+package settings.
 
-Stable release publishing still uses the repository `NPM_TOKEN` secret from
-`release.yml`. npm currently allows only one trusted publisher workflow per
-package, so moving stable releases to trusted publishing requires a deliberate
-workflow consolidation that preserves the ability to cut LiveStore releases
-without touching the overeng repository.
+Snapshot DevTools Chrome ZIPs are uploaded as short-lived workflow artifacts,
+not GitHub Releases. Public GitHub Releases are reserved for dev/stable release
+versions so the releases page remains a user-facing release history rather than
+a CI snapshot log.
 
 ## `devtools-artifact.yml`
 
