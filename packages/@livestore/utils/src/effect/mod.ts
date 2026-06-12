@@ -18,7 +18,6 @@ export {
 export { Sse } from '@effect/experimental'
 export * as Otlp from 'effect/unstable/observability/Otlp'
 export * as PlatformError from 'effect/PlatformError'
-export { FileSystem, Terminal } from 'effect'
 export { Msgpack } from 'effect/unstable/encoding'
 export {
   FetchHttpClient,
@@ -75,6 +74,8 @@ export {
   Exit,
   FastCheck,
   Fiber,
+  FileSystem,
+  Terminal,
   FiberHandle,
   FiberId,
   FiberMap,
