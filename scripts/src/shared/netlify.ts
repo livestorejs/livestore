@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { isNotUndefined } from '@livestore/utils'
 import { CurrentWorkingDirectory, LivestoreWorkspace, cmdText } from '@livestore/utils-dev/node'
 import {
-  Command,
+  ChildProcess,
   Duration,
   Effect,
   Fiber,
@@ -160,11 +160,11 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
     const { stdout: rawOutput, stderr: rawStderr } = yield* Effect.scoped(
       Effect.gen(function* () {
         const proc = yield* Effect.acquireRelease(
-          Command.make(deployCmd, ...deployRest).pipe(
-            Command.stdout('pipe'),
-            Command.stderr('pipe'),
-            Command.workingDirectory(gitRoot),
-            Command.env({
+          ChildProcess.make(deployCmd, ...deployRest).pipe(
+            ChildProcess.stdout('pipe'),
+            ChildProcess.stderr('pipe'),
+            ChildProcess.workingDirectory(gitRoot),
+            ChildProcess.env({
               CI: '1',
               // The astro adapter only engages with NODE_ENV=production, and the
               // agent-policy wrapper blocks pnpm/astro inside Netlify's spawned
@@ -175,7 +175,7 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
               // The `[build] command`'s astro build reads this to include typedoc.
               STARLIGHT_INCLUDE_API_DOCS: apiDocs === true ? '1' : undefined,
             }),
-            Command.start,
+            ChildProcess.start,
           ),
           (p) =>
             p.isRunning.pipe(

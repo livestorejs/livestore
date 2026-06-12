@@ -36,7 +36,7 @@ export {
 } from 'effect/unstable/http'
 export { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup } from 'effect/unstable/httpapi'
 export { KeyValueStore } from 'effect/unstable/persistence'
-export { ChildProcess as Command, ChildProcessSpawner as CommandExecutor } from 'effect/unstable/process'
+export { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
 export { Socket } from 'effect/unstable/socket'
 export { Transferable, Worker, WorkerError, WorkerRunner } from 'effect/unstable/workers'
 export {
