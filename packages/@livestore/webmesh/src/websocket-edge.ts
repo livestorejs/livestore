@@ -5,7 +5,7 @@ import {
   Result,
   Exit,
   Layer,
-  MsgPack,
+  Msgpack,
   Queue,
   Schedule,
   Schema,
@@ -29,7 +29,7 @@ export class WSEdgePayload extends Schema.TaggedStruct('WSEdgePayload', {
 
 export class WSEdgeMessage extends Schema.Union(WSEdgeInit, WSEdgePayload) {}
 
-export const MessageMsgPack = MsgPack.schema(WSEdgeMessage)
+export const MessageMsgpack = Msgpack.schema(WSEdgeMessage)
 
 export type SocketType =
   | {
@@ -126,7 +126,7 @@ export const makeWebSocketEdge = ({
         Stream.retry(retryOpenTimeoutSchedule),
         Stream.tap(
           Effect.fn(function* (bytes) {
-            const msg = yield* Schema.decodeEffect(MessageMsgPack)(new Uint8Array(bytes))
+            const msg = yield* Schema.decodeEffect(MessageMsgpack)(new Uint8Array(bytes))
             if (msg._tag === 'WSEdgeInit') {
               yield* Deferred.succeed(fromDeferred, msg.from)
             } else {
@@ -149,7 +149,7 @@ export const makeWebSocketEdge = ({
       )
 
       const initHandshake = (from: string) =>
-        sendToSocket(Schema.encodeEffectSync(MessageMsgPack)({ _tag: 'WSEdgeInit', from }))
+        sendToSocket(Schema.encodeEffectSync(MessageMsgpack)({ _tag: 'WSEdgeInit', from }))
 
       if (socketType._tag === 'leaf') {
         yield* initHandshake(socketType.from)
@@ -166,7 +166,7 @@ export const makeWebSocketEdge = ({
         Effect.gen(function* () {
           yield* isConnectedLatch.await
           const payload = yield* Schema.encodeEffect(schema.send)(message)
-          yield* sendToSocket(yield* Schema.encodeEffect(MessageMsgPack)({ _tag: 'WSEdgePayload', payload, from }))
+          yield* sendToSocket(yield* Schema.encodeEffect(MessageMsgpack)({ _tag: 'WSEdgePayload', payload, from }))
         }).pipe(Effect.orDie)
 
       const listen = Stream.fromQueue(listenQueue).pipe(
