@@ -127,7 +127,7 @@ export type TableOptions = {
  *   title: Schema.String,
  *   authorId: Schema.String,
  *   createdAt: Schema.Date,
- * }).annotations({ identifier: 'posts' })
+ * }).annotate({ identifier: 'posts' })
  *
  * const postsTable = State.SQLite.table({
  *   schema: PostSchema,

@@ -105,7 +105,7 @@ export const NetworkStatus = Schema.Struct({
     /** Indicates whether the devtools latch forced the client into an offline state. */
     latchClosed: Schema.Boolean,
   }),
-}).annotations({ title: 'NetworkStatus' })
+}).annotate({ title: 'NetworkStatus' })
 
 export type NetworkStatus = typeof NetworkStatus.Type
 

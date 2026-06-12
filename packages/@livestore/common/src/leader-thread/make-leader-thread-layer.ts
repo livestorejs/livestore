@@ -88,7 +88,9 @@ export const makeLeaderThreadLayer = ({
 }: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnknownError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const syncPayloadDecoded =
-      syncPayloadEncoded === undefined ? undefined : yield* Schema.decodeUnknownEffect(syncPayloadSchema)(syncPayloadEncoded)
+      syncPayloadEncoded === undefined
+        ? undefined
+        : yield* Schema.decodeUnknownEffect(syncPayloadSchema)(syncPayloadEncoded)
 
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
 

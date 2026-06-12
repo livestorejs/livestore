@@ -375,9 +375,7 @@ const restoreGeneratedReleaseFiles = (cwd: string) =>
       Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
   }).pipe(
-    Effect.catch((error) =>
-      Effect.logWarning(`Failed to restore generated release files: ${toErrorMessage(error)}`),
-    ),
+    Effect.catch((error) => Effect.logWarning(`Failed to restore generated release files: ${toErrorMessage(error)}`)),
   )
 
 const packPackageForPublish = ({ cwd, pkg, version }: { cwd: string; pkg: string; version: string }) =>

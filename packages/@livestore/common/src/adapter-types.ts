@@ -85,7 +85,7 @@ export const BootStatus = Schema.Union(
     reason: BootWarningReason,
     message: Schema.String,
   }),
-).annotations({ title: 'BootStatus' })
+).annotate({ title: 'BootStatus' })
 
 export type BootStatus = typeof BootStatus.Type
 

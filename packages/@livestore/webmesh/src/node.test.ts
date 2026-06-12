@@ -402,7 +402,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         // TODO we need to improve latency when sending messages concurrently
         Vitest.scopedLive.prop(
           'concurrent messages',
-          [ChannelType, Schema.Int.pipe(Schema.between(1, 50))],
+          [ChannelType, Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 }))],
           ([channelType, count], test) =>
             Effect.gen(function* () {
               const nodeA = yield* makeMeshNode('A')

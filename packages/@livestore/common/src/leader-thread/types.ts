@@ -143,7 +143,7 @@ export const StreamEventsOptionsFields = {
   filter: Schema.optional(Schema.Array(Schema.String)),
   clientIds: Schema.optional(Schema.Array(Schema.String)),
   sessionIds: Schema.optional(Schema.Array(Schema.String)),
-  batchSize: Schema.optional(Schema.Int.pipe(Schema.between(1, STREAM_EVENTS_BATCH_SIZE_MAX))),
+  batchSize: Schema.optional(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: STREAM_EVENTS_BATCH_SIZE_MAX }))),
   includeClientOnly: Schema.optional(Schema.Boolean),
 } as const
 

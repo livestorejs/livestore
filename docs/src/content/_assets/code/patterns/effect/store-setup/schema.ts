@@ -59,7 +59,7 @@ export const events = {
     schema: Schema.Struct({
       id: Schema.String,
       name: Schema.String,
-      metadata: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+      metadata: Schema.Record(Schema.String, Schema.Unknown),
     }),
   }),
   itemUpdated: Events.clientOnly({
