@@ -476,10 +476,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
     Cli.Command.make(
       'preview',
       {
-        port: Cli.Flag.text('port').pipe(
-          Cli.Flag.optional,
-          Cli.Flag.withDescription('Port for the preview server'),
-        ),
+        port: Cli.Flag.text('port').pipe(Cli.Flag.optional, Cli.Flag.withDescription('Port for the preview server')),
         build: Cli.Flag.boolean('build').pipe(
           Cli.Flag.withDefault(false),
           Cli.Flag.withDescription('Build the docs before starting the preview server'),

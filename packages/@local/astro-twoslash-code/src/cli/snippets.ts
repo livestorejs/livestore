@@ -114,7 +114,7 @@ import type { SnippetBundle } from '../vite/snippet-graph.ts'
 import { buildSnippetBundle, __internal as snippetGraphInternal } from '../vite/snippet-graph.ts'
 
 const jsonStringify = Schema.encodeEffectSync(Schema.UnknownFromJsonString)
-const jsonStringifyPretty = Schema.encodeEffectSync(Schema.parseJson({ space: 2 }))
+const jsonStringifyPretty = (value: unknown): string => JSON.stringify(value, null, 2)
 
 type THastRendererResult = {
   renderedGroupAst: THastElement
@@ -1644,9 +1644,7 @@ const watchSnippetsInternal = (
     const fs = yield* FileSystem.FileSystem
     const { paths } = resolved
 
-    const snippetRootExists = yield* fs
-      .exists(paths.snippetAssetsRoot)
-      .pipe(Effect.catch(() => Effect.succeed(false)))
+    const snippetRootExists = yield* fs.exists(paths.snippetAssetsRoot).pipe(Effect.catch(() => Effect.succeed(false)))
     const sourceRootExists = yield* fs.exists(paths.srcRoot).pipe(Effect.catch(() => Effect.succeed(false)))
 
     const watchStreams: Array<Stream.Stream<WatchEventSummary, PlatformError.PlatformError>> = []

@@ -1,8 +1,8 @@
 import * as ChildProcess from 'node:child_process'
 
-import * as EffectWorker from 'effect/unstable/workers/Worker'
 import { assert, describe, it } from '@effect/vitest'
 import { Chunk, Deferred, Effect, Exit, Fiber, Schema, Scope, Stream } from 'effect'
+import * as EffectWorker from 'effect/unstable/workers/Worker'
 
 export class TestError extends Schema.TaggedErrorClass<TestError>()('TestError', {
   message: Schema.String,

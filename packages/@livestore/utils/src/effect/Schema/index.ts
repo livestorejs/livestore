@@ -1,8 +1,8 @@
-import { Transferable } from 'effect/unstable/workers'
 import { Effect, Hash, ParseResult, Schema } from 'effect'
 import type { ParseError } from 'effect/ParseResult'
 import type { ParseOptions } from 'effect/SchemaAST'
 import * as SchemaAST from 'effect/SchemaAST'
+import { Transferable } from 'effect/unstable/workers'
 
 import { shouldNeverHappen } from '../../mod.ts'
 
@@ -98,5 +98,8 @@ export const JsonValue: Schema.Schema<JsonValue> = Schema.Union(
   Schema.Boolean,
   Schema.Null,
   Schema.Array(Schema.suspend(() => JsonValue)),
-  Schema.Record({ key: Schema.String, value: Schema.suspend(() => JsonValue) }),
-).annotations({ identifier: 'JsonValue' })
+  Schema.Record(
+    Schema.String,
+    Schema.suspend(() => JsonValue),
+  ),
+).annotate({ identifier: 'JsonValue' })

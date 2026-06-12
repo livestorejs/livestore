@@ -99,7 +99,7 @@ const Cpus = Schema.NonEmptyArray(
     Schema.Struct({
       model: Schema.String,
       count: Schema.Number,
-      speed: Schema.Number.annotations({
+      speed: Schema.Number.annotate({
         pretty: () => (value) => `${(value / 1000).toFixed(2)} GHz`,
       }),
     }),
@@ -124,14 +124,14 @@ const SystemInfo = Schema.Struct({
   }),
   cpus: Cpus,
   memory: Schema.Struct({
-    total: Schema.Number.annotations({
+    total: Schema.Number.annotate({
       pretty: () => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`,
     }),
-    free: Schema.Number.annotations({
+    free: Schema.Number.annotate({
       pretty: () => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`,
     }),
   }),
-}).annotations({
+}).annotate({
   pretty: () => (value) => {
     return `
 🖥️  System Information:

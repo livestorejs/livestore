@@ -19,7 +19,7 @@ export const debugDiff =
   }
 
 const debugDiffImpl = (ast: SchemaAST.AST, a: any, b: any, path: string, bag: DiffItem[]) => {
-  const eq = Schema.equivalence({ ast } as any)
+  const eq = Schema.toEquivalence({ ast } as any)
   if (eq(a, b) === false) {
     // bag.push({ path, a, b, ast })
 

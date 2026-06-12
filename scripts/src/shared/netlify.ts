@@ -43,7 +43,7 @@ const NetlifyCliUserSchema = Schema.Struct({
 })
 
 const NetlifyCliConfigSchema = Schema.Struct({
-  users: Schema.optional(Schema.Record({ key: Schema.String, value: NetlifyCliUserSchema })),
+  users: Schema.optional(Schema.Record(Schema.String, NetlifyCliUserSchema)),
 })
 
 const NetlifyPurgeRequestSchema = Schema.Struct({

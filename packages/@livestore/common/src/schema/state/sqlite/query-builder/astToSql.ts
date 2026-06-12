@@ -1,5 +1,5 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema, SchemaAST } from '@livestore/utils/effect'
+import { Schema, SchemaAST, Struct } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../../session-id-symbol.ts'
 import type { SqlValue } from '../../../../util.ts'
@@ -237,7 +237,9 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
       // return shouldNeverHappen('UPDATE query requires at least one column to set.')
     }
 
-    const encodedValues = Schema.encodeEffectSync(Schema.partial(ast.tableDef.rowSchema))(ast.values)
+    const encodedValues = Schema.encodeEffectSync(ast.tableDef.rowSchema.mapFields(Struct.map(Schema.optional)))(
+      ast.values,
+    )
 
     // Ensure bind values are added in the same order as columns
     setColumns.forEach((col) => {

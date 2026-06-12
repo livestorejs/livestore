@@ -139,11 +139,11 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
       const ChannelRequest = Schema.TaggedStruct('ChannelRequest', {
         id: Schema.String,
         payload: Schema.Union(schema.listen, schema.send),
-      }).annotations({ title: 'webmesh.ChannelRequest' })
+      }).annotate({ title: 'webmesh.ChannelRequest' })
       const ChannelRequestAck = Schema.TaggedStruct('ChannelRequestAck', {
         reqId: Schema.String,
-      }).annotations({ title: 'webmesh.ChannelRequestAck' })
-      const ChannelMessage = Schema.Union(ChannelRequest, ChannelRequestAck).annotations({
+      }).annotate({ title: 'webmesh.ChannelRequestAck' })
+      const ChannelMessage = Schema.Union(ChannelRequest, ChannelRequestAck).annotate({
         title: 'webmesh.ChannelMessage',
       })
 
