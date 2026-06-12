@@ -122,6 +122,7 @@ export {
   Record as ReadonlyRecord,
   Redacted,
   Ref,
+  TPriorityQueue,
   Request,
   Runtime,
   RuntimeFlags,
