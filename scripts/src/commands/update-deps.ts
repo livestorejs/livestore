@@ -48,18 +48,18 @@ const PackageUpdate = Schema.Struct({
   targetVersion: Schema.String,
 })
 
-const PackageFileUpdates = Schema.Record({ key: Schema.String, value: Schema.String })
-const NCUOutput = Schema.Record({ key: Schema.String, value: PackageFileUpdates })
+const PackageFileUpdates = Schema.Record(Schema.String, Schema.String)
+const NCUOutput = Schema.Record(Schema.String, PackageFileUpdates)
 
-const ExpoConstraints = Schema.Record({ key: Schema.String, value: Schema.String })
+const ExpoConstraints = Schema.Record(Schema.String, Schema.String)
 
-const PatchedDependencies = Schema.Record({ key: Schema.String, value: Schema.String })
+const PatchedDependencies = Schema.Record(Schema.String, Schema.String)
 
-const DepsRecord = Schema.optional(Schema.mutable(Schema.Record({ key: Schema.String, value: Schema.String })))
+const DepsRecord = Schema.optional(Schema.mutable(Schema.Record(Schema.String, Schema.String)))
 
 const WorkspacePackageJson = Schema.Struct(
   { dependencies: DepsRecord, devDependencies: DepsRecord, peerDependencies: DepsRecord },
-  Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+  Schema.Record(Schema.String, Schema.Unknown),
 )
 
 const RootPackageJson = Schema.Struct({
@@ -98,9 +98,9 @@ const readPatchedDependencies = () =>
         catch: () => new UpdateDepsError({ message: 'Failed to read root package.json' }),
       })
 
-      const packageJson = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(RootPackageJson))(packageJsonContent).pipe(
-        Effect.mapError(() => new UpdateDepsError({ message: 'Failed to parse root package.json' })),
-      )
+      const packageJson = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(RootPackageJson))(
+        packageJsonContent,
+      ).pipe(Effect.mapError(() => new UpdateDepsError({ message: 'Failed to parse root package.json' })))
 
       const validated = packageJson.pnpm?.patchedDependencies ?? {}
 
@@ -259,9 +259,9 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
               catch: () => new UpdateDepsError({ message: `Failed to read ${packageJsonPath}` }),
             })
 
-            const packageJson = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(WorkspacePackageJson))(content).pipe(
-              Effect.mapError(() => new UpdateDepsError({ message: `Failed to parse ${packageJsonPath}` })),
-            )
+            const packageJson = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(WorkspacePackageJson))(
+              content,
+            ).pipe(Effect.mapError(() => new UpdateDepsError({ message: `Failed to parse ${packageJsonPath}` })))
 
             // Update dependencies in all sections
             for (const [pkg, version] of Object.entries(updates)) {

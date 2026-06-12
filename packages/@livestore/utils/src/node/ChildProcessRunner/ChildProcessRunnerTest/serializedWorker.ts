@@ -1,5 +1,5 @@
-import * as Runner from 'effect/unstable/workers/WorkerRunner'
 import { Context, Effect, Layer, Option, Stream } from 'effect'
+import * as Runner from 'effect/unstable/workers/WorkerRunner'
 
 // import { NodeRuntime, NodeWorkerRunner } from '@effect/platform-node'
 import { PlatformNode } from '../../mod.ts'

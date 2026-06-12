@@ -297,9 +297,7 @@ export const syncProviderTest = Cli.Command.make(
 const testIntegrationAllCommand = Cli.Command.make(
   'all',
   {
-    concurrency: Cli.Flag.choice('concurrency', ['sequential', 'parallel']).pipe(
-      Cli.Flag.withDefault('parallel'),
-    ),
+    concurrency: Cli.Flag.choice('concurrency', ['sequential', 'parallel']).pipe(Cli.Flag.withDefault('parallel')),
     localDevtoolsPreview: integrationTests.localDevtoolsPreviewOption,
   },
   Effect.fn(function* ({ concurrency, localDevtoolsPreview }) {

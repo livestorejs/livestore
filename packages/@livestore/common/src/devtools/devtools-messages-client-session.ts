@@ -140,7 +140,7 @@ export const MessageToApp = Schema.Union(
   Ping,
   SyncHeadSubscribe,
   SyncHeadUnsubscribe,
-).annotations({ identifier: 'LSD.ClientSession.MessageToApp' })
+).annotate({ identifier: 'LSD.ClientSession.MessageToApp' })
 
 export type MessageToApp = typeof MessageToApp.Type
 
@@ -155,6 +155,6 @@ export const MessageFromApp = Schema.Union(
   Pong,
   VersionMismatch,
   SyncHeadRes,
-).annotations({ identifier: 'LSD.ClientSession.MessageFromApp' })
+).annotate({ identifier: 'LSD.ClientSession.MessageFromApp' })
 
 export type MessageFromApp = typeof MessageFromApp.Type

@@ -1,12 +1,12 @@
 import type * as ChildProcess from 'node:child_process'
 
-import * as Worker from 'effect/unstable/workers/Worker'
-import { WorkerError } from 'effect/unstable/workers/WorkerError'
 import * as Deferred from 'effect/Deferred'
 import * as Effect from 'effect/Effect'
 import * as Exit from 'effect/Exit'
 import * as Layer from 'effect/Layer'
 import * as Scope from 'effect/Scope'
+import * as Worker from 'effect/unstable/workers/Worker'
+import { WorkerError } from 'effect/unstable/workers/WorkerError'
 
 // Track child processes for cleanup on process signals
 const childProcesses = new Set<ChildProcess.ChildProcess>()

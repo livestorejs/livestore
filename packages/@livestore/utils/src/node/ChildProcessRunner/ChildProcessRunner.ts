@@ -1,8 +1,5 @@
 import process from 'node:process'
 
-import { WorkerError } from 'effect/unstable/workers/WorkerError'
-import type { CloseLatch } from 'effect/unstable/workers/WorkerRunner'
-import * as Runner from 'effect/unstable/workers/WorkerRunner'
 import * as Cause from 'effect/Cause'
 import * as Context from 'effect/Context'
 import * as Deferred from 'effect/Deferred'
@@ -12,6 +9,9 @@ import * as FiberSet from 'effect/FiberSet'
 import * as Layer from 'effect/Layer'
 import * as Runtime from 'effect/Runtime'
 import * as Scope from 'effect/Scope'
+import { WorkerError } from 'effect/unstable/workers/WorkerError'
+import type { CloseLatch } from 'effect/unstable/workers/WorkerRunner'
+import * as Runner from 'effect/unstable/workers/WorkerRunner'
 
 // Parent death monitoring setup
 let parentDeathDetectionEnabled = false

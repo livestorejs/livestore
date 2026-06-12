@@ -16,12 +16,15 @@ export const hasParentGitRepo = Effect.gen(function* () {
   }).pipe(Effect.provide(LivestoreWorkspace.toCwd('..')), Effect.isSuccess)
 })
 
-export class GithubSummaryWriteError extends Schema.TaggedErrorClass<GithubSummaryWriteError>()('GithubSummaryWriteError', {
-  context: Schema.String,
-  message: Schema.String,
-  path: Schema.String,
-  cause: Schema.optional(Schema.Unknown),
-}) {}
+export class GithubSummaryWriteError extends Schema.TaggedErrorClass<GithubSummaryWriteError>()(
+  'GithubSummaryWriteError',
+  {
+    context: Schema.String,
+    message: Schema.String,
+    path: Schema.String,
+    cause: Schema.optional(Schema.Unknown),
+  },
+) {}
 
 const sanitizeMarkdownCell = (value: string) => value.replaceAll('|', '\\|').replaceAll('\n', ' ')
 

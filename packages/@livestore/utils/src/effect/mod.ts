@@ -122,6 +122,7 @@ export {
   Sink,
   SortedMap,
   STM,
+  Struct,
   SynchronizedRef,
   TestClock,
   TestServices,

@@ -1,6 +1,6 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import type { Option, Types } from '@livestore/utils/effect'
-import { Schema } from '@livestore/utils/effect'
+import { Schema, Struct } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../session-id-symbol.ts'
 import { sql } from '../../../util.ts'
@@ -95,8 +95,8 @@ export const clientDocument = <
   Object.defineProperty(setEventDef, 'schema', {
     value: Schema.Struct({
       id: Schema.String,
-      value: options.partialSet === true ? Schema.partial(valueSchema) : valueSchema,
-    }).annotations({ title: `${name}Set:Args` }),
+      value: options.partialSet === true ? valueSchema.mapFields(Struct.map(Schema.optional)) : valueSchema,
+    }).annotate({ title: `${name}Set:Args` }),
   })
   Object.defineProperty(setEventDef, 'options', {
     value: { derived: true, clientOnly: true, facts: undefined, deprecated: undefined },
@@ -186,7 +186,7 @@ export const createOptimisticEventSchema = ({
   defaultValue: any
   partialSet: boolean
 }) => {
-  const targetSchema = partialSet === true ? Schema.partial(valueSchema) : valueSchema
+  const targetSchema = partialSet === true ? valueSchema.mapFields(Struct.map(Schema.optional)) : valueSchema
   // The transform decode must yield values in the target schema's ENCODED shape.
   // This keeps JSON columns consistent when Encoded != Type (e.g. Option).
   const encodeTarget = Schema.encodeEffectSync(targetSchema)
@@ -282,7 +282,7 @@ export const deriveEventAndMaterializer = ({
     schema: Schema.Struct({
       id: Schema.Union(Schema.String, Schema.UniqueSymbolFromSelf(SessionIdSymbol)),
       value: createOptimisticEventSchema({ valueSchema, defaultValue, partialSet }),
-    }).annotations({ title: `${name}Set:Args` }),
+    }).annotate({ title: `${name}Set:Args` }),
     clientOnly: true,
     derived: true,
   })
@@ -305,15 +305,17 @@ export const deriveEventAndMaterializer = ({
         writeTables: new Set([name]),
       }
     } else {
-      const valueColJsonSchema = Schema.fromJsonString(Schema.partial(valueSchema))
+      const valueColJsonSchema = Schema.fromJsonString(valueSchema.mapFields(Struct.map(Schema.optional)))
 
-      const encodedInsertValue = Schema.encodeEffectSyncDebug(valueColJsonSchema)(mergeDefaultValues(defaultValue, value))
+      const encodedInsertValue = Schema.encodeEffectSyncDebug(valueColJsonSchema)(
+        mergeDefaultValues(defaultValue, value),
+      )
 
       let jsonSetSql = 'value'
       const setBindValues: unknown[] = []
 
       const keys = Object.keys(value)
-      const partialUpdateSchema = valueSchema.pipe(Schema.pick(...keys))
+      const partialUpdateSchema = valueSchema.mapFields(Struct.pick(keys))
       const encodedPartialUpdate = Schema.encodeEffectSyncDebug(partialUpdateSchema)(value)
 
       for (const key in encodedPartialUpdate) {

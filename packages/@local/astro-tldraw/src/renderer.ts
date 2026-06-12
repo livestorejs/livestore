@@ -20,12 +20,15 @@ export class RenderTimeoutError extends Schema.TaggedErrorClass<RenderTimeoutErr
   theme: Schema.String,
 }) {}
 
-export class RenderInvocationError extends Schema.TaggedErrorClass<RenderInvocationError>()('Tldraw.RenderInvocationError', {
-  message: Schema.String,
-  diagram: Schema.String,
-  theme: Schema.String,
-  cause: Schema.Any,
-}) {}
+export class RenderInvocationError extends Schema.TaggedErrorClass<RenderInvocationError>()(
+  'Tldraw.RenderInvocationError',
+  {
+    message: Schema.String,
+    diagram: Schema.String,
+    theme: Schema.String,
+    cause: Schema.Any,
+  },
+) {}
 
 export type TldrawTheme = 'light' | 'dark'
 

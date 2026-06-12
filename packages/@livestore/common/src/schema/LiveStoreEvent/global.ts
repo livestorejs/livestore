@@ -23,7 +23,7 @@ export const Encoded = Schema.Struct({
   parentSeqNum: EventSequenceNumber.Global.Schema,
   clientId: Schema.String,
   sessionId: Schema.String,
-}).annotations({ title: 'LiveStoreEvent.Global.Encoded' })
+}).annotate({ title: 'LiveStoreEvent.Global.Encoded' })
 
 /** Event with integer sequence numbers for sync backend wire format. */
 export type Encoded = typeof Encoded.Type
