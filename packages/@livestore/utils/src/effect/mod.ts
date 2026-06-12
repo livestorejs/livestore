@@ -22,7 +22,7 @@ export { Msgpack } from 'effect/unstable/encoding'
 export {
   FetchHttpClient,
   Headers,
-  HttpApp,
+  HttpEffect,
   HttpClient,
   HttpClientError,
   HttpClientRequest,
