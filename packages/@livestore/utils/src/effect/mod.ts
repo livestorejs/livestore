@@ -19,7 +19,7 @@ export { Sse } from '@effect/experimental'
 export * as Otlp from 'effect/unstable/observability/Otlp'
 export * as PlatformError from 'effect/PlatformError'
 export { FileSystem, Terminal } from 'effect'
-export { MsgPack } from 'effect/unstable/encoding'
+export { Msgpack } from 'effect/unstable/encoding'
 export {
   FetchHttpClient,
   Headers,
