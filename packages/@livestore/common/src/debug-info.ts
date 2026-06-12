@@ -58,7 +58,7 @@ const BoundArraySchemaFromSelf = <A, I, R>(
       pretty: () => (_) => `BoundArray(${_.length})`,
       arbitrary: () => (fc) => fc.anything() as any,
       equivalence: () => {
-        const elementEquivalence = Schema.equivalence(item)
+        const elementEquivalence = Schema.toEquivalence(item)
         return (a: unknown, b: unknown) => {
           if (a === b) {
             return true

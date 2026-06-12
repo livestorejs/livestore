@@ -142,7 +142,7 @@ const makeWorkerRunner = Effect.gen(function* () {
   })
   type Invariants = typeof InvariantsSchema.Type
   const invariantsRef = yield* Ref.make<Invariants | undefined>(undefined)
-  const sameInvariants = Schema.equivalence(InvariantsSchema)
+  const sameInvariants = Schema.toEquivalence(InvariantsSchema)
 
   // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `SerializedRunner.Handlers` uses `any` in the R channel
   return WorkerRunner.layerSerialized(WorkerSchema.SharedWorkerRequest, {

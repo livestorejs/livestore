@@ -1,6 +1,20 @@
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import type { PubSub } from '@livestore/utils/effect'
-import { Deferred, Effect, Result, Exit, Fiber, FiberHandle, Queue, Schedule, Schema, Scope, Stream, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
+import {
+  Deferred,
+  Effect,
+  Result,
+  Exit,
+  Fiber,
+  FiberHandle,
+  Queue,
+  Schedule,
+  Schema,
+  Scope,
+  Stream,
+  SubscriptionRef,
+  WebChannel,
+} from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
 import {
@@ -25,11 +39,11 @@ export const ProxyChannelSimulationParams = Schema.Struct({
    */
   onPayload: Schema.Struct({
     /** Delay before sending the ACK response (simulates slow ACK send) */
-    beforeAckSend: Schema.Int.pipe(Schema.between(0, 500)),
+    beforeAckSend: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 500 })),
     /** Delay after forking the ACK send, before adding message to listen queue */
-    afterAckFork: Schema.Int.pipe(Schema.between(0, 500)),
+    afterAckFork: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 500 })),
     /** Delay after adding message to listen queue */
-    afterListenQueueOffer: Schema.Int.pipe(Schema.between(0, 500)),
+    afterListenQueueOffer: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 500 })),
   }),
 })
 

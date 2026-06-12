@@ -231,7 +231,7 @@ export const datetime: SpecializedColDefFn<'text', false, Date> = makeSpecialize
 
 export const datetimeInteger: SpecializedColDefFn<'integer', false, Date> = makeSpecializedColDef('integer', {
   _tag: 'baseSchema',
-  baseSchema: Schema.transform(Schema.Number, Schema.DateFromSelf, {
+  baseSchema: Schema.transform(Schema.Number, Schema.Date, {
     decode: (ms) => new Date(ms),
     encode: (date) => date.getTime(),
   }),

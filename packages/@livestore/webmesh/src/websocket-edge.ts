@@ -1,5 +1,19 @@
 import type { HttpClient } from '@livestore/utils/effect'
-import { Deferred, Effect, Result, Exit, Layer, MsgPack, Queue, Schedule, Schema, Scope, Socket, Stream, WebChannel } from '@livestore/utils/effect'
+import {
+  Deferred,
+  Effect,
+  Result,
+  Exit,
+  Layer,
+  MsgPack,
+  Queue,
+  Schedule,
+  Schema,
+  Scope,
+  Socket,
+  Stream,
+  WebChannel,
+} from '@livestore/utils/effect'
 
 import * as WebmeshSchema from './mesh-schema.ts'
 import type { MeshNode } from './node.ts'

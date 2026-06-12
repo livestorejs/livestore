@@ -1,11 +1,11 @@
 export * from 'effect/unstable/rpc/RpcClient'
 
-import { Socket } from 'effect/unstable/socket'
+import { Cause, Deferred, Effect, Layer, Option, Schedule, type Scope } from 'effect'
+import { constVoid, identity } from 'effect/Function'
 import { RpcClient, RpcClientError, RpcSerialization } from 'effect/unstable/rpc'
 import { Protocol } from 'effect/unstable/rpc/RpcClient'
 import { constPing, type FromServerEncoded } from 'effect/unstable/rpc/RpcMessage'
-import { Cause, Deferred, Effect, Layer, Option, Schedule, type Scope } from 'effect'
-import { constVoid, identity } from 'effect/Function'
+import { Socket } from 'effect/unstable/socket'
 
 import * as SubscriptionRef from './SubscriptionRef.ts'
 

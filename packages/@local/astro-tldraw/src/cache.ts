@@ -5,7 +5,7 @@ import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 
 import type { RenderResult } from './renderer.ts'
 
-const jsonStringifyPretty = Schema.encodeEffectSync(Schema.parseJson({ space: 2 }))
+const jsonStringifyPretty = (value: unknown): string => JSON.stringify(value, null, 2)
 const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
 
 const hashString = (value: string): string => crypto.createHash('sha256').update(value).digest('hex')

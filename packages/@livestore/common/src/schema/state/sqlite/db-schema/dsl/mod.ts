@@ -65,7 +65,7 @@ export type InsertStructSchemaForColumns<TCols extends ConstraintColumns> = Sche
 export const structSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(
   tableDef: TTableDefinition,
 ): StructSchemaForColumns<TTableDefinition['columns']> =>
-  Schema.Struct(Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.schema]))).annotations({
+  Schema.Struct(Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.schema]))).annotate({
     title: tableDef.name,
   }) as any
 
@@ -80,7 +80,7 @@ export const insertStructSchemaForTable = <TTableDefinition extends TableDefinit
         column.nullable === true || column.default._tag === 'Some' ? Schema.optional(column.schema) : column.schema,
       ]),
     ),
-  ).annotations({
+  ).annotate({
     title: tableDef.name,
   }) as any
 

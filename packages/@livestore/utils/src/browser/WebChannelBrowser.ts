@@ -85,13 +85,13 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
         message: schema.listen,
         from: Schema.Literal(ids.other),
         to: Schema.Literal(ids.own),
-      }).annotations({ title: 'webmesh.WindowMessageListen' })
+      }).annotate({ title: 'webmesh.WindowMessageListen' })
 
       const WindowMessageSend = Schema.Struct({
         message: schema.send,
         from: Schema.Literal(ids.own),
         to: Schema.Literal(ids.other),
-      }).annotations({ title: 'webmesh.WindowMessageSend' })
+      }).annotate({ title: 'webmesh.WindowMessageSend' })
 
       const send = (message: MsgSend) =>
         Effect.gen(function* () {

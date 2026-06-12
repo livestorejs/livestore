@@ -37,7 +37,7 @@ export class SyncingInfoReq extends LSDReqResMessage('LSD.Leader.SyncingInfoReq'
 
 export class SyncingInfo extends Schema.Struct({
   enabled: Schema.Boolean,
-  metadata: Schema.Record({ key: Schema.String, value: Schema.Any }),
+  metadata: Schema.Record(Schema.String, Schema.Any),
 }) {}
 
 export class SyncingInfoRes extends LSDReqResMessage('LSD.Leader.SyncingInfoRes', {
@@ -185,7 +185,7 @@ export const MessageToApp = Schema.Union(
   SyncHeadSubscribe,
   SyncHeadUnsubscribe,
   SetSyncLatch.Request,
-).annotations({ identifier: 'LSD.Leader.MessageToApp' })
+).annotate({ identifier: 'LSD.Leader.MessageToApp' })
 
 export type MessageToApp = typeof MessageToApp.Type
 
@@ -205,6 +205,6 @@ export const MessageFromApp = Schema.Union(
   SyncHeadRes,
   ResetAllData.Success,
   SetSyncLatch.Success,
-).annotations({ identifier: 'LSD.Leader.MessageFromApp' })
+).annotate({ identifier: 'LSD.Leader.MessageFromApp' })
 
 export type MessageFromApp = typeof MessageFromApp.Type

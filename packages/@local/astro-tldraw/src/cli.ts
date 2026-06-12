@@ -28,10 +28,13 @@ export interface BuildDiagramsOptions {
   verbose?: boolean
 }
 
-export class DiagramDiscoveryError extends Schema.TaggedErrorClass<DiagramDiscoveryError>()('Tldraw.DiagramDiscoveryError', {
-  path: Schema.String,
-  cause: Schema.Any,
-}) {}
+export class DiagramDiscoveryError extends Schema.TaggedErrorClass<DiagramDiscoveryError>()(
+  'Tldraw.DiagramDiscoveryError',
+  {
+    path: Schema.String,
+    cause: Schema.Any,
+  },
+) {}
 
 export type BuildDiagramsError = FileSystemError | RenderTimeoutError | RenderInvocationError | DiagramDiscoveryError
 

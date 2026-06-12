@@ -71,9 +71,12 @@ export class RangeError extends Schema.TaggedErrorClass<RangeError>(`${TypeId}/R
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Referenceerror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#exceptiondef-referenceerror | Specification}
  */
-export class ReferenceError extends Schema.TaggedErrorClass<ReferenceError>(`${TypeId}/ReferenceError`)('ReferenceError', {
-  cause: Schema.instanceOf(globalThis.ReferenceError),
-}) {
+export class ReferenceError extends Schema.TaggedErrorClass<ReferenceError>(`${TypeId}/ReferenceError`)(
+  'ReferenceError',
+  {
+    cause: Schema.instanceOf(globalThis.ReferenceError),
+  },
+) {
   readonly [TypeId] = TypeId
 }
 
@@ -313,9 +316,12 @@ export class SecurityError extends Schema.TaggedErrorClass<SecurityError>(`${Typ
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/DOMException#datacloneerror | MDN Reference}
  * @see {@link https://webidl.spec.whatwg.org/#datacloneerror | Specification}
  */
-export class DataCloneError extends Schema.TaggedErrorClass<DataCloneError>(`${TypeId}/DataCloneError`)('DataCloneError', {
-  cause: domExceptionWithName('DataCloneError'),
-}) {
+export class DataCloneError extends Schema.TaggedErrorClass<DataCloneError>(`${TypeId}/DataCloneError`)(
+  'DataCloneError',
+  {
+    cause: domExceptionWithName('DataCloneError'),
+  },
+) {
   readonly [TypeId] = TypeId
   override get message(): string {
     return this.cause.message
