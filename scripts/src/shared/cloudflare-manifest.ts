@@ -87,38 +87,6 @@ export const cloudflareExamples: readonly CloudflareExample[] = [
     ],
   },
   {
-    slug: 'web-todomvc-custom-elements',
-    workerName: 'example-web-todomvc-custom-elements',
-    repoRelativePath: 'examples/web-todomvc-custom-elements',
-    buildOutputDir: 'example_web_todomvc_custom_elements',
-    durableObjects: [],
-    aliases: {
-      prod: 'prod',
-      dev: 'dev',
-      preview: 'preview',
-    },
-    domains: [
-      { domain: 'livestore.dev', name: 'web-todomvc-custom-elements', scope: 'prod' },
-      { domain: 'livestore.dev', name: 'dev.web-todomvc-custom-elements', scope: 'dev' },
-    ],
-  },
-  {
-    slug: 'web-todomvc-experimental',
-    workerName: 'example-web-todomvc-experimental',
-    repoRelativePath: 'examples/web-todomvc-experimental',
-    buildOutputDir: 'example_web_todomvc_experimental',
-    durableObjects: [],
-    aliases: {
-      prod: 'prod',
-      dev: 'dev',
-      preview: 'preview',
-    },
-    domains: [
-      { domain: 'livestore.dev', name: 'web-todomvc-experimental', scope: 'prod' },
-      { domain: 'livestore.dev', name: 'dev.web-todomvc-experimental', scope: 'dev' },
-    ],
-  },
-  {
     slug: 'web-todomvc-script',
     workerName: 'example-web-todomvc-script',
     repoRelativePath: 'examples/web-todomvc-script',

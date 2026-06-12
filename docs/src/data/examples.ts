@@ -128,7 +128,7 @@ export const examples: Example[] = [
       width: 1000,
       height: 700,
     },
-    sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc-custom-elements`,
+    sourceUrl: `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples/web-todomvc-custom-elements`,
     status: 'available',
   },
   {
@@ -145,7 +145,7 @@ export const examples: Example[] = [
     description: 'Experimental TodoMVC implementation showcasing cutting-edge LiveStore features and patterns.',
     adapters: ['web'],
     technologies: ['React', 'TypeScript', 'LiveStore'],
-    sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc-experimental`,
+    sourceUrl: `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples/web-todomvc-experimental`,
     status: 'available',
   },
   {

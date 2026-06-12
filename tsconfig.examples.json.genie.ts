@@ -10,8 +10,6 @@ export default tsconfigJson({
   references: [
     { path: './examples/web-linearlite' },
     { path: './examples/web-todomvc' },
-    { path: './examples/web-todomvc-custom-elements' },
-    { path: './examples/web-todomvc-experimental' },
     { path: './examples/web-todomvc-react-router' },
     { path: './examples/web-todomvc-redwood' },
     { path: './examples/web-todomvc-sync-cf' },

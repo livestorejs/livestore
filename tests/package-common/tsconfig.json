@@ -47,7 +47,13 @@
   "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
   "references": [
     {
+      "path": "../../packages/@livestore/adapter-web"
+    },
+    {
       "path": "../../packages/@livestore/common"
+    },
+    {
+      "path": "../../packages/@livestore/livestore"
     },
     {
       "path": "../../packages/@livestore/utils"

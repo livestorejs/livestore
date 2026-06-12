@@ -14,7 +14,9 @@ export default tsconfigJson({
   include: ['./src'],
   exclude: [...packageTsconfigExclude],
   references: [
+    { path: '../../packages/@livestore/adapter-web' },
     { path: '../../packages/@livestore/common' },
+    { path: '../../packages/@livestore/livestore' },
     { path: '../../packages/@livestore/utils' },
     { path: '../../packages/@livestore/utils-dev' },
     { path: '../../packages/@livestore/sqlite-wasm' },

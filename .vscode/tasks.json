@@ -260,22 +260,6 @@
         "clear": false
       }
     },
-    {
-      "label": "examples:todomvc-custom-elements",
-      "dependsOn": ["ts:clean:watch", "infra:proxy"],
-      "type": "shell",
-      "command": "direnv exec . mono examples run web-todomvc-custom-elements",
-      "isBackground": true,
-      "problemMatcher": [],
-      "presentation": {
-        "focus": false,
-        "panel": "shared",
-        "group": "examples",
-        "showReuseMessage": false,
-        "clear": false
-      }
-    },
-
     // ============================================================
     // infrastructure
     // ============================================================
