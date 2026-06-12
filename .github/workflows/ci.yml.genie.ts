@@ -252,43 +252,6 @@ export default githubWorkflow({
       steps: [...livestoreSetupSteps, { name: 'Run unit tests', run: runDevenvTasksBefore('test:unit') }],
     }),
 
-    // TODO: Remove flaky test wrapper once node-sync flakiness is resolved
-    // https://github.com/livestorejs/livestore/issues/624
-    'test-integration-node-sync': otelCIJob({
-      steps: [
-        {
-          name: 'Run node-sync integration tests',
-          run: runDevenvTasksBefore('test:integration:node-sync:allow-flaky'),
-        },
-        {
-          name: 'Display node-sync logs',
-          if: 'always()',
-          run: `if [ -d "tests/integration/tmp/logs" ]; then
-  echo "::group::Node-sync test logs"
-  for log_file in tests/integration/tmp/logs/*.log; do
-    if [ -f "$log_file" ]; then
-      echo "::group::$(basename "$log_file")"
-      cat "$log_file"
-      echo "::endgroup::"
-    fi
-  done
-  echo "::endgroup::"
-else
-  echo "No log files found"
-fi`,
-        },
-        {
-          uses: 'actions/upload-artifact@v4',
-          if: 'always()',
-          with: {
-            name: 'node-sync-logs',
-            path: 'tests/integration/tmp/logs/',
-            'retention-days': 30,
-          },
-        },
-      ],
-    }),
-
     // TODO: Remove Cloudflare workaround once upstream issues are resolved:
     // - Upstream: https://github.com/cloudflare/workers-sdk/issues/11122 (Durable object hanging tests)
     // - LiveStore tracking: https://github.com/livestorejs/livestore/issues/625
@@ -303,21 +266,6 @@ fi`,
       steps: [
         ...livestoreSetupSteps,
         otelSetupStep,
-        {
-          name: 'Start s2-lite container',
-          if: "${{ matrix.provider == 's2' }}",
-          run: `docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2 lite
-# Wait for s2-lite to be ready
-for i in {1..30}; do
-  if curl -sf http://localhost:4566/ping > /dev/null 2>&1; then
-    echo "s2-lite is ready"
-    break
-  fi
-  echo "Waiting for s2-lite... ($i/30)"
-  sleep 1
-done`,
-          shell: 'bash',
-        },
         {
           name: 'Run sync-provider tests for ${{ matrix.provider }}',
           run: runDevenvTasksBefore('test:integration:sync-provider:matrix'),
@@ -434,12 +382,7 @@ done`,
       outputs: {
         npm_snapshot_published: "${{ steps.publish-snapshot.outcome == 'success' && '1' || '0' }}",
       },
-      needs: [
-        'test-unit',
-        'test-integration-node-sync',
-        'test-integration-sync-provider',
-        'test-integration-playwright',
-      ],
+      needs: ['test-unit', 'test-integration-sync-provider', 'test-integration-playwright'],
       env: {
         GH_TOKEN: '${{ github.token }}',
       },
@@ -696,62 +639,5 @@ done`,
     //   if: "github.ref == 'refs/heads/main' && github.event_name == 'push'",
     //   steps: [dispatchAlignmentStep({ targetRepo: 'schickling/megarepo-all' })],
     // },
-
-    'build-example-create': {
-      if: `${IS_NOT_FORK} && needs.publish-snapshot-version.outputs.npm_snapshot_published == '1'`,
-      needs: 'publish-snapshot-version',
-      strategy: {
-        matrix: {
-          app: ['web-todomvc', 'web-linearlite', 'expo-linearlite'],
-        },
-      },
-      ...namespaceRunnerConfig,
-      env: {
-        APP_PATH: 'examples/${{ matrix.app }}',
-        SNAPSHOT_VERSION: `0.0.0-snapshot-${PR_HEAD_SHA}`,
-      },
-      steps: [
-        { name: 'Checkout repository', uses: 'actions/checkout@v4' },
-        {
-          // We're only using pnpm instead of the ./.github/actions/setup-env action
-          // to simulate a simple, user-facing setup.
-          name: 'Setup pnpm',
-          uses: 'pnpm/action-setup@v4',
-          with: { standalone: true },
-        },
-        {
-          /** Only include @livestore/* deps that exist in this workspace (excludes externally-published packages like devtools-vite) */
-          name: "Get app's workspace @livestore dependencies",
-          run: `DEPS=$(jq -r '[(.dependencies // {}), (.devDependencies // {}) | to_entries[] | select(.key | startswith("@livestore/")) | .key] | .[]' \${{ env.APP_PATH }}/package.json | while read dep; do dir="packages/@livestore/\${dep#@livestore/}"; [ -d "$dir" ] && echo "$dep"; done | tr '\\n' ' ')
-echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV`,
-        },
-        {
-          /**
-           * Use PR head SHA for pull_request events. `refs/pull/<id>/merge` can be missing when
-           * merge commits are unavailable, which makes GitHub contents API calls fail.
-           */
-          name: 'Copy example app',
-          run: `pnpm dlx ${DLX_ALLOW_BUILD_FLAGS} @livestore/cli@\${{ env.SNAPSHOT_VERSION }} create --example \${{ matrix.app }} --ref ${PR_HEAD_SHA} \${{ runner.temp }}/\${{ env.APP_PATH }}`,
-          env: {
-            GITHUB_TOKEN: '${{ github.token }}',
-          },
-        },
-        {
-          name: 'Use snapshot version of workspace dependencies',
-          'working-directory': '${{ runner.temp }}/${{ env.APP_PATH }}',
-          run: `pnpm add ${PNPM_ADD_ALLOW_BUILD_FLAGS} $(
-  for dep in $WORKSPACE_DEPS; do
-    echo "$dep@\${{ env.SNAPSHOT_VERSION }}"
-  done
-)`,
-        },
-        {
-          // TODO: build expo app with EAS
-          if: "${{ matrix.app != 'expo-linearlite' }}",
-          'working-directory': '${{ runner.temp }}/${{ env.APP_PATH }}',
-          run: 'pnpm build',
-        },
-      ],
-    },
   },
 })

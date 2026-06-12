@@ -18,7 +18,8 @@ type SendMessageToDevtools = (message: Devtools.Leader.MessageFromApp) => Effect
 
 /**
  * Type guard for DevtoolsViteNotInstalledError.
- * This error is defined in @livestore/adapter-node but we need to handle it here.
+ * Adapter-specific devtools boot implementations may surface this tagged error;
+ * common handles it structurally to keep devtools startup environment-agnostic.
  */
 const isDevtoolsViteNotInstalledError = (
   error: unknown,

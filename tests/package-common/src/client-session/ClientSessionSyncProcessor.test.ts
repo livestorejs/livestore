@@ -1,6 +1,5 @@
 import { assert, expect } from 'vitest'
 
-import { makeAdapter } from '@livestore/adapter-node'
 import type { LockStatus, MockSyncBackend } from '@livestore/common'
 import {
   type BootStatus,
@@ -43,6 +42,7 @@ import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
 
 import { events, schema, tables } from '../leader-thread/fixture.ts'
+import { makeTestAdapter } from '../test-adapter.ts'
 
 // TODO fix type level - derived events are missing and thus infers to `never` currently
 const eventSchema = LiveStoreEvent.Input.makeSchema(schema) as TODO as Schema.Schema<LiveStoreEvent.Input.Encoded>
@@ -190,8 +190,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const shutdownDeferred = yield* makeShutdownDeferred
       const pullQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
 
-      const adapter = makeAdapter({
-        storage: { type: 'in-memory' },
+      const adapter = makeTestAdapter({
         testing: {
           overrides: {
             clientSession: {
@@ -300,8 +299,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         () => true, // always cache
       )
 
-      const adapter = makeAdapter({
-        storage: { type: 'in-memory' },
+      const adapter = makeTestAdapter({
         sync: {
           backend: () => mockSyncBackend.makeSyncBackend,
           initialSyncOptions: { _tag: 'Blocking', timeout: 5000 },
@@ -663,8 +661,7 @@ const TestContextLive = Layer.scoped(
     const shutdownDeferred = yield* makeShutdownDeferred
 
     const makeStore: typeof TestContext.Service.makeStore = (args) => {
-      const adapter = makeAdapter({
-        storage: { type: 'in-memory' },
+      const adapter = makeTestAdapter({
         sync: { backend: () => mockSyncBackend.makeSyncBackend, onSyncError: 'shutdown' },
         ...omitUndefineds({ testing: args?.testing }),
       })

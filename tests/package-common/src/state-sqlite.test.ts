@@ -13,7 +13,7 @@ Vitest.describe('SQLite State', () => {
     const setup = (tableDef: State.SQLite.TableDef.Any) =>
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(
-          Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),
+          Effect.withSpan('@livestore/sqlite-wasm:loadSqlite3Wasm'),
         )
 
         const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 })) as MakeSqliteDb

@@ -5,8 +5,7 @@ description: LiveStore examples built with the Expo adapter for React Native mob
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 import { Image } from 'astro:assets';
-import { expoExamples, getExampleDemoLinks } from '../../../data/examples.ts';
-import { getBranchName } from '../../../data/data.ts';
+import { contribExamplesUrl, expoExamples, getExampleDemoLinks } from '../../../data/examples.ts';
 
 # Expo Adapter Examples
 
@@ -49,4 +48,4 @@ Examples using `@livestore/adapter-expo` for React Native mobile applications.
 - WebSocket connections for sync via React Native dev server
 
 ---
-<a href={`https://github.com/livestorejs/livestore/tree/${getBranchName()}/examples`}>View all examples on GitHub →</a>
+<a href={contribExamplesUrl}>View all examples on GitHub →</a>

@@ -5,8 +5,7 @@ description: LiveStore examples built with the Node adapter for server-side envi
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 import { Image } from 'astro:assets';
-import { nodeExamples, getExampleDemoLinks } from '../../../data/examples.ts';
-import { getBranchName } from '../../../data/data.ts';
+import { contribExamplesUrl, nodeExamples, getExampleDemoLinks } from '../../../data/examples.ts';
 
 # Node Adapter Examples
 
@@ -49,4 +48,4 @@ Examples using `@livestore/adapter-node` for Node.js server-side applications.
 - WebSocket connections for sync and devtools integration
 
 ---
-<a href={`https://github.com/livestorejs/livestore/tree/${getBranchName()}/examples`}>View all examples on GitHub →</a>
+<a href={contribExamplesUrl}>View all examples on GitHub →</a>

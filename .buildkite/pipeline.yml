@@ -22,24 +22,6 @@ steps:
       - direnv allow .
       - direnv exec . mono test unit
 
-  - label: 'test:integration (node-sync)'
-    env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
-    commands:
-      - direnv allow .
-      - |
-        set -euo pipefail
-
-        OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
-        export OTEL_EXPORTER_OTLP_HEADERS
-
-        if direnv exec . mono test integration node-sync; then
-          :
-        else
-          buildkite-agent annotate --style "warning" "Node-sync integration tests failed (flaky; see https://github.com/livestorejs/livestore/issues/624)"
-        fi
-      - buildkite-agent artifact upload "tests/integration/tmp/logs/*.log" || true
-
   - label: 'test:integration (sync-provider:{{matrix.provider}})'
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
@@ -47,8 +29,6 @@ steps:
       setup:
         provider:
           - mock
-          - electric
-          - s2
           - cf-http-d1
           - cf-http-do
           - cf-ws-d1
@@ -62,18 +42,6 @@ steps:
 
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
-
-        if [ "{{matrix.provider}}" = "s2" ]; then
-          docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2 lite
-          for i in $(seq 1 30); do
-            if curl -sf http://localhost:4566/ping > /dev/null 2>&1; then
-              echo "s2-lite is ready"
-              break
-            fi
-            echo "Waiting for s2-lite... ($i/30)"
-            sleep 1
-          done
-        fi
 
         direnv exec . mono test integration sync-provider --provider "{{matrix.provider}}"
 
@@ -169,39 +137,3 @@ steps:
         else
           echo "Skipping docs deploy: NETLIFY_AUTH_TOKEN not set"
         fi
-
-  - label: 'examples:create ({{matrix.app}})'
-    if: build.pull_request.id == null
-    matrix:
-      setup:
-        app:
-          - web-todomvc
-          - web-linearlite
-          - expo-linearlite
-    env:
-      SNAPSHOT_VERSION: '0.0.0-snapshot-${BUILDKITE_COMMIT}'
-    commands:
-      - direnv allow .
-      - |
-        direnv exec . bash -lc '
-          set -euo pipefail
-
-          APP_NAME="{{matrix.app}}"
-          APP_PATH="examples/${APP_NAME}"
-
-          WORKSPACE_DEPS=$(cd "${APP_PATH}" && pnpm list --only-projects --json | jq -r ".[0].dependencies | keys | join(\" \")")
-          export WORKSPACE_DEPS
-
-          pnpm dlx @livestore/cli@"${SNAPSHOT_VERSION}" create --example "${APP_NAME}" --branch "${BUILDKITE_BRANCH}" "${BUILDKITE_BUILD_CHECKOUT_PATH}/${APP_PATH}.tmp"
-
-          pnpm config set fetchRetries 3
-
-          cd "${BUILDKITE_BUILD_CHECKOUT_PATH}/${APP_PATH}.tmp"
-          if [ -n "${WORKSPACE_DEPS}" ]; then
-            pnpm add $(for dep in $WORKSPACE_DEPS; do echo "$dep@${SNAPSHOT_VERSION}"; done)
-          fi
-
-          if [ "${APP_NAME}" != "expo-linearlite" ]; then
-            pnpm build
-          fi
-        '

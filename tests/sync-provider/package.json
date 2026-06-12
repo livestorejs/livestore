@@ -14,16 +14,12 @@
   "dependencies": {
     "@cloudflare/workers-types": "4.20251118.0",
     "@livestore/adapter-cloudflare": "workspace:^",
-    "@livestore/adapter-node": "workspace:^",
     "@livestore/common": "workspace:^",
     "@livestore/common-cf": "workspace:^",
     "@livestore/livestore": "workspace:^",
     "@livestore/sqlite-wasm": "workspace:^",
     "@livestore/sync-cf": "workspace:^",
-    "@livestore/sync-electric": "workspace:^",
-    "@livestore/sync-s2": "workspace:^",
-    "@livestore/utils": "workspace:^",
-    "postgres": "3.4.7"
+    "@livestore/utils": "workspace:^"
   },
   "devDependencies": {
     "@effect/ai": "0.35.0",
@@ -55,15 +51,12 @@
     "warning": "DO NOT EDIT - changes will be overwritten",
     "workspaceClosureDirs": [
       "packages/@livestore/adapter-cloudflare",
-      "packages/@livestore/adapter-node",
       "packages/@livestore/adapter-web",
       "packages/@livestore/common",
       "packages/@livestore/common-cf",
       "packages/@livestore/livestore",
       "packages/@livestore/sqlite-wasm",
       "packages/@livestore/sync-cf",
-      "packages/@livestore/sync-electric",
-      "packages/@livestore/sync-s2",
       "packages/@livestore/utils",
       "packages/@livestore/utils-dev",
       "packages/@livestore/wa-sqlite",

@@ -38,11 +38,12 @@ export const getExampleDemoLinks = (example: Example) => {
 }
 
 const branch = getBranchName()
+const contribBranch = 'main'
+export const contribExamplesUrl = `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples`
 
 const webTodomvcDeployment = getExampleDeployment('web-todomvc')
 const webLinearliteDeployment = getExampleDeployment('web-linearlite')
 const webTodomvcSyncCfDeployment = getExampleDeployment('web-todomvc-sync-cf')
-const cfChatDeployment = getExampleDeployment('cf-chat')
 
 export const examples: Example[] = [
   // Web Adapter Examples
@@ -105,7 +106,7 @@ export const examples: Example[] = [
       width: 1000,
       height: 700,
     },
-    sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc-solid`,
+    sourceUrl: `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples/web-todomvc-solid`,
     status: 'available',
   },
   {
@@ -113,7 +114,7 @@ export const examples: Example[] = [
     description: 'TodoMVC implementation using Svelte with LiveStore-powered reactivity via `@livestore/svelte`.',
     adapters: ['web'],
     technologies: ['Svelte', 'TypeScript', 'LiveStore'],
-    sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc-svelte`,
+    sourceUrl: `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples/web-todomvc-svelte`,
     status: 'available',
   },
   {
@@ -127,7 +128,7 @@ export const examples: Example[] = [
       width: 1000,
       height: 700,
     },
-    sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc-custom-elements`,
+    sourceUrl: `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples/web-todomvc-custom-elements`,
     status: 'available',
   },
   {
@@ -136,7 +137,7 @@ export const examples: Example[] = [
     adapters: ['web'],
     syncProvider: 'electric',
     technologies: ['React', 'ElectricSQL', 'PostgreSQL', 'LiveStore'],
-    sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc-sync-electric`,
+    sourceUrl: `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples/web-todomvc-sync-electric`,
     status: 'available',
   },
   {
@@ -144,7 +145,7 @@ export const examples: Example[] = [
     description: 'Experimental TodoMVC implementation showcasing cutting-edge LiveStore features and patterns.',
     adapters: ['web'],
     technologies: ['React', 'TypeScript', 'LiveStore'],
-    sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc-experimental`,
+    sourceUrl: `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples/web-todomvc-experimental`,
     status: 'available',
   },
   {
@@ -169,9 +170,7 @@ export const examples: Example[] = [
       width: 1000,
       height: 700,
     },
-    demoUrl: cfChatDeployment.endpoints.prod.url,
-    devDemoUrl: cfChatDeployment.endpoints.dev.url,
-    sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/cf-chat`,
+    sourceUrl: `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples/cf-chat`,
     status: 'available',
   },
   {
@@ -192,7 +191,7 @@ export const examples: Example[] = [
       "Command-line application built with Effect, showcasing LiveStore's Node.js capabilities and server-side data management patterns.",
     adapters: ['node'],
     technologies: ['Node.js', 'Effect', 'CLI', 'TypeScript', 'LiveStore'],
-    sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/node-effect-cli`,
+    sourceUrl: `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples/node-effect-cli`,
     status: 'available',
   },
   {
@@ -202,7 +201,7 @@ export const examples: Example[] = [
     adapters: ['node'],
     syncProvider: 'cloudflare',
     technologies: ['Node.js', 'Cloudflare', 'Server-side', 'TypeScript', 'LiveStore'],
-    sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/node-todomvc-sync-cf`,
+    sourceUrl: `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples/node-todomvc-sync-cf`,
     status: 'available',
   },
 
@@ -213,7 +212,7 @@ export const examples: Example[] = [
       'Mobile issue tracker built with Expo and React Native, bringing the full Linearlite experience to iOS and Android with offline-first capabilities.',
     adapters: ['expo'],
     technologies: ['React Native', 'Expo', 'Mobile', 'TypeScript', 'LiveStore'],
-    sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/expo-linearlite`,
+    sourceUrl: `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples/expo-linearlite`,
     status: 'available',
   },
   {
@@ -223,7 +222,7 @@ export const examples: Example[] = [
     adapters: ['expo'],
     syncProvider: 'cloudflare',
     technologies: ['React Native', 'Expo', 'Cloudflare', 'Real-time Sync', 'LiveStore'],
-    sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/expo-todomvc-sync-cf`,
+    sourceUrl: `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples/expo-todomvc-sync-cf`,
     status: 'available',
   },
 ]

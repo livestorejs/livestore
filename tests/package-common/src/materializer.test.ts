@@ -1,6 +1,6 @@
 import { expect } from 'vitest'
 
-import { makeAdapter } from '@livestore/adapter-node'
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { Events, makeSchema, State } from '@livestore/common/schema'
 import { createStore } from '@livestore/livestore'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -50,7 +50,7 @@ const schema = makeSchema({ events, state: State.SQLite.makeState({ tables, mate
 Vitest.describe.each(['raw', 'query-builder'] as const)('materializer', (queryType) => {
   Vitest.scopedLive('should allow queries in materializer', (test) =>
     Effect.gen(function* () {
-      const adapter = makeAdapter({ storage: { type: 'in-memory' } })
+      const adapter = makeInMemoryAdapter()
       const eventDef = queryType === 'query-builder' ? events.todoCreated : events.todoCreatedRaw
 
       const store = yield* createStore({
@@ -74,7 +74,7 @@ Vitest.describe.each(['raw', 'query-builder'] as const)('materializer', (queryTy
 
   Vitest.scopedLive('should allow empty event payload', (test) =>
     Effect.gen(function* () {
-      const adapter = makeAdapter({ storage: { type: 'in-memory' } })
+      const adapter = makeInMemoryAdapter()
       const store = yield* createStore({ schema, adapter, storeId: 'test' })
       store.commit(events.emptyEventPayload())
     }).pipe(Vitest.withTestCtx(test)),
@@ -121,10 +121,7 @@ Vitest.describe.each(['raw', 'query-builder'] as const)('materializer', (queryTy
         }),
       })
 
-      const adapter = makeAdapter({
-        storage: { type: 'in-memory' },
-        clientId: testClientId,
-      })
+      const adapter = makeInMemoryAdapter({ clientId: testClientId })
       const store = yield* createStore({
         schema: messageSchema,
         adapter,

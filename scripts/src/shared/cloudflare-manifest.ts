@@ -55,22 +55,6 @@ export type CloudflareExample = typeof CloudflareExampleSchema.Type
  */
 export const cloudflareExamples: readonly CloudflareExample[] = [
   {
-    slug: 'cf-chat',
-    workerName: 'example-cf-chat',
-    repoRelativePath: 'examples/cf-chat',
-    buildOutputDir: 'example_cf_chat',
-    durableObjects: ['SyncBackendDO', 'LiveStoreClientDO'],
-    aliases: {
-      prod: 'prod',
-      dev: 'dev',
-      preview: 'preview',
-    },
-    domains: [
-      { domain: 'livestore.dev', name: 'cf-chat', scope: 'prod' },
-      { domain: 'livestore.dev', name: 'dev.cf-chat', scope: 'dev' },
-    ],
-  },
-  {
     slug: 'web-linearlite',
     workerName: 'example-web-linearlite',
     repoRelativePath: 'examples/web-linearlite',
@@ -103,38 +87,6 @@ export const cloudflareExamples: readonly CloudflareExample[] = [
     ],
   },
   {
-    slug: 'web-todomvc-custom-elements',
-    workerName: 'example-web-todomvc-custom-elements',
-    repoRelativePath: 'examples/web-todomvc-custom-elements',
-    buildOutputDir: 'example_web_todomvc_custom_elements',
-    durableObjects: [],
-    aliases: {
-      prod: 'prod',
-      dev: 'dev',
-      preview: 'preview',
-    },
-    domains: [
-      { domain: 'livestore.dev', name: 'web-todomvc-custom-elements', scope: 'prod' },
-      { domain: 'livestore.dev', name: 'dev.web-todomvc-custom-elements', scope: 'dev' },
-    ],
-  },
-  {
-    slug: 'web-todomvc-experimental',
-    workerName: 'example-web-todomvc-experimental',
-    repoRelativePath: 'examples/web-todomvc-experimental',
-    buildOutputDir: 'example_web_todomvc_experimental',
-    durableObjects: [],
-    aliases: {
-      prod: 'prod',
-      dev: 'dev',
-      preview: 'preview',
-    },
-    domains: [
-      { domain: 'livestore.dev', name: 'web-todomvc-experimental', scope: 'prod' },
-      { domain: 'livestore.dev', name: 'dev.web-todomvc-experimental', scope: 'dev' },
-    ],
-  },
-  {
     slug: 'web-todomvc-script',
     workerName: 'example-web-todomvc-script',
     repoRelativePath: 'examples/web-todomvc-script',
@@ -148,22 +100,6 @@ export const cloudflareExamples: readonly CloudflareExample[] = [
     domains: [
       { domain: 'livestore.dev', name: 'web-todomvc-script', scope: 'prod' },
       { domain: 'livestore.dev', name: 'dev.web-todomvc-script', scope: 'dev' },
-    ],
-  },
-  {
-    slug: 'web-todomvc-solid',
-    workerName: 'example-web-todomvc-solid',
-    repoRelativePath: 'examples/web-todomvc-solid',
-    buildOutputDir: 'example_web_todomvc_solid',
-    durableObjects: [],
-    aliases: {
-      prod: 'prod',
-      dev: 'dev',
-      preview: 'preview',
-    },
-    domains: [
-      { domain: 'livestore.dev', name: 'web-todomvc-solid', scope: 'prod' },
-      { domain: 'livestore.dev', name: 'dev.web-todomvc-solid', scope: 'dev' },
     ],
   },
   {

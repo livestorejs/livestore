@@ -41,16 +41,7 @@
             "context": "test-unit"
           },
           {
-            "context": "test-integration-node-sync"
-          },
-          {
             "context": "test-integration-sync-provider (mock)"
-          },
-          {
-            "context": "test-integration-sync-provider (electric)"
-          },
-          {
-            "context": "test-integration-sync-provider (s2)"
           },
           {
             "context": "test-integration-sync-provider (cf-http-d1)"

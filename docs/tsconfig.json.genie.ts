@@ -26,7 +26,6 @@ export default tsconfigJson({
     { path: '../packages/@livestore/common' },
     { path: '../packages/@livestore/livestore' },
     { path: '../packages/@livestore/react' },
-    { path: '../packages/@livestore/solid' },
     { path: '../packages/@livestore/utils' },
     { path: '../packages/@local/astro-twoslash-code' },
     { path: '../packages/@local/shared' },

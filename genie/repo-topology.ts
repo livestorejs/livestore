@@ -177,29 +177,4 @@ export const livestoreEffectUtilsPackageNames = packageNamesForOwner('effect-uti
  * Packages still present in the current repository workspace before package
  * histories move to their final owning repositories.
  */
-export const livestoreCurrentPackageNames = [
-  'adapter-cloudflare',
-  'adapter-expo',
-  'adapter-node',
-  'adapter-web',
-  'cli',
-  'common',
-  'common-cf',
-  'devtools-expo',
-  'effect-playwright',
-  'framework-toolkit',
-  'graphql',
-  'livestore',
-  'peer-deps',
-  'react',
-  'solid',
-  'sqlite-wasm',
-  'svelte',
-  'sync-cf',
-  'sync-electric',
-  'sync-s2',
-  'utils',
-  'utils-dev',
-  'wa-sqlite',
-  'webmesh',
-] as const
+export const livestoreCurrentPackageNames = packageNamesForProjection('tooling')

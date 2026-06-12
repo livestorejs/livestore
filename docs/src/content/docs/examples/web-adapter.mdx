@@ -5,8 +5,7 @@ description: LiveStore examples built with the Web adapter for browser environme
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 import { Image } from 'astro:assets';
-import { webExamples, getExampleDemoLinks } from '../../../data/examples.ts';
-import { getBranchName } from '../../../data/data.ts';
+import { contribExamplesUrl, webExamples, getExampleDemoLinks } from '../../../data/examples.ts';
 
 # Web Adapter Examples
 
@@ -57,4 +56,4 @@ Examples using `@livestore/adapter-web` for browser environments.
 - Vanilla JavaScript
 
 ---
-<a href={`https://github.com/livestorejs/livestore/tree/${getBranchName()}/examples`}>View all examples on GitHub →</a>
+<a href={contribExamplesUrl}>View all examples on GitHub →</a>

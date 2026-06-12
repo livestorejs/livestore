@@ -1,6 +1,6 @@
 import { expect } from 'vitest'
 
-import { makeAdapter } from '@livestore/adapter-node'
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { makeSchema, State } from '@livestore/common/schema'
 import { createStore, SessionIdSymbol } from '@livestore/livestore'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -25,7 +25,7 @@ Vitest.describe('SessionIdSymbol', () => {
           state: State.SQLite.makeState({ tables: { uiState }, materializers: {} }),
           events: { UiStateSet: uiState.set },
         }),
-        adapter: makeAdapter({ storage: { type: 'in-memory' }, sessionId: 'test-session' }),
+        adapter: makeInMemoryAdapter({ sessionId: 'test-session' }),
         storeId: 'session-id-symbol-test',
       })
 

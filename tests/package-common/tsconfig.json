@@ -17,7 +17,7 @@
     "outDir": "./dist",
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
+    "exactOptionalPropertyTypes": false,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
@@ -38,14 +38,22 @@
         }
       }
     ],
+    "composite": true,
     "rootDir": "./src",
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "types": ["vitest/globals", "@types/node"]
   },
   "include": ["./src"],
   "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
   "references": [
     {
+      "path": "../../packages/@livestore/adapter-web"
+    },
+    {
       "path": "../../packages/@livestore/common"
+    },
+    {
+      "path": "../../packages/@livestore/livestore"
     },
     {
       "path": "../../packages/@livestore/utils"
@@ -55,12 +63,6 @@
     },
     {
       "path": "../../packages/@livestore/sqlite-wasm"
-    },
-    {
-      "path": "../../packages/@livestore/adapter-node"
-    },
-    {
-      "path": "../../packages/@livestore/livestore"
     }
   ]
 }

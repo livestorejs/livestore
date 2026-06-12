@@ -1,6 +1,5 @@
 import { catalog, effectDevDeps, localPackageDefaults, packageJson, workspaceMember } from '../../genie/repo.ts'
 import adapterCloudflarePkg from '../../packages/@livestore/adapter-cloudflare/package.json.genie.ts'
-import adapterNodePkg from '../../packages/@livestore/adapter-node/package.json.genie.ts'
 import adapterWebPkg from '../../packages/@livestore/adapter-web/package.json.genie.ts'
 import commonCfPkg from '../../packages/@livestore/common-cf/package.json.genie.ts'
 import commonPkg from '../../packages/@livestore/common/package.json.genie.ts'
@@ -17,7 +16,6 @@ const runtimeDeps = catalog.compose({
   dependencies: {
     workspace: [
       adapterCloudflarePkg,
-      adapterNodePkg,
       adapterWebPkg,
       commonPkg,
       commonCfPkg,

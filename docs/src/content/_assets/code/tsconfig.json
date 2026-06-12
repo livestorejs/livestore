@@ -45,16 +45,25 @@
     "composite": false
   },
   "include": ["./**/*.ts", "./**/*.tsx", "./**/*.d.ts"],
-  "exclude": ["./node_modules", "./dist", "**/*.genie.ts"],
+  "exclude": [
+    "./node_modules",
+    "./dist",
+    "**/*.genie.ts",
+    "./getting-started/expo/**",
+    "./getting-started/node/**",
+    "./reference/framework-integrations/solid/**",
+    "./reference/framework-integrations/svelte/**",
+    "./reference/platform-adapters/expo-adapter/**",
+    "./reference/platform-adapters/node-adapter/**",
+    "./reference/store/create-store.ts",
+    "./reference/store/effect/**",
+    "./reference/syncing/s2/**",
+    "./reference/syncing/server-side-clients/**",
+    "./reference/syncing/sync-provider/electricsql/**"
+  ],
   "references": [
     {
       "path": "../../../../../packages/@livestore/adapter-cloudflare"
-    },
-    {
-      "path": "../../../../../packages/@livestore/adapter-expo"
-    },
-    {
-      "path": "../../../../../packages/@livestore/adapter-node"
     },
     {
       "path": "../../../../../packages/@livestore/adapter-web"
@@ -63,28 +72,13 @@
       "path": "../../../../../packages/@livestore/common"
     },
     {
-      "path": "../../../../../packages/@livestore/devtools-expo"
-    },
-    {
       "path": "../../../../../packages/@livestore/livestore"
     },
     {
       "path": "../../../../../packages/@livestore/react"
     },
     {
-      "path": "../../../../../packages/@livestore/solid"
-    },
-    {
-      "path": "../../../../../packages/@livestore/svelte"
-    },
-    {
       "path": "../../../../../packages/@livestore/sync-cf"
-    },
-    {
-      "path": "../../../../../packages/@livestore/sync-electric"
-    },
-    {
-      "path": "../../../../../packages/@livestore/sync-s2"
     },
     {
       "path": "../../../../../packages/@livestore/utils"

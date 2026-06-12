@@ -1,15 +1,11 @@
+import { livestoreContribPackageVersions } from '../genie/external.ts'
 import { catalog, packageJson, workspaceMember } from '../genie/repo.ts'
 import adapterCloudflarePkg from '../packages/@livestore/adapter-cloudflare/package.json.genie.ts'
-import adapterExpoPkg from '../packages/@livestore/adapter-expo/package.json.genie.ts'
-import adapterNodePkg from '../packages/@livestore/adapter-node/package.json.genie.ts'
 import adapterWebPkg from '../packages/@livestore/adapter-web/package.json.genie.ts'
 import commonPkg from '../packages/@livestore/common/package.json.genie.ts'
 import livestorePkg from '../packages/@livestore/livestore/package.json.genie.ts'
 import reactPkg from '../packages/@livestore/react/package.json.genie.ts'
-import solidPkg from '../packages/@livestore/solid/package.json.genie.ts'
 import syncCfPkg from '../packages/@livestore/sync-cf/package.json.genie.ts'
-import syncElectricPkg from '../packages/@livestore/sync-electric/package.json.genie.ts'
-import syncS2Pkg from '../packages/@livestore/sync-s2/package.json.genie.ts'
 import utilsPkg from '../packages/@livestore/utils/package.json.genie.ts'
 import localAstroTldrawPkg from '../packages/@local/astro-tldraw/package.json.genie.ts'
 import localAstroTwoslashCodePkg from '../packages/@local/astro-twoslash-code/package.json.genie.ts'
@@ -22,16 +18,11 @@ const runtimeDeps = catalog.compose({
   dependencies: {
     workspace: [
       adapterCloudflarePkg,
-      adapterExpoPkg,
-      adapterNodePkg,
       adapterWebPkg,
       commonPkg,
       livestorePkg,
       reactPkg,
-      solidPkg,
       syncCfPkg,
-      syncElectricPkg,
-      syncS2Pkg,
       utilsPkg,
       localAstroTldrawPkg,
       localAstroTwoslashCodePkg,
@@ -49,6 +40,7 @@ const runtimeDeps = catalog.compose({
         'react-dom',
         'tailwindcss',
       ),
+      ...livestoreContribPackageVersions,
       ...catalog.pick('@livestore/devtools-vite'),
       '@astrojs/check': '0.9.4',
       '@astrojs/netlify': '6.5.9',

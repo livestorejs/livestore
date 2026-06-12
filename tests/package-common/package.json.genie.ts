@@ -1,5 +1,4 @@
 import { catalog, effectDevDeps, localPackageDefaults, packageJson, workspaceMember } from '../../genie/repo.ts'
-import adapterNodePkg from '../../packages/@livestore/adapter-node/package.json.genie.ts'
 import adapterWebPkg from '../../packages/@livestore/adapter-web/package.json.genie.ts'
 import commonPkg from '../../packages/@livestore/common/package.json.genie.ts'
 import livestorePkg from '../../packages/@livestore/livestore/package.json.genie.ts'
@@ -10,12 +9,12 @@ import utilsPkg from '../../packages/@livestore/utils/package.json.genie.ts'
 const runtimeDeps = catalog.compose({
   workspace: workspaceMember('tests/package-common'),
   dependencies: {
-    workspace: [adapterNodePkg, adapterWebPkg, commonPkg, livestorePkg, sqliteWasmPkg, utilsPkg],
+    workspace: [adapterWebPkg, commonPkg, livestorePkg, sqliteWasmPkg, utilsPkg],
     external: catalog.pick('@opentelemetry/api'),
   },
   devDependencies: {
     workspace: [utilsDevPkg],
-    external: effectDevDeps('@livestore/devtools-vite', 'vitest'),
+    external: effectDevDeps('@livestore/devtools-vite', '@types/node', 'vitest'),
   },
 })
 
@@ -23,8 +22,9 @@ export default packageJson(
   {
     name: '@local/tests-package-common',
     ...localPackageDefaults,
-    exports: {
-      './todomvc-fixture': './src/todomvc-fixture.ts',
+    scripts: {
+      test: 'vitest run',
+      'test:watch': 'vitest',
     },
   },
   runtimeDeps,

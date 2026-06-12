@@ -1,6 +1,6 @@
 import { expect } from 'vitest'
 
-import { makeAdapter } from '@livestore/adapter-node'
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { makeSchema, State } from '@livestore/common/schema'
 import { createStore, SessionIdSymbol } from '@livestore/livestore'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -32,7 +32,7 @@ Vitest.describe('issue #487 - Optional fields without defaults cause errors', ()
       const schema = makeSchema({ state, events: { UiStateSet: uiState.set } })
 
       // Create store with in-memory adapter
-      const adapter = makeAdapter({ storage: { type: 'in-memory' } })
+      const adapter = makeInMemoryAdapter()
       const store = yield* createStore({
         schema,
         adapter,

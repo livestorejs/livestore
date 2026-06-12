@@ -11,15 +11,7 @@ export const copyTodomvcSrc = Cli.Command.make(
   Effect.fn(function* () {
     const workspaceRoot = yield* LivestoreWorkspace
     const SRC_EXAMPLE_DIR = `${workspaceRoot}/examples/web-todomvc`
-    const targetExamples = [
-      // 'node-todomvc-sync-cf', // Not included as it doesn't have `uiState`
-      // 'expo-todomvc-sync-cf', // Not included as it uses `.ts` imports
-      'web-todomvc-custom-elements',
-      'web-todomvc-experimental',
-      'web-todomvc-solid',
-      'web-todomvc-sync-cf',
-      'web-todomvc-sync-electric',
-    ]
+    const targetExamples = ['web-todomvc-sync-cf']
 
     for (const example of targetExamples) {
       const targetExampleDir = `${workspaceRoot}/examples/${example}`
@@ -31,11 +23,7 @@ export const copyTodomvcSrc = Cli.Command.make(
 
       yield* copy('livestore/')
 
-      if (['web-todomvc-solid', 'web-todomvc-experimental', 'web-todomvc-custom-elements'].includes(example) === true) {
-        yield* copy('livestore.worker.ts')
-      }
-
-      if (['web-todomvc-sync-cf', 'web-todomvc-sync-electric'].includes(example) === true) {
+      if (['web-todomvc-sync-cf'].includes(example) === true) {
         yield* copy('components/')
       }
     }
