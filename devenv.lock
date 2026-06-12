@@ -24,16 +24,16 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1780483804,
-        "narHash": "sha256-ZhB/0NiJS7PvDXUU3DFwSBVFf4TMzC/MQvXEbs9M+RA=",
+        "lastModified": 1781278520,
+        "narHash": "sha256-1cdv/BP9CGg8S3e6Vw1FHEZGaqVs5snHYwA+ev9R120=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "b5e983b0be87c4ae5c06d64bbd6852c9518a77c3",
+        "rev": "d6c3ea0e55886832be8591228c368f657d0a4369",
         "type": "github"
       },
       "original": {
         "owner": "overengineeringstudio",
-        "ref": "main",
+        "ref": "schickling-assistant/2026-06-12-netlify-ssr-deploy",
         "repo": "effect-utils",
         "type": "github"
       }
@@ -135,11 +135,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1780125817,
-        "narHash": "sha256-A44psESF9sRBg5kkkYwPPKcDakheLDnpwWMguKpA2xw=",
+        "lastModified": 1780747962,
+        "narHash": "sha256-IX7G1dlKrOqPOImfbo7ADDfV5yU1+j+MRChI3TL4tAA=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "cc8609d47cd9ddda67f70bd4729b0c1dfb2e7f21",
+        "rev": "cbb5cf358f50aa6acc9efd6113b7bcfbc352cd73",
         "type": "github"
       },
       "original": {

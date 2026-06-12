@@ -263,28 +263,33 @@ in
           kill "$HEARTBEAT_PID" 2>/dev/null || true
         }
         trap cleanup EXIT
-        timeout --signal=TERM --kill-after=2m 20m mono docs build --api-docs --skip-deps 2>&1 | tee tmp/ci-docs-prod/03-astro-build.log
+        # `--netlify` builds via `netlify build`, which runs the same Astro build
+        # and then bundles the SSR serverless + edge functions so the output is
+        # deploy-ready. A plain `astro build` emits an un-bundled function that
+        # 502s once deployed.
+        timeout --signal=TERM --kill-after=2m 20m mono docs build --api-docs --skip-deps --netlify 2>&1 | tee tmp/ci-docs-prod/03-astro-build.log
       '';
     };
 
     "docs:deploy:prod:phase:upload" = {
-      description = "Upload prod docs build to Netlify (CI phase, writes state file)";
+      description = "Publish prod docs to Netlify via the shared netlify task (CI phase, writes state file)";
       exec = ''
         set -euo pipefail
         mkdir -p tmp/ci-docs-prod
-        (
-          while true; do
-            echo "[docs-prod-heartbeat] $(date -u +%Y-%m-%dT%H:%M:%SZ) netlify upload in progress"
-            pgrep -af 'netlify|node|bun|mono' || true
-            sleep 30
-          done
-        ) > tmp/ci-docs-prod/04-upload-heartbeat.log 2>&1 &
-        HEARTBEAT_PID=$!
-        cleanup() {
-          kill "$HEARTBEAT_PID" 2>/dev/null || true
-        }
-        trap cleanup EXIT
-        timeout --signal=TERM --kill-after=2m 20m mono docs deploy --prod --step=upload 2>&1 | tee tmp/ci-docs-prod/04-upload.log
+        # Publish the bundled docs build (from the astro `--netlify` phase) to the
+        # production domain via the shared effect-utils netlify task. ssr +
+        # prodAlias=false → `netlify deploy --no-build --prod`, shipping the
+        # bundled serverless + edge functions. `--input type=prod` selects the
+        # production publish.
+        timeout --signal=TERM --kill-after=2m 20m dt netlify:deploy:docs --input type=prod 2>&1 | tee tmp/ci-docs-prod/04-upload.log
+        # Record deploy identifiers for the verify/purge phases. A prod publish
+        # targets the known production domain; the unique per-deploy URL is in the
+        # upload log above.
+        full_sha="$(git rev-parse HEAD)"
+        short_sha="$(git rev-parse --short HEAD)"
+        branch_name="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
+        printf '{"site":"livestore-docs","siteId":"abeae053-d336-480a-a0fe-f0aaaacaa74e","deployId":"prod","deployUrl":"https://docs.livestore.dev","branchName":"%s","shortSha":"%s","fullSha":"%s"}\n' \
+          "$branch_name" "$short_sha" "$full_sha" > tmp/ci-docs-prod/deploy-state.json
       '';
     };
 

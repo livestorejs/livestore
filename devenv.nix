@@ -285,6 +285,30 @@ in
       tsconfigFile = "tsconfig.dev.json";
     })
     (taskModules.pnpm { packages = pnpmPackages; })
+    # Docs deploy to Netlify via the shared SSR-capable task. The docs site is
+    # function-bearing (Astro SSR: /api/search, on-demand OG images, the static
+    # 404 fallback), so it uses `ssr = true`: `netlify deploy --no-build` without
+    # `--dir`, shipping the bundled serverless + edge functions produced by the
+    # `mono docs build --netlify` step. A `--dir` deploy is publish-only and
+    # drops every function — the docs.livestore.dev 502 outage.
+    # Provides `dt netlify:deploy:docs [--input type=prod|pr --input pr=N]`.
+    (taskModules.netlify {
+      siteName = "livestore-docs";
+      siteId = "abeae053-d336-480a-a0fe-f0aaaacaa74e";
+      deployments = [
+        {
+          name = "docs";
+          staticDir = "docs/dist";
+          # The build (snippets/diagrams + `netlify build`) runs in the docs
+          # build phase; this task only ships the already-bundled output.
+          afterTask = null;
+          ssr = true;
+          # docs owns its Netlify site, so `type=prod` publishes to the
+          # production domain (docs.livestore.dev) rather than a `prod` alias.
+          prodAlias = false;
+        }
+      ];
+    })
     # Setup task (auto-runs in enterShell)
     (taskModules.setup {
       requiredTasks = [ ];

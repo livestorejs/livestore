@@ -12,4 +12,7 @@ inputs:
       nixpkgs:
         follows: nixpkgs
   effect-utils:
-    url: github:overengineeringstudio/effect-utils/main
+    # TEMPORARY: points at the effect-utils PR branch that adds netlify `ssr` +
+    # `prodAlias` deploy modes (overengineeringstudio/effect-utils#783). Retarget
+    # to `main` once that PR merges.
+    url: github:overengineeringstudio/effect-utils?ref=schickling-assistant/2026-06-12-netlify-ssr-deploy

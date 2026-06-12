@@ -215,8 +215,14 @@ const docsBuildCommand = Cli.Command.make(
       Cli.Options.withDefault(false),
       Cli.Options.withDescription('Skip building snippets and diagrams'),
     ),
+    netlify: Cli.Options.boolean('netlify').pipe(
+      Cli.Options.withDefault(false),
+      Cli.Options.withDescription(
+        'Build via `netlify build` so the SSR serverless + edge functions are bundled (deploy-ready). A plain `astro build` emits an un-bundled function that 502s once deployed via netlify deploy.',
+      ),
+    ),
   },
-  Effect.fn('docs.build')(function* ({ apiDocs, clean, skipDeps }) {
+  Effect.fn('docs.build')(function* ({ apiDocs, clean, skipDeps, netlify }) {
     if (clean === true) {
       // Wipe Astro output plus cached diagram/snippet artefacts to avoid stale renders between builds.
       yield* cmd(
@@ -237,9 +243,18 @@ const docsBuildCommand = Cli.Command.make(
       yield* cleanupChromiumChildren()
     }
 
-    // Local/CI prebuild uses Astro directly. The deploy step performs the
-    // Netlify build (single build overall), which handles Edge bundling.
-    yield* cmd('pnpm astro build', {
+    // Two build paths, same Astro build underneath:
+    // - default `pnpm astro build`: emits the static site to `dist/` plus the
+    //   un-bundled SSR function under `.netlify/v1/`. Fine for local/dev.
+    // - `--netlify` → `netlify build`: runs the same `astro build` (via the
+    //   `[build] command` in netlify.toml) and then bundles the serverless +
+    //   edge functions with their deps, producing a deploy-ready output. This
+    //   is what the deploy must use — a plain `astro build` deploy ships an
+    //   un-bundled function that fails at runtime with ERR_MODULE_NOT_FOUND and
+    //   returns a 502 on every on-demand route and the 404 fallback.
+    //   `--offline` keeps the bundling step from requiring Netlify auth/link.
+    const buildCommand = netlify === true ? 'bunx netlify-cli build --offline' : 'pnpm astro build'
+    yield* cmd(buildCommand, {
       env: {
         STARLIGHT_INCLUDE_API_DOCS: apiDocs === true ? '1' : undefined,
         // Building the docs sometimes runs out of memory, so we give it more
