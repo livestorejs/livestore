@@ -46,6 +46,8 @@ const releasePlanPaths = [
   'scripts/src/shared/netlify.ts',
 ]
 
+const RELEASE_HEAD_SHA = '${{ github.event.workflow_run.head_sha || github.sha }}'
+
 export default githubWorkflow({
   name: 'Release',
   actionlint: defaultActionlintConfig,
@@ -64,9 +66,14 @@ export default githubWorkflow({
           required: true,
           default: 'create-release-pr',
           type: 'choice',
-          options: ['create-release-pr', 'validate-release-plan', 'publish-release'],
+          options: ['create-release-pr', 'validate-release-plan', 'publish-release', 'publish-snapshot'],
         },
       },
+    },
+    workflow_run: {
+      workflows: ['ci'],
+      types: ['completed'],
+      branches: ['main'],
     },
     pull_request: {
       paths: releasePlanPaths,
@@ -279,7 +286,7 @@ fi`,
     },
 
     'publish-release': {
-      if: "github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'publish-release')",
+      if: "github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-release')",
       'runs-on': 'ubuntu-24.04',
       permissions: {
         contents: 'write',
@@ -287,7 +294,6 @@ fi`,
       },
       env: {
         GH_TOKEN: '${{ github.token }}',
-        NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
       },
       defaults: bashShellDefaults,
       steps: withNixDiagnosticsOnFailure([
@@ -310,25 +316,13 @@ else
   echo "LIVESTORE_RELEASE_DEPLOY_TARGET=dev" >> "$GITHUB_ENV"
 fi`,
         },
-        /*
-         * Stable package publishing uses the NPM_TOKEN secret. npm currently
-         * allows only one trusted publisher workflow per package, and
-         * `ci.yml` already owns that slot for snapshot publishing. Moving
-         * stable releases to trusted publishing would require consolidating
-         * the snapshot + stable publish into a single workflow file or
-         * giving up snapshot OIDC — neither is worth doing right now.
-         * See .github/workflows/README.md `release.yml` section.
-         */
         {
-          name: 'Configure npm token fallback',
+          name: 'Assert tokenless npm trusted publishing',
           run: `set -euo pipefail
-: "\${NODE_AUTH_TOKEN:?Missing NPM_TOKEN secret}"
-npmrc="$HOME/.npmrc"
-printf '%s\\n' "always-auth=true" > "$npmrc"
-printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$npmrc"
-printf '%s\\n' "NPM_CONFIG_USERCONFIG=$npmrc" >> "$GITHUB_ENV"
-printf '%s\\n' "NPM_CONFIG_REGISTRY=https://registry.npmjs.org/" >> "$GITHUB_ENV"
-NPM_CONFIG_USERCONFIG="$npmrc" NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ npm whoami >/dev/null`,
+if [ -n "\${NODE_AUTH_TOKEN:-}" ] || [ -n "\${NPM_TOKEN:-}" ]; then
+  echo "npm publishing must use trusted publishing; token auth is not allowed in this job." >&2
+  exit 1
+fi`,
         },
         otelSetupStep,
         {
@@ -433,6 +427,66 @@ NPM_CONFIG_USERCONFIG="$npmrc" NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ n
           env: {
             MXBAI_API_KEY: '${{ secrets.MXBAI_API_KEY }}',
             MXBAI_VECTOR_STORE_ID: '${{ secrets.MXBAI_VECTOR_STORE_ID }}',
+          },
+        },
+      ]),
+    },
+
+    /**
+     * Keep npm publishing in release.yml so each package has a single npm
+     * trusted-publisher workflow. The heavy CI matrix remains in ci.yml; this
+     * job runs only after that workflow succeeds on main, or by explicit
+     * workflow_dispatch for operator-controlled recovery.
+     */
+    'publish-snapshot-version': {
+      if: "(github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-snapshot')",
+      'runs-on': 'ubuntu-24.04',
+      permissions: {
+        contents: 'write',
+        'id-token': 'write',
+      },
+      env: {
+        GH_TOKEN: '${{ github.token }}',
+      },
+      defaults: bashShellDefaults,
+      steps: withNixDiagnosticsOnFailure([
+        {
+          name: 'Checkout',
+          uses: 'actions/checkout@v4',
+          with: {
+            ref: RELEASE_HEAD_SHA,
+          },
+        },
+        ...livestoreSetupSteps.slice(1),
+        {
+          name: 'Assert tokenless npm trusted publishing',
+          run: `set -euo pipefail
+if [ -n "\${NODE_AUTH_TOKEN:-}" ] || [ -n "\${NPM_TOKEN:-}" ]; then
+  echo "npm snapshot publishing must use trusted publishing; token auth is not allowed in this job." >&2
+  exit 1
+fi`,
+        },
+        {
+          name: 'Publish snapshot version',
+          run: runDevenvTasksBefore('release:snapshot:git-sha'),
+          env: { GIT_SHA: RELEASE_HEAD_SHA },
+        },
+        {
+          name: 'Publish DevTools artifact snapshot',
+          run: runDevenvTasksBefore('release:devtools-artifact:publish'),
+          env: {
+            LIVESTORE_DEVTOOLS_OUT_DIR: '${{ runner.temp }}/livestore-devtools-snapshot',
+            LIVESTORE_RELEASE_VERSION: `0.0.0-snapshot-${RELEASE_HEAD_SHA}`,
+          },
+        },
+        {
+          name: 'Upload DevTools Chrome snapshot artifact',
+          uses: 'actions/upload-artifact@v4',
+          with: {
+            name: `livestore-devtools-chrome-0.0.0-snapshot-${RELEASE_HEAD_SHA}`,
+            path: '${{ runner.temp }}/livestore-devtools-snapshot/livestore-devtools-chrome-0.0.0-snapshot-${{ github.event.workflow_run.head_sha || github.sha }}.zip',
+            'if-no-files-found': 'error',
+            'retention-days': 14,
           },
         },
       ]),

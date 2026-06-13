@@ -497,7 +497,7 @@ const publishReleasePackages = ({
               return Effect.logError(
                 [
                   `Failed to publish ${pkg}@${version} from CI.`,
-                  'Snapshot publishing must authenticate through npm trusted publishing from .github/workflows/ci.yml.',
+                  'Snapshot publishing must authenticate through npm trusted publishing from .github/workflows/release.yml.',
                   'Check that npm has this package configured for GitHub Actions trusted publishing and that this job uses a GitHub-hosted runner with id-token: write.',
                 ].join(' '),
               ).pipe(Effect.zipRight(Effect.fail(error)))
