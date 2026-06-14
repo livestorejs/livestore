@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import os from 'node:os'
 import { join } from 'node:path'
 
@@ -110,6 +110,16 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
 
     // Netlify CLI resolves publish from the git root, not the process CWD.
     // Use --dir with absolute path to bypass config-relative path resolution.
+    //
+    // The Astro `@astrojs/netlify` adapter (v7+, Netlify Framework API) emits the
+    // self-contained SSR function under `<cwd>/.netlify/v1/functions/`. When we
+    // override the publish dir with `--dir`, the CLI deploys only the static output
+    // and does NOT auto-discover the Framework API functions, which previously left
+    // dynamic routes (e.g. `/api/search`) returning a static 404 and the live
+    // function 502ing. Passing `--functions` explicitly makes the CLI hash and
+    // upload the v2 function (its routing config is inlined in the entry file).
+    const functionsDir = join(cwd, '.netlify', 'v1', 'functions')
+    const hasFrameworkFunctions = existsSync(functionsDir)
     const deployCmd = 'bunx'
     const deployRest = [
       'netlify-cli',
@@ -118,6 +128,7 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
       debugEnabled === true ? undefined : '--json',
       debugEnabled === true ? '--debug' : undefined,
       `--dir=${join(cwd, 'dist')}`,
+      hasFrameworkFunctions === true ? `--functions=${functionsDir}` : undefined,
       '--no-build',
       `--site=${resolvedSiteArg}`,
       message !== undefined ? `--message=${message}` : undefined,

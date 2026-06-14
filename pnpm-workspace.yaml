@@ -66,13 +66,13 @@ packageExtensions:
       '@types/react-dom': 19.2.3
   starlight-auto-sidebar:
     dependencies:
-      astro: '>=5.0.0'
+      astro: '>=6.0.0'
   starlight-links-validator:
     dependencies:
-      astro: '>=5.0.0'
+      astro: '>=6.0.0'
   starlight-sidebar-topics:
     dependencies:
-      astro: '>=5.0.0'
+      astro: '>=6.0.0'
   typedoc:
     dependencies:
       typedoc-plugin-markdown: ^4.8.1

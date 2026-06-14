@@ -12,7 +12,7 @@ const runtimeDeps = catalog.compose({
   },
   peerDependencies: {
     external: {
-      astro: '^5.0.0',
+      astro: '^5 || ^6',
     },
   },
 })
