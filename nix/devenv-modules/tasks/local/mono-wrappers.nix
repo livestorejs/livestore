@@ -203,22 +203,27 @@ in
     };
 
     # =========================================================================
-    # Docs prod deploy — phase split
+    # Docs prod deploy — phase split ("Option A")
     #
     # The prod deploy is hoisted into deploy-prod.yml, where each phase runs as a
     # separate job (or step) wrapped in an OS-level `timeout(1)` + heartbeat. The
     # rationale is structural: the tldraw renderer (@kitschpatrol/tldraw-cli →
-    # Puppeteer) can leave an orphan Chromium child after the build phase
-    # completes, and that child has previously kept the deploy step hanging for
-    # hours (livestorejs/livestore#1279). Capping each phase at the OS boundary
-    # makes that hang both visible and recoverable without losing prior phase
-    # output.
+    # Puppeteer) can leave an orphan Chromium child after the build, and that
+    # child has previously kept the deploy step hanging for hours
+    # (livestorejs/livestore#1279). Capping each phase at the OS boundary makes
+    # that hang both visible and recoverable without losing prior phase output.
+    #
+    # Option A collapses the former snippets → diagrams → astro → upload phases
+    # into a single `build-deploy` step: `netlify deploy --build` (see
+    # `scripts/src/shared/netlify.ts`) runs the full `@netlify/build` pipeline,
+    # which builds the framework (auto-building snippets/diagrams) AND bundles the
+    # serverless + edge functions in one bounded step. The build still spawns
+    # chromium for mermaid, so the chromium-isolation intent of #1283 is honored
+    # by keeping it within this one timeout-wrapped phase.
     #
     # Phase contract:
-    # - snippets, diagrams, astro: build-time phases, identical to dev-surface
-    #   `docs:build:phase:*` but writing logs to `tmp/ci-docs-prod/` so prod and
-    #   PR artifacts don't collide.
-    # - upload: `mono docs deploy --prod --step=upload`. Writes deploy IDs to
+    # - build-deploy: `mono docs deploy --prod --step=upload`. Builds + deploys
+    #   via the Netlify CLI and writes deploy IDs to
     #   `tmp/ci-docs-prod/deploy-state.json` for verify/purge.
     # - verify: `mono docs deploy --prod --step=verify`. Reads state, posts the
     #   GitHub job summary + workflow report. Markdown probe is non-fatal.
@@ -226,66 +231,27 @@ in
     #   Netlify CDN cache. Failure is non-fatal — the deploy is already live.
     # =========================================================================
 
-    "docs:deploy:prod:phase:snippets" = {
-      description = "Build docs snippets for prod deploy (CI phase)";
-      exec = ''
-        set -euo pipefail
-        mkdir -p tmp/ci-docs-prod
-        timeout --signal=TERM --kill-after=2m 20m mono docs snippets build 2>&1 | tee tmp/ci-docs-prod/01-snippets.log
-      '';
-      after = [ "setup:strict" ];
-    };
-
-    "docs:deploy:prod:phase:diagrams" = {
-      description = "Build docs diagrams for prod deploy (CI phase)";
-      exec = ''
-        set -euo pipefail
-        mkdir -p tmp/ci-docs-prod
-        timeout --signal=TERM --kill-after=2m 20m mono docs diagrams build 2>&1 | tee tmp/ci-docs-prod/02-diagrams.log
-      '';
-    };
-
-    "docs:deploy:prod:phase:astro" = {
-      description = "Build Astro docs bundle for prod deploy (CI phase)";
+    "docs:deploy:prod:phase:build-deploy" = {
+      description = "Build + deploy prod docs to Netlify via Option A (CI phase, writes state file)";
       exec = ''
         set -euo pipefail
         mkdir -p tmp/ci-docs-prod
         export LIVESTORE_DOCS_SITE_URL="https://docs.livestore.dev"
         (
           while true; do
-            echo "[docs-prod-heartbeat] $(date -u +%Y-%m-%dT%H:%M:%SZ) astro build still running"
-            pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono' || true
+            echo "[docs-prod-heartbeat] $(date -u +%Y-%m-%dT%H:%M:%SZ) netlify build+deploy in progress"
+            pgrep -af 'astro|chromium|chrome_crashpad_handler|netlify|node|bun|mono' || true
             sleep 60
           done
-        ) > tmp/ci-docs-prod/03-heartbeat.log 2>&1 &
+        ) > tmp/ci-docs-prod/01-build-deploy-heartbeat.log 2>&1 &
         HEARTBEAT_PID=$!
         cleanup() {
           kill "$HEARTBEAT_PID" 2>/dev/null || true
         }
         trap cleanup EXIT
-        timeout --signal=TERM --kill-after=2m 20m mono docs build --api-docs --skip-deps 2>&1 | tee tmp/ci-docs-prod/03-astro-build.log
+        timeout --signal=TERM --kill-after=2m 25m mono docs deploy --prod --step=upload 2>&1 | tee tmp/ci-docs-prod/01-build-deploy.log
       '';
-    };
-
-    "docs:deploy:prod:phase:upload" = {
-      description = "Upload prod docs build to Netlify (CI phase, writes state file)";
-      exec = ''
-        set -euo pipefail
-        mkdir -p tmp/ci-docs-prod
-        (
-          while true; do
-            echo "[docs-prod-heartbeat] $(date -u +%Y-%m-%dT%H:%M:%SZ) netlify upload in progress"
-            pgrep -af 'netlify|node|bun|mono' || true
-            sleep 30
-          done
-        ) > tmp/ci-docs-prod/04-upload-heartbeat.log 2>&1 &
-        HEARTBEAT_PID=$!
-        cleanup() {
-          kill "$HEARTBEAT_PID" 2>/dev/null || true
-        }
-        trap cleanup EXIT
-        timeout --signal=TERM --kill-after=2m 20m mono docs deploy --prod --step=upload 2>&1 | tee tmp/ci-docs-prod/04-upload.log
-      '';
+      after = [ "setup:strict" ];
     };
 
     "docs:deploy:prod:phase:verify" = {

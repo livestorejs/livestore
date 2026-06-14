@@ -607,12 +607,13 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             return
           }
 
-          if (shouldBuild === true) {
-            process.env.LIVESTORE_DOCS_SITE_URL = docsSiteUrl
-            yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipDeps: false })
-          }
-
-          const docsWorkspaceCwd = Effect.provide(LivestoreWorkspace.toCwd('docs'))
+          // Option A: the Netlify CLI runs the full `@netlify/build` pipeline
+          // (`--build`, see `deployToNetlify`), so there is no separate pre-build
+          // step. `LIVESTORE_DOCS_SITE_URL` is forwarded so the in-build astro
+          // run targets the right canonical site. Prod deploys always include the
+          // API docs; the legacy `--build` flag also opts a deploy into API docs.
+          process.env.LIVESTORE_DOCS_SITE_URL = docsSiteUrl
+          const includeApiDocs = prod === true || shouldBuild === true
 
           /**
            * For PR deploys: deploy twice to create both sticky and commit-specific aliases.
@@ -625,13 +626,15 @@ export const docsCommand = Cli.Command.make('docs').pipe(
                 site,
                 target: { _tag: 'alias', alias: prAliases.stickyAlias },
                 message: buildMessage(contextLabelFor(false, prAliases.stickyAlias)),
-              }).pipe(docsWorkspaceCwd)
+                apiDocs: includeApiDocs,
+              })
 
               const commitPrDeploy: NetlifyDeploySummary = yield* deployToNetlify({
                 site,
                 target: { _tag: 'alias', alias: prAliases.commitAlias },
                 message: buildMessage(contextLabelFor(false, prAliases.commitAlias)),
-              }).pipe(docsWorkspaceCwd)
+                apiDocs: includeApiDocs,
+              })
 
               return { stickyDeploy: stickyPrDeploy, commitDeploy: commitPrDeploy }
             } else {
@@ -640,7 +643,8 @@ export const docsCommand = Cli.Command.make('docs').pipe(
                 site,
                 target: prod === true ? { _tag: 'prod' } : { _tag: 'alias', alias: branchAlias! },
                 message: buildMessage(contextLabelFor(prod, branchAlias ?? '')),
-              }).pipe(docsWorkspaceCwd)
+                apiDocs: includeApiDocs,
+              })
 
               return { stickyDeploy: deploy, commitDeploy: deploy }
             }

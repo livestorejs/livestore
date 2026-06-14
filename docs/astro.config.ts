@@ -48,7 +48,13 @@ export default defineConfig({
   site,
   output: 'static',
   server: { port, host: '0.0.0.0' },
-  adapter: process.env.NODE_ENV === 'production' ? netlify() : undefined,
+  // `imageCDN: false` keeps Astro's image service local (sharp) instead of the
+  // Netlify external Image CDN. The external service has no `transform` method,
+  // and because the docs have `prerender=false` endpoints Astro injects the
+  // `/_image` route into the SSR function — with the external service that route
+  // rejects every request with a 500. Disabling it optimizes remote images at
+  // build time with sharp and backs `/_image` with the local sharp service (200).
+  adapter: process.env.NODE_ENV === 'production' ? netlify({ imageCDN: false }) : undefined,
   image: {
     domains: ['gitbucket.schickling.dev'],
   },
@@ -361,6 +367,7 @@ export default defineConfig({
   redirects: {
     '/getting-started': '/getting-started/react-web',
     '/reference/syncing/sync-provider': '/reference/syncing/sync-provider/cloudflare',
+    '/misc/sponsoring': '/sustainable-open-source/sponsoring',
   },
   vite: {
     resolve: {
