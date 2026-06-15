@@ -18,7 +18,7 @@ export class SyncHttpRpc extends RpcGroup.make(
       ...SyncMessage.PullRequest.fields,
     }),
     success: SyncMessage.PullResponse,
-    error: Schema.Union(UnknownError, BackendIdMismatchError),
+    error: Schema.Union([UnknownError, BackendIdMismatchError]),
     stream: true,
   }),
   Rpc.make('SyncHttpRpc.Push', {
@@ -28,7 +28,7 @@ export class SyncHttpRpc extends RpcGroup.make(
       ...SyncMessage.PushRequest.fields,
     }),
     success: SyncMessage.PushAck,
-    error: Schema.Union(UnknownError, ServerAheadError, BackendIdMismatchError),
+    error: Schema.Union([UnknownError, ServerAheadError, BackendIdMismatchError]),
   }),
   Rpc.make('SyncHttpRpc.Ping', {
     payload: Schema.Struct({

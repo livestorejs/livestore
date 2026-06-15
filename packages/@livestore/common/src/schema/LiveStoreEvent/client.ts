@@ -73,14 +73,14 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
   sessionId: Schema.String,
   // TODO get rid of `meta` again by cleaning up the usage implementations
   meta: Schema.Struct({
-    sessionChangeset: Schema.Union(
+    sessionChangeset: Schema.Union([
       Schema.TaggedStruct('sessionChangeset', {
         data: Schema.Uint8Array as any as Schema.Schema<Uint8Array<ArrayBuffer>>,
         debug: Schema.Any.pipe(Schema.optional),
       }),
       Schema.TaggedStruct('no-op', {}),
       Schema.TaggedStruct('unset', {}),
-    ),
+    ]),
     syncMetadata: Schema.Option(Schema.JsonValue),
     /** Used to detect if the materializer is side effecting (during dev) */
     materializerHashLeader: Schema.Option(Schema.Number),
@@ -217,7 +217,7 @@ const canonicalizeArgs = (args: unknown): unknown => (args === undefined ? args 
 export const makeSchema = <TSchema extends LiveStoreSchema>(
   schema: TSchema,
 ): ForEventDef.ForRecord<TSchema['_EventDefMapType']> =>
-  Schema.Union(
+  Schema.Union([
     ...[...schema.eventsDefsMap.values()].map((def) =>
       Schema.Struct({
         name: Schema.Literal(def.name),
@@ -228,7 +228,7 @@ export const makeSchema = <TSchema extends LiveStoreSchema>(
         sessionId: Schema.String,
       }),
     ),
-  ).annotate({ title: 'LiveStoreEvent.Client' }) as any
+  ]).annotate({ title: 'LiveStoreEvent.Client' }) as any
 
 /** Memoized `makeSchema` - caches the generated schema by reference. */
 export const makeSchemaMemo = memoizeByRef(makeSchema)

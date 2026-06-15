@@ -27,7 +27,7 @@ export class WSEdgePayload extends Schema.TaggedStruct('WSEdgePayload', {
   payload: Schema.Any,
 }) {}
 
-export class WSEdgeMessage extends Schema.Union(WSEdgeInit, WSEdgePayload) {}
+export class WSEdgeMessage extends Schema.Union([WSEdgeInit, WSEdgePayload]) {}
 
 export const MessageMsgpack = Msgpack.schema(WSEdgeMessage)
 

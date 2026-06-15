@@ -20,7 +20,7 @@ export class SyncWsRpc extends RpcGroup.make(
       ...SyncMessage.PullRequest.fields,
     }),
     success: SyncMessage.PullResponse,
-    error: Schema.Union(UnknownError, BackendIdMismatchError),
+    error: Schema.Union([UnknownError, BackendIdMismatchError]),
     stream: true,
   }),
   Rpc.make('SyncWsRpc.Push', {
@@ -30,7 +30,7 @@ export class SyncWsRpc extends RpcGroup.make(
       ...SyncMessage.PushRequest.fields,
     }),
     success: SyncMessage.PushAck,
-    error: Schema.Union(UnknownError, ServerAheadError, BackendIdMismatchError),
+    error: Schema.Union([UnknownError, ServerAheadError, BackendIdMismatchError]),
   }),
   // Ping <> Pong is handled by DO WS auto-response
   // TODO add admin RPCs

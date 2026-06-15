@@ -81,11 +81,11 @@ export const LoadDatabaseFile = LeaderReqResMessage('LSD.Leader.LoadDatabaseFile
   },
   success: {},
   error: {
-    cause: Schema.Union(
+    cause: Schema.Union([
       Schema.TaggedStruct('unsupported-file', {}),
       Schema.TaggedStruct('unsupported-database', {}),
       Schema.TaggedStruct('unknown-error', { cause: Schema.Defect }),
-    ),
+    ]),
   },
 })
 
@@ -163,12 +163,12 @@ export const ResetAllData = LeaderReqResMessage('LSD.Leader.ResetAllData', {
 //   failure: UnknownError,
 // }) {}
 
-// export const MessageToApp_ = Schema.Union(DatabaseFileInfo_, NetworkStatus_)
+// export const MessageToApp_ = Schema.Union([DatabaseFileInfo_, NetworkStatus_])
 
 // export type MessageToApp_ = typeof MessageToApp_.Type
 //
 
-export const MessageToApp = Schema.Union(
+export const MessageToApp = Schema.Union([
   SnapshotReq,
   LoadDatabaseFile.Request,
   EventlogReq,
@@ -185,11 +185,11 @@ export const MessageToApp = Schema.Union(
   SyncHeadSubscribe,
   SyncHeadUnsubscribe,
   SetSyncLatch.Request,
-).annotate({ identifier: 'LSD.Leader.MessageToApp' })
+]).annotate({ identifier: 'LSD.Leader.MessageToApp' })
 
 export type MessageToApp = typeof MessageToApp.Type
 
-export const MessageFromApp = Schema.Union(
+export const MessageFromApp = Schema.Union([
   SnapshotRes,
   LoadDatabaseFile.Response,
   EventlogRes,
@@ -205,6 +205,6 @@ export const MessageFromApp = Schema.Union(
   SyncHeadRes,
   ResetAllData.Success,
   SetSyncLatch.Success,
-).annotate({ identifier: 'LSD.Leader.MessageFromApp' })
+]).annotate({ identifier: 'LSD.Leader.MessageFromApp' })
 
 export type MessageFromApp = typeof MessageFromApp.Type

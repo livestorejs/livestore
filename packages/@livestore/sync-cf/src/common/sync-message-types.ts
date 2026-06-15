@@ -95,23 +95,23 @@ export const AdminInfoResponse = Schema.TaggedStruct('SyncMessage.AdminInfoRespo
 
 export type AdminInfoResponse = typeof AdminInfoResponse.Type
 
-export const BackendToClientMessage = Schema.Union(
+export const BackendToClientMessage = Schema.Union([
   PullResponse,
   PushAck,
   Pong,
   AdminResetRoomResponse,
   AdminInfoResponse,
-)
+])
 export type BackendToClientMessage = typeof BackendToClientMessage.Type
 
-export const ClientToBackendMessage = Schema.Union(
+export const ClientToBackendMessage = Schema.Union([
   PullRequest,
   PushRequest,
   Ping,
   AdminResetRoomRequest,
   AdminInfoRequest,
-)
+])
 export type ClientToBackendMessage = typeof ClientToBackendMessage.Type
 
-export const Message = Schema.Union(BackendToClientMessage, ClientToBackendMessage)
+export const Message = Schema.Union([BackendToClientMessage, ClientToBackendMessage])
 export type Message = typeof Message.Type

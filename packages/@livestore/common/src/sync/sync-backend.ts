@@ -140,13 +140,13 @@ export const isSyncBackend = (value: unknown): value is SyncBackend<any> => {
   return hasCoreFns && hasSupports && hasMetadata && hasIsConnected
 }
 
-export const PullResPageInfo = Schema.Union(
+export const PullResPageInfo = Schema.Union([
   Schema.TaggedStruct('MoreUnknown', {}),
   Schema.TaggedStruct('MoreKnown', {
     remaining: Schema.Number,
   }),
   Schema.TaggedStruct('NoMore', {}),
-)
+])
 
 export type PullResPageInfo = typeof PullResPageInfo.Type
 
