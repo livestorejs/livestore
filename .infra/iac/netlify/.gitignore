@@ -1,0 +1,16 @@
+# OpenTofu working dir: provider binaries + caches. Never commit.
+.terraform/
+.terraform.tfstate.lock.info
+
+# Plaintext state/backups must NEVER be committed (this repo is PUBLIC and state
+# holds the API key value). The committed state under state/netlify.tfstate is
+# encrypted by OpenTofu native state encryption; any *.tfstate elsewhere or
+# *.backup files are unencrypted and must stay out of git.
+*.tfstate.backup
+state/*.backup
+
+# crash logs / var files that might hold secrets
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
