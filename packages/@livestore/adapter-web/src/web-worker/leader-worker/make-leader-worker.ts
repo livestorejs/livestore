@@ -219,7 +219,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         const { syncProcessor } = yield* LeaderThreadCtx // <- syncState comes from here
         return syncProcessor.pull({ cursor })
       }).pipe(
-        Stream.unwrapScoped,
+        Stream.unwrap,
         // For debugging purposes
         // Stream.tapLogWithLabel('@livestore/adapter-web:worker:PullStream'),
       ),
@@ -238,7 +238,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
             options: streamOptions,
           })
         }),
-        Stream.unwrapScoped,
+        Stream.unwrap,
         Stream.withSpan('@livestore/adapter-web:worker:StreamEvents'),
       ),
     Export: () =>
@@ -263,7 +263,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return workerCtx.syncProcessor.syncState.changes
-      }).pipe(Stream.unwrapScoped),
+      }).pipe(Stream.unwrap),
     GetNetworkStatus: Effect.fn('@livestore/adapter-web:worker:GetNetworkStatus')(function* () {
       const workerCtx = yield* LeaderThreadCtx
       return yield* workerCtx.networkStatus
@@ -272,7 +272,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return workerCtx.networkStatus.changes
-      }).pipe(Stream.unwrapScoped),
+      }).pipe(Stream.unwrap),
     Shutdown: Effect.fn('@livestore/adapter-web:worker:Shutdown')(function* () {
       yield* Effect.logDebug('[@livestore/adapter-web:worker] Shutdown')
 

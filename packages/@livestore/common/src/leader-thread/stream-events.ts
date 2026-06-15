@@ -61,7 +61,7 @@ export const streamEventsWithSyncState = ({
   const initialCursor = options.since ?? EventSequenceNumber.Client.ROOT
   const batchSize = options.batchSize ?? 100
 
-  return Stream.unwrapScoped(
+  return Stream.unwrap(
     Effect.gen(function* () {
       /**
        * Single-element Queue allows suspending the event stream until head
