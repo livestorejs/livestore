@@ -8,8 +8,7 @@ import {
   UnknownError,
 } from '@livestore/common'
 import { throttle } from '@livestore/utils'
-import type { WebChannel } from '@livestore/utils/effect'
-import { Effect, Stream } from '@livestore/utils/effect'
+import { type WebChannel, Effect, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
 import { NOT_REFRESHED_YET } from '../reactive.ts'

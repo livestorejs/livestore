@@ -15,8 +15,10 @@ import { LiveStoreEvent } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
-import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
 import {
+  type HttpClient,
+  type Scope,
+  type WorkerError,
   Cause,
   Effect,
   FetchHttpClient,

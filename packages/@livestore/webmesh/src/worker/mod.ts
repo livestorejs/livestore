@@ -1,6 +1,5 @@
 import { LS_DEV } from '@livestore/utils'
-import { Context, Deferred, Effect, Layer, Stream, WebChannel } from '@livestore/utils/effect'
-import type { Worker } from '@livestore/utils/effect'
+import { Context, Deferred, Effect, Layer, Stream, WebChannel, type Worker } from '@livestore/utils/effect'
 
 import * as WebmeshSchema from '../mesh-schema.ts'
 import type { MeshNode } from '../node.ts'

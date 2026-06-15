@@ -1,5 +1,4 @@
-import type { Scope, SubscriptionRef } from '@livestore/utils/effect'
-import { Effect, Latch, Stream } from '@livestore/utils/effect'
+import { type Scope, type SubscriptionRef, Effect, Latch, Stream } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
 
 import type {
