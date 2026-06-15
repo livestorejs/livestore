@@ -2,20 +2,10 @@ import os from 'node:os'
 import process from 'node:process'
 
 import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
+import { SchemaIssue, SchemaTransformation } from 'effect'
 
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import {
-  Data,
-  Effect,
-  ManagedRuntime,
-  Metric,
-  type MetricState,
-  Option,
-  ParseResult,
-  Pretty,
-  ReadonlyArray,
-  Schema,
-} from '@livestore/utils/effect'
+import { Data, Effect, ManagedRuntime, Metric, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import { printConsoleTable } from './print-console-table.ts'
 
@@ -37,23 +27,27 @@ const StringDescribedAnnotation = <T extends string>(typeLiteral: T) =>
   })
 
 const NumberFromDescriptionAnnotation = <T extends string>(typeLiteral: T) =>
-  Schema.transformOrFail(
-    StringDescribedAnnotation(typeLiteral),
-    Schema.Struct({
-      type: Schema.Literal(typeLiteral),
-      description: Schema.Number,
-    }),
-    {
-      decode: ({ description, ...rest }, _, ast) =>
-        Effect.sync(() => Number.parseFloat(description)).pipe(
-          Effect.filterOrFail(
-            (num) => !Number.isNaN(num),
-            () => new ParseResult.Type(ast, description, `Invalid ${rest.type} description: ${description}`),
+  StringDescribedAnnotation(typeLiteral).pipe(
+    Schema.decodeTo(
+      Schema.Struct({
+        type: Schema.Literal(typeLiteral),
+        description: Schema.Number,
+      }),
+      SchemaTransformation.transformOrFail({
+        decode: ({ description, ...rest }) =>
+          Effect.sync(() => Number.parseFloat(description)).pipe(
+            Effect.filterOrFail(
+              (num) => !Number.isNaN(num),
+              () =>
+                new SchemaIssue.InvalidValue(Option.some(description), {
+                  message: `Invalid ${rest.type} description: ${description}`,
+                }),
+            ),
+            Effect.map((parsedDescription) => ({ ...rest, description: parsedDescription })),
           ),
-          Effect.map((parsedDescription) => ({ ...rest, description: parsedDescription })),
-        ),
-      encode: ({ description, ...rest }) => Effect.succeed({ ...rest, description: String(description) }),
-    },
+        encode: ({ description, ...rest }) => Effect.succeed({ ...rest, description: String(description) }),
+      }),
+    ),
   )
 
 const MeasurementAnnotation = NumberFromDescriptionAnnotation('measurement')
@@ -100,7 +94,7 @@ const Cpus = Schema.NonEmptyArray(
       model: Schema.String,
       count: Schema.Number,
       speed: Schema.Number.annotate({
-        pretty: () => (value) => `${(value / 1000).toFixed(2)} GHz`,
+        toFormatter: () => (value) => `${(value / 1000).toFixed(2)} GHz`,
       }),
     }),
     {
@@ -125,14 +119,14 @@ const SystemInfo = Schema.Struct({
   cpus: Cpus,
   memory: Schema.Struct({
     total: Schema.Number.annotate({
-      pretty: () => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`,
+      toFormatter: () => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`,
     }),
     free: Schema.Number.annotate({
-      pretty: () => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`,
+      toFormatter: () => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`,
     }),
   }),
 }).annotate({
-  pretty: () => (value) => {
+  toFormatter: () => (value) => {
     return `
 🖥️  System Information:
 
@@ -157,7 +151,7 @@ type SystemInfo = typeof SystemInfo.Type
 
 const decodeSystemInfo = Schema.decodeUnknownSync(SystemInfo)
 
-const PrettySystemInfo = Pretty.make(SystemInfo)
+const PrettySystemInfo = Schema.toFormatter(SystemInfo)
 
 const measurementUnitToDisplayUnit: Record<MeasurementUnit, DisplayUnit> = {
   ms: 'ms',
@@ -341,7 +335,7 @@ export default class MeasurementsReporter implements Reporter {
 
   private computeMetricStates = (): Effect.Effect<
     Record<string, TrackedMeasurementState>,
-    ParseResult.ParseError | MissingAnnotationError
+    Schema.SchemaError | MissingAnnotationError
   > =>
     Effect.all(
       Object.entries(this.measurementsByTestTitle).reduce(
@@ -359,7 +353,7 @@ export default class MeasurementsReporter implements Reporter {
           })
           return acc
         },
-        {} as Record<string, Effect.Effect<TrackedMeasurementState, ParseResult.ParseError | MissingAnnotationError>>,
+        {} as Record<string, Effect.Effect<TrackedMeasurementState, Schema.SchemaError | MissingAnnotationError>>,
       ),
       { concurrency: 'unbounded' },
     )
@@ -405,5 +399,5 @@ export default class MeasurementsReporter implements Reporter {
 
 type TrackedMeasurementState = {
   meta: TrackedMeasurement['meta']
-  state: MetricState.MetricState.Summary
+  state: Metric.SummaryState
 }

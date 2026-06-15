@@ -137,7 +137,7 @@ const makeLocalLeaderThread = ({
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions | undefined
-  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadEncoded: Schema.Json | undefined
   syncPayloadSchema: Schema.Schema<any> | undefined
   testing?: { overrides?: TestingOverrides }
   shutdownChannel: ShutdownChannel.ShutdownChannel

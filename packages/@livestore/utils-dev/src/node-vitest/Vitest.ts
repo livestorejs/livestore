@@ -1,5 +1,6 @@
 import * as inspector from 'node:inspector'
 
+import { live as effectVitestLive } from '@effect/vitest'
 import type * as Vitest from '@effect/vitest'
 
 import { IS_CI } from '@livestore/utils'
@@ -21,6 +22,8 @@ import { OtelLiveHttp } from '../node/mod.ts'
 
 export * from '@effect/vitest'
 
+export const scopedLive = effectVitestLive
+
 export const DEBUGGER_ACTIVE = Boolean(process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined)
 
 export const makeWithTestCtx: <ROut = never, E1 = never, RIn = never>(
@@ -40,7 +43,7 @@ export const makeWithTestCtx: <ROut = never, E1 = never, RIn = never>(
 export type WithTestCtxParams<ROut, E1, RIn> = {
   suffix?: string
   makeLayer?: (testContext: Vitest.TestContext) => Layer.Layer<ROut, E1, RIn | Scope.Scope>
-  timeout?: Duration.DurationInput
+  timeout?: Duration.Input
   forceOtel?: boolean
 }
 
@@ -55,7 +58,7 @@ export const withTestCtx =
     }: {
       suffix?: string
       makeLayer?: (testContext: Vitest.TestContext) => Layer.Layer<ROut, E1, RIn>
-      timeout?: Duration.DurationInput
+      timeout?: Duration.Input
       forceOtel?: boolean
     } = {},
   ) =>
@@ -85,7 +88,7 @@ export const withTestCtx =
         ? identity
         : Effect.logWarnIfTakesLongerThan({
             duration: Duration.toMillis(timeout) * 0.8,
-            label: `${spanName} approaching timeout (timeout: ${Duration.format(timeout)})`,
+            label: `${spanName} approaching timeout (timeout: ${Duration.format(Duration.fromInputUnsafe(timeout))})`,
           }),
       DEBUGGER_ACTIVE === true ? identity : Effect.timeout(timeout),
       Effect.provide(combinedLayer),
@@ -121,19 +124,17 @@ export type EnhancedTestContext =
 /**
  * Normalizes propOptions to ensure @effect/vitest receives correct fastCheck structure
  */
+type ArbitraryValues<Arbs extends Vitest.Vitest.Arbitraries> = {
+  [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Arbs[K] extends Schema.Schema<infer T> ? T : never
+}
+
+type PropOptions<Arbs extends Vitest.Vitest.Arbitraries> = Omit<Vitest.TestOptions, 'fastCheck'> & {
+  fastCheck?: FC.Parameters<ArbitraryValues<Arbs>>
+}
+
 const normalizePropOptions = <Arbs extends Vitest.Vitest.Arbitraries>(
-  propOptions:
-    | number
-    | (Vitest.TestOptions & {
-        fastCheck?: FC.Parameters<{
-          [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]>
-        }>
-      }),
-): Vitest.TestOptions & {
-  fastCheck?: FC.Parameters<{
-    [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]>
-  }>
-} => {
+  propOptions: number | PropOptions<Arbs>,
+): PropOptions<Arbs> => {
   // If it's a number, treat as timeout and add our default fastCheck
   if (Predicate.isObject(propOptions) === false) {
     return {
@@ -180,23 +181,8 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
   api: Vitest.Vitest.Tester<R>,
   name: string,
   arbitraries: Arbs,
-  test: Vitest.Vitest.TestFunction<
-    A,
-    E,
-    R,
-    [
-      { [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]> },
-      Vitest.TestContext,
-      EnhancedTestContext,
-    ]
-  >,
-  propOptions:
-    | number
-    | (Vitest.TestOptions & {
-        fastCheck?: FC.Parameters<{
-          [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]>
-        }>
-      }),
+  test: Vitest.Vitest.TestFunction<A, E, R, [ArbitraryValues<Arbs>, Vitest.TestContext, EnhancedTestContext]>,
+  propOptions: number | PropOptions<Arbs>,
 ) => {
   const normalizedPropOptions = normalizePropOptions(propOptions)
   const numRuns = normalizedPropOptions.fastCheck?.numRuns ?? 100

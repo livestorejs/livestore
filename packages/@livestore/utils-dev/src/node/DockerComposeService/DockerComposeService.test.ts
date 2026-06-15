@@ -12,7 +12,7 @@ const testTimeout = 30_000
 const testFixturePath = path.join(import.meta.dirname, 'test-fixtures')
 
 const DockerComposeTest = (args: Partial<DockerComposeArgs> = {}) =>
-  DockerComposeService.Default({
+  DockerComposeService.layer({
     cwd: testFixturePath,
     ...args,
   })
@@ -22,7 +22,7 @@ Vitest.describe('DockerComposeService', { timeout: testTimeout }, () => {
     const withBasicTest = (args: Partial<DockerComposeArgs> = {}) =>
       Vitest.makeWithTestCtx({
         timeout: testTimeout,
-        makeLayer: () => DockerComposeTest(args).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+        makeLayer: () => DockerComposeTest(args).pipe(Layer.provide(PlatformNode.NodeServices.layer)),
       })
 
     Vitest.scopedLive('can pull docker images', (test) =>
@@ -68,7 +68,7 @@ Vitest.describe('DockerComposeService', { timeout: testTimeout }, () => {
     const withHealthCheckTest = (args: Partial<DockerComposeArgs> = {}) =>
       Vitest.makeWithTestCtx({
         timeout: testTimeout,
-        makeLayer: () => DockerComposeTest(args).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+        makeLayer: () => DockerComposeTest(args).pipe(Layer.provide(PlatformNode.NodeServices.layer)),
       })
 
     Vitest.scopedLive('handles health check timeout gracefully', (test) =>
@@ -87,7 +87,7 @@ Vitest.describe('DockerComposeService', { timeout: testTimeout }, () => {
           .pipe(Effect.result)
 
         // Should fail due to health check timeout
-        expect(result._tag).toBe('Left')
+        expect(result._tag).toBe('Failure')
       }).pipe(withHealthCheckTest({ serviceName: 'hello-world' })(test)),
     )
   })

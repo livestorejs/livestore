@@ -11,7 +11,6 @@ import {
   Option,
   RpcClient,
   RpcSerialization,
-  type Schedule,
   Socket,
   Stream,
   SubscriptionRef,
@@ -32,10 +31,9 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
       const server = yield* WranglerDevServerService
 
       return {
-        makeProvider: (args, options) =>
+        makeProvider: (args) =>
           makeProxyDoRpcSync({
             port: server.port,
-            pingSchedule: options?.pingSchedule,
           })(args),
         turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
         turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
@@ -86,13 +84,7 @@ export const doSqlite = {
  *        └────────────────────────┤layerRpcServerWebsocket│ ◀─── DO RPC ──▶ │  (Server Layer)    │
  *                                 └───────────────────────┘                 └────────────────────┘
  */
-const makeProxyDoRpcSync = ({
-  port,
-  pingSchedule,
-}: {
-  port: number
-  pingSchedule?: Schedule.Schedule<unknown> | undefined
-}): SyncBackend.SyncBackendConstructor<any> =>
+const makeProxyDoRpcSync = ({ port }: { port: number }): SyncBackend.SyncBackendConstructor<any> =>
   // TODO pass through clientId, payload, storeId to worker/DO
   Effect.fn(function* ({ clientId, storeId, payload }) {
     const socketConnectionRef = yield* SubscriptionRef.make(false)
@@ -100,7 +92,6 @@ const makeProxyDoRpcSync = ({
     const ProtocolLive = RpcClient.layerProtocolSocketWithIsConnected({
       url: `ws://localhost:${port}/do-rpc-ws-proxy`,
       isConnected: socketConnectionRef,
-      pingSchedule,
     }).pipe(
       Layer.provide(Socket.layerWebSocket(`ws://localhost:${port}/do-rpc-ws-proxy`)),
       Layer.provide(Socket.layerWebSocketConstructorGlobal),

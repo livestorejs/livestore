@@ -4,8 +4,7 @@
  * @since 2.0.0
  */
 
-import type { SubscriptionRef } from 'effect'
-import { Effect, Effectable, Readable, Stream } from 'effect'
+import { Effect, Effectable, Stream, SubscriptionRef } from 'effect'
 import { dual } from 'effect/Function'
 import { hasProperty } from 'effect/Predicate'
 
@@ -25,8 +24,9 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface Subscribable<A, E = never, R = never> extends Readable.Readable<A, E, R>, Effect.Effect<A, E, R> {
+export interface Subscribable<A, E = never, R = never> extends Effect.Effect<A, E, R> {
   readonly [TypeId]: TypeId
+  readonly get: Effect.Effect<A, E, R>
   readonly changes: Stream.Stream<A, E, R>
 }
 
@@ -44,21 +44,16 @@ export const isSubscribable = (u: unknown): u is Subscribable<unknown, unknown, 
 //   },
 // }
 
-class SubscribableImpl<in out A> extends Effectable.Class<A> implements Subscribable<A> {
-  // @ts-expect-error type symbol
-  readonly [TypeId] = TypeId
-  // @ts-expect-error type symbol
-  readonly [Readable.TypeId] = Readable.TypeId
-  readonly get: Effect.Effect<A>
-  readonly changes: Stream.Stream<A>
-  constructor(get: Effect.Effect<A>, changes: Stream.Stream<A>) {
+class SubscribableImpl<in out A, out E, out R> extends Effectable.Class<A, E, R> implements Subscribable<A, E, R> {
+  readonly [TypeId]: TypeId = TypeId
+  readonly get: Effect.Effect<A, E, R>
+  readonly override: Effect.Effect<A, E, R>
+  readonly changes: Stream.Stream<A, E, R>
+  constructor(get: Effect.Effect<A, E, R>, changes: Stream.Stream<A, E, R>) {
     super()
     this.get = get
+    this.override = get
     this.changes = changes
-  }
-
-  commit() {
-    return this.get
   }
 }
 
@@ -74,12 +69,12 @@ class SubscribableImpl<in out A> extends Effectable.Class<A> implements Subscrib
 export const make = <A, E, R>(options: {
   readonly get: Effect.Effect<A, E, R>
   readonly changes: Stream.Stream<A, E, R>
-}): Subscribable<A, E, R> => new SubscribableImpl(options.get as any, options.changes as any) as Subscribable<A, E, R>
+}): Subscribable<A, E, R> => new SubscribableImpl(options.get, options.changes)
 
 export const fromSubscriptionRef = <A>(ref: SubscriptionRef.SubscriptionRef<A>): Subscribable<A> =>
   make({
-    get: ref.get,
-    changes: ref.changes,
+    get: SubscriptionRef.get(ref),
+    changes: SubscriptionRef.changes(ref),
   })
 
 /**

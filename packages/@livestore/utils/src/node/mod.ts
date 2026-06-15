@@ -1,6 +1,6 @@
 import * as http from 'node:http'
 
-import { layer as ParcelWatcherLayer } from '@effect/platform-node/NodeFileSystem/ParcelWatcher'
+import { NodeFileSystem } from '@effect/platform-node'
 import { Effect, Layer } from 'effect'
 
 import { OtelTracer, UnknownError } from '../effect/mod.ts'
@@ -12,6 +12,16 @@ export * as PlatformNode from '@effect/platform-node'
 
 export * as ChildProcessRunner from './ChildProcessRunner/ChildProcessRunner.ts'
 export * as ChildProcessWorker from './ChildProcessRunner/ChildProcessWorker.ts'
+export { NodeFileSystem }
+
+/**
+ * v4 no longer exposes the old ParcelWatcher layer. Keep the facade export in
+ * place so downstream packages can migrate separately from the Effect package
+ * layout change.
+ */
+export const NodeRecursiveWatchLayer = Layer.empty
+
+export const NodeFileSystemWithWatch = NodeFileSystem.layer.pipe(Layer.provideMerge(NodeRecursiveWatchLayer))
 
 // Enable debug logging for OpenTelemetry
 // otel.diag.setLogger(new otel.DiagConsoleLogger(), otel.DiagLogLevel.ERROR)
@@ -46,47 +56,5 @@ export const getFreePort: Effect.Effect<number, UnknownError> = Effect.callback<
 export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend(() => {
   const OtelTracerLive = Layer.succeed(OtelTracer.OtelTracer, makeNoopTracer())
 
-  const TracingLive = Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
-    Layer.provideMerge(OtelTracerLive),
-  )
-
-  return TracingLive
+  return OtelTracer.layerWithoutOtelTracer.pipe(Layer.provideMerge(OtelTracerLive))
 })
-
-/**
- * Layer that provides WatchBackend for recursive file watching via @parcel/watcher.
- * This layer alone does NOT provide FileSystem - it only provides the watch backend.
- *
- * IMPORTANT: Layer ordering matters! When composing with NodeFileSystem.layer, use
- * `NodeFileSystemWithWatch` instead, or ensure WatchBackend is available when FileSystem
- * is constructed by using `Layer.provideMerge`:
- *
- * ```ts
- * // ✅ CORRECT: Use the pre-composed layer
- * Effect.provide(NodeFileSystemWithWatch)
- *
- * // ✅ CORRECT: Manual composition with Layer.provideMerge
- * const layer = PlatformNode.NodeFileSystem.layer.pipe(Layer.provideMerge(NodeRecursiveWatchLayer))
- * Effect.provide(layer)
- *
- * // ❌ WRONG: Chained Effect.provide - WatchBackend won't be used!
- * Effect.provide(NodeRecursiveWatchLayer).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer))
- * ```
- *
- * @see https://github.com/Effect-TS/effect/issues/5913
- */
-export const NodeRecursiveWatchLayer = ParcelWatcherLayer
-
-/**
- * Pre-composed layer providing FileSystem with recursive file watching via @parcel/watcher.
- * This is the recommended way to get a FileSystem that supports recursive watching.
- *
- * Use this layer when you need to watch files recursively (e.g., watching nested directories).
- * Without recursive watching, Node.js's built-in fs.watch only detects changes in the
- * immediate directory, not in subdirectories.
- */
-export { NodeFileSystem } from '@effect/platform-node'
-
-import { NodeFileSystem } from '@effect/platform-node'
-
-export const NodeFileSystemWithWatch = NodeFileSystem.layer.pipe(Layer.provideMerge(ParcelWatcherLayer))

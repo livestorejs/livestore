@@ -1,8 +1,7 @@
-import { Deferred, Exit, Scope } from 'effect'
+import { Deferred, Effect, Exit, Scope, Stream } from 'effect'
 
-import * as Effect from '../effect/Effect.ts'
+import { scopeWithCloseable } from '../effect/Effect.ts'
 import * as Schema from '../effect/Schema/index.ts'
-import * as Stream from '../effect/Stream.ts'
 import {
   type InputSchema,
   listenToDebugPing,
@@ -19,13 +18,13 @@ export const broadcastChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEn
   channelName: string
   schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
 }): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> =>
-  Effect.scopeWithCloseable((scope) =>
+  scopeWithCloseable((scope) =>
     Effect.gen(function* () {
       const schema = mapSchema(inputSchema)
 
       const channel = new BroadcastChannel(channelName)
 
-      yield* Effect.addFinalizer(() => Effect.try(() => channel.close()).pipe(Effect.ignore))
+      yield* Effect.addFinalizer(() => Effect.sync(() => channel.close()).pipe(Effect.ignore))
 
       const send = (message: MsgSend) =>
         Effect.gen(function* () {
@@ -39,7 +38,9 @@ export const broadcastChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEn
         listenToDebugPing(channelName),
       )
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), (deferred) =>
+        Deferred.done(deferred, Exit.void),
+      )
       const supportsTransferables = false
 
       return {
@@ -70,7 +71,7 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
   ids: { own: string; other: string }
   schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
 }): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> =>
-  Effect.scopeWithCloseable((scope) =>
+  scopeWithCloseable((scope) =>
     Effect.gen(function* () {
       const schema = mapSchema(inputSchema)
 
@@ -114,7 +115,9 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
         listenToDebugPing('window'),
       )
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), (deferred) =>
+        Deferred.done(deferred, Exit.void),
+      )
       const supportsTransferables = true
 
       return {

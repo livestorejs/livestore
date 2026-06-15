@@ -6,10 +6,9 @@ import { Context, Effect, Layer } from '@livestore/utils/effect'
 export type WorkspaceInfo = string
 
 /** Current working directory. */
-export class CurrentWorkingDirectory extends Context.Tag('CurrentWorkingDirectory')<
-  CurrentWorkingDirectory,
-  WorkspaceInfo
->() {
+export class CurrentWorkingDirectory extends Context.Service<CurrentWorkingDirectory, WorkspaceInfo>()(
+  'CurrentWorkingDirectory',
+) {
   /** Layer that captures the process cwd once. */
   static live = Layer.effect(
     CurrentWorkingDirectory,
@@ -21,7 +20,7 @@ export class CurrentWorkingDirectory extends Context.Tag('CurrentWorkingDirector
 }
 
 /** Livestore workspace root (env required). */
-export class LivestoreWorkspace extends Context.Tag('LivestoreWorkspace')<LivestoreWorkspace, WorkspaceInfo>() {
+export class LivestoreWorkspace extends Context.Service<LivestoreWorkspace, WorkspaceInfo>()('LivestoreWorkspace') {
   /** Resolve from WORKSPACE_ROOT env. */
   static live = Layer.effect(
     LivestoreWorkspace,

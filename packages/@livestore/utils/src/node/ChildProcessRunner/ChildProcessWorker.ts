@@ -6,7 +6,7 @@ import * as Exit from 'effect/Exit'
 import * as Layer from 'effect/Layer'
 import * as Scope from 'effect/Scope'
 import * as Worker from 'effect/unstable/workers/Worker'
-import { WorkerError } from 'effect/unstable/workers/WorkerError'
+import { WorkerError, WorkerReceiveError, WorkerUnknownError } from 'effect/unstable/workers/WorkerError'
 
 // Track child processes for cleanup on process signals
 const childProcesses = new Set<ChildProcess.ChildProcess>()
@@ -73,7 +73,7 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
       childProcess.on('exit', () => {
         // Remove from tracking when process exits
         childProcesses.delete(childProcess)
-        Deferred.unsafeDone(exitDeferred, Exit.void)
+        Deferred.doneUnsafe(exitDeferred, Effect.void)
       })
 
       childProcess.send(['setup-parent-death-detection', { parentPid: process.pid }])
@@ -130,24 +130,45 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
       emit(message)
     })
     port.on('messageerror', (cause) => {
-      Deferred.unsafeDone(deferred, new WorkerError({ reason: 'decode', cause }))
+      Deferred.doneUnsafe(
+        deferred,
+        Effect.fail(
+          new WorkerError({
+            reason: new WorkerReceiveError({ message: 'failed to decode worker message', cause }),
+          }),
+        ),
+      )
     })
     port.on('error', (cause) => {
-      Deferred.unsafeDone(deferred, new WorkerError({ reason: 'unknown', cause }))
+      Deferred.doneUnsafe(
+        deferred,
+        Effect.fail(
+          new WorkerError({
+            reason: new WorkerUnknownError({ message: 'worker port error', cause }),
+          }),
+        ),
+      )
     })
     port.on('exit', (code) => {
-      Deferred.unsafeDone(
+      Deferred.doneUnsafe(
         deferred,
-        new WorkerError({ reason: 'unknown', cause: new Error(`exited with code ${code}`) }),
+        Effect.fail(
+          new WorkerError({
+            reason: new WorkerUnknownError({
+              message: `exited with code ${code}`,
+              cause: new Error(`exited with code ${code}`),
+            }),
+          }),
+        ),
       )
     })
     return Effect.void
   },
 })
 
-export const layerWorker = Layer.succeed(Worker.PlatformWorker, platformWorkerImpl)
+export const layerWorker = Layer.succeed(Worker.WorkerPlatform, platformWorkerImpl)
 
-export const layerManager = Layer.provide(Worker.layerManager, layerWorker)
+export const layerManager = layerWorker
 
 /**
  * @example

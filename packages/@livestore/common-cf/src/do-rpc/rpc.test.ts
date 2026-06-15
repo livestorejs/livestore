@@ -196,7 +196,7 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
         entries.delete(id);
         console.log('addFinalizerExit', exit._tag, Cause.squash(exit.cause), rpc, payload)
         // ^^^^ added this console log
-        return sendInterrupt(id, Exit.isFailure(exit) ? Array.from(Cause.interruptors(exit.cause)).flatMap(id => Array.from(FiberId.toSet(id))) : [], context);
+        return sendInterrupt(id, Exit.isFailure(exit) ? Array.from(Cause.interruptors(exit.cause)) : [], context);
       });
       ```
 

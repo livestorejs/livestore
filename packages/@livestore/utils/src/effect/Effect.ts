@@ -1,12 +1,21 @@
 import * as OtelTracer from '@effect/opentelemetry/Tracer'
-import { Cause, type Context, Deferred, Duration, Effect, Fiber, pipe, Scope, type Stream } from 'effect'
-import type { UnknownException } from 'effect/Cause'
-import { log } from 'effect/Console'
-import { dual, type LazyArg } from 'effect/Function'
-import type { Predicate, Refinement } from 'effect/Predicate'
+import {
+  Cause,
+  type Context,
+  Deferred,
+  Duration,
+  Effect,
+  Fiber,
+  pipe,
+  Scope,
+  type Stream,
+  type Predicate,
+  Console,
+  Function,
+} from 'effect'
 
-import { isDevEnv, isPromise, objectToString } from '../mod.ts'
-import { UnknownError } from './Error.ts'
+import { isDevEnv, objectToString } from '../misc.ts'
+import { isPromise } from '../promise.ts'
 
 export * from 'effect/Effect'
 export { spanEvent } from './spanEvent.ts'
@@ -28,11 +37,9 @@ export { spanEvent } from './spanEvent.ts'
 
 /** Same as `Effect.scopeWith` but with a `CloseableScope` instead of a `Scope`. */
 export const scopeWithCloseable = <R, E, A>(
-  fn: (scope: Scope.CloseableScope) => Effect.Effect<A, E, R | Scope.Scope>,
+  fn: (scope: Scope.Scope) => Effect.Effect<A, E, R | Scope.Scope>,
 ): Effect.Effect<A, E, R | Scope.Scope> =>
   Effect.gen(function* () {
-    // const parentScope = yield* Scope.Scope
-    // const scope = yield* Scope.fork(parentScope, ExecutionStrategy.sequential)
     const scope = yield* Scope.make()
     yield* Effect.addFinalizer((exit) => Scope.close(scope, exit))
     return yield* fn(scope).pipe(Scope.provide(scope))
@@ -46,11 +53,11 @@ export type SyncOrPromiseOrEffect<TResult, TError = never, TContext = never> =
 export const tryAll = <Res>(
   fn: () => Res,
 ): Res extends Effect.Effect<infer A, infer E>
-  ? Effect.Effect<A, E | UnknownException>
+  ? Effect.Effect<A, E | Cause.UnknownError>
   : Res extends Promise<infer A>
-    ? Effect.Effect<A, UnknownException>
-    : Effect.Effect<Res, UnknownException> =>
-  Effect.try(() => fn()).pipe(
+    ? Effect.Effect<A, Cause.UnknownError>
+    : Effect.Effect<Res, Cause.UnknownError> =>
+  Effect.try({ try: () => fn(), catch: (cause) => new Cause.UnknownError(cause) }).pipe(
     Effect.andThen((fnRes) =>
       Effect.isEffect(fnRes) === true
         ? (fnRes as any as Effect.Effect<any>)
@@ -77,13 +84,10 @@ export const logBefore =
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.tapCause(eff, (cause) =>
     Effect.gen(function* () {
-      if (Cause.isInterruptedOnly(cause) === true) {
-        // console.log('interrupted', Cause.pretty(err), err)
-        return
-      }
+      if (Cause.hasInterruptsOnly(cause) === true) return
 
       const span = yield* OtelTracer.currentOtelSpan.pipe(
-        Effect.catchTag('NoSuchElementException', (_) => Effect.succeed(undefined)),
+        Effect.catchTag('NoSuchElementError', (_) => Effect.succeed(undefined)),
       )
 
       const firstErrLine = cause.toString().split('\n')[0]
@@ -111,7 +115,7 @@ export const dieDebugger = (msg: string, ...args: ReadonlyArray<unknown>): Effec
       debugger
       void args // Keeps the variable in scope so it's inspectable when the debugger pauses
     }
-    return Effect.dieMessage(msg)
+    return Effect.die(msg)
   })
 
 /**
@@ -126,27 +130,27 @@ export const orDieDebugger = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Eff
   Effect.matchEffect(self, {
     onFailure: (error) =>
       // Keep the debugger hook so that `debugger` runs only when the wrapped effect actually fails, not while building the wrapper.
-      Effect.dieSync(() => {
+      Effect.sync(() => {
         if (isDevEnv() === true) {
           // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for impossible states during development
           debugger
         }
         return error
-      }),
+      }).pipe(Effect.flatMap(Effect.die)),
     onSuccess: Effect.succeed,
   })
 
 export const ignoreIf: {
   <E, EB extends E>(
-    refinement: Refinement<NoInfer<E>, EB>,
+    refinement: Predicate.Refinement<NoInfer<E>, EB>,
   ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<void, Exclude<E, EB>, R>
-  <E>(predicate: Predicate<NoInfer<E>>): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<void, E, R>
+  <E>(predicate: Predicate.Predicate<NoInfer<E>>): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<void, E, R>
   <A, E, R, EB extends E>(
     self: Effect.Effect<A, E, R>,
-    refinement: Refinement<E, EB>,
+    refinement: Predicate.Refinement<E, EB>,
   ): Effect.Effect<void, Exclude<E, EB>, R>
-  <A, E, R>(self: Effect.Effect<A, E, R>, predicate: Predicate<E>): Effect.Effect<void, E, R>
-} = dual(2, <A, E, R>(self: Effect.Effect<A, E, R>, predicate: Predicate<E>) =>
+  <A, E, R>(self: Effect.Effect<A, E, R>, predicate: Predicate.Predicate<E>): Effect.Effect<void, E, R>
+} = Function.dual(2, <A, E, R>(self: Effect.Effect<A, E, R>, predicate: Predicate.Predicate<E>) =>
   self.pipe(Effect.catchIf(predicate, () => Effect.void)),
 )
 
@@ -157,9 +161,9 @@ export const eventListener = <TEvent = unknown>(
   options?: { once?: boolean },
 ) =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime()
+    const context = yield* Effect.context()
 
-    const handlerFn = (event: TEvent) => handler(event).pipe(Effect.provide(runtime), Effect.runFork)
+    const handlerFn = (event: TEvent) => handler(event).pipe(Effect.runForkWith(context))
 
     target.addEventListener(type, handlerFn, { once: options?.once ?? false })
 
@@ -167,10 +171,10 @@ export const eventListener = <TEvent = unknown>(
   })
 
 export const logWarnIfTakesLongerThan =
-  ({ label, duration }: { label: string; duration: Duration.DurationInput }) =>
+  ({ label, duration }: { label: string; duration: Duration.Input }) =>
   <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.gen(function* () {
-      const runtime = yield* Effect.runtime()
+      const context = yield* Effect.context<R>()
 
       let tookLongerThanTimer = false
 
@@ -180,8 +184,7 @@ export const logWarnIfTakesLongerThan =
           // TODO include span info
           return Effect.logWarning(`${label}: Took longer than ${objectToString(duration)}ms`)
         }),
-        Effect.provide(runtime),
-        Effect.runFork,
+        Effect.runForkWith(context),
       )
 
       const start = Date.now()
@@ -218,7 +221,7 @@ export const logDuration =
       const start = Date.now()
       const res = yield* eff
       const end = Date.now()
-      yield* Effect.log(`${label}: ${Duration.format(end - start)}`)
+      yield* Effect.log(`${label}: ${Duration.format(Duration.millis(end - start))}`)
       return res
     })
 
@@ -230,7 +233,7 @@ export const tapSync =
 export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>> =>
   pipe(
     Effect.context<never>(),
-    Effect.tap((env) => log(msg ?? 'debugLogEnv', env)),
+    Effect.tap((env) => Console.log(msg ?? 'debugLogEnv', env)),
   )
 
 /**
@@ -252,14 +255,14 @@ export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>>
  *
  * @see {@link timeoutOrDieMessage} for a version with a custom message.
  * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
- * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
+ * @see {@link Effect.timeoutOrElse} for a version that allows specifying both success and timeout handlers.
  */
 export const timeoutOrDie =
-  (duration: Duration.DurationInput) =>
+  (duration: Duration.Input) =>
   <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-    Effect.timeoutFailCause(self, {
+    Effect.timeoutOrElse(self, {
       duration,
-      onTimeout: () => Cause.die(new Cause.TimeoutError()),
+      orElse: () => Effect.die(new Cause.TimeoutError()),
     })
 
 /**
@@ -281,14 +284,14 @@ export const timeoutOrDie =
  *
  * @see {@link timeoutOrDie} for a version without a custom message.
  * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
- * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
+ * @see {@link Effect.timeoutOrElse} for a version that allows specifying both success and timeout handlers.
  */
 export const timeoutOrDieMessage =
-  (duration: Duration.DurationInput, message: string) =>
+  (duration: Duration.Input, message: string) =>
   <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-    Effect.timeoutFailCause(self, {
+    Effect.timeoutOrElse(self, {
       duration,
-      onTimeout: () => Cause.die(new Cause.TimeoutError(message)),
+      orElse: () => Effect.die(new Cause.TimeoutError(message)),
     })
 
 export const toForkedDeferred = <R, E, A>(
@@ -320,8 +323,8 @@ export const withPerformanceMeasure =
     )
 
 const getSpanTrace = () => {
-  const fiberOption = Fiber.getCurrentFiber()
-  if (fiberOption._tag === 'None' || fiberOption.value.currentSpan === undefined) {
+  const fiber = Fiber.getCurrent()
+  if (fiber === undefined || fiber.currentSpan === undefined) {
     return 'No current fiber'
   }
 

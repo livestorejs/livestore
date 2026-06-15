@@ -1,5 +1,4 @@
-import type { Exit } from 'effect'
-import { Deferred, Effect, Runtime } from 'effect'
+import { Deferred, Effect, Exit } from 'effect'
 
 // See https://developer.mozilla.org/en-US/docs/Web/API/Web_Locks_API
 export const withLock =
@@ -14,9 +13,10 @@ export const withLock =
   }) =>
   <Ctx, E, A>(eff: Effect.Effect<A, E, Ctx>): Effect.Effect<A, E | E2, Ctx> =>
     Effect.gen(function* () {
-      const runtime = yield* Effect.runtime<Ctx>()
+      const context = yield* Effect.context<Ctx>()
+      const runPromiseExit = Effect.runPromiseExitWith(context)
 
-      const exit = yield* Effect.tryPromise<Exit.Exit<A, E>, E | E2>({
+      const exit = yield* Effect.tryPromise<Exit.Exit<A, E | E2> | undefined, E | E2>({
         try: (signal) => {
           if (signal.aborted === true) return 'aborted' as never
 
@@ -25,22 +25,24 @@ export const withLock =
           return navigator.locks.request(lockName, requestOptions, async (lock: Lock | null) => {
             if (lock === null) {
               if (onTaken !== undefined) {
-                const onTakenExit = await Runtime.runPromiseExit(runtime)(onTaken)
+                const onTakenExit = await runPromiseExit(onTaken)
                 if (onTakenExit._tag === 'Failure') {
-                  return onTakenExit
+                  return Exit.failCause(onTakenExit.cause)
                 }
               }
               return
             }
 
             // TODO also propagate Effect interruption to the execution
-            return Runtime.runPromiseExit(runtime)(eff)
-          }) as unknown as Promise<Exit.Exit<A, E>>
+            return runPromiseExit(eff)
+          })
         },
-        catch: (err) => err as any as E,
+        catch: (err): E | E2 => err as E | E2,
       })
 
-      if (exit._tag === 'Failure') {
+      if (exit === undefined) {
+        return undefined as A
+      } else if (exit._tag === 'Failure') {
         return yield* Effect.failCause(exit.cause)
       } else {
         return exit.value

@@ -2,8 +2,8 @@ import { Schema, SchemaAST } from 'effect'
 
 export type DiffItem = {
   path: string
-  a: any
-  b: any
+  a: unknown
+  b: unknown
   ast: SchemaAST.AST
 }
 
@@ -11,15 +11,15 @@ export type DiffItem = {
  * Diffs two values for a given schema and traverses downwards and returns a list of differences.
  */
 export const debugDiff =
-  <A, I, R>(base: Schema.Schema<A, I, R>) =>
+  <A>(base: Schema.Schema<A>) =>
   (a: A, b: A): DiffItem[] => {
     const bag = [] as DiffItem[]
     debugDiffImpl(base.ast, a, b, '', bag)
     return bag
   }
 
-const debugDiffImpl = (ast: SchemaAST.AST, a: any, b: any, path: string, bag: DiffItem[]) => {
-  const eq = Schema.toEquivalence({ ast } as any)
+const debugDiffImpl = (ast: SchemaAST.AST, a: unknown, b: unknown, path: string, bag: DiffItem[]) => {
+  const eq = Schema.toEquivalence(Schema.make<Schema.Schema<unknown>>(ast))
   if (eq(a, b) === false) {
     // bag.push({ path, a, b, ast })
 
@@ -35,10 +35,16 @@ const debugDiffImpl = (ast: SchemaAST.AST, a: any, b: any, path: string, bag: Di
           } catch {}
         }
       }
-    } else if (SchemaAST.isTypeLiteral(ast) === true) {
-      const props = SchemaAST.getPropertySignatures(ast)
+    } else if (SchemaAST.isObjects(ast) === true) {
+      const props = ast.propertySignatures
       for (const prop of props) {
-        debugDiffImpl(prop.type, a[prop.name], b[prop.name], `${path}.${prop.name.toString()}`, bag)
+        debugDiffImpl(
+          prop.type,
+          getProperty(a, prop.name),
+          getProperty(b, prop.name),
+          `${path}.${prop.name.toString()}`,
+          bag,
+        )
       }
     } else {
       // debugger
@@ -50,10 +56,13 @@ const debugDiffImpl = (ast: SchemaAST.AST, a: any, b: any, path: string, bag: Di
 const isTaggedUnion = (ast: SchemaAST.AST): boolean => {
   if (SchemaAST.isUnion(ast) === true) {
     return ast.types.every((type) => {
-      if (SchemaAST.isTypeLiteral(type) === false) return false
-      const props = SchemaAST.getPropertySignatures(type)
+      if (SchemaAST.isObjects(type) === false) return false
+      const props = type.propertySignatures
       return props.some((prop) => prop.name.toString() === '_tag')
     })
   }
   return false
 }
+
+const getProperty = (value: unknown, key: PropertyKey): unknown =>
+  typeof value === 'object' && value !== null ? Reflect.get(value, key) : undefined

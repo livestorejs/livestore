@@ -1,3 +1,3 @@
 export * from './debug-utils.ts'
-export * from './Opfs.ts'
+export *  as Opfs from './Opfs.ts'
 export * from './utils.ts'

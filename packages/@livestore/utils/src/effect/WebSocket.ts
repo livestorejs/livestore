@@ -1,11 +1,11 @@
 import type { Schedule, Scope } from 'effect'
-import { Effect, Exit, identity, Schema } from 'effect'
+import { Effect, Exit, Schema } from 'effect'
 import { HttpClient } from 'effect/unstable/http'
 
 export class WebSocketError extends Schema.TaggedErrorClass<WebSocketError>('~@livestore/utils/WebSocketError')(
   'WebSocketError',
   {
-    cause: Schema.Defect,
+    cause: Schema.Defect(),
   },
 ) {}
 
@@ -28,7 +28,7 @@ export const makeWebSocket = ({
   Effect.gen(function* () {
     yield* validateUrl(url)
 
-    const socket = yield* Effect.callback<globalThis.WebSocket, WebSocketError>((cb, signal) => {
+    const acquireSocket = Effect.callback<globalThis.WebSocket, WebSocketError>((cb, signal) => {
       try {
         const socket = new globalThis.WebSocket(url)
 
@@ -64,10 +64,11 @@ export const makeWebSocket = ({
       } catch (error) {
         cb(Effect.fail(new WebSocketError({ cause: error })))
       }
-    }).pipe(
-      Effect.tapErrorTag('WebSocketError', () => tryLogWebsocketConnectError(url)),
-      reconnect !== undefined ? Effect.retry(reconnect) : identity,
-    )
+    }).pipe(Effect.tapErrorTag('WebSocketError', () => tryLogWebsocketConnectError(url)))
+
+    const socket = yield* reconnect !== undefined && reconnect !== false
+      ? acquireSocket.pipe(Effect.retry(reconnect))
+      : acquireSocket
 
     /**
      * Common WebSocket close codes: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/close

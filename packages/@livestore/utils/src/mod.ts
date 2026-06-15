@@ -415,9 +415,6 @@ export const isNonEmptyString = (str: string | undefined | null): str is string 
   return typeof str === 'string' && str.length > 0
 }
 
-/** Type guard that checks if a value is a Promise (has a `then` method). */
-export const isPromise = (value: any): value is Promise<unknown> => typeof value?.then === 'function'
-
 /** Type guard that checks if a value is iterable (has a `Symbol.iterator` method). */
 export const isIterable = <T>(value: any): value is Iterable<T> => typeof value?.[Symbol.iterator] === 'function'
 

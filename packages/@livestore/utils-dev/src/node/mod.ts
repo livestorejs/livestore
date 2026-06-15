@@ -6,10 +6,11 @@ import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
+import { References } from 'effect'
 
 import { IS_BUN, isNonEmptyString } from '@livestore/utils'
 import type { Tracer } from '@livestore/utils/effect'
-import { Config, Effect, FiberRef, Layer, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
+import { Config, Effect, Layer, OtelTracer, Schema } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
 
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
@@ -44,9 +45,7 @@ export const OtelLiveHttp = ({
 } = {}): Layer.Layer<OtelTracer.OtelTracer | Tracer.ParentSpan> =>
   Effect.gen(function* () {
     const configRes = yield* Config.all({
-      exporterUrl: Config.string('OTEL_EXPORTER_OTLP_ENDPOINT').pipe(
-        Config.validate({ message: 'OTEL_EXPORTER_OTLP_ENDPOINT must be set', validation: isNonEmptyString }),
-      ),
+      exporterUrl: Config.string('OTEL_EXPORTER_OTLP_ENDPOINT'),
       serviceName:
         serviceName !== undefined
           ? Config.succeed(serviceName)
@@ -59,10 +58,14 @@ export const OtelLiveHttp = ({
 
     if (configRes._tag === 'None') {
       const RootSpanLive = Layer.span('DummyRoot', {})
-      return RootSpanLive.pipe(Layer.provideMerge(OtelLiveDummy)) as any
+      return RootSpanLive.pipe(Layer.provideMerge(OtelLiveDummy))
     }
 
     const config = configRes.value
+    if (isNonEmptyString(config.exporterUrl) === false) {
+      const RootSpanLive = Layer.span('DummyRoot', {})
+      return RootSpanLive.pipe(Layer.provideMerge(OtelLiveDummy))
+    }
 
     const resource = { serviceName: config.serviceName }
 
@@ -71,25 +74,31 @@ export const OtelLiveHttp = ({
       exportIntervalMillis: 1000,
     })
 
-    const OtelLive = OtelNodeSdk.layer(() => ({
+    const spanProcessor = new BatchSpanProcessor(
+      new OTLPTraceExporter({ url: `${config.exporterUrl}/v1/traces`, headers: {} }),
+      { scheduledDelayMillis: 50 },
+    )
+
+    const NodeSdkLive = OtelNodeSdk.layer(() => ({
       resource,
       metricReader,
-      spanProcessor: new BatchSpanProcessor(
-        new OTLPTraceExporter({ url: `${config.exporterUrl}/v1/traces`, headers: {} }),
-        { scheduledDelayMillis: 50 },
-      ),
     })).pipe(
       // If an OpenTelemetry backend is not available, the `OtelNodeSdk` layer
       // will ignore the error when attempting to connect and emit a debug log
       // stating the reason for the error (in this case `ECONNREFUSED`). This
       // can cause problems for programs which rely on clean `stdout` (e.g.
       // command-line applications). To remedy this, the below code sets the
-      // minimum log level `FiberRef` to `"None"` for the duration of the
+      // minimum log level reference to `"None"` for the duration of the
       // `OtelNodeSdk`'s layer constructor.
       //
       // This can likely be removed when Livestore is migrated to the Effect
       // native Otlp exporters.
-      Layer.locally(FiberRef.currentMinimumLogLevel, LogLevel.None),
+      Layer.provide(Layer.succeed(References.MinimumLogLevel, 'None')),
+    )
+
+    const OtelLive = OtelTracer.layer.pipe(
+      Layer.provide(OtelNodeSdk.layerTracerProvider(spanProcessor).pipe(Layer.provide(NodeSdkLive))),
+      Layer.provideMerge(NodeSdkLive),
     )
 
     const RootSpanLive = Layer.span(config.rootSpanName, {
@@ -98,7 +107,7 @@ export const OtelLiveHttp = ({
       parent: parentSpan,
     })
 
-    const layer = yield* Layer.memoize(RootSpanLive.pipe(Layer.provideMerge(OtelLive)))
+    const layer = RootSpanLive.pipe(Layer.provideMerge(OtelLive))
 
     if (traceNodeBootstrap === true && IS_BUN === false) {
       /**
@@ -131,7 +140,7 @@ export const OtelLiveHttp = ({
     }
 
     return layer
-  }).pipe(Layer.unwrapScoped) as any
+  }).pipe(Layer.unwrap)
 
 export const logTraceUiUrlForSpan = (printMsg?: (url: string) => string) => (span: otel.Span) =>
   getTracingBackendUrl(span).pipe(
