@@ -20,10 +20,13 @@ remote_images = ["https://gitbucket\\.schickling\\.dev/.*"]
 # The command runs from the git root (Netlify resolves it relative to the repo
 # root), so it must `cd docs` first. `publish` is likewise git-root-relative.
 #   - NODE_ENV=production: the `@astrojs/netlify` adapter only engages in prod.
+#   - NODE_OPTIONS=--max_old_space_size=4096: the typedoc API-docs build
+#     (STARLIGHT_INCLUDE_API_DOCS=1) is memory-intensive and can OOM the Node
+#     heap without an explicit limit.
 #   - DT_PASSTHROUGH=1: the agent-policy wrapper blocks pnpm/astro inside
 #     Netlify's spawned build subprocess; this lets `bunx astro` through.
 [build]
-command = "cd docs && NODE_ENV=production DT_PASSTHROUGH=1 bunx astro build"
+command = "cd docs && NODE_ENV=production NODE_OPTIONS=--max_old_space_size=4096 DT_PASSTHROUGH=1 bunx astro build"
 publish = "docs/dist"
 # Path relative to git root (Netlify CLI resolves from repo root, not this file)
 edge_functions = "docs/netlify/edge-functions"

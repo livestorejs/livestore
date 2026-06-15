@@ -233,14 +233,17 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
 
     return result
   },
-  // Netlify upload occasionally hangs (CDN edge tarball commit). 15 minutes is a
-  // generous backstop while still well below the shell-level `timeout(1)` wrapper.
-  Effect.timeout(Duration.minutes(15)),
+  // With Option A (`--build`), the timeout must cover the full pipeline: Astro
+  // build (including typedoc API docs) + Netlify upload. 20 minutes is a generous
+  // inner backstop while staying clearly below the shell-level `timeout(1) 25m`
+  // wrapper in `docs:deploy:prod:phase:build-deploy` (mono-wrappers.nix), which
+  // provides the hard PID-tree kill backstop.
+  Effect.timeout(Duration.minutes(20)),
   Effect.catchTag(
     'TimeoutException',
     () =>
       new NetlifyError({
-        message: 'Netlify deploy timed out after 15 minutes',
+        message: 'Netlify deploy timed out after 20 minutes',
         reason: 'unknown',
       }),
   ),
