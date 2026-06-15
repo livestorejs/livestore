@@ -67,12 +67,12 @@ export class GetSpan extends Schema.TaggedRequest<GetSpan>()('GetSpan', {
   payload: {},
 }) {}
 
-export const WorkerMessage = Schema.Union(
+export const WorkerMessage = Schema.Union([
   GetUserById,
   GetPersonById,
   InitialMessage,
   GetSpan,
   RunnerInterrupt,
   StartStubbornWorker,
-)
+])
 export type WorkerMessage = Schema.Schema.Type<typeof WorkerMessage>

@@ -70,7 +70,7 @@ export type BootWarningReason = typeof BootWarningReason.Type
 export const StorageMode = Schema.Literals(['persisted', 'in-memory'])
 export type StorageMode = typeof StorageMode.Type
 
-export const BootStatus = Schema.Union(
+export const BootStatus = Schema.Union([
   Schema.Struct({ stage: Schema.Literal('loading') }),
   Schema.Struct({ stage: Schema.Literal('migrating'), progress: BootStateProgress }),
   Schema.Struct({ stage: Schema.Literal('rehydrating'), progress: BootStateProgress }),
@@ -85,7 +85,7 @@ export const BootStatus = Schema.Union(
     reason: BootWarningReason,
     message: Schema.String,
   }),
-).annotate({ title: 'BootStatus' })
+]).annotate({ title: 'BootStatus' })
 
 export type BootStatus = typeof BootStatus.Type
 

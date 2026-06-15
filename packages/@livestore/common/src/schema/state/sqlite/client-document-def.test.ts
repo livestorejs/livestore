@@ -202,7 +202,7 @@ describe('client document table', () => {
     test('struct union value', () => {
       expect(
         forSchema(
-          Schema.Union(Schema.Struct({ a: Schema.String }), Schema.Struct({ b: Schema.String })),
+          Schema.Union([Schema.Struct({ a: Schema.String }), Schema.Struct({ b: Schema.String })]),
           { a: 'hello' },
           'id1',
         ),

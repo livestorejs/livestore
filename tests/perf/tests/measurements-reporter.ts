@@ -79,12 +79,12 @@ const getRequiredAnnotationSync = <T extends AnyAnnotation['type']>(
   return annotation
 }
 
-const AnyAnnotation = Schema.Union(
+const AnyAnnotation = Schema.Union([
   MeasurementAnnotation,
   MeasurementUnitAnnotation,
   CpuThrottlingRateAnnotation,
   WarmupRunsAnnotation,
-)
+])
 type AnyAnnotation = Schema.Schema.Type<typeof AnyAnnotation>
 
 const Annotations = Schema.NonEmptyArray(AnyAnnotation)

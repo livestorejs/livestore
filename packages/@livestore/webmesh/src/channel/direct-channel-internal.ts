@@ -79,8 +79,8 @@ export const makeDirectChannelInternal = ({
     const deferred = yield* makeDeferredResult()
 
     const schema = {
-      send: Schema.Union(schema_.send, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong),
-      listen: Schema.Union(schema_.listen, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong),
+      send: Schema.Union([schema_.send, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong]),
+      listen: Schema.Union([schema_.listen, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong]),
     }
 
     const channelStateRef: { current: ChannelState } = {

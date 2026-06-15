@@ -8,14 +8,14 @@ import * as SessionInfo from './devtools-sessioninfo.ts'
 export * from './devtools-messages.ts'
 export * as SessionInfo from './devtools-sessioninfo.ts'
 
-export const DevtoolsMode = Schema.Union(
+export const DevtoolsMode = Schema.Union([
   Schema.TaggedStruct('node', {
     /** WebSocket URL */
     url: Schema.String,
   }),
   Schema.TaggedStruct('web', {}),
   Schema.TaggedStruct('browser-extension', {}),
-)
+])
 
 export type DevtoolsMode = typeof DevtoolsMode.Type
 

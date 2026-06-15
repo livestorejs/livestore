@@ -58,7 +58,7 @@ describe('debug-diff', () => {
   })
 
   test('union', () => {
-    const schema = Schema.Union(Schema.String, Schema.Number)
+    const schema = Schema.Union([Schema.String, Schema.Number])
     const a = 'hello'
     const b = 1
     const diff = debugDiff(schema)(a, b)
@@ -74,10 +74,10 @@ describe('debug-diff', () => {
   })
 
   test('tagged union', () => {
-    const schema = Schema.Union(
+    const schema = Schema.Union([
       Schema.TaggedStruct('a', { a: Schema.String }),
       Schema.TaggedStruct('b', { b: Schema.Number }),
-    )
+    ])
     const a = { _tag: 'a', a: 'hello' } as const
     const b = { _tag: 'b', b: 1 } as const
     const diff = debugDiff(schema)(a, b)

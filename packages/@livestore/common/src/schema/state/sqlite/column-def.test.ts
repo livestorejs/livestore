@@ -145,12 +145,12 @@ describe('getColumnDefForSchema', () => {
     })
 
     it('should map tagged unions to json column', () => {
-      const ResultSchema = Schema.Union(
+      const ResultSchema = Schema.Union([
         Schema.TaggedStruct('success', {
           value: Schema.String,
         }),
         Schema.TaggedStruct('error', { error: Schema.String }),
-      )
+      ])
 
       const columnDef = State.SQLite.getColumnDefForSchema(ResultSchema)
       expect(columnDef.columnType).toBe('text')
@@ -173,7 +173,7 @@ describe('getColumnDefForSchema', () => {
 
     it('should handle optional nested schemas', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(
-        Schema.Union(Schema.Struct({ name: Schema.String }), Schema.Undefined),
+        Schema.Union([Schema.Struct({ name: Schema.String }), Schema.Undefined]),
       )
       expect(columnDef.columnType).toBe('text')
     })
@@ -540,7 +540,7 @@ describe('getColumnDefForSchema', () => {
       it('should throw when primary key is used with optional schema', () => {
         // Note: Schema.optional returns a property signature, not a schema, so we can't pipe it
         // Instead, we use Schema.Union to create an optional schema that can be piped
-        const optionalString = Schema.Union(Schema.String, Schema.Undefined)
+        const optionalString = Schema.Union([Schema.String, Schema.Undefined])
         const UserSchema = Schema.Struct({
           id: optionalString.pipe(withPrimaryKey),
           name: Schema.String,

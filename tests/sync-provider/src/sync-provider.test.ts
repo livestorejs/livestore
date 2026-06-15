@@ -217,7 +217,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       }),
     )
 
-    const LargeBatchScenarioSchema = Schema.Union(fewLargeScenarioSchema, manySmallScenarioSchema)
+    const LargeBatchScenarioSchema = Schema.Union([fewLargeScenarioSchema, manySmallScenarioSchema])
 
     type LargeBatchScenario = Schema.Schema.Type<typeof LargeBatchScenarioSchema>
 

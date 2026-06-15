@@ -92,7 +92,7 @@ export interface JsonObject {
 }
 export type JsonValue = string | number | boolean | null | JsonObject | JsonArray
 
-export const JsonValue: Schema.Schema<JsonValue> = Schema.Union(
+export const JsonValue: Schema.Schema<JsonValue> = Schema.Union([
   Schema.String,
   Schema.Number,
   Schema.Boolean,
@@ -102,4 +102,4 @@ export const JsonValue: Schema.Schema<JsonValue> = Schema.Union(
     Schema.String,
     Schema.suspend(() => JsonValue),
   ),
-).annotate({ identifier: 'JsonValue' })
+]).annotate({ identifier: 'JsonValue' })
