@@ -93,7 +93,7 @@ export const makeLeaderThreadLayer = ({
         ? undefined
         : yield* Schema.decodeUnknownEffect(syncPayloadSchema)(syncPayloadEncoded)
 
-    const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
+    const bootStatusQueue = yield* Effect.acquireRelease(Queue.unbounded<BootStatus>(), Queue.shutdown)
 
     // Emit boot warning if present (e.g., OPFS unavailable in private browsing)
     if (bootWarning !== undefined) {
@@ -183,8 +183,9 @@ export const makeLeaderThreadLayer = ({
       },
     })
 
-    const extraIncomingMessagesQueue = yield* Queue.unbounded<Devtools.Leader.MessageToApp>().pipe(
-      Effect.acquireRelease(Queue.shutdown),
+    const extraIncomingMessagesQueue = yield* Effect.acquireRelease(
+      Queue.unbounded<Devtools.Leader.MessageToApp>(),
+      Queue.shutdown,
     )
 
     const devtoolsContext =

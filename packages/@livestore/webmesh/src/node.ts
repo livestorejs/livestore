@@ -142,11 +142,12 @@ export const makeMeshNode = <TName extends MeshNodeName>(
     // To avoid unbounded memory growth, we automatically forget about packet ids after a while
     const handledPacketIds = yield* TimeoutSet.make(Duration.minutes(1))
 
-    const newEdgeAvailablePubSub = yield* PubSub.unbounded<MeshNodeName>().pipe(Effect.acquireRelease(PubSub.shutdown))
+    const newEdgeAvailablePubSub = yield* Effect.acquireRelease(PubSub.unbounded<MeshNodeName>(), PubSub.shutdown)
 
-    // const proxyPacketsToProcess = yield* Queue.unbounded<ProxyQueueItem>().pipe(Effect.acquireRelease(Queue.shutdown))
-    // const messagePacketsToProcess = yield* Queue.unbounded<MessageQueueItem>().pipe(
-    //   Effect.acquireRelease(Queue.shutdown),
+    // const proxyPacketsToProcess = yield* Effect.acquireRelease(Queue.unbounded<ProxyQueueItem>(), Queue.shutdown)
+    // const messagePacketsToProcess = yield* Effect.acquireRelease(
+    //   Queue.unbounded<MessageQueueItem>(),
+    //   Queue.shutdown,
     // )
 
     const channelMap = new Map<
@@ -163,8 +164,9 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       }
     >()
 
-    const channelRequestsQueue = yield* Queue.unbounded<ListenForChannelResult>().pipe(
-      Effect.acquireRelease(Queue.shutdown),
+    const channelRequestsQueue = yield* Effect.acquireRelease(
+      Queue.unbounded<ListenForChannelResult>(),
+      Queue.shutdown,
     )
 
     type RequestId = string
@@ -387,8 +389,9 @@ export const makeMeshNode = <TName extends MeshNodeName>(
                     const channelKey = `target:${packet.source}, channelName:${packet.channelName}` satisfies ChannelKey
 
                     if (channelMap.has(channelKey) === false) {
-                      const channelQueue = yield* Queue.unbounded<MessageQueueItem | ProxyQueueItem>().pipe(
-                        Effect.acquireRelease(Queue.shutdown),
+                      const channelQueue = yield* Effect.acquireRelease(
+                        Queue.unbounded<MessageQueueItem | ProxyQueueItem>(),
+                        Queue.shutdown,
                       )
                       channelMap.set(channelKey, { queue: channelQueue, debugInfo: undefined })
                     }
@@ -502,8 +505,9 @@ export const makeMeshNode = <TName extends MeshNodeName>(
         }
 
         if (channelMap.has(channelKey) === false) {
-          const channelQueue = yield* Queue.unbounded<MessageQueueItem | ProxyQueueItem>().pipe(
-            Effect.acquireRelease(Queue.shutdown),
+          const channelQueue = yield* Effect.acquireRelease(
+            Queue.unbounded<MessageQueueItem | ProxyQueueItem>(),
+            Queue.shutdown,
           )
           channelMap.set(channelKey, { queue: channelQueue, debugInfo: undefined })
         }
@@ -513,7 +517,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
         yield* Effect.addFinalizer(() => Effect.sync(() => channelMap.delete(channelKey)))
 
         if (mode === 'direct') {
-          const incomingPacketsQueue = yield* Queue.unbounded<any>().pipe(Effect.acquireRelease(Queue.shutdown))
+          const incomingPacketsQueue = yield* Effect.acquireRelease(Queue.unbounded<any>(), Queue.shutdown)
 
           // We're we're draining the queue into another new queue.
           // It's a bit of a mystery why this is needed, since the unit tests also work without it.
@@ -605,7 +609,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
           const debugInfo = {}
 
-          const queue = yield* Queue.unbounded<any>().pipe(Effect.acquireRelease(Queue.shutdown))
+          const queue = yield* Effect.acquireRelease(Queue.unbounded<any>(), Queue.shutdown)
           broadcastChannelListenQueueMap.set(channelName, queue)
 
           const send = (message: any) =>
@@ -627,7 +631,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
             Stream.map((_) => Schema.decodeExit(schema)(_.payload)),
           )
 
-          const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+          const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
           return {
             [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
