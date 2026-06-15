@@ -1,5 +1,5 @@
 import type { Schema, Scope } from '@livestore/utils/effect'
-import { Effect, Queue, Option, Queue, Ref, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Effect, Option, Queue, Ref, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'

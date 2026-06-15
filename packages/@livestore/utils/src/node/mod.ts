@@ -1,5 +1,6 @@
 import * as http from 'node:http'
 
+import { NodeFileSystem } from '@effect/platform-node'
 import { Effect, Layer } from 'effect'
 
 import { OtelTracer, UnknownError } from '../effect/mod.ts'
@@ -11,7 +12,16 @@ export * as PlatformNode from '@effect/platform-node'
 
 export * as ChildProcessRunner from './ChildProcessRunner/ChildProcessRunner.ts'
 export * as ChildProcessWorker from './ChildProcessRunner/ChildProcessWorker.ts'
-export { NodeFileSystem } from '@effect/platform-node'
+export { NodeFileSystem }
+
+/**
+ * v4 no longer exposes the old ParcelWatcher layer. Keep the facade export in
+ * place so downstream packages can migrate separately from the Effect package
+ * layout change.
+ */
+export const NodeRecursiveWatchLayer = Layer.empty
+
+export const NodeFileSystemWithWatch = NodeFileSystem.layer.pipe(Layer.provideMerge(NodeRecursiveWatchLayer))
 
 // Enable debug logging for OpenTelemetry
 // otel.diag.setLogger(new otel.DiagConsoleLogger(), otel.DiagLogLevel.ERROR)

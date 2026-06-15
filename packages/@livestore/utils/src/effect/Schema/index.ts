@@ -24,15 +24,18 @@ export const hash = (schema: Schema.Top) => {
 
 export const getResolvedPropertySignatures = (schema: Schema.Top): ReadonlyArray<SchemaAST.PropertySignature> => {
   const resolvedAst = SchemaAST.toType(schema.ast)
-  return SchemaAST.isObjects(resolvedAst) ? resolvedAst.propertySignatures : []
+  return SchemaAST.isObjects(resolvedAst) === true ? resolvedAst.propertySignatures : []
 }
+
+/** Objects that can be transferred between contexts (workers, etc.) */
+export type TransferableObject = ArrayBuffer | MessagePort
 
 export const encodeEffectWithTransferables =
   <S extends Schema.Top>(schema: S, options?: ParseOptions) =>
   (
     a: S['Type'],
     overrideOptions?: ParseOptions,
-  ): Effect.Effect<[S['Encoded'], globalThis.Transferable[]], Schema.SchemaError, S['EncodingServices']> =>
+  ): Effect.Effect<[S['Encoded'], TransferableObject[]], Schema.SchemaError, S['EncodingServices']> =>
     Effect.gen(function* () {
       const collector = yield* Transferable.makeCollector
 
@@ -40,7 +43,7 @@ export const encodeEffectWithTransferables =
         Effect.provideService(Transferable.Collector, collector),
       )
 
-      return [encoded, collector.readUnsafe()]
+      return [encoded, collector.readUnsafe() as TransferableObject[]]
     })
 
 export const decodeSyncDebug =
