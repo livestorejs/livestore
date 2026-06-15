@@ -20,8 +20,8 @@ const runtimeDeps = catalog.compose({
   },
   peerDependencies: {
     external: {
-      '@astrojs/starlight': '^0.35.0',
-      astro: '^5.0.0',
+      '@astrojs/starlight': '^0.35 || ^0.40',
+      astro: '^5 || ^6',
     },
   },
 })

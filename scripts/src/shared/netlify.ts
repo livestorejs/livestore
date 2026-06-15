@@ -3,7 +3,7 @@ import os from 'node:os'
 import { join } from 'node:path'
 
 import { isNotUndefined } from '@livestore/utils'
-import { CurrentWorkingDirectory, cmdText } from '@livestore/utils-dev/node'
+import { CurrentWorkingDirectory, LivestoreWorkspace, cmdText } from '@livestore/utils-dev/node'
 import {
   Command,
   Duration,
@@ -70,12 +70,30 @@ const NOT_LOGGED_IN_TO_NETLIFY_ERROR_MESSAGE = 'Not logged in.'
 const NETLIFY_API_URL = 'https://api.netlify.com/api/v1/purge'
 
 /**
- * Deploy docs using the Netlify CLI.
+ * Deploy docs using the Netlify CLI ("Option A": full `@netlify/build` run locally).
  *
- * Default mode: split build/deploy
- * - Build happens beforehand via Astro (mono docs build)
- * - Deploy uses config‑driven publish (reads docs/netlify.toml) with --no-build
- * - This ensures Edge Functions are attached without rebuilding
+ * We run the complete Netlify build pipeline from the git root via the CLI on
+ * our own runner (not Netlify's git-CI). `--build` makes the CLI invoke
+ * `@netlify/build`, which runs the `[build] command` in `docs/netlify.toml`
+ * (`cd docs && astro build`) and then correctly bundles BOTH the serverless SSR
+ * function AND the edge function — no manual `--dir`/`--functions` flags needed.
+ *
+ * Why this beats the previous `--dir … --no-build --functions=…` flow: the CLI's
+ * own build/bundle step is the only thing that reliably attaches the
+ * `@astrojs/netlify` v7 Framework API functions (serverless SSR + edge) together.
+ * Hand-feeding `--dir` and `--functions` left dynamic routes 502ing and edge
+ * negotiation missing.
+ *
+ * Requirements:
+ * - `--filter @local/docs`: the monorepo build is otherwise ambiguous
+ *   ("multiple build commands"). The deploy runs from the git root, so the
+ *   `[build] command` must `cd docs` and `publish` must be git-root-relative
+ *   (`docs/dist`).
+ * - `NODE_ENV=production`: the astro adapter only engages in production.
+ * - `DT_PASSTHROUGH=1`: `pnpm`/`astro` are blocked by the agent-policy wrapper
+ *   inside Netlify's spawned subprocess; the `[build] command` uses `bunx astro`
+ *   and this flag lets it through.
+ * - Edge bundling needs Deno on PATH / in `~/.config/netlify/deno-cli/deno`.
  */
 export const deployToNetlify = Effect.fn('netlify.deploy')(
   function* ({
@@ -83,15 +101,25 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
     target,
     message,
     debug,
+    apiDocs,
   }: {
     site: string
     target: Target
     message?: string
     /** When true, passes --debug to Netlify CLI and increases logging. */
     debug?: boolean
+    /** When true, the build includes the typedoc-generated API docs (STARLIGHT_INCLUDE_API_DOCS=1). */
+    apiDocs?: boolean
   }) {
-    const cwd = yield* CurrentWorkingDirectory
-    const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { stderr: 'pipe' })
+    // Option A runs the full `@netlify/build` pipeline from the git root. The
+    // `[build] command` (`cd docs && bunx astro build`) and the git-root-relative
+    // `publish = "docs/dist"` + `edge_functions = "docs/netlify/edge-functions"`
+    // are all resolved relative to the repo root, so the deploy must run there.
+    const gitRoot = yield* LivestoreWorkspace
+    // Run the status check from the git root too (Option A deploys from there).
+    const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { stderr: 'pipe' }).pipe(
+      Effect.provide(CurrentWorkingDirectory.fromPath(gitRoot)),
+    )
 
     if (netlifyStatus.includes(NOT_LOGGED_IN_TO_NETLIFY_ERROR_MESSAGE) === true) {
       return yield* new NetlifyError({ message: 'Not logged in to Netlify', reason: 'auth' })
@@ -108,17 +136,21 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
 
     yield* Effect.logDebug(`[deploy-to-netlify] Using site argument: ${resolvedSiteArg}`)
 
-    // Netlify CLI resolves publish from the git root, not the process CWD.
-    // Use --dir with absolute path to bypass config-relative path resolution.
+    // Option A: run the full `@netlify/build` pipeline via `--build` from the git
+    // root. The CLI invokes `@netlify/build`, which runs the `[build] command` in
+    // `docs/netlify.toml` and bundles both the SSR serverless function and the
+    // edge function. `--filter @local/docs` disambiguates the monorepo build
+    // (otherwise the CLI errors with "multiple build commands").
     const deployCmd = 'bunx'
     const deployRest = [
       'netlify-cli',
       'deploy',
+      '--build',
+      '--filter',
+      '@local/docs',
       // In debug mode, omit --json so we get full build logs in stdout/stderr
       debugEnabled === true ? undefined : '--json',
       debugEnabled === true ? '--debug' : undefined,
-      `--dir=${join(cwd, 'dist')}`,
-      '--no-build',
       `--site=${resolvedSiteArg}`,
       message !== undefined ? `--message=${message}` : undefined,
       target._tag === 'prod' ? '--prod' : target._tag === 'alias' ? `--alias=${target.alias}` : undefined,
@@ -131,10 +163,17 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
           Command.make(deployCmd, ...deployRest).pipe(
             Command.stdout('pipe'),
             Command.stderr('pipe'),
-            Command.workingDirectory(cwd),
+            Command.workingDirectory(gitRoot),
             Command.env({
               CI: '1',
-              NETLIFY_CONFIG: join(cwd, 'netlify.toml'),
+              // The astro adapter only engages with NODE_ENV=production, and the
+              // agent-policy wrapper blocks pnpm/astro inside Netlify's spawned
+              // subprocess unless DT_PASSTHROUGH passes them through.
+              NODE_ENV: 'production',
+              NETLIFY_SITE_ID: resolvedSiteArg,
+              DT_PASSTHROUGH: '1',
+              // The `[build] command`'s astro build reads this to include typedoc.
+              STARLIGHT_INCLUDE_API_DOCS: apiDocs === true ? '1' : undefined,
             }),
             Command.start,
           ),
@@ -194,14 +233,17 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
 
     return result
   },
-  // Netlify upload occasionally hangs (CDN edge tarball commit). 15 minutes is a
-  // generous backstop while still well below the shell-level `timeout(1)` wrapper.
-  Effect.timeout(Duration.minutes(15)),
+  // With Option A (`--build`), the timeout must cover the full pipeline: Astro
+  // build (including typedoc API docs) + Netlify upload. 20 minutes is a generous
+  // inner backstop while staying clearly below the shell-level `timeout(1) 25m`
+  // wrapper in `docs:deploy:prod:phase:build-deploy` (mono-wrappers.nix), which
+  // provides the hard PID-tree kill backstop.
+  Effect.timeout(Duration.minutes(20)),
   Effect.catchTag(
     'TimeoutException',
     () =>
       new NetlifyError({
-        message: 'Netlify deploy timed out after 15 minutes',
+        message: 'Netlify deploy timed out after 20 minutes',
         reason: 'unknown',
       }),
   ),

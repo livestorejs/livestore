@@ -36,17 +36,17 @@ const examplesWorkspaceSettings = {
 export const repoPackageExtensions = {
   'starlight-auto-sidebar': {
     dependencies: {
-      astro: '>=5.0.0',
+      astro: '>=6.0.0',
     },
   },
   'starlight-links-validator': {
     dependencies: {
-      astro: '>=5.0.0',
+      astro: '>=6.0.0',
     },
   },
   'starlight-sidebar-topics': {
     dependencies: {
-      astro: '>=5.0.0',
+      astro: '>=6.0.0',
     },
   },
   typedoc: {

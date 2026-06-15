@@ -11,12 +11,12 @@
     "test": "bun run snippets:build && bun run playwright test"
   },
   "dependencies": {
-    "@astrojs/starlight": "0.35.2",
+    "@astrojs/starlight": "0.40.0",
     "@livestore/utils": "workspace:^",
     "@local/astro-twoslash-code": "workspace:^",
-    "astro": "5.13.4",
-    "astro-expressive-code": "0.41.5",
-    "expressive-code": "0.41.5",
+    "astro": "6.4.6",
+    "astro-expressive-code": "0.43.1",
+    "expressive-code": "0.43.1",
     "expressive-code-twoslash": "0.5.3"
   },
   "devDependencies": {

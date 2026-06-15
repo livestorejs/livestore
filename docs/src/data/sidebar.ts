@@ -115,9 +115,11 @@ const toStarlightItem = (item: TSidebarItem): unknown => {
     case 'link':
       return item.label !== undefined ? { label: item.label, link: item.slug } : item.slug
     case 'autoGroup':
+      // Starlight >=0.39 removed support for `autogenerate` objects that carry a `label`.
+      // Such groups must wrap the autogenerate config inside an `items` array.
       return {
         label: item.label,
-        autogenerate: { directory: item.directory },
+        items: [{ autogenerate: { directory: item.directory } }],
         ...(item.collapsed !== undefined ? { collapsed: item.collapsed } : {}),
       }
     case 'group':

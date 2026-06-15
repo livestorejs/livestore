@@ -9,7 +9,6 @@ import astroD2 from 'astro-d2'
 import { defineConfig, envField } from 'astro/config'
 import rehypeMermaid from 'rehype-mermaid'
 import remarkCustomHeaderId from 'remark-custom-header-id'
-import starlightContextualMenu from 'starlight-contextual-menu'
 // import starlightAutoSidebar from 'starlight-auto-sidebar'
 import starlightLinksValidator from 'starlight-links-validator'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
@@ -24,6 +23,7 @@ import { getBranchName } from './src/data/data.ts'
 import { rehypeExternalLinks } from './src/plugins/rehype/externalLinks.js'
 import { remarkGithubIssueLinks } from './src/plugins/remark/githubIssueLinks.js'
 import { createCopyPageClipboardFallbackIntegration } from './src/plugins/starlight/contextual-menu-fallback/plugin.ts'
+import starlightContextualMenu from './src/plugins/starlight/contextual-menu/index.js'
 import starlightMarkdown from './src/plugins/starlight/markdown/index.js'
 import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.js'
 
@@ -48,7 +48,13 @@ export default defineConfig({
   site,
   output: 'static',
   server: { port, host: '0.0.0.0' },
-  adapter: process.env.NODE_ENV === 'production' ? netlify() : undefined,
+  // `imageCDN: false` keeps Astro's image service local (sharp) instead of the
+  // Netlify external Image CDN. The external service has no `transform` method,
+  // and because the docs have `prerender=false` endpoints Astro injects the
+  // `/_image` route into the SSR function — with the external service that route
+  // rejects every request with a 500. Disabling it optimizes remote images at
+  // build time with sharp and backs `/_image` with the local sharp service (200).
+  adapter: process.env.NODE_ENV === 'production' ? netlify({ imageCDN: false }) : undefined,
   image: {
     domains: ['gitbucket.schickling.dev'],
   },
@@ -135,15 +141,15 @@ export default defineConfig({
               'index',
               {
                 label: 'Getting started',
-                autogenerate: { directory: 'getting-started' },
+                items: [{ autogenerate: { directory: 'getting-started' } }],
               },
               {
                 label: 'Tutorial',
-                autogenerate: { directory: 'tutorial' },
+                items: [{ autogenerate: { directory: 'tutorial' } }],
               },
               {
                 label: 'Overview',
-                autogenerate: { directory: 'overview' },
+                items: [{ autogenerate: { directory: 'overview' } }],
               },
               {
                 label: 'Building with LiveStore',
@@ -162,30 +168,30 @@ export default defineConfig({
                   'building-with-livestore/opentelemetry',
                   'building-with-livestore/production-checklist',
                   // Then nested directories with explicit labels
-                  { label: 'State', autogenerate: { directory: 'building-with-livestore/state' } },
-                  { label: 'Tools', autogenerate: { directory: 'building-with-livestore/tools' } },
-                  { label: 'Examples', autogenerate: { directory: 'building-with-livestore/examples' } },
+                  { label: 'State', items: [{ autogenerate: { directory: 'building-with-livestore/state' } }] },
+                  { label: 'Tools', items: [{ autogenerate: { directory: 'building-with-livestore/tools' } }] },
+                  { label: 'Examples', items: [{ autogenerate: { directory: 'building-with-livestore/examples' } }] },
                 ],
               },
               {
                 label: 'Framework integrations',
-                autogenerate: { directory: 'framework-integrations' },
+                items: [{ autogenerate: { directory: 'framework-integrations' } }],
               },
               {
                 label: 'Platform adapters',
-                autogenerate: { directory: 'platform-adapters' },
+                items: [{ autogenerate: { directory: 'platform-adapters' } }],
               },
               {
                 label: 'Sync providers',
-                autogenerate: { directory: 'sync-providers' },
+                items: [{ autogenerate: { directory: 'sync-providers' } }],
               },
               {
                 label: 'Patterns',
-                autogenerate: { directory: 'patterns' },
+                items: [{ autogenerate: { directory: 'patterns' } }],
               },
               {
                 label: 'Understanding LiveStore',
-                autogenerate: { directory: 'understanding-livestore' },
+                items: [{ autogenerate: { directory: 'understanding-livestore' } }],
               },
               {
                 label: 'Sustainable open source',
@@ -193,13 +199,13 @@ export default defineConfig({
                   'sustainable-open-source/sponsoring',
                   {
                     label: 'Contributing',
-                    autogenerate: { directory: 'sustainable-open-source/contributing' },
+                    items: [{ autogenerate: { directory: 'sustainable-open-source/contributing' } }],
                   },
                 ],
               },
               {
                 label: 'Miscellaneous',
-                autogenerate: { directory: 'misc' },
+                items: [{ autogenerate: { directory: 'misc' } }],
               },
               {
                 label: 'Changelog',
@@ -219,31 +225,31 @@ export default defineConfig({
               'api', // 'api/index.mdx'
               {
                 label: '@livestore/livestore',
-                autogenerate: { directory: 'api/livestore' },
                 collapsed: true,
+                items: [{ autogenerate: { directory: 'api/livestore' } }],
               },
               {
                 label: '@livestore/react',
-                autogenerate: { directory: 'api/react' },
                 collapsed: true,
+                items: [{ autogenerate: { directory: 'api/react' } }],
               },
               {
                 label: 'Adapters',
                 items: [
                   {
                     label: '@livestore/adapter-web',
-                    autogenerate: { directory: 'api/adapter-web' },
                     collapsed: true,
+                    items: [{ autogenerate: { directory: 'api/adapter-web' } }],
                   },
                   {
                     label: '@livestore/adapter-node',
-                    autogenerate: { directory: 'api/adapter-node' },
                     collapsed: true,
+                    items: [{ autogenerate: { directory: 'api/adapter-node' } }],
                   },
                   {
                     label: '@livestore/adapter-expo',
-                    autogenerate: { directory: 'api/adapter-expo' },
                     collapsed: true,
+                    items: [{ autogenerate: { directory: 'api/adapter-expo' } }],
                   },
                 ],
               },
@@ -252,13 +258,13 @@ export default defineConfig({
                 items: [
                   {
                     label: '@livestore/sync-cf',
-                    autogenerate: { directory: 'api/sync-cf' },
                     collapsed: true,
+                    items: [{ autogenerate: { directory: 'api/sync-cf' } }],
                   },
                   {
                     label: '@livestore/sync-electric',
-                    autogenerate: { directory: 'api/sync-electric' },
                     collapsed: true,
+                    items: [{ autogenerate: { directory: 'api/sync-electric' } }],
                   },
                 ],
               },
@@ -361,6 +367,7 @@ export default defineConfig({
   redirects: {
     '/getting-started': '/getting-started/react-web',
     '/reference/syncing/sync-provider': '/reference/syncing/sync-provider/cloudflare',
+    '/misc/sponsoring': '/sustainable-open-source/sponsoring',
   },
   vite: {
     resolve: {

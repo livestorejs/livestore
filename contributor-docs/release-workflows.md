@@ -171,7 +171,7 @@ an orphan Chromium child that keeps the parent Bun/Node process alive
 indefinitely. See [#1279](https://github.com/livestorejs/livestore/issues/1279)
 for the original incident.
 
-The deploy is now split into six phases, each run as a separate
+The deploy is split into three phases, each run as a separate
 `docs:deploy:prod:phase:*` Nix task. Every phase wraps its mono invocation with
 `timeout --signal=TERM --kill-after=2m N`, so the OS reaps the entire process
 group (including orphan Chromium) regardless of what the Effect-level handler
@@ -179,16 +179,20 @@ is doing. A background heartbeat writes `[docs-prod-heartbeat] <iso8601>
 <pgrep-output>` every 30–60 s to keep CI logs anchored to wall-clock and to
 make hangs greppable in retrospect.
 
-| Phase      | Task                              | Purpose                                                             |
-| ---------- | --------------------------------- | ------------------------------------------------------------------- |
-| `snippets` | `docs:deploy:prod:phase:snippets` | Run `mono docs snippets build`                                      |
-| `diagrams` | `docs:deploy:prod:phase:diagrams` | Run tldraw diagram renderer                                         |
-| `astro`    | `docs:deploy:prod:phase:astro`    | `mono docs build --api-docs --skip-deps`                            |
-| `upload`   | `docs:deploy:prod:phase:upload`   | `mono docs deploy --prod --step=upload`, writes `deploy-state.json` |
-| `verify`   | `docs:deploy:prod:phase:verify`   | `mono docs deploy --prod --step=verify`, posts job summary          |
-| `purge`    | `docs:deploy:prod:phase:purge`    | `mono docs deploy --prod --step=purge`, purges Netlify CDN          |
+Under "Option A" the former `snippets`/`diagrams`/`astro`/`upload` phases collapse
+into a single `build-deploy` phase: `netlify deploy --build` runs the full
+`@netlify/build` pipeline (framework build, which auto-builds snippets/diagrams,
+plus serverless + edge bundling) and the upload in one bounded step. The build
+still spawns Chromium for mermaid, so the `timeout(1)` wrapper around this one
+phase remains the orphan-Chromium backstop.
 
-The `upload` phase writes Netlify identifiers to `tmp/ci-docs-prod/deploy-state.json`
+| Phase          | Task                                  | Purpose                                                                          |
+| -------------- | ------------------------------------- | -------------------------------------------------------------------------------- |
+| `build-deploy` | `docs:deploy:prod:phase:build-deploy` | `mono docs deploy --prod --step=upload` (runs `netlify deploy --build`), writes `deploy-state.json` |
+| `verify`       | `docs:deploy:prod:phase:verify`       | `mono docs deploy --prod --step=verify`, posts job summary                       |
+| `purge`        | `docs:deploy:prod:phase:purge`        | `mono docs deploy --prod --step=purge`, purges Netlify CDN                       |
+
+The `build-deploy` phase writes Netlify identifiers to `tmp/ci-docs-prod/deploy-state.json`
 so `verify` and `purge` can run as independent processes (and independent Actions
 steps / jobs) without re-uploading the build. The state file plus per-phase logs
 are uploaded as a `docs-prod-deploy-logs-*` artifact on every run for retrospective
