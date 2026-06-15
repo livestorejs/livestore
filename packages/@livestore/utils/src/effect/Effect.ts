@@ -167,7 +167,7 @@ export const eventListener = <TEvent = unknown>(
   })
 
 export const logWarnIfTakesLongerThan =
-  ({ label, duration }: { label: string; duration: Duration.DurationInput }) =>
+  ({ label, duration }: { label: string; duration: Duration.Input }) =>
   <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.gen(function* () {
       const runtime = yield* Effect.runtime()
@@ -255,7 +255,7 @@ export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>>
  * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
  */
 export const timeoutOrDie =
-  (duration: Duration.DurationInput) =>
+  (duration: Duration.Input) =>
   <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.timeoutFailCause(self, {
       duration,
@@ -284,7 +284,7 @@ export const timeoutOrDie =
  * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
  */
 export const timeoutOrDieMessage =
-  (duration: Duration.DurationInput, message: string) =>
+  (duration: Duration.Input, message: string) =>
   <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.timeoutFailCause(self, {
       duration,

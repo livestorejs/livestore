@@ -201,7 +201,7 @@ export const buildDiagrams = (
  * Watch Mode Implementation
  * ───────────────────────────────────────────────────────────────────────────── */
 
-const DEFAULT_WATCH_DEBOUNCE: Duration.DurationInput = '300 millis'
+const DEFAULT_WATCH_DEBOUNCE: Duration.Input = '300 millis'
 
 type WatchEventSummary = {
   absolutePath: string
@@ -217,13 +217,13 @@ export type WatchDiagramsRebuildInfo = {
 }
 
 type NormalizedWatchOptions = {
-  debounce: Duration.DurationInput
+  debounce: Duration.Input
   initialBuild: boolean
   onRebuild: (info: WatchDiagramsRebuildInfo) => Effect.Effect<void>
 }
 
 export type WatchDiagramsOptions = BuildDiagramsOptions & {
-  debounce?: Duration.DurationInput
+  debounce?: Duration.Input
   /**
    * Run an initial build on startup before processing watch events.
    *
