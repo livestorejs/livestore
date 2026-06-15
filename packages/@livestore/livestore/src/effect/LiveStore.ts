@@ -1,8 +1,17 @@
 import type { UnknownError } from '@livestore/common'
 import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import { omitUndefineds } from '@livestore/utils'
-import type { Cause, OtelTracer, Scope } from '@livestore/utils/effect'
-import { Context, Deferred, Duration, Effect, Layer, pipe } from '@livestore/utils/effect'
+import {
+  type Cause,
+  type OtelTracer,
+  type Scope,
+  Context,
+  Deferred,
+  Duration,
+  Effect,
+  Layer,
+  pipe,
+} from '@livestore/utils/effect'
 
 import type { LiveStoreContextProps } from '../store/create-store.ts'
 import { createStore, DeferredStoreContext, LiveStoreContextRunning } from '../store/create-store.ts'

@@ -1,7 +1,6 @@
 import type { Nullable } from '@livestore/utils'
 import { omitUndefineds } from '@livestore/utils'
-import type { Option, Types } from '@livestore/utils/effect'
-import { Schema } from '@livestore/utils/effect'
+import { type Option, type Types, Schema } from '@livestore/utils/effect'
 
 import type * as SqliteAst from '../ast/sqlite.ts'
 import type { ColumnDefinition } from './field-defs.ts'

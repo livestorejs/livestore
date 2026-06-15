@@ -19,8 +19,8 @@ import { createStore, makeShutdownDeferred, StoreInternalsSymbol } from '@livest
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import type { OtelTracer } from '@livestore/utils/effect'
 import {
+  type OtelTracer,
   Cause,
   Context,
   Deferred,

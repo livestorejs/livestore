@@ -8,8 +8,7 @@ import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 
 import { IS_BUN, isNonEmptyString } from '@livestore/utils'
-import type { Tracer } from '@livestore/utils/effect'
-import { Config, Effect, FiberRef, Layer, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
+import { type Tracer, Config, Effect, FiberRef, Layer, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
 
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'

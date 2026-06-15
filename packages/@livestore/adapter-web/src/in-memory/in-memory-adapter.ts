@@ -21,8 +21,16 @@ import { LiveStoreEvent } from '@livestore/common/schema'
 import type { MakeWebSqliteDb } from '@livestore/sqlite-wasm/browser'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { tryAsFunctionAndNew } from '@livestore/utils'
-import type { Scope } from '@livestore/utils/effect'
-import { Effect, FetchHttpClient, Fiber, Layer, type Schema, SubscriptionRef, Worker } from '@livestore/utils/effect'
+import {
+  type Scope,
+  Effect,
+  FetchHttpClient,
+  Fiber,
+  Layer,
+  type Schema,
+  SubscriptionRef,
+  Worker,
+} from '@livestore/utils/effect'
 import { BrowserWorker } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as Webmesh from '@livestore/webmesh'

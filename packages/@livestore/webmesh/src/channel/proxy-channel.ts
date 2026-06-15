@@ -1,6 +1,6 @@
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
-import type { PubSub } from '@livestore/utils/effect'
 import {
+  type PubSub,
   Deferred,
   Effect,
   Result,

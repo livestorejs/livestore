@@ -1,5 +1,5 @@
-import type { HttpClient } from '@livestore/utils/effect'
 import {
+  type HttpClient,
   Deferred,
   Effect,
   Result,
