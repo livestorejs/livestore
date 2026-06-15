@@ -235,4 +235,4 @@ const verifyHttpConnectivity = ({
       Effect.asVoid,
       Effect.withSpan('verifyHttpConnectivity'),
     )
-  }) as Effect.Effect<void, WranglerDevServerError, HttpClient.HttpClient>
+  })

@@ -1,5 +1,5 @@
-import type { Deferred } from 'effect'
-import { Effect, Exit, Predicate, Schema, Stream } from 'effect'
+import type { Deferred, Exit } from 'effect'
+import { Effect, Predicate, Schema, Stream } from 'effect'
 
 export const WebChannelSymbol = Symbol('WebChannel')
 export type WebChannelSymbol = typeof WebChannelSymbol

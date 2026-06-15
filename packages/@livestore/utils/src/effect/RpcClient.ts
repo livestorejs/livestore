@@ -1,8 +1,8 @@
 export * from 'effect/unstable/rpc/RpcClient'
 
-import type { Schedule} from 'effect';
+import type { Schedule } from 'effect'
 import { Effect, Layer, type Scope } from 'effect'
-import type { RpcSerialization } from 'effect/unstable/rpc';
+import type { RpcSerialization } from 'effect/unstable/rpc'
 import { RpcClient } from 'effect/unstable/rpc'
 import { Protocol } from 'effect/unstable/rpc/RpcClient'
 import type { Socket } from 'effect/unstable/socket'

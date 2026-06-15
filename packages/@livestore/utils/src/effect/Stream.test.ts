@@ -63,7 +63,7 @@ describe('concatWithLastElement', () => {
 
     const outcome = await Effect.runPromise(Effect.result(runCollectReadonlyArray(result)))
     expect(outcome._tag).toBe('Failure')
-    if (Result.isFailure(outcome)) {
+    if (Result.isFailure(outcome) === true) {
       expect(outcome.failure).toBe('first-error')
     }
   })
@@ -74,7 +74,7 @@ describe('concatWithLastElement', () => {
 
     const outcome = await Effect.runPromise(Effect.result(runCollectReadonlyArray(result)))
     expect(outcome._tag).toBe('Failure')
-    if (Result.isFailure(outcome)) {
+    if (Result.isFailure(outcome) === true) {
       expect(outcome.failure).toBe('second-error')
     }
   })

@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 
-import { Context, Effect, Layer, Option, Schema, Scope, Stream } from 'effect'
+import type { Scope } from 'effect'
+import { Context, Effect, Layer, Option, Schema, Stream } from 'effect'
 
 import * as WebError from '../WebError.ts'
 

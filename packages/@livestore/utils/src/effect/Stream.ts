@@ -1,6 +1,7 @@
 export * from 'effect/Stream'
 
-import { Cause, Effect, Option, pipe, Ref, Stream } from 'effect'
+import type { Cause } from 'effect'
+import { Effect, Option, pipe, Ref, Stream } from 'effect'
 import { dual } from 'effect/Function'
 
 export const tapLog = <R, E, A>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>

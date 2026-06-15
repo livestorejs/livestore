@@ -3,7 +3,7 @@ import process from 'node:process'
 import * as Cause from 'effect/Cause'
 import * as Deferred from 'effect/Deferred'
 import * as Effect from 'effect/Effect'
-import * as Exit from 'effect/Exit'
+import type * as Exit from 'effect/Exit'
 import * as Layer from 'effect/Layer'
 import {
   WorkerError,
