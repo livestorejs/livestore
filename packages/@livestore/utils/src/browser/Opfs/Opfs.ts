@@ -220,205 +220,201 @@ export interface Service {
   readonly syncFlush: (handle: FileSystemSyncAccessHandle) => Effect.Effect<void, WebError.WebError>
 }
 
-export class Opfs extends Context.Service<Opfs, Service>()('@livestore/utils/Opfs') {
-  static readonly layer = Layer.effect(Opfs, Effect.sync(make))
-}
+export class Opfs extends Context.Service<Opfs, Service>()('@livestore/utils/Opfs') {}
 
-export function make() {
-  return Opfs.of({
-    getRootDirectoryHandle: Effect.tryPromise({
-      try: () => navigator.storage.getDirectory(),
-      catch: (u) => WebError.parseWebError(u, [WebError.SecurityError]),
+export const make = () => Opfs.of({
+  getRootDirectoryHandle: Effect.tryPromise({
+    try: () => navigator.storage.getDirectory(),
+    catch: (u) => WebError.parseWebError(u, [WebError.SecurityError]),
+  }),
+  getFileHandle: (parent: FileSystemDirectoryHandle, name: string, options?: FileSystemGetFileOptions) =>
+    Effect.tryPromise({
+      try: () => parent.getFileHandle(name, options),
+      catch: (u) =>
+        WebError.parseWebError(u, [
+          WebError.NotAllowedError,
+          WebError.TypeError,
+          WebError.TypeMismatchError,
+          WebError.NotFoundError,
+        ]),
     }),
-    getFileHandle: (parent: FileSystemDirectoryHandle, name: string, options?: FileSystemGetFileOptions) =>
+  getDirectoryHandle: (parent: FileSystemDirectoryHandle, name: string, options?: FileSystemGetDirectoryOptions) =>
+    Effect.tryPromise({
+      try: () => parent.getDirectoryHandle(name, options),
+      catch: (u) =>
+        WebError.parseWebError(u, [
+          WebError.NotAllowedError,
+          WebError.TypeError,
+          WebError.TypeMismatchError,
+          WebError.NotFoundError,
+        ]),
+    }),
+  removeEntry: (parent: FileSystemDirectoryHandle, name: string, options?: FileSystemRemoveOptions) =>
+    Effect.tryPromise({
+      try: () => parent.removeEntry(name, options),
+      catch: (u) =>
+        WebError.parseWebError(u, [
+          WebError.TypeError,
+          WebError.NotAllowedError,
+          WebError.InvalidModificationError,
+          WebError.NotFoundError,
+          WebError.NoModificationAllowedError,
+        ]),
+    }),
+  values: (
+    directory: FileSystemDirectoryHandle,
+  ): Stream.Stream<
+    FileSystemHandle,
+    WebError.NotAllowedError | WebError.NotFoundError | WebError.UnknownError,
+    never
+  > =>
+    Stream.fromAsyncIterable(directory.values(), (u) =>
+      WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
+    ),
+  resolve: (parent: FileSystemDirectoryHandle, child: FileSystemHandle) =>
+    Effect.tryPromise({
+      try: () => parent.resolve(child),
+      catch: (u) => WebError.parseWebError(u),
+    }).pipe(Effect.map((path) => (path === null ? Option.none() : Option.some(path)))),
+  getFile: (handle: FileSystemFileHandle) =>
+    Effect.tryPromise({
+      try: () => handle.getFile(),
+      catch: (u) => WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
+    }),
+  writeFile: (
+    handle: FileSystemFileHandle,
+    data: FileSystemWriteChunkType,
+    options?: FileSystemCreateWritableOptions,
+  ) =>
+    Effect.acquireUseRelease(
       Effect.tryPromise({
-        try: () => parent.getFileHandle(name, options),
+        try: () => handle.createWritable(options),
         catch: (u) =>
           WebError.parseWebError(u, [
             WebError.NotAllowedError,
-            WebError.TypeError,
-            WebError.TypeMismatchError,
             WebError.NotFoundError,
+            WebError.NoModificationAllowedError,
+            WebError.AbortError,
           ]),
       }),
-    getDirectoryHandle: (parent: FileSystemDirectoryHandle, name: string, options?: FileSystemGetDirectoryOptions) =>
+      (stream) =>
+        Effect.tryPromise({
+          try: () => stream.write(data),
+          catch: (u) =>
+            WebError.parseWebError(u, [WebError.NotAllowedError, WebError.QuotaExceededError, WebError.TypeError]),
+        }),
+      (stream) =>
+        Effect.tryPromise({
+          try: () => stream.close(),
+          catch: (u) => WebError.parseWebError(u, [WebError.TypeError]),
+        }).pipe(Effect.catchCause(() => Effect.void)),
+    ),
+  appendToFile: (handle: FileSystemFileHandle, data: FileSystemWriteChunkType) =>
+    Effect.acquireUseRelease(
       Effect.tryPromise({
-        try: () => parent.getDirectoryHandle(name, options),
+        try: () => handle.createWritable({keepExistingData: true}),
         catch: (u) =>
           WebError.parseWebError(u, [
             WebError.NotAllowedError,
-            WebError.TypeError,
-            WebError.TypeMismatchError,
             WebError.NotFoundError,
+            WebError.NoModificationAllowedError,
+            WebError.AbortError,
           ]),
       }),
-    removeEntry: (parent: FileSystemDirectoryHandle, name: string, options?: FileSystemRemoveOptions) =>
+      (stream) =>
+        Effect.gen(function* () {
+          const file = yield* Effect.tryPromise({
+            try: () => handle.getFile(),
+            catch: (u) => WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
+          })
+          yield* Effect.tryPromise({
+            try: () => stream.seek(file.size),
+            catch: (u) => WebError.parseWebError(u, [WebError.NotAllowedError, WebError.TypeError]),
+          })
+          yield* Effect.tryPromise({
+            try: () => stream.write(data),
+            catch: (u) =>
+              WebError.parseWebError(u, [WebError.NotAllowedError, WebError.QuotaExceededError, WebError.TypeError]),
+          })
+        }),
+      (stream) =>
+        Effect.tryPromise({
+          try: () => stream.close(),
+          catch: (u) => WebError.parseWebError(u, [WebError.TypeError]),
+        }).pipe(Effect.catchCause(() => Effect.void)),
+    ),
+  truncateFile: (handle: FileSystemFileHandle, size: number) =>
+    Effect.acquireUseRelease(
       Effect.tryPromise({
-        try: () => parent.removeEntry(name, options),
+        try: () => handle.createWritable({keepExistingData: true}),
         catch: (u) =>
           WebError.parseWebError(u, [
-            WebError.TypeError,
             WebError.NotAllowedError,
-            WebError.InvalidModificationError,
+            WebError.NotFoundError,
+            WebError.NoModificationAllowedError,
+            WebError.AbortError,
+          ]),
+      }),
+      (stream) =>
+        Effect.tryPromise({
+          try: () => stream.truncate(size),
+          catch: (u) =>
+            WebError.parseWebError(u, [WebError.NotAllowedError, WebError.TypeError, WebError.QuotaExceededError]),
+        }),
+      (stream) =>
+        Effect.tryPromise({
+          try: () => stream.close(),
+          catch: (u) => WebError.parseWebError(u, [WebError.TypeError]),
+        }).pipe(Effect.catchCause(() => Effect.void)),
+    ),
+  createSyncAccessHandle: (handle: FileSystemFileHandle) =>
+    Effect.acquireRelease(
+      Effect.tryPromise({
+        try: () => handle.createSyncAccessHandle(),
+        catch: (u) =>
+          WebError.parseWebError(u, [
+            WebError.NotAllowedError,
+            WebError.InvalidStateError,
             WebError.NotFoundError,
             WebError.NoModificationAllowedError,
           ]),
       }),
-    values: (
-      directory: FileSystemDirectoryHandle,
-    ): Stream.Stream<
-      FileSystemHandle,
-      WebError.NotAllowedError | WebError.NotFoundError | WebError.UnknownError,
-      never
-    > =>
-      Stream.fromAsyncIterable(directory.values(), (u) =>
-        WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
-      ),
-    resolve: (parent: FileSystemDirectoryHandle, child: FileSystemHandle) =>
-      Effect.tryPromise({
-        try: () => parent.resolve(child),
-        catch: (u) => WebError.parseWebError(u),
-      }).pipe(Effect.map((path) => (path === null ? Option.none() : Option.some(path)))),
-    getFile: (handle: FileSystemFileHandle) =>
-      Effect.tryPromise({
-        try: () => handle.getFile(),
-        catch: (u) => WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
-      }),
-    writeFile: (
-      handle: FileSystemFileHandle,
-      data: FileSystemWriteChunkType,
-      options?: FileSystemCreateWritableOptions,
-    ) =>
-      Effect.acquireUseRelease(
-        Effect.tryPromise({
-          try: () => handle.createWritable(options),
-          catch: (u) =>
-            WebError.parseWebError(u, [
-              WebError.NotAllowedError,
-              WebError.NotFoundError,
-              WebError.NoModificationAllowedError,
-              WebError.AbortError,
-            ]),
-        }),
-        (stream) =>
-          Effect.tryPromise({
-            try: () => stream.write(data),
-            catch: (u) =>
-              WebError.parseWebError(u, [WebError.NotAllowedError, WebError.QuotaExceededError, WebError.TypeError]),
-          }),
-        (stream) =>
-          Effect.tryPromise({
-            try: () => stream.close(),
-            catch: (u) => WebError.parseWebError(u, [WebError.TypeError]),
-          }).pipe(Effect.catchCause(() => Effect.void)),
-      ),
-    appendToFile: (handle: FileSystemFileHandle, data: FileSystemWriteChunkType) =>
-      Effect.acquireUseRelease(
-        Effect.tryPromise({
-          try: () => handle.createWritable({ keepExistingData: true }),
-          catch: (u) =>
-            WebError.parseWebError(u, [
-              WebError.NotAllowedError,
-              WebError.NotFoundError,
-              WebError.NoModificationAllowedError,
-              WebError.AbortError,
-            ]),
-        }),
-        (stream) =>
-          Effect.gen(function* () {
-            const file = yield* Effect.tryPromise({
-              try: () => handle.getFile(),
-              catch: (u) => WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
-            })
-            yield* Effect.tryPromise({
-              try: () => stream.seek(file.size),
-              catch: (u) => WebError.parseWebError(u, [WebError.NotAllowedError, WebError.TypeError]),
-            })
-            yield* Effect.tryPromise({
-              try: () => stream.write(data),
-              catch: (u) =>
-                WebError.parseWebError(u, [WebError.NotAllowedError, WebError.QuotaExceededError, WebError.TypeError]),
-            })
-          }),
-        (stream) =>
-          Effect.tryPromise({
-            try: () => stream.close(),
-            catch: (u) => WebError.parseWebError(u, [WebError.TypeError]),
-          }).pipe(Effect.catchCause(() => Effect.void)),
-      ),
-    truncateFile: (handle: FileSystemFileHandle, size: number) =>
-      Effect.acquireUseRelease(
-        Effect.tryPromise({
-          try: () => handle.createWritable({ keepExistingData: true }),
-          catch: (u) =>
-            WebError.parseWebError(u, [
-              WebError.NotAllowedError,
-              WebError.NotFoundError,
-              WebError.NoModificationAllowedError,
-              WebError.AbortError,
-            ]),
-        }),
-        (stream) =>
-          Effect.tryPromise({
-            try: () => stream.truncate(size),
-            catch: (u) =>
-              WebError.parseWebError(u, [WebError.NotAllowedError, WebError.TypeError, WebError.QuotaExceededError]),
-          }),
-        (stream) =>
-          Effect.tryPromise({
-            try: () => stream.close(),
-            catch: (u) => WebError.parseWebError(u, [WebError.TypeError]),
-          }).pipe(Effect.catchCause(() => Effect.void)),
-      ),
-    createSyncAccessHandle: (handle: FileSystemFileHandle) =>
-      Effect.acquireRelease(
-        Effect.tryPromise({
-          try: () => handle.createSyncAccessHandle(),
-          catch: (u) =>
-            WebError.parseWebError(u, [
-              WebError.NotAllowedError,
-              WebError.InvalidStateError,
-              WebError.NotFoundError,
-              WebError.NoModificationAllowedError,
-            ]),
-        }),
-        (syncHandle) => Effect.sync(() => syncHandle.close()),
-      ),
-    syncRead: (
-      handle: FileSystemSyncAccessHandle,
-      buffer: ArrayBuffer | ArrayBufferView,
-      options?: FileSystemReadWriteOptions,
-    ) =>
-      Effect.try({
-        try: () => handle.read(buffer, options),
-        catch: (u) => WebError.parseWebError(u, [WebError.RangeError, WebError.InvalidStateError, WebError.TypeError]),
-      }),
-    syncWrite: (
-      handle: FileSystemSyncAccessHandle,
-      buffer: AllowSharedBufferSource,
-      options?: FileSystemReadWriteOptions,
-    ) =>
-      Effect.try({
-        try: () => handle.write(buffer, options),
-        catch: (u) => WebError.parseWebError(u),
-      }),
-    syncTruncate: (handle: FileSystemSyncAccessHandle, size: number) =>
-      Effect.try({
-        try: () => handle.truncate(size),
-        catch: (u) => WebError.parseWebError(u),
-      }),
-    syncGetSize: (handle: FileSystemSyncAccessHandle) =>
-      Effect.try({
-        try: () => handle.getSize(),
-        catch: (u) => WebError.parseWebError(u),
-      }),
-    syncFlush: (handle: FileSystemSyncAccessHandle) =>
-      Effect.try({
-        try: () => handle.flush(),
-        catch: (u) => WebError.parseWebError(u),
-      }),
-  })
-}
+      (syncHandle) => Effect.sync(() => syncHandle.close()),
+    ),
+  syncRead: (
+    handle: FileSystemSyncAccessHandle,
+    buffer: ArrayBuffer | ArrayBufferView,
+    options?: FileSystemReadWriteOptions,
+  ) =>
+    Effect.try({
+      try: () => handle.read(buffer, options),
+      catch: (u) => WebError.parseWebError(u, [WebError.RangeError, WebError.InvalidStateError, WebError.TypeError]),
+    }),
+  syncWrite: (
+    handle: FileSystemSyncAccessHandle,
+    buffer: AllowSharedBufferSource,
+    options?: FileSystemReadWriteOptions,
+  ) =>
+    Effect.try({
+      try: () => handle.write(buffer, options),
+      catch: (u) => WebError.parseWebError(u),
+    }),
+  syncTruncate: (handle: FileSystemSyncAccessHandle, size: number) =>
+    Effect.try({
+      try: () => handle.truncate(size),
+      catch: (u) => WebError.parseWebError(u),
+    }),
+  syncGetSize: (handle: FileSystemSyncAccessHandle) =>
+    Effect.try({
+      try: () => handle.getSize(),
+      catch: (u) => WebError.parseWebError(u),
+    }),
+  syncFlush: (handle: FileSystemSyncAccessHandle) =>
+    Effect.try({
+      try: () => handle.flush(),
+      catch: (u) => WebError.parseWebError(u),
+    }),
+});
 
 export const layer = () => Layer.succeed(Opfs)(make())
 
