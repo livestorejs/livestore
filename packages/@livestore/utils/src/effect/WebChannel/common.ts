@@ -31,15 +31,15 @@ export const WebChannelPong = Schema.TaggedStruct('WebChannel.Pong', {
   requestId: Schema.String,
 })
 
-export const WebChannelHeartbeat = Schema.Union(WebChannelPing, WebChannelPong)
+export const WebChannelHeartbeat = Schema.Union([WebChannelPing, WebChannelPong])
 
 type WebChannelMessages = typeof DebugPingMessage.Type | typeof WebChannelPing.Type | typeof WebChannelPong.Type
 
 export const schemaWithWebChannelMessages = <MsgListen, MsgSend>(
   schema: OutputSchema<MsgListen, MsgSend, any, any>,
 ): OutputSchema<MsgListen | WebChannelMessages, MsgSend | WebChannelMessages, any, any> => ({
-  send: Schema.Union(schema.send, DebugPingMessage, WebChannelPing, WebChannelPong),
-  listen: Schema.Union(schema.listen, DebugPingMessage, WebChannelPing, WebChannelPong),
+  send: Schema.Union([schema.send, DebugPingMessage, WebChannelPing, WebChannelPong]),
+  listen: Schema.Union([schema.listen, DebugPingMessage, WebChannelPing, WebChannelPong]),
 })
 
 export type InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded> =

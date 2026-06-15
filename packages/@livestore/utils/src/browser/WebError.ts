@@ -137,13 +137,13 @@ const domExceptionWithName = (expectedName: string) =>
 export class QuotaExceededError extends Schema.TaggedErrorClass<QuotaExceededError>(`${TypeId}/QuotaExceededError`)(
   'QuotaExceededError',
   {
-    cause: Schema.Union(
+    cause: Schema.Union([
       typeof globalThis.QuotaExceededError === 'function'
         ? Schema.instanceOf(globalThis.QuotaExceededError)
         : Schema.Never,
       // Deprecated but still in use in some browsers
       domExceptionWithName('QuotaExceededError'),
-    ),
+    ]),
   },
 ) {
   readonly [TypeId] = TypeId
@@ -457,7 +457,7 @@ export const WebError: Schema.Union<
     // Custom Errors
     typeof UnknownError,
   ]
-> = Schema.Union(
+> = Schema.Union([
   // Simple Exception Errors
   EvalError,
   RangeError,
@@ -478,7 +478,7 @@ export const WebError: Schema.Union<
   DataCloneError,
   // Custom Errors
   UnknownError,
-)
+])
 
 /**
  * Constructor type for any `WebError` variant exposed by the schema union.

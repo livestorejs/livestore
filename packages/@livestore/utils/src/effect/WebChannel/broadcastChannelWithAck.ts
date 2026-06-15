@@ -23,7 +23,7 @@ const PayloadMessage = Schema.TaggedStruct('PayloadMessage', {
   payload: Schema.Any,
 })
 
-const Message = Schema.Union(ConnectMessage, ConnectAckMessage, DisconnectMessage, PayloadMessage)
+const Message = Schema.Union([ConnectMessage, ConnectAckMessage, DisconnectMessage, PayloadMessage])
 
 /**
  * Same as `broadcastChannel`, but with a queue in between to guarantee message delivery and meant

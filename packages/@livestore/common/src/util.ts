@@ -8,17 +8,17 @@ export type SqlValue = string | number | Uint8Array<ArrayBuffer> | null
 
 export type Bindable = ReadonlyArray<SqlValue> | ParamsObject
 
-export const SqlValueSchema = Schema.Union(
+export const SqlValueSchema = Schema.Union([
   Schema.String,
   Schema.Number,
   Schema.Uint8Array as any as Schema.Schema<Uint8Array<ArrayBuffer>>,
   Schema.Null,
-)
+])
 
-export const PreparedBindValues = Schema.Union(
+export const PreparedBindValues = Schema.Union([
   Schema.Array(SqlValueSchema),
   Schema.Record(Schema.String, SqlValueSchema),
-).pipe(Schema.brand('PreparedBindValues'))
+]).pipe(Schema.brand('PreparedBindValues'))
 
 export type PreparedBindValues = Brand.Branded<Bindable, 'PreparedBindValues'>
 

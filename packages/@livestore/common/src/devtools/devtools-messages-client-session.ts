@@ -126,7 +126,7 @@ export class VersionMismatch extends LSDClientSessionReqResMessage('LSD.ClientSe
 
 export class Disconnect extends LSDClientSessionChannelMessage('LSD.ClientSession.Disconnect', {}) {}
 
-export const MessageToApp = Schema.Union(
+export const MessageToApp = Schema.Union([
   DebugInfoReq,
   DebugInfoHistorySubscribe,
   DebugInfoHistoryUnsubscribe,
@@ -140,11 +140,11 @@ export const MessageToApp = Schema.Union(
   Ping,
   SyncHeadSubscribe,
   SyncHeadUnsubscribe,
-).annotate({ identifier: 'LSD.ClientSession.MessageToApp' })
+]).annotate({ identifier: 'LSD.ClientSession.MessageToApp' })
 
 export type MessageToApp = typeof MessageToApp.Type
 
-export const MessageFromApp = Schema.Union(
+export const MessageFromApp = Schema.Union([
   DebugInfoRes,
   DebugInfoHistoryRes,
   DebugInfoResetRes,
@@ -155,6 +155,6 @@ export const MessageFromApp = Schema.Union(
   Pong,
   VersionMismatch,
   SyncHeadRes,
-).annotate({ identifier: 'LSD.ClientSession.MessageFromApp' })
+]).annotate({ identifier: 'LSD.ClientSession.MessageFromApp' })
 
 export type MessageFromApp = typeof MessageFromApp.Type

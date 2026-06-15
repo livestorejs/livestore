@@ -121,27 +121,27 @@ export const BroadcastChannelPacket = Schema.TaggedStruct('BroadcastChannelPacke
   target: Schema.Literal('-'),
 })
 
-export class DirectChannelPacket extends Schema.Union(
+export class DirectChannelPacket extends Schema.Union([
   DirectChannelRequest,
   DirectChannelResponseSuccess,
   DirectChannelResponseNoTransferables,
-) {}
+]) {}
 
-export class ProxyChannelPacket extends Schema.Union(
+export class ProxyChannelPacket extends Schema.Union([
   ProxyChannelRequest,
   ProxyChannelResponseSuccess,
   ProxyChannelPayload,
   ProxyChannelPayloadAck,
-) {}
+]) {}
 
-export class Packet extends Schema.Union(
+export class Packet extends Schema.Union([
   DirectChannelPacket,
   ProxyChannelPacket,
   NetworkEdgeAdded,
   NetworkTopologyRequest,
   NetworkTopologyResponse,
   BroadcastChannelPacket,
-) {}
+]) {}
 
 export class DirectChannelPing extends Schema.TaggedStruct('DirectChannelPing', {}) {}
 export class DirectChannelPong extends Schema.TaggedStruct('DirectChannelPong', {}) {}

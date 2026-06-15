@@ -34,10 +34,10 @@ export type StorageTypeOpfs = typeof StorageTypeOpfs.Type
 //   storeNamePrefix: Schema.optionalWith(Schema.String, { default: () => 'livestore-' }),
 // })
 
-export const StorageType = Schema.Union(
+export const StorageType = Schema.Union([
   StorageTypeOpfs,
   // StorageTypeIndexeddb
-)
+])
 export type StorageType = typeof StorageType.Type
 export type StorageTypeEncoded = typeof StorageType.Encoded
 
@@ -201,7 +201,7 @@ export class LeaderWorkerInnerExtraDevtoolsMessage extends Schema.TaggedRequest<
   },
 ) {}
 
-export const LeaderWorkerInnerRequest = Schema.Union(
+export const LeaderWorkerInnerRequest = Schema.Union([
   LeaderWorkerInnerInitialMessage,
   LeaderWorkerInnerBootStatusStream,
   LeaderWorkerInnerPushToLeader,
@@ -218,7 +218,7 @@ export const LeaderWorkerInnerRequest = Schema.Union(
   LeaderWorkerInnerShutdown,
   LeaderWorkerInnerExtraDevtoolsMessage,
   WebmeshWorker.Schema.CreateConnection,
-)
+])
 export type LeaderWorkerInnerRequest = typeof LeaderWorkerInnerRequest.Type
 
 export class SharedWorkerUpdateMessagePort extends Schema.TaggedRequest<SharedWorkerUpdateMessagePort>()(
@@ -241,7 +241,7 @@ export class SharedWorkerUpdateMessagePort extends Schema.TaggedRequest<SharedWo
   },
 ) {}
 
-export const SharedWorkerRequest = Schema.Union(
+export const SharedWorkerRequest = Schema.Union([
   SharedWorkerUpdateMessagePort,
 
   // Proxied requests
@@ -261,5 +261,5 @@ export const SharedWorkerRequest = Schema.Union(
   LeaderWorkerInnerExtraDevtoolsMessage,
 
   WebmeshWorker.Schema.CreateConnection,
-)
+])
 export type SharedWorkerRequest = typeof SharedWorkerRequest.Type

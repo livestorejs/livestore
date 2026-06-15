@@ -3,12 +3,12 @@ import { Schema } from '@livestore/utils/effect'
 
 import { BackendIdMismatchError, IntentionalShutdownCause, MaterializeError, UnknownError } from '../index.ts'
 
-export class All extends Schema.Union(
+export class All extends Schema.Union([
   IntentionalShutdownCause,
   UnknownError,
   BackendIdMismatchError,
   MaterializeError,
-) {}
+]) {}
 
 /**
  * Used internally by an adapter to shutdown gracefully.
