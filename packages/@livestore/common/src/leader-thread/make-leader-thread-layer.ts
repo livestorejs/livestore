@@ -4,6 +4,7 @@ import {
   Deferred,
   Effect,
   KeyValueStore,
+  Latch,
   Layer,
   PlatformError,
   Queue,
@@ -190,7 +191,7 @@ export const makeLeaderThreadLayer = ({
       devtoolsOptions.enabled === true
         ? {
             enabled: true as const,
-            syncBackendLatch: yield* Effect.makeLatch(true),
+            syncBackendLatch: yield* Latch.make(true),
             syncBackendLatchState: yield* SubscriptionRef.make<{ latchClosed: boolean }>({ latchClosed: false }),
           }
         : { enabled: false as const }
