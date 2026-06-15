@@ -2,6 +2,7 @@ import type {
   Deferred,
   Effect,
   HttpClient,
+  Latch,
   Option,
   Queue,
   Scope,
@@ -74,9 +75,9 @@ export type DevtoolsOptions =
 export type DevtoolsContext =
   | {
       enabled: true
-      // syncBackendPullLatch: Effect.Latch
-      // syncBackendPushLatch: Effect.Latch
-      syncBackendLatch: Effect.Latch
+      // syncBackendPullLatch: Latch.Latch
+      // syncBackendPushLatch: Latch.Latch
+      syncBackendLatch: Latch.Latch
       syncBackendLatchState: SubscriptionRef.SubscriptionRef<{ latchClosed: boolean }>
     }
   | {

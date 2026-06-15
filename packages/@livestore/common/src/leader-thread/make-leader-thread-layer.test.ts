@@ -1,5 +1,5 @@
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Effect, Latch, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { makeMockSyncBackend } from '../sync/mock-sync-backend.ts'
 import type { SyncBackend } from '../sync/sync.ts'
@@ -15,7 +15,7 @@ Vitest.describe('makeNetworkStatusSubscribable', () => {
 
       const devtoolsContext: DevtoolsContext = {
         enabled: true,
-        syncBackendLatch: yield* Effect.makeLatch(true),
+        syncBackendLatch: yield* Latch.make(true),
         syncBackendLatchState: latchStateRef,
       }
 
