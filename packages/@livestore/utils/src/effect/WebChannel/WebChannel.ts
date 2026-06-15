@@ -1,4 +1,4 @@
-import { Deferred, Result, Exit, GlobalValue, identity, Option, PubSub, Queue, Scope } from 'effect'
+import { Cause, Deferred, Result, Exit, GlobalValue, identity, Option, PubSub, Queue, Scope } from 'effect'
 
 import { shouldNeverHappen } from '../../misc.ts'
 import * as Effect from '../Effect.ts'
@@ -67,7 +67,12 @@ export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
       const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
       const supportsTransferables = true
 
-      yield* Effect.addFinalizer(() => Effect.try(() => port.close()).pipe(Effect.ignore))
+      yield* Effect.addFinalizer(() =>
+        Effect.try({
+          try: () => port.close(),
+          catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+        }).pipe(Effect.ignore),
+      )
 
       return {
         [WebChannelSymbol]: WebChannelSymbol,
@@ -213,7 +218,12 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
       const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
       const supportsTransferables = true
 
-      yield* Effect.addFinalizer(() => Effect.try(() => port.close()).pipe(Effect.ignore))
+      yield* Effect.addFinalizer(() =>
+        Effect.try({
+          try: () => port.close(),
+          catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+        }).pipe(Effect.ignore),
+      )
 
       return {
         [WebChannelSymbol]: WebChannelSymbol,

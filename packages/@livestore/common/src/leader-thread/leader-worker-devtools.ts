@@ -1,4 +1,4 @@
-import { Effect, FiberMap, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Cause, Effect, FiberMap, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
 import {
@@ -207,10 +207,13 @@ const listenToDevtools = ({
                   Effect.sync(() => db.close()),
                 ).pipe(
                   Effect.flatMap((db) =>
-                    Effect.try(() => {
-                      db.import(data)
-                      const rows = db.select<{ name: string }>(`select name from sqlite_master where type = 'table'`)
-                      return new Set(rows.map((r) => r.name))
+                    Effect.try({
+                      try: () => {
+                        db.import(data)
+                        const rows = db.select<{ name: string }>(`select name from sqlite_master where type = 'table'`)
+                        return new Set(rows.map((r) => r.name))
+                      },
+                      catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
                     }),
                   ),
                 )
@@ -220,10 +223,16 @@ const listenToDevtools = ({
                 if (tableNames.has(SystemTables.EVENTLOG_META_TABLE) === true) {
                   databaseKind = 'eventlog'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-                  yield* Effect.try(() => dbEventlog.import(data))
+                  yield* Effect.try({
+                    try: () => dbEventlog.import(data),
+                    catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+                  })
 
                   if (batchId === undefined) {
-                    yield* Effect.try(() => dbState.destroy())
+                    yield* Effect.try({
+                      try: () => dbState.destroy(),
+                      catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+                    })
                   }
                 } else if (
                   tableNames.has(SystemTables.SCHEMA_META_TABLE) === true &&
@@ -231,10 +240,16 @@ const listenToDevtools = ({
                 ) {
                   databaseKind = 'state'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-                  yield* Effect.try(() => dbState.import(data))
+                  yield* Effect.try({
+                    try: () => dbState.import(data),
+                    catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+                  })
 
                   if (batchId === undefined) {
-                    yield* Effect.try(() => dbEventlog.destroy())
+                    yield* Effect.try({
+                      try: () => dbEventlog.destroy(),
+                      catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+                    })
                   }
                 } else {
                   return yield* Effect.fail({ _tag: 'unsupported-database' } as const)

@@ -1,6 +1,5 @@
 import * as OtelTracer from '@effect/opentelemetry/Tracer'
 import { Cause, type Context, Deferred, Duration, Effect, Fiber, pipe, Scope, type Stream } from 'effect'
-import type { UnknownException } from 'effect/Cause'
 import { log } from 'effect/Console'
 import { dual, type LazyArg } from 'effect/Function'
 import type { Predicate, Refinement } from 'effect/Predicate'
@@ -46,11 +45,14 @@ export type SyncOrPromiseOrEffect<TResult, TError = never, TContext = never> =
 export const tryAll = <Res>(
   fn: () => Res,
 ): Res extends Effect.Effect<infer A, infer E>
-  ? Effect.Effect<A, E | UnknownException>
+  ? Effect.Effect<A, E | Cause.UnknownError>
   : Res extends Promise<infer A>
-    ? Effect.Effect<A, UnknownException>
-    : Effect.Effect<Res, UnknownException> =>
-  Effect.try(() => fn()).pipe(
+    ? Effect.Effect<A, Cause.UnknownError>
+    : Effect.Effect<Res, Cause.UnknownError> =>
+  Effect.try({
+    try: () => fn(),
+    catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+  }).pipe(
     Effect.andThen((fnRes) =>
       Effect.isEffect(fnRes) === true
         ? (fnRes as any as Effect.Effect<any>)
