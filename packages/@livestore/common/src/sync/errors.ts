@@ -5,7 +5,7 @@ import { EventSequenceNumber } from '../schema/mod.ts'
 export class IsOfflineError extends Schema.TaggedErrorClass<IsOfflineError>('~@livestore/common/IsOfflineError')(
   'IsOfflineError',
   {
-    cause: Schema.Defect,
+    cause: Schema.Defect(),
   },
 ) {}
 

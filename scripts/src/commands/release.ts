@@ -9,7 +9,7 @@ import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc
 
 class PackageJsonParseError extends Schema.TaggedErrorClass<PackageJsonParseError>()('PackageJsonParseError', {
   message: Schema.String,
-  cause: Schema.Defect,
+  cause: Schema.Defect(),
 }) {}
 
 type TDependencyField = 'dependencies' | 'devDependencies' | 'peerDependencies' | 'optionalDependencies'

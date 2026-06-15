@@ -431,5 +431,5 @@ export const noopOpfs = new Opfs({
  */
 export class OpfsError extends Schema.TaggedErrorClass<OpfsError>('~@livestore/utils/OpfsError')('OpfsError', {
   message: Schema.String,
-  cause: Schema.optional(Schema.Defect),
+  cause: Schema.optional(Schema.Defect()),
 }) {}
