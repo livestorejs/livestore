@@ -8,7 +8,7 @@ export class ResultBootStatus extends Schema.TaggedStruct('Bridge.ResultBootStat
       migrationsReport: MigrationsReport,
     }),
     failure: UnknownError,
-    defect: Schema.Defect,
+    defect: Schema.Defect(),
   }),
 }) {}
 
@@ -16,7 +16,7 @@ export class ResultStoreBootError extends Schema.TaggedStruct('Bridge.ResultStor
   exit: Schema.Exit({
     success: Schema.Any,
     failure: UnknownError,
-    defect: Schema.Defect,
+    defect: Schema.Defect(),
   }),
 }) {}
 
@@ -33,6 +33,6 @@ export class ResultMultipleMigrations extends Schema.TaggedStruct('Bridge.Result
       ),
     }),
     failure: UnknownError,
-    defect: Schema.Defect,
+    defect: Schema.Defect(),
   }),
 }) {}

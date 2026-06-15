@@ -15,7 +15,7 @@ import {
 export class DockerComposeError extends Schema.TaggedErrorClass<DockerComposeError>(
   '~@livestore/utils-dev/DockerComposeError',
 )('DockerComposeError', {
-  cause: Schema.Defect,
+  cause: Schema.Defect(),
   note: Schema.String,
 }) {}
 
