@@ -24,8 +24,8 @@ import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
 import { assertNever, isDevEnv, objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
-import type { Scope } from '@livestore/utils/effect'
 import {
+  type Scope,
   Cause,
   Effect,
   Exit,

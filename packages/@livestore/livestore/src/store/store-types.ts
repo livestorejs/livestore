@@ -14,8 +14,7 @@ import {
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
-import type { Effect, Runtime, Schema, Scope } from '@livestore/utils/effect'
-import { Deferred, Predicate } from '@livestore/utils/effect'
+import { type Effect, type Runtime, type Schema, type Scope, Deferred, Predicate } from '@livestore/utils/effect'
 
 import type {
   LiveQuery,

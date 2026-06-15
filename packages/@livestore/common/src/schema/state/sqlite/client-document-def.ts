@@ -1,6 +1,5 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import type { Option, Types } from '@livestore/utils/effect'
-import { Schema, Struct } from '@livestore/utils/effect'
+import { type Option, type Types, Schema, Struct } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../session-id-symbol.ts'
 import { sql } from '../../../util.ts'

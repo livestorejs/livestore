@@ -1,16 +1,17 @@
-import type {
-  Deferred,
-  Effect,
-  HttpClient,
-  Latch,
-  Option,
-  Queue,
-  Scope,
-  Stream,
-  Subscribable,
-  SubscriptionRef,
+import {
+  type Deferred,
+  type Effect,
+  type HttpClient,
+  type Latch,
+  type Option,
+  type Queue,
+  type Scope,
+  type Stream,
+  type Subscribable,
+  type SubscriptionRef,
+  Context,
+  Schema,
 } from '@livestore/utils/effect'
-import { Context, Schema } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
 
 import type { MigrationsReport } from '../defs.ts'

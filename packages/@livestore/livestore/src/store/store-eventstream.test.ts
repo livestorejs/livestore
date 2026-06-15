@@ -9,8 +9,18 @@ import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import type { OtelTracer, Scope } from '@livestore/utils/effect'
-import { Context, Effect, FetchHttpClient, Layer, Logger, LogLevel, Queue, Stream } from '@livestore/utils/effect'
+import {
+  type OtelTracer,
+  type Scope,
+  Context,
+  Effect,
+  FetchHttpClient,
+  Layer,
+  Logger,
+  LogLevel,
+  Queue,
+  Stream,
+} from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
 

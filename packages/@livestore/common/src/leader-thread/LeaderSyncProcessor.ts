@@ -1,6 +1,10 @@
 import { casesHandled, isNotUndefined, LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
-import type { HttpClient, Latch, Runtime, Scope, Tracer } from '@livestore/utils/effect'
 import {
+  type HttpClient,
+  type Latch,
+  type Runtime,
+  type Scope,
+  type Tracer,
   BucketQueue,
   Cause,
   Context,

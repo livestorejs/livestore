@@ -1,6 +1,7 @@
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
-import type { HttpClient, Scope } from '@livestore/utils/effect'
 import {
+  type HttpClient,
+  type Scope,
   Deferred,
   Effect,
   KeyValueStore,

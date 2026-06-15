@@ -1,7 +1,6 @@
 /// <reference lib="es2022" />
 
-import type { Brand } from '@livestore/utils/effect'
-import { Schema } from '@livestore/utils/effect'
+import { type Brand, Schema } from '@livestore/utils/effect'
 
 export type ParamsObject = Record<string, SqlValue>
 export type SqlValue = string | number | Uint8Array<ArrayBuffer> | null
