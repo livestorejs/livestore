@@ -17,6 +17,7 @@ import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
 import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
 import {
+  Cause,
   Effect,
   FetchHttpClient,
   identity,
@@ -154,7 +155,11 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
                   foreignKeys: true,
                 }).pipe(Effect.provide(runtime), Effect.runSync),
             }),
-            (db) => Effect.try(() => db.close()).pipe(Effect.ignore),
+            (db) =>
+              Effect.try({
+                try: () => db.close(),
+                catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+              }).pipe(Effect.ignore),
           )
 
         const makeInMemoryDb = () =>
@@ -164,7 +169,11 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
               configureDb: (db) =>
                 configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
             }),
-            (db) => Effect.try(() => db.close()).pipe(Effect.ignore),
+            (db) =>
+              Effect.try({
+                try: () => db.close(),
+                catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+              }).pipe(Effect.ignore),
           )
 
         // Use OPFS if available, otherwise fall back to in-memory

@@ -1,4 +1,4 @@
-import { Deferred, Exit, Scope } from 'effect'
+import { Cause, Deferred, Exit, Scope } from 'effect'
 
 import * as Effect from '../effect/Effect.ts'
 import * as Schema from '../effect/Schema/index.ts'
@@ -25,7 +25,12 @@ export const broadcastChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEn
 
       const channel = new BroadcastChannel(channelName)
 
-      yield* Effect.addFinalizer(() => Effect.try(() => channel.close()).pipe(Effect.ignore))
+      yield* Effect.addFinalizer(() =>
+        Effect.try({
+          try: () => channel.close(),
+          catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+        }).pipe(Effect.ignore),
+      )
 
       const send = (message: MsgSend) =>
         Effect.gen(function* () {
