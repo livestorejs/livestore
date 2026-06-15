@@ -89,7 +89,7 @@ export const makeDoRpcSync =
                   requestIdMailboxMap.set(res.value.rpcRequestId, mailbox)
 
                   return Mailbox.toStream(mailbox)
-                }).pipe(Stream.unwrapScoped),
+                }).pipe(Stream.unwrap),
               )
             : identity,
           Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
