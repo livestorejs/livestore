@@ -59,9 +59,10 @@ export const connectViaWebSocket = ({
       debug: { id: `node:${node.nodeName}` },
     })
 
-    yield* node
-      .addEdge({ target: 'ws', edgeChannel: edgeChannel.webChannel, replaceIfExists: true })
-      .pipe(Effect.acquireRelease(() => node.removeEdge('ws').pipe(Effect.orDie)))
+    yield* Effect.acquireRelease(
+      node.addEdge({ target: 'ws', edgeChannel: edgeChannel.webChannel, replaceIfExists: true }),
+      () => node.removeEdge('ws').pipe(Effect.orDie),
+    )
 
     yield* edgeChannel.webChannel.closedDeferred
   }).pipe(Effect.scoped, Effect.forever, Effect.interruptible, Effect.provide(binaryWebSocketConstructorLayer))
@@ -92,15 +93,16 @@ export const makeWebSocketEdge = ({
     Effect.gen(function* () {
       const fromDeferred = yield* Deferred.make<string>()
 
-      const listenQueue = yield* Queue.unbounded<typeof WebmeshSchema.Packet.Type>().pipe(
-        Effect.acquireRelease(Queue.shutdown),
+      const listenQueue = yield* Effect.acquireRelease(
+        Queue.unbounded<typeof WebmeshSchema.Packet.Type>(),
+        Queue.shutdown,
       )
 
       const schema = WebChannel.mapSchema(WebmeshSchema.Packet)
 
       const isConnectedLatch = yield* Latch.make(true)
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
       const retryOpenTimeoutSchedule = Schedule.union(Schedule.exponential(100), Schedule.spaced(5000)).pipe(
         Schedule.whileInput((_: Socket.SocketError) => _.reason === 'OpenTimeout' || _.reason === 'Open'),

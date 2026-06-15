@@ -82,8 +82,9 @@ export const makeDoRpcSync =
                   if (res._tag === 'None')
                     return shouldNeverHappen('There should at least be a no-more page info response')
 
-                  const mailbox = yield* Mailbox.make<SyncMessage.PullResponse>().pipe(
-                    Effect.acquireRelease((mailbox) => mailbox.shutdown),
+                  const mailbox = yield* Effect.acquireRelease(
+                    Mailbox.make<SyncMessage.PullResponse>(),
+                    (mailbox) => mailbox.shutdown,
                   )
 
                   requestIdMailboxMap.set(res.value.rpcRequestId, mailbox)

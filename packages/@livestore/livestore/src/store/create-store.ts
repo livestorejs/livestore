@@ -303,7 +303,7 @@ export const createStore = <
       const otelRootSpanContext = otel.trace.setSpan(otel.context.active(), span)
       const otelTracer = yield* OtelTracer.OtelTracer
 
-      const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
+      const bootStatusQueue = yield* Effect.acquireRelease(Queue.unbounded<BootStatus>(), Queue.shutdown)
 
       yield* Queue.take(bootStatusQueue).pipe(
         Effect.tapSync((status) => onBootStatus?.(status)),
