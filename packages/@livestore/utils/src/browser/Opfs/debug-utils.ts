@@ -8,7 +8,7 @@ import { Effect, Stream } from 'effect'
 import prettyBytes from 'pretty-bytes'
 
 import type * as WebError from '../WebError.ts'
-import { Opfs } from './Opfs.ts'
+import * as Opfs from './Opfs.ts'
 import { getDirectoryHandleByPath, getMetadata, remove } from './utils.ts'
 
 /**
@@ -33,13 +33,13 @@ const ROOT_NAME = '/'
  * Materialize the entire OPFS tree starting from the origin root.
  */
 const buildTree = Effect.fn('@livestore/utils:Opfs.buildTree')(function* () {
-  const opfs = yield* Opfs
+  const opfs = yield* Opfs.Opfs
   const rootHandle = yield* opfs.getRootDirectoryHandle
 
   const collectDirectory = (
     handle: FileSystemDirectoryHandle,
     pathSegments: ReadonlyArray<string>,
-  ): Effect.Effect<OpfsTreeNode, WebError.WebError, Opfs> =>
+  ): Effect.Effect<OpfsTreeNode, WebError.WebError, Opfs.Opfs> =>
     Effect.gen(function* () {
       const handlesStream = opfs.values(handle)
       const handles = yield* handlesStream.pipe(
@@ -135,8 +135,8 @@ const resetTree = remove('/')
 
 const getDirHandle = (path: string, options?: FileSystemGetDirectoryOptions) => getDirectoryHandleByPath(path, options)
 
-const runOpfsEffect = <A, E>(effect: Effect.Effect<A, E, Opfs>) =>
-  effect.pipe(Effect.provide(Opfs.layer), Effect.runPromise)
+const runOpfsEffect = <A, E>(effect: Effect.Effect<A, E, Opfs.Opfs>) =>
+  effect.pipe(Effect.provide(Opfs.layer()), Effect.runPromise)
 
 export const debugUtils = {
   /**
