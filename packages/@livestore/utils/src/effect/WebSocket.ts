@@ -5,7 +5,7 @@ import { HttpClient } from 'effect/unstable/http'
 export class WebSocketError extends Schema.TaggedErrorClass<WebSocketError>('~@livestore/utils/WebSocketError')(
   'WebSocketError',
   {
-    cause: Schema.Defect,
+    cause: Schema.Defect(),
   },
 ) {}
 
