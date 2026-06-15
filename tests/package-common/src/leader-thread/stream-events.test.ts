@@ -487,9 +487,9 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
     ),
   )
 
-  const batchSizeSampleSchema = Schema.Literal(1, 5, 12, 25, 50, 100)
-  const eventCountSampleSchema = Schema.Literal(0, 1, 6, 10, 100)
-  const batchesPerTickSampleSchema = Schema.Literal(1, 3, 10, 100)
+  const batchSizeSampleSchema = Schema.Literals([1, 5, 12, 25, 50, 100])
+  const eventCountSampleSchema = Schema.Literals([0, 1, 6, 10, 100])
+  const batchesPerTickSampleSchema = Schema.Literals([1, 3, 10, 100])
 
   Vitest.asProp(
     Vitest.scopedLive,

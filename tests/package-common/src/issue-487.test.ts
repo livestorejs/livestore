@@ -15,7 +15,7 @@ Vitest.describe('issue #487 - Optional fields without defaults cause errors', ()
         schema: Schema.Struct({
           newTodoText: Schema.String,
           description: Schema.optional(Schema.String), // Optional field
-          filter: Schema.Literal('all', 'active', 'completed'),
+          filter: Schema.Literals(['all', 'active', 'completed']),
         }),
         default: {
           id: SessionIdSymbol,

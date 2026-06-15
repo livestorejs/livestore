@@ -43,7 +43,7 @@ export class MaterializerHashMismatchError extends Schema.TaggedErrorClass<Mater
 export class IntentionalShutdownCause extends Schema.TaggedErrorClass<IntentionalShutdownCause>(
   '~@livestore/common/IntentionalShutdownCause',
 )('IntentionalShutdownCause', {
-  reason: Schema.Literal('devtools-reset', 'devtools-import', 'adapter-reset', 'manual', 'backend-id-mismatch'),
+  reason: Schema.Literals(['devtools-reset', 'devtools-import', 'adapter-reset', 'manual', 'backend-id-mismatch']),
 }) {}
 
 export class StoreInterrupted extends Schema.TaggedErrorClass<StoreInterrupted>('~@livestore/common/StoreInterrupted')(
@@ -73,7 +73,7 @@ export class UnknownEventError extends Schema.TaggedErrorClass<UnknownEventError
   '~@livestore/common/UnknownEventError',
 )('UnknownEventError', {
   event: LiveStoreEvent.Client.Encoded.mapFields(Struct.pick(['name', 'args', 'seqNum', 'clientId', 'sessionId'])),
-  reason: Schema.Literal('event-definition-missing', 'materializer-missing'),
+  reason: Schema.Literals(['event-definition-missing', 'materializer-missing']),
   operation: Schema.String,
   note: Schema.optional(Schema.String),
 }) {}
