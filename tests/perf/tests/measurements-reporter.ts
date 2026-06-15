@@ -19,10 +19,10 @@ import {
 
 import { printConsoleTable } from './print-console-table.ts'
 
-const MeasurementUnit = Schema.Literal('ms', 'bytes')
+const MeasurementUnit = Schema.Literals(['ms', 'bytes'])
 type MeasurementUnit = typeof MeasurementUnit.Type
 
-const DisplayUnit = Schema.Literal('ms', 'MB')
+const DisplayUnit = Schema.Literals(['ms', 'MB'])
 type DisplayUnit = typeof DisplayUnit.Type
 
 class MissingAnnotationError extends Data.TaggedError('MissingAnnotationError')<{

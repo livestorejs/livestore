@@ -1,6 +1,6 @@
 import { Schema } from '@livestore/livestore'
 
-export const Priority = Schema.Literal(0, 1, 2, 3, 4).annotate({
+export const Priority = Schema.Literals([0, 1, 2, 3, 4]).annotate({
   title: 'Priority',
 })
 

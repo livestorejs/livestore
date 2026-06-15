@@ -12,7 +12,7 @@ export const tables = {
   }),
   uiState: State.SQLite.clientDocument({
     name: 'uiState',
-    schema: Schema.Struct({ newTodoText: Schema.String, filter: Schema.Literal('all', 'active', 'completed') }),
+    schema: Schema.Struct({ newTodoText: Schema.String, filter: Schema.Literals(['all', 'active', 'completed']) }),
     default: { id: SessionIdSymbol, value: { newTodoText: '', filter: 'all' } },
   }),
 }

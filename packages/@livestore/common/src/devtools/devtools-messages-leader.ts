@@ -6,7 +6,7 @@ import * as SyncState from '../sync/syncstate.ts'
 import { LeaderReqResMessage, LSDMessage, LSDReqResMessage, NetworkStatus } from './devtools-messages-common.ts'
 
 export class ResetAllDataReq extends LSDReqResMessage('LSD.Leader.ResetAllDataReq', {
-  mode: Schema.Literal('all-data', 'only-app-db'),
+  mode: Schema.Literals(['all-data', 'only-app-db']),
 }) {}
 
 export class DatabaseFileInfoReq extends LSDReqResMessage('LSD.Leader.DatabaseFileInfoReq', {}) {}
@@ -139,7 +139,7 @@ export const SetSyncLatch = LeaderReqResMessage('LSD.Leader.SetSyncLatch', {
 
 export const ResetAllData = LeaderReqResMessage('LSD.Leader.ResetAllData', {
   payload: {
-    mode: Schema.Literal('all-data', 'only-app-db'),
+    mode: Schema.Literals(['all-data', 'only-app-db']),
   },
   success: {},
 })

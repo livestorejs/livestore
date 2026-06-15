@@ -92,9 +92,9 @@ const propTestTimeout = IS_CI === true ? 60_000 : 20_000
 // TODO also make work without `Vitest.scopedLive` (i.e. with `Vitest.scoped`)
 // probably requires controlling the clocks
 Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
-  const Delay = Schema.UndefinedOr(Schema.Literal(0, 1, 10, 50))
+  const Delay = Schema.UndefinedOr(Schema.Literals([0, 1, 10, 50]))
   // NOTE for message channels, we test both with and without transferables (i.e. proxying)
-  const ChannelType = Schema.Literal('direct', 'proxy(via-messagechannel-edge)', 'proxy')
+  const ChannelType = Schema.Literals(['direct', 'proxy(via-messagechannel-edge)', 'proxy'])
   const NodeNames = Schema.Union(
     Schema.Tuple(Schema.Literal('A'), Schema.Literal('B')),
     Schema.Tuple(Schema.Literal('B'), Schema.Literal('A')),
@@ -329,7 +329,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         }).pipe(Vitest.withTestCtx(test)),
       )
 
-      const ChannelTypeWithoutMessageChannelProxy = Schema.Literal('proxy', 'direct')
+      const ChannelTypeWithoutMessageChannelProxy = Schema.Literals(['proxy', 'direct'])
       // TODO there seems to be a flaky case here which gets hit sometimes (e.g. 2025-02-28-17:11)
       // Log output:
       // test: { seed: -964670352, path: "1", endOnFailure: true }

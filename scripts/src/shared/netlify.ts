@@ -16,7 +16,7 @@ import {
 } from '@livestore/utils/effect'
 
 export class NetlifyError extends Schema.TaggedErrorClass<NetlifyError>()('NetlifyError', {
-  reason: Schema.Literal('auth', 'unknown'),
+  reason: Schema.Literals(['auth', 'unknown']),
   message: Schema.String,
   cause: Schema.optional(Schema.Unknown),
 }) {}

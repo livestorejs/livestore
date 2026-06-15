@@ -95,7 +95,7 @@ export const withPage = <T>(f: () => Promise<T>, options?: { label?: string }): 
   }).pipe(Effect.withSpan(`withPage:${options?.label ?? f.toString()}`))
 
 export class ConsoleMessage extends Schema.TaggedStruct('Playwright.ConsoleMessage', {
-  type: Schema.Literal('error', 'log', 'warn', 'info', 'debug', 'group', 'groupCollapsed', 'groupEnd'),
+  type: Schema.Literals(['error', 'log', 'warn', 'info', 'debug', 'group', 'groupCollapsed', 'groupEnd']),
   message: Schema.String,
   args: Schema.Array(Schema.Any),
 }) {}

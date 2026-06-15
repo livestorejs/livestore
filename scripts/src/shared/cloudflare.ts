@@ -11,7 +11,7 @@ import { type CloudflareDomain, type CloudflareExample, cloudflareExamplesBySlug
  * pattern match on the error reason (auth/config/dns/unknown).
  */
 export class CloudflareError extends Schema.TaggedErrorClass<CloudflareError>()('CloudflareError', {
-  reason: Schema.Literal('auth', 'config', 'dns', 'unknown'),
+  reason: Schema.Literals(['auth', 'config', 'dns', 'unknown']),
   message: Schema.String,
   cause: Schema.optional(Schema.Unknown),
 }) {}

@@ -13,7 +13,7 @@ export const SearchParamsSchema = Schema.Struct({
     Schema.UndefinedOr,
   ),
   // NOTE `do-rpc` is handled differently
-  transport: Schema.Literal('http', 'ws'),
+  transport: Schema.Literals(['http', 'ws']),
 })
 
 export type SearchParams = typeof SearchParamsSchema.Type
