@@ -1,5 +1,5 @@
 import { casesHandled, isNotUndefined, LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
-import type { HttpClient, Runtime, Scope, Tracer } from '@livestore/utils/effect'
+import type { HttpClient, Latch, Runtime, Scope, Tracer } from '@livestore/utils/effect'
 import {
   BucketQueue,
   Cause,
@@ -221,7 +221,7 @@ export const make = Effect.fnUntraced(function* ({
       | undefined
       | {
           span: Tracer.Span
-          devtoolsLatch: Effect.Latch | undefined
+          devtoolsLatch: Latch.Latch | undefined
           runtime: Runtime.Runtime<LeaderThreadCtx>
         },
   }

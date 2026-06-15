@@ -4,6 +4,7 @@ import {
   Effect,
   Result,
   Exit,
+  Latch,
   Layer,
   Msgpack,
   Queue,
@@ -97,7 +98,7 @@ export const makeWebSocketEdge = ({
 
       const schema = WebChannel.mapSchema(WebmeshSchema.Packet)
 
-      const isConnectedLatch = yield* Effect.makeLatch(true)
+      const isConnectedLatch = yield* Latch.make(true)
 
       const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
 
