@@ -14,8 +14,8 @@
   "dependencies": {
     "@effect/platform-node": "0.106.0",
     "@livestore/utils": "workspace:^",
-    "astro-expressive-code": "0.41.5",
-    "expressive-code": "0.41.5",
+    "astro-expressive-code": "0.43.1",
+    "expressive-code": "0.43.1",
     "expressive-code-twoslash": "0.5.3",
     "hast": "1.0.0",
     "hast-util-to-html": "9.0.4",
