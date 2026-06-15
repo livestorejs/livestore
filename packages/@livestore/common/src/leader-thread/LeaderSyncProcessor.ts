@@ -912,9 +912,12 @@ const makePullQueueSet = Effect.gen(function* () {
 
   const makeQueue: PullQueueSet['makeQueue'] = (cursor) =>
     Effect.gen(function* () {
-      const queue = yield* Queue.unbounded<{
-        payload: typeof SyncState.PayloadUpstream.Type
-      }>().pipe(Effect.acquireRelease(Queue.shutdown))
+      const queue = yield* Effect.acquireRelease(
+        Queue.unbounded<{
+          payload: typeof SyncState.PayloadUpstream.Type
+        }>(),
+        Queue.shutdown,
+      )
 
       yield* Effect.addFinalizer(() => Effect.sync(() => set.delete(queue)))
 

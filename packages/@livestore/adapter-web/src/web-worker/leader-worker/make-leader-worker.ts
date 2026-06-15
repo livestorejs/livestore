@@ -139,27 +139,33 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         const opfsDirectory = useOpfs === true ? yield* sanitizeOpfsDir(storageOptions.directory, storeId) : undefined
 
         const makeOpfsDb = (kind: 'state' | 'eventlog') =>
-          makeSqliteDb({
-            _tag: 'opfs',
-            opfsDirectory: opfsDirectory!,
-            fileName: kind === 'state' ? getStateDbFileName(schema) : 'eventlog.db',
-            configureDb: (db) =>
-              configureConnection(db, {
-                //  The persisted databases use the AccessHandlePoolVFS which always uses a single database connection.
-                //  Multiple connections are not supported. This means that we can use the exclusive locking mode to
-                //  avoid unnecessary system calls and enable the use of the WAL journal mode without the use of shared memory.
-                // TODO bring back exclusive locking mode when `WAL` is working properly
-                // lockingMode: 'EXCLUSIVE',
-                foreignKeys: true,
-              }).pipe(Effect.provide(runtime), Effect.runSync),
-          }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignore)))
+          Effect.acquireRelease(
+            makeSqliteDb({
+              _tag: 'opfs',
+              opfsDirectory: opfsDirectory!,
+              fileName: kind === 'state' ? getStateDbFileName(schema) : 'eventlog.db',
+              configureDb: (db) =>
+                configureConnection(db, {
+                  //  The persisted databases use the AccessHandlePoolVFS which always uses a single database connection.
+                  //  Multiple connections are not supported. This means that we can use the exclusive locking mode to
+                  //  avoid unnecessary system calls and enable the use of the WAL journal mode without the use of shared memory.
+                  // TODO bring back exclusive locking mode when `WAL` is working properly
+                  // lockingMode: 'EXCLUSIVE',
+                  foreignKeys: true,
+                }).pipe(Effect.provide(runtime), Effect.runSync),
+            }),
+            (db) => Effect.try(() => db.close()).pipe(Effect.ignore),
+          )
 
         const makeInMemoryDb = () =>
-          makeSqliteDb({
-            _tag: 'in-memory',
-            configureDb: (db) =>
-              configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
-          }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignore)))
+          Effect.acquireRelease(
+            makeSqliteDb({
+              _tag: 'in-memory',
+              configureDb: (db) =>
+                configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
+            }),
+            (db) => Effect.try(() => db.close()).pipe(Effect.ignore),
+          )
 
         // Use OPFS if available, otherwise fall back to in-memory
         const [dbState, dbEventlog] =
