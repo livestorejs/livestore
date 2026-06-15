@@ -88,13 +88,19 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
 
       const fs = yield* FileSystem.FileSystem
       const configContent = yield* fs.readFileString(configPath)
-      const parsedConfig = yield* Effect.try(() => Toml.parse(configContent)).pipe(
+      const parsedConfig = yield* Effect.try({
+        try: () => Toml.parse(configContent),
+        catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+      }).pipe(
         Effect.andThen(Schema.decodeUnknownEffect(Schema.Struct({ main: Schema.String }))),
         Effect.mapError(
           (error) => new WranglerDevServerError({ cause: error, message: 'Failed to parse wrangler config', port: -1 }),
         ),
       )
-      const resolvedMainPath = yield* Effect.try(() => path.resolve(args.cwd, parsedConfig.main))
+      const resolvedMainPath = yield* Effect.try({
+        try: () => path.resolve(args.cwd, parsedConfig.main),
+        catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+      })
 
       const readiness = args.readiness ?? {}
       const startupTimeout = readiness.startupTimeout ?? Duration.seconds(IS_CI === true ? 30 : 10)
