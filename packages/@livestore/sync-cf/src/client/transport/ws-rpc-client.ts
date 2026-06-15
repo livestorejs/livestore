@@ -92,15 +92,12 @@ export const makeWsSync =
       //   yield* Effect.callback((cb) => self.addEventListener('online', () => cb(Effect.void)))
       // }
 
-      const pingInterval = options.ping?.requestInterval ?? 10_000
-
       const ProtocolLive = RpcClient.layerProtocolSocketWithIsConnected({
         isConnected,
         retryTransientErrors: Schedule.exponential('1 seconds').pipe(
           Schedule.union(Schedule.fixed('30 seconds')),
           Schedule.jittered,
         ),
-        pingSchedule: Schedule.once.pipe(Schedule.andThen(Schedule.fixed(pingInterval))),
         url: wsUrl,
       }).pipe(
         Layer.provide(Socket.layerWebSocket(wsUrl)),
