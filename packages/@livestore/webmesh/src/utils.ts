@@ -9,11 +9,11 @@ export class TimeoutSet<V> {
   private timeoutHandle: NodeJS.Timeout | undefined
   private readonly timeoutMs: number
 
-  private constructor({ timeout }: { timeout: Duration.DurationInput }) {
+  private constructor({ timeout }: { timeout: Duration.Input }) {
     this.timeoutMs = Duration.toMillis(timeout)
   }
 
-  static make = (timeout: Duration.DurationInput) =>
+  static make = (timeout: Duration.Input) =>
     Effect.gen(function* () {
       const timeoutSet = new TimeoutSet({ timeout })
 

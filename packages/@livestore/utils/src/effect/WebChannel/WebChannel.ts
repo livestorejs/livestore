@@ -1,5 +1,4 @@
 import { Deferred, Result, Exit, GlobalValue, identity, Option, PubSub, Queue, Scope } from 'effect'
-import type { DurationInput } from 'effect/Duration'
 
 import { shouldNeverHappen } from '../../misc.ts'
 import * as Effect from '../Effect.ts'
@@ -294,8 +293,8 @@ export const toOpenChannel = <MsgListen, MsgSend>(
      * If the other end doesn't respond within `timeout` milliseconds, the channel is shutdown.
      */
     heartbeat?: {
-      interval: DurationInput
-      timeout: DurationInput
+      interval: Duration.Input
+      timeout: Duration.Input
     }
   },
 ): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> =>
