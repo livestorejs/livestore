@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { isNotUndefined } from '@livestore/utils'
-import { Effect } from '@livestore/utils/effect'
+import { Cause, Effect } from '@livestore/utils/effect'
 
 export type TCmdLoggingOptions = {
   readonly logDir?: string
@@ -31,18 +31,27 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
     const safeIso = new Date().toISOString().replaceAll(':', '-')
     const archivedBase = `${path.parse(logFileName).name}-${safeIso}.log`
     const archivedLog = path.join(archiveDir, archivedBase)
-    yield* Effect.try(() => fs.renameSync(currentLogPath, archivedLog)).pipe(
+    yield* Effect.try({
+      try: () => fs.renameSync(currentLogPath, archivedLog),
+      catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+    }).pipe(
       Effect.catch(() =>
-        Effect.try(() => {
-          fs.copyFileSync(currentLogPath, archivedLog)
-          fs.truncateSync(currentLogPath, 0)
+        Effect.try({
+          try: () => {
+            fs.copyFileSync(currentLogPath, archivedLog)
+            fs.truncateSync(currentLogPath, 0)
+          },
+          catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
         }),
       ),
       Effect.ignore,
     )
 
     // Prune archives to retain only the newest N
-    yield* Effect.try(() => fs.readdirSync(archiveDir)).pipe(
+    yield* Effect.try({
+      try: () => fs.readdirSync(archiveDir),
+      catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+    }).pipe(
       Effect.map((names) => names.filter((n) => n.endsWith('.log'))),
       Effect.map((names) =>
         names
@@ -51,7 +60,10 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
       ),
       Effect.flatMap((entries) =>
         Effect.forEach(entries.slice(logRetention), (e) =>
-          Effect.try(() => fs.unlinkSync(path.join(archiveDir, e.name))).pipe(Effect.ignore),
+          Effect.try({
+            try: () => fs.unlinkSync(path.join(archiveDir, e.name)),
+            catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+          }).pipe(Effect.ignore),
         ),
       ),
       Effect.ignore,

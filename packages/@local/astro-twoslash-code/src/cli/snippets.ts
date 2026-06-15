@@ -104,7 +104,7 @@ import type {
 } from 'hast'
 import { toHtml } from 'hast-util-to-html'
 
-import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
+import { Cause, type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
 import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
 
 import type { LineOwnerMarker, LineOwnerMetadata, TwoslashRuntimeOptions } from '../expressive-code.ts'
@@ -1291,7 +1291,10 @@ const loadPreviousManifest = (
     }
 
     const manifestSource = manifestSourceResult.right
-    const parsedEither = yield* Effect.try(() => JSON.parse(manifestSource) as TSnippetManifest).pipe(Effect.result)
+    const parsedEither = yield* Effect.try({
+      try: () => JSON.parse(manifestSource) as TSnippetManifest,
+      catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+    }).pipe(Effect.result)
     if (parsedEither._tag === 'Left') {
       yield* Effect.logWarning(
         `Unable to parse existing snippet manifest at ${paths.manifestPath}: ${String(parsedResult.fail)}`,
