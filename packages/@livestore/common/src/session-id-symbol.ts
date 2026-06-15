@@ -19,7 +19,7 @@ import type { Bindable, SqlValue } from './util.ts'
  * const uiState = State.SQLite.clientDocument({
  *   name: 'ui_state',
  *   schema: Schema.Struct({
- *     theme: Schema.Literal('dark', 'light', 'system'),
+ *     theme: Schema.Literals(['dark', 'light', 'system']),
  *     user: Schema.String,
  *     showToolbar: Schema.Boolean,
  *   }),

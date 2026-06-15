@@ -202,7 +202,7 @@ export const synced = <TName extends string, TType, TEncoded = TType>(
  *   name: 'UiStateSet',
  *   schema: Schema.Struct({
  *     selectedTodoId: Schema.NullOr(Schema.String),
- *     filterMode: Schema.Literal('all', 'active', 'completed'),
+ *     filterMode: Schema.Literals(['all', 'active', 'completed']),
  *   }),
  * })
  *

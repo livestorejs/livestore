@@ -146,7 +146,7 @@ export class CmdError extends Schema.TaggedErrorClass<CmdError>('~@livestore/uti
   args: Schema.Array(Schema.String),
   cwd: Schema.String,
   env: Schema.Record(Schema.String, Schema.String.pipe(Schema.UndefinedOr)),
-  stderr: Schema.Literal('inherit', 'pipe'),
+  stderr: Schema.Literals(['inherit', 'pipe']),
 }) {}
 
 type TRunBaseArgs = {
