@@ -34,12 +34,12 @@ export const InitialSyncOptionsSkip = Schema.TaggedStruct('Skip', {})
 export type InitialSyncOptionsSkip = typeof InitialSyncOptionsSkip.Type
 
 export const InitialSyncOptionsBlocking = Schema.TaggedStruct('Blocking', {
-  timeout: Schema.Union(Schema.DurationFromMillis, Schema.Number),
+  timeout: Schema.Union([Schema.DurationFromMillis, Schema.Number]),
 })
 
 export type InitialSyncOptionsBlocking = typeof InitialSyncOptionsBlocking.Type
 
-export const InitialSyncOptions = Schema.Union(InitialSyncOptionsSkip, InitialSyncOptionsBlocking)
+export const InitialSyncOptions = Schema.Union([InitialSyncOptionsSkip, InitialSyncOptionsBlocking])
 export type InitialSyncOptions = typeof InitialSyncOptions.Type
 
 export type InitialSyncInfo = Option.Option<{

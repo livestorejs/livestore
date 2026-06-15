@@ -25,12 +25,12 @@ const RulesetRequestBody = Schema.Struct({
     }),
   }),
   rules: Schema.Array(
-    Schema.Union(
+    Schema.Union([
       Schema.Struct({ type: Schema.Literal('pull_request'), parameters: Schema.optional(Schema.Unknown) }),
       Schema.Struct({ type: Schema.Literal('required_status_checks'), parameters: Schema.optional(Schema.Unknown) }),
       Schema.Struct({ type: Schema.Literal('non_fast_forward') }),
       Schema.Struct({ type: Schema.Literal('deletion') }),
-    ),
+    ]),
   ),
 })
 

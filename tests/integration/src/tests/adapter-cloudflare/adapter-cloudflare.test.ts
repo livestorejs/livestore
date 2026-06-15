@@ -95,7 +95,7 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
               Schema.Struct({
                 todos: Schema.Array(Schema.Struct({ id: Schema.String, title: Schema.String })),
                 persistence: PersistenceSnapshotSchema,
-                resetSnapshot: Schema.Union(Schema.Null, ResetPersistenceSnapshotSchema),
+                resetSnapshot: Schema.Union([Schema.Null, ResetPersistenceSnapshotSchema]),
               }),
             ),
           ),

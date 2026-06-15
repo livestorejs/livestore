@@ -57,13 +57,13 @@ export class SqliteError extends Schema.TaggedErrorClass<SqliteError>('~@livesto
   query: Schema.optional(
     Schema.Struct({
       sql: Schema.String,
-      bindValues: Schema.Union(Schema.Record(Schema.String, Schema.Any), Schema.Array(Schema.Any)),
+      bindValues: Schema.Union([Schema.Record(Schema.String, Schema.Any), Schema.Array(Schema.Any)]),
     }),
   ),
   /** The SQLite result code */
   // code: Schema.optional(Schema.Number),
   // Added string support for Expo SQLite (we should refactor this to have a unified error type)
-  code: Schema.optional(Schema.Union(Schema.Number, Schema.String)),
+  code: Schema.optional(Schema.Union([Schema.Number, Schema.String])),
   /** The original SQLite3 error */
   cause: Schema.Defect,
   note: Schema.optional(Schema.String),
@@ -81,7 +81,7 @@ export class UnknownEventError extends Schema.TaggedErrorClass<UnknownEventError
 export class MaterializeError extends Schema.TaggedErrorClass<MaterializeError>('~@livestore/common/MaterializeError')(
   'MaterializeError',
   {
-    cause: Schema.Union(MaterializerHashMismatchError, SqliteError, UnknownEventError),
+    cause: Schema.Union([MaterializerHashMismatchError, SqliteError, UnknownEventError]),
     note: Schema.optional(Schema.String),
   },
 ) {}

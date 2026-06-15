@@ -104,7 +104,7 @@ export const LeaderReqResMessage = <
       liveStoreVersion,
       ...fields.payload,
     }).annotate({ identifier: `${tag}.Request` }),
-    Response: Schema.Union(Success, Error),
+    Response: Schema.Union([Success, Error]),
     Success,
     Error,
   } as any

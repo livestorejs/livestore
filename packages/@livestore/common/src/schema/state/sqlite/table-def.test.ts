@@ -457,7 +457,7 @@ describe('table function overloads', () => {
       data: Schema.fromJsonString(SquareDataSchema),
     })
 
-    const ShapeSchema = Schema.Union(CircleSchema, SquareSchema)
+    const ShapeSchema = Schema.Union([CircleSchema, SquareSchema])
 
     const shapes = State.SQLite.table({
       name: 'shapes',
