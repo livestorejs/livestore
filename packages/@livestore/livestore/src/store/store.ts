@@ -574,7 +574,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   }
 
   subscribeStream = <TResult>(query: Queryable<TResult>, options?: SubscribeOptions<TResult>): Stream.Stream<TResult> =>
-    Stream.asyncPush<TResult>((emit) =>
+    Stream.callback<TResult>((emit) =>
       Effect.gen(this, function* () {
         const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(
           Effect.catchTag('NoSuchElementException', () => Effect.succeed(undefined)),
@@ -623,7 +623,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         },
       ) as any
       if (query.schema !== undefined) {
-        return Schema.decodeSync(query.schema)(res)
+        return Schema.decodeEffectSync(query.schema)(res)
       }
       return res
     } else if (isQueryBuilder(query) === true) {
@@ -656,7 +656,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         },
       )
 
-      const decodeResult = Schema.decodeEither(schema)(rawRes)
+      const decodeResult = Schema.decodeExit(schema)(rawRes)
       if (decodeResult._tag === 'Right') {
         return decodeResult.right
       } else {
@@ -852,8 +852,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           ...(options?.spanLinks?.map(OtelTracer.makeSpanLink) ?? []),
         ],
       }),
-      Effect.tapErrorCause(Effect.logError),
-      Effect.catchAllCause((cause) => Effect.fork(this.shutdown(cause))),
+      Effect.tapCause(Effect.logError),
+      Effect.catchCause((cause) => Effect.forkChild(this.shutdown(cause))),
       Runtime.runSync(this[StoreInternalsSymbol].effectContext.runtime),
     )
   }
@@ -932,7 +932,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     }
 
     return clientSession.leaderThread.events.stream(baseOptions).pipe(
-      Stream.mapChunksEffect(Schema.decode(Schema.ChunkFromSelf(eventSchema))),
+      Stream.mapArrayEffect(Schema.decodeEffect(Schema.Chunk(eventSchema))),
       Stream.catchTag('ParseError', (cause) => Stream.fail(UnknownError.make({ cause }))),
       Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
     )

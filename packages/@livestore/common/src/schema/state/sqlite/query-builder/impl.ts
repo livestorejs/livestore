@@ -1,5 +1,5 @@
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
-import { Match, Option, Predicate, Schema } from '@livestore/utils/effect'
+import { Match, Option, Predicate, Schema, Struct } from '@livestore/utils/effect'
 
 import type { TableDefBase } from '../table-def.ts'
 import type { QueryBuilder, QueryBuilderAst } from './api.ts'
@@ -33,7 +33,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       return makeQueryBuilder(tableDef, {
         ...ast,
         resultSchemaSingle:
-          columns.length === 0 ? ast.resultSchemaSingle : ast.resultSchemaSingle.pipe(Schema.pick(...columns)),
+          columns.length === 0 ? ast.resultSchemaSingle : ast.resultSchemaSingle.mapFields(Struct.pick(columns)),
         select: { columns },
       }) as any
     },
@@ -227,7 +227,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       return makeQueryBuilder(tableDef, {
         ...ast,
         returning: columns,
-        resultSchema: tableDef.rowSchema.pipe(Schema.pick(...columns), Schema.Array),
+        resultSchema: tableDef.rowSchema.mapFields(Struct.pick(columns)).pipe(Schema.Array),
       }) as any
     },
 
@@ -349,7 +349,7 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
       // For write operations with RETURNING clause, we need to return the appropriate schema
       if (queryAst.returning !== undefined && queryAst.returning.length > 0) {
         // Create a schema for the returned columns
-        return queryAst.tableDef.rowSchema.pipe(Schema.pick(...queryAst.returning), Schema.Array)
+        return queryAst.tableDef.rowSchema.mapFields(Struct.pick(queryAst.returning)).pipe(Schema.Array)
       }
 
       // For write operations without RETURNING, the result is the number of affected rows
@@ -358,7 +358,7 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
     case 'RowQuery': {
       return queryAst.tableDef.rowSchema.pipe(
         Schema.pluck('value'),
-        Schema.annotations({ title: `${queryAst.tableDef.sqliteDef.name}.value` }),
+        Schema.annotate({ title: `${queryAst.tableDef.sqliteDef.name}.value` }),
         Schema.Array,
         Schema.headOrElse(),
       )

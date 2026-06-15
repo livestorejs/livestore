@@ -3,8 +3,8 @@ import fs from 'node:fs'
 import { isNotUndefined } from '@livestore/utils'
 import {
   Cause,
-  Command,
-  type CommandExecutor,
+  ChildProcess,
+  type ChildProcessSpawner,
   Effect,
   Fiber,
   FiberId,
@@ -23,7 +23,7 @@ import * as FileLogger from './FileLogger.ts'
 import { CurrentWorkingDirectory } from './workspace.ts'
 
 // Branded zero value so we can compare exit codes without touching internals.
-const SUCCESS_EXIT_CODE: CommandExecutor.ExitCode = 0 as CommandExecutor.ExitCode
+const SUCCESS_EXIT_CODE: ChildProcessSpawner.ExitCode = 0 as ChildProcessSpawner.ExitCode
 
 export const cmd: (
   commandInput: string | (string | undefined)[],
@@ -43,9 +43,9 @@ export const cmd: (
     logRetention?: number
   },
 ) => Effect.Effect<
-  CommandExecutor.ExitCode,
+  ChildProcessSpawner.ExitCode,
   PlatformError.PlatformError | CmdError,
-  CommandExecutor.CommandExecutor | CurrentWorkingDirectory
+  ChildProcessSpawner.ChildProcessSpawner | CurrentWorkingDirectory
 > = Effect.fn('cmd')(function* (commandInput, options) {
   const cwd = yield* CurrentWorkingDirectory
 
@@ -116,7 +116,7 @@ export const cmdText: (
     runInShell?: boolean
     env?: Record<string, string | undefined>
   },
-) => Effect.Effect<string, PlatformError.PlatformError, CommandExecutor.CommandExecutor | CurrentWorkingDirectory> =
+) => Effect.Effect<string, PlatformError.PlatformError, ChildProcessSpawner.ChildProcessSpawner | CurrentWorkingDirectory> =
   Effect.fn('cmdText')(function* (commandInput, options) {
     const cwd = yield* CurrentWorkingDirectory
     const [command, ...args] =
@@ -131,21 +131,21 @@ export const cmdText: (
     yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
     yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, command, cwd })
 
-    return yield* Command.make(command!, ...args).pipe(
+    return yield* ChildProcess.make(command!, ...args).pipe(
       // inherit = Stream stderr to process.stderr, pipe = Stream stderr to process.stdout
-      Command.stderr(options?.stderr ?? 'inherit'),
-      Command.workingDirectory(cwd),
-      options?.runInShell === true ? Command.runInShell(true) : identity,
-      Command.env(options?.env ?? {}),
-      Command.string,
+      ChildProcess.stderr(options?.stderr ?? 'inherit'),
+      ChildProcess.workingDirectory(cwd),
+      options?.runInShell === true ? ChildProcess.runInShell(true) : identity,
+      ChildProcess.env(options?.env ?? {}),
+      ChildProcess.string,
     )
   })
 
-export class CmdError extends Schema.TaggedError<CmdError>('~@livestore/utils-dev/CmdError')('CmdError', {
+export class CmdError extends Schema.TaggedErrorClass<CmdError>('~@livestore/utils-dev/CmdError')('CmdError', {
   command: Schema.String,
   args: Schema.Array(Schema.String),
   cwd: Schema.String,
-  env: Schema.Record({ key: Schema.String, value: Schema.String.pipe(Schema.UndefinedOr) }),
+  env: Schema.Record(Schema.String, Schema.String.pipe(Schema.UndefinedOr)),
   stderr: Schema.Literal('inherit', 'pipe'),
 }) {}
 
@@ -160,13 +160,13 @@ type TRunBaseArgs = {
 
 const runWithoutLogging = ({ commandInput, cwd, env, stdoutMode, stderrMode, useShell }: TRunBaseArgs) =>
   buildCommand(commandInput, useShell).pipe(
-    Command.stdin('inherit'),
-    Command.stdout(stdoutMode),
-    Command.stderr(stderrMode),
-    Command.workingDirectory(cwd),
-    useShell === true ? Command.runInShell(true) : identity,
-    Command.env(env),
-    Command.exitCode,
+    ChildProcess.stdin('inherit'),
+    ChildProcess.stdout(stdoutMode),
+    ChildProcess.stderr(stderrMode),
+    ChildProcess.workingDirectory(cwd),
+    useShell === true ? ChildProcess.runInShell(true) : identity,
+    ChildProcess.env(env),
+    ChildProcess.exitCode,
   )
 
 type TRunWithLoggingArgs = TRunBaseArgs & {
@@ -219,19 +219,19 @@ const runWithLogging = ({
         })
 
       const command = buildCommand(commandInput, useShell).pipe(
-        Command.stdin('inherit'),
-        Command.stdout('pipe'),
-        Command.stderr('pipe'),
-        Command.workingDirectory(cwd),
-        useShell === true ? Command.runInShell(true) : identity,
-        Command.env(envWithColor),
+        ChildProcess.stdin('inherit'),
+        ChildProcess.stdout('pipe'),
+        ChildProcess.stderr('pipe'),
+        ChildProcess.workingDirectory(cwd),
+        useShell === true ? ChildProcess.runInShell(true) : identity,
+        ChildProcess.env(envWithColor),
       )
 
       // Acquire/start the command and make sure we kill it on interruption.
-      const runningProcess = yield* Effect.acquireRelease(command.pipe(Command.start), (proc) =>
+      const runningProcess = yield* Effect.acquireRelease(command.pipe(ChildProcess.start), (proc) =>
         proc.isRunning.pipe(
           Effect.flatMap((running) =>
-            running === true ? proc.kill().pipe(Effect.catchAll(() => Effect.void)) : Effect.void,
+            running === true ? proc.kill().pipe(Effect.catch(() => Effect.void)) : Effect.void,
           ),
           Effect.ignore,
         ),
@@ -262,7 +262,7 @@ const runWithLogging = ({
 
       // Dump any buffered data and finish both stream fibers before we return.
       const flushOutputs = Effect.gen(function* () {
-        const stillRunning = yield* runningProcess.isRunning.pipe(Effect.catchAll(() => Effect.succeed(false)))
+        const stillRunning = yield* runningProcess.isRunning.pipe(Effect.catch(() => Effect.succeed(false)))
         if (stillRunning === true) {
           yield* Effect.ignore(runningProcess.kill())
         }
@@ -281,15 +281,15 @@ const runWithLogging = ({
 const buildCommand = (input: string | string[], useShell: boolean) => {
   if (Array.isArray(input) === true) {
     const [c, ...a] = input
-    return Command.make(c!, ...a)
+    return ChildProcess.make(c!, ...a)
   }
 
   if (useShell === true) {
-    return Command.make(input)
+    return ChildProcess.make(input)
   }
 
   const [c, ...a] = input.split(' ')
-  return Command.make(c!, ...a)
+  return ChildProcess.make(c!, ...a)
 }
 
 type TLineTerminator = 'newline' | 'carriage-return' | 'none'

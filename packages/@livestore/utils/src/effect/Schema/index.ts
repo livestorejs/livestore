@@ -1,8 +1,8 @@
-import { Transferable } from '@effect/platform'
 import { Effect, Hash, ParseResult, Schema } from 'effect'
 import type { ParseError } from 'effect/ParseResult'
 import type { ParseOptions } from 'effect/SchemaAST'
 import * as SchemaAST from 'effect/SchemaAST'
+import { Transferable } from 'effect/unstable/workers'
 
 import { shouldNeverHappen } from '../../mod.ts'
 
@@ -47,7 +47,7 @@ export const encodeWithTransferables =
     Effect.gen(function* () {
       const collector = yield* Transferable.makeCollector
 
-      const encoded: I = yield* Schema.encode(schema, options)(a, overrideOptions).pipe(
+      const encoded: I = yield* Schema.encodeEffect(schema, options)(a, overrideOptions).pipe(
         Effect.provideService(Transferable.Collector, collector),
       )
 
@@ -58,7 +58,7 @@ export const decodeSyncDebug: <A, I>(
   schema: Schema.Schema<A, I>,
   options?: SchemaAST.ParseOptions,
 ) => (i: I, overrideOptions?: SchemaAST.ParseOptions) => A = (schema, options) => (input, overrideOptions) => {
-  const res = Schema.decodeEither(schema, options)(input, overrideOptions)
+  const res = Schema.decodeExit(schema, options)(input, overrideOptions)
   if (res._tag === 'Left') {
     return shouldNeverHappen(`decodeSyncDebug failed:`, res.left)
   } else {
@@ -70,7 +70,7 @@ export const encodeSyncDebug: <A, I>(
   schema: Schema.Schema<A, I>,
   options?: SchemaAST.ParseOptions,
 ) => (a: A, overrideOptions?: SchemaAST.ParseOptions) => I = (schema, options) => (input, overrideOptions) => {
-  const res = Schema.encodeEither(schema, options)(input, overrideOptions)
+  const res = Schema.encodeExit(schema, options)(input, overrideOptions)
   if (res._tag === 'Left') {
     return shouldNeverHappen(`encodeSyncDebug failed:`, res.left)
   } else {
@@ -79,7 +79,7 @@ export const encodeSyncDebug: <A, I>(
 }
 
 export const swap = <A, I, R>(schema: Schema.Schema<A, I, R>): Schema.Schema<I, A, R> =>
-  Schema.transformOrFail(Schema.typeSchema(schema), Schema.encodedSchema(schema), {
+  Schema.transformOrFail(Schema.toType(schema), Schema.toEncoded(schema), {
     decode: ParseResult.encode(schema),
     encode: ParseResult.decode(schema),
   })
@@ -98,5 +98,8 @@ export const JsonValue: Schema.Schema<JsonValue> = Schema.Union(
   Schema.Boolean,
   Schema.Null,
   Schema.Array(Schema.suspend(() => JsonValue)),
-  Schema.Record({ key: Schema.String, value: Schema.suspend(() => JsonValue) }),
-).annotations({ identifier: 'JsonValue' })
+  Schema.Record(
+    Schema.String,
+    Schema.suspend(() => JsonValue),
+  ),
+).annotate({ identifier: 'JsonValue' })

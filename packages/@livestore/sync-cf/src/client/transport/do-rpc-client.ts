@@ -175,8 +175,8 @@ export const makeDoRpcSync =
  */
 export const handleSyncUpdateRpc = (payload: unknown) =>
   Effect.gen(function* () {
-    const decodedPayload = yield* Schema.decodeUnknown(ResponseChunkEncoded)(payload)
-    const decoded = yield* Schema.decodeUnknown(SyncMessage.PullResponse)(decodedPayload.values[0])
+    const decodedPayload = yield* Schema.decodeUnknownEffect(ResponseChunkEncoded)(payload)
+    const decoded = yield* Schema.decodeUnknownEffect(SyncMessage.PullResponse)(decodedPayload.values[0])
 
     const pullStreamMailbox = requestIdMailboxMap.get(decodedPayload.requestId)
 

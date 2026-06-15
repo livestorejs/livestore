@@ -1,5 +1,5 @@
-import * as Runner from '@effect/platform/WorkerRunner'
 import { Context, Effect, Layer, Option, Stream } from 'effect'
+import * as Runner from 'effect/unstable/workers/WorkerRunner'
 
 // import { NodeRuntime, NodeWorkerRunner } from '@effect/platform-node'
 import { PlatformNode } from '../../mod.ts'
@@ -26,7 +26,7 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
       return Layer.succeed(Name, req.name)
     }).pipe(Layer.unwrapScoped),
   // InitialMessage: (req) =>
-  //   Layer.scoped(
+  //   Layer.effect(
   //     Name,
   //     Effect.gen(function* () {
   //       yield* Effect.addFinalizer(() => Effect.log('closing worker scope'))
@@ -50,7 +50,7 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
     Effect.gen(function* () {
       // Start a blocking operation that won't respond to normal shutdown signals
       const pid = process.pid
-      yield* Effect.fork(
+      yield* Effect.forkChild(
         Effect.gen(function* () {
           // Block for the specified duration, ignoring shutdown attempts
           yield* Effect.sleep(`${blockDuration} millis`)

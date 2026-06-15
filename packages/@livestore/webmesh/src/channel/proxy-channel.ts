@@ -3,7 +3,7 @@ import type { PubSub } from '@livestore/utils/effect'
 import {
   Deferred,
   Effect,
-  Either,
+  Result,
   Exit,
   Fiber,
   FiberHandle,
@@ -39,11 +39,11 @@ export const ProxyChannelSimulationParams = Schema.Struct({
    */
   onPayload: Schema.Struct({
     /** Delay before sending the ACK response (simulates slow ACK send) */
-    beforeAckSend: Schema.Int.pipe(Schema.between(0, 500)),
+    beforeAckSend: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 500 })),
     /** Delay after forking the ACK send, before adding message to listen queue */
-    afterAckFork: Schema.Int.pipe(Schema.between(0, 500)),
+    afterAckFork: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 500 })),
     /** Delay after adding message to listen queue */
-    afterListenQueueOffer: Schema.Int.pipe(Schema.between(0, 500)),
+    afterListenQueueOffer: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 500 })),
   }),
 })
 
@@ -278,7 +278,7 @@ export const makeProxyChannel = ({
                     )
                     continue
                   }
-                  const decodedMessage = yield* Schema.decodeUnknown(establishedState.listenSchema)(
+                  const decodedMessage = yield* Schema.decodeUnknownEffect(establishedState.listenSchema)(
                     bufferedPacket.payload,
                   )
                   yield* establishedState.listenQueue.pipe(Queue.offer(decodedMessage))
@@ -327,7 +327,7 @@ export const makeProxyChannel = ({
               yield* simSleep('onPayload', 'afterAckFork')
 
               if (channelState._tag === 'Established') {
-                const decodedMessage = yield* Schema.decodeUnknown(channelState.listenSchema)(packet.payload)
+                const decodedMessage = yield* Schema.decodeUnknownEffect(channelState.listenSchema)(packet.payload)
                 yield* channelState.listenQueue.pipe(Queue.offer(decodedMessage))
 
                 // Simulation point: delay after adding to listen queue
@@ -410,7 +410,7 @@ export const makeProxyChannel = ({
 
       const send = (message: any) =>
         Effect.gen(function* () {
-          const payload = yield* Schema.encodeUnknown(schema.send)(message)
+          const payload = yield* Schema.encodeUnknownEffect(schema.send)(message)
           const sendFiberHandle = yield* FiberHandle.make<void, never>()
 
           const sentDeferred = yield* Deferred.make<void>()
@@ -450,13 +450,13 @@ export const makeProxyChannel = ({
             // TODO make this configurable
             // Schedule.exponential(10): 10, 20, 40, 80, 160, 320, ...
             yield* innerSend.pipe(Effect.timeout(100), Effect.retry(Schedule.exponential(10)), Effect.orDie)
-          }).pipe(Effect.tapErrorCause(Effect.logError))
+          }).pipe(Effect.tapCause(Effect.logError))
 
           const rerunOnNewChannelFiber = yield* connectedStateRef.changes.pipe(
             Stream.filter((_) => _ === false),
             Stream.tap(() => FiberHandle.run(sendFiberHandle, trySend)),
             Stream.runDrain,
-            Effect.fork,
+            Effect.forkChild,
           )
 
           yield* FiberHandle.run(sendFiberHandle, trySend)
@@ -470,7 +470,7 @@ export const makeProxyChannel = ({
           Effect.withParentSpan(channelSpan),
         )
 
-      const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Either.right))
+      const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Result.succeed))
 
       const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
 

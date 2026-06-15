@@ -88,7 +88,9 @@ export const makeLeaderThreadLayer = ({
 }: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnknownError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const syncPayloadDecoded =
-      syncPayloadEncoded === undefined ? undefined : yield* Schema.decodeUnknown(syncPayloadSchema)(syncPayloadEncoded)
+      syncPayloadEncoded === undefined
+        ? undefined
+        : yield* Schema.decodeUnknownEffect(syncPayloadSchema)(syncPayloadEncoded)
 
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
 
@@ -114,7 +116,7 @@ export const makeLeaderThreadLayer = ({
                 KeyValueStore.makeStringOnly({
                   get: (_key) =>
                     Effect.sync(() => Eventlog.getBackendIdFromDb(dbEventlog)).pipe(
-                      Effect.catchAllDefect((cause) =>
+                      Effect.catchDefect((cause) =>
                         PlatformError.BadArgument.make({
                           method: 'getBackendIdFromDb',
                           description: 'Failed to get backendId',
@@ -125,7 +127,7 @@ export const makeLeaderThreadLayer = ({
                     ),
                   set: (_key, value) =>
                     Effect.sync(() => Eventlog.updateBackendId(dbEventlog, value)).pipe(
-                      Effect.catchAllDefect((cause) =>
+                      Effect.catchDefect((cause) =>
                         PlatformError.BadArgument.make({
                           method: 'updateBackendId',
                           module: 'KeyValueStore',

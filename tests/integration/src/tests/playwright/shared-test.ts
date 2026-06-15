@@ -58,7 +58,7 @@ export const runAndGetExit = <Tag extends string, A>({
       ),
     )
 
-    const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(Effect.fork)
+    const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(Effect.forkChild)
 
     return yield* Effect.gen(function* () {
       const deferred = yield* Deferred.make<(typeof schema.Type)['exit']>()

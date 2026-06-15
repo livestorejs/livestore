@@ -588,7 +588,7 @@ export const make = Effect.fnUntraced(function* ({
       yield* Effect.gen(function* () {
         const iteration = yield* Schedule.CurrentIterationMetadata
 
-        const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.either)
+        const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.result)
 
         const retries = iteration.recurrence
         if (retries > 0 && pushResult._tag === 'Right') {
@@ -706,12 +706,12 @@ export const make = Effect.fnUntraced(function* ({
           return yield* Effect.failCause(cause).pipe(Effect.orDie)
         })
 
-      yield* backgroundApplyLocalPushes.pipe(Effect.catchAllCause(maybeShutdownOnError), Effect.forkScoped)
+      yield* backgroundApplyLocalPushes.pipe(Effect.catchCause(maybeShutdownOnError), Effect.forkScoped)
 
       const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
       const backendPushingEffect = backgroundBackendPushing.pipe(
         Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
-        Effect.catchAllCause(maybeShutdownOnError),
+        Effect.catchCause(maybeShutdownOnError),
       )
 
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
@@ -737,7 +737,7 @@ export const make = Effect.fnUntraced(function* ({
           until: (error): error is Exclude<typeof error, IsOfflineError> => error._tag !== 'IsOfflineError',
         }),
         Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
-        Effect.catchAllCause(maybeShutdownOnError),
+        Effect.catchCause(maybeShutdownOnError),
         // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
         // This might be a bug in Effect. Only seems to happen in the browser.
         Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),
@@ -819,7 +819,7 @@ export const make = Effect.fnUntraced(function* ({
 })
 
 export const layer = (params: MakeOptions): Layer.Layer<LeaderSyncProcessor, never, Scope.Scope> =>
-  Layer.scoped(LeaderSyncProcessor, make(params))
+  Layer.effect(LeaderSyncProcessor, make(params))
 
 type MaterializeEventsBatch = (_: {
   batchItems: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
@@ -1107,4 +1107,4 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
   })
 
 /** Serialize value to JSON string for trace attributes */
-const jsonStringify = Schema.encodeSync(Schema.parseJson())
+const jsonStringify = Schema.encodeEffectSync(Schema.UnknownFromJsonString)

@@ -252,7 +252,7 @@ export const createStorePromise = async <
       })
     }
 
-    return yield* createStore({ ...options }).pipe(Scope.extend(scope))
+    return yield* createStore({ ...options }).pipe(Scope.provide(scope))
   }).pipe(
     Effect.withSpan('createStore', {
       attributes: { storeId: options.storeId, disableDevtools: options.disableDevtools },
@@ -353,7 +353,7 @@ export const createStore = <
       const syncPayloadEncoded =
         syncPayload === undefined
           ? undefined
-          : yield* Schema.encode(resolvedSyncPayloadSchema)(syncPayload).pipe(UnknownError.mapToUnknownError)
+          : yield* Schema.encodeEffect(resolvedSyncPayloadSchema)(syncPayload).pipe(UnknownError.mapToUnknownError)
 
       const clientSession: ClientSession = yield* adapter({
         schema,
@@ -438,7 +438,7 @@ export const createStore = <
       Effect.withSpan('createStore', { attributes: { debugInstanceId, storeId } }),
       Effect.annotateLogs({ debugInstanceId, storeId }),
       LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
-      Scope.extend(lifetimeScope),
+      Scope.provide(lifetimeScope),
     )
   })
 

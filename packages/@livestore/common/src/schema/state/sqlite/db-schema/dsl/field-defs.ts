@@ -221,7 +221,7 @@ const makeSpecializedColDef: MakeSpecializedColDefFn = (columnType, opts) => (de
 
 export const json: SpecializedColDefFn<'text', true, unknown> = makeSpecializedColDef('text', {
   _tag: 'baseSchemaFn',
-  baseSchemaFn: (customSchema) => Schema.parseJson(customSchema ?? Schema.Any),
+  baseSchemaFn: (customSchema) => Schema.fromJsonString(customSchema ?? Schema.Any),
 })
 
 export const datetime: SpecializedColDefFn<'text', false, Date> = makeSpecializedColDef('text', {
@@ -231,7 +231,7 @@ export const datetime: SpecializedColDefFn<'text', false, Date> = makeSpecialize
 
 export const datetimeInteger: SpecializedColDefFn<'integer', false, Date> = makeSpecializedColDef('integer', {
   _tag: 'baseSchema',
-  baseSchema: Schema.transform(Schema.Number, Schema.DateFromSelf, {
+  baseSchema: Schema.transform(Schema.Number, Schema.Date, {
     decode: (ms) => new Date(ms),
     encode: (date) => date.getTime(),
   }),

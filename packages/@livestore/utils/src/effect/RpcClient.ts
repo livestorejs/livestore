@@ -1,11 +1,11 @@
-export * from '@effect/rpc/RpcClient'
+export * from 'effect/unstable/rpc/RpcClient'
 
-import { Socket } from '@effect/platform'
-import { RpcClient, RpcClientError, RpcSerialization } from '@effect/rpc'
-import { Protocol } from '@effect/rpc/RpcClient'
-import { constPing, type FromServerEncoded } from '@effect/rpc/RpcMessage'
 import { Cause, Deferred, Effect, Layer, Option, Schedule, type Scope } from 'effect'
 import { constVoid, identity } from 'effect/Function'
+import { RpcClient, RpcClientError, RpcSerialization } from 'effect/unstable/rpc'
+import { Protocol } from 'effect/unstable/rpc/RpcClient'
+import { constPing, type FromServerEncoded } from 'effect/unstable/rpc/RpcMessage'
+import { Socket } from 'effect/unstable/socket'
 
 import * as SubscriptionRef from './SubscriptionRef.ts'
 
@@ -20,7 +20,7 @@ export const layerProtocolSocketWithIsConnected = (options: {
   readonly isConnected: SubscriptionRef.SubscriptionRef<boolean>
   readonly pingSchedule?: Schedule.Schedule<unknown> | undefined
 }): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | Socket.Socket> =>
-  Layer.scoped(Protocol, makeProtocolSocketWithIsConnected(options))
+  Layer.effect(Protocol, makeProtocolSocketWithIsConnected(options))
 
 export const makeProtocolSocketWithIsConnected = (options: {
   readonly url: string
@@ -90,7 +90,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
           })
           .pipe(
             Effect.raceFirst(
-              Effect.zipRight(
+              Effect.andThen(
                 pinger.timeout,
                 Effect.fail(
                   new Socket.SocketGenericError({
@@ -102,7 +102,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
             ),
           )
       }).pipe(
-        Effect.zipRight(
+        Effect.andThen(
           Effect.fail(
             new Socket.SocketCloseError({
               reason: 'Close',
@@ -111,7 +111,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
             }),
           ),
         ),
-        Effect.tapErrorCause(
+        Effect.tapCause(
           Effect.fn(function* (cause) {
             // CHANGED: set isConnected to false on error
             if (options?.isConnected !== undefined) {

@@ -58,7 +58,7 @@ const BoundArraySchemaFromSelf = <A, I, R>(
       pretty: () => (_) => `BoundArray(${_.length})`,
       arbitrary: () => (fc) => fc.anything() as any,
       equivalence: () => {
-        const elementEquivalence = Schema.equivalence(item)
+        const elementEquivalence = Schema.toEquivalence(item)
         return (a: unknown, b: unknown) => {
           if (a === b) {
             return true
@@ -88,7 +88,7 @@ export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Sche
       size: Schema.Number,
       items: Schema.Array(elSchema),
     }),
-    BoundArraySchemaFromSelf(Schema.typeSchema(elSchema)),
+    BoundArraySchemaFromSelf(Schema.toType(elSchema)),
     {
       encode: (_) => ({ size: _.sizeLimit, items: [..._] }),
       decode: (_) => BoundArray.make(_.size, _.items),

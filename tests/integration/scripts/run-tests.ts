@@ -2,7 +2,7 @@ import path from 'node:path'
 
 import { UnknownError } from '@livestore/common'
 import { type CmdError, CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
-import type { CommandExecutor, Option, PlatformError } from '@livestore/utils/effect'
+import type { ChildProcessSpawner, Option, PlatformError } from '@livestore/utils/effect'
 import { Effect, FetchHttpClient, Layer, Logger, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
@@ -11,13 +11,9 @@ import { downloadChromeExtension } from './download-chrome-extension.ts'
 
 const cwd = path.resolve(import.meta.dirname, '..')
 
-const modeOption = Cli.Options.choice('mode', ['headless', 'ui', 'dev-server']).pipe(
-  Cli.Options.withDefault('headless'),
-)
+const modeOption = Cli.Flag.choice('mode', ['headless', 'ui', 'dev-server']).pipe(Cli.Flag.withDefault('headless'))
 
-export const localDevtoolsPreviewOption = Cli.Options.boolean('local-devtools-preview').pipe(
-  Cli.Options.withDefault(false),
-)
+export const localDevtoolsPreviewOption = Cli.Flag.boolean('local-devtools-preview').pipe(Cli.Flag.withDefault(false))
 
 const viteDevServer = ({
   useWorkspacePort,
@@ -34,7 +30,7 @@ const viteDevServer = ({
     yield* cmd(`./node_modules/.bin/vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`, {
       env: {
         // Relative to vite config
-        TEST_LIVESTORE_SCHEMA_PATH_JSON: yield* Schema.encode(Schema.parseJson())(
+        TEST_LIVESTORE_SCHEMA_PATH_JSON: yield* Schema.encodeEffect(Schema.UnknownFromJsonString)(
           './devtools/todomvc/livestore/schema.ts',
         ).pipe(Effect.orDie),
         LSD_DEVTOOLS_LOCAL_PREVIEW: useDevtoolsLocalPreview === true ? '1' : undefined,
@@ -46,7 +42,7 @@ const viteDevServer = ({
 
 export const miscTest: Cli.Command.Command<
   'misc',
-  CommandExecutor.CommandExecutor,
+  ChildProcessSpawner.ChildProcessSpawner,
   UnknownError | PlatformError.PlatformError | CmdError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
@@ -87,7 +83,7 @@ export const miscTest: Cli.Command.Command<
 
 export const todomvcTest: Cli.Command.Command<
   'todomvc',
-  CommandExecutor.CommandExecutor,
+  ChildProcessSpawner.ChildProcessSpawner,
   UnknownError | PlatformError.PlatformError | CmdError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
@@ -127,7 +123,7 @@ export const todomvcTest: Cli.Command.Command<
 
 export const setupDevtools: Cli.Command.Command<
   'setup-devtools',
-  CommandExecutor.CommandExecutor,
+  ChildProcessSpawner.ChildProcessSpawner,
   UnknownError | PlatformError.PlatformError,
   {}
 > = Cli.Command.make(
@@ -146,7 +142,7 @@ export const setupDevtools: Cli.Command.Command<
 
 export const devtoolsTest: Cli.Command.Command<
   'devtools',
-  CommandExecutor.CommandExecutor,
+  ChildProcessSpawner.ChildProcessSpawner,
   UnknownError | PlatformError.PlatformError | CmdError,
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
@@ -168,7 +164,7 @@ export const devtoolsTest: Cli.Command.Command<
 
       const spanContext = yield* OtelTracer.currentOtelSpan.pipe(
         Effect.map((span) => JSON.stringify(span.spanContext())),
-        Effect.catchAll(() => Effect.succeed(undefined)),
+        Effect.catch(() => Effect.succeed(undefined)),
       )
 
       if (mode === 'dev-server') {
@@ -198,7 +194,7 @@ export const commands = [miscTest, todomvcTest, devtoolsTest, setupDevtools] as 
 
 export const command: Cli.Command.Command<
   'integration-misc',
-  CommandExecutor.CommandExecutor,
+  ChildProcessSpawner.ChildProcessSpawner,
   UnknownError | PlatformError.PlatformError | CmdError,
   {
     readonly subcommand: Option.Option<{ readonly headless: boolean } | {}>

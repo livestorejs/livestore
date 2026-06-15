@@ -50,7 +50,7 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
 const getForwardedHeaders = Effect.gen(function* () {
   const { ws } = yield* WsContext
   const attachment = ws.deserializeAttachment()
-  const decoded = Schema.decodeUnknownEither(WebSocketAttachmentSchema)(attachment)
+  const decoded = Schema.decodeUnknownExit(WebSocketAttachmentSchema)(attachment)
   if (decoded._tag === 'Left') {
     yield* Effect.logError('Failed to decode WebSocket attachment for forwarded headers', { error: decoded.left })
     ws.close(1011, 'invalid-attachment')

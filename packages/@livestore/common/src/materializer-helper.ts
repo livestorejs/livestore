@@ -53,7 +53,7 @@ export const getExecStatementsFromMaterializer = ({
       const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
       const rawResults = dbState.select(query, prepareBindValues(bindValues, query))
       const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
-      return Schema.decodeSync(resultSchema)(rawResults)
+      return Schema.decodeEffectSync(resultSchema)(rawResults)
     } else {
       const { query, bindValues } = rawQueryOrQueryBuilder
       return dbState.select(query, prepareBindValues(bindValues, query))

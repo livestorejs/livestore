@@ -42,7 +42,7 @@ const PROD_DEPLOY_STATE_FILE = `${PROD_DEPLOY_STATE_DIR}/deploy-state.json`
  * from a Netlify error or a shell `timeout(1)` kill (which surfaces as exit
  * code 124 / 137 outside Effect).
  */
-class DocsPhaseTimeoutError extends Schema.TaggedError<DocsPhaseTimeoutError>()('DocsPhaseTimeoutError', {
+class DocsPhaseTimeoutError extends Schema.TaggedErrorClass<DocsPhaseTimeoutError>()('DocsPhaseTimeoutError', {
   phase: Schema.String,
   durationMs: Schema.Number,
 }) {}
@@ -180,7 +180,7 @@ const cleanupChromiumChildren = Effect.fn('docs.cleanup-chromium-children')(func
 
   yield* cmd(script, { shell: true, stdout: 'inherit', stderr: 'inherit' }).pipe(
     Effect.provide(LivestoreWorkspace.toCwd('docs')),
-    Effect.ignoreLogged,
+    Effect.ignore,
   )
 })
 
@@ -206,14 +206,14 @@ const startHeartbeat = ({ phase, intervalMs = 30_000 }: { phase: string; interva
 const docsBuildCommand = Cli.Command.make(
   'build',
   {
-    apiDocs: Cli.Options.boolean('api-docs').pipe(Cli.Options.withDefault(false)),
-    clean: Cli.Options.boolean('clean').pipe(
-      Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Remove docs build artifacts and cached snippet/tldraw renders before compilation'),
+    apiDocs: Cli.Flag.boolean('api-docs').pipe(Cli.Flag.withDefault(false)),
+    clean: Cli.Flag.boolean('clean').pipe(
+      Cli.Flag.withDefault(false),
+      Cli.Flag.withDescription('Remove docs build artifacts and cached snippet/tldraw renders before compilation'),
     ),
-    skipDeps: Cli.Options.boolean('skip-deps').pipe(
-      Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Skip building snippets and diagrams'),
+    skipDeps: Cli.Flag.boolean('skip-deps').pipe(
+      Cli.Flag.withDefault(false),
+      Cli.Flag.withDescription('Skip building snippets and diagrams'),
     ),
   },
   Effect.fn('docs.build')(function* ({ apiDocs, clean, skipDeps }) {
@@ -269,7 +269,7 @@ const readProdDeployState = Effect.gen(function* () {
     )
   }
   const content = fs.readFileSync(PROD_DEPLOY_STATE_FILE, 'utf8')
-  return yield* Schema.decode(Schema.parseJson(ProdDeployStateSchema))(content)
+  return yield* Schema.decodeEffect(Schema.fromJsonString(ProdDeployStateSchema))(content)
 }).pipe(Effect.withSpan('docs.deploy.state.read', { attributes: { path: PROD_DEPLOY_STATE_FILE } }))
 
 /**
@@ -301,7 +301,7 @@ const verifyMarkdownNegotiation = (deployUrl: string) =>
       ),
       // Transport errors (5xx from edge, network blip, etc.) are still non-fatal —
       // the deploy is live and the markdown probe is a sanity check, not a release gate.
-      Effect.catchAll((error) =>
+      Effect.catch((error) =>
         Effect.gen(function* () {
           yield* Effect.logWarning(
             `::warning::Markdown negotiation request at ${deployUrl}/ failed: ${String(error)} (treated as non-fatal).`,
@@ -325,10 +325,10 @@ export const docsCommand = Cli.Command.make('docs').pipe(
     Cli.Command.make(
       'dev',
       {
-        open: Cli.Options.boolean('open').pipe(Cli.Options.withDefault(false)),
-        skipDeps: Cli.Options.boolean('skip-deps').pipe(
-          Cli.Options.withDefault(false),
-          Cli.Options.withDescription('Skip building snippets and diagrams'),
+        open: Cli.Flag.boolean('open').pipe(Cli.Flag.withDefault(false)),
+        skipDeps: Cli.Flag.boolean('skip-deps').pipe(
+          Cli.Flag.withDefault(false),
+          Cli.Flag.withDescription('Skip building snippets and diagrams'),
         ),
       },
       Effect.fn('docs.dev')(function* ({ open, skipDeps }) {
@@ -342,7 +342,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
         if (skipDeps === false) {
           yield* runDocsDiagramsWatchNoInitialBuild.pipe(
-            Effect.catchAllCause((cause) => Effect.logWarning('Diagrams watch stopped', cause)),
+            Effect.catchCause((cause) => Effect.logWarning('Diagrams watch stopped', cause)),
             Effect.forkScoped,
           )
         }
@@ -360,13 +360,10 @@ export const docsCommand = Cli.Command.make('docs').pipe(
     Cli.Command.make(
       'preview',
       {
-        port: Cli.Options.text('port').pipe(
-          Cli.Options.optional,
-          Cli.Options.withDescription('Port for the preview server'),
-        ),
-        build: Cli.Options.boolean('build').pipe(
-          Cli.Options.withDefault(false),
-          Cli.Options.withDescription('Build the docs before starting the preview server'),
+        port: Cli.Flag.text('port').pipe(Cli.Flag.optional, Cli.Flag.withDescription('Port for the preview server')),
+        build: Cli.Flag.boolean('build').pipe(
+          Cli.Flag.withDefault(false),
+          Cli.Flag.withDescription('Build the docs before starting the preview server'),
         ),
       },
       Effect.fn('docs.preview')(function* ({ port: portOption, build }) {
@@ -416,22 +413,22 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       'deploy',
       {
         // TODO clean up when Effect CLI boolean flag is fixed
-        prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false), Cli.Options.optional),
-        alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
-        site: Cli.Options.text('site').pipe(Cli.Options.optional),
-        purgeCdn: Cli.Options.boolean('purge-cdn').pipe(
-          Cli.Options.withDefault(false),
-          Cli.Options.withDescription('Purge the Netlify CDN cache after deploying'),
+        prod: Cli.Flag.boolean('prod').pipe(Cli.Flag.withDefault(false), Cli.Flag.optional),
+        alias: Cli.Flag.text('alias').pipe(Cli.Flag.optional),
+        site: Cli.Flag.text('site').pipe(Cli.Flag.optional),
+        purgeCdn: Cli.Flag.boolean('purge-cdn').pipe(
+          Cli.Flag.withDefault(false),
+          Cli.Flag.withDescription('Purge the Netlify CDN cache after deploying'),
         ),
-        build: Cli.Options.boolean('build').pipe(
-          Cli.Options.withDefault(false),
-          Cli.Options.optional,
-          Cli.Options.withDescription('Build the docs before deploying (split flow)'),
+        build: Cli.Flag.boolean('build').pipe(
+          Cli.Flag.withDefault(false),
+          Cli.Flag.optional,
+          Cli.Flag.withDescription('Build the docs before deploying (split flow)'),
         ),
-        plan: Cli.Options.boolean('plan').pipe(
-          Cli.Options.withDefault(false),
-          Cli.Options.optional,
-          Cli.Options.withDescription('Print the resolved deploy plan without building or deploying'),
+        plan: Cli.Flag.boolean('plan').pipe(
+          Cli.Flag.withDefault(false),
+          Cli.Flag.optional,
+          Cli.Flag.withDescription('Print the resolved deploy plan without building or deploying'),
         ),
         /**
          * Phase split for the prod deploy. The release CI runs each phase as a
@@ -447,9 +444,9 @@ export const docsCommand = Cli.Command.make('docs').pipe(
          * - `all` (default): runs the legacy single-process pipeline so dev
          *   surfaces and ad-hoc usage are unaffected.
          */
-        step: Cli.Options.choice('step', ['all', 'upload', 'verify', 'purge'] as const).pipe(
-          Cli.Options.withDefault('all' as const),
-          Cli.Options.withDescription('Run only one phase of the prod deploy pipeline (used by CI)'),
+        step: Cli.Flag.choice('step', ['all', 'upload', 'verify', 'purge'] as const).pipe(
+          Cli.Flag.withDefault('all' as const),
+          Cli.Flag.withDescription('Run only one phase of the prod deploy pipeline (used by CI)'),
         ),
       },
       Effect.fn('docs.deploy')(
@@ -680,7 +677,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
               ),
               // Any other failure (auth, network) is also non-fatal — the deploy is live
               // regardless of CDN purge state, the purge just shortens the stale-content window.
-              Effect.catchAll((error) =>
+              Effect.catch((error) =>
                 Effect.logWarning(`::warning::Netlify CDN purge failed for ${site}: ${String(error)} (non-fatal)`),
               ),
             )
@@ -829,7 +826,7 @@ const runPurgePhase = Effect.fn('docs.deploy.purge')(function* () {
     Effect.catchTag('TimeoutException', () =>
       Effect.logWarning(`::warning::Netlify CDN purge timed out for ${state.site} (treated as non-fatal)`),
     ),
-    Effect.catchAll((error) =>
+    Effect.catch((error) =>
       Effect.logWarning(`::warning::Netlify CDN purge failed for ${state.site}: ${String(error)} (non-fatal)`),
     ),
   )

@@ -291,9 +291,9 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           const nodeBgen1Scope = yield* Scope.make()
 
           const nodeA = yield* makeMeshNode('A')
-          const nodeBgen1 = yield* makeMeshNode('B').pipe(Scope.extend(nodeBgen1Scope))
+          const nodeBgen1 = yield* makeMeshNode('B').pipe(Scope.provide(nodeBgen1Scope))
 
-          yield* connectNodesViaMessageChannel(nodeA, nodeBgen1).pipe(Scope.extend(nodeBgen1Scope))
+          yield* connectNodesViaMessageChannel(nodeA, nodeBgen1).pipe(Scope.provide(nodeBgen1Scope))
 
           // yield* Effect.sleep(100)
 
@@ -314,7 +314,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               // expect(channelBToA.debugInfo.connectCounter).toBe(1)
             })
 
-          yield* Effect.all([nodeACode, nodeBCode(nodeBgen1).pipe(Scope.extend(nodeBgen1Scope))], {
+          yield* Effect.all([nodeACode, nodeBCode(nodeBgen1).pipe(Scope.provide(nodeBgen1Scope))], {
             concurrency: 'unbounded',
           }).pipe(Effect.withSpan('test1'))
 
@@ -402,7 +402,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         // TODO we need to improve latency when sending messages concurrently
         Vitest.scopedLive.prop(
           'concurrent messages',
-          [ChannelType, Schema.Int.pipe(Schema.between(1, 50))],
+          [ChannelType, Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 }))],
           ([channelType, count], test) =>
             Effect.gen(function* () {
               const nodeA = yield* makeMeshNode('A')
@@ -474,7 +474,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               Stream.take(messageCount),
               Stream.runDrain,
             )
-          }).pipe(Effect.scoped, Effect.fork)
+          }).pipe(Effect.scoped, Effect.forkChild)
 
           // yield* createChannel(nodeA, 'B').pipe(Effect.andThen(WebChannel.shutdown))
           // // yield* createChannel(nodeA, 'B').pipe(Effect.andThen(WebChannel.shutdown))
@@ -936,10 +936,10 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
 
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
-        const nodeCgen1 = yield* makeMeshNode('C').pipe(Scope.extend(nodeCgen1Scope))
+        const nodeCgen1 = yield* makeMeshNode('C').pipe(Scope.provide(nodeCgen1Scope))
 
         yield* connectNodesViaMessageChannel(nodeA, nodeB)
-        yield* connectNodesViaMessageChannel(nodeB, nodeCgen1).pipe(Scope.extend(nodeCgen1Scope))
+        yield* connectNodesViaMessageChannel(nodeB, nodeCgen1).pipe(Scope.provide(nodeCgen1Scope))
 
         const nodeACode = Effect.gen(function* () {
           const channelAToB = yield* createChannel(nodeA, 'C')
@@ -958,7 +958,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
 
         yield* Effect.all([nodeACode, nodeCCode(nodeCgen1)], { concurrency: 'unbounded' }).pipe(
           Effect.withSpan('test1'),
-          Scope.extend(nodeCgen1Scope),
+          Scope.provide(nodeCgen1Scope),
         )
 
         yield* Scope.close(nodeCgen1Scope, Exit.void)
@@ -1276,13 +1276,13 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           Stream.flatten(),
           Stream.runHead,
           Effect.flatten,
-          Effect.fork,
+          Effect.forkChild,
         )
         const listenOnCFiber = yield* channelOnC.listen.pipe(
           Stream.flatten(),
           Stream.runHead,
           Effect.flatten,
-          Effect.fork,
+          Effect.forkChild,
         )
 
         yield* channelOnA.send('A1')

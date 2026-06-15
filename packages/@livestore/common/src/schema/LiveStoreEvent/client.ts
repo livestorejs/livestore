@@ -15,7 +15,7 @@ export const Decoded = Schema.Struct({
   parentSeqNum: EventSequenceNumber.Client.Composite,
   clientId: Schema.String,
   sessionId: Schema.String,
-}).annotations({ title: 'LiveStoreEvent.Client.Decoded' })
+}).annotate({ title: 'LiveStoreEvent.Client.Decoded' })
 
 /**
  * Effect Schema for client events with encoded args.
@@ -45,7 +45,7 @@ export const Encoded = Schema.Struct({
   parentSeqNum: EventSequenceNumber.Client.Composite,
   clientId: Schema.String,
   sessionId: Schema.String,
-}).annotations({ title: 'LiveStoreEvent.Client.Encoded' })
+}).annotate({ title: 'LiveStoreEvent.Client.Encoded' })
 
 /** Event with composite sequence numbers and decoded (native TypeScript) args. */
 export type Decoded = ForEventDef.Decoded<EventDef.Any>
@@ -228,7 +228,7 @@ export const makeSchema = <TSchema extends LiveStoreSchema>(
         sessionId: Schema.String,
       }),
     ),
-  ).annotations({ title: 'LiveStoreEvent.Client' }) as any
+  ).annotate({ title: 'LiveStoreEvent.Client' }) as any
 
 /** Memoized `makeSchema` - caches the generated schema by reference. */
 export const makeSchemaMemo = memoizeByRef(makeSchema)

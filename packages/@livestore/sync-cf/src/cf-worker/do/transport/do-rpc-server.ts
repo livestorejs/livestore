@@ -64,7 +64,7 @@ export const createDoRpcHandler = (
               ? cause
               : new UnknownError({ cause }),
           ),
-          Stream.tapErrorCause(Effect.log),
+          Stream.tapCause(Effect.log),
         ),
       'SyncDoRpc.Push': (req) =>
         Effect.gen(this, function* () {

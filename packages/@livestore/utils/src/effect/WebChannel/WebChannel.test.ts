@@ -23,7 +23,7 @@ Vitest.describe('WebChannel', () => {
             Stream.flatten(),
             Stream.runHead,
             Effect.flatten,
-            Effect.fork,
+            Effect.forkChild,
           )
 
           yield* channelToB.send(1)
@@ -43,7 +43,7 @@ Vitest.describe('WebChannel', () => {
             Stream.flatten(),
             Stream.runHead,
             Effect.flatten,
-            Effect.fork,
+            Effect.forkChild,
           )
 
           yield* channelToA.send(2)
@@ -71,7 +71,7 @@ Vitest.describe('WebChannel', () => {
             Stream.flatten(),
             Stream.runHead,
             Effect.flatten,
-            Effect.fork,
+            Effect.forkChild,
           )
 
           yield* channelToB.send(1)
@@ -91,7 +91,7 @@ Vitest.describe('WebChannel', () => {
             Stream.flatten(),
             Stream.runHead,
             Effect.flatten,
-            Effect.fork,
+            Effect.forkChild,
           )
 
           yield* channelToA.send(2)

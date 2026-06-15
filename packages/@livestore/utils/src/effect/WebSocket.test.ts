@@ -1,6 +1,6 @@
-import { FetchHttpClient } from '@effect/platform'
 import * as Vitest from '@effect/vitest'
 import { Effect, Exit } from 'effect'
+import { FetchHttpClient } from 'effect/unstable/http'
 
 import { makeWebSocket } from './WebSocket.ts'
 

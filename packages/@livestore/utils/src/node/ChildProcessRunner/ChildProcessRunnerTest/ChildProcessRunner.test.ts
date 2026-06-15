@@ -1,10 +1,10 @@
 import * as ChildProcess from 'node:child_process'
 
-import * as EffectWorker from '@effect/platform/Worker'
 import { assert, describe, it } from '@effect/vitest'
 import { Chunk, Deferred, Effect, Exit, Fiber, Schema, Scope, Stream } from 'effect'
+import * as EffectWorker from 'effect/unstable/workers/Worker'
 
-export class TestError extends Schema.TaggedError<TestError>()('TestError', {
+export class TestError extends Schema.TaggedErrorClass<TestError>()('TestError', {
   message: Schema.String,
 }) {}
 
@@ -118,7 +118,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
           const pool = yield* EffectWorker.makePoolSerialized<WorkerMessage>({
             size: 1,
             initialMessage: () => new InitialMessage({ name: 'test', data: new Uint8Array([1, 2, 3]) }),
-          }).pipe(Scope.extend(scope), Effect.provide(WorkerLive))
+          }).pipe(Scope.provide(scope), Effect.provide(WorkerLive))
 
           const result = yield* pool.executeEffect(new StartStubbornWorker({ blockDuration: 30_000 }))
           workerPid = result.pid
@@ -162,7 +162,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
 
         // Simulate SIGINT being sent to current process (like Ctrl+C in vitest)
         // This should trigger cleanup of child processes
-        yield* Effect.async<void>((resume) => {
+        yield* Effect.callback<void>((resume) => {
           // Store current listeners before we manipulate them
           const currentSIGINTListeners = process.listeners('SIGINT').slice()
 
@@ -235,7 +235,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         }).pipe(Effect.scoped, Effect.provide(WorkerLive))
 
         // Run with timeout to force termination
-        const fiber = yield* Effect.fork(testEffect)
+        const fiber = yield* Effect.forkChild(testEffect)
         yield* Effect.sleep('2 seconds')
         yield* Fiber.interrupt(fiber)
 
@@ -287,7 +287,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         }).pipe(Effect.scoped)
 
         // Simulate the exact abortion pattern from node-sync
-        const fiber = yield* Effect.fork(testEffect)
+        const fiber = yield* Effect.forkChild(testEffect)
         yield* Effect.sleep('2 seconds')
 
         // Force kill the fiber without proper cleanup (simulates Ctrl+C)

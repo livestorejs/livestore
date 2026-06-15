@@ -70,7 +70,7 @@ export const makeWsSync =
   (options: WsSyncOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
     Effect.gen(function* () {
-      const urlParamsData = yield* Schema.encode(SearchParamsSchema)({
+      const urlParamsData = yield* Schema.encodeEffect(SearchParamsSchema)({
         storeId,
         payload,
         transport: 'ws',
@@ -89,7 +89,7 @@ export const makeWsSync =
       // }
       // TODO bring this back in a cross-platform way
       // if (navigator.onLine === false) {
-      //   yield* Effect.async((cb) => self.addEventListener('online', () => cb(Effect.void)))
+      //   yield* Effect.callback((cb) => self.addEventListener('online', () => cb(Effect.void)))
       // }
 
       const pingInterval = options.ping?.requestInterval ?? 10_000

@@ -46,7 +46,7 @@ import { makeTestAdapter } from '../test-adapter.ts'
 
 // TODO fix type level - derived events are missing and thus infers to `never` currently
 const eventSchema = LiveStoreEvent.Input.makeSchema(schema) as TODO as Schema.Schema<LiveStoreEvent.Input.Encoded>
-const encode = Schema.encodeSync(eventSchema)
+const encode = Schema.encodeEffectSync(eventSchema)
 
 const withTestCtx = Vitest.makeWithTestCtx({
   makeLayer: () =>
@@ -138,7 +138,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       for (let i = 0; i < 5; i++) {
         yield* mockSyncBackend
           .advance(eventFactory.todoCreated.next({ id: `backend_${i}`, text: '', completed: false }))
-          .pipe(Effect.fork)
+          .pipe(Effect.forkChild)
       }
 
       for (let i = 0; i < 5; i++) {
@@ -223,7 +223,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       yield* Queue.offer(
         pullQueue,
         LiveStoreEvent.Client.EncodedWithMeta.make({
-          ...(yield* Schema.encode(eventSchema)(events.todoCreated({ id: `id_0`, text: '', completed: false }))),
+          ...(yield* Schema.encodeEffect(eventSchema)(events.todoCreated({ id: `id_0`, text: '', completed: false }))),
           seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
           parentSeqNum: EventSequenceNumber.Client.ROOT,
           clientId: 'other-client',
@@ -464,7 +464,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       // Create an event that comes from the leader with a specific hash that won't match the client-side materializer's computed hash.
       const eventFromLeader = LiveStoreEvent.Client.EncodedWithMeta.make({
-        ...(yield* Schema.encode(eventSchema)(
+        ...(yield* Schema.encodeEffect(eventSchema)(
           events.todoCreated({ id: 'test-id', text: 'from-leader', completed: false }),
         )),
         seqNum: EventSequenceNumber.Client.Composite.make({ global: 0, client: 1 }),
@@ -654,7 +654,7 @@ class TestContext extends Context.Tag('TestContext')<
   }
 >() {}
 
-const TestContextLive = Layer.scoped(
+const TestContextLive = Layer.effect(
   TestContext,
   Effect.gen(function* () {
     const mockSyncBackend = yield* makeMockSyncBackend()

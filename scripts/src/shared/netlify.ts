@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { isNotUndefined } from '@livestore/utils'
 import { CurrentWorkingDirectory, cmdText } from '@livestore/utils-dev/node'
 import {
-  Command,
+  ChildProcess,
   Duration,
   Effect,
   Fiber,
@@ -15,13 +15,13 @@ import {
   Stream,
 } from '@livestore/utils/effect'
 
-export class NetlifyError extends Schema.TaggedError<NetlifyError>()('NetlifyError', {
+export class NetlifyError extends Schema.TaggedErrorClass<NetlifyError>()('NetlifyError', {
   reason: Schema.Literal('auth', 'unknown'),
   message: Schema.String,
   cause: Schema.optional(Schema.Unknown),
 }) {}
 
-class FileReadError extends Schema.TaggedError<FileReadError>()('FileReadError', {
+class FileReadError extends Schema.TaggedErrorClass<FileReadError>()('FileReadError', {
   cause: Schema.Defect,
   path: Schema.String,
 }) {}
@@ -43,7 +43,7 @@ const NetlifyCliUserSchema = Schema.Struct({
 })
 
 const NetlifyCliConfigSchema = Schema.Struct({
-  users: Schema.optional(Schema.Record({ key: Schema.String, value: NetlifyCliUserSchema })),
+  users: Schema.optional(Schema.Record(Schema.String, NetlifyCliUserSchema)),
 })
 
 const NetlifyPurgeRequestSchema = Schema.Struct({
@@ -128,20 +128,20 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
     const { stdout: rawOutput, stderr: rawStderr } = yield* Effect.scoped(
       Effect.gen(function* () {
         const proc = yield* Effect.acquireRelease(
-          Command.make(deployCmd, ...deployRest).pipe(
-            Command.stdout('pipe'),
-            Command.stderr('pipe'),
-            Command.workingDirectory(cwd),
-            Command.env({
+          ChildProcess.make(deployCmd, ...deployRest).pipe(
+            ChildProcess.stdout('pipe'),
+            ChildProcess.stderr('pipe'),
+            ChildProcess.workingDirectory(cwd),
+            ChildProcess.env({
               CI: '1',
               NETLIFY_CONFIG: join(cwd, 'netlify.toml'),
             }),
-            Command.start,
+            ChildProcess.start,
           ),
           (p) =>
             p.isRunning.pipe(
               Effect.flatMap((running) =>
-                running === true ? p.kill().pipe(Effect.catchAll(() => Effect.void)) : Effect.void,
+                running === true ? p.kill().pipe(Effect.catch(() => Effect.void)) : Effect.void,
               ),
               Effect.ignore,
             ),
@@ -173,8 +173,8 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
       yield* Effect.logWarning(`[deploy-to-netlify] Deploy stderr for ${site}: ${rawStderr}`)
     }
 
-    const result = yield* Schema.decode(Schema.parseJson(NetlifyDeployResultSchema))(rawOutput).pipe(
-      Effect.catchAll((error) =>
+    const result = yield* Schema.decodeEffect(Schema.fromJsonString(NetlifyDeployResultSchema))(rawOutput).pipe(
+      Effect.catch((error) =>
         Effect.gen(function* () {
           yield* Effect.logError(
             `[deploy-to-netlify] Failed to decode Netlify deploy JSON for ${site}; raw output follows:`,
@@ -230,7 +230,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     const readResult = yield* Effect.try({
       try: () => readFileSync(candidate, 'utf8'),
       catch: (error) => new FileReadError({ cause: error, path: candidate }),
-    }).pipe(Effect.either)
+    }).pipe(Effect.result)
 
     if (readResult._tag === 'Right') {
       configContent = readResult.right
@@ -257,7 +257,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     })
   }
 
-  const config = yield* Schema.decode(Schema.parseJson(NetlifyCliConfigSchema))(configContent).pipe(
+  const config = yield* Schema.decodeEffect(Schema.fromJsonString(NetlifyCliConfigSchema))(configContent).pipe(
     Effect.mapError(
       (error) =>
         new NetlifyError({
@@ -299,7 +299,7 @@ const resolveSiteIdViaApi = Effect.fn('resolveSiteIdViaApi')(function* (siteName
     )
     .pipe(
       Effect.andThen((res) => res.json),
-      Effect.andThen(Schema.decodeUnknown(NetlifySiteListSchema)),
+      Effect.andThen(Schema.decodeUnknownEffect(NetlifySiteListSchema)),
       Effect.mapError(
         (cause) =>
           new NetlifyError({

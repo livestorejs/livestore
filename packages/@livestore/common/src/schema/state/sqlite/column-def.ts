@@ -164,7 +164,7 @@ const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false
   }
 
   // Get the encoded AST - what actually gets stored in SQLite
-  const encodedAst = Schema.encodedSchema(coreSchema).ast
+  const encodedAst = Schema.toEncoded(coreSchema).ast
 
   // Check if the encoded type matches SQLite native types
   if (SchemaAST.isStringKeyword(encodedAst) === true) {

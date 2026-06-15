@@ -71,7 +71,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
      * */
     batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>,
   ) => Effect.Effect<void, IsOfflineError | BackendIdMismatchError | UnknownError | ServerAheadError>
-  ping: Effect.Effect<void, IsOfflineError | UnknownError | Cause.TimeoutException>
+  ping: Effect.Effect<void, IsOfflineError | UnknownError | Cause.TimeoutError>
   // TODO also expose latency information additionally to whether the backend is connected
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
   /**
@@ -105,7 +105,7 @@ export const NetworkStatus = Schema.Struct({
     /** Indicates whether the devtools latch forced the client into an offline state. */
     latchClosed: Schema.Boolean,
   }),
-}).annotations({ title: 'NetworkStatus' })
+}).annotate({ title: 'NetworkStatus' })
 
 export type NetworkStatus = typeof NetworkStatus.Type
 

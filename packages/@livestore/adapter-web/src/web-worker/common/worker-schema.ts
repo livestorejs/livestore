@@ -42,7 +42,7 @@ export type StorageType = typeof StorageType.Type
 export type StorageTypeEncoded = typeof StorageType.Encoded
 
 // export const SyncBackendOptions = Schema.Union(SyncBackendOptionsWebsocket)
-export const SyncBackendOptions = Schema.Record({ key: Schema.String, value: Schema.JsonValue })
+export const SyncBackendOptions = Schema.Record(Schema.String, Schema.JsonValue)
 export type SyncBackendOptions = Record<string, Schema.JsonValue>
 
 export class LeaderWorkerOuterInitialMessage extends Schema.TaggedRequest<LeaderWorkerOuterInitialMessage>()(
@@ -86,7 +86,7 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
   'PushToLeader',
   {
     payload: {
-      batch: Schema.Array(Schema.typeSchema(LiveStoreEvent.Client.Encoded)),
+      batch: Schema.Array(Schema.toType(LiveStoreEvent.Client.Encoded)),
     },
     success: Schema.Void as Schema.Schema<void>,
     failure: RejectedPushError,
@@ -95,7 +95,7 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
 
 export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWorkerInnerPullStream>()('PullStream', {
   payload: {
-    cursor: Schema.typeSchema(EventSequenceNumber.Client.Composite),
+    cursor: Schema.toType(EventSequenceNumber.Client.Composite),
   },
   success: Schema.Struct({
     payload: SyncState.PayloadUpstream,
@@ -143,7 +143,7 @@ export class LeaderWorkerInnerGetLeaderHead extends Schema.TaggedRequest<LeaderW
   'GetLeaderHead',
   {
     payload: {},
-    success: Schema.typeSchema(EventSequenceNumber.Client.Composite),
+    success: Schema.toType(EventSequenceNumber.Client.Composite),
     failure: Schema.Never,
   },
 ) {}

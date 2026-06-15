@@ -158,7 +158,7 @@ export const getTracingBackendUrl = (span: otel.Span) =>
     // Grafana + Tempo
 
     const grafanaEndpoint = endpoint.value
-    const left = yield* Schema.encode(Schema.parseJson())({
+    const left = yield* Schema.encodeEffect(Schema.UnknownFromJsonString)({
       datasource: 'tempo',
       queries: [{ query: traceId, queryType: 'traceql', refId: 'A' }],
       range: { from: 'now-1h', to: 'now' },

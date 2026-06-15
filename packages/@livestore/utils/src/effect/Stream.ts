@@ -19,7 +19,7 @@ export const tapLogWithLabel =
 export const tapChunk =
   <R1, E1, A, Z>(f: (a: Chunk.Chunk<A>) => Effect.Effect<Z, E1, R1>) =>
   <R, E>(self: Stream.Stream<A, E, R>): Stream.Stream<A, E1 | E, R1 | R> =>
-    Stream.mapChunksEffect(self, (chunks) =>
+    Stream.mapArrayEffect(self, (chunks) =>
       pipe(
         f(chunks),
         Effect.map(() => chunks),
@@ -75,7 +75,7 @@ export const runFirst = <A, E, R>(stream: Stream.Stream<A, E, R>): Effect.Effect
  * */
 export const runFirstUnsafe = <A, E, R>(
   stream: Stream.Stream<A, E, R>,
-): Effect.Effect<A, Cause.NoSuchElementException | E, R> => runFirst(stream).pipe(Effect.flatten)
+): Effect.Effect<A, Cause.NoSuchElementError | E, R> => runFirst(stream).pipe(Effect.flatten)
 
 export const runCollectReadonlyArray = <A, E, R>(stream: Stream.Stream<A, E, R>): Effect.Effect<readonly A[], E, R> =>
   stream.pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray))
