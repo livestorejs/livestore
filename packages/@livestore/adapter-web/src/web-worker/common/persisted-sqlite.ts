@@ -15,7 +15,7 @@ export class PersistedSqliteError extends Schema.TaggedErrorClass<PersistedSqlit
   '~@livestore/adapter-web/PersistedSqliteError',
 )('PersistedSqliteError', {
   message: Schema.String,
-  cause: Schema.optional(Schema.Defect),
+  cause: Schema.optional(Schema.Defect()),
 }) {}
 
 export const readPersistedStateDbFromClientSession: (args: {
