@@ -33,14 +33,15 @@ const ROOT_NAME = '/'
  * Materialize the entire OPFS tree starting from the origin root.
  */
 const buildTree = Effect.fn('@livestore/utils:Opfs.buildTree')(function* () {
-  const rootHandle = yield* Opfs.getRootDirectoryHandle
+  const opfs = yield* Opfs
+  const rootHandle = yield* opfs.getRootDirectoryHandle
 
   const collectDirectory = (
     handle: FileSystemDirectoryHandle,
     pathSegments: ReadonlyArray<string>,
   ): Effect.Effect<OpfsTreeNode, WebError.WebError, Opfs> =>
     Effect.gen(function* () {
-      const handlesStream = yield* Opfs.values(handle)
+      const handlesStream = opfs.values(handle)
       const handles = yield* handlesStream.pipe(
         Stream.runCollect,
         Effect.map((chunk) => Array.from(chunk).sort((a, b) => a.name.localeCompare(b.name))),
@@ -135,7 +136,7 @@ const resetTree = remove('/')
 const getDirHandle = (path: string, options?: FileSystemGetDirectoryOptions) => getDirectoryHandleByPath(path, options)
 
 const runOpfsEffect = <A, E>(effect: Effect.Effect<A, E, Opfs>) =>
-  effect.pipe(Effect.provide(Opfs.Default), Effect.runPromise)
+  effect.pipe(Effect.provide(Opfs.layer), Effect.runPromise)
 
 export const debugUtils = {
   /**

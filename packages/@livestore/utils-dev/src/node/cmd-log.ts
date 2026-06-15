@@ -31,9 +31,9 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
     const safeIso = new Date().toISOString().replaceAll(':', '-')
     const archivedBase = `${path.parse(logFileName).name}-${safeIso}.log`
     const archivedLog = path.join(archiveDir, archivedBase)
-    yield* Effect.try(() => fs.renameSync(currentLogPath, archivedLog)).pipe(
+    yield* Effect.sync(() => fs.renameSync(currentLogPath, archivedLog)).pipe(
       Effect.catch(() =>
-        Effect.try(() => {
+        Effect.sync(() => {
           fs.copyFileSync(currentLogPath, archivedLog)
           fs.truncateSync(currentLogPath, 0)
         }),
@@ -42,7 +42,7 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
     )
 
     // Prune archives to retain only the newest N
-    yield* Effect.try(() => fs.readdirSync(archiveDir)).pipe(
+    yield* Effect.sync(() => fs.readdirSync(archiveDir)).pipe(
       Effect.map((names) => names.filter((n) => n.endsWith('.log'))),
       Effect.map((names) =>
         names
@@ -51,7 +51,7 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
       ),
       Effect.flatMap((entries) =>
         Effect.forEach(entries.slice(logRetention), (e) =>
-          Effect.try(() => fs.unlinkSync(path.join(archiveDir, e.name))).pipe(Effect.ignore),
+          Effect.sync(() => fs.unlinkSync(path.join(archiveDir, e.name))).pipe(Effect.ignore),
         ),
       ),
       Effect.ignore,

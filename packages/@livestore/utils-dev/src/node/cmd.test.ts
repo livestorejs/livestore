@@ -11,7 +11,7 @@ import { cmd } from './cmd.ts'
 import { CurrentWorkingDirectory } from './workspace.ts'
 
 const withNode = Vitest.makeWithTestCtx({
-  makeLayer: () => Layer.mergeAll(PlatformNode.NodeContext.layer, CurrentWorkingDirectory.live),
+  makeLayer: () => Layer.mergeAll(PlatformNode.NodeServices.layer, CurrentWorkingDirectory.live),
   timeout: 20_000,
 })
 
@@ -50,7 +50,7 @@ Vitest.describe('cmd helper', () => {
         expect(firstStdoutLines.length).toBeGreaterThan(0)
         for (const line of firstStdoutLines) {
           expect(line).toContain('[stdout] first')
-          expect(line).toContain('INFO')
+          expect(line).toMatch(/Info/i)
           expect(line).toContain('printf first')
         }
 
@@ -73,7 +73,7 @@ Vitest.describe('cmd helper', () => {
         expect(secondStdoutLines.length).toBeGreaterThan(0)
         for (const line of secondStdoutLines) {
           expect(line).toContain('[stdout] second')
-          expect(line).toContain('INFO')
+          expect(line).toMatch(/Info/i)
         }
 
         // generate many archives to exercise retention (keep 50)
@@ -112,7 +112,7 @@ Vitest.describe('cmd helper', () => {
       for (const line of relevantLines) {
         const stripped = line.replace(ansiRegex, '')
         expect(stripped.startsWith('[')).toBe(true)
-        expect(stripped).toMatch(/(INFO|WARN)/)
+        expect(stripped).toMatch(/(Info|Warn)/i)
         expect(stripped).toMatch(/\[(stdout|stderr)]/)
       }
     }).pipe(withNode(test)),

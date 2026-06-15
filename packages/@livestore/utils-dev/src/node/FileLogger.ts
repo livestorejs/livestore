@@ -2,19 +2,7 @@ import * as fs from 'node:fs'
 import path from 'node:path'
 import util from 'node:util'
 
-import {
-  Cause,
-  Effect,
-  FiberId,
-  HashMap,
-  Inspectable,
-  Layer,
-  List,
-  Logger,
-  type LogLevel,
-  LogSpan,
-  ReadonlyArray,
-} from '@livestore/utils/effect'
+import { Cause, Effect, Inspectable, Layer, Logger, type LogLevel, ReadonlyArray } from '@livestore/utils/effect'
 
 export const makeFileLogger = (
   logFilePath: string,
@@ -23,7 +11,7 @@ export const makeFileLogger = (
     readonly colors?: boolean
   },
 ) =>
-  Layer.unwrapScoped(
+  Layer.unwrap(
     Effect.gen(function* () {
       yield* Effect.sync(() => fs.mkdirSync(path.dirname(logFilePath), { recursive: true }))
 
@@ -32,15 +20,14 @@ export const makeFileLogger = (
         (fd) => Effect.sync(() => fs.closeSync(fd)),
       )
 
-      return Logger.replace(
-        Logger.defaultLogger,
+      return Logger.layer([
         prettyLoggerTty({
           colors: options?.colors ?? false,
           stderr: false,
           formatDate: (date) => `${defaultDateFormat(date)} ${options?.threadName ?? ''}`,
           onLog: (str) => fs.writeSync(logFile, str),
         }),
-      )
+      ])
     }),
   )
 
@@ -66,13 +53,13 @@ const colors = {
   bgBrightRed: '101',
 } as const
 
-const logLevelColors: Record<LogLevel.LogLevel['_tag'], ReadonlyArray<string>> = {
+const logLevelColors: Record<LogLevel.LogLevel, ReadonlyArray<string>> = {
   None: [],
   All: [],
   Trace: [colors.gray],
   Debug: [colors.blue],
   Info: [colors.green],
-  Warning: [colors.yellow],
+  Warn: [colors.yellow],
   Error: [colors.red],
   Fatal: [colors.bgBrightRed, colors.black],
 }
@@ -91,7 +78,7 @@ export const structuredMessage = (u: unknown): unknown => {
       return String(u)
     }
     default: {
-      return Inspectable.toJSON(u)
+      return Inspectable.toJson(u)
     }
   }
 }
@@ -122,7 +109,7 @@ export const prettyLoggerTty = (options: {
   readonly onLog?: (str: string) => void
 }) => {
   const color = options.colors === true ? withColor : withColorNoop
-  return Logger.make<unknown, string>(({ annotations, cause, date, fiberId, logLevel, message: message_, spans }) => {
+  return Logger.make<unknown, string>(({ cause, date, fiber, logLevel, message: message_ }) => {
     let str = ''
 
     const log = (...s: any[]) => {
@@ -139,16 +126,8 @@ export const prettyLoggerTty = (options: {
 
     let firstLine =
       color(`[${options.formatDate(date)}]`, colors.white) +
-      ` ${color(logLevel.label, ...logLevelColors[logLevel._tag])}` +
-      ` (${FiberId.threadName(fiberId)})`
-
-    if (List.isCons(spans) === true) {
-      const now = date.getTime()
-      const render = LogSpan.render(now)
-      for (const span of spans) {
-        firstLine += ` ${render(span)}`
-      }
-    }
+      ` ${color(logLevel, ...(logLevelColors[logLevel] ?? []))}` +
+      ` (fiber=#${fiber.id})`
 
     firstLine += ':'
     let messageIndex = 0
@@ -163,8 +142,8 @@ export const prettyLoggerTty = (options: {
     log(firstLine)
     // if (!processIsBun) console.group()
 
-    if (Cause.isEmpty(cause) === false) {
-      logIndented(Cause.pretty(cause, { renderErrorCause: true }))
+    if (cause.reasons.length > 0) {
+      logIndented(Cause.pretty(cause))
     }
 
     if (messageIndex < message.length) {
@@ -180,23 +159,8 @@ export const prettyLoggerTty = (options: {
             }),
           )
         } else {
-          logIndented(Inspectable.redact(msg))
+          logIndented(String(msg))
         }
-      }
-    }
-
-    if (HashMap.size(annotations) > 0) {
-      for (const [key, value] of annotations) {
-        const formattedValue =
-          typeof value === 'object' && value !== null
-            ? util.inspect(structuredMessage(value), {
-                depth: 3,
-                colors: false,
-                compact: false,
-                breakLength: 120,
-              })
-            : Inspectable.redact(value)
-        logIndented(color(`${key}:`, colors.bold, colors.white), formattedValue)
       }
     }
 

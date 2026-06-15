@@ -1,6 +1,7 @@
-import { Deferred, Exit, Predicate, Queue, Schema, Scope, Stream } from 'effect'
+import { Deferred, Exit, Filter, Latch, Queue, Scope, Stream } from 'effect'
 
 import * as Effect from '../Effect.ts'
+import * as Schema from '../Schema/index.ts'
 import type { InputSchema, WebChannel } from './common.ts'
 import { listenToDebugPing, mapSchema, WebChannelSymbol } from './common.ts'
 
@@ -23,7 +24,7 @@ const PayloadMessage = Schema.TaggedStruct('PayloadMessage', {
   payload: Schema.Any,
 })
 
-const Message = Schema.Union(ConnectMessage, ConnectAckMessage, DisconnectMessage, PayloadMessage)
+const Message = Schema.Union([ConnectMessage, ConnectAckMessage, DisconnectMessage, PayloadMessage])
 
 /**
  * Same as `broadcastChannel`, but with a queue in between to guarantee message delivery and meant
@@ -44,10 +45,10 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
       const schema = mapSchema(inputSchema)
 
       const peerIdRef = { current: undefined as undefined | string }
-      const connectedLatch = yield* Effect.makeLatch(false)
+      const connectedLatch = yield* Latch.make(false)
       const supportsTransferables = false
 
-      const postMessage = (msg: typeof Message.Type) => channel.postMessage(Schema.encodeEffectSync(Message)(msg))
+      const postMessage = (msg: typeof Message.Type) => channel.postMessage(Schema.encodeSync(Message)(msg))
 
       const send = (message: MsgSend) =>
         Effect.gen(function* () {
@@ -59,8 +60,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
 
       const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
         Stream.map(({ data }) => data),
-        Stream.map(Schema.decodeEffectOption(Message)),
-        Stream.filterMap((_) => _),
+        Stream.filterMap(Filter.fromPredicateOption(Schema.decodeUnknownOption(Message))),
         Stream.mapEffect((data) =>
           Effect.gen(function* () {
             switch (data._tag) {
@@ -96,7 +96,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
             }
           }),
         ),
-        Stream.filter(Predicate.isNotUndefined),
+        Stream.filterMap(Filter.fromPredicate((_) => _ !== undefined)),
         listenToDebugPing(channelName),
       )
 
@@ -114,14 +114,16 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
         }),
       )
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), (deferred) =>
+        Deferred.done(deferred, Exit.succeed(void 0)),
+      )
 
       return {
         [WebChannelSymbol]: WebChannelSymbol,
         send,
         listen,
         closedDeferred,
-        shutdown: Scope.close(scope, Exit.void),
+        shutdown: Scope.close(scope, Exit.succeed('shutdown')),
         schema,
         supportsTransferables,
       }

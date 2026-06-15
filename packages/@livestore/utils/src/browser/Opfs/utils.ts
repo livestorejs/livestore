@@ -65,11 +65,12 @@ const splitPathSegments = (segments: ReadonlyArray<string>) => ({
  */
 const traverseDirectoryPath = (segments: ReadonlyArray<string>, options?: FileSystemGetDirectoryOptions) =>
   Effect.gen(function* () {
-    let currentDirHandle = yield* Opfs.getRootDirectoryHandle
+    const opfs = yield* Opfs
+    let currentDirHandle = yield* opfs.getRootDirectoryHandle
 
     for (let index = 0; index < segments.length; index++) {
       const segment = segments[index]!
-      currentDirHandle = yield* Opfs.getDirectoryHandle(currentDirHandle, segment, options)
+      currentDirHandle = yield* opfs.getDirectoryHandle(currentDirHandle, segment, options)
     }
 
     return currentDirHandle
@@ -83,14 +84,15 @@ const traverseDirectoryPath = (segments: ReadonlyArray<string>, options?: FileSy
  */
 const ensureDirectoryPath = (segments: ReadonlyArray<string>, options: { readonly recursive: boolean }) =>
   Effect.gen(function* () {
-    let currentDirHandle = yield* Opfs.getRootDirectoryHandle
+    const opfs = yield* Opfs
+    let currentDirHandle = yield* opfs.getRootDirectoryHandle
 
     for (let index = 0; index < segments.length; index++) {
       const segment = segments[index]!
       const isLast = index === segments.length - 1
       const shouldCreate = options.recursive || isLast
 
-      currentDirHandle = yield* Opfs.getDirectoryHandle(
+      currentDirHandle = yield* opfs.getDirectoryHandle(
         currentDirHandle,
         segment,
         shouldCreate === true ? { create: true } : undefined,
@@ -111,7 +113,10 @@ export const getDirectoryHandleByPath = Effect.fn('@livestore/utils:Opfs.getDire
   path: string,
   options?: FileSystemGetDirectoryOptions,
 ) {
-  if (isRootPath(path) === true) return yield* Opfs.getRootDirectoryHandle
+  if (isRootPath(path) === true) {
+    const opfs = yield* Opfs
+    return yield* opfs.getRootDirectoryHandle
+  }
 
   const pathSegments = yield* parsePathSegments(path)
   return yield* traverseDirectoryPath(pathSegments, options)
@@ -128,12 +133,13 @@ export const remove = Effect.fn('@livestore/utils:Opfs.remove')(function* (
   options?: { readonly recursive?: boolean },
 ) {
   const recursive = options?.recursive ?? false
+  const opfs = yield* Opfs
 
   if (isRootPath(path) === true) {
-    const rootHandle = yield* Opfs.getRootDirectoryHandle
-    const handlesStream = yield* Opfs.values(rootHandle)
+    const rootHandle = yield* opfs.getRootDirectoryHandle
+    const handlesStream = opfs.values(rootHandle)
     yield* handlesStream.pipe(
-      Stream.runForEach((handle) => Opfs.removeEntry(rootHandle, handle.name, { recursive: true })),
+      Stream.runForEach((handle) => opfs.removeEntry(rootHandle, handle.name, { recursive: true })),
     )
     return
   }
@@ -142,7 +148,7 @@ export const remove = Effect.fn('@livestore/utils:Opfs.remove')(function* (
   const { parentSegments, leafSegment: targetName } = splitPathSegments(pathSegments)
   const parentDirHandle = yield* traverseDirectoryPath(parentSegments)
 
-  yield* Opfs.removeEntry(parentDirHandle, targetName, { recursive })
+  yield* opfs.removeEntry(parentDirHandle, targetName, { recursive })
 })
 
 /**
@@ -163,8 +169,9 @@ export const exists = Effect.fn('@livestore/utils:Opfs.exists')(function* (path:
 
   if (parentDirHandle === undefined) return false
 
-  return yield* Opfs.getFileHandle(parentDirHandle, targetName).pipe(
-    Effect.orElse(() => Opfs.getDirectoryHandle(parentDirHandle, targetName, { create: false })),
+  const opfs = yield* Opfs
+  return yield* opfs.getFileHandle(parentDirHandle, targetName).pipe(
+    Effect.catch(() => opfs.getDirectoryHandle(parentDirHandle, targetName, { create: false })),
     Effect.as(true),
     Effect.catchTag('NotFoundError', () => Effect.succeed(false)),
   )
@@ -196,7 +203,8 @@ export const makeDirectory = Effect.fn('@livestore/utils:Opfs.makeDirectory')(fu
  * @returns Object containing name, size, MIME type, and last modification timestamp.
  */
 export const getMetadata = Effect.fn('@livestore/utils:Opfs.getMetadata')(function* (handle: FileSystemFileHandle) {
-  return yield* Opfs.getFile(handle).pipe(
+  const opfs = yield* Opfs
+  return yield* opfs.getFile(handle).pipe(
     Effect.map((file) => ({
       name: file.name,
       size: file.size,
@@ -227,10 +235,11 @@ export const writeFile = Effect.fn('@livestore/utils:Opfs.writeFile')(function* 
 
   return yield* Effect.scoped(
     Effect.gen(function* () {
+      const opfs = yield* Opfs
       const parentDirHandle = yield* traverseDirectoryPath(parentSegments)
-      const fileHandle = yield* Opfs.getFileHandle(parentDirHandle, fileName, { create: true })
+      const fileHandle = yield* opfs.getFileHandle(parentDirHandle, fileName, { create: true })
 
-      yield* Opfs.writeFile(fileHandle, new Uint8Array(data), {
+      yield* opfs.writeFile(fileHandle, new Uint8Array(data), {
         keepExistingData: false,
       })
     }),
@@ -264,15 +273,16 @@ export const syncWriteFile = Effect.fn('@livestore/utils:Opfs.syncWriteFile')(fu
 
   return yield* Effect.scoped(
     Effect.gen(function* () {
+      const opfs = yield* Opfs
       const parentDirHandle = yield* traverseDirectoryPath(parentSegments)
-      const fileHandle = yield* Opfs.getFileHandle(parentDirHandle, fileName, { create: true })
-      const syncHandle = yield* Opfs.createSyncAccessHandle(fileHandle)
+      const fileHandle = yield* opfs.getFileHandle(parentDirHandle, fileName, { create: true })
+      const syncHandle = yield* opfs.createSyncAccessHandle(fileHandle)
 
-      yield* Opfs.syncTruncate(syncHandle, 0)
+      yield* opfs.syncTruncate(syncHandle, 0)
 
       let offset = 0
       while (offset < data.byteLength) {
-        const wrote = yield* Opfs.syncWrite(syncHandle, data.subarray(offset), { at: offset })
+        const wrote = yield* opfs.syncWrite(syncHandle, data.subarray(offset), { at: offset })
         if (wrote === 0) {
           return yield* new OpfsError({
             message: `Short write: wrote ${offset} of ${data.byteLength} bytes.`,
@@ -281,7 +291,7 @@ export const syncWriteFile = Effect.fn('@livestore/utils:Opfs.syncWriteFile')(fu
         offset += Number(wrote)
       }
 
-      yield* Opfs.syncFlush(syncHandle)
+      yield* opfs.syncFlush(syncHandle)
     }),
   )
 })

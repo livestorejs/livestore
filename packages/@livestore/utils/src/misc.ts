@@ -9,8 +9,8 @@ export const isDevEnv = () => {
     return import.meta.env.DEV
   }
 
-  // @ts-expect-error Only exists in Expo / RN
-  if (globalThis?.__DEV__ === true) {
+  const globals = globalThis as typeof globalThis & { readonly __DEV__?: boolean | undefined }
+  if (globals.__DEV__ === true) {
     return true
   }
 

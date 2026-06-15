@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { ParseResult, Schema } from '@livestore/utils/effect'
+import { Effect, Option, Schema, SchemaIssue, SchemaParser, SchemaTransformation } from 'effect'
 
 import { BoundArray } from './bounded-collections.ts'
 import { PreparedBindValues } from './util.ts'
@@ -31,33 +31,24 @@ const isBoundArrayLike = (value: unknown): value is BoundArray<unknown> =>
   value instanceof BoundArray ||
   (value !== null && typeof value === 'object' && typeof (value as { sizeLimit?: number }).sizeLimit === 'number')
 
-const BoundArraySchemaFromSelf = <A, I, R>(
-  item: Schema.Schema<A, I, R>,
-): Schema.Schema<BoundArray<A>, BoundArray<I>, R> =>
-  Schema.declare(
+const BoundArraySchemaFromSelf = <S extends Schema.Top>(
+  item: S,
+): Schema.Codec<BoundArray<S['Type']>, BoundArray<S['Encoded']>, S['DecodingServices'], S['EncodingServices']> =>
+  Schema.declareConstructor<BoundArray<S['Type']>, BoundArray<S['Encoded']>>()(
     [item],
-    {
-      decode: (item) => (input, parseOptions, ast) => {
+    ([itemCodec]) =>
+      (input, ast, parseOptions) => {
         if (isBoundArrayLike(input) === true) {
-          const elements = ParseResult.decodeUnknown(Schema.Array(item))([...input], parseOptions)
-          return ParseResult.map(elements, (as): BoundArray<A> => BoundArray.make(getSizeLimit(input), as))
+          return SchemaParser.decodeUnknownEffect(Schema.Array(itemCodec))([...input], parseOptions).pipe(
+            Effect.map((items): BoundArray<S['Type']> => BoundArray.make(getSizeLimit(input), items)),
+          )
         }
-        return ParseResult.fail(new ParseResult.Type(ast, input))
+        return Effect.fail(new SchemaIssue.InvalidType(ast, Option.some(input)))
       },
-      encode: (item) => (input, parseOptions, ast) => {
-        if (isBoundArrayLike(input) === true) {
-          const items = [...input]
-          const elements = ParseResult.encodeUnknown(Schema.Array(item))(items, parseOptions)
-          return ParseResult.map(elements, (is): BoundArray<I> => BoundArray.make(getSizeLimit(input), is))
-        }
-        return ParseResult.fail(new ParseResult.Type(ast, input))
-      },
-    },
     {
-      description: `BoundArray<${Schema.format(item)}>`,
-      pretty: () => (_) => `BoundArray(${_.length})`,
-      arbitrary: () => (fc) => fc.anything() as any,
-      equivalence: () => {
+      expected: `BoundArray<${String(item.ast)}>`,
+      toFormatter: () => (_) => `BoundArray(${_.length})`,
+      toEquivalence: () => {
         const elementEquivalence = Schema.toEquivalence(item)
         return (a: unknown, b: unknown) => {
           if (a === b) {
@@ -82,27 +73,30 @@ const BoundArraySchemaFromSelf = <A, I, R>(
     },
   )
 
-export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Schema<ItemDecoded, ItemEncoded>) =>
-  Schema.transform(
-    Schema.Struct({
-      size: Schema.Number,
-      items: Schema.Array(elSchema),
-    }),
-    BoundArraySchemaFromSelf(Schema.toType(elSchema)),
-    {
-      encode: (_) => ({ size: _.sizeLimit, items: [..._] }),
-      decode: (_) => BoundArray.make(_.size, _.items),
-    },
+export const BoundArraySchema = <S extends Schema.Top>(elSchema: S) =>
+  Schema.Struct({
+    size: Schema.Number,
+    items: Schema.Array(elSchema),
+  }).pipe(
+    Schema.decodeTo(
+      BoundArraySchemaFromSelf(Schema.toType(elSchema)),
+      SchemaTransformation.transform({
+        encode: (_): { readonly size: number; readonly items: ReadonlyArray<S['Type']> } => ({
+          size: _.sizeLimit,
+          items: [..._],
+        }),
+        decode: (_) => BoundArray.make(_.size, _.items),
+      }),
+    ),
   )
 
 export const DebugInfo = Schema.Struct({
   slowQueries: BoundArraySchema(SlowQueryInfo),
   queryFrameDuration: Schema.Number,
   queryFrameCount: Schema.Number,
-  events: BoundArraySchema(Schema.Tuple(Schema.String, Schema.Any)),
+  events: BoundArraySchema(Schema.Tuple([Schema.String, Schema.Any])),
 })
 
 export type DebugInfo = typeof DebugInfo.Type
 
-export const MutableDebugInfo = Schema.mutable(DebugInfo)
-export type MutableDebugInfo = typeof MutableDebugInfo.Type
+export type MutableDebugInfo = { -readonly [K in keyof DebugInfo]: DebugInfo[K] }

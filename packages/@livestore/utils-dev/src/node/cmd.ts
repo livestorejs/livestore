@@ -4,15 +4,10 @@ import { isNotUndefined } from '@livestore/utils'
 import {
   Cause,
   ChildProcess,
-  type ChildProcessSpawner,
+  ChildProcessSpawner,
   Effect,
   Fiber,
-  FiberId,
-  FiberRefs,
-  HashMap,
-  identity,
-  List,
-  LogLevel,
+  type LogLevel,
   type PlatformError,
   Schema,
   Stream,
@@ -23,7 +18,7 @@ import * as FileLogger from './FileLogger.ts'
 import { CurrentWorkingDirectory } from './workspace.ts'
 
 // Branded zero value so we can compare exit codes without touching internals.
-const SUCCESS_EXIT_CODE: ChildProcessSpawner.ExitCode = 0 as ChildProcessSpawner.ExitCode
+const SUCCESS_EXIT_CODE = ChildProcessSpawner.ExitCode(0)
 
 export const cmd: (
   commandInput: string | (string | undefined)[],
@@ -116,37 +111,45 @@ export const cmdText: (
     runInShell?: boolean
     env?: Record<string, string | undefined>
   },
-) => Effect.Effect<string, PlatformError.PlatformError, ChildProcessSpawner.ChildProcessSpawner | CurrentWorkingDirectory> =
-  Effect.fn('cmdText')(function* (commandInput, options) {
-    const cwd = yield* CurrentWorkingDirectory
-    const [command, ...args] =
-      Array.isArray(commandInput) === true ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
-    const debugEnvStr = Object.entries(options?.env ?? {})
-      .map(([key, value]) => `${key}='${String(value)}' `)
-      .join('')
+) => Effect.Effect<
+  string,
+  PlatformError.PlatformError,
+  ChildProcessSpawner.ChildProcessSpawner | CurrentWorkingDirectory
+> = Effect.fn('cmdText')(function* (commandInput, options) {
+  const cwd = yield* CurrentWorkingDirectory
+  const normalizedCommandInput =
+    Array.isArray(commandInput) === true ? commandInput.filter(isNotUndefined) : commandInput
+  const [command, ...args] =
+    Array.isArray(normalizedCommandInput) === true ? normalizedCommandInput : normalizedCommandInput.split(' ')
+  const debugEnvStr = Object.entries(options?.env ?? {})
+    .map(([key, value]) => `${key}='${String(value)}' `)
+    .join('')
 
-    const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
-    const subshellStr = options?.runInShell === true ? ' (in subshell)' : ''
+  const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
+  const subshellStr = options?.runInShell === true ? ' (in subshell)' : ''
 
-    yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
-    yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, command, cwd })
+  yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
+  yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, command, cwd })
 
-    return yield* ChildProcess.make(command!, ...args).pipe(
+  const childProcessSpawner = yield* ChildProcessSpawner.ChildProcessSpawner
+
+  return yield* childProcessSpawner.string(
+    buildCommand(normalizedCommandInput, options?.runInShell === true, {
+      cwd,
+      env: options?.env ?? {},
+      extendEnv: true,
       // inherit = Stream stderr to process.stderr, pipe = Stream stderr to process.stdout
-      ChildProcess.stderr(options?.stderr ?? 'inherit'),
-      ChildProcess.workingDirectory(cwd),
-      options?.runInShell === true ? ChildProcess.runInShell(true) : identity,
-      ChildProcess.env(options?.env ?? {}),
-      ChildProcess.string,
-    )
-  })
+      stderr: options?.stderr ?? 'inherit',
+    }),
+  )
+})
 
 export class CmdError extends Schema.TaggedErrorClass<CmdError>('~@livestore/utils-dev/CmdError')('CmdError', {
   command: Schema.String,
   args: Schema.Array(Schema.String),
   cwd: Schema.String,
   env: Schema.Record(Schema.String, Schema.String.pipe(Schema.UndefinedOr)),
-  stderr: Schema.Literal('inherit', 'pipe'),
+  stderr: Schema.Literals(['inherit', 'pipe']),
 }) {}
 
 type TRunBaseArgs = {
@@ -159,14 +162,16 @@ type TRunBaseArgs = {
 }
 
 const runWithoutLogging = ({ commandInput, cwd, env, stdoutMode, stderrMode, useShell }: TRunBaseArgs) =>
-  buildCommand(commandInput, useShell).pipe(
-    ChildProcess.stdin('inherit'),
-    ChildProcess.stdout(stdoutMode),
-    ChildProcess.stderr(stderrMode),
-    ChildProcess.workingDirectory(cwd),
-    useShell === true ? ChildProcess.runInShell(true) : identity,
-    ChildProcess.env(env),
-    ChildProcess.exitCode,
+  runCommandExitCode(
+    buildCommand(commandInput, useShell, {
+      cwd,
+      env,
+      extendEnv: true,
+      shell: useShell,
+      stdin: 'inherit',
+      stdout: stdoutMode,
+      stderr: stderrMode,
+    }),
   )
 
 type TRunWithLoggingArgs = TRunBaseArgs & {
@@ -204,31 +209,31 @@ const runWithLogging = ({
       })
 
       const appendLog = ({ channel, content }: { channel: 'stdout' | 'stderr'; content: string }) =>
-        Effect.sync(() => {
-          const formatted = prettyLogger.log({
-            fiberId: FiberId.none,
-            logLevel: channel === 'stdout' ? LogLevel.Info : LogLevel.Warning,
-            message: [`[${channel}]${content.length > 0 ? ` ${content}` : ''}`],
-            cause: Cause.empty,
-            context: FiberRefs.empty(),
-            spans: List.empty(),
-            annotations: HashMap.empty(),
-            date: new Date(),
-          })
-          fs.writeSync(logFile, formatted)
-        })
+        Effect.withFiber((fiber) =>
+          Effect.sync(() => {
+            const formatted = prettyLogger.log({
+              fiber,
+              logLevel: (channel === 'stdout' ? 'Info' : 'Warn') satisfies LogLevel.LogLevel,
+              message: [`[${channel}]${content.length > 0 ? ` ${content}` : ''}`],
+              cause: Cause.empty,
+              date: new Date(),
+            })
+            fs.writeSync(logFile, formatted)
+          }),
+        )
 
-      const command = buildCommand(commandInput, useShell).pipe(
-        ChildProcess.stdin('inherit'),
-        ChildProcess.stdout('pipe'),
-        ChildProcess.stderr('pipe'),
-        ChildProcess.workingDirectory(cwd),
-        useShell === true ? ChildProcess.runInShell(true) : identity,
-        ChildProcess.env(envWithColor),
-      )
+      const command = buildCommand(commandInput, useShell, {
+        cwd,
+        env: envWithColor,
+        extendEnv: true,
+        shell: useShell,
+        stdin: 'inherit',
+        stdout: 'pipe',
+        stderr: 'pipe',
+      })
 
       // Acquire/start the command and make sure we kill it on interruption.
-      const runningProcess = yield* Effect.acquireRelease(command.pipe(ChildProcess.start), (proc) =>
+      const runningProcess = yield* Effect.acquireRelease(command, (proc) =>
         proc.isRunning.pipe(
           Effect.flatMap((running) =>
             running === true ? proc.kill().pipe(Effect.catch(() => Effect.void)) : Effect.void,
@@ -249,14 +254,14 @@ const runWithLogging = ({
       })
 
       const stdoutFiber = yield* runningProcess.stdout.pipe(
-        Stream.decodeText('utf8'),
-        Stream.runForEach((chunk) => stdoutHandler.onChunk(chunk)),
+        Stream.decodeText(),
+        Stream.runForEach((chunk) => stdoutHandler.onChunk(String(chunk))),
         Effect.forkScoped,
       )
 
       const stderrFiber = yield* runningProcess.stderr.pipe(
-        Stream.decodeText('utf8'),
-        Stream.runForEach((chunk) => stderrHandler.onChunk(chunk)),
+        Stream.decodeText(),
+        Stream.runForEach((chunk) => stderrHandler.onChunk(String(chunk))),
         Effect.forkScoped,
       )
 
@@ -272,24 +277,33 @@ const runWithLogging = ({
         yield* stderrHandler.flush()
       })
 
-      const exitCode = yield* runningProcess.exitCode.pipe(Effect.ensuring(flushOutputs))
+      const exitCode = yield* runningProcess.exitCode.pipe(Effect.ensuring(flushOutputs.pipe(Effect.orDie)))
 
       return exitCode
     }),
   )
 
-const buildCommand = (input: string | string[], useShell: boolean) => {
+type BuildCommandOptions = ChildProcess.CommandOptions
+
+const runCommandExitCode = (command: ChildProcess.Command) =>
+  Effect.scoped(Effect.flatMap(command, (childProcess) => childProcess.exitCode))
+
+const buildCommand = (
+  input: string | string[],
+  useShell: boolean,
+  options: BuildCommandOptions = {},
+): ChildProcess.Command => {
   if (Array.isArray(input) === true) {
     const [c, ...a] = input
-    return ChildProcess.make(c!, ...a)
+    return ChildProcess.make(c!, a, options)
   }
 
   if (useShell === true) {
-    return ChildProcess.make(input)
+    return ChildProcess.make(input, options)
   }
 
   const [c, ...a] = input.split(' ')
-  return ChildProcess.make(c!, ...a)
+  return ChildProcess.make(c!, a, options)
 }
 
 type TLineTerminator = 'newline' | 'carriage-return' | 'none'

@@ -2,6 +2,9 @@
 export const promiseMap = <T, Res>(arr: T[], map: (el: T, index?: number) => Res | Promise<Res>) =>
   Promise.all(arr.map(map))
 
+/** Type guard that checks if a value is a Promise (has a `then` method). */
+export const isPromise = (value: any): value is Promise<unknown> => typeof value?.then === 'function'
+
 export const promiseMapDict = async <T, Res>(
   dict: Record<string, T>,
   map: (el: T, index?: number) => Res | Promise<Res>,

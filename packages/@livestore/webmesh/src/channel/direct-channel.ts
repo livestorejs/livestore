@@ -9,7 +9,7 @@ import {
   Schema,
   Scope,
   Stream,
-  TQueue,
+  TxQueue,
   WebChannel,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -49,7 +49,7 @@ export const makeDirectChannel = ({
       const sourceId = nanoid()
 
       const listenQueue = yield* Queue.unbounded<any>()
-      const sendQueue = yield* TQueue.unbounded<[msg: any, deferred: Deferred.Deferred<void>]>()
+      const sendQueue = yield* TxQueue.unbounded<[msg: any, deferred: Deferred.Deferred<void>]>()
 
       const initialEdgeDeferred = yield* Deferred.make<void>()
 
@@ -169,13 +169,13 @@ export const makeDirectChannel = ({
 
         yield* Effect.gen(function* () {
           while (true) {
-            const [msg, deferred] = yield* TQueue.peek(sendQueue)
+            const [msg, deferred] = yield* TxQueue.peek(sendQueue)
             // NOTE we don't need an explicit retry flow here since in case of the channel being closed,
             // the send will never succeed. Meanwhile the send-loop fiber will be interrupted and
             // given we only peeked at the queue, the message to send is still there.
             yield* channel.send(msg)
             yield* Deferred.succeed(deferred, void 0)
-            yield* TQueue.take(sendQueue) // Remove the message from the queue
+            yield* TxQueue.take(sendQueue) // Remove the message from the queue
           }
         }).pipe(Effect.forkIn(makeDirectChannelScope))
 
@@ -204,7 +204,7 @@ export const makeDirectChannel = ({
           debugInfo.pendingSends++
           debugInfo.totalSends++
 
-          yield* TQueue.offer(sendQueue, [message, sentDeferred])
+          yield* TxQueue.offer(sendQueue, [message, sentDeferred])
 
           yield* sentDeferred
 

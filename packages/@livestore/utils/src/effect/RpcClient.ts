@@ -1,6 +1,6 @@
 export * from 'effect/unstable/rpc/RpcClient'
 
-import { Cause, Deferred, Effect, Layer, Option, Schedule, type Scope } from 'effect'
+import { Cause, Deferred, Effect, Latch, Layer, Option, References, Schedule, type Scope } from 'effect'
 import { constVoid, identity } from 'effect/Function'
 import { RpcClient, RpcClientError, RpcSerialization } from 'effect/unstable/rpc'
 import { Protocol } from 'effect/unstable/rpc/RpcClient'
@@ -16,7 +16,7 @@ import * as SubscriptionRef from './SubscriptionRef.ts'
 
 export const layerProtocolSocketWithIsConnected = (options: {
   readonly url: string
-  readonly retryTransientErrors?: Schedule.Schedule<unknown> | undefined
+  readonly retryTransientErrors?: Schedule.Schedule<unknown, Socket.SocketError> | undefined
   readonly isConnected: SubscriptionRef.SubscriptionRef<boolean>
   readonly pingSchedule?: Schedule.Schedule<unknown> | undefined
 }): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | Socket.Socket> =>
@@ -24,21 +24,25 @@ export const layerProtocolSocketWithIsConnected = (options: {
 
 export const makeProtocolSocketWithIsConnected = (options: {
   readonly url: string
-  readonly retryTransientErrors?: Schedule.Schedule<unknown> | undefined
+  readonly retryTransientErrors?: Schedule.Schedule<unknown, Socket.SocketError> | undefined
   // CHANGED: add isConnected subscription ref
   readonly isConnected: SubscriptionRef.SubscriptionRef<boolean>
   // CHANGED: add ping schedule
   readonly pingSchedule?: Schedule.Schedule<unknown> | undefined
-}): Effect.Effect<Protocol['Type'], never, Scope.Scope | RpcSerialization.RpcSerialization | Socket.Socket> =>
+}): Effect.Effect<Protocol['Service'], never, Scope.Scope | RpcSerialization.RpcSerialization | Socket.Socket> =>
   Protocol.make(
-    Effect.fnUntraced(function* (writeResponse) {
+    Effect.fnUntraced(function* (writeResponse, clientIds) {
       const socket = yield* Socket.Socket
       const serialization = yield* RpcSerialization.RpcSerialization
+      const requestClientMap = new Map<string, number>()
 
       const write = yield* socket.writer
-      const parser = serialization.unsafeMake()
+      const parser = serialization.makeUnsafe()
 
       const pinger = yield* makePinger(write(parser.encode(constPing)!), options?.pingSchedule)
+
+      const broadcast = (response: FromServerEncoded) =>
+        Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response), { discard: true })
 
       yield* Effect.suspend(() => {
         // We rely on the heartbeat watchdog while streaming arbitrarily long payloads.
@@ -63,39 +67,42 @@ export const makeProtocolSocketWithIsConnected = (options: {
                   pinger.reset()
                   if (response._tag === 'Pong') {
                     pinger.onPong()
+                    return SubscriptionRef.set(options.isConnected, true)
                   }
-                  return writeResponse(response).pipe(
-                    // CHANGED: set isConnected to true on pong
-                    Effect.tap(
-                      Effect.fn(function* () {
-                        if (options?.isConnected !== undefined) {
-                          yield* SubscriptionRef.set(options.isConnected, true)
-                        }
-                      }),
-                    ),
-                  )
+                  if ('requestId' in response) {
+                    const clientId = requestClientMap.get(response.requestId)
+                    if (clientId !== undefined) {
+                      if (response._tag === 'Exit') {
+                        requestClientMap.delete(response.requestId)
+                      }
+                      return writeResponse(clientId, response)
+                    }
+                  }
+                  return broadcast(response)
                 },
                 step: constVoid,
               })
             } catch (defect) {
-              return writeResponse({
+              return broadcast({
                 _tag: 'ClientProtocolError',
                 error: new RpcClientError.RpcClientError({
-                  reason: 'Protocol',
-                  message: 'Error decoding message',
-                  cause: Cause.fail(defect),
+                  reason: new RpcClientError.RpcClientDefect({
+                    message: 'Error decoding message',
+                    cause: defect,
+                  }),
                 }),
               })
             }
           })
           .pipe(
             Effect.raceFirst(
-              Effect.andThen(
-                pinger.timeout,
+              Effect.flatMap(pinger.timeout, () =>
                 Effect.fail(
-                  new Socket.SocketGenericError({
-                    reason: 'OpenTimeout',
-                    cause: new Error('ping timeout'),
+                  new Socket.SocketError({
+                    reason: new Socket.SocketOpenError({
+                      kind: 'Timeout',
+                      cause: new Error('ping timeout'),
+                    }),
                   }),
                 ),
               ),
@@ -104,35 +111,39 @@ export const makeProtocolSocketWithIsConnected = (options: {
       }).pipe(
         Effect.andThen(
           Effect.fail(
-            new Socket.SocketCloseError({
-              reason: 'Close',
-              code: 1000,
-              closeReason: 'Closing connection',
+            new Socket.SocketError({
+              reason: new Socket.SocketCloseError({
+                code: 1000,
+                closeReason: 'Closing connection',
+              }),
             }),
           ),
         ),
         Effect.tapCause(
-          Effect.fn(function* (cause) {
+          Effect.fn(function* (cause: Cause.Cause<Socket.SocketError>) {
             // CHANGED: set isConnected to false on error
             if (options?.isConnected !== undefined) {
               yield* SubscriptionRef.set(options.isConnected, false)
             }
 
-            const error = Cause.failureOption(cause)
+            const error = Cause.findErrorOption(cause)
             if (
               options?.retryTransientErrors !== undefined &&
               Option.isSome(error) === true &&
-              (error.value.reason === 'Open' || error.value.reason === 'OpenTimeout')
+              error.value.reason._tag === 'SocketOpenError'
             ) {
               return
             }
             // yield* Effect.logError('Error in socket', cause)
-            return yield* writeResponse({
+            return yield* broadcast({
               _tag: 'ClientProtocolError',
               error: new RpcClientError.RpcClientError({
-                reason: 'Protocol',
-                message: 'Error in socket',
-                cause: Cause.squash(cause),
+                reason: Option.isSome(error)
+                  ? error.value.reason
+                  : new RpcClientError.RpcClientDefect({
+                      message: 'Error in socket',
+                      cause: Cause.squash(cause),
+                    }),
               }),
             })
           }),
@@ -145,12 +156,15 @@ export const makeProtocolSocketWithIsConnected = (options: {
         }),
         Effect.interruptible,
         Effect.ignore, // Errors are already handled
-        Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),
+        Effect.provideService(References.UnhandledLogLevel, undefined),
         Effect.forkScoped,
       )
 
       return {
-        send: (request) => {
+        send: (clientId, request) => {
+          if (request._tag === 'Request') {
+            requestClientMap.set(request.id, clientId)
+          }
           const encoded = parser.encode(request)
           if (encoded === undefined) return Effect.void
 
@@ -159,39 +173,48 @@ export const makeProtocolSocketWithIsConnected = (options: {
         supportsAck: true,
         supportsTransferables: false,
         pinger,
-      }
+      } satisfies Omit<Protocol['Service'], 'run'> & { readonly pinger: SocketPinger }
     }),
   )
 
-export const SocketPinger = Effect.map(RpcClient.Protocol, (protocol) => (protocol as any).pinger as SocketPinger)
+export const SocketPinger = Effect.map(RpcClient.Protocol, (protocol) => {
+  if (hasSocketPinger(protocol)) {
+    return protocol.pinger
+  }
+  throw new Error('RpcClient.Protocol does not expose a SocketPinger')
+})
 
-export type SocketPinger = Effect.Effect.Success<ReturnType<typeof makePinger>>
+export type SocketPinger = Effect.Success<ReturnType<typeof makePinger>>
+
+const hasSocketPinger = (
+  protocol: Protocol['Service'],
+): protocol is Protocol['Service'] & { readonly pinger: SocketPinger } => 'pinger' in protocol
 
 const makePinger = Effect.fnUntraced(function* <A, E, R>(
   writePing: Effect.Effect<A, E, R>,
-  pingSchedule: Schedule.Schedule<unknown> = Schedule.spaced(10000).pipe(Schedule.addDelay(() => 5000)),
+  pingSchedule: Schedule.Schedule<unknown> = Schedule.spaced(10000).pipe(Schedule.addDelay(() => Effect.succeed(5000))),
 ) {
   // CHANGED: add manual ping deferreds
   const manualPingDeferreds = new Set<Deferred.Deferred<void>>()
 
   let recievedPong = true
-  const latch = Effect.unsafeMakeLatch()
+  const latch = Latch.makeUnsafe()
   const reset = () => {
     recievedPong = true
-    latch.unsafeClose()
+    latch.closeUnsafe()
   }
   const onPong = () => {
     recievedPong = true
     // CHANGED: mark all manual ping deferreds as done
     for (const deferred of manualPingDeferreds) {
-      Deferred.unsafeDone(deferred, Effect.void)
+      Deferred.doneUnsafe(deferred, Effect.void)
     }
   }
   yield* Effect.suspend(() => {
     // Starting new ping
     if (recievedPong === false) return latch.open
     recievedPong = false
-    return writePing
+    return Effect.asVoid(writePing)
   }).pipe(
     // CHANGED: make configurable via schedule
     Effect.schedule(pingSchedule),
@@ -202,12 +225,14 @@ const makePinger = Effect.fnUntraced(function* <A, E, R>(
   )
 
   // CHANGED: add manual ping
-  const ping = Effect.gen(function* () {
-    const deferred = yield* Deferred.make<void>()
-    manualPingDeferreds.add(deferred)
-    yield* deferred
-    manualPingDeferreds.delete(deferred)
-  })
+  const ping = Effect.acquireRelease(
+    Effect.sync(() => {
+      const deferred = Deferred.makeUnsafe<void>()
+      manualPingDeferreds.add(deferred)
+      return deferred
+    }),
+    (deferred) => Effect.sync(() => manualPingDeferreds.delete(deferred)),
+  ).pipe(Effect.flatMap(Deferred.await))
 
   return { timeout: latch.await, reset, onPong, ping } as const
 })

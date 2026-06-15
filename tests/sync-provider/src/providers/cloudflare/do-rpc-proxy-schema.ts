@@ -8,7 +8,7 @@ import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
 const commonFields = {
   clientId: Schema.String,
   storeId: Schema.String,
-  payload: Schema.UndefinedOr(Schema.JsonValue),
+  payload: Schema.UndefinedOr(Schema.Json),
 }
 
 // RPC definitions that mirror the SyncBackend interface
@@ -71,7 +71,7 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
         name: Schema.String,
         description: Schema.String,
       }),
-      [Schema.Record(Schema.String, Schema.JsonValue)],
+      [Schema.Record(Schema.String, Schema.Json)],
     ),
   }),
 ) {}

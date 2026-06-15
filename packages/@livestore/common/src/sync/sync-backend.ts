@@ -20,14 +20,14 @@ export * from './sync-backend-kv.ts'
 /**
  * Those arguments can be used to implement multi-tenancy etc and are passed in from the store.
  */
-export type MakeBackendArgs<TPayload = Schema.JsonValue> = {
+export type MakeBackendArgs<TPayload = Schema.Json> = {
   storeId: string
   clientId: string
   payload: TPayload | undefined
 }
 
 // TODO rename to `SyncProviderClientConstructor`
-export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue, TPayload = Schema.JsonValue> = (
+export type SyncBackendConstructor<TSyncMetadata = Schema.Json, TPayload = Schema.Json> = (
   args: MakeBackendArgs<TPayload>,
 ) => Effect.Effect<
   SyncBackend<TSyncMetadata>,
@@ -42,7 +42,7 @@ export type SyncBackendConstructor<TSyncMetadata = Schema.JsonValue, TPayload = 
 //   - data center location (e.g. colo on CF workers)
 
 // TODO rename to `SyncProviderClient`
-export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
+export type SyncBackend<TSyncMetadata = Schema.Json> = {
   /**
    * Can be implemented to prepare a connection to the sync backend to speed up the first pull/push.
    */
@@ -77,7 +77,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   /**
    * Metadata describing the sync backend. (Currently only used by devtools.)
    */
-  metadata: { name: string; description: string } & Record<string, Schema.JsonValue>
+  metadata: { name: string; description: string } & Record<string, Schema.Json>
   /** Information about the sync backend capabilities. */
   supports: {
     /**
@@ -154,12 +154,12 @@ export const pageInfoNoMore: PullResPageInfo = { _tag: 'NoMore' } as const
 export const pageInfoMoreUnknown: PullResPageInfo = { _tag: 'MoreUnknown' } as const
 export const pageInfoMoreKnown = (remaining: number): PullResPageInfo => ({ _tag: 'MoreKnown', remaining })
 
-export const pullResItemEmpty = <TSyncMetadata = Schema.JsonValue>(): PullResItem<TSyncMetadata> => ({
+export const pullResItemEmpty = <TSyncMetadata = Schema.Json>(): PullResItem<TSyncMetadata> => ({
   batch: [],
   pageInfo: pageInfoNoMore,
 })
 
-export interface PullResItem<TSyncMetadata = Schema.JsonValue> {
+export interface PullResItem<TSyncMetadata = Schema.Json> {
   batch: ReadonlyArray<{
     eventEncoded: LiveStoreEvent.Global.Encoded
     metadata: Option.Option<TSyncMetadata>
@@ -167,12 +167,12 @@ export interface PullResItem<TSyncMetadata = Schema.JsonValue> {
   pageInfo: PullResPageInfo
 }
 
-export const of = <TSyncMetadata = Schema.JsonValue>(obj: SyncBackend<TSyncMetadata>) => obj
+export const of = <TSyncMetadata = Schema.Json>(obj: SyncBackend<TSyncMetadata>) => obj
 
 /**
  * Useful to continue pulling from the last event in the batch.
  */
-export const cursorFromPullResItem = <TSyncMetadata = Schema.JsonValue>(
+export const cursorFromPullResItem = <TSyncMetadata = Schema.Json>(
   item: PullResItem<TSyncMetadata>,
 ): Option.Option<{
   eventSequenceNumber: EventSequenceNumber.Global.Type

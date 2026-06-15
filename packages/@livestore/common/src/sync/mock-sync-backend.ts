@@ -1,5 +1,5 @@
 import type { Schema, Scope } from '@livestore/utils/effect'
-import { Effect, Mailbox, Option, Queue, Ref, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Effect, Queue, Option, Queue, Ref, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
@@ -49,7 +49,7 @@ export const makeMockSyncBackend = (
 
     // Queues for streaming
     const syncPullQueue = yield* Queue.unbounded<LiveStoreEvent.Global.Encoded>()
-    const pushedEventsQueue = yield* Mailbox.make<LiveStoreEvent.Global.Encoded>()
+    const pushedEventsQueue = yield* Queue.make<LiveStoreEvent.Global.Encoded>()
 
     // Failure simulation state
     const failPushRef = yield* Ref.make<
@@ -210,7 +210,7 @@ export const makeMockSyncBackend = (
       Ref.set(failPullRef, { remaining: count, error })
 
     return {
-      pushedEvents: Mailbox.toStream(pushedEventsQueue),
+      pushedEvents: Queue.toStream(pushedEventsQueue),
       connect: SubscriptionRef.set(syncIsConnectedRef, true),
       disconnect: SubscriptionRef.set(syncIsConnectedRef, false),
       makeSyncBackend,

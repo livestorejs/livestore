@@ -1,12 +1,12 @@
 import * as Vitest from '@effect/vitest'
-import { Effect, Schema, Stream } from 'effect'
+import { Effect, Exit, Fiber, Schema, Stream } from 'effect'
 import { JSDOM } from 'jsdom'
 
 import * as WebChannel from '../../browser/WebChannelBrowser.ts'
 
 Vitest.describe('WebChannel', () => {
   Vitest.describe('windowChannel', () => {
-    Vitest.scopedLive('should work with 2 windows', () =>
+    Vitest.live('should work with 2 windows', () =>
       Effect.gen(function* () {
         const windowA = new JSDOM().window as unknown as globalThis.Window
         const windowB = new JSDOM().window as unknown as globalThis.Window
@@ -20,15 +20,16 @@ Vitest.describe('WebChannel', () => {
           })
 
           const msgFromBFiber = yield* channelToB.listen.pipe(
-            Stream.flatten(),
+            Stream.mapEffect(Exit.match({ onFailure: Effect.failCause, onSuccess: Effect.succeed })),
             Stream.runHead,
-            Effect.flatten,
-            Effect.forkChild,
+            Effect.flatMap(Effect.fromOption),
+            Effect.forkChild({ startImmediately: true }),
           )
 
+          yield* Effect.yieldNow
           yield* channelToB.send(1)
 
-          Vitest.expect(yield* msgFromBFiber).toEqual(2)
+          Vitest.expect(yield* Fiber.join(msgFromBFiber)).toEqual(2)
         })
 
         const codeSideB = Effect.gen(function* () {
@@ -40,22 +41,23 @@ Vitest.describe('WebChannel', () => {
           })
 
           const msgFromAFiber = yield* channelToA.listen.pipe(
-            Stream.flatten(),
+            Stream.mapEffect(Exit.match({ onFailure: Effect.failCause, onSuccess: Effect.succeed })),
             Stream.runHead,
-            Effect.flatten,
-            Effect.forkChild,
+            Effect.flatMap(Effect.fromOption),
+            Effect.forkChild({ startImmediately: true }),
           )
 
+          yield* Effect.yieldNow
           yield* channelToA.send(2)
 
-          Vitest.expect(yield* msgFromAFiber).toEqual(1)
+          Vitest.expect(yield* Fiber.join(msgFromAFiber)).toEqual(1)
         })
 
         yield* Effect.all([codeSideA, codeSideB], { concurrency: 'unbounded' })
       }),
     )
 
-    Vitest.scopedLive('should work with the same window', () =>
+    Vitest.live('should work with the same window', () =>
       Effect.gen(function* () {
         const window = new JSDOM().window as unknown as globalThis.Window
 
@@ -68,15 +70,16 @@ Vitest.describe('WebChannel', () => {
           })
 
           const msgFromBFiber = yield* channelToB.listen.pipe(
-            Stream.flatten(),
+            Stream.mapEffect(Exit.match({ onFailure: Effect.failCause, onSuccess: Effect.succeed })),
             Stream.runHead,
-            Effect.flatten,
-            Effect.forkChild,
+            Effect.flatMap(Effect.fromOption),
+            Effect.forkChild({ startImmediately: true }),
           )
 
+          yield* Effect.yieldNow
           yield* channelToB.send(1)
 
-          Vitest.expect(yield* msgFromBFiber).toEqual(2)
+          Vitest.expect(yield* Fiber.join(msgFromBFiber)).toEqual(2)
         })
 
         const codeSideB = Effect.gen(function* () {
@@ -88,15 +91,16 @@ Vitest.describe('WebChannel', () => {
           })
 
           const msgFromAFiber = yield* channelToA.listen.pipe(
-            Stream.flatten(),
+            Stream.mapEffect(Exit.match({ onFailure: Effect.failCause, onSuccess: Effect.succeed })),
             Stream.runHead,
-            Effect.flatten,
-            Effect.forkChild,
+            Effect.flatMap(Effect.fromOption),
+            Effect.forkChild({ startImmediately: true }),
           )
 
+          yield* Effect.yieldNow
           yield* channelToA.send(2)
 
-          Vitest.expect(yield* msgFromAFiber).toEqual(1)
+          Vitest.expect(yield* Fiber.join(msgFromAFiber)).toEqual(1)
         })
 
         yield* Effect.all([codeSideA, codeSideB], { concurrency: 'unbounded' })

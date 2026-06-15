@@ -4,19 +4,30 @@ import * as Toml from '@iarna/toml'
 import * as wrangler from 'wrangler'
 
 import { IS_CI } from '@livestore/utils'
-import { Cause, Duration, Effect, FileSystem, HttpClient, Schedule, Schema } from '@livestore/utils/effect'
+import {
+  Cause,
+  Context,
+  Duration,
+  Effect,
+  FileSystem,
+  HttpClient,
+  Layer,
+  Schedule,
+  Schema,
+} from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
 
 /**
  * Error type for WranglerDevServer operations
  */
-export class WranglerDevServerError extends Schema.TaggedErrorClass<WranglerDevServerError>(
-  '~@livestore/utils-dev/WranglerDevServerError',
-)('WranglerDevServerError', {
-  cause: Schema.Unknown,
-  message: Schema.String,
-  port: Schema.Number,
-}) {}
+export class WranglerDevServerError extends Schema.TaggedErrorClass<WranglerDevServerError>()(
+  'WranglerDevServerError',
+  {
+    cause: Schema.Defect(),
+    message: Schema.String,
+    port: Schema.Number,
+  },
+) {}
 
 /**
  * WranglerDevServer instance interface
@@ -37,9 +48,9 @@ export interface WranglerDevServer {
  */
 export interface WranglerReadinessOptions {
   /** Max time to wait for wrangler to report ready before retrying. */
-  startupTimeout?: Duration.DurationInput
+  startupTimeout?: Duration.Input
   /** Max time for the HTTP connectivity check after wrangler reports ready. */
-  connectTimeout?: Duration.DurationInput
+  connectTimeout?: Duration.Input
   /** Retry policy for startup attempts (applies when startupTimeout elapses or wrangler throws). */
   retrySchedule?: Schedule.Schedule<unknown>
 }
@@ -68,118 +79,127 @@ export interface StartWranglerDevServerArgs {
  * TODO: Allow for config to be passed in via code instead of `wrangler.toml` file
  * (would need to be placed in temporary file as wrangler only accepts files as config)
  */
-export class WranglerDevServerService extends Effect.Service<WranglerDevServerService>()('WranglerDevServerService', {
-  scoped: (args: StartWranglerDevServerArgs) =>
-    Effect.gen(function* () {
-      const showLogs = args.showLogs ?? false
+export class WranglerDevServerService extends Context.Service<WranglerDevServerService, WranglerDevServer>()(
+  'WranglerDevServerService',
+) {
+  static readonly layer = (args: StartWranglerDevServerArgs) =>
+    Layer.effect(
+      WranglerDevServerService,
+      Effect.gen(function* () {
+        const showLogs = args.showLogs ?? false
 
-      // Allocate preferred port (Wrangler may bind a different one if unavailable)
-      const preferredPort =
-        args.preferredPort ??
-        (yield* getFreePort.pipe(
+        // Allocate preferred port (Wrangler may bind a different one if unavailable)
+        const preferredPort =
+          args.preferredPort ??
+          (yield* getFreePort.pipe(
+            Effect.mapError(
+              (cause) => new WranglerDevServerError({ cause, message: 'Failed to get free port', port: -1 }),
+            ),
+          ))
+
+        yield* Effect.annotateCurrentSpan({ preferredPort })
+
+        const configPath = path.resolve(args.wranglerConfigPath ?? path.join(args.cwd, 'wrangler.toml'))
+
+        const fs = yield* FileSystem.FileSystem
+        const configContent = yield* fs.readFileString(configPath)
+        const parsedConfig = yield* Effect.try({
+          try: () => Toml.parse(configContent),
+          catch: (cause) => cause,
+        }).pipe(
+          Effect.andThen(Schema.decodeUnknownEffect(Schema.Struct({ main: Schema.String }))),
           Effect.mapError(
-            (cause) => new WranglerDevServerError({ cause, message: 'Failed to get free port', port: -1 }),
+            (error) =>
+              new WranglerDevServerError({ cause: error, message: 'Failed to parse wrangler config', port: -1 }),
           ),
-        ))
-
-      yield* Effect.annotateCurrentSpan({ preferredPort })
-
-      const configPath = path.resolve(args.wranglerConfigPath ?? path.join(args.cwd, 'wrangler.toml'))
-
-      const fs = yield* FileSystem.FileSystem
-      const configContent = yield* fs.readFileString(configPath)
-      const parsedConfig = yield* Effect.try(() => Toml.parse(configContent)).pipe(
-        Effect.andThen(Schema.decodeUnknownEffect(Schema.Struct({ main: Schema.String }))),
-        Effect.mapError(
-          (error) => new WranglerDevServerError({ cause: error, message: 'Failed to parse wrangler config', port: -1 }),
-        ),
-      )
-      const resolvedMainPath = yield* Effect.try(() => path.resolve(args.cwd, parsedConfig.main))
-
-      const readiness = args.readiness ?? {}
-      const startupTimeout = readiness.startupTimeout ?? Duration.seconds(IS_CI === true ? 30 : 10)
-      const devServer = yield* Effect.promise(() =>
-        wrangler.unstable_dev(resolvedMainPath, {
-          config: configPath,
-          port: preferredPort,
-          inspectorPort: args.inspectorPort ?? 0,
-          persistTo: path.join(args.cwd, '.wrangler/state'),
-          logLevel: showLogs === true ? 'debug' : 'none',
-          experimental: {
-            disableExperimentalWarning: true,
-          },
-        }),
-      ).pipe(
-        Effect.timeout(startupTimeout),
-        Effect.mapError(
-          (cause) =>
-            new WranglerDevServerError({
-              cause,
-              message: `Failed to start wrangler dev server within ${Duration.format(startupTimeout)}`,
-              port: preferredPort,
-            }),
-        ),
-        Effect.tapError((error) =>
-          Effect.logError('Wrangler dev server failed to start', {
-            message: error.message,
-            preferredPort,
-            cwd: args.cwd,
-          }),
-        ),
-        Effect.retry(readiness.retrySchedule ?? Schedule.recurs(1)),
-      )
-
-      yield* Effect.addFinalizer(
-        Effect.fn(
-          function* (exit) {
-            if (exit._tag === 'Failure' && Cause.isInterruptedOnly(exit.cause) === false) {
-              yield* Effect.logError('Closing wrangler dev server on failure', exit.cause)
-            }
-
-            yield* Effect.tryPromise(async () => {
-              await devServer.stop()
-              // TODO investigate whether we need to wait until exit (see workers-sdk repo/talk to Cloudflare team)
-              // await devServer.waitUntilExit()
-            })
-          },
-          Effect.timeout('5 seconds'),
-          Effect.orDie,
-          Effect.tapCauseLogPretty,
-          Effect.withSpan('WranglerDevServerService:stopDevServer'),
-        ),
-      )
-
-      const actualPort = devServer.port
-      const actualHost = devServer.address
-      const url = `http://${actualHost}:${actualPort}`
-
-      // Use longer timeout in CI environments to account for slower HTTP readiness
-      const defaultConnectivityTimeout = Duration.seconds(IS_CI === true ? 30 : 5)
-      const connectivityTimeout = readiness.connectTimeout ?? defaultConnectivityTimeout
-
-      yield* verifyHttpConnectivity({ url, showLogs, connectTimeout: connectivityTimeout })
-
-      if (showLogs === true) {
-        yield* Effect.logDebug(
-          `Wrangler dev server ready and accepting connections on port ${actualPort} (preferred: ${preferredPort})`,
         )
-      }
+        const resolvedMainPath = path.resolve(args.cwd, parsedConfig.main)
 
-      return {
-        port: actualPort,
-        url,
-      } satisfies WranglerDevServer
-    }).pipe(
-      Effect.mapError((error) =>
-        error instanceof WranglerDevServerError
-          ? error
-          : new WranglerDevServerError({ cause: error, message: 'Failed to start wrangler dev server', port: -1 }),
+        const readiness = args.readiness ?? {}
+        const startupTimeout = readiness.startupTimeout ?? Duration.seconds(IS_CI === true ? 30 : 10)
+        const devServer = yield* Effect.promise(() =>
+          wrangler.unstable_dev(resolvedMainPath, {
+            config: configPath,
+            port: preferredPort,
+            inspectorPort: args.inspectorPort ?? 0,
+            persistTo: path.join(args.cwd, '.wrangler/state'),
+            logLevel: showLogs === true ? 'debug' : 'none',
+            experimental: {
+              disableExperimentalWarning: true,
+            },
+          }),
+        ).pipe(
+          Effect.timeout(startupTimeout),
+          Effect.mapError(
+            (cause) =>
+              new WranglerDevServerError({
+                cause,
+                message: `Failed to start wrangler dev server within ${Duration.toMillis(Duration.fromInputUnsafe(startupTimeout))}ms`,
+                port: preferredPort,
+              }),
+          ),
+          Effect.tapError((error) =>
+            Effect.logError('Wrangler dev server failed to start', {
+              message: error.message,
+              preferredPort,
+              cwd: args.cwd,
+            }),
+          ),
+          Effect.retry(readiness.retrySchedule ?? Schedule.recurs(1)),
+        )
+
+        yield* Effect.addFinalizer(
+          Effect.fn('WranglerDevServerService:finalizer')(
+            function* (exit) {
+              if (exit._tag === 'Failure' && Cause.hasInterruptsOnly(exit.cause) === false) {
+                yield* Effect.logError('Closing wrangler dev server on failure', exit.cause)
+              }
+
+              yield* Effect.tryPromise(async () => {
+                await devServer.stop()
+                // TODO investigate whether we need to wait until exit (see workers-sdk repo/talk to Cloudflare team)
+                // await devServer.waitUntilExit()
+              })
+            },
+            Effect.timeout('5 seconds'),
+            Effect.orDie,
+            Effect.tapCauseLogPretty,
+            Effect.withSpan('WranglerDevServerService:stopDevServer'),
+          ),
+        )
+
+        const actualPort = devServer.port
+        const actualHost = devServer.address
+        const url = `http://${actualHost}:${actualPort}`
+
+        // Use longer timeout in CI environments to account for slower HTTP readiness
+        const defaultConnectivityTimeout = Duration.seconds(IS_CI === true ? 30 : 5)
+        const connectivityTimeout = readiness.connectTimeout ?? defaultConnectivityTimeout
+
+        yield* verifyHttpConnectivity({ url, showLogs, connectTimeout: connectivityTimeout })
+
+        if (showLogs === true) {
+          yield* Effect.logDebug(
+            `Wrangler dev server ready and accepting connections on port ${actualPort} (preferred: ${preferredPort})`,
+          )
+        }
+
+        return WranglerDevServerService.of({
+          port: actualPort,
+          url,
+        })
+      }).pipe(
+        Effect.mapError((error) =>
+          error instanceof WranglerDevServerError
+            ? error
+            : new WranglerDevServerError({ cause: error, message: 'Failed to start wrangler dev server', port: -1 }),
+        ),
+        Effect.withSpan('WranglerDevServerService', {
+          attributes: { preferredPort: args.preferredPort ?? 'auto', cwd: args.cwd },
+        }),
       ),
-      Effect.withSpan('WranglerDevServerService', {
-        attributes: { preferredPort: args.preferredPort ?? 'auto', cwd: args.cwd },
-      }),
-    ),
-}) {}
+    )
+}
 
 /**
  * Verifies the server is actually accepting HTTP connections by making a test request
@@ -191,7 +211,7 @@ const verifyHttpConnectivity = ({
 }: {
   url: string
   showLogs: boolean
-  connectTimeout: Duration.DurationInput
+  connectTimeout: Duration.Input
 }): Effect.Effect<void, WranglerDevServerError, HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const client = yield* HttpClient.HttpClient
@@ -200,25 +220,19 @@ const verifyHttpConnectivity = ({
       yield* Effect.logDebug(`Verifying HTTP connectivity to ${url}`)
     }
 
-    // Try to connect with retries using exponential backoff
     yield* client.get(url).pipe(
-      Effect.retryOrElse(
-        Schedule.exponential('50 millis', 2).pipe(
-          Schedule.jittered,
-          Schedule.intersect(Schedule.elapsed.pipe(Schedule.whileOutput(Duration.lessThanOrEqualTo(connectTimeout)))),
-          Schedule.compose(Schedule.count),
-        ),
-        (error, attemptCount) =>
-          Effect.fail(
-            new WranglerDevServerError({
-              cause: error,
-              message: `Failed to establish HTTP connection to Wrangler server at ${url} after ${attemptCount} attempts (timeout: ${Duration.toMillis(connectTimeout)}ms)`,
-              port: 0,
-            }),
-          ),
+      Effect.retry(Schedule.exponential('50 millis', 2).pipe(Schedule.jittered)),
+      Effect.timeout(connectTimeout),
+      Effect.mapError(
+        (error) =>
+          new WranglerDevServerError({
+            cause: error,
+            message: `Failed to establish HTTP connection to Wrangler server at ${url} (timeout: ${Duration.toMillis(Duration.fromInputUnsafe(connectTimeout))}ms)`,
+            port: 0,
+          }),
       ),
       Effect.tap(() => (showLogs === true ? Effect.logDebug(`HTTP connectivity verified for ${url}`) : Effect.void)),
       Effect.asVoid,
       Effect.withSpan('verifyHttpConnectivity'),
     )
-  })
+  }) as Effect.Effect<void, WranglerDevServerError, HttpClient.HttpClient>

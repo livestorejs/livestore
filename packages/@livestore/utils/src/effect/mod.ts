@@ -1,21 +1,5 @@
 import '../global.ts'
 
-export {
-  AiError,
-  LanguageModel,
-  LanguageModel as AiLanguageModel,
-  McpSchema,
-  McpServer,
-  Model,
-  Model as AiModel,
-  Prompt,
-  Tool,
-  Tool as AiTool,
-  Toolkit,
-  Toolkit as AiToolkit,
-} from '@effect/ai'
-// export { DevTools as EffectDevtools } from '@effect/experimental'
-export { Sse } from '@effect/experimental'
 export * as Otlp from 'effect/unstable/observability/Otlp'
 export * as PlatformError from 'effect/PlatformError'
 export { Msgpack } from 'effect/unstable/encoding'
@@ -41,7 +25,6 @@ export { Socket } from 'effect/unstable/socket'
 export { Transferable, Worker, WorkerError, WorkerRunner } from 'effect/unstable/workers'
 export {
   Rpc,
-  // RpcClient, // TODO bring back "original" RpcClient from effect/rpc
   RpcClientError,
   RpcGroup,
   RpcMessage,
@@ -61,7 +44,6 @@ export {
   Channel,
   Chunk,
   Config,
-  ConfigError,
   ConfigProvider,
   Console,
   Context,
@@ -70,44 +52,32 @@ export {
   Duration,
   Result,
   Equal,
-  ExecutionStrategy,
   Exit,
-  FastCheck,
   Fiber,
   FileSystem,
   Terminal,
   FiberHandle,
-  FiberId,
   FiberMap,
-  FiberRef,
-  FiberRefs,
-  FiberRefsPatch,
   FiberSet,
-  GlobalValue,
+  Formatter,
   Hash,
   HashMap,
   HashSet,
   Inspectable,
   identity,
   Layer,
-  List,
   LogLevel,
-  LogSpan,
-  Mailbox,
   ManagedRuntime,
   Match,
   Metric,
-  MetricState,
   MutableHashMap,
   MutableHashSet,
+  MutableList,
   Option,
   Order,
-  ParseResult,
   Predicate,
-  Pretty,
   PrimaryKey,
   PubSub,
-  // Subscribable,
   pipe,
   Queue,
   RcMap,
@@ -116,27 +86,24 @@ export {
   Redacted,
   Ref,
   Request,
+  References,
   Runtime,
-  RuntimeFlags,
   Scope,
   ScopedRef,
+  SchemaIssue,
+  SchemaParser,
+  SchemaRepresentation,
   Sink,
-  SortedMap,
-  STM,
   Struct,
+  Graph,
   SynchronizedRef,
-  TestClock,
-  TestServices,
-  TQueue,
-  TRef,
+  TxQueue,
   Tracer,
   Types,
 } from 'effect'
+export { FastCheck, TestClock, TestConsole, TestSchema } from 'effect/testing'
 export type { NonEmptyArray } from 'effect/Array'
 export { constVoid, dual } from 'effect/Function'
-export * as Graph from 'effect/Graph'
-export { TreeFormatter } from 'effect/ParseResult'
-export type { Serializable, SerializableWithResult } from 'effect/Schema'
 export * as SchemaAST from 'effect/SchemaAST'
 export * as BucketQueue from './BucketQueue.ts'
 export * as Debug from './Debug.ts'

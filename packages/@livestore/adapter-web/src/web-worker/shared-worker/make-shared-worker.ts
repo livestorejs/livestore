@@ -136,7 +136,7 @@ const makeWorkerRunner = Effect.gen(function* () {
   const InvariantsSchema = Schema.Struct({
     storeId: Schema.String,
     storageOptions: WorkerSchema.StorageType,
-    syncPayloadEncoded: Schema.UndefinedOr(Schema.JsonValue),
+    syncPayloadEncoded: Schema.UndefinedOr(Schema.Json),
     liveStoreVersion: Schema.Literal(liveStoreVersion),
     devtoolsEnabled: Schema.Boolean,
   })

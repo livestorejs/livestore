@@ -27,7 +27,7 @@ export const makePush =
     ctx,
     env,
   }: {
-    payload: Schema.JsonValue | undefined
+    payload: Schema.Json | undefined
     headers: ForwardedHeaders | undefined
     options: MakeDurableObjectClassOptions | undefined
     storeId: StoreId
