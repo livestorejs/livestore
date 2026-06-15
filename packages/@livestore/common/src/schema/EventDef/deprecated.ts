@@ -30,8 +30,7 @@
  * @module
  */
 
-import type { Schema } from '@livestore/utils/effect'
-import { Effect, Option, SchemaAST } from '@livestore/utils/effect'
+import { type Schema, Effect, Option, SchemaAST } from '@livestore/utils/effect'
 
 import type { EventDef } from './event-def.ts'
 

@@ -1,7 +1,6 @@
 import { describe, it } from 'vitest'
 
-import type { OtelTracer } from '@livestore/utils/effect'
-import { Effect, Layer } from '@livestore/utils/effect'
+import { type OtelTracer, Effect, Layer } from '@livestore/utils/effect'
 
 import { schema } from '../utils/tests/fixture.ts'
 import { Store, type StoreTagClass } from './LiveStore.ts'

@@ -1,5 +1,4 @@
-import type { Effect, Scope, WebChannel } from '@livestore/utils/effect'
-import { Schema } from '@livestore/utils/effect'
+import { type Effect, type Scope, type WebChannel, Schema } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import type { MeshNode } from '@livestore/webmesh'
 

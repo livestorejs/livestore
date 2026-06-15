@@ -1,5 +1,7 @@
-import type { ParseResult, Scope, WebChannel } from '@livestore/utils/effect'
 import {
+  type ParseResult,
+  type Scope,
+  type WebChannel,
   Data,
   Duration,
   Effect,

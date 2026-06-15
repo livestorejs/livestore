@@ -1,5 +1,4 @@
-import type { WebChannel } from '@livestore/utils/effect'
-import { Schema } from '@livestore/utils/effect'
+import { type WebChannel, Schema } from '@livestore/utils/effect'
 
 import { BackendIdMismatchError, IntentionalShutdownCause, MaterializeError, UnknownError } from '../index.ts'
 

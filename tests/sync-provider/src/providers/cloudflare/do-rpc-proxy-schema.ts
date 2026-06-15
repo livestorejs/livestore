@@ -2,8 +2,7 @@ import { BackendIdMismatchError, IsOfflineError, ServerAheadError, UnknownError 
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { SyncMessage } from '@livestore/sync-cf/common'
 /** Explicit type imports so TypeScript can name inferred types in declaration emit (fixes TS2742). */
-import type { Brand, RpcSchema } from '@livestore/utils/effect'
-import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
+import { type Brand, type RpcSchema, Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
 
 const commonFields = {
   clientId: Schema.String,

@@ -8,8 +8,7 @@ import { test } from '@playwright/test'
 
 import * as Playwright from '@livestore/effect-playwright'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import type { Scope } from '@livestore/utils/effect'
-import { Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
+import { type Scope, Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
 
 import { checkConnectionRemainsActive, checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
 

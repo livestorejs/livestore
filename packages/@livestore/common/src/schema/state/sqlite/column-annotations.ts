@@ -1,5 +1,4 @@
-import type { Schema } from '@livestore/utils/effect'
-import { dual, Option, SchemaAST } from '@livestore/utils/effect'
+import { type Schema, dual, Option, SchemaAST } from '@livestore/utils/effect'
 
 import type { SqliteDsl } from './db-schema/mod.ts'
 
