@@ -1,5 +1,5 @@
 import type { Schema, Scope } from '@livestore/utils/effect'
-import { Effect, Mailbox, Option, Queue, Ref, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Effect, Mailbox, Option, Queue, Ref, Semaphore, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
@@ -40,7 +40,7 @@ export const makeMockSyncBackend = (
 ): Effect.Effect<MockSyncBackend, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
     const span = yield* Effect.currentSpan.pipe(Effect.orDie)
-    const semaphore = yield* Effect.makeSemaphore(1)
+    const semaphore = yield* Semaphore.make(1)
 
     // State refs
     const syncHeadRef = yield* Ref.make(EventSequenceNumber.Client.ROOT.global)
