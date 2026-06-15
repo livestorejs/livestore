@@ -1,5 +1,5 @@
 import type { Scope, SubscriptionRef } from '@livestore/utils/effect'
-import { Effect, Stream } from '@livestore/utils/effect'
+import { Effect, Latch, Stream } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
 
 import type {
@@ -53,7 +53,7 @@ export const makeClientSession = <R>({
   Effect.gen(function* () {
     const devtools: ClientSession['devtools'] =
       devtoolsEnabled === true
-        ? { enabled: true, pullLatch: yield* Effect.makeLatch(true), pushLatch: yield* Effect.makeLatch(true) }
+        ? { enabled: true, pullLatch: yield* Latch.make(true), pushLatch: yield* Latch.make(true) }
         : { enabled: false }
 
     if (devtoolsEnabled === true) {

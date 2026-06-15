@@ -2,6 +2,7 @@ import {
   type Effect,
   type Exit,
   type Queue,
+  type Latch,
   Schema,
   type Scope,
   type SubscriptionRef,
@@ -28,7 +29,7 @@ export * from './sqlite-types.ts'
 export interface ClientSession {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
   sqliteDb: SqliteDb
-  devtools: { enabled: false } | { enabled: true; pullLatch: Effect.Latch; pushLatch: Effect.Latch }
+  devtools: { enabled: false } | { enabled: true; pullLatch: Latch.Latch; pushLatch: Latch.Latch }
   clientId: string
   sessionId: string
   /** Status info whether current session is leader or not */

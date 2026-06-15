@@ -1,4 +1,4 @@
-import { Deferred, Exit, Predicate, Queue, Schema, Scope, Stream } from 'effect'
+import { Deferred, Exit, Latch, Predicate, Queue, Schema, Scope, Stream } from 'effect'
 
 import * as Effect from '../Effect.ts'
 import type { InputSchema, WebChannel } from './common.ts'
@@ -44,7 +44,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
       const schema = mapSchema(inputSchema)
 
       const peerIdRef = { current: undefined as undefined | string }
-      const connectedLatch = yield* Effect.makeLatch(false)
+      const connectedLatch = yield* Latch.make(false)
       const supportsTransferables = false
 
       const postMessage = (msg: typeof Message.Type) => channel.postMessage(Schema.encodeEffectSync(Message)(msg))
