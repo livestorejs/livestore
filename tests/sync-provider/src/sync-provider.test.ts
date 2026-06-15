@@ -37,7 +37,7 @@ const makeFactory = EventFactory.makeFactory(events)
 
 const providerLayers = providerKeys.map((key) => providerRegistry[key])
 
-const withTestCtx = ({ suffix, timeout }: { suffix?: string; timeout?: Duration.DurationInput } = {}) =>
+const withTestCtx = ({ suffix, timeout }: { suffix?: string; timeout?: Duration.Input } = {}) =>
   Vitest.makeWithTestCtx({
     suffix,
     timeout,

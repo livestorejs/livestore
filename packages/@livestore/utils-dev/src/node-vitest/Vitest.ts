@@ -40,7 +40,7 @@ export const makeWithTestCtx: <ROut = never, E1 = never, RIn = never>(
 export type WithTestCtxParams<ROut, E1, RIn> = {
   suffix?: string
   makeLayer?: (testContext: Vitest.TestContext) => Layer.Layer<ROut, E1, RIn | Scope.Scope>
-  timeout?: Duration.DurationInput
+  timeout?: Duration.Input
   forceOtel?: boolean
 }
 
@@ -55,7 +55,7 @@ export const withTestCtx =
     }: {
       suffix?: string
       makeLayer?: (testContext: Vitest.TestContext) => Layer.Layer<ROut, E1, RIn>
-      timeout?: Duration.DurationInput
+      timeout?: Duration.Input
       forceOtel?: boolean
     } = {},
   ) =>

@@ -37,9 +37,9 @@ export interface WranglerDevServer {
  */
 export interface WranglerReadinessOptions {
   /** Max time to wait for wrangler to report ready before retrying. */
-  startupTimeout?: Duration.DurationInput
+  startupTimeout?: Duration.Input
   /** Max time for the HTTP connectivity check after wrangler reports ready. */
-  connectTimeout?: Duration.DurationInput
+  connectTimeout?: Duration.Input
   /** Retry policy for startup attempts (applies when startupTimeout elapses or wrangler throws). */
   retrySchedule?: Schedule.Schedule<unknown>
 }
@@ -191,7 +191,7 @@ const verifyHttpConnectivity = ({
 }: {
   url: string
   showLogs: boolean
-  connectTimeout: Duration.DurationInput
+  connectTimeout: Duration.Input
 }): Effect.Effect<void, WranglerDevServerError, HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const client = yield* HttpClient.HttpClient
