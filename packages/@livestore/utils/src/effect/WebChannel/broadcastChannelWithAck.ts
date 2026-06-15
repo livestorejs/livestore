@@ -114,7 +114,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
         }),
       )
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
       return {
         [WebChannelSymbol]: WebChannelSymbol,

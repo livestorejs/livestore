@@ -213,7 +213,7 @@ export const makeDirectChannel = ({
 
       const listen = Stream.fromQueue(listenQueue, { maxChunkSize: 1 }).pipe(Stream.map(Result.succeed))
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
       const webChannel = {
         [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,

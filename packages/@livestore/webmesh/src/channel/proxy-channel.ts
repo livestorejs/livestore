@@ -162,8 +162,9 @@ export const makeProxyChannel = ({
       const getCombinedChannelId = (otherSideChannelIdCandidate: string) =>
         [channelIdCandidate, otherSideChannelIdCandidate].toSorted().join('_')
 
-      const earlyPayloadBuffer = yield* Queue.unbounded<typeof MeshSchema.ProxyChannelPayload.Type>().pipe(
-        Effect.acquireRelease(Queue.shutdown),
+      const earlyPayloadBuffer = yield* Effect.acquireRelease(
+        Queue.unbounded<typeof MeshSchema.ProxyChannelPayload.Type>(),
+        Queue.shutdown,
       )
 
       const processProxyPacket = ({ packet, respondToSender }: ProxyQueueItem) =>
@@ -472,7 +473,7 @@ export const makeProxyChannel = ({
 
       const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Result.succeed))
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
       const runtime = yield* Effect.runtime()
 
