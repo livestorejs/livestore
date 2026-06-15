@@ -7,6 +7,40 @@
 
 import { livestoreCurrentPackageNames, workspaceCatalogForPackageNames } from './repo-topology.ts'
 
+/** Effect v4 packages share one release version; keep LiveStore pins aligned as a single catalog unit. */
+export const effectVersion = '4.0.0-beta.78'
+
+export const effectV4Catalog = {
+  effect: effectVersion,
+  '@effect/ai-openai': effectVersion,
+  '@effect/opentelemetry': effectVersion,
+  '@effect/platform-browser': effectVersion,
+  '@effect/platform-bun': effectVersion,
+  '@effect/platform-node': effectVersion,
+  '@effect/platform-node-shared': effectVersion,
+  '@effect/sql-sqlite-node': effectVersion,
+  '@effect/vitest': effectVersion,
+} as const
+
+/**
+ * effect-utils is still pinned to an Effect v3 catalog. Filter these packages
+ * out before catalog composition so generated metadata cannot accidentally
+ * reintroduce v3-era peers that v4 moved into `effect` or unstable modules.
+ */
+export const obsoleteEffectV3Packages = [
+  '@effect/ai',
+  '@effect/cli',
+  '@effect/cluster',
+  '@effect/experimental',
+  '@effect/platform',
+  '@effect/printer',
+  '@effect/printer-ansi',
+  '@effect/rpc',
+  '@effect/sql',
+  '@effect/typeclass',
+  '@effect/workflow',
+] as const
+
 export {
   livestoreCorePackageNames,
   livestoreCurrentPackageNames,
@@ -94,11 +128,6 @@ export const livestoreOnlyCatalog = {
   'jasmine-core': '4.5.0',
   jsdom: '26.1.0',
   'web-test-runner-jasmine': '0.0.6',
-  '@effect/ai-openai': '0.39.0',
-  '@effect/platform-browser': '0.76.0',
-  '@effect/platform-bun': '0.89.0',
-  '@effect/platform-node-shared': '0.59.0',
-  '@effect/sql-sqlite-node': '0.52.0',
   '@opentelemetry/context-zone': '2.2.0',
   '@opentelemetry/core': '2.2.0',
   '@opentelemetry/exporter-metrics-otlp-grpc': '0.208.0',
