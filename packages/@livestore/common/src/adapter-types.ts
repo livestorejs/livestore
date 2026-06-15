@@ -57,7 +57,7 @@ export const BootStateProgress = Schema.Struct({
  * - `storage-unavailable`: OPFS access denied for other reasons (permissions, quota)
  * - `unknown`: Unexpected error during storage initialization
  */
-export const BootWarningReason = Schema.Literal('private-browsing', 'storage-unavailable', 'unknown')
+export const BootWarningReason = Schema.Literals(['private-browsing', 'storage-unavailable', 'unknown'])
 export type BootWarningReason = typeof BootWarningReason.Type
 
 /**
@@ -67,7 +67,7 @@ export type BootWarningReason = typeof BootWarningReason.Type
  * - `persisted`: Data is persisted to disk (e.g., via OPFS)
  * - `in-memory`: Data is only stored in memory and will be lost on page refresh
  */
-export const StorageMode = Schema.Literal('persisted', 'in-memory')
+export const StorageMode = Schema.Literals(['persisted', 'in-memory'])
 export type StorageMode = typeof StorageMode.Type
 
 export const BootStatus = Schema.Union(

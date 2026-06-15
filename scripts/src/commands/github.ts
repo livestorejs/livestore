@@ -9,13 +9,13 @@ const REPO = 'livestore'
 
 const RulesetRequestBody = Schema.Struct({
   name: Schema.String,
-  target: Schema.Literal('branch', 'tag'),
-  enforcement: Schema.Literal('disabled', 'active', 'evaluate'),
+  target: Schema.Literals(['branch', 'tag']),
+  enforcement: Schema.Literals(['disabled', 'active', 'evaluate']),
   bypass_actors: Schema.Array(
     Schema.Struct({
       actor_id: Schema.Number,
-      actor_type: Schema.Literal('RepositoryRole', 'Team', 'Integration', 'OrganizationAdmin', 'DeployKey'),
-      bypass_mode: Schema.Literal('always', 'pull_request', 'exempt'),
+      actor_type: Schema.Literals(['RepositoryRole', 'Team', 'Integration', 'OrganizationAdmin', 'DeployKey']),
+      bypass_mode: Schema.Literals(['always', 'pull_request', 'exempt']),
     }),
   ),
   conditions: Schema.Struct({
@@ -55,8 +55,8 @@ interface TExistingRuleset {
 
 const ManagedRulesetSchema = Schema.Struct({
   name: Schema.String,
-  target: Schema.Literal('branch', 'tag'),
-  enforcement: Schema.Literal('disabled', 'active', 'evaluate'),
+  target: Schema.Literals(['branch', 'tag']),
+  enforcement: Schema.Literals(['disabled', 'active', 'evaluate']),
   bypass_actors: Schema.optional(Schema.NullOr(RulesetRequestBody.fields.bypass_actors)),
   conditions: RulesetRequestBody.fields.conditions,
   rules: RulesetRequestBody.fields.rules,

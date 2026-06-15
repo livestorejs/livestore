@@ -163,7 +163,7 @@ In your `schema.ts` file, add another table definition to the `tables` object. T
 ```diff title="src/livestore/schema.ts" lang="ts"
 +import { Events, makeSchema, Schema, State, SessionIdSymbol } from '@livestore/livestore'
 
-+export const Filter = Schema.Literal('All', 'Active', 'Completed')
++export const Filter = Schema.Literals(['All', 'Active', 'Completed'])
 +export type Filter = typeof Filter.Type
 
 export const tables = {

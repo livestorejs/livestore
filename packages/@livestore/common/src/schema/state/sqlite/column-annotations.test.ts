@@ -66,7 +66,7 @@ describe.concurrent('annotations', () => {
       })
 
       test('Union of same type with compatible column type', () => {
-        const unionSchema = Schema.Literal('a', 'b')
+        const unionSchema = Schema.Literals(['a', 'b'])
         expect(() => withColumnType(unionSchema, 'text')).not.toThrow()
       })
 
