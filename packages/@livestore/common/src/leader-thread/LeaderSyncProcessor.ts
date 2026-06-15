@@ -15,6 +15,7 @@ import {
   ReadonlyArray,
   Schedule,
   Schema,
+  Semaphore,
   Stream,
   Subscribable,
   SubscriptionRef,
@@ -232,7 +233,7 @@ export const make = Effect.fnUntraced(function* ({
   ]
   const localPushesQueue = yield* BucketQueue.make<LocalPushQueueItem>()
   // Ensures mutual exclusion between local push and backend pull processing.
-  const localPushBackendPullMutex = yield* Effect.makeSemaphore(1)
+  const localPushBackendPullMutex = yield* Semaphore.make(1)
 
   /**
    * Additionally to the `syncStateSref` we also need the `pushHeadRef` in order to prevent old/duplicate
