@@ -107,7 +107,7 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
      *
      * @default 1 second
      */
-    timeout?: Duration.DurationInput
+    timeout?: Duration.Input
     /**
      * If true, will close an existing channel if it exists.
      *

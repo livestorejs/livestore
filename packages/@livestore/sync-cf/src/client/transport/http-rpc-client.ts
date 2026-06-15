@@ -41,7 +41,7 @@ export interface HttpSyncOptions {
      * How often to poll for new events
      * @default 5 seconds
      */
-    pollInterval?: Duration.DurationInput
+    pollInterval?: Duration.Input
   }
   ping?: {
     /**
@@ -52,12 +52,12 @@ export interface HttpSyncOptions {
      * How long to wait for a ping response before timing out
      * @default 10 seconds
      */
-    requestTimeout?: Duration.DurationInput
+    requestTimeout?: Duration.Input
     /**
      * How often to send ping requests
      * @default 10 seconds
      */
-    requestInterval?: Duration.DurationInput
+    requestInterval?: Duration.Input
   }
 }
 

@@ -59,8 +59,8 @@ export const requestSessionInfoSubscription = ({
   staleTimeout = Duration.seconds(5),
 }: {
   webChannel: WebChannel.WebChannel<Message, Message>
-  pollInterval?: Duration.DurationInput
-  staleTimeout?: Duration.DurationInput
+  pollInterval?: Duration.Input
+  staleTimeout?: Duration.Input
 }): Effect.Effect<Subscribable.Subscribable<HashSet.HashSet<SessionInfo>>, ParseResult.ParseError, Scope.Scope> =>
   Effect.gen(function* () {
     yield* webChannel
