@@ -237,7 +237,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
                 }),
             ),
           )
-        }).pipe(Stream.unwrapScoped)
+        }).pipe(Stream.unwrap)
 
       const down = Effect.fn('downDockerCompose')(function* (options?: {
         readonly env?: Record<string, string>

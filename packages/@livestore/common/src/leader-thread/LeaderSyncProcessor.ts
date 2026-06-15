@@ -792,7 +792,7 @@ export const make = Effect.fnUntraced(function* ({
           Effect.flatMap((runtime) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))),
         )
         return Stream.fromQueue(queue)
-      }).pipe(Stream.unwrapScoped),
+      }).pipe(Stream.unwrap),
     /*
       Notes for a potential new `LeaderSyncProcessor.pull` implementation:
 
