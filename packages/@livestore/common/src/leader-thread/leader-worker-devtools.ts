@@ -406,9 +406,9 @@ const listenToDevtools = ({
                 yield* Effect.sleep(1000)
 
                 yield* Stream.zipLatest(
-                  syncBackend.isConnected.changes,
+                  SubscriptionRef.changes(syncBackend.isConnected),
                   devtools.enabled === true
-                    ? devtools.syncBackendLatchState.changes
+                    ? SubscriptionRef.changes(devtools.syncBackendLatchState)
                     : Stream.make({ latchClosed: false }),
                 ).pipe(
                   Stream.tap(([isConnected, { latchClosed }]) =>

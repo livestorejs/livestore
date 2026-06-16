@@ -426,7 +426,7 @@ export const makeNetworkStatusSubscribable = ({
       }))
 
     if (syncBackend !== undefined) {
-      yield* syncBackend.isConnected.changes.pipe(
+      yield* SubscriptionRef.changes(syncBackend.isConnected).pipe(
         Stream.tap((isConnected) => updateNetworkStatus({ isConnected })),
         Stream.runDrain,
         Effect.interruptible,
@@ -436,7 +436,7 @@ export const makeNetworkStatusSubscribable = ({
     }
 
     if (devtoolsContext.enabled === true) {
-      yield* devtoolsContext.syncBackendLatchState.changes.pipe(
+      yield* SubscriptionRef.changes(devtoolsContext.syncBackendLatchState).pipe(
         Stream.tap(({ latchClosed }) => updateNetworkStatus({ latchClosed })),
         Stream.runDrain,
         Effect.interruptible,
