@@ -984,7 +984,7 @@ const makePullQueueSet = Effect.gen(function* () {
       //   ]),
       // )
 
-      yield* queue.offerAll(payloadsSinceCursor)
+      yield* Queue.offerAll(queue, payloadsSinceCursor)
 
       set.add(queue)
 

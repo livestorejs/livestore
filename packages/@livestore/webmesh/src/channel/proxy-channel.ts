@@ -268,7 +268,7 @@ export const makeProxyChannel = ({
               const establishedState = channelStateRef.current
               if (establishedState._tag === 'Established') {
                 //
-                const bufferedPackets = yield* Queue.takeAll(earlyPayloadBuffer)
+                const bufferedPackets = yield* Queue.clear(earlyPayloadBuffer)
                 // yield* Effect.logDebug(
                 //   `[${nodeName}] Draining early payload buffer (${bufferedPackets.length}) after ResponseSuccess`,
                 // )

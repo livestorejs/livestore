@@ -310,7 +310,7 @@ export const createStore = <
 
       yield* Queue.take(bootStatusQueue).pipe(
         Effect.tapSync((status) => onBootStatus?.(status)),
-        Effect.tap((status) => (status.stage === 'done' ? Queue.shutdown(bootStatusQueue) : Effect.void)),
+        Effect.tap((status) => (status.stage === 'done' ? Queue.shutdown(bootStatusQueue).pipe(Effect.asVoid) : Effect.void)),
         Effect.forever,
         Effect.tapCauseLogPretty,
         // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.

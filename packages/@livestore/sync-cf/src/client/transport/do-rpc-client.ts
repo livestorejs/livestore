@@ -7,8 +7,8 @@ import {
   Effect,
   identity,
   Layer,
-  Mailbox,
   Option,
+  Queue,
   RpcClient,
   RpcSerialization,
   Schema,
@@ -24,9 +24,9 @@ import type { SyncMetadata } from '../../common/sync-message-types.ts'
 
 export interface SyncBackendRpcStub extends CfTypes.DurableObjectStub, SyncBackendRpcInterface {}
 
-// TODO we probably need better scoping for the requestIdMailboxMap (i.e. support multiple stores, ...)
+// TODO we probably need better scoping for the requestIdQueueMap (i.e. support multiple stores, ...)
 type EffectRpcRequestId = string // 0, 1, 2, ...
-const requestIdMailboxMap = new Map<EffectRpcRequestId, Mailbox.Mailbox<SyncMessage.PullResponse>>()
+const requestIdQueueMap = new Map<EffectRpcRequestId, Queue.Queue<SyncMessage.PullResponse>>()
 
 export interface DoRpcSyncOptions {
   /** Durable Object stub that implements the SyncDoRpc interface */
@@ -82,14 +82,14 @@ export const makeDoRpcSync =
                   if (res._tag === 'None')
                     return shouldNeverHappen('There should at least be a no-more page info response')
 
-                  const mailbox = yield* Effect.acquireRelease(
-                    Mailbox.make<SyncMessage.PullResponse>(),
-                    (mailbox) => mailbox.shutdown,
+                  const queue = yield* Effect.acquireRelease(
+                    Queue.unbounded<SyncMessage.PullResponse>(),
+                    (queue) => Queue.shutdown(queue).pipe(Effect.asVoid),
                   )
 
-                  requestIdMailboxMap.set(res.value.rpcRequestId, mailbox)
+                  requestIdQueueMap.set(res.value.rpcRequestId, queue)
 
-                  return Mailbox.toStream(mailbox)
+                  return Stream.fromQueue(queue)
                 }).pipe(Stream.unwrap),
               )
             : identity,
@@ -179,14 +179,14 @@ export const handleSyncUpdateRpc = (payload: unknown) =>
     const decodedPayload = yield* Schema.decodeUnknownEffect(ResponseChunkEncoded)(payload)
     const decoded = yield* Schema.decodeUnknownEffect(SyncMessage.PullResponse)(decodedPayload.values[0])
 
-    const pullStreamMailbox = requestIdMailboxMap.get(decodedPayload.requestId)
+    const pullStreamQueue = requestIdQueueMap.get(decodedPayload.requestId)
 
-    if (pullStreamMailbox === undefined) {
+    if (pullStreamQueue === undefined) {
       // Case: DO was hibernated, so we need to manually update the store
-      yield* Effect.log(`No mailbox found for ${decodedPayload.requestId}`)
+      yield* Effect.log(`No pull stream queue found for ${decodedPayload.requestId}`)
     } else {
       // Case: DO was still alive, so the existing `pull` will pick up the new events
-      yield* pullStreamMailbox.offer(decoded)
+      yield* Queue.offer(pullStreamQueue, decoded)
     }
   }).pipe(Effect.withSpan('rpc-sync-client:rpcCallback'), Effect.tapCauseLogPretty, Effect.runPromise)
 

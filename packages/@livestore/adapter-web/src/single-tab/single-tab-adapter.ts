@@ -289,7 +289,7 @@ export const makeSingleTabAdapter =
         Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
-      yield* Queue.awaitShutdown(bootStatusQueue).pipe(
+      yield* Queue.await(bootStatusQueue).pipe(
         Effect.andThen(Fiber.interrupt(bootStatusFiber)),
         Effect.tapCauseLogPretty,
         // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.

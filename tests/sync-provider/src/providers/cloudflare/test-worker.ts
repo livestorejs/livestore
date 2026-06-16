@@ -150,7 +150,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
     // server.accept()
     // server.addEventListener('message', (event) => {
     //   console.log('message from client', event.data)
-    //   incomingQueue.offer(event.data).pipe(Effect.tapCauseLogPretty, Effect.runFork)
+    //   Queue.offer(incomingQueue, event.data).pipe(Effect.tapCauseLogPretty, Effect.runFork)
     // })
 
     // Hibernate the server
