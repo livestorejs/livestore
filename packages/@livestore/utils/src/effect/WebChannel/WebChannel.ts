@@ -70,7 +70,7 @@ export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
       yield* Effect.addFinalizer(() =>
         Effect.try({
           try: () => port.close(),
-          catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+          catch: (cause) => new Cause.UnknownError(cause),
         }).pipe(Effect.ignore),
       )
 
@@ -221,7 +221,7 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
       yield* Effect.addFinalizer(() =>
         Effect.try({
           try: () => port.close(),
-          catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+          catch: (cause) => new Cause.UnknownError(cause),
         }).pipe(Effect.ignore),
       )
 

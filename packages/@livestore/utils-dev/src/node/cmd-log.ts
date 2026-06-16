@@ -33,7 +33,7 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
     const archivedLog = path.join(archiveDir, archivedBase)
     yield* Effect.try({
       try: () => fs.renameSync(currentLogPath, archivedLog),
-      catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+      catch: (cause) => new Cause.UnknownError(cause),
     }).pipe(
       Effect.catch(() =>
         Effect.try({
@@ -41,7 +41,7 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
             fs.copyFileSync(currentLogPath, archivedLog)
             fs.truncateSync(currentLogPath, 0)
           },
-          catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+          catch: (cause) => new Cause.UnknownError(cause),
         }),
       ),
       Effect.ignore,
@@ -50,7 +50,7 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
     // Prune archives to retain only the newest N
     yield* Effect.try({
       try: () => fs.readdirSync(archiveDir),
-      catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+      catch: (cause) => new Cause.UnknownError(cause),
     }).pipe(
       Effect.map((names) => names.filter((n) => n.endsWith('.log'))),
       Effect.map((names) =>
@@ -62,7 +62,7 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
         Effect.forEach(entries.slice(logRetention), (e) =>
           Effect.try({
             try: () => fs.unlinkSync(path.join(archiveDir, e.name)),
-            catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+            catch: (cause) => new Cause.UnknownError(cause),
           }).pipe(Effect.ignore),
         ),
       ),

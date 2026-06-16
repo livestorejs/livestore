@@ -51,7 +51,7 @@ export const tryAll = <Res>(
     : Effect.Effect<Res, Cause.UnknownError> =>
   Effect.try({
     try: () => fn(),
-    catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+    catch: (cause) => new Cause.UnknownError(cause),
   }).pipe(
     Effect.andThen((fnRes) =>
       Effect.isEffect(fnRes) === true
