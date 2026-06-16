@@ -24,7 +24,7 @@ export const makeEndingPullStream = ({
   headers,
 }: {
   req: SyncMessage.PullRequest
-  payload: Schema.JsonValue | undefined
+  payload: Schema.Json | undefined
   headers: ForwardedHeaders | undefined
 }): Stream.Stream<SyncMessage.PullResponse, UnknownError | BackendIdMismatchError, DoCtx.DoCtx> =>
   Effect.gen(function* () {

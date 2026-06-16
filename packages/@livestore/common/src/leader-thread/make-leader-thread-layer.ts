@@ -48,7 +48,7 @@ import { LeaderThreadCtx } from './types.ts'
 export interface MakeLeaderThreadLayerParams {
   storeId: string
   syncPayloadSchema: Schema.Schema<any> | undefined
-  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadEncoded: Schema.Json | undefined
   clientId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
@@ -76,7 +76,7 @@ export const makeLeaderThreadLayer = ({
   schema,
   storeId,
   clientId,
-  syncPayloadSchema = Schema.JsonValue,
+  syncPayloadSchema = Schema.Json,
   syncPayloadEncoded,
   makeSqliteDb,
   syncOptions,

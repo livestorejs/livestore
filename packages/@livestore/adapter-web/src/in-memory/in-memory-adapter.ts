@@ -200,7 +200,7 @@ export interface MakeLeaderThreadArgs {
   clientId: string
   makeSqliteDb: MakeWebSqliteDb
   syncOptions: SyncOptions | undefined
-  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadEncoded: Schema.Json | undefined
   syncPayloadSchema: Schema.Schema<any> | undefined
   importSnapshot: Uint8Array<ArrayBuffer> | undefined
   devtoolsEnabled: boolean

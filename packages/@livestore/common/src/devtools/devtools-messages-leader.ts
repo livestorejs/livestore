@@ -52,7 +52,7 @@ export class SyncHistoryUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHis
 }) {}
 export class SyncHistoryRes extends LSDReqResMessage('LSD.Leader.SyncHistoryRes', {
   eventEncoded: LiveStoreEvent.Global.Encoded,
-  metadata: Schema.Option(Schema.JsonValue),
+  metadata: Schema.Option(Schema.Json),
   subscriptionId: Schema.String,
 }) {}
 
