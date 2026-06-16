@@ -167,7 +167,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
             (db) =>
               Effect.try({
                 try: () => db.close(),
-                catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+                catch: (cause) => new Cause.UnknownError(cause),
               }).pipe(Effect.ignore),
           )
 
@@ -181,7 +181,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
             (db) =>
               Effect.try({
                 try: () => db.close(),
-                catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+                catch: (cause) => new Cause.UnknownError(cause),
               }).pipe(Effect.ignore),
           )
 

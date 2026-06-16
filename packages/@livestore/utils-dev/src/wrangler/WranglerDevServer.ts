@@ -103,7 +103,7 @@ export const make = (args: Options) =>
         const configContent = yield* fs.readFileString(configPath)
         const parsedConfig = yield* Effect.try({
           try: () => Toml.parse(configContent),
-          catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+          catch: (cause) => new Cause.UnknownError(cause),
         }).pipe(
           Effect.andThen(Schema.decodeUnknownEffect(Schema.Struct({ main: Schema.String }))),
           Effect.mapError(
@@ -113,7 +113,7 @@ export const make = (args: Options) =>
         )
         const resolvedMainPath = yield* Effect.try({
           try: () => path.resolve(args.cwd, parsedConfig.main),
-          catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+          catch: (cause) => new Cause.UnknownError(cause),
         })
 
         const readiness = args.readiness ?? {}
