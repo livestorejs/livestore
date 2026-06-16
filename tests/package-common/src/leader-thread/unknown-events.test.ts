@@ -14,7 +14,7 @@ import {
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect, Option, Schema } from '@livestore/utils/effect'
+import { Effect, Option, Result, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
 // Verifies the behaviour of LiveStore's unknown-event handling strategies across
@@ -58,10 +58,10 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
       const event = makeUnknownEncodedEvent()
 
       const result = yield* materializeEvent(event, {}).pipe(Effect.result)
-      if (result._tag !== 'Left') {
+      if (Result.isSuccess(result)) {
         throw new Error('Expected materializeEvent to fail for fail strategy')
       }
-      const error = result.left
+      const error = result.failure
       expect(error._tag).toEqual('MaterializeError')
       if (error.cause._tag !== 'UnknownEventError') {
         throw new Error(`Unexpected failure cause: ${error.cause._tag}`)

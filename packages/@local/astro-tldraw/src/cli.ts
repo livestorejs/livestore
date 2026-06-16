@@ -1,7 +1,7 @@
 import os from 'node:os'
 import path from 'node:path'
 
-import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
+import { type Duration, Effect, FileSystem, type PlatformError, Result, Schema, Stream } from '@livestore/utils/effect'
 import { NodeFileSystemWithWatch } from '@livestore/utils/node'
 
 import {
@@ -322,8 +322,8 @@ const watchDiagramsInternal = (
         const result = yield* buildDiagrams(options).pipe(Effect.result)
         const durationMs = Date.now() - startedAt
 
-        if (result._tag === 'Left') {
-          const error = result.left
+        if (Result.isFailure(result)) {
+          const error = result.failure
           yield* Effect.logError(
             `Diagrams watch: build failed${event !== null ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
           )

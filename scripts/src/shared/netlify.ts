@@ -11,6 +11,7 @@ import {
   Fiber,
   HttpClient,
   HttpClientRequest,
+  Result,
   Schema,
   Stream,
 } from '@livestore/utils/effect'
@@ -234,13 +235,13 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
       catch: (error) => new FileReadError({ cause: error, path: candidate }),
     }).pipe(Effect.result)
 
-    if (readResult._tag === 'Right') {
-      configContent = readResult.right
+    if (Result.isSuccess(readResult)) {
+      configContent = readResult.success
       configPath = candidate
       break
     }
 
-    const readError = readResult.left
+    const readError = readResult.failure
     if (isFileMissingError(readError) === true) {
       continue
     }

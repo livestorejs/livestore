@@ -31,6 +31,7 @@ import {
   Option,
   Queue,
   References,
+  Result,
   Schema,
   type Scope,
   Stream,
@@ -240,14 +241,14 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       expect(Exit.isFailure(exit)).toBe(true)
       assert(Exit.isFailure(exit))
 
-      const defect = Cause.dieOption(exit.cause)
-      expect(defect._tag).toBe('Some')
-      assert(defect._tag === 'Some')
+      const defect = Cause.findDefect(exit.cause)
+      expect(Result.isSuccess(defect)).toBe(true)
+      assert(Result.isSuccess(defect))
 
-      expect(defect.value).toBeInstanceOf(Error)
-      assert(defect.value instanceof Error)
+      expect(defect.success).toBeInstanceOf(Error)
+      assert(defect.success instanceof Error)
 
-      expect(defect.value.message).toEqual(
+      expect(defect.success.message).toEqual(
         'Incoming events must be greater than upstream head. Expected greater than: e1. Received: [e1]',
       )
     }).pipe(withTestCtx(test)),
@@ -623,12 +624,12 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       expect(Exit.isFailure(exit)).toBe(true)
       assert(Exit.isFailure(exit))
 
-      const defect = Cause.dieOption(exit.cause)
-      expect(defect._tag).toBe('Some')
-      assert(defect._tag === 'Some')
-      expect(defect.value).toBeInstanceOf(Error)
-      assert(defect.value instanceof Error)
-      expect(defect.value.message).toBe('unexpected transport failure')
+      const defect = Cause.findDefect(exit.cause)
+      expect(Result.isSuccess(defect)).toBe(true)
+      assert(Result.isSuccess(defect))
+      expect(defect.success).toBeInstanceOf(Error)
+      assert(defect.success instanceof Error)
+      expect(defect.success.message).toBe('unexpected transport failure')
     }).pipe(withTestCtx(test)),
   )
 
