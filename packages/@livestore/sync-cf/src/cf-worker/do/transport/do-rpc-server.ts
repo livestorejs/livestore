@@ -6,8 +6,8 @@ import {
   HttpServer,
   Layer,
   Logger,
-  LogLevel,
   Option,
+  References,
   RpcSerialization,
   Stream,
 } from '@livestore/utils/effect'
@@ -88,10 +88,14 @@ export const createDoRpcHandler = (
 
     const handler = toDurableObjectHandler(SyncDoRpc, {
       layer: Layer.mergeAll(RpcLive, RpcSerialization.layerJson, HttpServer.layerServices).pipe(
-        Layer.provide(Logger.consoleWithThread('SyncDo')),
-        Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
+        Layer.provide(
+          Layer.mergeAll(
+            Logger.layer([Logger.consoleStructured]),
+            Layer.succeed(References.MinimumLogLevel, 'Debug'),
+          ),
+        ),
       ),
     })
 
-    return yield* handler(payload)
+    return yield* handler(payload).pipe(Effect.annotateLogs({ thread: 'SyncDo' }))
   }).pipe(Effect.withSpan('createDoRpcHandler'))

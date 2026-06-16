@@ -14,6 +14,7 @@ import {
   Predicate,
   type Schema,
   type Scope,
+  type Tracer,
 } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
 
@@ -31,10 +32,10 @@ export const makeWithTestCtx: <ROut = never, E1 = never, RIn = never>(
   A,
   E | E1 | Cause.TimeoutError,
   // Exclude dependencies provided by `withTestCtx` from the layer dependencies
-  | Exclude<RIn, OtelTracer.OtelTracer | Scope.Scope>
+  | Exclude<RIn, OtelTracer.OtelTracer | Tracer.Tracer | Scope.Scope>
   // Exclude dependencies provided by `withTestCtx` **and** dependencies produced
   // by the layer from the effect dependencies
-  | Exclude<R, ROut | OtelTracer.OtelTracer | Scope.Scope>
+  | Exclude<R, ROut | OtelTracer.OtelTracer | Tracer.Tracer | Scope.Scope>
 > = (ctxParams) => (testContext: Vitest.TestContext) => withTestCtx(testContext, ctxParams)
 
 export type WithTestCtxParams<ROut, E1, RIn> = {
@@ -65,10 +66,10 @@ export const withTestCtx =
     A,
     E | E1 | Cause.TimeoutError,
     // Exclude dependencies provided internally from the provided layer's dependencies
-    | Exclude<RIn, OtelTracer.OtelTracer | Scope.Scope>
+    | Exclude<RIn, OtelTracer.OtelTracer | Tracer.Tracer | Scope.Scope>
     // Exclude dependencies provided internally **and** dependencies produced by the
     // provided layer from the effect dependencies
-    | Exclude<R, ROut | OtelTracer.OtelTracer | Scope.Scope>
+    | Exclude<R, ROut | OtelTracer.OtelTracer | Tracer.Tracer | Scope.Scope>
   > => {
     const spanName = `${testContext.task.suite?.name}:${testContext.task.name}${suffix !== undefined ? `:${suffix}` : ''}`
     const layer = makeLayer?.(testContext) ?? Layer.empty

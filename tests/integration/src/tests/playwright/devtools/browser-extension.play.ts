@@ -152,7 +152,7 @@ const runTest =
     testInfo: PW.TestInfo,
   ) => {
     const outerLayer = Layer.mergeAll(
-      Logger.prettyWithThread('playwright-worker'),
+      Logger.layer([Logger.consolePretty()]),
       PlatformNode.NodeServices.layer,
       FetchHttpClient.layer,
     )

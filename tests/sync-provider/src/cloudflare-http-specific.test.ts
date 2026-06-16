@@ -12,8 +12,8 @@ import {
   KeyValueStore,
   Layer,
   Logger,
-  LogLevel,
   ManagedRuntime,
+  References,
 } from '@livestore/utils/effect'
 
 import * as CloudflareHttpProvider from './providers/cloudflare-http-rpc.ts'
@@ -33,8 +33,8 @@ Vitest.describe.each(cloudflareHttpProviders)('$name HTTP response headers', { t
       layer.pipe(
         Layer.provideMerge(FetchHttpClient.layer),
         Layer.provide(OtelLiveHttp({ rootSpanName: 'beforeAll', serviceName: 'vitest-runner', skipLogUrl: false })),
-        Layer.provide(Logger.prettyWithThread('test-runner')),
-        Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
+        Layer.provide(Logger.layer([Logger.consolePretty()])),
+        Layer.provide(Layer.succeed(References.MinimumLogLevel, 'Debug')),
         Layer.orDie,
       ),
     )
@@ -98,7 +98,7 @@ Vitest.describe.each(cloudflareHttpProviders)('$name HTTP response headers', { t
     }).pipe(
       Effect.provide(runtime),
       Vitest.makeWithTestCtx({
-        makeLayer: (_testContext) => Layer.mergeAll(Logger.prettyWithThread('test-runner'), KeyValueStore.layerMemory),
+        makeLayer: (_testContext) => Layer.mergeAll(Logger.layer([Logger.consolePretty()]), KeyValueStore.layerMemory),
         forceOtel: true,
       })(test),
     ),

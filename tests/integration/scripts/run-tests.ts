@@ -10,8 +10,8 @@ import {
   FetchHttpClient,
   Layer,
   Logger,
-  LogLevel,
   OtelTracer,
+  References,
   Schema,
 } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
@@ -222,8 +222,8 @@ if (import.meta.main === true) {
   })
 
   cli(process.argv).pipe(
-    Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.provide(Layer.mergeAll(PlatformNode.NodeServices.layer, Logger.prettyWithThread('cli-run-tests'))),
-    PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }),
+    Effect.provideService(References.MinimumLogLevel, 'Debug'),
+    Effect.provide(Layer.mergeAll(PlatformNode.NodeServices.layer, Logger.layer([Logger.consolePretty()]))),
+    PlatformNode.NodeRuntime.runMain,
   )
 }

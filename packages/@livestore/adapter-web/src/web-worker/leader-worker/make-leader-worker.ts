@@ -1,7 +1,7 @@
 import type * as otel from '@opentelemetry/api'
 
-import type { BootStatus, BootWarningReason, SqliteDb, SyncOptions } from '@livestore/common'
-import { Devtools, LogConfig, UnknownError } from '@livestore/common'
+import type { BootStatus, BootWarningReason, LogConfig, SqliteDb, SyncOptions } from '@livestore/common'
+import { Devtools, UnknownError } from '@livestore/common'
 import type { DevtoolsOptions, StreamEventsOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
@@ -25,6 +25,7 @@ import {
   identity,
   Layer,
   OtelTracer,
+  References,
   Scheduler,
   Schema,
   Stream,
@@ -45,7 +46,7 @@ export type WorkerOptions = {
   otelOptions?: {
     tracer?: otel.Tracer
   }
-} & LogConfig.WithLoggerOptions
+} & LogConfig.LoggerOptions
 
 if (isDevEnv() === true) {
   globalThis.__debugLiveStoreUtils = {
@@ -64,12 +65,12 @@ export const makeWorker = (options: WorkerOptions) => {
 export const makeWorkerEffect = (options: WorkerOptions) => {
   const TracingLive =
     options.otelOptions?.tracer !== undefined
-      ? Layer.unwrap(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+      ? OtelTracer.layerWithoutOtelTracer.pipe(
           Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
         )
-      : undefined
+      : Layer.empty
 
-  const runtimeLayer = Layer.mergeAll(FetchHttpClient.layer, TracingLive ?? Layer.empty)
+  const runtimeLayer = Layer.mergeAll(FetchHttpClient.layer, TracingLive)
 
   return makeWorkerRunnerOuter(options).pipe(
     Layer.provide(BrowserWorkerRunner.layer),
@@ -85,7 +86,12 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     Effect.withScheduler(Scheduler.messageChannel()),
     // We're increasing the Effect ops limit here to allow for larger chunks of operations at a time
     Effect.withMaxOpsBeforeYield(4096),
-    LogConfig.withLoggerConfig({ logger: options.logger, logLevel: options.logLevel }, { threadName: self.name }),
+    Effect.provide(
+      Layer.mergeAll(
+        options.logger ?? Layer.empty,
+        Layer.succeed(References.MinimumLogLevel, options.logLevel ?? (isDevEnv() === true ? 'Debug' : 'Info')),
+      ),
+    ),
   )
 }
 
