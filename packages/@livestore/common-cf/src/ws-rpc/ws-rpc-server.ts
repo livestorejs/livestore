@@ -23,8 +23,8 @@ import {
   Exit,
   Layer,
   Logger,
-  LogLevel,
   Mailbox,
+  References,
   RpcMessage,
   RpcSerialization,
   RpcServer,
@@ -200,8 +200,14 @@ export const setupDurableObjectWebSocketRpc = ({
       return ctx
     }).pipe(
       Effect.tapCauseLogPretty,
-      Logger.withMinimumLogLevel(LogLevel.Debug), // Useful for debugging
-      Effect.provide(Layer.mergeAll(Logger.consoleWithThread('ws-rpc-server'), mainLayer ?? Layer.empty)),
+      Effect.annotateLogs({ thread: 'ws-rpc-server' }),
+      Effect.provide(
+        Layer.mergeAll(
+          Logger.layer([Logger.consoleStructured]),
+          Layer.succeed(References.MinimumLogLevel, 'Debug'), // Useful for debugging
+          mainLayer ?? Layer.empty,
+        ),
+      ),
       Effect.withSpan('effect-ws-rpc-server'),
       Effect.runPromise,
     )

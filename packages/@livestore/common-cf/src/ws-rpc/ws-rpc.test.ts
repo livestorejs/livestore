@@ -7,9 +7,8 @@ import {
   Effect,
   FetchHttpClient,
   Layer,
-  Logger,
-  LogLevel,
   Option,
+  References,
   RpcClient,
   RpcSerialization,
   Socket,
@@ -28,7 +27,11 @@ const withWranglerTest = Vitest.makeWithTestCtx({
       cwd: `${import.meta.dirname}/test-fixtures`,
     }).pipe(
       Layer.provide(
-        Layer.mergeAll(PlatformNode.NodeServices.layer, FetchHttpClient.layer, Logger.minimumLogLevel(LogLevel.Debug)),
+        Layer.mergeAll(
+          PlatformNode.NodeServices.layer,
+          FetchHttpClient.layer,
+          Layer.succeed(References.MinimumLogLevel, 'Debug'),
+        ),
       ),
     ),
 })

@@ -9,8 +9,8 @@ import {
   FetchHttpClient,
   Layer,
   Logger,
-  LogLevel,
   Otlp,
+  References,
   RpcMessage,
   Schema,
   type Scope,
@@ -88,11 +88,9 @@ export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) =
 export const makeDurableObject: MakeDurableObjectClass = (options) => {
   const enabledTransports = options?.enabledTransports ?? new Set(['http', 'ws', 'do-rpc'])
 
-  const Logging = Logger.consoleWithThread('SyncDo')
-
   const Observability: Layer.Layer<never> =
     options?.otel?.baseUrl !== undefined
-      ? (Otlp.layer({
+      ? (Otlp.layerJson({
           baseUrl: options.otel.baseUrl,
           tracerExportInterval: 50,
           resource: {
@@ -238,8 +236,14 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     private runEffectAsPromise = <T, E = never>(effect: Effect.Effect<T, E, Scope.Scope>): Promise<T> =>
       effect.pipe(
         Effect.tapCauseLogPretty,
-        Logger.withMinimumLogLevel(LogLevel.Debug),
-        Effect.provide(Layer.mergeAll(Observability, Logging)),
+        Effect.annotateLogs({ thread: 'SyncDo' }),
+        Effect.provide(
+          Layer.mergeAll(
+            Observability,
+            Logger.layer([Logger.consoleStructured]),
+            Layer.succeed(References.MinimumLogLevel, 'Debug'),
+          ),
+        ),
         Effect.scoped,
         Effect.runPromise,
       )

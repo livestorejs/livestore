@@ -8,12 +8,12 @@ import {
   type ClientSessionDevtoolsChannel,
   type ClientSessionSyncProcessorSimulationParams,
   type IntentionalShutdownCause,
-  LogConfig,
   type MaterializeError,
   type MigrationsReport,
   provideOtel,
   type ServerAheadError,
   UnknownError,
+  type LogConfig,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { isDevEnv, LS_DEV, omitUndefineds } from '@livestore/utils'
@@ -27,6 +27,7 @@ import {
   Layer,
   OtelTracer,
   Queue,
+  References,
   Schema,
   Scope,
   TaskTracing,
@@ -135,8 +136,7 @@ export interface CreateStoreOptions<
   TSchema extends LiveStoreSchema,
   TContext = {},
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
->
-  extends LogConfig.WithLoggerOptions {
+> extends LogConfig.LoggerOptions {
   /** The LiveStore schema defining tables, events, and materializers. */
   schema: TSchema
   /** Adapter used for data storage and synchronization. */
@@ -258,7 +258,12 @@ export const createStorePromise = async <
     provideOtel(omitUndefineds({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer })),
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: 'window' }),
-    LogConfig.withLoggerConfig(options, { threadName: 'window' }),
+    Effect.provide(
+      Layer.mergeAll(
+        options.logger ?? Layer.empty,
+        Layer.succeed(References.MinimumLogLevel, options.logLevel ?? (isDevEnv() === true ? 'Debug' : 'Info')),
+      ),
+    ),
     Effect.runPromise,
   )
 

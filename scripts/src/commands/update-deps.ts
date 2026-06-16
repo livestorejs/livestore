@@ -26,8 +26,7 @@ import {
   HttpClient,
   HttpClientResponse,
   Layer,
-  Logger,
-  LogLevel,
+  References,
   Schema,
 } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
@@ -400,7 +399,7 @@ if (import.meta.main === true) {
 
   cli(process.argv).pipe(
     Effect.annotateLogs({ thread: 'update-deps' }),
-    Logger.withMinimumLogLevel(LogLevel.Info),
+    Effect.provideService(References.MinimumLogLevel, 'Info'),
     Effect.provide(layer),
     PlatformNode.NodeRuntime.runMain,
   )

@@ -30,9 +30,8 @@ import {
   Effect,
   FetchHttpClient,
   Layer,
-  Logger,
-  LogLevel,
   Queue,
+  References,
   type Scope,
   Stream,
   WebChannel,
@@ -68,7 +67,7 @@ const withTestCtx = (
   Vitest.makeWithTestCtx({
     makeLayer: () =>
       Layer.provideMerge(LeaderThreadCtxLive(args), PlatformNode.NodeFileSystem.layer).pipe(
-        Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
+        Layer.provide(Layer.succeed(References.MinimumLogLevel, 'Debug')),
       ),
     forceOtel: true,
   })
