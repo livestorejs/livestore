@@ -233,7 +233,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       // Merge invariant violations are defects (not typed errors), so the shutdown
       // deferred receives an Exit with a Die cause containing the error message.
-      const exit = yield* Effect.exit(shutdownDeferred)
+      const exit = yield* Effect.exit(Deferred.await(shutdownDeferred))
 
       expect(Exit.isFailure(exit)).toBe(true)
       assert(Exit.isFailure(exit))
@@ -426,7 +426,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       store.commit(events.todoDeletedNonPure({ id: '1' }))
 
-      const error = yield* shutdownDeferred.pipe(Effect.flip)
+      const error = yield* Deferred.await(shutdownDeferred).pipe(Effect.flip)
 
       expect(error._tag).toEqual('MaterializeError')
     }).pipe(withTestCtx(test)),
@@ -484,7 +484,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       yield* Queue.offer(pullQueue, eventFromLeader)
 
       // Wait for the shutdown to be triggered by the client-side hash mismatch detection
-      const error = yield* shutdownDeferred.pipe(Effect.flip)
+      const error = yield* Deferred.await(shutdownDeferred).pipe(Effect.flip)
 
       expect(error._tag).toEqual('MaterializeError')
     }).pipe(withTestCtx(test)),
@@ -616,7 +616,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       store.commit(events.todoCreated({ id: 'trigger', text: 'boom', completed: false }))
 
-      const exit = yield* Effect.exit(shutdownDeferred)
+      const exit = yield* Effect.exit(Deferred.await(shutdownDeferred))
 
       expect(Exit.isFailure(exit)).toBe(true)
       assert(Exit.isFailure(exit))

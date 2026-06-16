@@ -184,7 +184,7 @@ const makePinger = Effect.fnUntraced(function* <A, E, R>(
     recievedPong = true
     // CHANGED: mark all manual ping deferreds as done
     for (const deferred of manualPingDeferreds) {
-      Deferred.unsafeDone(deferred, Effect.void)
+      Deferred.doneUnsafe(deferred, Effect.void)
     }
   }
   yield* Effect.suspend(() => {
@@ -205,7 +205,7 @@ const makePinger = Effect.fnUntraced(function* <A, E, R>(
   const ping = Effect.gen(function* () {
     const deferred = yield* Deferred.make<void>()
     manualPingDeferreds.add(deferred)
-    yield* deferred
+    yield* Deferred.await(deferred)
     manualPingDeferreds.delete(deferred)
   })
 
