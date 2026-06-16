@@ -1,4 +1,4 @@
-import { type Schema, dual, Option, SchemaAST } from '@livestore/utils/effect'
+import { type Schema, Function, Option, SchemaAST } from '@livestore/utils/effect'
 
 import type { SqliteDsl } from './db-schema/mod.ts'
 
@@ -25,7 +25,7 @@ Here are the knobs you can turn per-column when you CREATE TABLE (or ALTER TABLE
 •	COLLATE <name> – per-column collation sequence for text comparison.  ￼
 •	REFERENCES tbl(col) [ON UPDATE/DELETE …] – column-local foreign key with its own cascade / restrict / set-null rules.  ￼
 •	GENERATED ALWAYS AS (<expr>) [VIRTUAL | STORED] – computed columns (since 3.31).  ￼
-•	CONSTRAINT name … – optional label in front of any of the above so you can refer to it in error messages or when dropping/recreating schemas.  
+•	CONSTRAINT name … – optional label in front of any of the above so you can refer to it in error messages or when dropping/recreating schemas.
 */
 
 /**
@@ -41,7 +41,7 @@ export const withColumnType: {
   (type: SqliteDsl.FieldColumnType): <T extends Schema.Schema.All>(schema: T) => T
   // TODO make type safe
   <T extends Schema.Schema.All>(schema: T, type: SqliteDsl.FieldColumnType): T
-} = dual(2, <T extends Schema.Schema.All>(schema: T, type: SqliteDsl.FieldColumnType) => {
+} = Function.dual(2, <T extends Schema.Schema.All>(schema: T, type: SqliteDsl.FieldColumnType) => {
   validateSchemaColumnTypeCompatibility(schema, type)
   return applyAnnotations(schema, { [ColumnType]: type })
 })
@@ -64,7 +64,7 @@ export const withDefault: {
   // TODO make type safe
   <T extends Schema.Schema.All>(schema: T, value: unknown): T
   (value: unknown): <T extends Schema.Schema.All>(schema: T) => T
-} = dual(2, <T extends Schema.Schema.All>(schema: T, value: unknown) => applyAnnotations(schema, { [Default]: value }))
+} = Function.dual(2, <T extends Schema.Schema.All>(schema: T, value: unknown) => applyAnnotations(schema, { [Default]: value }))
 
 /**
  * Validates that a schema is compatible with the specified SQLite column type

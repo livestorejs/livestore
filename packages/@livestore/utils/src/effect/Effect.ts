@@ -1,8 +1,5 @@
 import * as OtelTracer from '@effect/opentelemetry/Tracer'
-import { Cause, type Context, Deferred, Duration, Effect, Fiber, pipe, Scope, type Stream } from 'effect'
-import { log } from 'effect/Console'
-import { dual, type LazyArg } from 'effect/Function'
-import type { Predicate, Refinement } from 'effect/Predicate'
+import { Cause, Console, type Context, Deferred, Duration, Effect, Function, Fiber, pipe, Predicate, Scope, type Stream } from 'effect'
 
 import { isDevEnv, isPromise, objectToString } from '../mod.ts'
 import { UnknownError } from './Error.ts'
@@ -140,15 +137,15 @@ export const orDieDebugger = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Eff
 
 export const ignoreIf: {
   <E, EB extends E>(
-    refinement: Refinement<NoInfer<E>, EB>,
+    refinement: Predicate.Refinement<NoInfer<E>, EB>,
   ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<void, Exclude<E, EB>, R>
-  <E>(predicate: Predicate<NoInfer<E>>): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<void, E, R>
+  <E>(predicate: Predicate.Predicate<NoInfer<E>>): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<void, E, R>
   <A, E, R, EB extends E>(
     self: Effect.Effect<A, E, R>,
-    refinement: Refinement<E, EB>,
+    refinement: Predicate.Refinement<E, EB>,
   ): Effect.Effect<void, Exclude<E, EB>, R>
-  <A, E, R>(self: Effect.Effect<A, E, R>, predicate: Predicate<E>): Effect.Effect<void, E, R>
-} = dual(2, <A, E, R>(self: Effect.Effect<A, E, R>, predicate: Predicate<E>) =>
+  <A, E, R>(self: Effect.Effect<A, E, R>, predicate: Predicate.Predicate<E>): Effect.Effect<void, E, R>
+} = Function.dual(2, <A, E, R>(self: Effect.Effect<A, E, R>, predicate: Predicate.Predicate<E>) =>
   self.pipe(Effect.catchIf(predicate, () => Effect.void)),
 )
 
@@ -231,7 +228,7 @@ export const tapSync =
 export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>> =>
   pipe(
     Effect.context<never>(),
-    Effect.tap((env) => log(msg ?? 'debugLogEnv', env)),
+    Effect.tap((env) => Console.log(msg ?? 'debugLogEnv', env)),
   )
 
 /**
