@@ -1293,7 +1293,7 @@ const loadPreviousManifest = (
     const manifestSource = manifestSourceResult.success
     const parsedResult = yield* Effect.try({
       try: () => JSON.parse(manifestSource) as TSnippetManifest,
-      catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+      catch: (cause) => new Cause.UnknownError(cause),
     }).pipe(Effect.result)
     if (Result.isFailure(parsedResult)) {
       yield* Effect.logWarning(

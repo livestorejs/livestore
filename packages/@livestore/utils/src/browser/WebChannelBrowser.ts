@@ -28,7 +28,7 @@ export const broadcastChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEn
       yield* Effect.addFinalizer(() =>
         Effect.try({
           try: () => channel.close(),
-          catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+          catch: (cause) => new Cause.UnknownError(cause),
         }).pipe(Effect.ignore),
       )
 
