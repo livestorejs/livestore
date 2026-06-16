@@ -96,8 +96,8 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
         const runFork = Runtime.runFork(runtime)
         const onExit = (exit: Exit.Exit<any, E>) => {
           if (exit._tag === 'Failure' && Cause.isInterruptedOnly(exit.cause) === false) {
-            // Deferred.unsafeDone(closeLatch, Exit.die(Cause.squash(exit.cause)))
-            Deferred.unsafeDone(closeLatch, Exit.die(exit.cause))
+            // Deferred.doneUnsafe(closeLatch, Effect.die(Cause.squash(exit.cause)))
+            Deferred.doneUnsafe(closeLatch, Effect.failCause(exit.cause))
           }
         }
         port.on('message', (message: RunnerMessage<I>) => {
@@ -123,16 +123,16 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             } else {
               // Graceful shutdown requested by parent: stop monitoring and close port
               stopParentDeathMonitoring()
-              Deferred.unsafeDone(closeLatch, Exit.void)
+              Deferred.doneUnsafe(closeLatch, Effect.void)
               port.close()
             }
           }
         })
         port.on('messageerror', (cause) => {
-          Deferred.unsafeDone(closeLatch, new WorkerError({ reason: 'decode', cause }))
+          Deferred.doneUnsafe(closeLatch, Effect.fail(new WorkerError({ reason: 'decode', cause })))
         })
         port.on('error', (cause) => {
-          Deferred.unsafeDone(closeLatch, new WorkerError({ reason: 'unknown', cause }))
+          Deferred.doneUnsafe(closeLatch, Effect.fail(new WorkerError({ reason: 'unknown', cause })))
         })
         port.postMessage([0])
       })

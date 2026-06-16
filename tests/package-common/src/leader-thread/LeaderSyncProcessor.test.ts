@@ -639,7 +639,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: 'mismatch', text: 'x', completed: false }))
 
       // Expect a shutdown message to be sent with BackendIdMismatchError
-      const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
+      const shutdownMsg = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
 
       expect(shutdownMsg._tag).toEqual('BackendIdMismatchError')
     }).pipe(
@@ -682,7 +682,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }))
 
       // Expect a shutdown message with IntentionalShutdownCause and reason 'backend-id-mismatch'
-      const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
+      const shutdownMsg = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
 
       expect(shutdownMsg._tag).toEqual('IntentionalShutdownCause')
       expect((shutdownMsg as IntentionalShutdownCause).reason).toEqual('backend-id-mismatch')
@@ -729,7 +729,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }))
 
       // Expect a shutdown message with BackendIdMismatchError (not IntentionalShutdownCause)
-      const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
+      const shutdownMsg = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
 
       expect(shutdownMsg._tag).toEqual('BackendIdMismatchError')
 
