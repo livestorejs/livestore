@@ -45,7 +45,11 @@ const viteDevServer = ({
         ).pipe(Effect.orDie),
         LSD_DEVTOOLS_LOCAL_PREVIEW: useDevtoolsLocalPreview === true ? '1' : undefined,
       },
-    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)), Effect.forkScoped)
+    }).pipe(
+      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+    )
 
     return { devPort }
   })

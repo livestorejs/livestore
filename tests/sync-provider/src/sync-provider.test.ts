@@ -159,7 +159,11 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         const eventFactory = makeFactory({ client: defaultClient, startSeq: 1, initialParent: 'root' })
 
         // Start live pull and wait for the first non-empty batch in a fiber
-        const fiber = yield* syncBackend.pull(Option.none(), { live: true }).pipe(runFirstNonEmpty, Effect.forkChild)
+        const fiber = yield* syncBackend.pull(Option.none(), { live: true }).pipe(
+          runFirstNonEmpty,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
+        )
 
         // Let the live pull idle for a bit (covers long-poll/SSE)
         yield* Effect.sleep(800)
@@ -397,7 +401,11 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       Effect.gen(function* () {
         const syncBackend = yield* makeProvider(test.task.name)
 
-        const fiber = yield* syncBackend.pull(Option.none(), { live: true }).pipe(runFirstNonEmpty, Effect.forkChild)
+        const fiber = yield* syncBackend.pull(Option.none(), { live: true }).pipe(
+          runFirstNonEmpty,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
+        )
 
         const syncProvider = yield* SyncProviderImpl
 

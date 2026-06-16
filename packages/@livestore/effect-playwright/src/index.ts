@@ -74,7 +74,7 @@ export const browserContext = ({
 
       // TODO bring back once Playwright supports console messages for workers/service workers
       // const backgroundPage = browserContext.serviceWorkers()[0] ?? (yield* Effect.promise(() => browserContext.waitForEvent('serviceworker')))
-      // backgroundPageConsoleFiber = yield* handlePageConsole(backgroundPage, 'background').pipe(Effect.forkChild)
+      // backgroundPageConsoleFiber = yield* handlePageConsole(backgroundPage, 'background').pipe(Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }))
     }
 
     yield* Effect.addFinalizer(() => Effect.promise(() => browserContext.close()))

@@ -78,7 +78,9 @@ Vitest.describe('watchDiagrams', () => {
         onRebuild: (info) => Queue.offer(rebuildEvents, info),
       })
 
-      yield* Effect.forkScoped(watchEffect)
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+
+      yield* Effect.forkScoped(watchEffect, { startImmediately: true, uninterruptible: 'inherit' })
 
       const initial = yield* Queue.take(rebuildEvents).pipe(Effect.timeout('5 seconds'), Effect.orDie)
       Vitest.expect(initial.reason).toBe('initial')
@@ -106,7 +108,9 @@ Vitest.describe('watchDiagrams', () => {
         onRebuild: (info) => Queue.offer(rebuildEvents, info),
       })
 
-      yield* Effect.forkScoped(watchEffect)
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+
+      yield* Effect.forkScoped(watchEffect, { startImmediately: true, uninterruptible: 'inherit' })
 
       /* Wait for initial build */
       const initial = yield* Queue.take(rebuildEvents).pipe(Effect.timeout('5 seconds'), Effect.orDie)
@@ -143,7 +147,9 @@ Vitest.describe('watchDiagrams', () => {
         onRebuild: (info) => Queue.offer(rebuildEvents, info),
       })
 
-      yield* Effect.forkScoped(watchEffect)
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+
+      yield* Effect.forkScoped(watchEffect, { startImmediately: true, uninterruptible: 'inherit' })
 
       /* Wait for initial build */
       const initial = yield* Queue.take(rebuildEvents).pipe(Effect.timeout('5 seconds'), Effect.orDie)

@@ -853,7 +853,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         ],
       }),
       Effect.tapCause(Effect.logError),
-      Effect.catchCause((cause) => Effect.forkChild(this.shutdown(cause))),
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.catchCause((cause) => Effect.forkChild(this.shutdown(cause), { startImmediately: true, uninterruptible: 'inherit' })),
       Runtime.runSync(this[StoreInternalsSymbol].effectContext.runtime),
     )
   }
@@ -1177,7 +1178,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
   private runEffectFork = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) =>
     effect.pipe(
-      Effect.forkIn(this[StoreInternalsSymbol].effectContext.lifetimeScope),
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkIn(this[StoreInternalsSymbol].effectContext.lifetimeScope, { startImmediately: true, uninterruptible: 'inherit' }),
       Effect.tapCauseLogPretty,
       Runtime.runFork(this[StoreInternalsSymbol].effectContext.runtime),
     )
