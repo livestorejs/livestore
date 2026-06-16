@@ -188,7 +188,7 @@ export const make = (args: Options) =>
     return WranglerDevServer.of({
       port: actualPort,
       url,
-    } satisfies Service)
+    })
   }).pipe(
     Effect.mapError((error) =>
       error instanceof WranglerDevServerError
