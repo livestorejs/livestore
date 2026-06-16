@@ -25,13 +25,13 @@ export { spanEvent } from './spanEvent.ts'
 //     console.error(message, ...rest)
 //   })
 
-/** Same as `Effect.scopeWith` but with a `CloseableScope` instead of a `Scope`. */
+/** Same as `Effect.scopeWith` but with a closeable `Scope`. */
 export const scopeWithCloseable = <R, E, A>(
-  fn: (scope: Scope.CloseableScope) => Effect.Effect<A, E, R | Scope.Scope>,
+  fn: (scope: Scope.Closeable) => Effect.Effect<A, E, R | Scope.Scope>,
 ): Effect.Effect<A, E, R | Scope.Scope> =>
   Effect.gen(function* () {
     // const parentScope = yield* Scope.Scope
-    // const scope = yield* Scope.fork(parentScope, ExecutionStrategy.sequential)
+    // const scope = yield* Scope.fork(parentScope, 'sequential')
     const scope = yield* Scope.make()
     yield* Effect.addFinalizer((exit) => Scope.close(scope, exit))
     return yield* fn(scope).pipe(Scope.provide(scope))
