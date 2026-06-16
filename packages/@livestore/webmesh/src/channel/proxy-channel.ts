@@ -482,7 +482,7 @@ export const makeProxyChannel = ({
 
       const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
-      const runtime = yield* Effect.runtime()
+      const services = yield* Effect.context()
 
       const webChannel = {
         [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
@@ -497,7 +497,7 @@ export const makeProxyChannel = ({
           debug: {
             ping: (message = 'ping') =>
               send(WebChannel.DebugPingMessage.make({ message })).pipe(
-                Effect.provide(runtime),
+                Effect.provide(services),
                 Effect.tapCauseLogPretty,
                 Effect.runFork,
               ),

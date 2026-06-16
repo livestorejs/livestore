@@ -27,7 +27,6 @@ import {
   Layer,
   OtelTracer,
   Queue,
-  Runtime,
   Schema,
   Scope,
   TaskTracing,
@@ -244,11 +243,11 @@ export const createStorePromise = async <
 }: CreateStoreOptionsPromise<TSchema, TContext, TSyncPayloadSchema>): Promise<Store<TSchema, TContext>> =>
   Effect.gen(function* () {
     const scope = yield* Scope.make()
-    const runtime = yield* Effect.runtime()
+    const services = yield* Effect.context()
 
     if (signal !== undefined) {
       signal.addEventListener('abort', () => {
-        Scope.close(scope, Exit.void).pipe(Effect.tapCauseLogPretty, Runtime.runFork(runtime))
+        Scope.close(scope, Exit.void).pipe(Effect.tapCauseLogPretty, Effect.runForkWith(services))
       })
     }
 
@@ -322,7 +321,7 @@ export const createStore = <
           yield* connectDevtoolsToStore({ storeDevtoolsChannel, store })
         })
 
-      const runtime = yield* Effect.runtime<Scope.Scope>()
+      const services = yield* Effect.context<Scope.Scope>()
 
       const shutdown = (
         exit: Exit.Exit<IntentionalShutdownCause, UnknownError | MaterializeError | BackendIdMismatchError>,
@@ -343,7 +342,7 @@ export const createStore = <
           yield* Effect.logDebug('LiveStore shutdown complete')
         }).pipe(
           Effect.withSpan('@livestore/livestore:shutdown'),
-          Effect.provide(runtime),
+          Effect.provide(services),
           Effect.tapCauseLogPretty,
           // Given that the shutdown flow might also interrupt the effect that is calling the shutdown,
           // we want to detach the shutdown effect so it's not interrupted by itself
@@ -384,7 +383,7 @@ export const createStore = <
         schema,
         context,
         otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
-        effectContext: { lifetimeScope, runtime },
+        effectContext: { lifetimeScope, services },
         // TODO find a better way to detect if we're running LiveStore in the LiveStore devtools
         // But for now this is a good enough approximation with little downsides
         __runningInDevtools: !getDevtoolsEnabled(disableDevtools),

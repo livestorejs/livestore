@@ -2,7 +2,7 @@
 /// <reference lib="webworker" />
 
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, Runtime, Schedule, type Scope, Stream } from '@livestore/utils/effect'
+import { type Context, Effect, Schedule, type Scope, Stream } from '@livestore/utils/effect'
 import { Opfs, type WebError } from '@livestore/utils/effect/browser'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 
@@ -67,8 +67,8 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   #directoryPath
   #directoryHandle: FileSystemDirectoryHandle | undefined
 
-  // Runtime for executing Effect operations
-  readonly #runtime: Runtime.Runtime<Opfs.Opfs | Scope.Scope>
+  // Context for executing Effect operations.
+  readonly #services: Context.Context<Opfs.Opfs | Scope.Scope>
 
   // The OPFS files all have randomly-generated names that do not match
   // the SQLite files whose data they contain. This map links those names
@@ -84,8 +84,8 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   #mapIdToFile = new Map<number, { path: string; flags: number; accessHandle: FileSystemSyncAccessHandle }>()
 
   static create = Effect.fn(function* (name: string, directoryPath: string, module: any) {
-    const runtime = yield* Effect.runtime<Opfs.Opfs | Scope.Scope>()
-    const vfs = new AccessHandlePoolVFS({ name, directoryPath, module, runtime })
+    const services = yield* Effect.context<Opfs.Opfs | Scope.Scope>()
+    const vfs = new AccessHandlePoolVFS({ name, directoryPath, module, services })
     yield* Effect.promise(() => vfs.isReady())
     return vfs
   })
@@ -94,16 +94,16 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     name,
     directoryPath,
     module,
-    runtime,
+    services,
   }: {
     name: string
     directoryPath: string
     module: any
-    runtime: Runtime.Runtime<Opfs.Opfs | Scope.Scope>
+    services: Context.Context<Opfs.Opfs | Scope.Scope>
   }) {
     super(name, module)
     this.#directoryPath = directoryPath
-    this.#runtime = runtime
+    this.#services = services
   }
 
   /**
@@ -199,7 +199,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     }).pipe(
       Effect.tapCauseLogPretty,
       Effect.catchCause(() => Effect.succeed(VFS.SQLITE_CANTOPEN)),
-      Runtime.runSync(this.#runtime),
+      Effect.runSyncWith(this.#services),
     )
   }
 
@@ -217,7 +217,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     }).pipe(
       Effect.tapCauseLogPretty,
       Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_CLOSE)),
-      Runtime.runSync(this.#runtime),
+      Effect.runSyncWith(this.#services),
     )
   }
 
@@ -235,7 +235,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     }).pipe(
       Effect.tapCauseLogPretty,
       Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_READ)),
-      Runtime.runSync(this.#runtime),
+      Effect.runSyncWith(this.#services),
     )
   }
 
@@ -252,7 +252,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     }).pipe(
       Effect.tapCauseLogPretty,
       Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_WRITE)),
-      Runtime.runSync(this.#runtime),
+      Effect.runSyncWith(this.#services),
     )
   }
 
@@ -264,7 +264,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     }).pipe(
       Effect.tapCauseLogPretty,
       Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_TRUNCATE)),
-      Runtime.runSync(this.#runtime),
+      Effect.runSyncWith(this.#services),
     )
   }
 
@@ -276,7 +276,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     }).pipe(
       Effect.tapCauseLogPretty,
       Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_FSYNC)),
-      Runtime.runSync(this.#runtime),
+      Effect.runSyncWith(this.#services),
     )
   }
 
@@ -290,7 +290,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     }).pipe(
       Effect.tapCauseLogPretty,
       Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_FSTAT)),
-      Runtime.runSync(this.#runtime),
+      Effect.runSyncWith(this.#services),
     )
   }
 
@@ -310,7 +310,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     }).pipe(
       Effect.tapCauseLogPretty,
       Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_ACCESS)),
-      Runtime.runSync(this.#runtime),
+      Effect.runSyncWith(this.#services),
     )
   }
 
@@ -322,12 +322,12 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     }).pipe(
       Effect.tapCauseLogPretty,
       Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_DELETE)),
-      Runtime.runSync(this.#runtime),
+      Effect.runSyncWith(this.#services),
     )
   }
 
   close() {
-    this.#releaseAccessHandles().pipe(Runtime.runPromise(this.#runtime))
+    this.#releaseAccessHandles().pipe(Effect.runPromiseWith(this.#services))
   }
 
   async isReady() {
@@ -342,7 +342,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
         }
       }
       return true
-    }).pipe(Runtime.runPromise(this.#runtime))
+    }).pipe(Effect.runPromiseWith(this.#services))
   }
 
   /**

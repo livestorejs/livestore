@@ -209,9 +209,9 @@ const blockConcurrencyWhile =
   (ctx: CfTypes.DurableObjectState) =>
   <A, E, R>(eff: Effect.Effect<A, E, R>) =>
     Effect.gen(function* () {
-      const runtime = yield* Effect.runtime<R>()
+      const services = yield* Effect.context<R>()
       const exit = yield* Effect.promise(() =>
-        ctx.blockConcurrencyWhile(() => eff.pipe(Effect.provide(runtime), Effect.runPromiseExit)),
+        ctx.blockConcurrencyWhile(() => eff.pipe(Effect.runPromiseExitWith(services))),
       )
 
       return yield* exit

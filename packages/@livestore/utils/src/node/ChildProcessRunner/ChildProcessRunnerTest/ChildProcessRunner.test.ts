@@ -34,7 +34,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         new Person({ id: 123, name: 'test', data: new Uint8Array([1, 2, 3]) }),
         new Person({ id: 123, name: 'ing', data: new Uint8Array([4, 5, 6]) }),
       ])
-    }).pipe(Effect.scoped, Effect.provide(WorkerLive), Effect.runPromise))
+    }).pipe(Effect.scoped, Effect.runPromiseWith(WorkerLive)))
 
   it('Serialized with initialMessage', () =>
     Effect.gen(function* () {
@@ -51,7 +51,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         new Person({ id: 123, name: 'test', data: new Uint8Array([1, 2, 3]) }),
         new Person({ id: 123, name: 'ing', data: new Uint8Array([4, 5, 6]) }),
       ])
-    }).pipe(Effect.scoped, Effect.provide(WorkerLive), Effect.runPromise))
+    }).pipe(Effect.scoped, Effect.runPromiseWith(WorkerLive)))
 
   describe('Process Cleanup', { timeout: 15_000 }, () => {
     const isProcessRunning = (pid: number) => {
@@ -203,7 +203,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         } else {
           assert.fail('Worker PID was not captured')
         }
-      }).pipe(Effect.scoped, Effect.provide(WorkerLive), Effect.runPromise))
+      }).pipe(Effect.scoped, Effect.runPromiseWith(WorkerLive)))
 
     it('should clean up multiple concurrent child processes', () =>
       Effect.gen(function* () {

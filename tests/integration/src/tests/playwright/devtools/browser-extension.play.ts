@@ -183,7 +183,7 @@ const runTest =
         Effect.annotateLogs({ thread }),
         Effect.provide(layer),
       )
-    }).pipe(Effect.tapCauseLogPretty, Effect.provide(outerLayer), Effect.runPromise)
+    }).pipe(Effect.tapCauseLogPretty, Effect.runPromiseWith(outerLayer))
   }
 
 const getExtensionPath = Effect.gen(function* () {
