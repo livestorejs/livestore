@@ -453,7 +453,7 @@ export const makeProxyChannel = ({
             yield* innerSend.pipe(Effect.timeout(100), Effect.retry(Schedule.exponential(10)), Effect.orDie)
           }).pipe(Effect.tapCause(Effect.logError))
 
-          const rerunOnNewChannelFiber = yield* connectedStateRef.changes.pipe(
+          const rerunOnNewChannelFiber = yield* SubscriptionRef.changes(connectedStateRef).pipe(
             Stream.filter((_) => _ === false),
             Stream.tap(() => FiberHandle.run(sendFiberHandle, trySend)),
             Stream.runDrain,

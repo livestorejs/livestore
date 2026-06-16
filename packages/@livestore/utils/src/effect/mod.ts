@@ -128,8 +128,8 @@ export {
   TestClock,
   TestServices,
   TQueue,
-  TRef,
   Tracer,
+  TxRef,
   Types,
 } from 'effect'
 export type { NonEmptyArray } from 'effect/Array'

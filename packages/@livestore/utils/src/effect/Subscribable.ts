@@ -4,8 +4,7 @@
  * @since 2.0.0
  */
 
-import type { SubscriptionRef } from 'effect'
-import { Effect, Effectable, Readable, Stream } from 'effect'
+import { Effect, Effectable, Readable, Stream, SubscriptionRef } from 'effect'
 import { dual } from 'effect/Function'
 import { hasProperty } from 'effect/Predicate'
 
@@ -78,8 +77,8 @@ export const make = <A, E, R>(options: {
 
 export const fromSubscriptionRef = <A>(ref: SubscriptionRef.SubscriptionRef<A>): Subscribable<A> =>
   make({
-    get: ref.get,
-    changes: ref.changes,
+    get: SubscriptionRef.get(ref),
+    changes: SubscriptionRef.changes(ref),
   })
 
 /**
