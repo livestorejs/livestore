@@ -263,7 +263,9 @@ export const make = Effect.fnUntraced(function* ({
 
       // Applies a batch of local pushes, guarded by the localPushBackendPullMutex to ensure mutual exclusion with backend pulling
       yield* Effect.gen(function* () {
-        const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
+        const syncState = yield* Effect.fromNullable(yield* SubscriptionRef.get(syncStateSref)).pipe(
+          Effect.orDieDebugger,
+        )
 
         const currentRebaseGeneration = syncState.localHead.rebaseGeneration
 
@@ -433,7 +435,9 @@ export const make = Effect.fnUntraced(function* ({
         }
 
         const chunkExit = yield* Effect.gen(function* () {
-          const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
+          const syncState = yield* Effect.fromNullable(yield* SubscriptionRef.get(syncStateSref)).pipe(
+            Effect.orDieDebugger,
+          )
 
           yield* Effect.annotateCurrentSpan({
             'merge.newEventsCount': newEvents.length,
@@ -528,7 +532,7 @@ export const make = Effect.fnUntraced(function* ({
         }
       })
 
-    const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
+    const syncState = yield* Effect.fromNullable(yield* SubscriptionRef.get(syncStateSref)).pipe(Effect.orDieDebugger)
     const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo({ remoteHead: syncState.upstreamHead.global })
 
     const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
@@ -754,7 +758,9 @@ export const make = Effect.fnUntraced(function* ({
     push,
     pushPartial: ({ event: { name, args }, clientId, sessionId }) =>
       Effect.gen(function* () {
-        const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
+        const syncState = yield* Effect.fromNullable(yield* SubscriptionRef.get(syncStateSref)).pipe(
+          Effect.orDieDebugger,
+        )
 
         const resolution = yield* resolveEventDef(schema, {
           operation: '@livestore/common:LeaderSyncProcessor:pushPartial',
@@ -817,8 +823,8 @@ export const make = Effect.fnUntraced(function* ({
         Effect.flatMap((runtime) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))),
       ),
     syncState: Subscribable.make({
-      get: syncStateSref.pipe(Effect.flatMap(Effect.fromNullable), Effect.orDieDebugger),
-      changes: syncStateSref.changes.pipe(Stream.filter(isNotUndefined)),
+      get: SubscriptionRef.get(syncStateSref).pipe(Effect.flatMap(Effect.fromNullable), Effect.orDieDebugger),
+      changes: SubscriptionRef.changes(syncStateSref).pipe(Stream.filter(isNotUndefined)),
     }),
   })
 })
