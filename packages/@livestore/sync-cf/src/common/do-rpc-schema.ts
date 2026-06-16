@@ -11,7 +11,7 @@ const commonPayloadFields = {
    */
   storeId: Schema.String,
   /** Needed for various reasons (e.g. auth) */
-  payload: Schema.optional(Schema.JsonValue),
+  payload: Schema.optional(Schema.Json),
 }
 
 export class SyncDoRpc extends RpcGroup.make(

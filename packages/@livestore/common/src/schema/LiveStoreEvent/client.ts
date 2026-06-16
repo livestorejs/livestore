@@ -81,7 +81,7 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
       Schema.TaggedStruct('no-op', {}),
       Schema.TaggedStruct('unset', {}),
     ]),
-    syncMetadata: Schema.Option(Schema.JsonValue),
+    syncMetadata: Schema.Option(Schema.Json),
     /** Used to detect if the materializer is side effecting (during dev) */
     materializerHashLeader: Schema.Option(Schema.Number),
     materializerHashSession: Schema.Option(Schema.Number),
@@ -149,7 +149,7 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
   static fromGlobal = (
     event: Global.Encoded,
     meta: {
-      syncMetadata: Option.Option<Schema.JsonValue>
+      syncMetadata: Option.Option<Schema.Json>
       materializerHashLeader: Option.Option<number>
       materializerHashSession: Option.Option<number>
     },

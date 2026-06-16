@@ -14,7 +14,7 @@ export class SyncHttpRpc extends RpcGroup.make(
   Rpc.make('SyncHttpRpc.Pull', {
     payload: Schema.Struct({
       storeId: Schema.String,
-      payload: Schema.optional(Schema.JsonValue),
+      payload: Schema.optional(Schema.Json),
       ...SyncMessage.PullRequest.fields,
     }),
     success: SyncMessage.PullResponse,
@@ -24,7 +24,7 @@ export class SyncHttpRpc extends RpcGroup.make(
   Rpc.make('SyncHttpRpc.Push', {
     payload: Schema.Struct({
       storeId: Schema.String,
-      payload: Schema.optional(Schema.JsonValue),
+      payload: Schema.optional(Schema.Json),
       ...SyncMessage.PushRequest.fields,
     }),
     success: SyncMessage.PushAck,
@@ -33,7 +33,7 @@ export class SyncHttpRpc extends RpcGroup.make(
   Rpc.make('SyncHttpRpc.Ping', {
     payload: Schema.Struct({
       storeId: Schema.String,
-      payload: Schema.optional(Schema.JsonValue),
+      payload: Schema.optional(Schema.Json),
     }),
     success: SyncMessage.Pong,
     error: UnknownError,

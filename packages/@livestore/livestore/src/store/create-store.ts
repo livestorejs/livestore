@@ -85,7 +85,7 @@ export class DeferredStoreContext extends Context.Service<
 export type LiveStoreContextProps<
   TSchema extends LiveStoreSchema,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.Json,
 > = {
   schema: TSchema
   /**
@@ -114,7 +114,7 @@ export type LiveStoreContextProps<
   /**
    * Schema describing the shape of the sync payload and used to encode it.
    *
-   * - If omitted, `Schema.JsonValue` is used (no additional typing/validation).
+   * - If omitted, `Schema.Json` is used (no additional typing/validation).
    * - Prefer exporting a schema from your app (e.g. `export const SyncPayload = Schema.Struct({ authToken: Schema.String })`)
    *   and pass it here to get end-to-end type safety and validation.
    */
@@ -135,7 +135,7 @@ export type LiveStoreContextProps<
 export interface CreateStoreOptions<
   TSchema extends LiveStoreSchema,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.Json,
 > extends LogConfig.LoggerOptions {
   /** The LiveStore schema defining tables, events, and materializers. */
   schema: TSchema
@@ -191,7 +191,7 @@ export interface CreateStoreOptions<
   /**
    * Schema describing the shape of the sync payload and used to encode it.
    *
-   * - If omitted, `Schema.JsonValue` is used (no additional typing/validation).
+   * - If omitted, `Schema.Json` is used (no additional typing/validation).
    * - Prefer exporting a schema from your app (e.g. `export const SyncPayload = Schema.Struct({ authToken: Schema.String })`)
    *   and pass it here to get end-to-end type safety and validation.
    */
@@ -224,7 +224,7 @@ export interface CreateStoreOptions<
 export type CreateStoreOptionsPromise<
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.Json,
 > = CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> & {
   signal?: AbortSignal
   otelOptions?: Partial<OtelOptions>
@@ -234,7 +234,7 @@ export type CreateStoreOptionsPromise<
 export const createStorePromise = async <
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.Json,
 >({
   signal,
   otelOptions,
@@ -270,7 +270,7 @@ export const createStorePromise = async <
 export const createStore = <
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.Json,
 >({
   schema,
   adapter,
@@ -299,7 +299,7 @@ export const createStore = <
     yield* Effect.addFinalizer((_) => Scope.close(lifetimeScope, _))
 
     const debugInstanceId = debug?.instanceId ?? nanoid(10)
-    const resolvedSyncPayloadSchema = (syncPayloadSchema ?? Schema.JsonValue) as TSyncPayloadSchema
+    const resolvedSyncPayloadSchema = (syncPayloadSchema ?? Schema.Json) as TSyncPayloadSchema
 
     return yield* Effect.gen(function* () {
       const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
