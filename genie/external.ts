@@ -8,7 +8,7 @@
 import { livestoreCurrentPackageNames, workspaceCatalogForPackageNames } from './repo-topology.ts'
 
 /** Effect v4 packages share one release version; keep LiveStore pins aligned as a single catalog unit. */
-export const effectVersion = '4.0.0-beta.78'
+export const effectVersion = '4.0.0-beta.83'
 
 export const effectV4Catalog = {
   effect: effectVersion,
