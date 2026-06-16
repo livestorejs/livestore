@@ -102,5 +102,8 @@ export const requestSessionInfoSubscription = ({
       Effect.forkScoped,
     )
 
-    return Subscribable.make({ get: sessionInfoSubRef.get, changes: sessionInfoSubRef.changes })
+    return Subscribable.make({
+      get: SubscriptionRef.get(sessionInfoSubRef),
+      changes: SubscriptionRef.changes(sessionInfoSubRef),
+    })
   })

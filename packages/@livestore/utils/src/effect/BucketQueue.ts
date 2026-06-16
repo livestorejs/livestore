@@ -1,29 +1,29 @@
-import { Array, Effect, STM, TRef } from 'effect'
+import { Array, Effect, TxRef } from 'effect'
 
-export type BucketQueue<A> = TRef.TRef<A[]>
+export type BucketQueue<A> = TxRef.TxRef<A[]>
 
-export const make = <A>(): STM.STM<BucketQueue<A>> => TRef.make<A[]>([])
+export const make = <A>(): Effect.Effect<BucketQueue<A>> => TxRef.make<A[]>([])
 
 export const offerAll = <A>(self: BucketQueue<A>, elements: ReadonlyArray<A>) =>
-  TRef.update(self, (bucket) => Array.appendAll(bucket, elements))
+  TxRef.update(self, (bucket) => Array.appendAll(bucket, elements))
 
-export const replace = <A>(self: BucketQueue<A>, elements: ReadonlyArray<A>) => TRef.set(self, elements as A[])
+export const replace = <A>(self: BucketQueue<A>, elements: ReadonlyArray<A>) => TxRef.set(self, elements as A[])
 
-export const clear = <A>(self: BucketQueue<A>) => TRef.set(self, [])
+export const clear = <A>(self: BucketQueue<A>) => TxRef.set(self, [])
 
-export const takeBetween = <A>(bucket: BucketQueue<A>, min: number, max: number): STM.STM<ReadonlyArray<A>> =>
-  STM.gen(function* () {
-    const bucketValue = yield* TRef.get(bucket)
+export const takeBetween = <A>(bucket: BucketQueue<A>, min: number, max: number): Effect.Effect<ReadonlyArray<A>> =>
+  Effect.tx(Effect.gen(function* () {
+    const bucketValue = yield* TxRef.get(bucket)
     if (bucketValue.length < min) {
-      return yield* STM.retry
+      return yield* Effect.txRetry
     } else {
       const elements = bucketValue.splice(0, Math.min(max, bucketValue.length))
-      yield* TRef.set(bucket, bucketValue)
+      yield* TxRef.set(bucket, bucketValue)
       return elements
     }
-  })
+  }))
 
-export const peekAll = <A>(bucket: BucketQueue<A>) => TRef.get(bucket)
+export const peekAll = <A>(bucket: BucketQueue<A>) => TxRef.get(bucket)
 
 /** Returns the elements up to the first element that matches the predicate, the rest is left in the queue
  *
@@ -35,11 +35,11 @@ export const peekAll = <A>(bucket: BucketQueue<A>) => TRef.get(bucket)
  * ```
  */
 export const takeSplitWhere = <A>(bucket: BucketQueue<A>, predicate: (a: A) => boolean) =>
-  STM.gen(function* () {
-    const bucketValue = yield* TRef.get(bucket)
+  Effect.tx(Effect.gen(function* () {
+    const bucketValue = yield* TxRef.get(bucket)
     const [elements, rest] = Array.splitWhere(bucketValue, predicate)
-    yield* TRef.set(bucket, rest)
+    yield* TxRef.set(bucket, rest)
     return elements
-  })
+  }))
 
-export const size = <A>(bucket: BucketQueue<A>) => TRef.get(bucket).pipe(Effect.map((_) => _.length))
+export const size = <A>(bucket: BucketQueue<A>) => TxRef.get(bucket).pipe(Effect.map((_) => _.length))
