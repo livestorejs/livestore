@@ -133,9 +133,9 @@ export const remove = Effect.fn('@livestore/utils:Opfs.remove')(function* (
   options?: { readonly recursive?: boolean },
 ) {
   const recursive = options?.recursive ?? false
+  const opfs = yield* Opfs.Opfs
 
   if (isRootPath(path) === true) {
-    const opfs = yield* Opfs.Opfs
     const rootHandle = yield* opfs.getRootDirectoryHandle
     const handlesStream = opfs.values(rootHandle)
     yield* handlesStream.pipe(
@@ -147,7 +147,6 @@ export const remove = Effect.fn('@livestore/utils:Opfs.remove')(function* (
   const pathSegments = yield* parsePathSegments(path)
   const { parentSegments, leafSegment: targetName } = splitPathSegments(pathSegments)
   const parentDirHandle = yield* traverseDirectoryPath(parentSegments)
-  const opfs = yield* Opfs.Opfs
 
   yield* opfs.removeEntry(parentDirHandle, targetName, { recursive })
 })
@@ -173,7 +172,7 @@ export const exists = Effect.fn('@livestore/utils:Opfs.exists')(function* (path:
   const opfs = yield* Opfs.Opfs
 
   return yield* opfs.getFileHandle(parentDirHandle, targetName).pipe(
-    Effect.orElse(() => opfs.getDirectoryHandle(parentDirHandle, targetName, { create: false })),
+    Effect.catch(() => opfs.getDirectoryHandle(parentDirHandle, targetName, { create: false })),
     Effect.as(true),
     Effect.catchTag('NotFoundError', () => Effect.succeed(false)),
   )
