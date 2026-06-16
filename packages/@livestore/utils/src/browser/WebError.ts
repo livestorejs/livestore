@@ -122,7 +122,7 @@ const domExceptionWithName = (expectedName: string) =>
         Schema.Struct({
           name: Schema.Literal(expectedName),
         }),
-      )(a, options).pipe(Either.flip, Either.getOrUndefined),
+      )(a, options).pipe((result) => (Result.isFailure(result) ? result.failure : undefined)),
     ),
   )
 

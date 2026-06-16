@@ -11,6 +11,7 @@ import {
   Hash,
   Layer,
   ManagedRuntime,
+  Result,
   type OtelTracer,
   RcMap,
   References,
@@ -276,13 +277,13 @@ export class StoreRegistry {
     if (Exit.isSuccess(exit) === true) return exit.value
 
     // Check if the failure is due to async work
-    const defect = Cause.dieOption(exit.cause)
-    if (defect._tag !== 'Some') {
+    const defect = Cause.findDefect(exit.cause)
+    if (Result.isFailure(defect)) {
       // Handle synchronous failure
       throw Cause.squash(exit.cause)
     }
 
-    if (Cause.isAsyncFiberError(defect.value) === false) {
+    if (Cause.isAsyncFiberError(defect.success) === false) {
       // Handle synchronous failure
       throw Cause.squash(exit.cause)
     }

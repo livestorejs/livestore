@@ -94,7 +94,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
         const fiberSet = yield* FiberSet.make<any, WorkerError | E>()
         const runFork = Effect.runForkWith(services)
         const onExit = (exit: Exit.Exit<any, E>) => {
-          if (exit._tag === 'Failure' && Cause.isInterruptedOnly(exit.cause) === false) {
+          if (exit._tag === 'Failure' && Cause.hasInterruptsOnly(exit.cause) === false) {
             // Deferred.doneUnsafe(closeLatch, Effect.die(Cause.squash(exit.cause)))
             Deferred.doneUnsafe(closeLatch, Effect.failCause(exit.cause))
           }

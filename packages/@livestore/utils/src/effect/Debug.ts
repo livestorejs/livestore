@@ -88,7 +88,7 @@ const addEvent = (traceId: string, spanId: string, event: SpanEvent) => {
 const addNodeExit = (traceId: string, spanId: string, exit: Exit.Exit<any, any>) => {
   const [mutableGraph, nodeId] = ensureSpan(traceId, spanId)
   Graph.updateNode(mutableGraph, nodeId, (previousInfo) => {
-    const isInterruptedOnly = exit._tag === 'Failure' && Cause.isInterruptedOnly(exit.cause)
+    const isInterruptedOnly = exit._tag === 'Failure' && Cause.hasInterruptsOnly(exit.cause)
     return {
       ...previousInfo,
       exitTag: isInterruptedOnly === true ? ('Interrupted' as const) : exit._tag,

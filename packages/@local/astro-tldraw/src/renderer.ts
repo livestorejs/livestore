@@ -4,7 +4,7 @@ import path from 'node:path'
 import { tldrawToImage } from '@kitschpatrol/tldraw-cli'
 
 import { shouldNeverHappen } from '@livestore/utils'
-import { Duration, Effect, FileSystem, Schema } from '@livestore/utils/effect'
+import { Duration, Effect, FileSystem, Result, Schema } from '@livestore/utils/effect'
 
 const hashString = (value: string): string => crypto.createHash('sha256').update(value).digest('hex')
 
@@ -137,8 +137,10 @@ const renderSvgWithTheme = (
       while (true) {
         const attemptResult = yield* Effect.result(renderEffect)
 
-        if (attemptResult._tag === 'Right') {
-          const outputPaths = attemptResult.right.map((value) => (typeof value === 'string' ? value : value.toString()))
+        if (Result.isSuccess(attemptResult)) {
+          const outputPaths = attemptResult.success.map((value) =>
+            typeof value === 'string' ? value : value.toString(),
+          )
 
           if (outputPaths.length === 0) {
             return shouldNeverHappen(`No SVG generated for ${tldrPath}`)
@@ -183,7 +185,7 @@ const renderSvgWithTheme = (
           }
         }
 
-        const error = attemptResult.left
+        const error = attemptResult.failure
         if (attempt >= MAX_RETRIES) {
           return yield* error
         }

@@ -1,5 +1,5 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { pipe, ReadonlyArray, Schema, TreeFormatter } from '@livestore/utils/effect'
+import { pipe, ReadonlyArray, Result, Schema, TreeFormatter } from '@livestore/utils/effect'
 
 import type { SqliteDsl } from '../schema/state/sqlite/db-schema/mod.ts'
 import { sql } from '../util.ts'
@@ -285,8 +285,8 @@ export const makeBindValues = <TColumns extends SqliteDsl.Columns, TKeys extends
       (value: any) => {
         if (columnDef.nullable === true && (value === null || value === undefined)) return null
         const res = Schema.encodeExit(columnDef.schema)(value)
-        if (res._tag === 'Left') {
-          const parseErrorStr = TreeFormatter.formatErrorSync(res.left)
+        if (Result.isFailure(res)) {
+          const parseErrorStr = TreeFormatter.formatErrorSync(res.failure)
           const expectedSchemaStr = String(columnDef.schema.ast)
 
           console.error(
@@ -302,9 +302,9 @@ Value:`,
           )
           // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for SQL decode errors
           debugger
-          throw res.left
+          throw res.failure
         } else {
-          return res.right
+          return res.success
         }
       },
     ]),

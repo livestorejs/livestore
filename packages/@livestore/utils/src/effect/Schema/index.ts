@@ -1,4 +1,4 @@
-import { Effect, Hash, ParseResult, Schema } from 'effect'
+import { Effect, Hash, ParseResult, Result, Schema } from 'effect'
 import type { ParseError } from 'effect/ParseResult'
 import type { ParseOptions } from 'effect/SchemaAST'
 import * as SchemaAST from 'effect/SchemaAST'
@@ -59,10 +59,10 @@ export const decodeSyncDebug: <A, I>(
   options?: SchemaAST.ParseOptions,
 ) => (i: I, overrideOptions?: SchemaAST.ParseOptions) => A = (schema, options) => (input, overrideOptions) => {
   const res = Schema.decodeExit(schema, options)(input, overrideOptions)
-  if (res._tag === 'Left') {
-    return shouldNeverHappen(`decodeSyncDebug failed:`, res.left)
+  if (Result.isFailure(res)) {
+    return shouldNeverHappen(`decodeSyncDebug failed:`, res.failure)
   } else {
-    return res.right
+    return res.success
   }
 }
 
@@ -71,10 +71,10 @@ export const encodeSyncDebug: <A, I>(
   options?: SchemaAST.ParseOptions,
 ) => (a: A, overrideOptions?: SchemaAST.ParseOptions) => I = (schema, options) => (input, overrideOptions) => {
   const res = Schema.encodeExit(schema, options)(input, overrideOptions)
-  if (res._tag === 'Left') {
-    return shouldNeverHappen(`encodeSyncDebug failed:`, res.left)
+  if (Result.isFailure(res)) {
+    return shouldNeverHappen(`encodeSyncDebug failed:`, res.failure)
   } else {
-    return res.right
+    return res.success
   }
 }
 

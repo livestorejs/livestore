@@ -139,8 +139,8 @@ export const formatPrettyLog = ({
   log(firstLine)
   // if (!processIsBun) console.group()
 
-  if (Cause.isEmpty(cause) === false) {
-    logIndented(Cause.pretty(cause, { renderErrorCause: true }))
+  if (cause.reasons.length > 0) {
+    logIndented(Cause.pretty(cause))
   }
 
   if (messageIndex < message.length) {
