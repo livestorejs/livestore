@@ -319,15 +319,15 @@ export const withPerformanceMeasure =
     )
 
 const getSpanTrace = () => {
-  const fiberOption = Fiber.getCurrentFiber()
-  if (fiberOption._tag === 'None' || fiberOption.value.currentSpan === undefined) {
+  const fiber = Fiber.getCurrent()
+  if (fiber === undefined || fiber.currentSpan === undefined) {
     return 'No current fiber'
   }
 
   return ''
   // const msg = Effect.runSync(
   //   Effect.fail({ message: '' }).pipe(
-  //     Effect.withParentSpan(fiberOption.value.currentSpan),
+  //     Effect.withParentSpan(fiber.currentSpan),
   //     Effect.catchCause((cause) => Effect.succeed(cause.toString())),
   //   ),
   // )
