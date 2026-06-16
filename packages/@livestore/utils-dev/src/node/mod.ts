@@ -14,15 +14,7 @@ import { OtelLiveDummy } from '@livestore/utils/node'
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 export * from './cmd.ts'
-export {
-  type DockerComposeArgs,
-  DockerComposeError,
-  type DockerComposeOperations,
-  DockerComposeService,
-  type LogsOptions,
-  type StartOptions,
-  startDockerComposeServicesScoped,
-} from './DockerComposeService/DockerComposeService.ts'
+export * from './DockerCompose/mod.ts'
 export * as FileLogger from './FileLogger.ts'
 export * from './workspace.ts'
 
@@ -130,7 +122,7 @@ export const OtelLiveHttp = ({
     }
 
     return layer
-  }).pipe(Layer.unwrapScoped) as any
+  }).pipe(Layer.unwrap) as any
 
 export const logTraceUiUrlForSpan = (printMsg?: (url: string) => string) => (span: otel.Span) =>
   getTracingBackendUrl(span).pipe(

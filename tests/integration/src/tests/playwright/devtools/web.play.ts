@@ -140,7 +140,7 @@ const PWLive = Effect.gen(function* () {
   const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
 
   return Playwright.browserContextLayer({ persistentContextPath })
-}).pipe(Layer.unwrapEffect)
+}).pipe(Layer.unwrap)
 
 const runTest =
   <E>(eff: Effect.Effect<void, E, Playwright.BrowserContext | Scope.Scope>) =>

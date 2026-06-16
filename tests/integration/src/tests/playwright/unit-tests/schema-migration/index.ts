@@ -75,26 +75,27 @@ export const testMultipleMigrations = () =>
       window.postMessage(Schema.encodeEffectSync(ResultMultipleMigrations)(ResultMultipleMigrations.make({ exit })))
     }),
     Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.provide(Layer.mergeAll(Opfs.Opfs.Default, Logger.pretty)),
+    Effect.provide(Layer.mergeAll(Opfs.layer, Logger.pretty)),
     Effect.scoped,
     Effect.runPromise,
   )
 
 const collectArchiveSnapshot = Effect.gen(function* () {
   const segments = [`livestore-${storeId}@${liveStoreStorageFormatVersion}`, 'archive']
+  const opfs = yield* Opfs.Opfs
 
-  let handle = yield* Opfs.Opfs.getRootDirectoryHandle
+  let handle = yield* opfs.getRootDirectoryHandle
   for (const segment of segments) {
-    handle = yield* Opfs.Opfs.getDirectoryHandle(handle, segment)
+    handle = yield* opfs.getDirectoryHandle(handle, segment)
   }
 
-  const handlesStream = yield* Opfs.Opfs.values(handle)
+  const handlesStream = opfs.values(handle)
 
   const fileChunks = yield* handlesStream.pipe(
     Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
     Stream.mapEffect((fileHandle) =>
       Effect.gen(function* () {
-        const file = yield* Opfs.Opfs.getFile(fileHandle)
+        const file = yield* opfs.getFile(fileHandle)
         return { name: fileHandle.name, size: file.size, lastModified: file.lastModified }
       }),
     ),

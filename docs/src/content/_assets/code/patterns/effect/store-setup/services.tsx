@@ -6,7 +6,7 @@ import { StoreTag } from './atoms.ts'
 import { events } from './schema.ts'
 
 // Example service definition
-export class MyService extends Context.Tag('MyService')<
+export class MyService extends Context.Service<
   MyService,
   {
     processItem: (name: string) => Effect.Effect<{
@@ -14,7 +14,7 @@ export class MyService extends Context.Tag('MyService')<
       metadata: Record<string, unknown>
     }>
   }
->() {}
+>()('MyService') {}
 
 // Use the commit hook for event handling
 export const useCommit = () => useAtomSet(StoreTag.commit)

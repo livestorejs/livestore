@@ -42,14 +42,15 @@ export const readPersistedStateDbFromClientSession: (args: {
 
     const stateDbFileName = `/${getStateDbFileName(schema)}`
 
-    const handlesStream = yield* Opfs.Opfs.values(accessHandlePoolDirHandle)
+    const opfs = yield* Opfs.Opfs
+    const handlesStream = opfs.values(accessHandlePoolDirHandle)
 
     const stateDbFileOption = yield* handlesStream.pipe(
       Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
       Stream.mapEffect(
         (fileHandle) =>
           Effect.gen(function* () {
-            const file = yield* Opfs.Opfs.getFile(fileHandle)
+            const file = yield* opfs.getFile(fileHandle)
             const fileName = yield* Effect.promise(() => decodeAccessHandlePoolFilename(file))
             return { file, fileName }
           }),
@@ -245,7 +246,8 @@ const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDire
   keep: number
 }) {
   const archiveDirHandle = yield* Opfs.getDirectoryHandleByPath(archiveDirectory)
-  const handlesStream = yield* Opfs.Opfs.values(archiveDirHandle)
+  const opfs = yield* Opfs.Opfs
+  const handlesStream = opfs.values(archiveDirHandle)
   const filesWithMetadata = yield* handlesStream.pipe(
     Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
     Stream.mapEffect((fileHandle) => Opfs.getMetadata(fileHandle)),
@@ -260,7 +262,7 @@ const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDire
 
   if (filesToDelete.length === 0) return
 
-  yield* Effect.forEach(filesToDelete, ({ name }) => Opfs.Opfs.removeEntry(archiveDirHandle, name))
+  yield* Effect.forEach(filesToDelete, ({ name }) => opfs.removeEntry(archiveDirHandle, name))
 
   yield* Effect.logDebug(`Pruned ${filesToDelete.length} old database file(s) from archive directory`)
 })

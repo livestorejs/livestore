@@ -18,7 +18,7 @@ const withTestCtx = Vitest.makeWithTestCtx({
   timeout: testTimeout,
   makeLayer: () =>
     Layer.mergeAll(
-      PlatformNode.NodeContext.layer,
+      PlatformNode.NodeServices.layer,
       FetchHttpClient.layer,
       browserContextLayer({ persistentContextPath: '', headless: true }),
     ),

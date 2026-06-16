@@ -6,7 +6,7 @@ import { storeEvents, storeTables } from './schema.ts'
 // ---cut---
 // Access the store in Effect code with full type safety
 const _todoService = Effect.gen(function* () {
-  // Yield the store directly (it's a Context.Tag)
+  // Yield the store directly (it's a Context.Service)
   const { store } = yield* TodoStore
 
   // Query with autocomplete for tables

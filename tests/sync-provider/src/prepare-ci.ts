@@ -1,4 +1,4 @@
-import type { DockerComposeError } from '@livestore/utils-dev/node'
+import type { DockerCompose } from '@livestore/utils-dev/node'
 import { type ChildProcessSpawner, Effect, type PlatformError } from '@livestore/utils/effect'
 
 import { providerKeys, providerRegistry } from './providers/registry.ts'
@@ -6,7 +6,7 @@ import { providerKeys, providerRegistry } from './providers/registry.ts'
 // Meant to separate test preparation from test execution (e.g. pulling docker images)
 export const prepareCi: Effect.Effect<
   void,
-  PlatformError.PlatformError | DockerComposeError,
+  PlatformError.PlatformError | DockerCompose.DockerComposeError,
   ChildProcessSpawner.ChildProcessSpawner
 > = Effect.gen(function* () {
   yield* Effect.log('Preparing sync provider tests')

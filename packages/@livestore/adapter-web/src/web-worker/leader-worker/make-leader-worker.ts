@@ -64,7 +64,7 @@ export const makeWorker = (options: WorkerOptions) => {
 export const makeWorkerEffect = (options: WorkerOptions) => {
   const TracingLive =
     options.otelOptions?.tracer !== undefined
-      ? Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+      ? Layer.unwrap(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
           Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
         )
       : undefined
@@ -104,7 +104,7 @@ const makeWorkerRunnerOuter = (
           Effect.tapCauseLogPretty,
           Effect.provide(
             Layer.mergeAll(
-              Opfs.Opfs.Default,
+              Opfs.layer,
               WebmeshWorker.CacheService.layer({
                 nodeName: Devtools.makeNodeName.client.leader({ storeId, clientId }),
               }),
@@ -115,7 +115,7 @@ const makeWorkerRunnerOuter = (
         )
 
         return Layer.empty
-      }).pipe(Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage'), Layer.unwrapScoped),
+      }).pipe(Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage'), Layer.unwrap),
   })
 
 const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }: WorkerOptions) =>
@@ -218,7 +218,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         Effect.withPerformanceMeasure('@livestore/adapter-web:worker:InitialMessage'),
         Effect.withSpan('@livestore/adapter-web:worker:InitialMessage'),
         Effect.annotateSpans({ debugInstanceId }),
-        Layer.unwrapScoped,
+        Layer.unwrap,
       ),
     GetRecreateSnapshot: Effect.fn('@livestore/adapter-web:worker:GetRecreateSnapshot')(function* () {
       const workerCtx = yield* LeaderThreadCtx

@@ -637,7 +637,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
   // - leader re-election
 })
 
-class TestContext extends Context.Tag('TestContext')<
+class TestContext extends Context.Service<
   TestContext,
   {
     makeStore: (args?: {
@@ -655,7 +655,7 @@ class TestContext extends Context.Tag('TestContext')<
     mockSyncBackend: MockSyncBackend
     shutdownDeferred: ShutdownDeferred
   }
->() {}
+>()('TestContext') {}
 
 const TestContextLive = Layer.effect(
   TestContext,

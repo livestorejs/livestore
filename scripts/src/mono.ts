@@ -68,7 +68,7 @@ if (import.meta.main) {
   })
 
   const layer = Layer.mergeAll(
-    PlatformNode.NodeContext.layer,
+    PlatformNode.NodeServices.layer,
     FetchHttpClient.layer,
     OtelLiveHttp({
       serviceName: 'mono',

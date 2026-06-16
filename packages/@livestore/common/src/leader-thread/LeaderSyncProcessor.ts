@@ -80,10 +80,9 @@ export type TypeId = typeof TypeId
  *
  * See ClientSessionSyncProcessor for how the leader and session sync processors are similar/different.
  */
-export class LeaderSyncProcessor extends Context.Tag('@livestore/common/LeaderSyncProcessor')<
-  LeaderSyncProcessor,
-  Service
->() {}
+export class LeaderSyncProcessor extends Context.Service<
+  LeaderSyncProcessor, Service
+>()('@livestore/common/LeaderSyncProcessor') {}
 
 export interface Service {
   readonly [TypeId]: TypeId
@@ -121,7 +120,7 @@ export interface Service {
   readonly syncState: Subscribable.Subscribable<SyncState.SyncState>
 }
 
-interface MakeOptions {
+interface Options {
   readonly schema: LiveStoreSchema
   readonly dbState: SqliteDb
   readonly initialBlockingSyncContext: InitialBlockingSyncContext
@@ -207,7 +206,7 @@ export const make = Effect.fnUntraced(function* ({
   livePull,
   params,
   testing,
-}: MakeOptions) {
+}: Options) {
   const syncBackendPushQueue = yield* BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>()
   const localPushBatchSize = params.localPushBatchSize ?? 10
   const backendPushBatchSize = params.backendPushBatchSize ?? 50
@@ -833,8 +832,7 @@ export const make = Effect.fnUntraced(function* ({
   })
 })
 
-export const layer = (params: MakeOptions): Layer.Layer<LeaderSyncProcessor, never, Scope.Scope> =>
-  Layer.effect(LeaderSyncProcessor, make(params))
+export const layer = (options: Options) => Layer.effect(LeaderSyncProcessor, make(options))
 
 type MaterializeEventsBatch = (_: {
   batchItems: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>

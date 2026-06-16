@@ -242,7 +242,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     // Accept devtools connections (from leader and client sessions)
     'WebmeshWorker.CreateConnection': WebmeshWorker.CreateConnection,
   })
-}).pipe(Layer.unwrapScoped)
+}).pipe(Layer.unwrap)
 
 export const makeWorker = (options?: LogConfig.WithLoggerOptions): void => {
   const runtimeLayer = Layer.mergeAll(

@@ -39,7 +39,7 @@ import type * as CfTypes from '../cf-types.ts'
  * This is useful for reading WebSocket attachment data (e.g., forwarded headers)
  * inside RPC handlers.
  */
-export class WsContext extends Context.Tag('WsContext')<WsContext, { readonly ws: CfTypes.WebSocket }>() {}
+export class WsContext extends Context.Service<WsContext, { readonly ws: CfTypes.WebSocket }>()('WsContext') {}
 
 /**
  * Configuration options for setting up WebSocket RPC on a Durable Object.
@@ -256,7 +256,10 @@ export interface WsRpcServerArgs {
  * @internal This is typically used internally by `setupDurableObjectWebSocketRpc`
  */
 export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
-  Layer.mergeAll(Layer.effect(RpcServer.Protocol, makeSocketProtocol(args)), Layer.succeed(WsContext, { ws: args.ws }))
+  Layer.mergeAll(
+    Layer.effect(RpcServer.Protocol, makeSocketProtocol(args)),
+    Layer.succeed(WsContext, WsContext.of({ ws: args.ws })),
+  )
 
 /**
  * Creates the low-level RPC protocol implementation for WebSocket communication.

@@ -23,7 +23,7 @@ export const makeFileLogger = (
     readonly colors?: boolean
   },
 ) =>
-  Layer.unwrapScoped(
+  Layer.unwrap(
     Effect.gen(function* () {
       yield* Effect.sync(() => fs.mkdirSync(path.dirname(logFilePath), { recursive: true }))
 

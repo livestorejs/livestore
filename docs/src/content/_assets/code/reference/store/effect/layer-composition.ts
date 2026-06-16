@@ -1,26 +1,34 @@
-import { Effect, Layer } from 'effect'
+import { Context, Effect, Layer } from 'effect'
 
 import { TodoStore, TodoStoreLayer } from './make-store-context.ts'
 import { storeEvents } from './schema.ts'
 
 // ---cut---
 // Define services that depend on the store
-class TodoService extends Effect.Service<TodoService>()('TodoService', {
-  effect: Effect.gen(function* () {
-    const { store } = yield* TodoStore
+class TodoService extends Context.Service<
+  TodoService,
+  {
+    createTodo: (id: string, text: string) => Effect.Effect<void>
+    completeTodo: (id: string) => Effect.Effect<void>
+  }
+>()('TodoService') {
+  static readonly layer = Layer.effect(
+    TodoService,
+    Effect.gen(function* () {
+      const { store } = yield* TodoStore
 
-    const createTodo = (id: string, text: string) =>
-      Effect.sync(() => store.commit(storeEvents.todoCreated({ id, text })))
+      const createTodo = (id: string, text: string) =>
+        Effect.sync(() => store.commit(storeEvents.todoCreated({ id, text })))
 
-    const completeTodo = (id: string) => Effect.sync(() => store.commit(storeEvents.todoCompleted({ id })))
+      const completeTodo = (id: string) => Effect.sync(() => store.commit(storeEvents.todoCompleted({ id })))
 
-    return { createTodo, completeTodo } as const
-  }),
-  dependencies: [TodoStoreLayer],
-}) {}
+      return TodoService.of({ createTodo, completeTodo })
+    }),
+  ).pipe(Layer.provide(TodoStoreLayer))
+}
 
 // Compose everything into a main layer
-const MainLayer = Layer.mergeAll(TodoStoreLayer, TodoService.Default)
+const MainLayer = Layer.mergeAll(TodoStoreLayer, TodoService.layer)
 
 // Use in your application
 const program = Effect.gen(function* () {

@@ -37,7 +37,7 @@ const PWLive = Effect.gen(function* () {
   const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
 
   return Playwright.browserContextLayer({ persistentContextPath })
-}).pipe(Layer.unwrapEffect)
+}).pipe(Layer.unwrap)
 
 export const runAndGetExit = <Tag extends string, A>({
   importPath,

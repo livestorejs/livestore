@@ -9,7 +9,7 @@ import { Person, User, WorkerMessage } from './schema.ts'
 interface Name {
   readonly _: unique symbol
 }
-const Name = Context.GenericTag<Name, string>('Name')
+const Name = Context.Service<Name, string>('Name')
 
 const WorkerLive = Runner.layerSerialized(WorkerMessage, {
   GetPersonById: (req) => {
@@ -24,7 +24,7 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
     Effect.gen(function* () {
       // yield* Effect.addFinalizer(() => Effect.log('closing worker scope'))
       return Layer.succeed(Name, req.name)
-    }).pipe(Layer.unwrapScoped),
+    }).pipe(Layer.unwrap),
   // InitialMessage: (req) =>
   //   Layer.effect(
   //     Name,

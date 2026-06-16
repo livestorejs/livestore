@@ -5,13 +5,13 @@ import * as PW from '@playwright/test'
 import { envTruish } from '@livestore/utils'
 import { Context, Effect, Layer, Option, Schema, Stream } from '@livestore/utils/effect'
 
-export class BrowserContext extends Context.Tag('Playwright.BrowserContext')<
+export class BrowserContext extends Context.Service<
   BrowserContext,
   {
     browserContext: PW.BrowserContext
     // backgroundPageConsoleFiber: Fiber.Fiber<void, SiteError> | undefined
   }
->() {}
+>()('Playwright.BrowserContext') {}
 
 export type MakeBrowserContextParams = {
   extensionPath?: string
@@ -79,10 +79,10 @@ export const browserContext = ({
 
     yield* Effect.addFinalizer(() => Effect.promise(() => browserContext.close()))
 
-    return {
+    return BrowserContext.of({
       browserContext,
       // backgroundPageConsoleFiber
-    }
+    })
   })
 
 export const browserContextLayer = (params: MakeBrowserContextParams) =>
