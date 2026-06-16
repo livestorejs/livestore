@@ -393,7 +393,7 @@ const shutdownTab = Effect.fn('shutdown-tab')(function* (tab: PW.Page, options?:
   ).pipe(Effect.timeout(1000))
 
   if (didShutdown === false && options?.expectStore !== false) {
-    yield* Effect.dieMessage('Expected LiveStore debug store to be available for shutdown')
+    yield* Effect.die(new Error('Expected LiveStore debug store to be available for shutdown'))
   }
 
   if (didShutdown === true) {

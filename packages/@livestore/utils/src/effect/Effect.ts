@@ -113,7 +113,7 @@ export const dieDebugger = (msg: string, ...args: ReadonlyArray<unknown>): Effec
       debugger
       void args // Keeps the variable in scope so it's inspectable when the debugger pauses
     }
-    return Effect.dieMessage(msg)
+    return Effect.die(new Error(msg))
   })
 
 /**
@@ -128,12 +128,12 @@ export const orDieDebugger = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Eff
   Effect.matchEffect(self, {
     onFailure: (error) =>
       // Keep the debugger hook so that `debugger` runs only when the wrapped effect actually fails, not while building the wrapper.
-      Effect.dieSync(() => {
+      Effect.suspend(() => {
         if (isDevEnv() === true) {
           // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for impossible states during development
           debugger
         }
-        return error
+        return Effect.die(error)
       }),
     onSuccess: Effect.succeed,
   })
