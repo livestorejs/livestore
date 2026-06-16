@@ -166,7 +166,7 @@ const runTest =
       Effect.provide(layer),
       Effect.tapCauseLogPretty,
       Effect.annotateLogs({ thread }),
-      Effect.provide(Logger.prettyWithThread(thread)),
+      Effect.provide(Logger.layer([Logger.consolePretty()])),
       Effect.runPromise,
     )
   }

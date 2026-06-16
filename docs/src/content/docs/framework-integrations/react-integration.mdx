@@ -114,7 +114,7 @@ You can customize the logger and log level for debugging:
 
 <StoreWithLoggingSnippet />
 
-Use `LogLevel.None` to disable logging entirely.
+Use `"None"` to disable logging entirely.
 
 ## API Reference
 
@@ -135,7 +135,7 @@ Options:
 - `syncPayloadSchema?` - Schema for type-safe sync payload validation
 - `confirmUnsavedChanges?` - Register beforeunload handler (default: `true`, web only)
 - `logger?` - Custom logger implementation
-- `logLevel?` - Log level (e.g., `LogLevel.Info`, `LogLevel.Debug`, `LogLevel.None`)
+- `logLevel?` - Log level (e.g., `"Info"`, `"Debug"`, `"None"`)
 - `otelOptions?` - OpenTelemetry configuration (`{ tracer, rootSpanContext }`)
 - `disableDevtools?` - Whether to disable devtools (`boolean | 'auto'`, default: `'auto'`)
 - `debug?` - Debug options (`{ instanceId?: string }`)

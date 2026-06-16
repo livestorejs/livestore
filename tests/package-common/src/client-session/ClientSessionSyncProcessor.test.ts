@@ -28,10 +28,9 @@ import {
   Exit,
   FetchHttpClient,
   Layer,
-  Logger,
-  LogLevel,
   Option,
   Queue,
+  References,
   Schema,
   type Scope,
   Stream,
@@ -54,7 +53,7 @@ const withTestCtx = Vitest.makeWithTestCtx({
       TestContextLive,
       PlatformNode.NodeFileSystem.layer,
       FetchHttpClient.layer,
-      Logger.minimumLogLevel(LogLevel.Debug),
+      Layer.succeed(References.MinimumLogLevel, 'Debug'),
     ),
 })
 

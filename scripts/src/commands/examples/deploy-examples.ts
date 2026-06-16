@@ -2,7 +2,7 @@ import process from 'node:process'
 
 import { liveStoreVersion } from '@livestore/common'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
-import { Effect, FileSystem, Layer, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
+import { Effect, FileSystem, Layer, Option, References, Schema } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 
 import { cloudflareExamples } from '../../shared/cloudflare-manifest.ts'
@@ -402,7 +402,7 @@ if (import.meta.main === true) {
   })
 
   cli(process.argv).pipe(
-    Logger.withMinimumLogLevel(LogLevel.Debug),
+    Effect.provideService(References.MinimumLogLevel, 'Debug'),
     Effect.provide(Layer.mergeAll(PlatformNode.NodeServices.layer, LivestoreWorkspace.fromPath(workspaceRoot))),
     PlatformNode.NodeRuntime.runMain,
   )

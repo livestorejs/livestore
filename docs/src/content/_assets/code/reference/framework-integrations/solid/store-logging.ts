@@ -1,7 +1,7 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { useStore } from '@livestore/solid'
-import { Logger, LogLevel } from '@livestore/utils/effect'
+import { Logger } from '@livestore/utils/effect'
 
 import LiveStoreWorker from './livestore/livestore.worker.ts?worker'
 import { schema } from './livestore/schema.ts'
@@ -20,6 +20,6 @@ export const useAppStore = () =>
     adapter,
     storeId: 'default',
     // Optional: swap logger and minimum log level
-    logger: Logger.prettyWithThread('window'),
-    logLevel: LogLevel.Info, // use LogLevel.None to disable logs
+    logger: Logger.layer([Logger.consolePretty()]),
+    logLevel: 'Info', // use "None" to disable logs
   })

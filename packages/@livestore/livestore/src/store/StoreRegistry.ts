@@ -1,6 +1,6 @@
-import { LogConfig, OtelLiveDummy, provideOtel, UnknownError } from '@livestore/common'
+import { OtelLiveDummy, provideOtel, UnknownError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { omitUndefineds } from '@livestore/utils'
+import { isDevEnv, omitUndefineds } from '@livestore/utils'
 import {
   Cause,
   type Context,
@@ -13,6 +13,7 @@ import {
   ManagedRuntime,
   type OtelTracer,
   RcMap,
+  References,
   type Schema,
   type Scope,
 } from '@livestore/utils/effect'
@@ -196,7 +197,15 @@ export class StoreRegistry {
         return createStore(mergedOptions).pipe(
           Effect.catchDefect((cause) => UnknownError.make({ cause })),
           Effect.withSpan(`StoreRegistry.lookup:${mergedOptions.storeId}`),
-          LogConfig.withLoggerConfig(mergedOptions, { threadName: 'window' }),
+          Effect.provide(
+            Layer.mergeAll(
+              mergedOptions.logger ?? Layer.empty,
+              Layer.succeed(
+                References.MinimumLogLevel,
+                mergedOptions.logLevel ?? (isDevEnv() === true ? 'Debug' : 'Info'),
+              ),
+            ),
+          ),
           provideOtel(
             omitUndefineds({
               parentSpanContext: mergedOptions.otelOptions?.rootSpanContext,

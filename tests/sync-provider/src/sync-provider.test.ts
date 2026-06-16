@@ -17,9 +17,9 @@ import {
   KeyValueStore,
   Layer,
   Logger,
-  LogLevel,
   ManagedRuntime,
   Option,
+  References,
   Schedule,
   Schema,
   Stream,
@@ -44,7 +44,7 @@ const withTestCtx = ({ suffix, timeout }: { suffix?: string; timeout?: Duration.
     suffix,
     timeout,
     // makeLayer: (testContext) => makeFileLogger('runner', { testContext }),
-    makeLayer: (_testContext) => Layer.mergeAll(Logger.prettyWithThread('test-runner'), KeyValueStore.layerMemory),
+    makeLayer: (_testContext) => Layer.mergeAll(Logger.layer([Logger.consolePretty()]), KeyValueStore.layerMemory),
     forceOtel: true,
   })
 
@@ -65,8 +65,8 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       layer.pipe(
         Layer.provideMerge(FetchHttpClient.layer),
         Layer.provide(OtelLiveHttp({ rootSpanName: 'beforeAll', serviceName: 'vitest-runner', skipLogUrl: false })),
-        Layer.provide(Logger.prettyWithThread('test-runner')),
-        Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
+        Layer.provide(Logger.layer([Logger.consolePretty()])),
+        Layer.provide(Layer.succeed(References.MinimumLogLevel, 'Debug')),
         Layer.orDie,
       ),
     )
