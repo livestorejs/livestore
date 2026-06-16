@@ -60,7 +60,7 @@ const withTestCtx = Vitest.makeWithTestCtx({
 
 // TODO use property tests for simulation params
 Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
-  Vitest.scopedLive('from scratch', (test) =>
+  Vitest.live('from scratch', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
       const store = yield* makeStore()
@@ -72,7 +72,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
   )
 
   // TODO also add a test where there's a merge conflict in the leader <> backend
-  Vitest.scopedLive('commits during boot', (test) =>
+  Vitest.live('commits during boot', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
       const store = yield* makeStore({
@@ -109,7 +109,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.scopedLive('sync backend is ahead', (test) =>
+  Vitest.live('sync backend is ahead', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
       const eventFactory = EventFactory.makeFactory(events)({
@@ -126,7 +126,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.scopedLive('race condition between client session and sync backend', (test) =>
+  Vitest.live('race condition between client session and sync backend', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
       const eventFactory = EventFactory.makeFactory(events)({
@@ -152,7 +152,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.scopedLive('client document pending events confirm after upstream advance', (test) =>
+  Vitest.live('client document pending events confirm after upstream advance', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
       const backendFactory = EventFactory.makeFactory(events)({
@@ -188,7 +188,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.scopedLive('should fail for event that is not larger than expected upstream', (test) =>
+  Vitest.live('should fail for event that is not larger than expected upstream', (test) =>
     Effect.gen(function* () {
       const shutdownDeferred = yield* makeShutdownDeferred
       const pullQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
@@ -260,7 +260,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
   // - the client needs to rebase and those rebased changes need to be propagated to the client session
   //
   // related problem: the same might happen during leader re-election in the web adapter (will need proper tests as well some day)
-  Vitest.scopedLive('client should push pending persisted events on start', (test) =>
+  Vitest.live('client should push pending persisted events on start', (test) =>
     Effect.gen(function* () {
       const { mockSyncBackend } = yield* TestContext
       const shutdownDeferred = yield* makeShutdownDeferred
@@ -341,7 +341,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
    * Without the carry-forward logic in `EventSequenceNumber.nextPair`, the generation would reset,
    * masking stale pushes and reintroducing the queue leak described in the issue.
    */
-  Vitest.scopedLive('rebased pushes carry rebase generation forward', (test) =>
+  Vitest.live('rebased pushes carry rebase generation forward', (test) =>
     Effect.gen(function* () {
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
@@ -422,7 +422,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
   // In cases where the materializer is non-pure (e.g. for events.todoDeletedNonPure calling `new Date()`),
   // the ClientSessionSyncProcessor will fail gracefully when detecting a materializer hash mismatch.
   // This covers the leader-side hash mismatch detection, which occurs during the push path (when sending events to the leader)
-  Vitest.scopedLive('should fail gracefully if materializer is side effecting', (test) =>
+  Vitest.live('should fail gracefully if materializer is side effecting', (test) =>
     Effect.gen(function* () {
       const { makeStore, shutdownDeferred } = yield* TestContext
       const store = yield* makeStore()
@@ -436,7 +436,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
   )
 
   // This test covers the client-session-side hash mismatch detection, which occurs during the pull path (when receiving events from the leader).
-  Vitest.scopedLive('should fail gracefully if client-session-side materializer hash mismatch is detected', (test) =>
+  Vitest.live('should fail gracefully if client-session-side materializer hash mismatch is detected', (test) =>
     Effect.gen(function* () {
       const pullQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
 
@@ -493,7 +493,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.scopedLive('unknown upstream events still invoke materializeEvent', (test) =>
+  Vitest.live('unknown upstream events still invoke materializeEvent', (test) =>
     Effect.gen(function* () {
       const upstreamQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
       const materializedEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
@@ -595,7 +595,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.scopedLive('push fiber triggers shutdown on non-RejectedPushError', (test) =>
+  Vitest.live('push fiber triggers shutdown on non-RejectedPushError', (test) =>
     Effect.gen(function* () {
       const pushError = new Error('unexpected transport failure')
 

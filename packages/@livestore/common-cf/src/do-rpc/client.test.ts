@@ -36,7 +36,7 @@ const ServerLive = Rpcs.toLayer({
   Echo: ({ text }) => Effect.succeed({ echo: `Echo: ${text}` }),
 })
 
-Vitest.scopedLive('keeps a straddling stream frame isolated from a concurrent unary response', () =>
+Vitest.live('keeps a straddling stream frame isolated from a concurrent unary response', () =>
   Effect.gen(function* () {
     let signalFirstStreamRead = () => {}
     const firstStreamReadDone = new Promise<void>((resolve) => {

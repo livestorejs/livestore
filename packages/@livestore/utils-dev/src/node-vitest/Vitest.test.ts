@@ -14,7 +14,7 @@ Vitest.describe('Vitest.asProp', () => {
 
   // Always-passing test - should only show initial phase
   Vitest.asProp(
-    Vitest.scopedLive,
+    Vitest.live,
     'always-pass test (shows only initial runs)',
     [IntArbitrary],
     (properties, _ctx, enhanced) =>
@@ -41,7 +41,7 @@ Vitest.describe('Vitest.asProp', () => {
   // Failing test - should show initial + shrinking phases
   let alreadyFailed = false
   Vitest.asProp(
-    Vitest.scopedLive,
+    Vitest.live,
     'failing test (shows initial runs + shrinking)',
     [IntArbitrary],
     (properties, ctx, enhanced) =>
@@ -79,7 +79,7 @@ Vitest.describe('Vitest.asProp', () => {
 
   // Test with endOnFailure: true - should not show shrinking
   Vitest.asProp(
-    Vitest.scopedLive,
+    Vitest.live,
     'failing test with endOnFailure (no shrinking)',
     [IntArbitrary],
     (properties, _ctx, enhanced) =>

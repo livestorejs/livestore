@@ -6,7 +6,7 @@ import * as WebChannel from '../../browser/WebChannelBrowser.ts'
 
 Vitest.describe('WebChannel', () => {
   Vitest.describe('windowChannel', () => {
-    Vitest.scopedLive('should work with 2 windows', () =>
+    Vitest.live('should work with 2 windows', () =>
       Effect.gen(function* () {
         const windowA = new JSDOM().window as unknown as globalThis.Window
         const windowB = new JSDOM().window as unknown as globalThis.Window
@@ -57,7 +57,7 @@ Vitest.describe('WebChannel', () => {
       }),
     )
 
-    Vitest.scopedLive('should work with the same window', () =>
+    Vitest.live('should work with the same window', () =>
       Effect.gen(function* () {
         const window = new JSDOM().window as unknown as globalThis.Window
 

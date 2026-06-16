@@ -57,7 +57,7 @@ Vitest.describe.each(cloudflareHttpProviders)('$name HTTP response headers', { t
       ).pipe(Effect.provide(runtime)),
     )
 
-  Vitest.scopedLive('HTTP responses include custom headers', (test) =>
+  Vitest.live('HTTP responses include custom headers', (test) =>
     Effect.gen(function* () {
       const syncBackend = yield* makeProvider(test.task.name)
       const http = yield* HttpClient.HttpClient

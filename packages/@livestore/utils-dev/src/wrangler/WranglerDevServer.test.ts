@@ -22,7 +22,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
         makeLayer: () => WranglerDevServerTest(args).pipe(Layer.provide(PlatformNode.NodeServices.layer)),
       })
 
-    Vitest.scopedLive('should start wrangler dev server and return port', (test) =>
+    Vitest.live('should start wrangler dev server and return port', (test) =>
       Effect.gen(function* () {
         const server = yield* WranglerDevServer.WranglerDevServer
 
@@ -31,7 +31,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
       }).pipe(withBasicTest()(test)),
     )
 
-    Vitest.scopedLive('should use specified port when provided', (test) =>
+    Vitest.live('should use specified port when provided', (test) =>
       Effect.andThen(getFreePort, (port) =>
         Effect.gen(function* () {
           const server = yield* WranglerDevServer.WranglerDevServer
@@ -50,7 +50,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
         makeLayer: () => WranglerDevServerTest(args).pipe(Layer.provide(PlatformNode.NodeServices.layer)),
       })
 
-    Vitest.scopedLive('should handle missing wrangler.toml but should timeout', (test) =>
+    Vitest.live('should handle missing wrangler.toml but should timeout', (test) =>
       Effect.gen(function* () {
         const error = yield* WranglerDevServer.WranglerDevServer.pipe(
           Effect.provide(
@@ -67,7 +67,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
       }).pipe(Vitest.withTestCtx(test)),
     )
 
-    Vitest.scopedLive('should handle invalid working directory', (test) =>
+    Vitest.live('should handle invalid working directory', (test) =>
       Effect.gen(function* () {
         const result = yield* WranglerDevServer.WranglerDevServer.pipe(
           Effect.provide(
@@ -85,7 +85,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
       }).pipe(Vitest.withTestCtx(test)),
     )
 
-    Vitest.scopedLive('should timeout if server fails to start', (test) =>
+    Vitest.live('should timeout if server fails to start', (test) =>
       Effect.gen(function* () {
         // Create a command that will never output "Ready on"
         const result = yield* WranglerDevServer.WranglerDevServer.pipe(
@@ -108,7 +108,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
         makeLayer: () => WranglerDevServerTest(args).pipe(Layer.provide(PlatformNode.NodeServices.layer)),
       })
 
-    Vitest.scopedLive('should work with service pattern', (test) =>
+    Vitest.live('should work with service pattern', (test) =>
       Effect.gen(function* () {
         const server = yield* WranglerDevServer.WranglerDevServer
 
@@ -117,7 +117,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
       }).pipe(withServiceTest()(test)),
     )
 
-    Vitest.scopedLive('should work with custom port via service', (test) =>
+    Vitest.live('should work with custom port via service', (test) =>
       Effect.andThen(getFreePort, (port) =>
         Effect.gen(function* () {
           const server = yield* WranglerDevServer.WranglerDevServer

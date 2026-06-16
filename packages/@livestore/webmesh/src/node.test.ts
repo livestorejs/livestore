@@ -89,7 +89,7 @@ const maybeDelay =
 const testTimeout = IS_CI === true ? 30_000 : 1000
 const propTestTimeout = IS_CI === true ? 60_000 : 20_000
 
-// TODO also make work without `Vitest.scopedLive` (i.e. with `Vitest.scoped`)
+// TODO also make work without `Vitest.live` (i.e. with `Vitest.effect`)
 // probably requires controlling the clocks
 Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
   const Delay = Schema.UndefinedOr(Schema.Literals([0, 1, 10, 50]))
@@ -171,10 +171,10 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       // const connectDelay = undefined
       // const channelType = 'direct'
       // const nodeNames = ['B', 'A'] as const
-      // Vitest.scopedLive(
+      // Vitest.live(
       //   'a / b connect at different times with different channel types',
       //   (test) =>
-      Vitest.scopedLive.prop(
+      Vitest.live.prop(
         'a / b connect at different times with different channel types',
         [Delay, Delay, Delay, ChannelType, NodeNames],
         ([delayX, delayY, connectDelay, channelType, nodeNames], test) =>
@@ -209,10 +209,10 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       // const waitForOfflineDelay = undefined
       // const sleepDelay = 0
       // const channelType = 'direct'
-      // Vitest.scopedLive(
+      // Vitest.live(
       //   'b reconnects',
       //   (test) =>
-      Vitest.scopedLive.prop(
+      Vitest.live.prop(
         'b reconnects',
         [Delay, Delay, ChannelType],
         ([waitForOfflineDelay, sleepDelay, channelType], test) =>
@@ -286,7 +286,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         { fastCheck: { numRuns: 20 } },
       )
 
-      Vitest.scopedLive('reconnect with re-created node', (test) =>
+      Vitest.live('reconnect with re-created node', (test) =>
         Effect.gen(function* () {
           const nodeBgen1Scope = yield* Scope.make()
 
@@ -345,7 +345,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       // test: Error: Property failed after 2 tests
       // test: { seed: -964670352, path: "1", endOnFailure: true }
       // test: Counterexample: ["direct",["A","B"]]
-      Vitest.scopedLive.prop(
+      Vitest.live.prop(
         'replace edge while keeping the channel',
         [ChannelTypeWithoutMessageChannelProxy, NodeNames],
         ([channelType, nodeNames], test) =>
@@ -400,7 +400,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
 
       Vitest.describe('TODO improve latency', () => {
         // TODO we need to improve latency when sending messages concurrently
-        Vitest.scopedLive.prop(
+        Vitest.live.prop(
           'concurrent messages',
           [ChannelType, Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 }))],
           ([channelType, count], test) =>
@@ -457,7 +457,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
     })
 
     Vitest.describe('message channel specific tests', () => {
-      Vitest.scopedLive('differing initial edge counter', (test) =>
+      Vitest.live('differing initial edge counter', (test) =>
         Effect.gen(function* () {
           const nodeA = yield* makeMeshNode('A')
           const nodeB = yield* makeMeshNode('B')
@@ -494,7 +494,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       )
     })
 
-    Vitest.scopedLive('manual debug test', (test) =>
+    Vitest.live('manual debug test', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -522,7 +522,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(Vitest.withTestCtx(test)),
     )
 
-    Vitest.scopedLive('broadcast edge with message channel', (test) =>
+    Vitest.live('broadcast edge with message channel', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -536,7 +536,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
   })
 
   Vitest.describe('A <> B <> C', () => {
-    Vitest.scopedLive('should work', (test) =>
+    Vitest.live('should work', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -566,7 +566,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(Vitest.withTestCtx(test)),
     )
 
-    Vitest.scopedLive('should work - delayed edge', (test) =>
+    Vitest.live('should work - delayed edge', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -601,7 +601,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(Vitest.withTestCtx(test)),
     )
 
-    Vitest.scopedLive('proxy channel', (test) =>
+    Vitest.live('proxy channel', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -644,7 +644,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
      * 2. Verify the pattern works correctly with forked ACKs
      * 3. Serve as a reference for the fix in proxy-channel.ts
      */
-    Vitest.scopedLive('ACK sending should not block message processing', (test) =>
+    Vitest.live('ACK sending should not block message processing', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -721,7 +721,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
        * without being blocked by slow ACK sends. We measure how long it takes to receive
        * all messages - with forked ACKs it should be fast, with blocking ACKs it would be slow.
        */
-      Vitest.scopedLive('messages arrive in listen queue without waiting for ACK send', (test) =>
+      Vitest.live('messages arrive in listen queue without waiting for ACK send', (test) =>
         Effect.gen(function* () {
           const ACK_DELAY_MS = 50
           const MESSAGE_COUNT = 5
@@ -815,7 +815,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
        * This test sends multiple messages concurrently and verifies they're all
        * processed even when ACK sends are slow.
        */
-      Vitest.scopedLive('concurrent messages processed despite slow ACK sends', (test) =>
+      Vitest.live('concurrent messages processed despite slow ACK sends', (test) =>
         Effect.gen(function* () {
           const ACK_DELAY_MS = 50
           const MESSAGE_COUNT = 5
@@ -890,7 +890,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       )
     })
 
-    Vitest.scopedLive('should fail with timeout due to missing edge', (test) =>
+    Vitest.live('should fail with timeout due to missing edge', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -913,7 +913,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(Vitest.withTestCtx(test)),
     )
 
-    Vitest.scopedLive('should fail with timeout due no transferable', (test) =>
+    Vitest.live('should fail with timeout due no transferable', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -934,7 +934,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(Vitest.withTestCtx(test)),
     )
 
-    Vitest.scopedLive('reconnect with re-created node', (test) =>
+    Vitest.live('reconnect with re-created node', (test) =>
       Effect.gen(function* () {
         const nodeCgen1Scope = yield* Scope.make()
 
@@ -985,7 +985,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
    *    D
    */
   Vitest.describe('diamond topology', () => {
-    Vitest.scopedLive('should work', (test) =>
+    Vitest.live('should work', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -1024,7 +1024,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
    * Topology: Butterfly topology with two connected hubs (C-D) each serving multiple nodes
    */
   Vitest.describe('butterfly topology', () => {
-    Vitest.scopedLive('should work', (test) =>
+    Vitest.live('should work', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -1061,7 +1061,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
   Vitest.describe('mixture of direct and proxy edge connections', () => {
     // TODO test case to better guard against case where side A tries to create a proxy channel to B
     // and side B tries to create a direct to A
-    Vitest.scopedLive('should work for proxy channels', (test) =>
+    Vitest.live('should work for proxy channels', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -1073,7 +1073,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(Vitest.withTestCtx(test)),
     )
 
-    Vitest.scopedLive('should work for directs', (test) =>
+    Vitest.live('should work for directs', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
@@ -1100,7 +1100,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
   })
 
   Vitest.describe('listenForChannel', () => {
-    Vitest.scopedLive('connect later', (test) =>
+    Vitest.live('connect later', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
 
@@ -1139,7 +1139,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
     )
 
     // TODO provide a way to allow for reconnecting in the `listenForChannel` case
-    Vitest.scopedLive.skip('reconnect', (test) =>
+    Vitest.live.skip('reconnect', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
 
@@ -1203,7 +1203,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
     )
 
     Vitest.describe('prop tests', { timeout: propTestTimeout }, () => {
-      Vitest.scopedLive.prop(
+      Vitest.live.prop(
         'listenForChannel A <> B <> C',
         [Delay, Delay, Delay, Delay, ChannelType],
         ([delayNodeA, delayNodeC, delayConnectAB, delayConnectBC, channelType], test) =>
@@ -1264,7 +1264,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
   })
 
   Vitest.describe('broadcast channel', () => {
-    Vitest.scopedLive('should work', (test) =>
+    Vitest.live('should work', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
         const nodeB = yield* makeMeshNode('B')
