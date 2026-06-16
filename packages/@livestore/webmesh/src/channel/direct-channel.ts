@@ -67,7 +67,7 @@ export const makeDirectChannel = ({
         const resultDeferred = yield* Deferred.make<{
           channel: WebChannel.WebChannel<any, any>
           channelVersion: number
-          makeDirectChannelScope: Scope.CloseableScope
+          makeDirectChannelScope: Scope.Closeable
         }>()
 
         while (true) {
