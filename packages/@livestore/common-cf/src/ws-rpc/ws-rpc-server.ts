@@ -175,7 +175,7 @@ export const setupDurableObjectWebSocketRpc = ({
 
       const ServerLive = rpcLayer.pipe(Layer.provide(ProtocolLive))
 
-      yield* Layer.launch(ServerLive).pipe(Effect.tapCauseLogPretty, Effect.forkIn(scope))
+      yield* Layer.buildWithScope(ServerLive, scope).pipe(Effect.tapCauseLogPretty)
 
       const runtime = yield* Effect.runtime()
 
@@ -273,8 +273,6 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
 
     const writeRaw = (msg: Uint8Array | string) => Effect.succeed(ws.send(msg))
 
-    let writeRequest!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
-
     const parser = serialization.unsafeMake()
     const id = 0
 
@@ -290,51 +288,42 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
       }
     }
 
-    const protocol = yield* RpcServer.Protocol.make((writeRequest_) => {
-      writeRequest = writeRequest_
-
-      // Start processing messages now that writeRequest is available
-      const startProcessing = Mailbox.toStream(incomingQueue).pipe(
-        Stream.tap((data) => {
-          try {
-            const decoded = parser.decode(data) as ReadonlyArray<RpcMessage.FromClientEncoded>
-            if (decoded.length === 0) return Effect.void
-            let i = 0
-            return Effect.whileLoop({
-              while: () => i < decoded.length,
-              body: () => {
-                const request = decoded[i++]!
-                if (onMessage !== undefined) {
-                  onMessage(request, ws)
-                }
-                return writeRequest(id, request)
-              },
-              step: constVoid,
-            })
-          } catch (cause) {
-            return Effect.orDie(writeRaw(parser.encode(RpcMessage.ResponseDefectEncoded(cause))!))
-          }
-        }),
-        Stream.runDrain,
-        Effect.tapCauseLogPretty,
-        Effect.fork,
-      )
-
-      // Start the message processing
-      return Effect.map(startProcessing, () => ({
-        disconnects,
-        send: (_clientId, response) => Effect.orDie(write(response)),
-        end(_clientId) {
-          return Effect.void
-        },
-        // Always just one client
-        clientIds: Effect.sync(() => new Set([id]) as ReadonlySet<number>),
-        initialMessage: Effect.succeedNone,
-        supportsAck: true,
-        supportsTransferables: false,
-        supportsSpanPropagation: true,
-      }))
-    })
-
-    return protocol
+    return {
+      disconnects,
+      send: (_clientId: number, response: RpcMessage.FromServerEncoded) => Effect.orDie(write(response)),
+      end: (_clientId: number) => Effect.void,
+      // Always just one client
+      clientIds: Effect.sync(() => new Set([id]) as ReadonlySet<number>),
+      initialMessage: Effect.succeedNone,
+      supportsAck: true,
+      supportsTransferables: false,
+      supportsSpanPropagation: true,
+      run: (handleRequest: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>) =>
+        Mailbox.toStream(incomingQueue).pipe(
+          Stream.runForEach((data) => {
+            try {
+              const decoded = parser.decode(data) as ReadonlyArray<RpcMessage.FromClientEncoded>
+              if (decoded.length === 0) return Effect.void
+              let i = 0
+              return Effect.whileLoop({
+                while: () => i < decoded.length,
+                body: () => {
+                  const request = decoded[i++]!
+                  if (onMessage !== undefined) {
+                    onMessage(request, ws)
+                  }
+                  return handleRequest(id, request)
+                },
+                step: constVoid,
+              })
+            } catch (cause) {
+              return Effect.orDie(writeRaw(parser.encode(RpcMessage.ResponseDefectEncoded(cause))!))
+            }
+          }),
+          Effect.tapCauseLogPretty,
+          Effect.zipRight(holdForever),
+        ),
+    }
   })
+
+const holdForever = Effect.async<never>(() => {})
