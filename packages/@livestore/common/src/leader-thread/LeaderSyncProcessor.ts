@@ -2,7 +2,6 @@ import { casesHandled, isNotUndefined, LS_DEV, TRACE_VERBOSE } from '@livestore/
 import {
   type HttpClient,
   type Latch,
-  type Runtime,
   type Scope,
   type Tracer,
   BucketQueue,
@@ -227,7 +226,7 @@ export const make = Effect.fnUntraced(function* ({
       | {
           span: Tracer.Span
           devtoolsLatch: Latch.Latch | undefined
-          runtime: Runtime.Runtime<LeaderThreadCtx>
+          services: Context.Context<LeaderThreadCtx>
         },
   }
 
@@ -672,12 +671,12 @@ export const make = Effect.fnUntraced(function* ({
     boot: Effect.gen(function* () {
       const span = yield* Effect.currentSpan.pipe(Effect.orDie)
       const { devtools, shutdownChannel } = yield* LeaderThreadCtx
-      const runtime = yield* Effect.runtime<LeaderThreadCtx>()
+      const services = yield* Effect.context<LeaderThreadCtx>()
 
       ctxRef.current = {
         span,
         devtoolsLatch: devtools.enabled === true ? devtools.syncBackendLatch : undefined,
-        runtime,
+        services,
       }
 
       /** State transitions need to happen atomically, so we use a Ref to track the state */
@@ -802,9 +801,9 @@ export const make = Effect.fnUntraced(function* ({
       ),
     pull: ({ cursor }) =>
       Effect.gen(function* () {
-        const queue = yield* Effect.fromNullable(ctxRef.current?.runtime).pipe(
+        const queue = yield* Effect.fromNullable(ctxRef.current?.services).pipe(
           Effect.orDieDebugger,
-          Effect.flatMap((runtime) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))),
+          Effect.flatMap((services) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(services))),
         )
         return Stream.fromQueue(queue)
       }).pipe(Stream.unwrap),
@@ -823,9 +822,9 @@ export const make = Effect.fnUntraced(function* ({
           - downside: importing the snapshot is expensive
       */
     pullQueue: ({ cursor }) =>
-      Effect.fromNullable(ctxRef.current?.runtime).pipe(
+      Effect.fromNullable(ctxRef.current?.services).pipe(
         Effect.orDieDebugger,
-        Effect.flatMap((runtime) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))),
+        Effect.flatMap((services) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(services))),
       ),
     syncState: Subscribable.make({
       get: SubscriptionRef.get(syncStateSref).pipe(Effect.flatMap(Effect.fromNullable), Effect.orDieDebugger),

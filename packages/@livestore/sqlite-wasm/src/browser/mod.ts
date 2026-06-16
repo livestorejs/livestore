@@ -1,5 +1,5 @@
 import type { MakeSqliteDb, PersistenceInfo, SqliteDb } from '@livestore/common'
-import { Effect, Hash, Runtime, type Scope } from '@livestore/utils/effect'
+import { Effect, Hash, type Scope } from '@livestore/utils/effect'
 import type { Opfs } from '@livestore/utils/effect/browser'
 import type { SQLiteAPI } from '@livestore/wa-sqlite'
 import type { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
@@ -111,7 +111,7 @@ export const sqliteDbFactory = ({ sqlite3 }: { sqlite3: SQLiteAPI }) => {
         fileName: dbFilename,
       })
 
-      const runtime = yield* Effect.runtime<Opfs.Opfs>()
+      const services = yield* Effect.context<Opfs.Opfs>()
 
       return makeSqliteDb<WebDatabaseMetadataOpfs>({
         sqlite3,
@@ -119,7 +119,7 @@ export const sqliteDbFactory = ({ sqlite3 }: { sqlite3: SQLiteAPI }) => {
           _tag: 'opfs',
           vfs,
           dbPointer,
-          deleteDb: () => vfs.resetAccessHandle(input.fileName).pipe(Runtime.runSync(runtime)),
+          deleteDb: () => vfs.resetAccessHandle(input.fileName).pipe(Effect.runSyncWith(services)),
           configureDb: input.configureDb ?? (() => {}),
           persistenceInfo: {
             fileName: dbFilename,

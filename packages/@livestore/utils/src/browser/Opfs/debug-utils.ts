@@ -135,7 +135,7 @@ const resetTree = remove('/')
 const getDirHandle = (path: string, options?: FileSystemGetDirectoryOptions) => getDirectoryHandleByPath(path, options)
 
 const runOpfsEffect = <A, E>(effect: Effect.Effect<A, E, Opfs>) =>
-  effect.pipe(Effect.provide(Opfs.Default), Effect.runPromise)
+  effect.pipe(Effect.runPromiseWith(Opfs.Default))
 
 export const debugUtils = {
   /**

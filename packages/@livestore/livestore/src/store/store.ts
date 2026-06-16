@@ -33,7 +33,6 @@ import {
   Inspectable,
   Option,
   OtelTracer,
-  Runtime,
   Schema,
   Stream,
 } from '@livestore/utils/effect'
@@ -320,7 +319,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           : {}),
       },
       confirmUnsavedChanges,
-    }).pipe(Runtime.runSync(effectContext.runtime))
+    }).pipe(Effect.runSyncWith(effectContext.services))
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     const tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> } = {}
@@ -798,7 +797,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       if (events.length === 0) return
 
-      const localRuntime = yield* Effect.runtime()
+      const localServices = yield* Effect.context()
 
       const encodedEvents = yield* this[StoreInternalsSymbol].syncProcessor.encodeEvents(events)
 
@@ -807,7 +806,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           const materialize = () =>
             this[StoreInternalsSymbol].syncProcessor
               .materializeEvents(encodedEvents)
-              .pipe(Runtime.runSync(localRuntime))
+              .pipe(Effect.runSyncWith(localServices))
           return events.length > 1 ? this[StoreInternalsSymbol].sqliteDbWrapper.txn(materialize) : materialize()
         },
         catch: (cause) => UnknownError.make({ cause }),
@@ -855,7 +854,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       Effect.tapCause(Effect.logError),
       // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
       Effect.catchCause((cause) => Effect.forkChild(this.shutdown(cause), { startImmediately: true, uninterruptible: 'inherit' })),
-      Runtime.runSync(this[StoreInternalsSymbol].effectContext.runtime),
+      Effect.runSyncWith(this[StoreInternalsSymbol].effectContext.services),
     )
   }
   //#endregion commit
@@ -1027,7 +1026,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     )
 
     return () => {
-      Fiber.interrupt(fiber).pipe(Runtime.runFork(this[StoreInternalsSymbol].effectContext.runtime))
+      Fiber.interrupt(fiber).pipe(Effect.runForkWith(this[StoreInternalsSymbol].effectContext.services))
     }
   }
 
@@ -1181,11 +1180,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
       Effect.forkIn(this[StoreInternalsSymbol].effectContext.lifetimeScope, { startImmediately: true, uninterruptible: 'inherit' }),
       Effect.tapCauseLogPretty,
-      Runtime.runFork(this[StoreInternalsSymbol].effectContext.runtime),
+      Effect.runForkWith(this[StoreInternalsSymbol].effectContext.services),
     )
 
   private runEffectPromise = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) =>
-    effect.pipe(Effect.tapCauseLogPretty, Runtime.runPromise(this[StoreInternalsSymbol].effectContext.runtime))
+    effect.pipe(Effect.tapCauseLogPretty, Effect.runPromiseWith(this[StoreInternalsSymbol].effectContext.services))
 
   private getCommitArgs = (
     firstEventOrTxnFnOrOptions: any,
