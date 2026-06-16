@@ -190,7 +190,7 @@ interface ScopeImpl extends Scope.Scope {
   readonly state:
     | {
         readonly _tag: 'Open'
-        readonly finalizers: Map<{}, Scope.Scope.Finalizer>
+        readonly finalizers: Map<{}, (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<unknown>>
       }
     | {
         readonly _tag: 'Closed'

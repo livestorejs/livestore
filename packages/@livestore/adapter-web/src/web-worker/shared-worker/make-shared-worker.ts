@@ -54,7 +54,7 @@ const makeWorkerRunner = Effect.gen(function* () {
   const leaderWorkerContextSubRef = yield* SubscriptionRef.make<
     | {
         worker: Worker.SerializedWorkerPool<WorkerSchema.LeaderWorkerInnerRequest>
-        scope: Scope.CloseableScope
+        scope: Scope.Closeable
       }
     | undefined
   >(undefined)

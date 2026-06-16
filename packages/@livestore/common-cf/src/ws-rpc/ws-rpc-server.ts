@@ -148,7 +148,7 @@ export const setupDurableObjectWebSocketRpc = ({
   const serverCtxMap = new Map<
     CfTypes.WebSocket,
     {
-      scope: Scope.CloseableScope
+      scope: Scope.Closeable
       onMessage: (message: string | ArrayBuffer) => Promise<void>
     }
   >()
