@@ -63,24 +63,23 @@ declare global {
  * const { store } = yield* AppStore.Tag
  * ```
  */
-export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/effect/LiveStoreContextRunning')<
-  LiveStoreContextRunning,
-  LiveStoreContextRunning_
->() {
+export class LiveStoreContextRunning extends Context.Service<
+  LiveStoreContextRunning, LiveStoreContextRunning_
+>()('@livestore/livestore/effect/LiveStoreContextRunning') {
   static fromDeferred = Effect.gen(function* () {
     const deferred = yield* DeferredStoreContext
     const ctx = yield* Deferred.await(deferred)
-    return Layer.succeed(LiveStoreContextRunning, ctx)
-  }).pipe(Layer.unwrapScoped)
+    return Layer.succeed(LiveStoreContextRunning, LiveStoreContextRunning.of(ctx))
+  }).pipe(Layer.unwrap)
 }
 
 /**
  * @deprecated Use `StoreContext.DeferredTag` from `makeStoreContext()` instead.
  */
-export class DeferredStoreContext extends Context.Tag('@livestore/livestore/effect/DeferredStoreContext')<
+export class DeferredStoreContext extends Context.Service<
   DeferredStoreContext,
-  Deferred.Deferred<LiveStoreContextRunning['Type'], UnknownError>
->() {}
+  Deferred.Deferred<LiveStoreContextRunning['Service'], UnknownError>
+>()('@livestore/livestore/effect/DeferredStoreContext') {}
 
 export type LiveStoreContextProps<
   TSchema extends LiveStoreSchema,
@@ -408,7 +407,12 @@ export const createStore = <
           boot(store, { migrationsReport: clientSession.leaderThread.initialState.migrationsReport, parentSpan: span }),
         ).pipe(
           UnknownError.mapToUnknownError,
-          Effect.provide(Layer.succeed(LiveStoreContextRunning, { stage: 'running', store: store as any as Store })),
+          Effect.provide(
+            Layer.succeed(
+              LiveStoreContextRunning,
+              LiveStoreContextRunning.of({ stage: 'running', store: store as any as Store }),
+            ),
+          ),
           Effect.withSpan('createStore:boot'),
         )
       }

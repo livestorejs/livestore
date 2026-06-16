@@ -153,7 +153,7 @@ const runTest =
   ) => {
     const outerLayer = Layer.mergeAll(
       Logger.prettyWithThread('playwright-worker'),
-      PlatformNode.NodeContext.layer,
+      PlatformNode.NodeServices.layer,
       FetchHttpClient.layer,
     )
 
@@ -221,7 +221,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
       extensionPath,
       launchOptions: { args: ['--auto-open-devtools-for-tabs'] },
     })
-  }).pipe(Layer.unwrapEffect)
+  }).pipe(Layer.unwrap)
 
 ;(['persisted', 'inmemory'] as const).forEach((adapter) => {
   test(

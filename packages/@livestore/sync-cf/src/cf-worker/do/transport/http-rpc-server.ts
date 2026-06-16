@@ -4,7 +4,7 @@ import { Effect, HttpApp, Layer, RpcSerialization, RpcServer } from '@livestore/
 import { SyncHttpRpc } from '../../../common/http-rpc-schema.ts'
 import * as SyncMessage from '../../../common/sync-message-types.ts'
 import { headersRecordToMap } from '../../shared.ts'
-import { DoCtx } from '../layer.ts'
+import * as DoCtx from '../layer.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
 
@@ -43,7 +43,7 @@ const createHttpRpcLayer = (forwardedHeaders: Record<string, string> | undefined
 
     'SyncHttpRpc.Push': (req) =>
       Effect.gen(function* () {
-        const { ctx, env, doOptions, storeId } = yield* DoCtx
+        const { ctx, env, doOptions, storeId } = yield* DoCtx.DoCtx
         const push = makePush({ payload: undefined, headers, options: doOptions, storeId, ctx, env })
 
         return yield* push(req)

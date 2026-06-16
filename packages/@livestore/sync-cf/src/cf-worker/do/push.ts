@@ -12,7 +12,7 @@ import {
   type StoreId,
   WebSocketAttachmentSchema,
 } from '../shared.ts'
-import { DoCtx } from './layer.ts'
+import * as DoCtx from './layer.ts'
 
 const encodePullResponse = Schema.encodeEffectSync(SyncMessage.PullResponse)
 const jsonStringify = Schema.encodeEffectSync(Schema.UnknownFromJsonString)
@@ -37,7 +37,7 @@ export const makePush =
   (pushRequest: Omit<SyncMessage.PushRequest, '_tag'>) =>
     Effect.gen(function* () {
       // yield* Effect.log(`Pushing ${decodedMessage.batch.length} events`, decodedMessage.batch)
-      const { backendId, storage, currentHeadRef, updateCurrentHead, rpcSubscriptions } = yield* DoCtx
+      const { backendId, storage, currentHeadRef, updateCurrentHead, rpcSubscriptions } = yield* DoCtx.DoCtx
 
       if (pushRequest.batch.length === 0) {
         return SyncMessage.PushAck.make({})

@@ -6,28 +6,28 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Duration, Effect, Layer, Stream } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
-import { type DockerComposeArgs, DockerComposeService } from './DockerComposeService.ts'
+import * as DockerCompose from './DockerCompose.ts'
 
 const testTimeout = 30_000
 const testFixturePath = path.join(import.meta.dirname, 'test-fixtures')
 
-const DockerComposeTest = (args: Partial<DockerComposeArgs> = {}) =>
-  DockerComposeService.Default({
+const DockerComposeTest = (args: Partial<DockerCompose.Options> = {}) =>
+  DockerCompose.layer({
     cwd: testFixturePath,
     ...args,
   })
 
-Vitest.describe('DockerComposeService', { timeout: testTimeout }, () => {
+Vitest.describe('DockerCompose', { timeout: testTimeout }, () => {
   Vitest.describe('Basic Operations', () => {
-    const withBasicTest = (args: Partial<DockerComposeArgs> = {}) =>
+    const withBasicTest = (args: Partial<DockerCompose.Options> = {}) =>
       Vitest.makeWithTestCtx({
         timeout: testTimeout,
-        makeLayer: () => DockerComposeTest(args).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+        makeLayer: () => DockerComposeTest(args).pipe(Layer.provide(PlatformNode.NodeServices.layer)),
       })
 
     Vitest.scopedLive('can pull docker images', (test) =>
       Effect.gen(function* () {
-        const dockerCompose = yield* DockerComposeService
+        const dockerCompose = yield* DockerCompose.DockerCompose
 
         // Test that pull operation works (should succeed for hello-world image)
         yield* dockerCompose.pull
@@ -36,7 +36,7 @@ Vitest.describe('DockerComposeService', { timeout: testTimeout }, () => {
 
     Vitest.scopedLive('can start and stop docker compose services', (test) =>
       Effect.gen(function* () {
-        const dockerCompose = yield* DockerComposeService
+        const dockerCompose = yield* DockerCompose.DockerCompose
 
         // Start the service
         yield* dockerCompose.start({ detached: true })
@@ -48,7 +48,7 @@ Vitest.describe('DockerComposeService', { timeout: testTimeout }, () => {
 
     Vitest.scopedLive('can get logs from docker compose services', (test) =>
       Effect.gen(function* () {
-        const dockerCompose = yield* DockerComposeService
+        const dockerCompose = yield* DockerCompose.DockerCompose
 
         // Start the service first
         yield* dockerCompose.start({ detached: true })
@@ -65,15 +65,15 @@ Vitest.describe('DockerComposeService', { timeout: testTimeout }, () => {
   })
 
   Vitest.describe('Health Check Operations', () => {
-    const withHealthCheckTest = (args: Partial<DockerComposeArgs> = {}) =>
+    const withHealthCheckTest = (args: Partial<DockerCompose.Options> = {}) =>
       Vitest.makeWithTestCtx({
         timeout: testTimeout,
-        makeLayer: () => DockerComposeTest(args).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+        makeLayer: () => DockerComposeTest(args).pipe(Layer.provide(PlatformNode.NodeServices.layer)),
       })
 
     Vitest.scopedLive('handles health check timeout gracefully', (test) =>
       Effect.gen(function* () {
-        const dockerCompose = yield* DockerComposeService
+        const dockerCompose = yield* DockerCompose.DockerCompose
 
         // Test starting with a health check that will timeout (invalid URL)
         const result = yield* dockerCompose

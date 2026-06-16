@@ -72,8 +72,8 @@ export const toDurableObjectHandler =
         // Find the RPC handler
         // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- RpcGroup.requests map returns Rpc.Any; narrowing to AnyWithProps for property access
         const rpc = group.requests.get(request.tag)! as unknown as Rpc.AnyWithProps
-        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- context.unsafeMap dynamic lookup; type safety ensured by RpcGroup registration
-        const entry = context.unsafeMap.get(rpc.key) as Rpc.Handler<Rpcs['_tag']>
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- context.mapUnsafe dynamic lookup; type safety ensured by RpcGroup registration
+        const entry = context.mapUnsafe.get(rpc.key) as Rpc.Handler<Rpcs['_tag']>
 
         if (rpc == null || entry == null) {
           responses.push({

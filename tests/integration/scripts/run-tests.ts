@@ -148,7 +148,7 @@ export const setupDevtools: Cli.Command.Command<
 
     yield* downloadChromeExtension({
       targetDir,
-    }).pipe(Effect.provide(Layer.mergeAll(FetchHttpClient.layer, PlatformNode.NodeContext.layer)))
+    }).pipe(Effect.provide(Layer.mergeAll(FetchHttpClient.layer, PlatformNode.NodeServices.layer)))
 
     yield* Effect.logInfo(`Chrome extension downloaded to ${targetDir}`)
   }, UnknownError.mapToUnknownError),
@@ -223,7 +223,7 @@ if (import.meta.main === true) {
 
   cli(process.argv).pipe(
     Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.provide(Layer.mergeAll(PlatformNode.NodeContext.layer, Logger.prettyWithThread('cli-run-tests'))),
+    Effect.provide(Layer.mergeAll(PlatformNode.NodeServices.layer, Logger.prettyWithThread('cli-run-tests'))),
     PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }),
   )
 }

@@ -2,9 +2,11 @@ import { objectToString, omitUndefineds } from '@livestore/utils'
 import {
   ChildProcess,
   type ChildProcessSpawner,
+  Context,
   Duration,
   Effect,
   Fiber,
+  Layer,
   type PlatformError,
   Schedule,
   Schema,
@@ -19,7 +21,7 @@ export class DockerComposeError extends Schema.TaggedErrorClass<DockerComposeErr
   note: Schema.String,
 }) {}
 
-export interface DockerComposeArgs {
+export interface Options {
   readonly cwd: string
   readonly serviceName?: string
   /** Unique project name to isolate this compose instance. If not provided, a random one is generated. */
@@ -42,7 +44,7 @@ export interface LogsOptions {
   readonly since?: string
 }
 
-export interface DockerComposeOperations {
+export interface Service {
   readonly pull: Effect.Effect<void, DockerComposeError | PlatformError.PlatformError>
   readonly start: (
     options?: StartOptions,
@@ -62,15 +64,18 @@ export interface DockerComposeOperations {
 
 const generateProjectName = (): string => `ls-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-export class DockerComposeService extends Effect.Service<DockerComposeService>()('DockerComposeService', {
-  scoped: (args: DockerComposeArgs) =>
-    Effect.gen(function* () {
-      const { cwd, serviceName } = args
-      const projectName = args.projectName ?? generateProjectName()
+export class DockerCompose extends Context.Service<DockerCompose, Service>()(
+  '@livestore/utils-dev/DockerCompose',
+) {}
 
-      const commandExecutorContext = yield* Effect.context<ChildProcessSpawner.ChildProcessSpawner>()
+export const make = (args: Options) =>
+  Effect.gen(function* () {
+    const { cwd, serviceName } = args
+    const projectName = args.projectName ?? generateProjectName()
 
-      const baseComposeArgs = ['-p', projectName]
+    const commandExecutorContext = yield* Effect.context<ChildProcessSpawner.ChildProcessSpawner>()
+
+    const baseComposeArgs = ['-p', projectName]
 
       const pull = Effect.gen(function* () {
         yield* Effect.log(`Pulling Docker Compose images in ${cwd}`)
@@ -283,9 +288,10 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         ),
       )
 
-      return { pull, start, stop, down, logs, projectName }
-    }),
-}) {}
+    return DockerCompose.of({ pull, start, stop, down, logs, projectName })
+  })
+
+export const layer = (options: Options) => Layer.effect(DockerCompose, make(options))
 
 const performHealthCheck = ({
   url,
@@ -326,16 +332,16 @@ const performHealthCheck = ({
 
 // Convenience function for scoped Docker Compose operations with automatic cleanup
 export const startDockerComposeServicesScoped = (
-  args: DockerComposeArgs & {
+  args: Options & {
     healthCheck?: StartOptions['healthCheck']
   },
 ): Effect.Effect<
   void,
   DockerComposeError | PlatformError.PlatformError,
-  DockerComposeService | ChildProcessSpawner.ChildProcessSpawner | Scope.Scope
+  DockerCompose | ChildProcessSpawner.ChildProcessSpawner | Scope.Scope
 > =>
   Effect.gen(function* () {
-    const dockerCompose = yield* DockerComposeService
+    const dockerCompose = yield* DockerCompose
 
     // Start the services
     yield* dockerCompose.start({

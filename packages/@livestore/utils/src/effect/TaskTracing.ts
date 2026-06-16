@@ -37,7 +37,7 @@ export const withAsyncTaggingTracing =
       })
     })
 
-    const withTracerLayer = pipe(makeTracer, Effect.map(Layer.setTracer), Layer.unwrapEffect)
+    const withTracerLayer = pipe(makeTracer, Effect.map(Layer.setTracer), Layer.unwrap)
 
     return Effect.provide(eff, withTracerLayer)
   }
