@@ -1,7 +1,6 @@
 export * from 'effect/unstable/rpc/RpcClient'
 
-import { Cause, Deferred, Effect, Layer, Option, Schedule, type Scope } from 'effect'
-import { constVoid, identity } from 'effect/Function'
+import { Cause, Deferred, Effect, Function, Layer, Option, Schedule, type Scope } from 'effect'
 import { RpcClient, RpcClientError, RpcSerialization } from 'effect/unstable/rpc'
 import { Protocol } from 'effect/unstable/rpc/RpcClient'
 import { constPing, type FromServerEncoded } from 'effect/unstable/rpc/RpcMessage'
@@ -75,7 +74,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
                     ),
                   )
                 },
-                step: constVoid,
+                step: Function.constVoid,
               })
             } catch (defect) {
               return writeResponse({
@@ -138,7 +137,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
           }),
         ),
         // CHANGED: make configurable via schedule
-        options?.retryTransientErrors !== undefined ? Effect.retry(options.retryTransientErrors) : identity,
+        options?.retryTransientErrors !== undefined ? Effect.retry(options.retryTransientErrors) : Function.identity,
         Effect.annotateLogs({
           module: 'RpcClient',
           method: 'makeProtocolSocket',

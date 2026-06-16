@@ -18,8 +18,8 @@
 import { notYetImplemented, omitUndefineds } from '@livestore/utils'
 import {
   Context,
-  constVoid,
   Effect,
+  Function,
   Exit,
   Layer,
   Logger,
@@ -321,7 +321,7 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
                 }
                 return writeRequest(id, request)
               },
-              step: constVoid,
+              step: Function.constVoid,
             })
           } catch (cause) {
             return Effect.orDie(writeRaw(parser.encode(RpcMessage.ResponseDefectEncoded(cause))!))
