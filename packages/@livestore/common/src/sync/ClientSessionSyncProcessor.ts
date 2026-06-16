@@ -221,7 +221,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
           if (mergeResult.newEvents.length === 0) {
             // If there are no new events, we need to update the sync state as well
-            yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+            yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
             return
           }
 
@@ -246,7 +246,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           refreshTables(writeTables)
 
           // We're only triggering the sync state update after all events have been materialized
-          yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+          yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
         }).pipe(
           Effect.tapCauseLogPretty,
           Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
@@ -332,7 +332,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       })
 
       syncStateRef.current = mergeResult.newSyncState
-      yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+      yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
       yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
     },
   )

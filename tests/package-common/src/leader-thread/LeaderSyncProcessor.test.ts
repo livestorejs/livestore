@@ -23,7 +23,6 @@ import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
-  Chunk,
   Context,
   Deferred,
   Duration,
@@ -371,7 +370,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         { id: '2', text: 't2', completed: 0, deletedAt: null },
       ])
 
-      const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
+      const queueResults = yield* Queue.clear(testContext.pullQueue)
       expect(queueResults[0]!.payload._tag).toEqual('upstream-advance')
       expect(queueResults[1]!.payload._tag).toEqual('upstream-rebase')
     }).pipe(withTestCtx()(test)),
@@ -402,7 +401,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
       expect(result.length).toEqual(numberOfPushes)
 
-      const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
+      const queueResults = yield* Queue.clear(testContext.pullQueue)
       expect(queueResults.every((result) => result.payload._tag === 'upstream-advance')).toBe(true)
     }).pipe(withTestCtx()(test)),
   )

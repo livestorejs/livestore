@@ -2,7 +2,6 @@ import {
   type Schema,
   type Scope,
   Effect,
-  Mailbox,
   Option,
   Queue,
   Ref,
@@ -59,7 +58,7 @@ export const makeMockSyncBackend = (
 
     // Queues for streaming
     const syncPullQueue = yield* Queue.unbounded<LiveStoreEvent.Global.Encoded>()
-    const pushedEventsQueue = yield* Mailbox.make<LiveStoreEvent.Global.Encoded>()
+    const pushedEventsQueue = yield* Queue.unbounded<LiveStoreEvent.Global.Encoded>()
 
     // Failure simulation state
     const failPushRef = yield* Ref.make<
@@ -174,8 +173,8 @@ export const makeMockSyncBackend = (
 
             yield* Effect.sleep(10).pipe(Effect.withSpan('MockSyncBackend:push:sleep')) // Simulate network latency
 
-            yield* pushedEventsQueue.offerAll(batch)
-            yield* syncPullQueue.offerAll(batch)
+            yield* Queue.offerAll(pushedEventsQueue, batch)
+            yield* Queue.offerAll(syncPullQueue, batch)
             yield* Ref.update(allEventsRef, (events) => events.concat(batch))
             yield* Ref.set(syncHeadRef, batch.at(-1)!.seqNum)
           }).pipe(
@@ -200,7 +199,7 @@ export const makeMockSyncBackend = (
       Effect.gen(function* () {
         yield* Ref.set(syncHeadRef, batch.at(-1)!.seqNum)
         yield* Ref.update(allEventsRef, (events) => events.concat(batch))
-        yield* syncPullQueue.offerAll(batch)
+        yield* Queue.offerAll(syncPullQueue, batch)
       }).pipe(
         Effect.withSpan('MockSyncBackend:advance', {
           parent: span,
@@ -220,7 +219,7 @@ export const makeMockSyncBackend = (
       Ref.set(failPullRef, { remaining: count, error })
 
     return {
-      pushedEvents: Mailbox.toStream(pushedEventsQueue),
+      pushedEvents: Stream.fromQueue(pushedEventsQueue),
       connect: SubscriptionRef.set(syncIsConnectedRef, true),
       disconnect: SubscriptionRef.set(syncIsConnectedRef, false),
       makeSyncBackend,

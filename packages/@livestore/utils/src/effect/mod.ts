@@ -89,7 +89,6 @@ export {
   List,
   LogLevel,
   LogSpan,
-  Mailbox,
   ManagedRuntime,
   Match,
   Metric,
@@ -122,8 +121,8 @@ export {
   STM,
   Struct,
   SynchronizedRef,
-  TQueue,
   Tracer,
+  TxQueue,
   TxRef,
   Types,
 } from 'effect'
