@@ -145,7 +145,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     }
 
     override fetch = async (request: Request): Promise<Response> =>
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const searchParams = matchSyncRequest(request)
         if (searchParams === undefined) {
           throw new Error('No search params found in request URL')

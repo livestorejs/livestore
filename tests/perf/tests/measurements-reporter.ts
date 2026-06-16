@@ -346,7 +346,7 @@ export default class MeasurementsReporter implements Reporter {
     Effect.all(
       Object.entries(this.measurementsByTestTitle).reduce(
         (acc, [testTitle, trackedMeasurement]) => {
-          acc[testTitle] = Effect.gen(this, function* () {
+          acc[testTitle] = Effect.gen({ self: this }, function* () {
             const metric = this.makeMetric(trackedMeasurement)
             yield* Effect.forEach(trackedMeasurement.measurements, (value) => metric(Effect.succeed(value)), {
               concurrency: 'unbounded',
