@@ -186,10 +186,10 @@ export class AccessHandlePoolVFS extends FacadeVFS {
         } else {
           // Out of unassociated files. This can be fixed by calling
           // addCapacity() from the application.
-          return yield* Effect.dieMessage('cannot create file')
+          return yield* Effect.die(new Error('cannot create file'))
         }
       }
-      if (accessHandle == null) return yield* Effect.dieMessage('file not found')
+      if (accessHandle == null) return yield* Effect.die(new Error('file not found'))
 
       // Subsequent methods are only passed the fileId, so make sure we have
       // a way to get the file resources.
@@ -251,7 +251,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
         at: HEADER_OFFSET_DATA + iOffset,
       })
       if (nBytes !== pData.byteLength) {
-        return yield* Effect.dieMessage(`Wrote ${nBytes} bytes, expected ${pData.byteLength}`)
+        return yield* Effect.die(new Error(`Wrote ${nBytes} bytes, expected ${pData.byteLength}`))
       }
       return VFS.SQLITE_OK
     }).pipe(
@@ -527,7 +527,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       const corpus = new Uint8Array(HEADER_CORPUS_SIZE)
       const encodedResult = new TextEncoder().encodeInto(path, corpus)
       if (encodedResult.written >= HEADER_MAX_PATH_SIZE) {
-        return yield* Effect.dieMessage('path too long')
+        return yield* Effect.die(new Error('path too long'))
       }
 
       // Add the creation flags.
