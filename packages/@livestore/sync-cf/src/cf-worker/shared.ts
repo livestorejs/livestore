@@ -20,7 +20,7 @@ export type ForwardHeadersOption = readonly string[] | ((request: CfTypes.Reques
 /** Context passed to onPush/onPull callbacks */
 export type CallbackContext = {
   storeId: StoreId
-  payload?: Schema.JsonValue
+  payload?: Schema.Json
   /** Headers forwarded from the request (only present if `forwardHeaders` is configured) */
   headers?: ForwardedHeaders
 }
@@ -156,7 +156,7 @@ export const matchSyncRequest = (request: CfTypes.Request): SearchParams | undef
 // RPC subscription storage (TODO refactor)
 export type RpcSubscription = {
   storeId: StoreId
-  payload?: Schema.JsonValue
+  payload?: Schema.Json
   subscribedAt: number
   /** Effect RPC request ID */
   requestId: string
@@ -179,7 +179,7 @@ export const WebSocketAttachmentSchema = Schema.fromJsonString(
     // Same across all websocket connections
     storeId: Schema.String,
     // Different for each websocket connection
-    payload: Schema.optional(Schema.JsonValue),
+    payload: Schema.optional(Schema.Json),
     pullRequestIds: Schema.Array(Schema.String),
     // Headers forwarded from the initial request (via forwardHeaders option)
     headers: Schema.optional(Schema.Record(Schema.String, Schema.String)),
