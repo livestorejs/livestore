@@ -50,12 +50,14 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
     Effect.gen(function* () {
       // Start a blocking operation that won't respond to normal shutdown signals
       const pid = process.pid
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
       yield* Effect.forkChild(
         Effect.gen(function* () {
           // Block for the specified duration, ignoring shutdown attempts
           yield* Effect.sleep(`${blockDuration} millis`)
           yield* Effect.log('Stubborn worker finished blocking')
         }).pipe(Effect.uninterruptible),
+        { startImmediately: true, uninterruptible: 'inherit' },
       )
       return { pid }
     }),

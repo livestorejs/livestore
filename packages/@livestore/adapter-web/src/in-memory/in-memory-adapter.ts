@@ -137,7 +137,8 @@ export const makeInMemoryAdapter =
               Effect.provide(BrowserWorker.layer(() => sharedWebWorker)),
               Effect.tapCauseLogPretty,
               UnknownError.mapToUnknownError,
-              Effect.forkScoped,
+              // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+              Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
             )
           : undefined
 
@@ -347,7 +348,11 @@ const makeDevtoolsOptions = ({
           node,
           worker: sharedWorker,
           target: makeSharedWorkerNodeName({ storeId }),
-        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+        }).pipe(
+          Effect.tapCauseLogPretty,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+        )
 
         return { node, persistenceInfo, mode: 'direct' }
       }),

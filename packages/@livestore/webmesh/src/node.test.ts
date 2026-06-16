@@ -474,7 +474,11 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               Stream.take(messageCount),
               Stream.runDrain,
             )
-          }).pipe(Effect.scoped, Effect.forkChild)
+          }).pipe(
+            Effect.scoped,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
+          )
 
           // yield* createChannel(nodeA, 'B').pipe(Effect.andThen(WebChannel.shutdown))
           // // yield* createChannel(nodeA, 'B').pipe(Effect.andThen(WebChannel.shutdown))
@@ -1276,13 +1280,15 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           Stream.flatten(),
           Stream.runHead,
           Effect.flatten,
-          Effect.forkChild,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
         )
         const listenOnCFiber = yield* channelOnC.listen.pipe(
           Stream.flatten(),
           Stream.runHead,
           Effect.flatten,
-          Effect.forkChild,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
         yield* channelOnA.send('A1')

@@ -184,7 +184,8 @@ const makeWorkerRunner = Effect.gen(function* () {
             Stream.tap(() => reset),
             Stream.runDrain,
             Effect.tapCauseLogPretty,
-            Effect.forkScoped,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
           const workerLayer = yield* Layer.build(BrowserWorker.layer(() => port))
@@ -206,10 +207,19 @@ const makeWorkerRunner = Effect.gen(function* () {
             node,
             worker,
             target: Devtools.makeNodeName.client.leader({ storeId, clientId }),
-          }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+          }).pipe(
+            Effect.tapCauseLogPretty,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+          )
 
           yield* SubscriptionRef.set(leaderWorkerContextSubRef, { worker, scope })
-        }).pipe(Effect.tapCauseLogPretty, Scope.provide(scope), Effect.forkIn(scope))
+        }).pipe(
+          Effect.tapCauseLogPretty,
+          Scope.provide(scope),
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkIn(scope, { startImmediately: true, uninterruptible: 'inherit' }),
+        )
       }).pipe(Effect.withSpan('@livestore/adapter-web:shared-worker:updateMessagePort'), Effect.tapCauseLogPretty),
 
     // Proxied requests

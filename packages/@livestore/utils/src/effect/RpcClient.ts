@@ -146,7 +146,8 @@ export const makeProtocolSocketWithIsConnected = (options: {
         Effect.interruptible,
         Effect.ignore, // Errors are already handled
         Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       return {
@@ -198,7 +199,8 @@ const makePinger = Effect.fnUntraced(function* <A, E, R>(
     Effect.ignore,
     Effect.forever,
     Effect.interruptible,
-    Effect.forkScoped,
+    // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+    Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
   )
 
   // CHANGED: add manual ping

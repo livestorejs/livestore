@@ -148,7 +148,8 @@ export const makeWebSocketEdge = ({
         Effect.interruptible,
         Effect.withSpan('makeWebSocketEdge:listen'),
         Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       const initHandshake = (from: string) =>
