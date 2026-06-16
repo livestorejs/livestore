@@ -64,7 +64,7 @@ export const connectViaWebSocket = ({
       () => node.removeEdge('ws').pipe(Effect.orDie),
     )
 
-    yield* edgeChannel.webChannel.closedDeferred
+    yield* Deferred.await(edgeChannel.webChannel.closedDeferred)
   }).pipe(Effect.scoped, Effect.forever, Effect.interruptible, Effect.provide(binaryWebSocketConstructorLayer))
 
 const binaryWebSocketConstructorLayer = Layer.succeed(Socket.WebSocketConstructor, (url, protocols) => {
@@ -158,7 +158,7 @@ export const makeWebSocketEdge = ({
         yield* initHandshake(socketType.from)
       }
 
-      const deferredResult = yield* fromDeferred
+      const deferredResult = yield* Deferred.await(fromDeferred)
       const from = socketType._tag === 'leaf' ? socketType.from : deferredResult
 
       if (socketType._tag === 'relay') {

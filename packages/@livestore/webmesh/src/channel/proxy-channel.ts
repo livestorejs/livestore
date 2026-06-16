@@ -442,7 +442,7 @@ export const makeProxyChannel = ({
 
               yield* sendPacket(packet)
 
-              yield* ack
+              yield* Deferred.await(ack)
               yield* Deferred.succeed(sentDeferred, void 0)
 
               debugInfo.pendingSends--
@@ -462,7 +462,7 @@ export const makeProxyChannel = ({
 
           yield* FiberHandle.run(sendFiberHandle, trySend)
 
-          yield* sentDeferred
+          yield* Deferred.await(sentDeferred)
 
           yield* Fiber.interrupt(rerunOnNewChannelFiber)
         }).pipe(

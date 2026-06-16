@@ -149,7 +149,7 @@ export const makeDirectChannel = ({
         }
 
         // Now we wait until the first channel is established
-        const { channel, makeDirectChannelScope, channelVersion } = yield* resultDeferred
+        const { channel, makeDirectChannelScope, channelVersion } = yield* Deferred.await(resultDeferred)
 
         yield* Effect.spanEvent(`Connected#${channelVersion}`)
         debugInfo.isConnected = true
@@ -180,7 +180,7 @@ export const makeDirectChannel = ({
         }).pipe(Effect.forkIn(makeDirectChannelScope))
 
         // Wait until the channel is closed and then try to reconnect
-        yield* channel.closedDeferred
+        yield* Deferred.await(channel.closedDeferred)
 
         yield* Scope.close(makeDirectChannelScope, Exit.succeed('channel-closed'))
 
@@ -206,7 +206,7 @@ export const makeDirectChannel = ({
 
           yield* TQueue.offer(sendQueue, [message, sentDeferred])
 
-          yield* sentDeferred
+          yield* Deferred.await(sentDeferred)
 
           debugInfo.pendingSends--
         }).pipe(Effect.scoped, Effect.withParentSpan(parentSpan))

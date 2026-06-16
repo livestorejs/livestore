@@ -340,7 +340,7 @@ export const makeDirectChannelInternal = ({
 
     yield* edgeRequest
 
-    const channel = yield* deferred
+    const channel = yield* Deferred.await(deferred)
 
     return channel
   }).pipe(Effect.withSpanScoped(`makeDirectChannel:${channelVersion}`))

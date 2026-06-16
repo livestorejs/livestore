@@ -70,7 +70,7 @@ export const connectViaWorker = ({
       Effect.forkScoped,
     )
 
-    yield* isConnected
+    yield* Deferred.await(isConnected)
 
     const workerConnection = yield* WebChannel.messagePortChannel({
       port: mc.port2,

@@ -545,7 +545,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
           channelMap.set(channelKey, { queue: channelQueue, debugInfo: { channel: webChannel, target } })
 
-          yield* initialEdgeDeferred
+          yield* Deferred.await(initialEdgeDeferred)
 
           return webChannel
         } else {
