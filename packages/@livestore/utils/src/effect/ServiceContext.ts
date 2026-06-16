@@ -21,7 +21,7 @@ export const unsafeMainLayer = <Ctx>(original: Layer.Layer<Ctx>): MainLayer<Ctx>
 export const make = <TStaticData, Ctx>(
   staticData: TStaticData,
   services: Context.Context<Ctx>,
-  close: Effect.Effect<void> = Effect.dieMessage('close not implemented'),
+  close: Effect.Effect<void> = Effect.die(new Error('close not implemented')),
 ): ServiceContext<Ctx, TStaticData> => {
   return {
     provide: (self) => self.pipe(Effect.provide(services)),
@@ -102,7 +102,7 @@ export const empty = <Ctx, TStaticData>(): ServiceContext<Ctx, TStaticData> => (
   runPromiseExit: () => Effect.runPromiseExit(MissingContext),
   runPromise: () => Effect.runPromise(MissingContext),
   withServices: () => Effect.runSync(MissingContext),
-  close: Effect.dieMessage('Empty ServiceContext cannot be closed'),
+  close: Effect.die(new Error('Empty ServiceContext cannot be closed')),
   closePromise: () => Promise.reject('Empty ServiceContext cannot be closed'),
   staticData: {} as TStaticData,
 })

@@ -316,8 +316,8 @@ const writeProdDeployState = (state: ProdDeployState) =>
 
 const readProdDeployState = Effect.gen(function* () {
   if (fs.existsSync(PROD_DEPLOY_STATE_FILE) === false) {
-    return yield* Effect.dieMessage(
-      `Prod deploy state file missing at ${PROD_DEPLOY_STATE_FILE}. Did the upload phase run?`,
+    return yield* Effect.die(
+      new Error(`Prod deploy state file missing at ${PROD_DEPLOY_STATE_FILE}. Did the upload phase run?`),
     )
   }
   const content = fs.readFileSync(PROD_DEPLOY_STATE_FILE, 'utf8')
