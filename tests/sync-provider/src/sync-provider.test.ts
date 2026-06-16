@@ -12,6 +12,7 @@ import {
   Duration,
   Effect,
   FetchHttpClient,
+  Fiber,
   type HttpClient,
   KeyValueStore,
   Layer,
@@ -22,6 +23,7 @@ import {
   Schedule,
   Schema,
   Stream,
+  SubscriptionRef,
 } from '@livestore/utils/effect'
 
 import { providerKeys, providerRegistry } from './providers/registry.ts'
@@ -116,14 +118,14 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       const syncBackend = yield* makeProvider(test.task.name)
 
       // Check initial state
-      const initialConnected = yield* syncBackend.isConnected.get
+      const initialConnected = yield* SubscriptionRef.get(syncBackend.isConnected)
       expect(initialConnected).toBe(false)
 
       // Connect
       yield* syncBackend.connect
 
       // Check connected state
-      const connected = yield* syncBackend.isConnected
+      const connected = yield* SubscriptionRef.get(syncBackend.isConnected)
       expect(connected).toBe(true)
     }).pipe(withTestCtx()(test)),
   )
@@ -165,7 +167,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         // Push an event; live stream should emit it
         yield* syncBackend.push([eventFactory.todoCreated.next({ id: 'idle-1', text: 'Late event', completed: false })])
 
-        const result = yield* fiber
+        const result = yield* Fiber.join(fiber)
         expect(result.batch.length).toBe(1)
       }).pipe(withTestCtx()(test)),
     )
@@ -408,7 +410,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         eventFactory.todoCreated.advanceTo(1, 'root')
         yield* syncBackend.push([eventFactory.todoCreated.next({ id: '1', text: 'Test event 1.', completed: false })])
 
-        const result = yield* fiber
+        const result = yield* Fiber.join(fiber)
         expect(result.batch.length).toBe(1)
       }).pipe(Effect.provide(runtime), withTestCtx()(test)),
     )

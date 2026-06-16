@@ -165,7 +165,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
 
 export const SocketPinger = Effect.map(RpcClient.Protocol, (protocol) => (protocol as any).pinger as SocketPinger)
 
-export type SocketPinger = Effect.Effect.Success<ReturnType<typeof makePinger>>
+export type SocketPinger = Effect.Success<ReturnType<typeof makePinger>>
 
 const makePinger = Effect.fnUntraced(function* <A, E, R>(
   writePing: Effect.Effect<A, E, R>,

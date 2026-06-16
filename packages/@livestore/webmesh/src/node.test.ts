@@ -2,7 +2,7 @@ import { expect } from 'vitest'
 
 import { IS_CI, omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Chunk, Deferred, Effect, Exit, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
+import { Chunk, Deferred, Effect, Exit, Fiber, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
 
 import { Packet } from './mesh-schema.ts'
 import type { MeshNode } from './node.ts'
@@ -485,7 +485,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'resp:A' })
           }).pipe(Effect.scoped, Effect.repeatN(messageCount))
 
-          yield* bFiber
+          yield* Fiber.join(bFiber)
         }).pipe(Vitest.withTestCtx(test)),
       )
     })
@@ -1288,8 +1288,8 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         yield* channelOnA.send('A1')
         yield* channelOnC.send('C1')
 
-        expect(yield* listenOnAFiber).toEqual('C1')
-        expect(yield* listenOnCFiber).toEqual('A1')
+        expect(yield* Fiber.join(listenOnAFiber)).toEqual('C1')
+        expect(yield* Fiber.join(listenOnCFiber)).toEqual('A1')
       }).pipe(Vitest.withTestCtx(test)),
     )
   })
