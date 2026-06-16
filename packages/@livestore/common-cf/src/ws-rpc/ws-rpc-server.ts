@@ -23,7 +23,7 @@ import {
   Exit,
   Layer,
   Logger,
-  Mailbox,
+  Queue,
   References,
   RpcMessage,
   RpcSerialization,
@@ -163,9 +163,9 @@ export const setupDurableObjectWebSocketRpc = ({
 
       const scope = yield* Scope.make()
 
-      const incomingQueue = yield* Mailbox.make<Uint8Array | string>()
+      const incomingQueue = yield* Queue.unbounded<Uint8Array | string>()
 
-      yield* Scope.addFinalizer(scope, incomingQueue.shutdown)
+      yield* Scope.addFinalizer(scope, Queue.shutdown(incomingQueue).pipe(Effect.asVoid))
 
       const ProtocolLive = layerRpcServerWebsocket({
         ws,
@@ -186,8 +186,7 @@ export const setupDurableObjectWebSocketRpc = ({
       const ctx = {
         scope,
         onMessage: (message: string | ArrayBuffer) =>
-          incomingQueue
-            .offer(message as Uint8Array | string)
+          Queue.offer(incomingQueue, message as Uint8Array | string)
             .pipe(
               Effect.asVoid,
               Effect.withSpan('ws-rpc-server/onMessage', { root: true }),
@@ -243,8 +242,8 @@ export const setupDurableObjectWebSocketRpc = ({
 export interface WsRpcServerArgs {
   ws: CfTypes.WebSocket
   onMessage?: (message: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
-  /** Mailbox queue for receiving incoming messages from the WebSocket */
-  incomingQueue: Mailbox.Mailbox<Uint8Array | string>
+  /** Queue for receiving incoming messages from the WebSocket */
+  incomingQueue: Queue.Queue<Uint8Array | string>
 }
 
 /**
@@ -281,7 +280,7 @@ export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
 const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =>
   Effect.gen(function* () {
     const serialization = yield* RpcSerialization.RpcSerialization
-    const disconnects = yield* Mailbox.make<number>()
+    const disconnects = yield* Queue.unbounded<number>()
 
     const writeRaw = (msg: Uint8Array | string) => Effect.succeed(ws.send(msg))
 
@@ -306,7 +305,7 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
       writeRequest = writeRequest_
 
       // Start processing messages now that writeRequest is available
-      const startProcessing = Mailbox.toStream(incomingQueue).pipe(
+      const startProcessing = Stream.fromQueue(incomingQueue).pipe(
         Stream.tap((data) => {
           try {
             const decoded = parser.decode(data) as ReadonlyArray<RpcMessage.FromClientEncoded>

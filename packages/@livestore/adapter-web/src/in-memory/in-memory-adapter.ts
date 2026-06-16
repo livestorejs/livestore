@@ -27,6 +27,7 @@ import {
   FetchHttpClient,
   Fiber,
   Layer,
+  Queue,
   type Schema,
   SubscriptionRef,
   Worker,
@@ -291,7 +292,7 @@ const makeLeaderThread = ({
         export: Effect.sync(() => dbState.export()),
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         syncState: syncProcessor.syncState,
-        sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+        sendDevtoolsMessage: (message) => Queue.offer(extraIncomingMessagesQueue, message),
         networkStatus,
       })
 

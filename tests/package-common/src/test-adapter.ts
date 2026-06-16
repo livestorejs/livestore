@@ -204,7 +204,7 @@ const makeLocalLeaderThread = ({
           export: Effect.sync(() => dbState.export()),
           getEventlogData: Effect.sync(() => dbEventlog.export()),
           syncState: syncProcessor.syncState,
-          sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+          sendDevtoolsMessage: (message) => Queue.offer(extraIncomingMessagesQueue, message),
           networkStatus,
         },
         { ...omitUndefineds({ overrides: testing?.overrides?.clientSession?.leaderThreadProxy }) },
@@ -224,7 +224,7 @@ const makeShutdownChannel = (storeId: string): Effect.Effect<ShutdownChannel.Shu
       send: (message) => Queue.offer(queue, message),
       listen: Stream.fromQueue(queue).pipe(Stream.map(Result.succeed)),
       closedDeferred,
-      shutdown: Queue.shutdown(queue),
+      shutdown: Queue.shutdown(queue).pipe(Effect.asVoid),
       schema: {
         listen: ShutdownChannel.All,
         send: ShutdownChannel.All,
