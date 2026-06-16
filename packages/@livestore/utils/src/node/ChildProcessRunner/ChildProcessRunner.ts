@@ -7,7 +7,6 @@ import * as Effect from 'effect/Effect'
 import * as Exit from 'effect/Exit'
 import * as FiberSet from 'effect/FiberSet'
 import * as Layer from 'effect/Layer'
-import * as Runtime from 'effect/Runtime'
 import * as Scope from 'effect/Scope'
 import { WorkerError } from 'effect/unstable/workers/WorkerError'
 import type { CloseLatch } from 'effect/unstable/workers/WorkerRunner'
@@ -89,11 +88,11 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
       const run = Effect.fnUntraced(function* <A, E, R>(
         handler: (portId: number, message: I) => Effect.Effect<A, E, R> | void,
       ) {
-        const runtime = (yield* Effect.interruptible(Effect.runtime<R | Scope.Scope>())).pipe(
-          Runtime.updateContext(Context.omit(Scope.Scope)),
-        ) as Runtime.Runtime<R>
+        const services = (yield* Effect.interruptible(Effect.context<R | Scope.Scope>())).pipe(
+          Context.omit(Scope.Scope),
+        ) as Context.Context<R>
         const fiberSet = yield* FiberSet.make<any, WorkerError | E>()
-        const runFork = Runtime.runFork(runtime)
+        const runFork = Effect.runForkWith(services)
         const onExit = (exit: Exit.Exit<any, E>) => {
           if (exit._tag === 'Failure' && Cause.isInterruptedOnly(exit.cause) === false) {
             // Deferred.doneUnsafe(closeLatch, Effect.die(Cause.squash(exit.cause)))

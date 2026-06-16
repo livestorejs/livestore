@@ -55,7 +55,7 @@ export interface DurableObjectWebSocketRpcConfig {
   webSocketMode: 'hibernate' | 'accept'
   /**
    * Effect RPC layer that requires `RpcServer.Protocol` (and `WsContext` if used)
-   * and provides the RPC server runtime.
+   * and provides the RPC server services.
    *
    * This is typically created by:
    * ```typescript
@@ -181,7 +181,7 @@ export const setupDurableObjectWebSocketRpc = ({
         Effect.forkIn(scope, { startImmediately: true, uninterruptible: 'inherit' }),
       )
 
-      const runtime = yield* Effect.runtime()
+      const services = yield* Effect.context()
 
       const ctx = {
         scope,
@@ -191,8 +191,7 @@ export const setupDurableObjectWebSocketRpc = ({
             .pipe(
               Effect.asVoid,
               Effect.withSpan('ws-rpc-server/onMessage', { root: true }),
-              Effect.provide(runtime),
-              Effect.runPromise,
+              Effect.runPromiseWith(services),
             ),
       }
 

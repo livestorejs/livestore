@@ -159,9 +159,9 @@ export const eventListener = <TEvent = unknown>(
   options?: { once?: boolean },
 ) =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime()
+    const services = yield* Effect.context()
 
-    const handlerFn = (event: TEvent) => handler(event).pipe(Effect.provide(runtime), Effect.runFork)
+    const handlerFn = (event: TEvent) => handler(event).pipe(Effect.runForkWith(services))
 
     target.addEventListener(type, handlerFn, { once: options?.once ?? false })
 
@@ -172,7 +172,7 @@ export const logWarnIfTakesLongerThan =
   ({ label, duration }: { label: string; duration: Duration.Input }) =>
   <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.gen(function* () {
-      const runtime = yield* Effect.runtime()
+      const services = yield* Effect.context()
 
       let tookLongerThanTimer = false
 
@@ -182,8 +182,7 @@ export const logWarnIfTakesLongerThan =
           // TODO include span info
           return Effect.logWarning(`${label}: Took longer than ${objectToString(duration)}ms`)
         }),
-        Effect.provide(runtime),
-        Effect.runFork,
+        Effect.runForkWith(services),
       )
 
       const start = Date.now()

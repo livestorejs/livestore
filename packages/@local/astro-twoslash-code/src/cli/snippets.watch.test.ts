@@ -90,6 +90,6 @@ describe('watchSnippets', () => {
       expect(update.renderedCount).toBeGreaterThanOrEqual(0)
     })
 
-    await program.pipe(Effect.scoped, Effect.provide(PlatformNode.NodeFileSystem.layer), Effect.runPromise)
+    await program.pipe(Effect.scoped, Effect.runPromiseWith(PlatformNode.NodeFileSystem.layer))
   }, 10000)
 })
