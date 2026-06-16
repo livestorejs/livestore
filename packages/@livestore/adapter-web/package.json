@@ -43,7 +43,7 @@
   "devDependencies": {
     "@types/chrome": "0.1.4",
     "@types/wicg-file-system-access": "2023.10.6",
-    "vitest": "3.2.4"
+    "vitest": "4.1.9"
   },
   "peerDependencies": {
     "@effect/opentelemetry": "^4.0.0-beta.83",

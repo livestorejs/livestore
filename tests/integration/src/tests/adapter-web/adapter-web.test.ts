@@ -36,7 +36,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
    * What we assert:
    * - After releasing the barrier, both pages render "Adapter Web Test App" within a timeout.
    */
-  Vitest.scopedLive('two tabs boot (shared-worker stable)', (test) =>
+  Vitest.live('two tabs boot (shared-worker stable)', (test) =>
     Effect.gen(function* () {
       const port = yield* getFreePort.pipe(Effect.map(String))
 
@@ -112,7 +112,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
    * @see https://github.com/livestorejs/livestore/issues/321
    * @see https://issues.chromium.org/issues/40290702
    */
-  Vitest.scopedLive('single-tab mode fallback (SharedWorker disabled)', (test) =>
+  Vitest.live('single-tab mode fallback (SharedWorker disabled)', (test) =>
     Effect.gen(function* () {
       const port = yield* getFreePort.pipe(Effect.map(String))
 
@@ -180,7 +180,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
    * Verifies that two tabs in single-tab mode operate independently
    * (no cross-tab synchronization when SharedWorker is unavailable).
    */
-  Vitest.scopedLive('single-tab mode: tabs operate independently', (test) =>
+  Vitest.live('single-tab mode: tabs operate independently', (test) =>
     Effect.gen(function* () {
       const port = yield* getFreePort.pipe(Effect.map(String))
 

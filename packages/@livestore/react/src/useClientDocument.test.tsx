@@ -22,7 +22,7 @@ Vitest.describe('useClientDocument', () => {
     __resetUseRcResourceCache()
   })
 
-  Vitest.scopedLive('should update the data based on component key', () =>
+  Vitest.live('should update the data based on component key', () =>
     Effect.gen(function* () {
       const { wrapper, store, renderCount } = yield* makeTodoMvcReact({})
 
@@ -53,7 +53,7 @@ Vitest.describe('useClientDocument', () => {
 
   // TODO add a test that makes sure React doesn't re-render when a setter is used to set the same value
 
-  Vitest.scopedLive('should update the data reactively - via setState', () =>
+  Vitest.live('should update the data reactively - via setState', () =>
     Effect.gen(function* () {
       const { wrapper, store, renderCount } = yield* makeTodoMvcReact({})
 
@@ -79,7 +79,7 @@ Vitest.describe('useClientDocument', () => {
     }),
   )
 
-  Vitest.scopedLive('should update the data reactively - via raw store commit', () =>
+  Vitest.live('should update the data reactively - via raw store commit', () =>
     Effect.gen(function* () {
       const { wrapper, store, renderCount } = yield* makeTodoMvcReact({})
 
@@ -105,7 +105,7 @@ Vitest.describe('useClientDocument', () => {
     }),
   )
 
-  Vitest.scopedLive('should work for a larger app', () =>
+  Vitest.live('should work for a larger app', () =>
     Effect.gen(function* () {
       const { wrapper, store, renderCount } = yield* makeTodoMvcReact({})
 
@@ -195,7 +195,7 @@ Vitest.describe('useClientDocument', () => {
     }),
   )
 
-  Vitest.scopedLive('should work for a useClientDocument query chained with a useTemporary query', () =>
+  Vitest.live('should work for a useClientDocument query chained with a useTemporary query', () =>
     Effect.gen(function* () {
       const { store, wrapper, renderCount } = yield* makeTodoMvcReact({})
 
@@ -238,7 +238,7 @@ Vitest.describe('useClientDocument', () => {
     }),
   )
 
-  Vitest.scopedLive('kv client document overwrites value (Schema.Any, no partial merge)', () =>
+  Vitest.live('kv client document overwrites value (Schema.Any, no partial merge)', () =>
     Effect.gen(function* () {
       const { wrapper, store, renderCount } = yield* makeTodoMvcReact({})
 

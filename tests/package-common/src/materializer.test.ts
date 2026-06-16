@@ -48,7 +48,7 @@ const materializers = State.SQLite.materializers(events, {
 const schema = makeSchema({ events, state: State.SQLite.makeState({ tables, materializers }) })
 
 Vitest.describe.each(['raw', 'query-builder'] as const)('materializer', (queryType) => {
-  Vitest.scopedLive('should allow queries in materializer', (test) =>
+  Vitest.live('should allow queries in materializer', (test) =>
     Effect.gen(function* () {
       const adapter = makeInMemoryAdapter()
       const eventDef = queryType === 'query-builder' ? events.todoCreated : events.todoCreatedRaw
@@ -72,7 +72,7 @@ Vitest.describe.each(['raw', 'query-builder'] as const)('materializer', (queryTy
     }).pipe(Vitest.withTestCtx(test)),
   )
 
-  Vitest.scopedLive('should allow empty event payload', (test) =>
+  Vitest.live('should allow empty event payload', (test) =>
     Effect.gen(function* () {
       const adapter = makeInMemoryAdapter()
       const store = yield* createStore({ schema, adapter, storeId: 'test' })
@@ -80,7 +80,7 @@ Vitest.describe.each(['raw', 'query-builder'] as const)('materializer', (queryTy
     }).pipe(Vitest.withTestCtx(test)),
   )
 
-  Vitest.scopedLive('should pass full event with clientId to materializer', (test) =>
+  Vitest.live('should pass full event with clientId to materializer', (test) =>
     Effect.gen(function* () {
       const testClientId = 'test-client-123'
       const messageEvents = {

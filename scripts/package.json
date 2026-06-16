@@ -35,7 +35,7 @@
     "madge": "^8.0.0",
     "semver": "^7.7.3",
     "typescript": "6.0.3",
-    "vitest": "3.2.4",
+    "vitest": "4.1.9",
     "yaml": "2.8.1"
   },
   "$genie": {
