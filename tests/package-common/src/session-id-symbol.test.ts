@@ -7,7 +7,7 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Schema } from '@livestore/utils/effect'
 
 Vitest.describe('SessionIdSymbol', () => {
-  Vitest.scopedLive('encodes commit events without mutating caller-provided args', (test) =>
+  Vitest.live('encodes commit events without mutating caller-provided args', (test) =>
     Effect.gen(function* () {
       const uiState = State.SQLite.clientDocument({
         name: 'UiState',

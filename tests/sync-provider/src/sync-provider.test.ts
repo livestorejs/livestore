@@ -92,7 +92,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     )
 
   // Simple test to verify the setup works
-  Vitest.scopedLive('can create sync backend', (test) =>
+  Vitest.live('can create sync backend', (test) =>
     Effect.gen(function* () {
       const syncBackend = yield* makeProvider(test.task.name)
 
@@ -105,7 +105,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     }).pipe(withTestCtx()(test)),
   )
 
-  Vitest.scopedLive('can ping sync backend', (test) =>
+  Vitest.live('can ping sync backend', (test) =>
     Effect.gen(function* () {
       const syncBackend = yield* makeProvider(test.task.name)
 
@@ -113,7 +113,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     }).pipe(withTestCtx()(test)),
   )
 
-  Vitest.scopedLive('can connect to sync backend', (test) =>
+  Vitest.live('can connect to sync backend', (test) =>
     Effect.gen(function* () {
       const syncBackend = yield* makeProvider(test.task.name)
 
@@ -130,7 +130,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     }).pipe(withTestCtx()(test)),
   )
 
-  Vitest.scopedLive('can pull events from sync backend', (test) =>
+  Vitest.live('can pull events from sync backend', (test) =>
     Effect.gen(function* () {
       const syncBackend = yield* makeProvider(test.task.name)
 
@@ -143,7 +143,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
   )
 
   Vitest.describe('live pull', () => {
-    Vitest.scopedLive('needs to return a no-more page info', (test) =>
+    Vitest.live('needs to return a no-more page info', (test) =>
       Effect.gen(function* () {
         const syncBackend = yield* makeProvider(test.task.name)
 
@@ -153,7 +153,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       }).pipe(withTestCtx()(test)),
     )
 
-    Vitest.scopedLive('survives idle and receives later event', (test) =>
+    Vitest.live('survives idle and receives later event', (test) =>
       Effect.gen(function* () {
         const syncBackend = yield* makeProvider(test.task.name)
         const eventFactory = makeFactory({ client: defaultClient, startSeq: 1, initialParent: 'root' })
@@ -177,7 +177,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     )
   })
 
-  Vitest.scopedLive('can pull with cursor', (test) =>
+  Vitest.live('can pull with cursor', (test) =>
     Effect.gen(function* () {
       const syncBackend = yield* makeProvider(test.task.name)
 
@@ -298,7 +298,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     for (const { label, scenario } of deterministicBatchCases) {
       const scenarioSummary = batchScenarioSummary(scenario)
 
-      Vitest.scopedLive(label, (test) => {
+      Vitest.live(label, (test) => {
         return Effect.gen(function* () {
           const scenarioId = nanoid()
           const approxBytes = approxBatchPayloadBytes(scenario)
@@ -332,7 +332,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       })
     }
 
-    Vitest.scopedLive.prop(
+    Vitest.live.prop(
       'streams batch variations over provider payload limits',
       [LargeBatchScenarioSchema],
       ([scenario], test) => {
@@ -373,7 +373,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     )
   })
 
-  Vitest.scopedLive('non-live pull returns multiple events', (test) =>
+  Vitest.live('non-live pull returns multiple events', (test) =>
     Effect.gen(function* () {
       const syncBackend = yield* makeProvider(test.task.name)
       const eventFactory = makeFactory({ client: defaultClient, startSeq: 1, initialParent: 'root' })
@@ -397,7 +397,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
   )
 
   Vitest.describe('connection management', () => {
-    Vitest.scopedLive('can reconnect to sync backend', (test) =>
+    Vitest.live('can reconnect to sync backend', (test) =>
       Effect.gen(function* () {
         const syncBackend = yield* makeProvider(test.task.name)
 
@@ -424,7 +424,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     )
   })
 
-  Vitest.scopedLive('remaining field works correctly', (test) =>
+  Vitest.live('remaining field works correctly', (test) =>
     Effect.gen(function* () {
       const syncBackend = yield* makeProvider(test.task.name)
 
@@ -487,7 +487,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     }).pipe(withTestCtx()(test)),
   )
 
-  Vitest.scopedLive('remaining field with limited take', (test) =>
+  Vitest.live('remaining field with limited take', (test) =>
     Effect.gen(function* () {
       const syncBackend = yield* makeProvider(test.task.name)
 
@@ -562,7 +562,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     }).pipe(withTestCtx()(test)),
   )
 
-  Vitest.scopedLive('large batch pagination', (test) =>
+  Vitest.live('large batch pagination', (test) =>
     Effect.gen(function* () {
       const syncBackend = yield* makeProvider('large-batch-test')
 
@@ -656,7 +656,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
    *
    * @see https://github.com/livestorejs/livestore/issues/981
    */
-  Vitest.scopedLive('BackendIdMismatchError serializes correctly', (test) =>
+  Vitest.live('BackendIdMismatchError serializes correctly', (test) =>
     Effect.gen(function* () {
       const originalError = new BackendIdMismatchError({
         expected: 'expected-backend-id-123',

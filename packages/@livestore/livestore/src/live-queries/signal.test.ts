@@ -8,7 +8,7 @@ import { computed } from './computed.ts'
 import { signal } from './signal.ts'
 
 Vitest.describe('signal', () => {
-  Vitest.scopedLive('should be able to create a signal', () =>
+  Vitest.live('should be able to create a signal', () =>
     Effect.gen(function* () {
       const num$ = signal(0, { label: 'num$' })
 
@@ -24,7 +24,7 @@ Vitest.describe('signal', () => {
     }),
   )
 
-  Vitest.scopedLive('counter example', () =>
+  Vitest.live('counter example', () =>
     Effect.gen(function* () {
       const count$ = signal(0, { label: 'count$' })
 

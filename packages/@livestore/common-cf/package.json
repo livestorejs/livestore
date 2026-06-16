@@ -34,7 +34,7 @@
   },
   "devDependencies": {
     "@livestore/utils-dev": "workspace:^",
-    "vitest": "3.2.4",
+    "vitest": "4.1.9",
     "wrangler": "4.42.2"
   },
   "peerDependencies": {

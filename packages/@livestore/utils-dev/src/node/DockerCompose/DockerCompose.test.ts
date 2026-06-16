@@ -25,7 +25,7 @@ Vitest.describe('DockerCompose', { timeout: testTimeout }, () => {
         makeLayer: () => DockerComposeTest(args).pipe(Layer.provide(PlatformNode.NodeServices.layer)),
       })
 
-    Vitest.scopedLive('can pull docker images', (test) =>
+    Vitest.live('can pull docker images', (test) =>
       Effect.gen(function* () {
         const dockerCompose = yield* DockerCompose.DockerCompose
 
@@ -34,7 +34,7 @@ Vitest.describe('DockerCompose', { timeout: testTimeout }, () => {
       }).pipe(withBasicTest()(test)),
     )
 
-    Vitest.scopedLive('can start and stop docker compose services', (test) =>
+    Vitest.live('can start and stop docker compose services', (test) =>
       Effect.gen(function* () {
         const dockerCompose = yield* DockerCompose.DockerCompose
 
@@ -46,7 +46,7 @@ Vitest.describe('DockerCompose', { timeout: testTimeout }, () => {
       }).pipe(withBasicTest({ serviceName: 'hello-world' })(test)),
     )
 
-    Vitest.scopedLive('can get logs from docker compose services', (test) =>
+    Vitest.live('can get logs from docker compose services', (test) =>
       Effect.gen(function* () {
         const dockerCompose = yield* DockerCompose.DockerCompose
 
@@ -71,7 +71,7 @@ Vitest.describe('DockerCompose', { timeout: testTimeout }, () => {
         makeLayer: () => DockerComposeTest(args).pipe(Layer.provide(PlatformNode.NodeServices.layer)),
       })
 
-    Vitest.scopedLive('handles health check timeout gracefully', (test) =>
+    Vitest.live('handles health check timeout gracefully', (test) =>
       Effect.gen(function* () {
         const dockerCompose = yield* DockerCompose.DockerCompose
 

@@ -72,7 +72,6 @@ export {
   Equal,
   ExecutionStrategy,
   Exit,
-  FastCheck,
   Fiber,
   FileSystem,
   Terminal,
@@ -122,13 +121,12 @@ export {
   STM,
   Struct,
   SynchronizedRef,
-  TestClock,
-  TestServices,
   TQueue,
   Tracer,
   TxRef,
   Types,
 } from 'effect'
+export { FastCheck, TestClock, TestConsole } from 'effect/testing'
 export type { NonEmptyArray } from 'effect/Array'
 export { constVoid, dual } from 'effect/Function'
 export * as Graph from 'effect/Graph'

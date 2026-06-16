@@ -7,7 +7,7 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Schema } from '@livestore/utils/effect'
 
 Vitest.describe('issue #487 - Optional fields without defaults cause errors', () => {
-  Vitest.scopedLive('reproduces livestore-optional-field-bug repo scenario', (test) =>
+  Vitest.live('reproduces livestore-optional-field-bug repo scenario', (test) =>
     Effect.gen(function* () {
       // Exact setup from https://github.com/rubywwwilde/livestore-optional-field-bug
       const uiState = State.SQLite.clientDocument({

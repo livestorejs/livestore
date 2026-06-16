@@ -8,7 +8,7 @@ import { Effect, Schema } from '@livestore/utils/effect'
 import { makeTestAdapter } from './test-adapter.ts'
 
 Vitest.describe('Client Document Optimistic Decoding Integration', () => {
-  Vitest.scopedLive('handles schema evolution gracefully', (test) =>
+  Vitest.live('handles schema evolution gracefully', (test) =>
     Effect.gen(function* () {
       // V1: Initial schema
       const v1Doc = State.SQLite.clientDocument({
@@ -58,7 +58,7 @@ Vitest.describe('Client Document Optimistic Decoding Integration', () => {
     }).pipe(Vitest.withTestCtx(test)),
   )
 
-  Vitest.scopedLive('handles field removal', (test) =>
+  Vitest.live('handles field removal', (test) =>
     Effect.gen(function* () {
       // V1: Has apiKey field
       const v1Doc = State.SQLite.clientDocument({

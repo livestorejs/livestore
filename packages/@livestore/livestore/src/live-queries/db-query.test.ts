@@ -54,7 +54,7 @@ Vitest.describe('otel', () => {
     }
   })
 
-  Vitest.scopedLive('otel', () =>
+  Vitest.live('otel', () =>
     Effect.gen(function* () {
       const { store, exporter, span, provider } = yield* makeQuery
 
@@ -93,7 +93,7 @@ Vitest.describe('otel', () => {
     ),
   )
 
-  Vitest.scopedLive('with thunks', () =>
+  Vitest.live('with thunks', () =>
     Effect.gen(function* () {
       const { store, exporter, span, provider } = yield* makeQuery
 
@@ -150,7 +150,7 @@ Vitest.describe('otel', () => {
     ),
   )
 
-  Vitest.scopedLive('with thunks with query builder and without labels', () =>
+  Vitest.live('with thunks with query builder and without labels', () =>
     Effect.gen(function* () {
       const { store, exporter, span, provider } = yield* makeQuery
 
@@ -195,7 +195,7 @@ Vitest.describe('otel', () => {
     ),
   )
 
-  Vitest.scopedLive('QueryBuilder subscription - basic functionality', () =>
+  Vitest.live('QueryBuilder subscription - basic functionality', () =>
     Effect.gen(function* () {
       const { store, exporter, span, provider } = yield* makeQuery
 
@@ -239,7 +239,7 @@ Vitest.describe('otel', () => {
     ),
   )
 
-  Vitest.scopedLive('QueryBuilder subscription - skipInitialRun', () =>
+  Vitest.live('QueryBuilder subscription - skipInitialRun', () =>
     Effect.gen(function* () {
       const { store, exporter, span, provider } = yield* makeQuery
 
@@ -286,7 +286,7 @@ Vitest.describe('otel', () => {
     ),
   )
 
-  Vitest.scopedLive('QueryBuilder subscription - unsubscribe functionality', () =>
+  Vitest.live('QueryBuilder subscription - unsubscribe functionality', () =>
     Effect.gen(function* () {
       const { store, exporter, span, provider } = yield* makeQuery
 
@@ -338,7 +338,7 @@ Vitest.describe('otel', () => {
     ),
   )
 
-  Vitest.scopedLive('QueryBuilder subscription - async iterator', () =>
+  Vitest.live('QueryBuilder subscription - async iterator', () =>
     Effect.gen(function* () {
       const { store, exporter, span, provider } = yield* makeQuery
 
@@ -386,7 +386,7 @@ Vitest.describe('otel', () => {
     ),
   )
 
-  Vitest.scopedLive('QueryBuilder subscription - async iterator with skipInitialRun', () =>
+  Vitest.live('QueryBuilder subscription - async iterator with skipInitialRun', () =>
     Effect.gen(function* () {
       const { store, exporter, span, provider } = yield* makeQuery
 
@@ -435,7 +435,7 @@ Vitest.describe('otel', () => {
     ),
   )
 
-  Vitest.scopedLive('QueryBuilder subscription - direct table subscription', () =>
+  Vitest.live('QueryBuilder subscription - direct table subscription', () =>
     Effect.gen(function* () {
       const { store, exporter, span, provider } = yield* makeQuery
 

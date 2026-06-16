@@ -30,7 +30,7 @@ Vitest.describe('SQLite State', () => {
         return db
       })
 
-    Vitest.scopedLive(
+    Vitest.live(
       'should work for nullable json fields with default null',
       Effect.fn(function* () {
         const testTable = State.SQLite.table({
@@ -57,7 +57,7 @@ Vitest.describe('SQLite State', () => {
     )
 
     // Probably a very unlikely scenario but hey 🤷
-    Vitest.scopedLive(
+    Vitest.live(
       'should work for nullable json fields with default "null" as a string',
       Effect.fn(function* () {
         const testTable = State.SQLite.table({
