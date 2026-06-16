@@ -23,7 +23,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
       __resetUseRcResourceCache()
     })
 
-    Vitest.scopedLive('simple', () =>
+    Vitest.live('simple', () =>
       Effect.gen(function* () {
         const { wrapper, store, renderCount } = yield* makeTodoMvcReact({ strictMode })
 
@@ -51,7 +51,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
       }),
     )
 
-    Vitest.scopedLive('same `useQuery` hook invoked with different queries', () =>
+    Vitest.live('same `useQuery` hook invoked with different queries', () =>
       Effect.gen(function* () {
         const { wrapper, store, renderCount } = yield* makeTodoMvcReact({ strictMode })
 
@@ -104,7 +104,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
       }),
     )
 
-    Vitest.scopedLive('filtered dependency query', () =>
+    Vitest.live('filtered dependency query', () =>
       Effect.gen(function* () {
         const { wrapper, store, renderCount } = yield* makeTodoMvcReact({ strictMode })
 
@@ -147,7 +147,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
     // NOTE this test covers some special react lifecyle paths which I couldn't easily reproduce without react-window
     // it basically causes a "query swap" in the `useMemo` and both a `useEffect` cleanup call.
     // To handle this properly we introduced the `_tag: 'destroyed'` state in the `spanAlreadyStartedCache`.
-    Vitest.scopedLive('should work for a list with react-window', () =>
+    Vitest.live('should work for a list with react-window', () =>
       Effect.gen(function* () {
         const { wrapper, store } = yield* makeTodoMvcReact({ strictMode })
 
@@ -181,7 +181,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
       }),
     )
 
-    Vitest.scopedLive('should work with signal', () =>
+    Vitest.live('should work with signal', () =>
       Effect.gen(function* () {
         const { wrapper, store } = yield* makeTodoMvcReact({ strictMode })
         const num$ = signal(0)
@@ -196,7 +196,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
       }),
     )
 
-    Vitest.scopedLive('supports query builders directly', () =>
+    Vitest.live('supports query builders directly', () =>
       Effect.gen(function* () {
         const { wrapper, store } = yield* makeTodoMvcReact({ strictMode })
 
@@ -215,7 +215,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
       }),
     )
 
-    Vitest.scopedLive('derives a fresh LiveQuery per Store instance', () =>
+    Vitest.live('derives a fresh LiveQuery per Store instance', () =>
       Effect.gen(function* () {
         const makeStore = () =>
           createStore({
@@ -248,7 +248,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
       }),
     )
 
-    Vitest.scopedLive('union of different result types with useQuery', () =>
+    Vitest.live('union of different result types with useQuery', () =>
       Effect.gen(function* () {
         const { wrapper, store, renderCount } = yield* makeTodoMvcReact({ strictMode })
 

@@ -135,7 +135,7 @@ const insertEvents = (dbEventlog: unknown, events: ReadonlyArray<LiveStoreEvent.
   )
 
 Vitest.describe.concurrent('streamEventsWithSyncState', () => {
-  Vitest.scopedLive('emits events as upstream head advances', (test) =>
+  Vitest.live('emits events as upstream head advances', (test) =>
     withNodeFs(
       Effect.gen(function* () {
         const { dbEventlog, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
@@ -196,7 +196,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       }).pipe(Vitest.withTestCtx(test)),
     ),
   )
-  Vitest.scopedLive('filters events by name', (test) =>
+  Vitest.live('filters events by name', (test) =>
     withNodeFs(
       Effect.gen(function* () {
         const { dbEventlog, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
@@ -238,7 +238,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       }).pipe(Vitest.withTestCtx(test)),
     ),
   )
-  Vitest.scopedLive('finalises when reaching until head', (test) =>
+  Vitest.live('finalises when reaching until head', (test) =>
     withNodeFs(
       Effect.gen(function* () {
         const { dbEventlog, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
@@ -279,7 +279,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       }).pipe(Vitest.withTestCtx(test)),
     ),
   )
-  Vitest.scopedLive('excludes events at the since cursor', (test) =>
+  Vitest.live('excludes events at the since cursor', (test) =>
     withNodeFs(
       Effect.gen(function* () {
         const { dbEventlog, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
@@ -316,7 +316,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       }).pipe(Vitest.withTestCtx(test)),
     ),
   )
-  Vitest.scopedLive('filters events by client ID', (test) =>
+  Vitest.live('filters events by client ID', (test) =>
     withNodeFs(
       Effect.gen(function* () {
         const { dbEventlog, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
@@ -359,7 +359,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       }).pipe(Vitest.withTestCtx(test)),
     ),
   )
-  Vitest.scopedLive('filters events by session ID', (test) =>
+  Vitest.live('filters events by session ID', (test) =>
     withNodeFs(
       Effect.gen(function* () {
         const { dbEventlog, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
@@ -406,7 +406,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
       }).pipe(Vitest.withTestCtx(test)),
     ),
   )
-  Vitest.scopedLive('skips client-only events by default', (test) =>
+  Vitest.live('skips client-only events by default', (test) =>
     withNodeFs(
       Effect.gen(function* () {
         const { dbEventlog, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
@@ -467,7 +467,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
     ),
   )
 
-  Vitest.scopedLive('respects until marker when batchSize exceeds remaining events', (test) =>
+  Vitest.live('respects until marker when batchSize exceeds remaining events', (test) =>
     withNodeFs(
       Effect.gen(function* () {
         const { dbEventlog, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
@@ -522,7 +522,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
   const batchesPerTickSampleSchema = Schema.Literals([1, 3, 10, 100])
 
   Vitest.asProp(
-    Vitest.scopedLive,
+    Vitest.live,
     'property: streams events across batches',
     {
       batchSize: batchSizeSampleSchema,

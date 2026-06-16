@@ -16,7 +16,7 @@ Vitest.describe('websocket-edge', () => {
   /**
    * Test that WSEdgeInit messages can be encoded/decoded via MessageMsgpack.
    */
-  Vitest.scopedLive('should encode/decode WSEdgeInit', (test) =>
+  Vitest.live('should encode/decode WSEdgeInit', (test) =>
     Effect.gen(function* () {
       const initMessage = WSEdgeInit.make({ from: 'test-node' })
 
@@ -36,7 +36,7 @@ Vitest.describe('websocket-edge', () => {
   /**
    * Test that WSEdgePayload messages with valid Packet payloads work correctly.
    */
-  Vitest.scopedLive('should encode/decode WSEdgePayload with Packet', (test) =>
+  Vitest.live('should encode/decode WSEdgePayload with Packet', (test) =>
     Effect.gen(function* () {
       const packet = {
         _tag: 'NetworkEdgeAdded' as const,
@@ -64,7 +64,7 @@ Vitest.describe('websocket-edge', () => {
    * Test that mapSchema(Packet) includes WebChannel internal messages.
    * This is important because channels can send/receive WebChannel.Ping/Pong/DebugPing.
    */
-  Vitest.scopedLive('mapSchema should include WebChannel messages in schema', (test) =>
+  Vitest.live('mapSchema should include WebChannel messages in schema', (test) =>
     Effect.gen(function* () {
       const schema = WebChannel.mapSchema(MeshSchema.Packet)
 
@@ -80,7 +80,7 @@ Vitest.describe('websocket-edge', () => {
   /**
    * Test that valid webmesh packets can be decoded.
    */
-  Vitest.scopedLive('should decode valid webmesh packets', (test) =>
+  Vitest.live('should decode valid webmesh packets', (test) =>
     Effect.gen(function* () {
       const schema = WebChannel.mapSchema(MeshSchema.Packet)
 

@@ -18,14 +18,14 @@ const withNode = Vitest.makeWithTestCtx({
 Vitest.describe('cmd helper', () => {
   const ansiRegex = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g')
 
-  Vitest.scopedLive('runs tokenized string without shell', (test) =>
+  Vitest.live('runs tokenized string without shell', (test) =>
     Effect.gen(function* () {
       const exit = yield* cmd('printf ok')
       expect(exit).toBe(ChildProcessSpawner.ExitCode(0))
     }).pipe(withNode(test)),
   )
 
-  Vitest.scopedLive('runs array input', (test) =>
+  Vitest.live('runs array input', (test) =>
     Effect.gen(function* () {
       const exit = yield* cmd(['printf', 'ok'])
       expect(exit).toBe(ChildProcessSpawner.ExitCode(0))
@@ -33,7 +33,7 @@ Vitest.describe('cmd helper', () => {
   )
 
   /** TODO(#1020): Investigate CI timeout flakiness for cmd tests that spawn many child processes */
-  Vitest.scopedLive(
+  Vitest.live(
     'supports logging with archive + retention',
     (test) =>
       Effect.gen(function* () {
@@ -87,7 +87,7 @@ Vitest.describe('cmd helper', () => {
     { timeout: 30_000, retry: 3 },
   )
 
-  Vitest.scopedLive('streams stdout and stderr with logger formatting', (test) =>
+  Vitest.live('streams stdout and stderr with logger formatting', (test) =>
     Effect.gen(function* () {
       const workspace = process.env.WORKSPACE_ROOT!
       const logsDir = path.join(workspace, 'tmp', 'cmd-tests', `format-${Date.now()}`)
@@ -118,7 +118,7 @@ Vitest.describe('cmd helper', () => {
     }).pipe(withNode(test)),
   )
 
-  Vitest.scopedLive('cleans up logged child process when interrupted', (test) =>
+  Vitest.live('cleans up logged child process when interrupted', (test) =>
     Effect.gen(function* () {
       const workspace = process.env.WORKSPACE_ROOT!
       const logsDir = path.join(workspace, 'tmp', 'cmd-tests', `timeout-${Date.now()}`)

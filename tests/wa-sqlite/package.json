@@ -8,7 +8,7 @@
   },
   "devDependencies": {
     "@livestore/wa-sqlite": "workspace:^",
-    "vitest": "3.2.4"
+    "vitest": "4.1.9"
   },
   "$genie": {
     "source": "package.json.genie.ts",

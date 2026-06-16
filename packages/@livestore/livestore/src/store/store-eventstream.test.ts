@@ -41,7 +41,7 @@ const withTestCtx = Vitest.makeWithTestCtx({
  * tests/package-common/src/leader-thread/stream-events.test.ts
  */
 Vitest.describe('Store events API', () => {
-  Vitest.scopedLive('should resume when reconnected to sync backend', (test) =>
+  Vitest.live('should resume when reconnected to sync backend', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
       const store = yield* makeStore()

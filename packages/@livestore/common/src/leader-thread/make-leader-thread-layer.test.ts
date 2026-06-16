@@ -7,7 +7,7 @@ import { makeNetworkStatusSubscribable } from './make-leader-thread-layer.ts'
 import type { DevtoolsContext } from './types.ts'
 
 Vitest.describe('makeNetworkStatusSubscribable', () => {
-  Vitest.scopedLive('tracks sync backend connectivity and devtools latch state', () =>
+  Vitest.live('tracks sync backend connectivity and devtools latch state', () =>
     Effect.gen(function* () {
       const mockBackend = yield* makeMockSyncBackend({ startConnected: false })
       const syncBackend = yield* mockBackend.makeSyncBackend

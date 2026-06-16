@@ -166,7 +166,7 @@ describe('StoreRegistry', () => {
   })
 
   it.layer(OtelLiveDummy)('time-dependent (using TestClock)', (it) => {
-    it.scoped('disposes store after unusedCacheTime expires', () =>
+    it.effect('disposes store after unusedCacheTime expires', () =>
       Effect.gen(function* () {
         const unusedCacheTime = 25
         const services = yield* Effect.context<Scope.Scope | OtelTracer.OtelTracer>()
@@ -192,7 +192,7 @@ describe('StoreRegistry', () => {
       }),
     )
 
-    it.scoped('does not dispose when unusedCacheTime is Infinity', () =>
+    it.effect('does not dispose when unusedCacheTime is Infinity', () =>
       Effect.gen(function* () {
         const services = yield* Effect.context<Scope.Scope | OtelTracer.OtelTracer>()
         const registry = new StoreRegistry({ context: services, defaultOptions: { unusedCacheTime: Number.POSITIVE_INFINITY } })
@@ -209,7 +209,7 @@ describe('StoreRegistry', () => {
       }),
     )
 
-    it.scoped('schedules disposal if store becomes unused during loading', () =>
+    it.effect('schedules disposal if store becomes unused during loading', () =>
       Effect.gen(function* () {
         const unusedCacheTime = 50
         const services = yield* Effect.context<Scope.Scope | OtelTracer.OtelTracer>()
@@ -228,7 +228,7 @@ describe('StoreRegistry', () => {
       }),
     )
 
-    it.scoped('allows call-site options to override default options', () =>
+    it.effect('allows call-site options to override default options', () =>
       Effect.gen(function* () {
         const services = yield* Effect.context<Scope.Scope | OtelTracer.OtelTracer>()
         const registry = new StoreRegistry({ context: services, defaultOptions: { unusedCacheTime: 10_000 } }) // Long default
@@ -247,7 +247,7 @@ describe('StoreRegistry', () => {
       }),
     )
 
-    it.scoped('disposes different stores according to their own unusedCacheTime', () =>
+    it.effect('disposes different stores according to their own unusedCacheTime', () =>
       Effect.gen(function* () {
         const services = yield* Effect.context<Scope.Scope | OtelTracer.OtelTracer>()
         const registry = new StoreRegistry({ context: services, defaultOptions: { unusedCacheTime: 1000 } })
@@ -274,7 +274,7 @@ describe('StoreRegistry', () => {
 
     // This test is skipped because we don't yet support dynamic `unusedCacheTime` updates for cached stores.
     // See https://github.com/livestorejs/livestore/issues/918
-    it.scoped.skip('keeps the longest unusedCacheTime seen for a store when options vary across calls', () =>
+    it.effect.skip('keeps the longest unusedCacheTime seen for a store when options vary across calls', () =>
       Effect.gen(function* () {
         const services = yield* Effect.context<Scope.Scope | OtelTracer.OtelTracer>()
         const registry = new StoreRegistry({ context: services })
@@ -304,7 +304,7 @@ describe('StoreRegistry', () => {
       }),
     )
 
-    it.scoped('handles rapid retain/release cycles without errors', () =>
+    it.effect('handles rapid retain/release cycles without errors', () =>
       Effect.gen(function* () {
         const unusedCacheTime = 50
         const services = yield* Effect.context<Scope.Scope | OtelTracer.OtelTracer>()
@@ -328,7 +328,7 @@ describe('StoreRegistry', () => {
       }),
     )
 
-    it.scoped('cancels disposal when new retain', () =>
+    it.effect('cancels disposal when new retain', () =>
       Effect.gen(function* () {
         const unusedCacheTime = 50
         const services = yield* Effect.context<Scope.Scope | OtelTracer.OtelTracer>()
@@ -364,7 +364,7 @@ describe('StoreRegistry', () => {
       }),
     )
 
-    it.scoped('aborts loading when disposal fires while store is still loading', () =>
+    it.effect('aborts loading when disposal fires while store is still loading', () =>
       Effect.gen(function* () {
         const unusedCacheTime = 10
         const loadDelay = 1000
@@ -408,7 +408,7 @@ describe('StoreRegistry', () => {
       }),
     )
 
-    it.scoped('retain keeps store alive past unusedCacheTime', () =>
+    it.effect('retain keeps store alive past unusedCacheTime', () =>
       Effect.gen(function* () {
         const unusedCacheTime = 50
         const services = yield* Effect.context<Scope.Scope | OtelTracer.OtelTracer>()
@@ -434,7 +434,7 @@ describe('StoreRegistry', () => {
       }),
     )
 
-    it.scoped('manages multiple stores with different IDs independently', () =>
+    it.effect('manages multiple stores with different IDs independently', () =>
       Effect.gen(function* () {
         const unusedCacheTime = 50
         const services = yield* Effect.context<Scope.Scope | OtelTracer.OtelTracer>()
@@ -466,7 +466,7 @@ describe('StoreRegistry', () => {
       }),
     )
 
-    it.scoped('applies default options from constructor', () =>
+    it.effect('applies default options from constructor', () =>
       Effect.gen(function* () {
         const services = yield* Effect.context<Scope.Scope | OtelTracer.OtelTracer>()
         const registry = new StoreRegistry({ context: services, defaultOptions: { unusedCacheTime: 100 } })
@@ -488,7 +488,7 @@ describe('StoreRegistry', () => {
       }),
     )
 
-    it.scoped('does not serve a disposed store from cache', () =>
+    it.effect('does not serve a disposed store from cache', () =>
       Effect.gen(function* () {
         const unusedCacheTime = 25
         const services = yield* Effect.context<Scope.Scope | OtelTracer.OtelTracer>()
@@ -510,7 +510,7 @@ describe('StoreRegistry', () => {
       }),
     )
 
-    it.scoped('schedules disposal after preload if no retainers are added', () =>
+    it.effect('schedules disposal after preload if no retainers are added', () =>
       Effect.gen(function* () {
         const unusedCacheTime = 50
         const services = yield* Effect.context<Scope.Scope | OtelTracer.OtelTracer>()

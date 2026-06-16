@@ -26,7 +26,7 @@
     "@types/node": "25.3.3",
     "astro": "6.4.6",
     "effect": "4.0.0-beta.83",
-    "vitest": "3.2.4"
+    "vitest": "4.1.9"
   },
   "peerDependencies": {
     "astro": "^5 || ^6"
