@@ -25,6 +25,7 @@ import {
   identity,
   Layer,
   OtelTracer,
+  Queue,
   References,
   Scheduler,
   Schema,
@@ -305,7 +306,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       yield* Effect.sleep(300)
     }),
     ExtraDevtoolsMessage: ({ message }) =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
+      Effect.andThen(LeaderThreadCtx, (_) => Queue.offer(_.extraIncomingMessagesQueue, message)).pipe(
         Effect.withSpan('@livestore/adapter-web:worker:ExtraDevtoolsMessage'),
       ),
     'WebmeshWorker.CreateConnection': WebmeshWorker.CreateConnection,
