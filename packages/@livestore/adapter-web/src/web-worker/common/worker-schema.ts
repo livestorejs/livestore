@@ -42,8 +42,8 @@ export type StorageType = typeof StorageType.Type
 export type StorageTypeEncoded = typeof StorageType.Encoded
 
 // export const SyncBackendOptions = Schema.Union([SyncBackendOptionsWebsocket])
-export const SyncBackendOptions = Schema.Record(Schema.String, Schema.JsonValue)
-export type SyncBackendOptions = Record<string, Schema.JsonValue>
+export const SyncBackendOptions = Schema.Record(Schema.String, Schema.Json)
+export type SyncBackendOptions = Record<string, Schema.Json>
 
 export class LeaderWorkerOuterInitialMessage extends Schema.TaggedRequest<LeaderWorkerOuterInitialMessage>()(
   'InitialMessage',
@@ -66,7 +66,7 @@ export class LeaderWorkerInnerInitialMessage extends Schema.TaggedRequest<Leader
       storeId: Schema.String,
       clientId: Schema.String,
       debugInstanceId: Schema.String,
-      syncPayloadEncoded: Schema.UndefinedOr(Schema.JsonValue),
+      syncPayloadEncoded: Schema.UndefinedOr(Schema.Json),
     },
     success: Schema.Void,
     failure: UnknownError,

@@ -46,7 +46,7 @@ export type InitialSyncOptions = typeof InitialSyncOptions.Type
 
 export type InitialSyncInfo = Option.Option<{
   eventSequenceNumber: EventSequenceNumber.Global.Type
-  metadata: Option.Option<Schema.JsonValue>
+  metadata: Option.Option<Schema.Json>
 }>
 
 // export type InitialSetup =
