@@ -1,4 +1,4 @@
-import { Effect, Option, Stream } from 'effect'
+import { Effect, Option, Result, Stream } from 'effect'
 import { describe, expect, it } from 'vitest'
 
 import { concatWithLastElement, runCollectReadonlyArray } from './Stream.ts'
@@ -62,9 +62,9 @@ describe('concatWithLastElement', () => {
     const result = concatWithLastElement(stream1, () => Stream.make('should-not-reach'))
 
     const outcome = await Effect.runPromise(Effect.result(runCollectReadonlyArray(result)))
-    expect(outcome._tag).toBe('Left')
-    if (outcome._tag === 'Left') {
-      expect(outcome.left).toBe('first-error')
+    expect(Result.isFailure(outcome)).toBe(true)
+    if (Result.isFailure(outcome)) {
+      expect(outcome.failure).toBe('first-error')
     }
   })
 
@@ -73,9 +73,9 @@ describe('concatWithLastElement', () => {
     const result = concatWithLastElement(stream1, () => Stream.fail('second-error'))
 
     const outcome = await Effect.runPromise(Effect.result(runCollectReadonlyArray(result)))
-    expect(outcome._tag).toBe('Left')
-    if (outcome._tag === 'Left') {
-      expect(outcome.left).toBe('second-error')
+    expect(Result.isFailure(outcome)).toBe(true)
+    if (Result.isFailure(outcome)) {
+      expect(outcome.failure).toBe('second-error')
     }
   })
 

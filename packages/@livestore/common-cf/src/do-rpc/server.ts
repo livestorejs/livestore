@@ -211,7 +211,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
       }),
     })
 
-    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch; orDie converts the error to a defect handled by the downstream catchAllCause
+    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch; orDie converts the error to a defect handled by the downstream catchCause
     const stream: Stream.Stream<any, any> =
       Effect.isEffect(handlerResult) === true ? yield* Effect.orDie(handlerResult) : handlerResult
 

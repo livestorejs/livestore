@@ -1,7 +1,7 @@
 import { expect } from 'vitest'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect, FetchHttpClient, Layer } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, Result } from '@livestore/utils/effect'
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
 
 import * as WranglerDevServer from './WranglerDevServer.ts'
@@ -78,9 +78,9 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
           Effect.result,
         )
 
-        expect(result._tag).toBe('Left')
-        if (result._tag === 'Left') {
-          expect(result.left).toBeInstanceOf(WranglerDevServer.WranglerDevServerError)
+        expect(Result.isFailure(result)).toBe(true)
+        if (Result.isFailure(result)) {
+          expect(result.failure).toBeInstanceOf(WranglerDevServer.WranglerDevServerError)
         }
       }).pipe(Vitest.withTestCtx(test)),
     )

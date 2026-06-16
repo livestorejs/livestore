@@ -1,5 +1,5 @@
-import type { Deferred, Either, ParseResult } from 'effect'
-import { Effect, Predicate, Schema, Stream } from 'effect'
+import type { Deferred, ParseResult } from 'effect'
+import { Effect, Predicate, Result, Schema, Stream } from 'effect'
 
 export const WebChannelSymbol = Symbol('WebChannel')
 export type WebChannelSymbol = typeof WebChannelSymbol
@@ -66,8 +66,8 @@ export const listenToDebugPing =
     stream.pipe(
       Stream.filterEffect(
         Effect.fn(function* (msg) {
-          if (msg._tag === 'Right' && Schema.is(DebugPingMessage)(msg.right) === true) {
-            yield* Effect.logDebug(`WebChannel:ping [${channelName}] ${msg.right.message}`, msg.right.payload)
+          if (Result.isSuccess(msg) && Schema.is(DebugPingMessage)(msg.success) === true) {
+            yield* Effect.logDebug(`WebChannel:ping [${channelName}] ${msg.success.message}`, msg.success.payload)
             return false
           }
           return true

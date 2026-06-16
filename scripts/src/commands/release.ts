@@ -2,7 +2,7 @@ import semver from 'semver'
 
 import { shouldNeverHappen } from '@livestore/utils'
 import { CurrentWorkingDirectory, cmd, cmdText } from '@livestore/utils-dev/node'
-import { Effect, FileSystem, Schedule, Schema } from '@livestore/utils/effect'
+import { Effect, FileSystem, Result, Schedule, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
@@ -305,8 +305,8 @@ const listSnapshotPackages = (cwd: string) =>
         Effect.result,
       )
 
-      if (pkgResult._tag === 'Left') {
-        const error = pkgResult.left
+      if (Result.isFailure(pkgResult)) {
+        const error = pkgResult.failure
         const message = toErrorMessage(error)
         yield* Effect.logWarning(
           `Unable to read package metadata for ${packageJsonPath} while preparing snapshot summary: ${message}`,
@@ -314,7 +314,7 @@ const listSnapshotPackages = (cwd: string) =>
         continue
       }
 
-      const pkgJson = pkgResult.right
+      const pkgJson = pkgResult.success
       const name = typeof pkgJson.name === 'string' ? pkgJson.name : undefined
       if (name == null) {
         yield* Effect.logWarning(`Skipping ${packageJsonPath} while preparing snapshot summary: missing package name`)

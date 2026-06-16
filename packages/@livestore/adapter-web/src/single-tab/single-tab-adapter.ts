@@ -281,7 +281,7 @@ export const makeSingleTabAdapter =
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
         Effect.tapCause((cause) =>
-          Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
+          Cause.hasInterruptsOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
         ),
         Effect.interruptible,
         Effect.tapCauseLogPretty,

@@ -3,7 +3,7 @@ import { env as importedEnv } from 'cloudflare:workers'
 import { UnknownError } from '@livestore/common'
 import type { HelperTypes } from '@livestore/common-cf'
 import { CfDeclare } from '@livestore/common-cf/declare'
-import { Effect, Schema } from '@livestore/utils/effect'
+import { Effect, Result, Schema } from '@livestore/utils/effect'
 
 import type { CfTypes, SearchParams } from '../common/mod.ts'
 import { type Env, type ForwardedHeaders, matchSyncRequest } from './shared.ts'
@@ -200,29 +200,29 @@ export const handleSyncRequest = <
       // Always decode with the supplied schema when present, even if payload is undefined.
       // This ensures required payloads are enforced by the schema.
       if (syncPayloadSchema !== undefined) {
-        const decodedEither = Schema.decodeUnknownExit(syncPayloadSchema)(payload)
-        if (decodedEither._tag === 'Left') {
-          const message = decodedResult.fail.toString()
+        const decodedResult = Schema.decodeUnknownExit(syncPayloadSchema)(payload)
+        if (Result.isFailure(decodedResult)) {
+          const message = decodedResult.failure.toString()
           console.error('Invalid payload (decode failed)', message)
           return new Response(message, { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
 
         const result = yield* Effect.promise(async () =>
-          validatePayload(decodedResult.succeed, { storeId, headers: requestHeaders }),
+          validatePayload(decodedResult.success, { storeId, headers: requestHeaders }),
         ).pipe(UnknownError.mapToUnknownError, Effect.result)
 
-        if (result._tag === 'Left') {
-          console.error('Invalid payload (validation failed)', result.left)
-          return new Response(result.left.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
+        if (Result.isFailure(result)) {
+          console.error('Invalid payload (validation failed)', result.failure)
+          return new Response(result.failure.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
       } else {
         const result = yield* Effect.promise(async () =>
           validatePayload(payload as TSyncPayload, { storeId, headers: requestHeaders }),
         ).pipe(UnknownError.mapToUnknownError, Effect.result)
 
-        if (result._tag === 'Left') {
-          console.error('Invalid payload (validation failed)', result.left)
-          return new Response(result.left.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
+        if (Result.isFailure(result)) {
+          console.error('Invalid payload (validation failed)', result.failure)
+          return new Response(result.failure.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
       }
     }

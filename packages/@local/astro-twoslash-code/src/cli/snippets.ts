@@ -104,7 +104,7 @@ import type {
 } from 'hast'
 import { toHtml } from 'hast-util-to-html'
 
-import { Cause, type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
+import { Cause, type Duration, Effect, FileSystem, type PlatformError, Result, Schema, Stream } from '@livestore/utils/effect'
 import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
 
 import type { LineOwnerMarker, LineOwnerMetadata, TwoslashRuntimeOptions } from '../expressive-code.ts'
@@ -1272,36 +1272,36 @@ const loadPreviousManifest = (
 ): Effect.Effect<TPreviousManifest | null> =>
   Effect.gen(function* () {
     const manifestExistsResult = yield* fs.exists(paths.manifestPath).pipe(Effect.result)
-    if (manifestExistsResult._tag === 'Left') {
+    if (Result.isFailure(manifestExistsResult)) {
       yield* Effect.logWarning(
-        `Unable to check existing snippet manifest at ${paths.manifestPath}: ${String(manifestExistsResult.left)}`,
+        `Unable to check existing snippet manifest at ${paths.manifestPath}: ${String(manifestExistsResult.failure)}`,
       )
       return null
     }
-    if (manifestExistsResult.right === false) {
+    if (manifestExistsResult.success === false) {
       return null
     }
 
     const manifestSourceResult = yield* fs.readFileString(paths.manifestPath).pipe(Effect.result)
-    if (manifestSourceResult._tag === 'Left') {
+    if (Result.isFailure(manifestSourceResult)) {
       yield* Effect.logWarning(
-        `Unable to read existing snippet manifest at ${paths.manifestPath}: ${String(manifestSourceResult.left)}`,
+        `Unable to read existing snippet manifest at ${paths.manifestPath}: ${String(manifestSourceResult.failure)}`,
       )
       return null
     }
 
-    const manifestSource = manifestSourceResult.right
-    const parsedEither = yield* Effect.try({
+    const manifestSource = manifestSourceResult.success
+    const parsedResult = yield* Effect.try({
       try: () => JSON.parse(manifestSource) as TSnippetManifest,
       catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
     }).pipe(Effect.result)
-    if (parsedEither._tag === 'Left') {
+    if (Result.isFailure(parsedResult)) {
       yield* Effect.logWarning(
-        `Unable to parse existing snippet manifest at ${paths.manifestPath}: ${String(parsedResult.fail)}`,
+        `Unable to parse existing snippet manifest at ${paths.manifestPath}: ${String(parsedResult.failure)}`,
       )
       return null
     }
-    const parsed = parsedResult.succeed
+    const parsed = parsedResult.success
 
     if (parsed.version !== 1 || parsed.configHash !== expectedConfigHash) {
       return null
@@ -1674,8 +1674,8 @@ const watchSnippetsInternal = (
         const result = yield* buildSnippetsInternal(resolved).pipe(Effect.result)
         const durationMs = Date.now() - startedAt
 
-        if (result._tag === 'Left') {
-          const error = result.left
+        if (Result.isFailure(result)) {
+          const error = result.failure
           yield* Effect.logError(
             `Snippets watch: build failed${event !== null ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
           )
@@ -1683,7 +1683,7 @@ const watchSnippetsInternal = (
           return
         }
 
-        const renderedCount = result.right ?? 0
+        const renderedCount = result.success ?? 0
         yield* Effect.log(
           `Snippets watch: rendered ${renderedCount} bundle${renderedCount === 1 ? '' : 's'} in ${durationMs}ms`,
         )

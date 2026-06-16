@@ -268,7 +268,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     let baseEventSequenceNumber = syncStateRef.current.localHead
     return yield* Effect.forEach(events, ({ name, args }) =>
       Effect.gen(function* () {
-        const eventDef = yield* Effect.fromNullable(schema.eventsDefsMap.get(name)).pipe(Effect.orDieDebugger)
+        const eventDef = yield* Effect.fromNullishOr(schema.eventsDefsMap.get(name)).pipe(Effect.orDieDebugger)
         const nextNumPair = EventSequenceNumber.Client.nextPair({
           seqNum: baseEventSequenceNumber,
           isClientOnly: eventDef.options.clientOnly,

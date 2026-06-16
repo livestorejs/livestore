@@ -70,7 +70,7 @@ export const runFirst = <A, E, R>(stream: Stream.Stream<A, E, R>): Effect.Effect
   stream.pipe(Stream.take(1), Stream.runCollect, Effect.map(Chunk.head))
 
 /**
- * Returns the first element of the stream or throws a `NoSuchElementException` if the stream is empty.
+ * Returns the first element of the stream or throws a `NoSuchElementError` if the stream is empty.
  * It's different than `Stream.runHead` which runs the stream to completion.
  * */
 export const runFirstUnsafe = <A, E, R>(

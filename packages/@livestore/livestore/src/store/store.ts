@@ -33,6 +33,7 @@ import {
   Inspectable,
   Option,
   OtelTracer,
+  Result,
   Schema,
   Stream,
 } from '@livestore/utils/effect'
@@ -576,7 +577,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     Stream.callback<TResult>((emit) =>
       Effect.gen(this, function* () {
         const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(
-          Effect.catchTag('NoSuchElementException', () => Effect.succeed(undefined)),
+          Effect.catchTag('NoSuchElementError', () => Effect.succeed(undefined)),
         )
         const otelContext =
           otelSpan !== undefined ? otel.trace.setSpan(otel.context.active(), otelSpan) : otel.context.active()
@@ -656,8 +657,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       )
 
       const decodeResult = Schema.decodeExit(schema)(rawRes)
-      if (decodeResult._tag === 'Right') {
-        return decodeResult.right
+      if (Result.isSuccess(decodeResult)) {
+        return decodeResult.success
       } else {
         return shouldNeverHappen(
           'Failed to decode query result with for schema:',
@@ -665,7 +666,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           'raw result:',
           rawRes,
           'decode error:',
-          decodeResult.left,
+          decodeResult.failure,
         )
       }
     } else if (query._tag === 'def') {
