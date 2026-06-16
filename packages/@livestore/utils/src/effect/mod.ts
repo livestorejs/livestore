@@ -78,6 +78,7 @@ export {
   FiberHandle,
   FiberMap,
   FiberSet,
+  Function,
   GlobalValue,
   Hash,
   HashMap,
@@ -128,7 +129,7 @@ export {
 } from 'effect'
 export { FastCheck, TestClock, TestConsole } from 'effect/testing'
 export type { NonEmptyArray } from 'effect/Array'
-export { constVoid, dual } from 'effect/Function'
+export { dual } from 'effect/Function'
 export * as Graph from 'effect/Graph'
 export { TreeFormatter } from 'effect/ParseResult'
 export type { Serializable, SerializableWithResult } from 'effect/Schema'

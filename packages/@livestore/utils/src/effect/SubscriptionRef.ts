@@ -1,17 +1,15 @@
-import { Chunk, Effect, pipe, Stream, SubscriptionRef } from 'effect'
-import { dual } from 'effect/Function'
-import type { Predicate, Refinement } from 'effect/Predicate'
+import { Chunk, Effect, Function, pipe, Stream, SubscriptionRef, Predicate } from 'effect'
 
 export * from 'effect/SubscriptionRef'
 
 export const waitUntil: {
   <A, B extends A>(
-    refinement: Refinement<NoInfer<A>, B>,
+    refinement: Predicate.Refinement<NoInfer<A>, B>,
   ): (sref: SubscriptionRef.SubscriptionRef<A>) => Effect.Effect<B>
-  <A, B extends A>(predicate: Predicate<B>): (sref: SubscriptionRef.SubscriptionRef<A>) => Effect.Effect<A>
-  <A, B extends A>(sref: SubscriptionRef.SubscriptionRef<A>, refinement: Refinement<NoInfer<A>, B>): Effect.Effect<B>
-  <A, B extends A>(sref: SubscriptionRef.SubscriptionRef<A>, predicate: Predicate<B>): Effect.Effect<A>
-} = dual(2, <A>(sref: SubscriptionRef.SubscriptionRef<A>, predicate: (a: A) => boolean) =>
+  <A, B extends A>(predicate: Predicate.Predicate<B>): (sref: SubscriptionRef.SubscriptionRef<A>) => Effect.Effect<A>
+  <A, B extends A>(sref: SubscriptionRef.SubscriptionRef<A>, refinement: Predicate.Refinement<NoInfer<A>, B>): Effect.Effect<B>
+  <A, B extends A>(sref: SubscriptionRef.SubscriptionRef<A>, predicate: Predicate.Predicate<B>): Effect.Effect<A>
+} = Function.dual(2, <A>(sref: SubscriptionRef.SubscriptionRef<A>, predicate: (a: A) => boolean) =>
   pipe(
     SubscriptionRef.changes(sref),
     Stream.filter(predicate),
