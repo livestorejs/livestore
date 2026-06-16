@@ -49,14 +49,14 @@ export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) =
 /**
  * Creates a Durable Object class for handling WebSocket-based sync.
  * A sync Durable Object is uniquely scoped to a specific `storeId`.
- * 
+ *
  * The sync DO supports 3 transport modes:
  * - HTTP JSON-RPC
  * - WebSocket
  * - Durable Object RPC calls (only works in combination with `@livestore/adapter-cf`)
  *
  * Example:
- * 
+ *
  * ```ts
  * // In your Cloudflare Worker file
  * import { makeDurableObject } from '@livestore/sync-cf/cf-worker'
@@ -142,7 +142,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     }
 
     override fetch = async (request: CfTypes.Request): Promise<CfTypes.Response> =>
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const searchParams = matchSyncRequest(request)
         if (searchParams === undefined) {
           throw new Error('No search params found in request URL')
