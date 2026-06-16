@@ -1,7 +1,6 @@
 export * from 'effect/Stream'
 
-import { type Cause, Chunk, Effect, Option, pipe, Ref, Stream } from 'effect'
-import { dual } from 'effect/Function'
+import { type Cause, Chunk, Effect, Function, Option, pipe, Ref, Stream } from 'effect'
 
 export const tapLog = <R, E, A>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
   tapChunk<never, never, A, void>(Effect.forEach((_) => Effect.succeed(console.log(_))))(stream)
@@ -119,7 +118,7 @@ export const concatWithLastElement: {
     stream: Stream.Stream<A1, E1, R1>,
     getStream2: (lastElement: Option.Option<A1>) => Stream.Stream<A2, E2, R2>,
   ): Stream.Stream<A1 | A2, E1 | E2, R1 | R2>
-} = dual(
+} = Function.dual(
   2,
   <A1, E1, R1, A2, E2, R2>(
     stream1: Stream.Stream<A1, E1, R1>,
@@ -162,7 +161,7 @@ export const concatWithLastElement: {
 export const emitIfEmpty: {
   <A>(fallbackValue: A): <E, R>(stream: Stream.Stream<A, E, R>) => Stream.Stream<A, E, R>
   <A, E, R>(stream: Stream.Stream<A, E, R>, fallbackValue: A): Stream.Stream<A, E, R>
-} = dual(
+} = Function.dual(
   2,
   <A, E, R>(stream: Stream.Stream<A, E, R>, fallbackValue: A): Stream.Stream<A, E, R> =>
     concatWithLastElement(stream, (lastElement) =>
