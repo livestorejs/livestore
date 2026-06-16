@@ -58,7 +58,10 @@ export const runAndGetExit = <Tag extends string, A>({
       ),
     )
 
-    const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(Effect.forkChild)
+    const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
+    )
 
     return yield* Effect.gen(function* () {
       const deferred = yield* Deferred.make<(typeof schema.Type)['exit']>()

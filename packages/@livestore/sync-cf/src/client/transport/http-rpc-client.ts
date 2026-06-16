@@ -114,7 +114,12 @@ export const makeHttpSync =
 
       if (options.ping?.enabled !== false) {
         // Automatically ping the server to keep the connection alive
-        yield* ping.pipe(Effect.repeat(Schedule.spaced(pingInterval)), Effect.tapCauseLogPretty, Effect.forkScoped)
+        yield* ping.pipe(
+          Effect.repeat(Schedule.spaced(pingInterval)),
+          Effect.tapCauseLogPretty,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+        )
       }
 
       // Helps already establish a TCP connection to the server

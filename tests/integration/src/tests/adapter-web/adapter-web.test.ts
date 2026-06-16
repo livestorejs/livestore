@@ -46,7 +46,11 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
           TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined, // ensure devtools plugin is disabled
           LSD_DEVTOOLS_LOCAL_PREVIEW: undefined,
         },
-      }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)), Effect.forkScoped)
+      }).pipe(
+        Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)),
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+      )
 
       const appUrl = (pathname: string) => `http://localhost:${port}${pathname}`
 
@@ -118,7 +122,11 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
           TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined,
           LSD_DEVTOOLS_LOCAL_PREVIEW: undefined,
         },
-      }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)), Effect.forkScoped)
+      }).pipe(
+        Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)),
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+      )
 
       const appUrl = (pathname: string) => `http://localhost:${port}${pathname}`
 
@@ -181,7 +189,11 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
           TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined,
           LSD_DEVTOOLS_LOCAL_PREVIEW: undefined,
         },
-      }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)), Effect.forkScoped)
+      }).pipe(
+        Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)),
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+      )
 
       const appUrl = (pathname: string) => `http://localhost:${port}${pathname}`
 

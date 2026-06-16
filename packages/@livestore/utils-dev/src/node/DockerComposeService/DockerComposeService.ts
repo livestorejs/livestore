@@ -87,13 +87,15 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         const stdoutFiber = yield* process.stdout.pipe(
           Stream.decodeText('utf8'),
           Stream.runFold('', (acc, chunk) => acc + chunk),
-          Effect.forkChild,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
         const stderrFiber = yield* process.stderr.pipe(
           Stream.decodeText('utf8'),
           Stream.runFold('', (acc, chunk) => acc + chunk),
-          Effect.forkChild,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
         const exitCode = yield* process.exitCode

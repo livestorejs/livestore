@@ -175,7 +175,11 @@ export const setupDurableObjectWebSocketRpc = ({
 
       const ServerLive = rpcLayer.pipe(Layer.provide(ProtocolLive))
 
-      yield* Layer.launch(ServerLive).pipe(Effect.tapCauseLogPretty, Effect.forkIn(scope))
+      yield* Layer.launch(ServerLive).pipe(
+        Effect.tapCauseLogPretty,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkIn(scope, { startImmediately: true, uninterruptible: 'inherit' }),
+      )
 
       const runtime = yield* Effect.runtime()
 
@@ -317,7 +321,8 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
         }),
         Stream.runDrain,
         Effect.tapCauseLogPretty,
-        Effect.forkChild,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       // Start the message processing

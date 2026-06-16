@@ -100,7 +100,8 @@ export const makeDirectChannel = ({
             Stream.take(1),
             Stream.runDrain,
             Effect.as('new-edge' as const),
-            Effect.forkChild,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
           const makeChannel = makeDirectChannelInternal({
@@ -117,7 +118,8 @@ export const makeDirectChannel = ({
             scope: makeDirectChannelScope,
           }).pipe(
             Scope.provide(makeDirectChannelScope),
-            Effect.forkIn(makeDirectChannelScope),
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkIn(makeDirectChannelScope, { startImmediately: true, uninterruptible: 'inherit' }),
             // Given we only call `Effect.exit` later when joining the fiber,
             // we don't want Effect to produce a "unhandled error" log message
             Effect.withUnhandledErrorLogLevel(Option.none()),
@@ -165,7 +167,8 @@ export const makeDirectChannel = ({
           Stream.tapChunk((chunk) => Queue.offerAll(listenQueue, chunk)),
           Stream.runDrain,
           Effect.tapCauseLogPretty,
-          Effect.forkIn(makeDirectChannelScope),
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkIn(makeDirectChannelScope, { startImmediately: true, uninterruptible: 'inherit' }),
         )
 
         yield* Effect.gen(function* () {
@@ -178,7 +181,10 @@ export const makeDirectChannel = ({
             yield* Deferred.succeed(deferred, void 0)
             yield* TQueue.take(sendQueue) // Remove the message from the queue
           }
-        }).pipe(Effect.forkIn(makeDirectChannelScope))
+        }).pipe(
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkIn(makeDirectChannelScope, { startImmediately: true, uninterruptible: 'inherit' }),
+        )
 
         // Wait until the channel is closed and then try to reconnect
         yield* Deferred.await(channel.closedDeferred)
@@ -192,7 +198,8 @@ export const makeDirectChannel = ({
         Effect.scoped, // Additionally scoping here to clean up finalizers after each loop run
         Effect.forever,
         Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
       //#endregion reconnect-loop
 

@@ -73,7 +73,11 @@ export const connectWebmeshNodeClientSession = Effect.fn(function* ({
     yield* Devtools.SessionInfo.provideSessionInfo({
       webChannel: yield* DevtoolsWeb.makeSessionInfoBroadcastChannel,
       sessionInfo,
-    }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+    }).pipe(
+      Effect.tapCauseLogPretty,
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+    )
 
     yield* Effect.gen(function* () {
       const clientSessionStaticChannel = yield* DevtoolsWeb.makeStaticClientSessionChannel.clientSession
@@ -97,7 +101,8 @@ export const connectWebmeshNodeClientSession = Effect.fn(function* ({
     }).pipe(
       Effect.withSpan('@livestore/adapter-web:client-session:devtools:browser-extension'),
       Effect.tapCauseLogPretty,
-      Effect.forkScoped,
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
     )
 
     yield* WebmeshWorker.connectViaWorker({

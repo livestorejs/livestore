@@ -28,7 +28,8 @@ export const fromStream = <A>(stream: Stream.Stream<A>, initialValue: A) =>
     yield* stream.pipe(
       Stream.tap((a) => SubscriptionRef.set(sref, a)),
       Stream.runDrain,
-      Effect.forkScoped,
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
     )
 
     return sref
