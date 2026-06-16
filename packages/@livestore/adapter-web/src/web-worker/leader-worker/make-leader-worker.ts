@@ -80,7 +80,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     Effect.provide(runtimeLayer),
     LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
     // We're using this custom scheduler to improve op batching behaviour and reduce the overhead
-    // of the Effect fiber runtime given we have different tradeoffs on a worker thread.
+    // of the Effect fiber services given we have different tradeoffs on a worker thread.
     // Despite the "message channel" name, is has nothing to do with the `incomingRequestsPort` above.
     Effect.withScheduler(Scheduler.messageChannel()),
     // We're increasing the Effect ops limit here to allow for larger chunks of operations at a time
@@ -124,7 +124,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
-        const runtime = yield* Effect.runtime()
+        const services = yield* Effect.context()
 
         // Check OPFS availability and determine storage mode
         const opfsCheck = yield* checkOpfsAvailability
@@ -156,7 +156,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
                   // TODO bring back exclusive locking mode when `WAL` is working properly
                   // lockingMode: 'EXCLUSIVE',
                   foreignKeys: true,
-                }).pipe(Effect.provide(runtime), Effect.runSync),
+                }).pipe(Effect.runSyncWith(services)),
             }),
             (db) =>
               Effect.try({
@@ -170,7 +170,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
             makeSqliteDb({
               _tag: 'in-memory',
               configureDb: (db) =>
-                configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
+                configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(services)),
             }),
             (db) =>
               Effect.try({

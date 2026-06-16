@@ -650,7 +650,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
     const edgeKeys: MeshNode['edgeKeys'] = Effect.sync(() => new Set(edgeChannels.keys()))
 
-    const runtime = yield* Effect.runtime()
+    const services = yield* Effect.context()
 
     const debug: MeshNode['debug'] = {
       print: () => {
@@ -705,7 +705,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
             yield* Effect.logDebug(`sending ping via channel ${channelKey}`)
             yield* channel.debugInfo.channel.send(msg(`channel ${channelKey}`) as any)
           }
-        }).pipe(Effect.provide(runtime), Effect.tapCauseLogPretty, Effect.runFork)
+        }).pipe(Effect.provide(services), Effect.tapCauseLogPretty, Effect.runFork)
       },
       requestTopology: (timeoutMs = 1000) =>
         Effect.gen(function* () {
@@ -728,7 +728,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           for (const [key, value] of item) {
             yield* Effect.logDebug(`  node '${key}' has edge to: ${Array.from(value.values()).join(', ')}`)
           }
-        }).pipe(Effect.provide(runtime), Effect.tapCauseLogPretty, Effect.runPromise),
+        }).pipe(Effect.provide(services), Effect.tapCauseLogPretty, Effect.runPromise),
     }
 
     return {

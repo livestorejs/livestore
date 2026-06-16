@@ -144,7 +144,7 @@ const makeLocalLeaderThread = ({
   shutdownChannel: ShutdownChannel.ShutdownChannel
 }) =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime()
+    const services = yield* Effect.context()
 
     const makeDb = (kind: 'state' | 'eventlog') => {
       if (testing?.overrides?.makeLeaderThread !== undefined) {
@@ -156,7 +156,7 @@ const makeLocalLeaderThread = ({
       return makeSqliteDb({
         _tag: 'in-memory',
         configureDb: (db: SqliteDb) =>
-          configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
+          configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(services)),
       })
     }
 
