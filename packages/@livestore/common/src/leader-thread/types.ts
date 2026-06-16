@@ -85,7 +85,7 @@ export type DevtoolsContext =
       enabled: false
     }
 
-export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
+export class LeaderThreadCtx extends Context.Service<
   LeaderThreadCtx,
   {
     schema: LiveStoreSchema
@@ -115,7 +115,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     extraIncomingMessagesQueue: Queue.Queue<Devtools.Leader.MessageToApp>
     networkStatus: Subscribable.Subscribable<SyncBackend.NetworkStatus>
   }
->() {}
+>()('LeaderThreadCtx') {}
 
 export type MaterializeEvent = (
   eventEncoded: LiveStoreEvent.Client.EncodedWithMeta,

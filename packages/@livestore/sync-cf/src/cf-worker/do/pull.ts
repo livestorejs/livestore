@@ -5,7 +5,7 @@ import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 import { MAX_PULL_EVENTS_PER_MESSAGE, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SyncMessage } from '../../common/mod.ts'
 import type { ForwardedHeaders } from '../shared.ts'
-import { DoCtx } from './layer.ts'
+import * as DoCtx from './layer.ts'
 
 const encodePullResponse = Schema.encodeEffectSync(SyncMessage.PullResponse)
 
@@ -26,9 +26,9 @@ export const makeEndingPullStream = ({
   req: SyncMessage.PullRequest
   payload: Schema.JsonValue | undefined
   headers: ForwardedHeaders | undefined
-}): Stream.Stream<SyncMessage.PullResponse, UnknownError | BackendIdMismatchError, DoCtx> =>
+}): Stream.Stream<SyncMessage.PullResponse, UnknownError | BackendIdMismatchError, DoCtx.DoCtx> =>
   Effect.gen(function* () {
-    const { doOptions, backendId, storeId, storage } = yield* DoCtx
+    const { doOptions, backendId, storeId, storage } = yield* DoCtx.DoCtx
 
     if (doOptions?.onPull !== undefined) {
       yield* Effect.tryAll(() =>

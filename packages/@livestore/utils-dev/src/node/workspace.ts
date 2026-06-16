@@ -6,33 +6,32 @@ import { Context, Effect, Layer } from '@livestore/utils/effect'
 export type WorkspaceInfo = string
 
 /** Current working directory. */
-export class CurrentWorkingDirectory extends Context.Tag('CurrentWorkingDirectory')<
-  CurrentWorkingDirectory,
-  WorkspaceInfo
->() {
+export class CurrentWorkingDirectory extends Context.Service<
+  CurrentWorkingDirectory, WorkspaceInfo
+>()('CurrentWorkingDirectory') {
   /** Layer that captures the process cwd once. */
   static live = Layer.effect(
     CurrentWorkingDirectory,
-    Effect.sync(() => process.cwd()),
+    Effect.sync(() => CurrentWorkingDirectory.of(process.cwd())),
   )
 
   /** Override CWD for tests or nested invocations. */
-  static fromPath = (cwd: string) => Layer.succeed(CurrentWorkingDirectory, cwd)
+  static fromPath = (cwd: string) => Layer.succeed(CurrentWorkingDirectory, CurrentWorkingDirectory.of(cwd))
 }
 
 /** Livestore workspace root (env required). */
-export class LivestoreWorkspace extends Context.Tag('LivestoreWorkspace')<LivestoreWorkspace, WorkspaceInfo>() {
+export class LivestoreWorkspace extends Context.Service<LivestoreWorkspace, WorkspaceInfo>()('LivestoreWorkspace') {
   /** Resolve from WORKSPACE_ROOT env. */
   static live = Layer.effect(
     LivestoreWorkspace,
     Effect.sync(() => {
       const root = process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
-      return root
+      return LivestoreWorkspace.of(root)
     }),
   )
 
   /** Provide a fixed Livestore root. */
-  static fromPath = (root: string) => Layer.succeed(LivestoreWorkspace, root)
+  static fromPath = (root: string) => Layer.succeed(LivestoreWorkspace, LivestoreWorkspace.of(root))
 
   /** Derive a CurrentWorkingDirectory layer from the Livestore workspace root (with optional subpath) */
   static toCwd = (/** Relative path to the Livestore workspace root */ subPath?: string) =>
@@ -40,7 +39,7 @@ export class LivestoreWorkspace extends Context.Tag('LivestoreWorkspace')<Livest
       CurrentWorkingDirectory,
       Effect.gen(function* () {
         const root = yield* LivestoreWorkspace
-        return path.join(root, subPath ?? '')
+        return CurrentWorkingDirectory.of(path.join(root, subPath ?? ''))
       }),
     )
 }

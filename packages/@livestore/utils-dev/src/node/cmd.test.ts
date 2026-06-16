@@ -11,7 +11,7 @@ import { cmd } from './cmd.ts'
 import { CurrentWorkingDirectory } from './workspace.ts'
 
 const withNode = Vitest.makeWithTestCtx({
-  makeLayer: () => Layer.mergeAll(PlatformNode.NodeContext.layer, CurrentWorkingDirectory.live),
+  makeLayer: () => Layer.mergeAll(PlatformNode.NodeServices.layer, CurrentWorkingDirectory.live),
   timeout: 20_000,
 })
 
