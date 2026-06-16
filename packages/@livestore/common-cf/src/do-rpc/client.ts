@@ -107,7 +107,7 @@ const makeProtocolDurableObject = ({
             // fiberMap.set(message.id, fiber)
             yield* FiberMap.set(fiberMap, message.id, fiber)
 
-            yield* fiber
+            yield* Fiber.join(fiber)
 
             return
           }

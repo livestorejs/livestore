@@ -2,6 +2,7 @@ import {
   Cause,
   Deferred,
   Effect,
+  Fiber,
   Result,
   Exit,
   Option,
@@ -137,7 +138,7 @@ export const makeDirectChannel = ({
                 Schema.is(WebmeshSchema.DirectChannelResponseNoTransferables)(channelExit.cause.error) === true
               ) {
                 // Only retry when there is a new edge available
-                yield* waitForNewEdgeFiber.pipe(Effect.exit)
+                yield* Effect.exit(Fiber.join(waitForNewEdgeFiber))
               }
             } else {
               const channel = channelExit.value

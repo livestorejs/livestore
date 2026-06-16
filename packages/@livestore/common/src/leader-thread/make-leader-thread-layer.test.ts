@@ -1,5 +1,5 @@
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect, Latch, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Effect, Fiber, Latch, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { makeMockSyncBackend } from '../sync/mock-sync-backend.ts'
 import type { SyncBackend } from '../sync/sync.ts'
@@ -30,13 +30,13 @@ Vitest.describe('makeNetworkStatusSubscribable', () => {
 
       const onlineFiber = yield* waitFor((status) => status.isConnected).pipe(Effect.forkScoped)
       yield* mockBackend.connect
-      const online = yield* onlineFiber
+      const online = yield* Fiber.join(onlineFiber)
       Vitest.expect(online.isConnected).toBe(true)
       Vitest.expect(online.timestampMs).toBeGreaterThan(initial.timestampMs)
 
       const latchedFiber = yield* waitFor((status) => status.devtools.latchClosed).pipe(Effect.forkScoped)
       yield* SubscriptionRef.set(latchStateRef, { latchClosed: true })
-      const latched = yield* latchedFiber
+      const latched = yield* Fiber.join(latchedFiber)
       Vitest.expect(latched.devtools.latchClosed).toBe(true)
       Vitest.expect(latched.timestampMs).toBeGreaterThanOrEqual(online.timestampMs)
     }),
