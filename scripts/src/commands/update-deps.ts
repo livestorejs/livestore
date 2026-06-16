@@ -396,7 +396,7 @@ if (import.meta.main === true) {
     version: '1.0.0',
   })
 
-  const layer = Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer, LivestoreWorkspace.live)
+  const layer = Layer.mergeAll(PlatformNode.NodeServices.layer, FetchHttpClient.layer, LivestoreWorkspace.live)
 
   cli(process.argv).pipe(
     Effect.annotateLogs({ thread: 'update-deps' }),

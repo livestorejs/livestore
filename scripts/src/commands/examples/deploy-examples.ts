@@ -403,7 +403,7 @@ if (import.meta.main === true) {
 
   cli(process.argv).pipe(
     Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.provide(Layer.mergeAll(PlatformNode.NodeContext.layer, LivestoreWorkspace.fromPath(workspaceRoot))),
+    Effect.provide(Layer.mergeAll(PlatformNode.NodeServices.layer, LivestoreWorkspace.fromPath(workspaceRoot))),
     PlatformNode.NodeRuntime.runMain,
   )
 }

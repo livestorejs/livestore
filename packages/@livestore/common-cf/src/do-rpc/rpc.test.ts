@@ -1,7 +1,7 @@
 import { expect } from 'vitest'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
+import { WranglerDevServer } from '@livestore/utils-dev/wrangler'
 import {
   Chunk,
   Effect,
@@ -23,22 +23,22 @@ const testTimeout = 60_000
 const withWranglerTest = Vitest.makeWithTestCtx({
   timeout: testTimeout,
   makeLayer: () =>
-    WranglerDevServerService.Default({
+    WranglerDevServer.layer({
       cwd: `${import.meta.dirname}/test-fixtures`,
     }).pipe(
       Layer.provide(
-        Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer, Logger.minimumLogLevel(LogLevel.Debug)),
+        Layer.mergeAll(PlatformNode.NodeServices.layer, FetchHttpClient.layer, Logger.minimumLogLevel(LogLevel.Debug)),
       ),
     ),
 })
 
 const ProtocolLive = Layer.suspend(() =>
   Effect.gen(function* () {
-    const server = yield* WranglerDevServerService
+    const server = yield* WranglerDevServer.WranglerDevServer
     return RpcClient.layerProtocolHttp({
       url: `${server.url}/rpc`,
     }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerJson]))
-  }).pipe(Layer.unwrapEffect),
+  }).pipe(Layer.unwrap),
 )
 
 /**

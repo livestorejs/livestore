@@ -3,7 +3,7 @@ import path from 'node:path'
 import { SyncBackend, UnknownError } from '@livestore/common'
 import { MAX_DO_RPC_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST, splitChunkBySize } from '@livestore/sync-cf/common'
 import { omit } from '@livestore/utils'
-import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
+import { WranglerDevServer } from '@livestore/utils-dev/wrangler'
 import {
   Chunk,
   Effect,
@@ -29,7 +29,7 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
   Layer.effect(
     SyncProviderImpl,
     Effect.gen(function* () {
-      const server = yield* WranglerDevServerService
+      const server = yield* WranglerDevServer.WranglerDevServer
 
       return {
         makeProvider: (args, options) =>
@@ -44,10 +44,10 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
     }),
   ).pipe(
     Layer.provide(
-      WranglerDevServerService.Default({
+      WranglerDevServer.layer({
         cwd: path.join(import.meta.dirname, 'cloudflare'),
         ...(config?.wranglerConfigPath && { wranglerConfigPath: config.wranglerConfigPath }),
-      }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+      }).pipe(Layer.provide(PlatformNode.NodeServices.layer)),
     ),
     UnknownError.mapToUnknownErrorLayer,
   )

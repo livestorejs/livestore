@@ -2,16 +2,16 @@ import { UnknownError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
 import { EventSequenceNumber, State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, Predicate } from '@livestore/utils/effect'
+import { Context, Effect, Layer, Predicate } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
 import type { Env, MakeDurableObjectClassOptions, RpcSubscription } from '../shared.ts'
 import { contextTable, eventlogTable } from './sqlite.ts'
-import { makeStorage } from './sync-storage.ts'
+import { makeStorage, type SyncStorage } from './sync-storage.ts'
 
 const CacheSymbol = Symbol('Cache')
 
-export interface DoCtxInput {
+export interface Options {
   doSelf: CfTypes.DurableObject & {
     ctx: CfTypes.DurableObjectState
     env: Env
@@ -20,11 +20,26 @@ export interface DoCtxInput {
   from: CfTypes.Request | { storeId: string }
 }
 
-export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
-  effect: Effect.fn(
-    function* ({ doSelf, doOptions, from }: DoCtxInput) {
+export type DoCtxInput = Options
+
+export interface Service {
+  readonly storeId: string
+  readonly backendId: string
+  readonly currentHeadRef: { current: EventSequenceNumber.Global.Type }
+  readonly updateCurrentHead: (currentHead: EventSequenceNumber.Global.Type) => void
+  readonly storage: SyncStorage
+  readonly doOptions: MakeDurableObjectClassOptions | undefined
+  readonly env: Env
+  readonly ctx: CfTypes.DurableObjectState
+  readonly rpcSubscriptions: Map<string, RpcSubscription>
+}
+
+export class DoCtx extends Context.Service<DoCtx, Service>()('@livestore/sync-cf/DoCtx') {}
+
+export const make = Effect.fn(
+  function* ({ doSelf, doOptions, from }: Options) {
       if ((doSelf as any)[CacheSymbol] !== undefined) {
-        return (doSelf as any)[CacheSymbol] as never
+        return DoCtx.of((doSelf as any)[CacheSymbol])
       }
 
       const getStoreId = (from: CfTypes.Request | { storeId: string }) => {
@@ -121,9 +136,10 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
         updateCurrentHead(EventSequenceNumber.Client.ROOT.global)
       }
 
-      return storageCache
-    },
-    UnknownError.mapToUnknownError,
-    Effect.withSpan('@livestore/sync-cf:durable-object:makeDoCtx'),
-  ),
-}) {}
+    return DoCtx.of(storageCache)
+  },
+  UnknownError.mapToUnknownError,
+  Effect.withSpan('@livestore/sync-cf:durable-object:makeDoCtx'),
+)
+
+export const layer = (options: Options) => Layer.effect(DoCtx, make(options))

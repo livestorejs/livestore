@@ -807,7 +807,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
 type LeaderEventFactory = ReturnType<typeof makeEventFactory>
 
-class TestContext extends Context.Tag('TestContext')<
+class TestContext extends Context.Service<
   TestContext,
   {
     mockSyncBackend: MockSyncBackend
@@ -819,7 +819,7 @@ class TestContext extends Context.Tag('TestContext')<
       ...events: ReadonlyArray<LiveStoreEvent.Global.Encoded>
     ) => Effect.Effect<void, RejectedPushError, Scope.Scope | LeaderThreadCtx>
   }
->() {}
+>()('TestContext') {}
 
 const LeaderThreadCtxLive = ({
   syncProcessor,
@@ -913,14 +913,17 @@ const LeaderThreadCtxLive = ({
         )
       }
 
-      return Layer.succeed(TestContext, {
-        mockSyncBackend,
-        shutdownDeferred,
-        pullQueue,
-        eventFactory,
-        pushEncoded,
-      })
-    }).pipe(Layer.unwrapScoped, Layer.provide(leaderContextLayer))
+      return Layer.succeed(
+        TestContext,
+        TestContext.of({
+          mockSyncBackend,
+          shutdownDeferred,
+          pullQueue,
+          eventFactory,
+          pushEncoded,
+        }),
+      )
+    }).pipe(Layer.unwrap, Layer.provide(leaderContextLayer))
 
     return leaderContextLayer.pipe(Layer.merge(testContextLayer))
-  }).pipe(Layer.unwrapScoped)
+  }).pipe(Layer.unwrap)

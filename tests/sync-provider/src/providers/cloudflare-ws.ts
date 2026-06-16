@@ -2,7 +2,7 @@ import path from 'node:path'
 
 import { UnknownError } from '@livestore/common'
 import { makeWsSync } from '@livestore/sync-cf/client'
-import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
+import { WranglerDevServer } from '@livestore/utils-dev/wrangler'
 import { Effect, Layer } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
@@ -16,7 +16,7 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
   Layer.effect(
     SyncProviderImpl,
     Effect.gen(function* () {
-      const server = yield* WranglerDevServerService
+      const server = yield* WranglerDevServer.WranglerDevServer
 
       return {
         makeProvider: makeWsSync({ url: server.url }),
@@ -27,10 +27,10 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
     }),
   ).pipe(
     Layer.provide(
-      WranglerDevServerService.Default({
+      WranglerDevServer.layer({
         cwd: path.join(import.meta.dirname, 'cloudflare'),
         ...(config?.wranglerConfigPath && { wranglerConfigPath: config.wranglerConfigPath }),
-      }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+      }).pipe(Layer.provide(PlatformNode.NodeServices.layer)),
     ),
     UnknownError.mapToUnknownErrorLayer,
   )

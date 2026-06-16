@@ -222,13 +222,13 @@ export const makeLeaderThreadLayer = ({
       devtools: devtoolsContext,
       networkStatus,
       // State will be set during `bootLeaderThread`
-      initialState: {} as any as LeaderThreadCtx['Type']['initialState'],
-    } satisfies typeof LeaderThreadCtx.Service
+      initialState: {} as any as LeaderThreadCtx['Service']['initialState'],
+    } satisfies LeaderThreadCtx['Service']
 
     // @ts-expect-error For debugging purposes
     globalThis.__leaderThreadCtx = ctx
 
-    const layer = Layer.succeed(LeaderThreadCtx, ctx)
+    const layer = Layer.succeed(LeaderThreadCtx, LeaderThreadCtx.of(ctx))
 
     ctx.initialState = yield* bootLeaderThread({
       migrationsReport,
@@ -242,7 +242,7 @@ export const makeLeaderThreadLayer = ({
     Effect.withSpanScoped('@livestore/common:leader-thread'),
     UnknownError.mapToUnknownError,
     Effect.tapCauseLogPretty,
-    Layer.unwrapScoped,
+    Layer.unwrap,
   )
 
 const hasEventlogTables = (db: SqliteDb) => {
@@ -371,7 +371,7 @@ const bootLeaderThread = ({
   initialBlockingSyncContext: InitialBlockingSyncContext
   devtoolsOptions: DevtoolsOptions
 }): Effect.Effect<
-  LeaderThreadCtx['Type']['initialState'],
+  LeaderThreadCtx['Service']['initialState'],
   UnknownError | MaterializerHashMismatchError,
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
