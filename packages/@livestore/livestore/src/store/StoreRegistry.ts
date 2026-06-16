@@ -295,7 +295,7 @@ export class StoreRegistry {
     if (cached !== undefined) return cached as Promise<Store<TSchema, TContext>>
 
     // Create and cache the promise
-    const fiber = defect.value.fiber as Fiber.RuntimeFiber<Store<TSchema, TContext>>
+    const fiber = defect.value.fiber as Fiber.Fiber<Store<TSchema, TContext>>
     const promise = Fiber.join(fiber)
       .pipe(Effect.runPromiseWith(this.#context))
       .finally(() => this.#loadingPromises.delete(storeId))

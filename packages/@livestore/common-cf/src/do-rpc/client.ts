@@ -69,7 +69,7 @@ const makeProtocolDurableObject = ({
   RpcClient.Protocol.make(
     Effect.fnUntraced(function* (writeResponse) {
       // Not using an actual `FiberMap` here because it seems to shutdown to early
-      // const fiberMap = new Map<string, Fiber.RuntimeFiber<void, never>>()
+      // const fiberMap = new Map<string, Fiber.Fiber<void, never>>()
       const fiberMap = yield* FiberMap.make<string, void, never>()
 
       const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void> => {
