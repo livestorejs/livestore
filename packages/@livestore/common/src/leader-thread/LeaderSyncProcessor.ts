@@ -4,7 +4,6 @@ import {
   type Latch,
   type Scope,
   type Tracer,
-  BucketQueue,
   Cause,
   Context,
   Deferred,
@@ -23,6 +22,7 @@ import {
   Stream,
   Subscribable,
   SubscriptionRef,
+  TxQueue,
 } from '@livestore/utils/effect'
 
 import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
@@ -208,7 +208,7 @@ export const make = Effect.fnUntraced(function* ({
   params,
   testing,
 }: Options) {
-  const syncBackendPushQueue = yield* BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>()
+  const syncBackendPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
   const localPushBatchSize = params.localPushBatchSize ?? 10
   const backendPushBatchSize = params.backendPushBatchSize ?? 50
 
@@ -234,7 +234,7 @@ export const make = Effect.fnUntraced(function* ({
     event: LiveStoreEvent.Client.EncodedWithMeta,
     deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>,
   ]
-  const localPushesQueue = yield* BucketQueue.make<LocalPushQueueItem>()
+  const localPushesQueue = yield* TxQueue.unbounded<LocalPushQueueItem>()
   // Ensures mutual exclusion between local push and backend pull processing.
   const localPushBackendPullMutex = yield* Semaphore.make(1)
 
@@ -258,7 +258,7 @@ export const make = Effect.fnUntraced(function* ({
         yield* testing.delays.localPushProcessing.pipe(Effect.withSpan('localPushProcessingDelay'))
       }
 
-      const batchItems = yield* BucketQueue.takeBetween(localPushesQueue, 1, localPushBatchSize)
+      const batchItems = yield* TxQueue.takeBetween(localPushesQueue, 1, localPushBatchSize)
 
       // Applies a batch of local pushes, guarded by the localPushBackendPullMutex to ensure mutual exclusion with backend pulling
       yield* Effect.gen(function* () {
@@ -328,14 +328,15 @@ export const make = Effect.fnUntraced(function* ({
             // All subsequent pushes with same generation should be rejected as well
             // We're also handling the case where the localPushQueue already contains events
             // from the next generation which we preserve in the queue
-            const remainingEventsMatchingGeneration = yield* BucketQueue.takeSplitWhere(
+            const remainingEventsMatchingGeneration = yield* takePrefixUntil(
               localPushesQueue,
               ([eventEncoded]) => eventEncoded.seqNum.rebaseGeneration >= nextRebaseGeneration,
             )
 
             // TODO we still need to better understand and handle this scenario
-            if (LS_DEV === true && (yield* BucketQueue.size(localPushesQueue)) > 0) {
-              console.log('localPushesQueue is not empty', yield* BucketQueue.size(localPushesQueue))
+            const remainingLocalPushes = yield* snapshotTxQueue(localPushesQueue)
+            if (LS_DEV === true && remainingLocalPushes.length > 0) {
+              console.log('localPushesQueue is not empty', remainingLocalPushes.length)
               // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for unexpected queue state
               debugger
             }
@@ -383,7 +384,7 @@ export const make = Effect.fnUntraced(function* ({
         // Don't sync client-only events
         const globalOrUnknownEvents = mergeResult.newEvents.filter((e) => !isClientOnlyEvent(e))
 
-        yield* BucketQueue.offerAll(syncBackendPushQueue, globalOrUnknownEvents)
+        yield* TxQueue.offerAll(syncBackendPushQueue, globalOrUnknownEvents)
 
         yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
       }).pipe(localPushBackendPullMutex.withPermits(1))
@@ -575,7 +576,7 @@ export const make = Effect.fnUntraced(function* ({
     while (true) {
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
-      const queueItems = yield* BucketQueue.takeBetween(syncBackendPushQueue, 1, backendPushBatchSize)
+      const queueItems = yield* TxQueue.takeBetween(syncBackendPushQueue, 1, backendPushBatchSize)
 
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
@@ -649,7 +650,7 @@ export const make = Effect.fnUntraced(function* ({
 
       const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
 
-      yield* BucketQueue.offerAll(localPushesQueue, items)
+      yield* TxQueue.offerAll(localPushesQueue, items)
 
       yield* Effect.all(deferreds.map(Deferred.await))
     }).pipe(
@@ -689,7 +690,7 @@ export const make = Effect.fnUntraced(function* ({
           .filter((eventEncoded) => !isClientOnlyEvent(eventEncoded))
 
         if (globalOrUnknownPendingEvents.length > 0) {
-          yield* BucketQueue.offerAll(syncBackendPushQueue, globalOrUnknownPendingEvents)
+          yield* TxQueue.offerAll(syncBackendPushQueue, globalOrUnknownPendingEvents)
         }
       }
 
@@ -736,8 +737,8 @@ export const make = Effect.fnUntraced(function* ({
             yield* FiberHandle.clear(backendPushingFiberHandle)
 
             // Reset the sync backend push queue
-            yield* BucketQueue.clear(syncBackendPushQueue)
-            yield* BucketQueue.offerAll(syncBackendPushQueue, filteredRebasedPending)
+            yield* TxQueue.clear(syncBackendPushQueue)
+            yield* TxQueue.offerAll(syncBackendPushQueue, filteredRebasedPending)
 
             // Restart pushing fiber
             yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
@@ -1123,6 +1124,24 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
       dbState.execute(`DROP TABLE IF EXISTS "${name}"`)
     }
   })
+
+const snapshotTxQueue = <A>(queue: TxQueue.TxQueue<A>): Effect.Effect<ReadonlyArray<A>> =>
+  Effect.tx(Effect.gen(function* () {
+    const items = yield* TxQueue.clear(queue)
+    yield* TxQueue.offerAll(queue, items)
+    return items
+  }))
+
+const takePrefixUntil = <A>(
+  queue: TxQueue.TxQueue<A>,
+  predicate: (value: A) => boolean,
+): Effect.Effect<ReadonlyArray<A>> =>
+  Effect.tx(Effect.gen(function* () {
+    const items = yield* TxQueue.clear(queue)
+    const [prefix, rest] = ReadonlyArray.splitWhere(items, predicate)
+    yield* TxQueue.offerAll(queue, rest)
+    return prefix
+  }))
 
 /** Serialize value to JSON string for trace attributes */
 const jsonStringify = Schema.encodeEffectSync(Schema.UnknownFromJsonString)
