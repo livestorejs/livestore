@@ -137,7 +137,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
   nodeName: TName,
 ): Effect.Effect<MeshNode<TName>, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const edgeChannels = new Map<MeshNodeName, { channel: EdgeChannel; listenFiber: Fiber.RuntimeFiber<void> }>()
+    const edgeChannels = new Map<MeshNodeName, { channel: EdgeChannel; listenFiber: Fiber.Fiber<void> }>()
 
     // To avoid unbounded memory growth, we automatically forget about packet ids after a while
     const handledPacketIds = yield* TimeoutSet.make(Duration.minutes(1))
