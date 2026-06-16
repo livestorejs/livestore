@@ -94,11 +94,11 @@ const query$ = store.useQuery(queryDb(tables.issues.query.where({ id: issueId })
 
 ### `Cannot execute an Effect versioned ...`
 
-If you're seeing an error like `RuntimeException: Cannot execute an Effect versioned 3.10.13 with a Runtime of version 3.10.12`, you likely have multiple versions of `effect` installed in your project.
+If you're seeing an error like `Cannot execute an Effect versioned ... with a Runtime of version ...`, you likely have multiple versions of `effect` installed in your project.
 
 As a first step you can try deleting `node_modules` and running `pnpm install` again.
 
-If the issue persists, you can try to add `"resolutions": { "effect": "3.15.2" }` or [`pnpm.overrides`](https://pnpm.io/package_json#pnpmoverrides) to your `package.json` to force the correct version of `effect` to be used.
+If the issue persists, you can try to add a package manager override such as `"resolutions"` or [`pnpm.overrides`](https://pnpm.io/package_json#pnpmoverrides) to your `package.json` to force a single compatible version of `effect` to be used.
 
 ## Package management
 
