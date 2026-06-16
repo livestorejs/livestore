@@ -1,5 +1,5 @@
 import * as Vitest from '@effect/vitest'
-import { Effect, Schema, Stream } from 'effect'
+import { Effect, Fiber, Schema, Stream } from 'effect'
 import { JSDOM } from 'jsdom'
 
 import * as WebChannel from '../../browser/WebChannelBrowser.ts'
@@ -28,7 +28,7 @@ Vitest.describe('WebChannel', () => {
 
           yield* channelToB.send(1)
 
-          Vitest.expect(yield* msgFromBFiber).toEqual(2)
+          Vitest.expect(yield* Fiber.join(msgFromBFiber)).toEqual(2)
         })
 
         const codeSideB = Effect.gen(function* () {
@@ -48,7 +48,7 @@ Vitest.describe('WebChannel', () => {
 
           yield* channelToA.send(2)
 
-          Vitest.expect(yield* msgFromAFiber).toEqual(1)
+          Vitest.expect(yield* Fiber.join(msgFromAFiber)).toEqual(1)
         })
 
         yield* Effect.all([codeSideA, codeSideB], { concurrency: 'unbounded' })
@@ -76,7 +76,7 @@ Vitest.describe('WebChannel', () => {
 
           yield* channelToB.send(1)
 
-          Vitest.expect(yield* msgFromBFiber).toEqual(2)
+          Vitest.expect(yield* Fiber.join(msgFromBFiber)).toEqual(2)
         })
 
         const codeSideB = Effect.gen(function* () {
@@ -96,7 +96,7 @@ Vitest.describe('WebChannel', () => {
 
           yield* channelToA.send(2)
 
-          Vitest.expect(yield* msgFromAFiber).toEqual(1)
+          Vitest.expect(yield* Fiber.join(msgFromAFiber)).toEqual(1)
         })
 
         yield* Effect.all([codeSideA, codeSideB], { concurrency: 'unbounded' })

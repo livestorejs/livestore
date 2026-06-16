@@ -4,6 +4,7 @@ import {
   Deferred,
   Effect,
   Exit,
+  Fiber,
   Predicate,
   Queue,
   Schema,
@@ -277,7 +278,7 @@ export const makeDirectChannelInternal = ({
               .send(MeshSchema.DirectChannelPing.make({}))
               .pipe(Effect.timeout(10), Effect.retry({ times: 2 }))
 
-            yield* waitForPongFiber
+            yield* Fiber.join(waitForPongFiber)
 
             yield* Effect.spanEvent(`loser side: established`)
             channelStateRef.current = { _tag: 'Established', otherSourceId: channelState.otherSourceId }
