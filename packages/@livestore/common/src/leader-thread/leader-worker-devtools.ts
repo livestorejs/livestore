@@ -222,7 +222,7 @@ const listenToDevtools = ({
                         const rows = db.select<{ name: string }>(`select name from sqlite_master where type = 'table'`)
                         return new Set(rows.map((r) => r.name))
                       },
-                      catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+                      catch: (cause) => new Cause.UnknownError(cause),
                     }),
                   ),
                 )
@@ -234,13 +234,13 @@ const listenToDevtools = ({
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
                   yield* Effect.try({
                     try: () => dbEventlog.import(data),
-                    catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+                    catch: (cause) => new Cause.UnknownError(cause),
                   })
 
                   if (batchId === undefined) {
                     yield* Effect.try({
                       try: () => dbState.destroy(),
-                      catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+                      catch: (cause) => new Cause.UnknownError(cause),
                     })
                   }
                 } else if (
@@ -251,13 +251,13 @@ const listenToDevtools = ({
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
                   yield* Effect.try({
                     try: () => dbState.import(data),
-                    catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+                    catch: (cause) => new Cause.UnknownError(cause),
                   })
 
                   if (batchId === undefined) {
                     yield* Effect.try({
                       try: () => dbEventlog.destroy(),
-                      catch: (cause) => new Cause.UnknownError(cause, 'An unknown error occurred in Effect.try'),
+                      catch: (cause) => new Cause.UnknownError(cause),
                     })
                   }
                 } else {
