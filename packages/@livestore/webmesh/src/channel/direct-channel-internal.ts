@@ -53,7 +53,7 @@ export const makeDirectChannelInternal = ({
 }: MakeDirectChannelArgs & {
   channelVersion: number
   /** We're passing in the closeable scope from the wrapping direct channel */
-  scope: Scope.CloseableScope
+  scope: Scope.Closeable
   sourceId: string
 }): Effect.Effect<
   WebChannel.WebChannel<any, any>,
