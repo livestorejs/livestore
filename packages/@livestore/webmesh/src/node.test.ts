@@ -241,7 +241,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
 
               console.log('nodeACode:waiting for B to be offline')
               if (waitForBToBeOffline !== undefined) {
-                yield* waitForBToBeOffline
+                yield* Deferred.await(waitForBToBeOffline)
               }
 
               yield* channelAToB.send({ message: 'A2' })
@@ -367,7 +367,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               yield* channelXToY.send({ message: `${nodeLabel.x}1` })
               expect(yield* getFirstMessage(channelXToY)).toEqual({ message: `${nodeLabel.y}1` })
 
-              yield* waitForEdgeReplacement
+              yield* Deferred.await(waitForEdgeReplacement)
 
               yield* channelXToY.send({ message: `${nodeLabel.x}2` })
               expect(yield* getFirstMessage(channelXToY)).toEqual({ message: `${nodeLabel.y}2` })

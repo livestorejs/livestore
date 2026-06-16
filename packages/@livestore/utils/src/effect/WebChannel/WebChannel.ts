@@ -175,7 +175,7 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
 
           port.postMessage(messageEncoded, transferables)
 
-          yield* ack
+          yield* Deferred.await(ack)
 
           requestAckMap.delete(id)
 
@@ -356,7 +356,7 @@ export const toOpenChannel = <MsgListen, MsgSend>(
           yield* heartbeatChannel.send(WebChannelPing.make({ requestId }))
           const deferred = yield* Deferred.make<void>()
           pendingPingDeferredRef.current = { deferred, requestId }
-          yield* deferred.pipe(
+          yield* Deferred.await(deferred).pipe(
             Effect.timeout(timeout),
             Effect.catchTag('TimeoutException', () => channel.shutdown),
           )

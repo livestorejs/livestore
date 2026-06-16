@@ -383,7 +383,7 @@ const bootLeaderThread = ({
         progress: { done: 0, total: -1 },
       })
 
-      yield* initialBlockingSyncContext.blockingDeferred.pipe(
+      yield* Deferred.await(initialBlockingSyncContext.blockingDeferred).pipe(
         Effect.withSpan('@livestore/common:leader-thread:initial-sync-blocking'),
       )
     }

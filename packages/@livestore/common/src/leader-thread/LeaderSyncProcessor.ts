@@ -648,7 +648,7 @@ export const make = Effect.fnUntraced(function* ({
 
       yield* BucketQueue.offerAll(localPushesQueue, items)
 
-      yield* Effect.all(deferreds)
+      yield* Effect.all(deferreds.map(Deferred.await))
     }).pipe(
       Effect.withSpan('@livestore/common:LeaderSyncProcessor:push', {
         attributes: {
