@@ -1,7 +1,6 @@
 /// <reference lib="dom" />
 import { LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
 import {
-  BucketQueue,
   Effect,
   Exit,
   FiberHandle,
@@ -11,6 +10,7 @@ import {
   type Scope,
   Stream,
   Subscribable,
+  TxQueue,
 } from '@livestore/utils/effect'
 
 import type { ClientSession } from '../adapter-types.ts'
@@ -100,7 +100,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
-  const leaderPushQueue = yield* BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>()
+  const leaderPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.fn('client-session-sync-processor:boot')(function* () {
     if (
@@ -124,11 +124,11 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     const leaderPushingFiberHandle = yield* FiberHandle.make()
 
     const backgroundLeaderPushing = Effect.gen(function* () {
-      const batch = yield* BucketQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
+      const batch = yield* TxQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
       yield* clientSession.leaderThread.events.push(batch).pipe(
         Effect.catchIf(isRejectedPushError, () => {
           debugInfo.rejectCount++
-          return BucketQueue.clear(leaderPushQueue)
+          return TxQueue.clear(leaderPushQueue)
         }),
       )
     }).pipe(
@@ -181,7 +181,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
             if (SIMULATION_ENABLED === true) yield* simSleep('pull', '2_before_leader_push_queue_clear')
 
             // Reset the leader push queue since we're rebasing and will push again
-            yield* BucketQueue.clear(leaderPushQueue)
+            yield* TxQueue.clear(leaderPushQueue)
 
             if (SIMULATION_ENABLED === true) yield* simSleep('pull', '3_before_rebase_rollback')
 
@@ -203,7 +203,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
             if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
 
-            yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
+            yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
 
             if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
 
@@ -333,7 +333,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
       syncStateRef.current = mergeResult.newSyncState
       yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
-      yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
+      yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
     },
   )
 
@@ -357,9 +357,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         Effect.gen(function* () {
           console.log('debugInfo', debugInfo)
           console.log('syncState', syncStateRef.current)
-          const pushQueueSize = yield* BucketQueue.size(leaderPushQueue)
-          console.log('pushQueueSize', pushQueueSize)
-          const pushQueueItems = yield* BucketQueue.peekAll(leaderPushQueue)
+          const pushQueueItems = yield* snapshotTxQueue(leaderPushQueue)
+          console.log('pushQueueSize', pushQueueItems.length)
           console.log(
             'pushQueueItems',
             pushQueueItems.map((_) => _.toJSON()),
@@ -369,6 +368,13 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     },
   } satisfies ClientSessionSyncProcessor
 })
+
+const snapshotTxQueue = <A>(queue: TxQueue.TxQueue<A>): Effect.Effect<ReadonlyArray<A>> =>
+  Effect.tx(Effect.gen(function* () {
+    const items = yield* TxQueue.clear(queue)
+    yield* TxQueue.offerAll(queue, items)
+    return items
+  }))
 
 export interface ClientSessionSyncProcessor {
   boot: Effect.Effect<void, never, Scope.Scope>
