@@ -3,7 +3,7 @@ import * as http from 'node:http'
 import { layer as ParcelWatcherLayer } from '@effect/platform-node/NodeFileSystem/ParcelWatcher'
 import { Effect, Layer } from 'effect'
 
-import { OtelTracer, UnknownError } from '../effect/mod.ts'
+import { OtelTracer, Tracer, UnknownError } from '../effect/mod.ts'
 import { makeNoopTracer } from '../NoopTracer.ts'
 
 export * as Cli from 'effect/unstable/cli'
@@ -46,7 +46,7 @@ export const getFreePort: Effect.Effect<number, UnknownError> = Effect.callback<
 export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend(() => {
   const OtelTracerLive = Layer.succeed(OtelTracer.OtelTracer, makeNoopTracer())
 
-  const TracingLive = Layer.unwrap(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+  const TracingLive = OtelTracer.layerWithoutOtelTracer.pipe(
     Layer.provideMerge(OtelTracerLive),
   )
 

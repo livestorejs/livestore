@@ -1,5 +1,3 @@
-import fs from 'node:fs'
-
 import { isNotUndefined } from '@livestore/utils'
 import {
   Cause,
@@ -7,16 +5,14 @@ import {
   type ChildProcessSpawner,
   Effect,
   Fiber,
-  FiberId,
-  FiberRefs,
-  HashMap,
   identity,
-  List,
-  LogLevel,
+  Logger,
   type PlatformError,
+  References,
   Schema,
   Stream,
 } from '@livestore/utils/effect'
+import { NodeFileSystem } from '@livestore/utils/node'
 
 import { applyLoggingToCommand } from './cmd-log.ts'
 import * as FileLogger from './FileLogger.ts'
@@ -192,30 +188,36 @@ const runWithLogging = ({
     Effect.gen(function* () {
       const envWithColor = env.FORCE_COLOR === undefined ? { ...env, FORCE_COLOR: '1' } : env
 
-      const logFile = yield* Effect.acquireRelease(
-        Effect.sync(() => fs.openSync(logPath, 'a', 0o666)),
-        (fd) => Effect.sync(() => fs.closeSync(fd)),
-      )
-
-      const prettyLogger = FileLogger.prettyLoggerTty({
+      const prettyLoggerOptions = {
         colors: true,
         stderr: false,
-        formatDate: (date) => `${FileLogger.defaultDateFormat(date)} ${threadName}`,
-      })
+        formatDate: FileLogger.formatLogTime,
+      } as const
+
+      const logStringToFile = yield* Logger.make<unknown, string>(({ message }) => {
+        if (typeof message === 'string') return message
+        return String(message)
+      }).pipe(Logger.toFile(logPath, { flag: 'a' }), Effect.provide(NodeFileSystem.layer))
+
+      const FileLoggerLive = Logger.layer([logStringToFile])
 
       const appendLog = ({ channel, content }: { channel: 'stdout' | 'stderr'; content: string }) =>
-        Effect.sync(() => {
-          const formatted = prettyLogger.log({
-            fiberId: FiberId.none,
-            logLevel: channel === 'stdout' ? LogLevel.Info : LogLevel.Warning,
+        Effect.gen(function* () {
+          const formatted = FileLogger.formatPrettyLog({
+            logLevel: channel === 'stdout' ? 'Info' : 'Warn',
             message: [`[${channel}]${content.length > 0 ? ` ${content}` : ''}`],
             cause: Cause.empty,
-            context: FiberRefs.empty(),
-            spans: List.empty(),
-            annotations: HashMap.empty(),
             date: new Date(),
+            fiberId: 0,
+            spans: [],
+            annotations: { thread: threadName },
+            options: prettyLoggerOptions,
           })
-          fs.writeSync(logFile, formatted)
+
+          yield* Effect.log(formatted.endsWith('\n') ? formatted.slice(0, -1) : formatted).pipe(
+            Effect.provideService(References.MinimumLogLevel, 'All'),
+            Effect.provide(FileLoggerLive),
+          )
         })
 
       const command = buildCommand(commandInput, useShell).pipe(

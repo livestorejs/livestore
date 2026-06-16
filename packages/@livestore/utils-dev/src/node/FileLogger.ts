@@ -1,48 +1,6 @@
-import * as fs from 'node:fs'
-import path from 'node:path'
 import util from 'node:util'
 
-import {
-  Cause,
-  Effect,
-  FiberId,
-  HashMap,
-  Inspectable,
-  Layer,
-  List,
-  Logger,
-  type LogLevel,
-  LogSpan,
-  ReadonlyArray,
-} from '@livestore/utils/effect'
-
-export const makeFileLogger = (
-  logFilePath: string,
-  options?: {
-    readonly threadName: string
-    readonly colors?: boolean
-  },
-) =>
-  Layer.unwrap(
-    Effect.gen(function* () {
-      yield* Effect.sync(() => fs.mkdirSync(path.dirname(logFilePath), { recursive: true }))
-
-      const logFile = yield* Effect.acquireRelease(
-        Effect.sync(() => fs.openSync(logFilePath, 'a', 0o666)),
-        (fd) => Effect.sync(() => fs.closeSync(fd)),
-      )
-
-      return Logger.replace(
-        Logger.defaultLogger,
-        prettyLoggerTty({
-          colors: options?.colors ?? false,
-          stderr: false,
-          formatDate: (date) => `${defaultDateFormat(date)} ${options?.threadName ?? ''}`,
-          onLog: (str) => fs.writeSync(logFile, str),
-        }),
-      )
-    }),
-  )
+import { Cause, Inspectable, Logger, type LogLevel, References, ReadonlyArray } from '@livestore/utils/effect'
 
 const withColor = (text: string, ...colors: ReadonlyArray<string>) => {
   let out = ''
@@ -66,18 +24,18 @@ const colors = {
   bgBrightRed: '101',
 } as const
 
-const logLevelColors: Record<LogLevel.LogLevel['_tag'], ReadonlyArray<string>> = {
+const logLevelColors: Record<LogLevel.LogLevel, ReadonlyArray<string>> = {
   None: [],
   All: [],
   Trace: [colors.gray],
   Debug: [colors.blue],
   Info: [colors.green],
-  Warning: [colors.yellow],
+  Warn: [colors.yellow],
   Error: [colors.red],
   Fatal: [colors.bgBrightRed, colors.black],
 }
 
-export const defaultDateFormat = (date: Date): string =>
+export const formatLogTime = (date: Date): string =>
   `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date
     .getSeconds()
     .toString()
@@ -115,93 +73,108 @@ const consoleLogToString = (...s: any[]) => {
     .join(' ')
 }
 
-export const prettyLoggerTty = (options: {
+type PrettyLoggerOptions = {
   readonly colors: boolean
   readonly stderr: boolean
   readonly formatDate: (date: Date) => string
   readonly onLog?: (str: string) => void
+}
+
+export const formatPrettyLog = ({
+  annotations,
+  cause,
+  date,
+  fiberId,
+  logLevel,
+  message: message_,
+  options,
+  spans,
+}: {
+  readonly annotations: Readonly<Record<string, unknown>>
+  readonly cause: Cause.Cause<unknown>
+  readonly date: Date
+  readonly fiberId: number
+  readonly logLevel: LogLevel.LogLevel
+  readonly message: unknown
+  readonly options: PrettyLoggerOptions
+  readonly spans: ReadonlyArray<readonly [label: string, timestamp: number]>
 }) => {
   const color = options.colors === true ? withColor : withColorNoop
-  return Logger.make<unknown, string>(({ annotations, cause, date, fiberId, logLevel, message: message_, spans }) => {
-    let str = ''
+  let str = ''
 
-    const log = (...s: any[]) => {
-      str += `${consoleLogToString(...s)}\n`
-      options.onLog?.(str)
+  const log = (...s: any[]) => {
+    str += `${consoleLogToString(...s)}\n`
+    options.onLog?.(str)
+  }
+
+  const logIndented = (...s: any[]) => {
+    str += `${consoleLogToString(...s).replace(/^/gm, '  ')}\n`
+    options.onLog?.(str)
+  }
+
+  const message = ReadonlyArray.ensure(message_)
+
+  let firstLine =
+    color(`[${options.formatDate(date)}]`, colors.white) +
+    ` ${color(logLevel.toUpperCase(), ...logLevelColors[logLevel])}` +
+    ` (#${fiberId})`
+
+  if (spans.length > 0) {
+    const now = date.getTime()
+    for (const [label, timestamp] of spans) {
+      firstLine += ` ${label}=${now - timestamp}ms`
     }
+  }
 
-    const logIndented = (...s: any[]) => {
-      str += `${consoleLogToString(...s).replace(/^/gm, '  ')}\n`
-      options.onLog?.(str)
+  firstLine += ':'
+  let messageIndex = 0
+  if (message.length > 0) {
+    const firstMaybeString = structuredMessage(message[0])
+    if (typeof firstMaybeString === 'string') {
+      firstLine += ` ${color(firstMaybeString, colors.bold, colors.cyan)}`
+      messageIndex++
     }
+  }
 
-    const message = ReadonlyArray.ensure(message_)
+  log(firstLine)
+  // if (!processIsBun) console.group()
 
-    let firstLine =
-      color(`[${options.formatDate(date)}]`, colors.white) +
-      ` ${color(logLevel.label, ...logLevelColors[logLevel._tag])}` +
-      ` (${FiberId.threadName(fiberId)})`
+  if (Cause.isEmpty(cause) === false) {
+    logIndented(Cause.pretty(cause, { renderErrorCause: true }))
+  }
 
-    if (List.isCons(spans) === true) {
-      const now = date.getTime()
-      const render = LogSpan.render(now)
-      for (const span of spans) {
-        firstLine += ` ${render(span)}`
+  if (messageIndex < message.length) {
+    for (; messageIndex < message.length; messageIndex++) {
+      const msg = message[messageIndex]
+      if (typeof msg === 'object' && msg !== null) {
+        logIndented(
+          util.inspect(structuredMessage(msg), {
+            depth: 3,
+            colors: false,
+            compact: false,
+            breakLength: 120,
+          }),
+        )
+      } else {
+        logIndented(Inspectable.redact(msg))
       }
     }
+  }
 
-    firstLine += ':'
-    let messageIndex = 0
-    if (message.length > 0) {
-      const firstMaybeString = structuredMessage(message[0])
-      if (typeof firstMaybeString === 'string') {
-        firstLine += ` ${color(firstMaybeString, colors.bold, colors.cyan)}`
-        messageIndex++
-      }
-    }
+  for (const [key, value] of Object.entries(annotations)) {
+    const formattedValue =
+      typeof value === 'object' && value !== null
+        ? util.inspect(structuredMessage(value), {
+            depth: 3,
+            colors: false,
+            compact: false,
+            breakLength: 120,
+          })
+        : Inspectable.redact(value)
+    logIndented(color(`${key}:`, colors.bold, colors.white), formattedValue)
+  }
 
-    log(firstLine)
-    // if (!processIsBun) console.group()
+  // if (!processIsBun) console.groupEnd()
 
-    if (Cause.isEmpty(cause) === false) {
-      logIndented(Cause.pretty(cause, { renderErrorCause: true }))
-    }
-
-    if (messageIndex < message.length) {
-      for (; messageIndex < message.length; messageIndex++) {
-        const msg = message[messageIndex]
-        if (typeof msg === 'object' && msg !== null) {
-          logIndented(
-            util.inspect(structuredMessage(msg), {
-              depth: 3,
-              colors: false,
-              compact: false,
-              breakLength: 120,
-            }),
-          )
-        } else {
-          logIndented(Inspectable.redact(msg))
-        }
-      }
-    }
-
-    if (HashMap.size(annotations) > 0) {
-      for (const [key, value] of annotations) {
-        const formattedValue =
-          typeof value === 'object' && value !== null
-            ? util.inspect(structuredMessage(value), {
-                depth: 3,
-                colors: false,
-                compact: false,
-                breakLength: 120,
-              })
-            : Inspectable.redact(value)
-        logIndented(color(`${key}:`, colors.bold, colors.white), formattedValue)
-      }
-    }
-
-    // if (!processIsBun) console.groupEnd()
-
-    return str
-  })
+  return str
 }

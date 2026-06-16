@@ -1,4 +1,5 @@
-import { Devtools, isWorkerTransportError, LogConfig, liveStoreVersion, UnknownError } from '@livestore/common'
+import type { LogConfig } from '@livestore/common'
+import { Devtools, isWorkerTransportError, liveStoreVersion, UnknownError } from '@livestore/common'
 import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
 import {
   Deferred,
@@ -9,6 +10,7 @@ import {
   Layer,
   Option,
   Ref,
+  References,
   Schema,
   Scope,
   Stream,
@@ -244,7 +246,7 @@ const makeWorkerRunner = Effect.gen(function* () {
   })
 }).pipe(Layer.unwrap)
 
-export const makeWorker = (options?: LogConfig.WithLoggerOptions): void => {
+export const makeWorker = (options?: LogConfig.LoggerOptions): void => {
   const runtimeLayer = Layer.mergeAll(
     FetchHttpClient.layer,
     WebmeshWorker.CacheService.layer({ nodeName: makeSharedWorkerNodeName({ storeId }) }),
@@ -263,7 +265,12 @@ export const makeWorker = (options?: LogConfig.WithLoggerOptions): void => {
     // TODO remove type-cast (currently needed to silence a tsc bug)
     // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- TSC bug workaround; the cast uses `any` as an intermediate
     (_) => _ as any as Effect.Effect<void>,
-    LogConfig.withLoggerConfig(options, { threadName: self.name }),
+    Effect.provide(
+      Layer.mergeAll(
+        options?.logger ?? Layer.empty,
+        Layer.succeed(References.MinimumLogLevel, options?.logLevel ?? (isDevEnv() === true ? 'Debug' : 'Info')),
+      ),
+    ),
     Effect.runFork,
   )
 }

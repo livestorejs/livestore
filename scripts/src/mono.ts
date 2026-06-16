@@ -1,5 +1,5 @@
 import { cmd, LivestoreWorkspace, OtelLiveHttp } from '@livestore/utils-dev/node'
-import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, References } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 
 import { debugCommand } from './commands/debug.ts'
@@ -83,7 +83,7 @@ if (import.meta.main) {
   cli(process.argv).pipe(
     Effect.provide(layer),
     Effect.annotateLogs({ thread: 'mono' }),
-    Logger.withMinimumLogLevel(LogLevel.Debug),
+    Effect.provideService(References.MinimumLogLevel, 'Debug'),
     Effect.scoped,
     PlatformNode.NodeRuntime.runMain,
   )

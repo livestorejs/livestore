@@ -16,9 +16,8 @@ import {
   Effect,
   FetchHttpClient,
   Layer,
-  Logger,
-  LogLevel,
   Queue,
+  References,
   Stream,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -32,7 +31,7 @@ const withTestCtx = Vitest.makeWithTestCtx({
       TestContextLive,
       PlatformNode.NodeFileSystem.layer,
       FetchHttpClient.layer,
-      Logger.minimumLogLevel(LogLevel.Debug),
+      Layer.succeed(References.MinimumLogLevel, 'Debug'),
     ),
 })
 
