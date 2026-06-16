@@ -242,7 +242,10 @@ const startHeartbeat = ({ phase, intervalMs = 30_000 }: { phase: string; interva
         console.log(`::notice title=docs-deploy-heartbeat::phase=${phase} elapsed=${elapsedSec}s`)
       }),
       Schedule.spaced(Duration.millis(intervalMs)),
-    ).pipe(Effect.forkScoped)
+    ).pipe(
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+    )
   })
 
 const docsBuildCommand = Cli.Command.make(
@@ -452,7 +455,8 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         if (skipDeps === false) {
           yield* runDocsDiagramsWatchNoInitialBuild.pipe(
             Effect.catchCause((cause) => Effect.logWarning('Diagrams watch stopped', cause)),
-            Effect.forkScoped,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
           )
         }
 

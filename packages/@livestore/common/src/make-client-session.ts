@@ -82,7 +82,11 @@ export const makeClientSession = <R>({
         yield* Devtools.SessionInfo.provideSessionInfo({
           webChannel: sessionInfoBroadcastChannel,
           sessionInfo,
-        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+        }).pipe(
+          Effect.tapCauseLogPretty,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+        )
 
         yield* webmeshNode.listenForChannel.pipe(
           Stream.filter(
@@ -116,7 +120,8 @@ export const makeClientSession = <R>({
                 yield* connectDevtoolsToStore(clientSessionDevtoolsChannel)
               },
               Effect.tapCauseLogPretty,
-              Effect.forkScoped,
+              // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+              Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
             ),
           ),
           Stream.runDrain,
@@ -124,7 +129,8 @@ export const makeClientSession = <R>({
       }).pipe(
         Effect.withSpan('@livestore/common:make-client-session:devtools'),
         Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
     }
 

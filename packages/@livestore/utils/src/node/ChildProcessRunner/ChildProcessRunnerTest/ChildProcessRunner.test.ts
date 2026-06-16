@@ -83,7 +83,8 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         }).pipe(Effect.scoped, Effect.provide(WorkerLive))
 
         // Run the test effect but interrupt it after 2 seconds
-        const fiber = yield* Effect.forkScoped(testEffect)
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        const fiber = yield* Effect.forkScoped(testEffect, { startImmediately: true, uninterruptible: 'inherit' })
 
         const workerPid = yield* Deferred.await(workerPidDeferred).pipe(
           Effect.raceFirst(
@@ -235,7 +236,8 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         }).pipe(Effect.scoped, Effect.provide(WorkerLive))
 
         // Run with timeout to force termination
-        const fiber = yield* Effect.forkChild(testEffect)
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        const fiber = yield* Effect.forkChild(testEffect, { startImmediately: true, uninterruptible: 'inherit' })
         yield* Effect.sleep('2 seconds')
         yield* Fiber.interrupt(fiber)
 
@@ -287,7 +289,8 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         }).pipe(Effect.scoped)
 
         // Simulate the exact abortion pattern from node-sync
-        const fiber = yield* Effect.forkChild(testEffect)
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        const fiber = yield* Effect.forkChild(testEffect, { startImmediately: true, uninterruptible: 'inherit' })
         yield* Effect.sleep('2 seconds')
 
         // Force kill the fiber without proper cleanup (simulates Ctrl+C)

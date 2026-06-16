@@ -23,7 +23,8 @@ Vitest.describe('WebChannel', () => {
             Stream.flatten(),
             Stream.runHead,
             Effect.flatten,
-            Effect.forkChild,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
           yield* channelToB.send(1)
@@ -43,7 +44,8 @@ Vitest.describe('WebChannel', () => {
             Stream.flatten(),
             Stream.runHead,
             Effect.flatten,
-            Effect.forkChild,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
           yield* channelToA.send(2)
@@ -71,7 +73,8 @@ Vitest.describe('WebChannel', () => {
             Stream.flatten(),
             Stream.runHead,
             Effect.flatten,
-            Effect.forkChild,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
           yield* channelToB.send(1)
@@ -91,7 +94,8 @@ Vitest.describe('WebChannel', () => {
             Stream.flatten(),
             Stream.runHead,
             Effect.flatten,
-            Effect.forkChild,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
           yield* channelToA.send(2)
