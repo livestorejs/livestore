@@ -32,6 +32,7 @@ import {
   Layer,
   Queue,
   References,
+  Result,
   type Scope,
   Stream,
   WebChannel,
@@ -496,12 +497,12 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         .pushEncoded(staleEventB, followUpB1, followUpB2)
         .pipe(Effect.result, Effect.timeout(Duration.seconds(5)))
 
-      expect(pushResult._tag).toBe('Left')
-      if (pushResult._tag !== 'Left') {
+      expect(Result.isFailure(pushResult)).toBe(true)
+      if (Result.isSuccess(pushResult)) {
         return
       }
 
-      const error = pushResult.left
+      const error = pushResult.failure
       expect(error._tag).toBe('LeaderAheadError')
       if (error._tag !== 'LeaderAheadError') {
         return

@@ -190,23 +190,23 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
         Stream.map((_) => Schema.decodeExit(ChannelMessage)(_.data)),
         Stream.tap((msg) =>
           Effect.gen(function* () {
-            if (msg._tag === 'Right') {
-              if (msg.right._tag === 'ChannelRequestAck') {
-                yield* Deferred.succeed(requestAckMap.get(msg.right.reqId)!, void 0)
-              } else if (msg.right._tag === 'ChannelRequest') {
+            if (Result.isSuccess(msg)) {
+              if (msg.success._tag === 'ChannelRequestAck') {
+                yield* Deferred.succeed(requestAckMap.get(msg.success.reqId)!, void 0)
+              } else if (msg.success._tag === 'ChannelRequest') {
                 debugInfo.listenTotal++
                 port.postMessage(
-                  yield* Schema.encodeEffect(ChannelMessage)({ _tag: 'ChannelRequestAck', reqId: msg.right.id }),
+                  yield* Schema.encodeEffect(ChannelMessage)({ _tag: 'ChannelRequestAck', reqId: msg.success.id }),
                 )
               }
             }
           }),
         ),
         Stream.filterMap((msg) =>
-          msg._tag === 'Left'
+          Result.isFailure(msg)
             ? Option.some(msg as any)
-            : msg.right._tag === 'ChannelRequest'
-              ? Option.some(Result.succeed(msg.right.payload))
+            : msg.success._tag === 'ChannelRequest'
+              ? Option.some(Result.succeed(msg.success.payload))
               : Option.none(),
         ),
         (_) => _ as Stream.Stream<Result.Result<any, any>>,
@@ -325,13 +325,13 @@ export const toOpenChannel = <MsgListen, MsgSend>(
       options?.heartbeat !== undefined
         ? Stream.filterEffect(
             Effect.fn(function* (msg) {
-              if (msg._tag === 'Right' && Schema.is(WebChannelHeartbeat)(msg.right) === true) {
-                if (msg.right._tag === 'WebChannel.Ping') {
-                  yield* heartbeatChannel.send(WebChannelPong.make({ requestId: msg.right.requestId }))
+              if (Result.isSuccess(msg) && Schema.is(WebChannelHeartbeat)(msg.success) === true) {
+                if (msg.success._tag === 'WebChannel.Ping') {
+                  yield* heartbeatChannel.send(WebChannelPong.make({ requestId: msg.success.requestId }))
                 } else {
                   const { deferred, requestId } = pendingPingDeferredRef.current ?? shouldNeverHappen('No pending ping')
-                  if (requestId !== msg.right.requestId) {
-                    shouldNeverHappen('Received pong for unexpected requestId', requestId, msg.right.requestId)
+                  if (requestId !== msg.success.requestId) {
+                    shouldNeverHappen('Received pong for unexpected requestId', requestId, msg.success.requestId)
                   }
                   yield* Deferred.succeed(deferred, void 0)
                 }

@@ -1,6 +1,6 @@
 import { UnknownError } from '@livestore/common'
 import { WsContext } from '@livestore/common-cf'
-import { Effect, identity, Layer, RpcServer, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, identity, Layer, Result, RpcServer, Schema, Stream } from '@livestore/utils/effect'
 
 import { SyncWsRpc } from '../../../common/ws-rpc-schema.ts'
 import { headersRecordToMap, WebSocketAttachmentSchema } from '../../shared.ts'
@@ -51,12 +51,12 @@ const getForwardedHeaders = Effect.gen(function* () {
   const { ws } = yield* WsContext
   const attachment = ws.deserializeAttachment()
   const decoded = Schema.decodeUnknownExit(WebSocketAttachmentSchema)(attachment)
-  if (decoded._tag === 'Left') {
-    yield* Effect.logError('Failed to decode WebSocket attachment for forwarded headers', { error: decoded.left })
+  if (Result.isFailure(decoded)) {
+    yield* Effect.logError('Failed to decode WebSocket attachment for forwarded headers', { error: decoded.failure })
     ws.close(1011, 'invalid-attachment')
     return yield* Effect.die('Invalid WebSocket attachment (headers decode failed)')
   }
 
-  const headers = headersRecordToMap(decoded.right.headers)
+  const headers = headersRecordToMap(decoded.success.headers)
   return headers
 })

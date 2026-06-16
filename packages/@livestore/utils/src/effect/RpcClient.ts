@@ -118,7 +118,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
               yield* SubscriptionRef.set(options.isConnected, false)
             }
 
-            const error = Cause.failureOption(cause)
+            const error = Cause.findErrorOption(cause)
             if (
               options?.retryTransientErrors !== undefined &&
               Option.isSome(error) === true &&

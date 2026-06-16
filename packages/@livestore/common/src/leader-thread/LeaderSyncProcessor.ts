@@ -16,6 +16,7 @@ import {
   Option,
   Queue,
   ReadonlyArray,
+  Result,
   Schedule,
   Schema,
   Semaphore,
@@ -261,7 +262,7 @@ export const make = Effect.fnUntraced(function* ({
 
       // Applies a batch of local pushes, guarded by the localPushBackendPullMutex to ensure mutual exclusion with backend pulling
       yield* Effect.gen(function* () {
-        const syncState = yield* Effect.fromNullable(yield* SubscriptionRef.get(syncStateSref)).pipe(
+        const syncState = yield* Effect.fromNullishOr(yield* SubscriptionRef.get(syncStateSref)).pipe(
           Effect.orDieDebugger,
         )
 
@@ -433,7 +434,7 @@ export const make = Effect.fnUntraced(function* ({
         }
 
         const chunkExit = yield* Effect.gen(function* () {
-          const syncState = yield* Effect.fromNullable(yield* SubscriptionRef.get(syncStateSref)).pipe(
+          const syncState = yield* Effect.fromNullishOr(yield* SubscriptionRef.get(syncStateSref)).pipe(
             Effect.orDieDebugger,
           )
 
@@ -530,7 +531,7 @@ export const make = Effect.fnUntraced(function* ({
         }
       })
 
-    const syncState = yield* Effect.fromNullable(yield* SubscriptionRef.get(syncStateSref)).pipe(Effect.orDieDebugger)
+    const syncState = yield* Effect.fromNullishOr(yield* SubscriptionRef.get(syncStateSref)).pipe(Effect.orDieDebugger)
     const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo({ remoteHead: syncState.upstreamHead.global })
 
     const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
@@ -598,17 +599,17 @@ export const make = Effect.fnUntraced(function* ({
         const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.result)
 
         const retries = iteration.recurrence
-        if (retries > 0 && pushResult._tag === 'Right') {
+        if (retries > 0 && Result.isSuccess(pushResult)) {
           yield* Effect.spanEvent('backend-push-retry-success', { retries, batchSize: queueItems.length })
         }
 
-        if (pushResult._tag === 'Left') {
+        if (Result.isFailure(pushResult)) {
           yield* Effect.spanEvent('backend-push-error', {
-            error: pushResult.left.toString(),
+            error: pushResult.failure.toString(),
             retries,
             batchSize: queueItems.length,
           })
-          const error = pushResult.left
+          const error = pushResult.failure
           if (error._tag === 'ServerAheadError') {
             // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
             yield* Effect.logDebug('handled backend-push-error (waiting for interupt caused by pull)', { error })
@@ -700,14 +701,15 @@ export const make = Effect.fnUntraced(function* ({
           if (onError === 'ignore') {
             if (LS_DEV === true) {
               yield* Effect.logDebug(
-                `Ignoring sync error (${cause._tag === 'Fail' ? cause.error._tag : cause._tag})`,
+                `Ignoring sync error (${Option.getOrUndefined(Cause.findErrorOption(cause))?._tag ?? cause.toString()})`,
                 Cause.pretty(cause),
               )
             }
             return
           }
 
-          const errorToSend = Cause.isFailType(cause) === true ? cause.error : UnknownError.make({ cause })
+          const error = Option.getOrUndefined(Cause.findErrorOption(cause))
+          const errorToSend = error === undefined ? UnknownError.make({ cause }) : error
           yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
 
           return yield* Effect.failCause(cause).pipe(Effect.orDie)
@@ -761,7 +763,7 @@ export const make = Effect.fnUntraced(function* ({
     push,
     pushPartial: ({ event: { name, args }, clientId, sessionId }) =>
       Effect.gen(function* () {
-        const syncState = yield* Effect.fromNullable(yield* SubscriptionRef.get(syncStateSref)).pipe(
+        const syncState = yield* Effect.fromNullishOr(yield* SubscriptionRef.get(syncStateSref)).pipe(
           Effect.orDieDebugger,
         )
 
@@ -800,7 +802,7 @@ export const make = Effect.fnUntraced(function* ({
       ),
     pull: ({ cursor }) =>
       Effect.gen(function* () {
-        const queue = yield* Effect.fromNullable(ctxRef.current?.services).pipe(
+        const queue = yield* Effect.fromNullishOr(ctxRef.current?.services).pipe(
           Effect.orDieDebugger,
           Effect.flatMap((services) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(services))),
         )
@@ -821,12 +823,12 @@ export const make = Effect.fnUntraced(function* ({
           - downside: importing the snapshot is expensive
       */
     pullQueue: ({ cursor }) =>
-      Effect.fromNullable(ctxRef.current?.services).pipe(
+      Effect.fromNullishOr(ctxRef.current?.services).pipe(
         Effect.orDieDebugger,
         Effect.flatMap((services) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(services))),
       ),
     syncState: Subscribable.make({
-      get: SubscriptionRef.get(syncStateSref).pipe(Effect.flatMap(Effect.fromNullable), Effect.orDieDebugger),
+      get: SubscriptionRef.get(syncStateSref).pipe(Effect.flatMap(Effect.fromNullishOr), Effect.orDieDebugger),
       changes: SubscriptionRef.changes(syncStateSref).pipe(Stream.filter(isNotUndefined)),
     }),
   })

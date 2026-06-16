@@ -79,13 +79,13 @@ export const logBefore =
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.tapCause(eff, (cause) =>
     Effect.gen(function* () {
-      if (Cause.isInterruptedOnly(cause) === true) {
+      if (Cause.hasInterruptsOnly(cause) === true) {
         // console.log('interrupted', Cause.pretty(err), err)
         return
       }
 
       const span = yield* OtelTracer.currentOtelSpan.pipe(
-        Effect.catchTag('NoSuchElementException', (_) => Effect.succeed(undefined)),
+        Effect.catchTag('NoSuchElementError', (_) => Effect.succeed(undefined)),
       )
 
       const firstErrLine = cause.toString().split('\n')[0]

@@ -2,7 +2,7 @@ import process from 'node:process'
 
 import { liveStoreVersion } from '@livestore/common'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
-import { Effect, FileSystem, Layer, Option, References, Schema } from '@livestore/utils/effect'
+import { Effect, FileSystem, Layer, Option, References, Result, Schema } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 
 import { cloudflareExamples } from '../../shared/cloudflare-manifest.ts'
@@ -126,7 +126,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
       const packageJsonContent = yield* fs.readFileString(packageJsonPath)
       const decoded = yield* parseExamplePackageJson(packageJsonContent).pipe(Effect.result)
 
-      if (decoded._tag === 'Left') {
+      if (Result.isFailure(decoded)) {
         if (skipMissing === true) {
           yield* Effect.logWarning(`Skipping ${example}: unable to decode package.json`)
           continue
@@ -134,7 +134,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
         return yield* new ScriptError({ message: `Cannot run tests for ${example}: invalid package.json` })
       }
 
-      const packageJson = decoded.right
+      const packageJson = decoded.success
       if (typeof packageJson.scripts?.test !== 'string') {
         if (skipMissing === true) {
           yield* Effect.logWarning(`Skipping ${example}: no test script defined`)

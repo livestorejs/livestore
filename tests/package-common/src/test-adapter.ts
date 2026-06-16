@@ -25,11 +25,11 @@ import { omitUndefineds } from '@livestore/utils'
 import {
   Effect,
   Deferred,
-  Either,
   Exit,
   FetchHttpClient,
   Layer,
   Queue,
+  Result,
   Stream,
   SubscriptionRef,
   WebChannel,
@@ -222,7 +222,7 @@ const makeShutdownChannel = (storeId: string): Effect.Effect<ShutdownChannel.Shu
     return {
       [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
       send: (message) => Queue.offer(queue, message),
-      listen: Stream.fromQueue(queue).pipe(Stream.map(Either.right)),
+      listen: Stream.fromQueue(queue).pipe(Stream.map(Result.succeed)),
       closedDeferred,
       shutdown: Queue.shutdown(queue),
       schema: {

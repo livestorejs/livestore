@@ -152,7 +152,7 @@ export const make = (args: Options) =>
         yield* Effect.addFinalizer(
           Effect.fn(
             function* (exit) {
-              if (exit._tag === 'Failure' && Cause.isInterruptedOnly(exit.cause) === false) {
+              if (exit._tag === 'Failure' && Cause.hasInterruptsOnly(exit.cause) === false) {
                 yield* Effect.logError('Closing wrangler dev server on failure', exit.cause)
               }
 

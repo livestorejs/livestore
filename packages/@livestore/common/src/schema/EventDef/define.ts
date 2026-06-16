@@ -29,7 +29,7 @@
  */
 
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { Result, Schema } from '@livestore/utils/effect'
 
 import type { EventDef } from './event-def.ts'
 import type { EventDefFactInput, EventDefFacts } from './facts.ts'
@@ -112,8 +112,8 @@ export const defineEvent = <TName extends string, TType, TEncoded = TType, TDeri
 
   const makePartialEvent = (args: TType) => {
     const res = Schema.validateEither(schema)(args)
-    if (res._tag === 'Left') {
-      shouldNeverHappen(`Invalid event args for event '${name}':`, res.left.message, '\n')
+    if (Result.isFailure(res)) {
+      shouldNeverHappen(`Invalid event args for event '${name}':`, res.failure.message, '\n')
     }
     return { name: name, args }
   }
