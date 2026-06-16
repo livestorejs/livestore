@@ -241,7 +241,7 @@ export class StoreRegistry {
   >(
     options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): Effect.Effect<Store<TSchema, TContext>, UnknownError, Scope.Scope> =>
-    Effect.gen(this, function* () {
+    Effect.gen({ self: this }, function* () {
       // Cast options to satisfy StoreCacheKey's wider type (type safety enforced at API boundary)
       const key = new StoreCacheKey(options)
       const store = yield* RcMap.get(this.#rcMap, key)
@@ -324,7 +324,7 @@ export class StoreRegistry {
   >(
     options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): (() => void) => {
-    const release = Effect.gen(this, function* () {
+    const release = Effect.gen({ self: this }, function* () {
       // Cast options to satisfy StoreCacheKey's wider type (type safety enforced at API boundary)
       const key = new StoreCacheKey(options)
       yield* RcMap.get(this.#rcMap, key)

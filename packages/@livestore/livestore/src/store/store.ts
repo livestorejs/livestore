@@ -213,7 +213,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       materializeEvent: Effect.fn('client-session-sync-processor:materialize-event')(
         (eventEncoded, { withChangeset, materializerHashLeader }) =>
           // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
-          Effect.gen(this, function* () {
+          Effect.gen({ self: this }, function* () {
             const resolution = yield* resolveEventDef(schema, {
               operation: '@livestore/livestore:store:materializeEvent',
               event: eventEncoded,
@@ -370,7 +370,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         })
     }
 
-    const boot = Effect.gen(this, function* () {
+    const boot = Effect.gen({ self: this }, function* () {
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
           // Remove all table refs from the reactivity graph
@@ -575,7 +575,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
   subscribeStream = <TResult>(query: Queryable<TResult>, options?: SubscribeOptions<TResult>): Stream.Stream<TResult> =>
     Stream.callback<TResult>((emit) =>
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(
           Effect.catchTag('NoSuchElementError', () => Effect.succeed(undefined)),
         )
@@ -790,7 +790,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
 
-    Effect.gen(this, function* () {
+    Effect.gen({ self: this }, function* () {
       const commitsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.commitsSpanContext)
       commitsSpan?.addEvent('commit')
       const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
@@ -1101,7 +1101,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    */
   _dev = {
     downloadDb: (source: 'local' | 'leader' = 'local') => {
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const data =
           source === 'local'
             ? this[StoreInternalsSymbol].sqliteDbWrapper.export()
@@ -1111,14 +1111,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     },
 
     downloadEventlogDb: () => {
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const data = yield* this[StoreInternalsSymbol].clientSession.leaderThread.getEventlogData
         downloadBlob(data, `livestore-eventlog-${Date.now()}.db`)
       }).pipe(this.runEffectFork)
     },
 
     hardReset: (mode: 'all-data' | 'only-app-db' = 'all-data') => {
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const clientId = this[StoreInternalsSymbol].clientSession.clientId
         yield* this[StoreInternalsSymbol].clientSession.leaderThread.sendDevtoolsMessage(
           Devtools.Leader.ResetAllData.Request.make({ liveStoreVersion, mode, requestId: nanoid(), clientId }),
@@ -1142,14 +1142,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     // NOTE: Explicit return type needed to avoid TS2742 (inferred type references internal path)
     syncStates: (): Promise<{ session: SyncState.SyncState; leader: SyncState.SyncState }> =>
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const session = yield* this[StoreInternalsSymbol].syncProcessor.syncState
         const leader = yield* this[StoreInternalsSymbol].clientSession.leaderThread.syncState
         return { session, leader }
       }).pipe(this.runEffectPromise),
 
     printSyncStates: () => {
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const session = yield* this[StoreInternalsSymbol].syncProcessor.syncState
         yield* Effect.log(
           `Session sync state: ${objectToString(session.localHead)} (upstream: ${objectToString(session.upstreamHead)})`,
