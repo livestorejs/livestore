@@ -180,7 +180,7 @@ describe('StoreRegistry', () => {
         expect(cached).toBe(store)
 
         // Let the idle timer fiber register its sleep with TestClock
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         // Advance time past unusedCacheTime → idle timer fires → entry evicted
         yield* TestClock.adjust(unusedCacheTime)
@@ -219,7 +219,7 @@ describe('StoreRegistry', () => {
         // Load without retaining — disposal is scheduled when scope closes
         const store = yield* registry.getOrLoad(options).pipe(Effect.scoped)
 
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* TestClock.adjust(unusedCacheTime)
 
         // Store should be disposed
@@ -238,7 +238,7 @@ describe('StoreRegistry', () => {
 
         const store = yield* registry.getOrLoad(options).pipe(Effect.scoped)
 
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* TestClock.adjust(unusedCacheTimeOverride)
 
         // Should be disposed according to the override time, not default
@@ -258,7 +258,7 @@ describe('StoreRegistry', () => {
         const shortStore = yield* registry.getOrLoad(shortOptions).pipe(Effect.scoped)
         const longStore = yield* registry.getOrLoad(longOptions).pipe(Effect.scoped)
 
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         // Advance past short store's unusedCacheTime only
         yield* TestClock.adjust(25)
@@ -288,7 +288,7 @@ describe('StoreRegistry', () => {
         yield* registry.getOrLoad(testStoreOptions({ unusedCacheTime: 100 })).pipe(Effect.scoped)
 
         release()
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         // After 99ms, store should still be alive (100ms unusedCacheTime used)
         yield* TestClock.adjust(99)
@@ -319,7 +319,7 @@ describe('StoreRegistry', () => {
           release()
         }
 
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* TestClock.adjust(unusedCacheTime)
 
         // Store should be disposed after the last release
@@ -337,7 +337,7 @@ describe('StoreRegistry', () => {
 
         const store = yield* registry.getOrLoad(options).pipe(Effect.scoped)
 
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         // Advance almost to disposal threshold
         yield* TestClock.adjust(unusedCacheTime - 5)
@@ -354,7 +354,7 @@ describe('StoreRegistry', () => {
 
         // Release retain — new idle timer starts
         release()
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         yield* TestClock.adjust(unusedCacheTime)
 
@@ -383,11 +383,11 @@ describe('StoreRegistry', () => {
 
         // Retain triggers loading (won't complete until clock advances past loadDelay)
         const release = registry.retain(options)
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         // Release immediately — schedules disposal after unusedCacheTime
         release()
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         // Advance past unusedCacheTime but NOT past loadDelay → disposal fires, interrupts loading
         yield* TestClock.adjust(unusedCacheTime)
@@ -398,7 +398,7 @@ describe('StoreRegistry', () => {
           startImmediately: true,
           uninterruptible: 'inherit',
         })
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         // Advance enough for the fresh load to complete
         yield* TestClock.adjust(loadDelay)
@@ -421,7 +421,7 @@ describe('StoreRegistry', () => {
         // Retain the store before disposal could fire
         const release = registry.retain(options)
 
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         // Advance past unusedCacheTime — idle timer fires but refCount > 0, so no eviction
         yield* TestClock.adjust(unusedCacheTime + 50)
@@ -455,7 +455,7 @@ describe('StoreRegistry', () => {
         expect(cached1).toBe(store1)
         expect(cached2).toBe(store2)
 
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* TestClock.adjust(unusedCacheTime)
 
         // Both stores should be disposed
@@ -478,7 +478,7 @@ describe('StoreRegistry', () => {
         expect(store).toBeDefined()
         expect(store[StoreInternalsSymbol].clientSession.debugInstanceId).toBeDefined()
 
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
 
         // After 50ms, store should still be cached (default is 100ms)
         yield* TestClock.adjust(50)
@@ -501,7 +501,7 @@ describe('StoreRegistry', () => {
         const cached = yield* registry.getOrLoad(options).pipe(Effect.scoped)
         expect(cached).toBe(originalStore)
 
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* TestClock.adjust(unusedCacheTime)
 
         // After disposal, calling getOrLoad should produce a fresh store
@@ -524,7 +524,7 @@ describe('StoreRegistry', () => {
         const cached = yield* registry.getOrLoad(options).pipe(Effect.scoped)
         expect(cached).toBe(store)
 
-        yield* Effect.yieldNow()
+        yield* Effect.yieldNow
         yield* TestClock.adjust(unusedCacheTime)
 
         // Store should be disposed since no retainers were added

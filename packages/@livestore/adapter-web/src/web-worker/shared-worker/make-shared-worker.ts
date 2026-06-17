@@ -115,7 +115,7 @@ const makeWorkerRunner = Effect.gen(function* () {
       // NOTE we're already unsetting the current worker here, so new incoming requests are queued for the new worker
       yield* SubscriptionRef.set(leaderWorkerContextSubRef, undefined)
 
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
 
       yield* Scope.close(prevWorker.scope, Exit.void).pipe(
         Effect.logWarnIfTakesLongerThan({
