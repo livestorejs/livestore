@@ -145,7 +145,7 @@ export const makeHttpSync =
             ? // Phase 2: Simulate `live` pull by polling for new events
               Stream.concatWithLastElement((lastElement) => {
                 const initialPhase2Cursor = lastElement.pipe(
-                  Option.flatMap((_) => Option.fromNullable(_.batch.at(-1)?.eventEncoded.seqNum)),
+                  Option.flatMap((_) => Option.fromNullishOr(_.batch.at(-1)?.eventEncoded.seqNum)),
                   Option.map((eventSequenceNumber) => ({ eventSequenceNumber })),
                   Option.orElse(() => cursor),
                   mapCursor,
@@ -160,7 +160,7 @@ export const makeHttpSync =
                     )
 
                     const nextCursor = EffectArray.last(items).pipe(
-                      Option.flatMap((item) => Option.fromNullable(item.batch.at(-1)?.eventEncoded.seqNum)),
+                      Option.flatMap((item) => Option.fromNullishOr(item.batch.at(-1)?.eventEncoded.seqNum)),
                       Option.map((eventSequenceNumber) => ({ eventSequenceNumber })),
                       Option.orElse(() => currentCursor),
                       mapCursor,
