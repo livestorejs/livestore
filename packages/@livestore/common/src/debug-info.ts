@@ -99,7 +99,7 @@ export const DebugInfo = Schema.Struct({
   slowQueries: BoundArraySchema(SlowQueryInfo),
   queryFrameDuration: Schema.Number,
   queryFrameCount: Schema.Number,
-  events: BoundArraySchema(Schema.Tuple(Schema.String, Schema.Any)),
+  events: BoundArraySchema(Schema.Tuple([Schema.String, Schema.Any])),
 })
 
 export type DebugInfo = typeof DebugInfo.Type
