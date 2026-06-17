@@ -1,8 +1,7 @@
 import * as OtelTracer from '@effect/opentelemetry/Tracer'
 import { Cause, Console, type Context, Deferred, Duration, Effect, Function, Fiber, pipe, Predicate, Scope, type Stream } from 'effect'
 
-import { isDevEnv, objectToString } from '../mod.ts'
-import { UnknownError } from './Error.ts'
+import { isDevEnv, objectToString } from '../misc.ts'
 
 export * from 'effect/Effect'
 export { spanEvent } from './spanEvent.ts'
