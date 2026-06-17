@@ -87,7 +87,7 @@ Vitest.describe('DockerCompose', { timeout: testTimeout }, () => {
           .pipe(Effect.result)
 
         // Should fail due to health check timeout
-        expect(result._tag).toBe('Left')
+        expect(result._tag).toBe('Failure')
       }).pipe(withHealthCheckTest({ serviceName: 'hello-world' })(test)),
     )
   })
