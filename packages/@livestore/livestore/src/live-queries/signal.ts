@@ -4,7 +4,7 @@ import { nanoid } from '@livestore/utils/nanoid'
 import type * as RG from '../reactive.ts'
 import type { RefreshReason } from '../store/store-types.ts'
 import type { ISignal, ReactivityGraph, ReactivityGraphContext, SignalDef } from './base-class.ts'
-import { LiveStoreQueryBase, withRCMap } from './base-class.ts'
+import { isSignalDef, LiveStoreQueryBase, withRCMap } from './base-class.ts'
 
 /**
  * Creates a reactive signal for ephemeral, local-only state that isn't persisted to the database.
@@ -70,8 +70,8 @@ export const signal = <T>(
           def,
         }),
     ),
-    [Equal.symbol](that: SignalDef<T>): boolean {
-      return this.hash === that.hash
+    [Equal.symbol](that: Equal.Equal): boolean {
+      return isSignalDef(that) && this.hash === that.hash
     },
     [Hash.symbol](): number {
       return Hash.string(this.hash)
