@@ -58,7 +58,7 @@ export const createDoRpcHandler = (
             ...res,
             rpcRequestId: Headers.get(headers, 'x-rpc-request-id').pipe(Option.getOrThrow),
           })),
-          Stream.provideLayer(DoCtx.layer({ ...input, from: { storeId: req.storeId } })),
+          Stream.provide(DoCtx.layer({ ...input, from: { storeId: req.storeId } })),
           Stream.mapError((cause) =>
             cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
               ? cause

@@ -674,7 +674,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             Stream.take(messageCount),
             Stream.runCollect,
           )
-          expect(Chunk.size(responses)).toBe(messageCount)
+          expect(responses.length).toBe(messageCount)
         })
 
         const nodeCCode = Effect.gen(function* () {
@@ -691,7 +691,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             Stream.take(messageCount),
             Stream.runCollect,
           )
-          expect(Chunk.size(responses)).toBe(messageCount)
+          expect(responses.length).toBe(messageCount)
         })
 
         yield* Effect.all([nodeACode, nodeCCode], { concurrency: 'unbounded' })
