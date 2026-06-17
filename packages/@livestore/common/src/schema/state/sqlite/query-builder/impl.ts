@@ -335,7 +335,7 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
         return arraySchema.pipe(Schema.headOrElse())
       } else {
         const fallbackValue = queryAst.pickFirst.fallback()
-        return Schema.Union([arraySchema, Schema.Tuple(Schema.Literal(fallbackValue))]).pipe(
+        return Schema.Union([arraySchema, Schema.Tuple([Schema.Literal(fallbackValue)])]).pipe(
           Schema.headOrElse(() => fallbackValue),
         )
       }
