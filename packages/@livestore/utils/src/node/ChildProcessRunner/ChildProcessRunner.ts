@@ -117,7 +117,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
               if (Effect.isEffect(result) === true) {
                 const fiber = runFork(result)
                 fiber.addObserver(onExit)
-                FiberSet.unsafeAdd(fiberSet, fiber)
+                FiberSet.addUnsafe(fiberSet, fiber)
               }
             } else {
               // Graceful shutdown requested by parent: stop monitoring and close port

@@ -35,7 +35,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
       const serialization = yield* RpcSerialization.RpcSerialization
 
       const write = yield* socket.writer
-      const parser = serialization.unsafeMake()
+      const parser = serialization.makeUnsafe()
 
       const pinger = yield* makePinger(write(parser.encode(constPing)!), options?.pingSchedule)
 
@@ -45,7 +45,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
         // don't contain explicit `Pong` messages don't trigger the open-timeout defect.
         // (The actual pong handler still calls `onPong()` to resolve manual pings.)
         // CHANGED: don't reset parser on every message
-        // parser = serialization.unsafeMake()
+        // parser = serialization.makeUnsafe()
         pinger.reset()
         return socket
           .runRaw((message) => {
