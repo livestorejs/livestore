@@ -1,12 +1,4 @@
-import * as Cause from 'effect/Cause'
-import * as Context from 'effect/Context'
-import * as Effect from 'effect/Effect'
-import type * as Exit from 'effect/Exit'
-import type * as Fiber from 'effect/Fiber'
-import * as Graph from 'effect/Graph'
-import * as Option from 'effect/Option'
-import * as Scope from 'effect/Scope'
-import * as Tracer from 'effect/Tracer'
+import { Effect, Cause, Context, type Exit, type Fiber, Graph, Option, Scope, Tracer } from 'effect'
 
 /**
  * How to use:
