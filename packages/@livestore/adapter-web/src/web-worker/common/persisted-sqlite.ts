@@ -255,7 +255,7 @@ const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDire
   )
   const filesToDelete = filesWithMetadata.pipe(
     // oxlint-disable-next-line unicorn/no-array-sort -- false positive: Effect Chunk.sort is immutable, not Array#sort (https://github.com/oxc-project/oxc/issues/19110)
-    Chunk.sort(Order.mapInput(Order.number, (entry: { lastModified: number }) => entry.lastModified)),
+    Chunk.sort(Order.mapInput(Order.Number, (entry: { lastModified: number }) => entry.lastModified)),
     Chunk.drop(keep),
     Chunk.toReadonlyArray,
   )
