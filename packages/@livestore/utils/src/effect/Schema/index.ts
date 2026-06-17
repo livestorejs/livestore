@@ -50,7 +50,7 @@ export const encodeWithTransferables =
         Effect.provideService(Transferable.Collector, collector),
       )
 
-      return [encoded, collector.unsafeRead() as TransferableObject[]]
+      return [encoded, collector.readUnsafe() as TransferableObject[]]
     })
 
 export const decodeSyncDebug: <A, I>(

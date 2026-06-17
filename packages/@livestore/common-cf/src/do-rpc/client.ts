@@ -14,7 +14,7 @@ import type * as CfTypes from '../cf-types.ts'
 /** Decodes a streaming-RPC `ReadableStream`'s msgpack frames, writing each out as it arrives. */
 const processReadableStream = (
   stream: CfTypes.ReadableStream,
-  parser: ReturnType<typeof RpcSerialization.msgPack.unsafeMake>,
+  parser: ReturnType<typeof RpcSerialization.msgPack.makeUnsafe>,
   writeResponse: (response: any) => Effect.Effect<void>,
 ): Effect.Effect<void> =>
   Effect.gen(function* () {
@@ -85,7 +85,7 @@ const makeProtocolDurableObject = ({
         }
 
         // MessagePack parsers buffer incomplete frames, so scope one parser to one DO RPC call.
-        const parser = RpcSerialization.msgPack.unsafeMake()
+        const parser = RpcSerialization.msgPack.makeUnsafe()
 
         // Wrap single Request in array to match server expected format
         const serializedPayload = parser.encode([message]) as Uint8Array

@@ -40,7 +40,7 @@ export const toDurableObjectHandler =
   ) => Effect.Effect<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream>) =>
   (serializedPayload) =>
     Effect.gen(function* () {
-      const parser = RpcSerialization.msgPack.unsafeMake()
+      const parser = RpcSerialization.msgPack.makeUnsafe()
 
       // Decode incoming requests - client sends array of requests
       const decoded = parser.decode(serializedPayload)
@@ -198,7 +198,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
   rpc: Rpc.AnyWithProps,
   entry: Rpc.Handler<Rpcs['_tag']>,
   request: any,
-  parser: ReturnType<typeof RpcSerialization.msgPack.unsafeMake>,
+  parser: ReturnType<typeof RpcSerialization.msgPack.makeUnsafe>,
   layer: Layer.Layer<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>, LE>,
 ): Effect.Effect<CfTypes.ReadableStream, never, Scope.Scope> =>
   Effect.gen(function* () {
