@@ -483,11 +483,15 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           // yield* createChannel(nodeA, 'B').pipe(Effect.andThen(WebChannel.shutdown))
           // // yield* createChannel(nodeA, 'B').pipe(Effect.andThen(WebChannel.shutdown))
           // // yield* createChannel(nodeA, 'B').pipe(Effect.andThen(WebChannel.shutdown))
-          yield* Effect.gen(function* () {
-            const channelAToB = yield* createChannel(nodeA, 'B')
-            yield* channelAToB.send({ message: 'A' })
-            expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'resp:A' })
-          }).pipe(Effect.scoped, Effect.repeatN(messageCount))
+          yield* Effect.replicateEffect(
+            Effect.gen(function* () {
+              const channelAToB = yield* createChannel(nodeA, 'B')
+              yield* channelAToB.send({ message: 'A' })
+              expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'resp:A' })
+            }).pipe(Effect.scoped),
+            messageCount,
+            { discard: true },
+          )
 
           yield* Fiber.join(bFiber)
         }).pipe(Vitest.withTestCtx(test)),
