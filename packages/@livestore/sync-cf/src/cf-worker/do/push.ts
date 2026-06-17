@@ -183,7 +183,7 @@ export const makePush =
       )
 
       // We need to yield here to make sure the fork above is kicked off before we let Effect RPC finish the request
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
 
       return SyncMessage.PushAck.make({})
     }).pipe(

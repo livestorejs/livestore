@@ -423,7 +423,7 @@ export const createStore = <
       }
 
       // NOTE it's important to yield here to allow the forked Effect in the store constructor to run
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
 
       if (batchUpdates !== undefined) {
         // Replacing the default batchUpdates function with the provided one after boot
