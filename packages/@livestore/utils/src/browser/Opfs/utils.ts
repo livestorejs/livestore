@@ -170,7 +170,6 @@ export const exists = Effect.fn('@livestore/utils:Opfs.exists')(function* (path:
   if (parentDirHandle === undefined) return false
 
   const opfs = yield* Opfs.Opfs
-
   return yield* opfs.getFileHandle(parentDirHandle, targetName).pipe(
     Effect.catch(() => opfs.getDirectoryHandle(parentDirHandle, targetName, { create: false })),
     Effect.as(true),
