@@ -1,5 +1,5 @@
 import './QuotaExceededError.ts'
-import { Result, Predicate, Schema, SchemaGetter } from 'effect'
+import { Predicate, Schema } from 'effect'
 
 /**
  * Unique identifier for web errors.
@@ -23,7 +23,7 @@ const TypeId = '~@livestore/utils/WebError' as const
  * })
  *
  * console.log(WebError.isWebError(someError)) // false
- * console.log(WebError.isWebError(webError))   // true
+ * console.log(WebError.isWebError(webError)) // true
  * ```
  */
 export const isWebError = (u: unknown): u is WebError => Predicate.hasProperty(u, TypeId)
@@ -116,17 +116,11 @@ export class URIError extends Schema.TaggedErrorClass<URIError>(`${TypeId}/URIEr
 // [Specification](https://webidl.spec.whatwg.org/#idl-DOMException-derived-predefineds)
 
 const domExceptionWithName = (expectedName: string) =>
-  Schema.instanceOf(DOMException).pipe(
-    Schema.check(
-      Schema.makeFilter((a, _ast, options) =>
-        Schema.decodeResult(
-          Schema.toType(
-            Schema.Struct({
-              name: Schema.Literal(expectedName),
-            }),
-          ),
-        )(a, options).pipe((result) => (Result.isFailure(result) ? result.failure.issue : undefined)),
-      ),
+  Schema.instanceOf(DOMException).check(
+    Schema.makeFilter((domException) =>
+      domException.name === expectedName
+        ? undefined
+        : `Expected DOMException with name "${expectedName}", got "${domException.name}"`,
     ),
   )
 
@@ -493,69 +487,6 @@ export const WebError: Schema.Union<
 type WebErrorConstructor = (typeof WebError.members)[number]
 
 /**
- * Schema transform for converting unknown values to WebError instances.
- *
- * This transform handles various web error types and converts them to
- * properly typed WebError instances while preserving the original cause.
- */
-const WebErrorFromUnknown = Schema.Unknown.pipe(
-  Schema.decodeTo(
-    Schema.toType(WebError),
-    {
-      decode: SchemaGetter.transform((value) => {
-        // Already a WebError
-        if (isWebError(value) === true) return value
-
-        // Simple Exception Errors
-        if (value instanceof globalThis.EvalError) return new EvalError({ cause: value })
-        if (value instanceof globalThis.RangeError) return new RangeError({ cause: value })
-        if (value instanceof globalThis.ReferenceError) return new ReferenceError({ cause: value })
-        if (value instanceof globalThis.TypeError) return new TypeError({ cause: value })
-        if (value instanceof globalThis.URIError) return new URIError({ cause: value })
-
-        // Predefined DOMException Errors
-        if (typeof globalThis.QuotaExceededError === 'function' && value instanceof globalThis.QuotaExceededError) {
-          return new QuotaExceededError({ cause: value })
-        }
-
-        // Base DOMException Errors
-        if (value instanceof DOMException) {
-          switch (value.name) {
-            case 'QuotaExceededError':
-              return new QuotaExceededError({ cause: value })
-            case 'NoModificationAllowedError':
-              return new NoModificationAllowedError({ cause: value })
-            case 'NotFoundError':
-              return new NotFoundError({ cause: value })
-            case 'NotAllowedError':
-              return new NotAllowedError({ cause: value })
-            case 'TypeMismatchError':
-              return new TypeMismatchError({ cause: value })
-            case 'InvalidStateError':
-              return new InvalidStateError({ cause: value })
-            case 'AbortError':
-              return new AbortError({ cause: value })
-            case 'InvalidModificationError':
-              return new InvalidModificationError({ cause: value })
-            case 'SecurityError':
-              return new SecurityError({ cause: value })
-            case 'DataCloneError':
-              return new DataCloneError({ cause: value })
-            default:
-              break
-          }
-        }
-
-        if (value instanceof Error) return new UnknownError({ description: value.message, cause: value })
-
-        return new UnknownError({ cause: value })
-      }),
-      encode: SchemaGetter.passthroughSubtype(),
-    },
-  ),
-)
-
-/**
  * Parses an unknown value into a typed WebError instance.
  *
  * This function safely attempts to parse the provided value into one of the
@@ -594,18 +525,69 @@ const WebErrorFromUnknown = Schema.Unknown.pipe(
  * // anyError is typed as WebError (all possible error types)
  * ```
  */
-export function parseWebError(value: unknown): WebError
-export function parseWebError<BECs extends readonly WebErrorConstructor[]>(
+export function classifyWebError(value: unknown): WebError
+export function classifyWebError<BECs extends readonly WebErrorConstructor[]>(
   value: unknown,
   expected: BECs,
 ): InstanceType<BECs[number]> | UnknownError
-export function parseWebError(value: unknown, expected: readonly WebErrorConstructor[] = []): WebError {
-  const parsed = Schema.decodeUnknownSync(WebErrorFromUnknown)(value)
+export function classifyWebError(value: unknown, expected: readonly WebErrorConstructor[] = []): WebError {
+  const parsed = parseWebError(value)
 
   if (expected.length === 0) return parsed
 
-  const expectedTags = new Set(expected.map((ErrorConstructor) => ErrorConstructor._tag))
-  if (expectedTags.has(parsed._tag) === true) return parsed
+  if (expected.some((ErrorConstructor) => parsed instanceof ErrorConstructor) === true) return parsed
 
   return parsed instanceof UnknownError ? parsed : new UnknownError({ cause: parsed })
+}
+
+/**
+ * Converts web-native exception shapes to LiveStore's `WebError`
+ * classes while preserving the original value as `cause`.
+ */
+const parseWebError = (cause: unknown): WebError => {
+  if (isWebError(cause) === true) return cause
+
+  // Simple Exception Errors
+  if (cause instanceof globalThis.EvalError) return new EvalError({ cause: cause })
+  if (cause instanceof globalThis.RangeError) return new RangeError({ cause: cause })
+  if (cause instanceof globalThis.ReferenceError) return new ReferenceError({ cause: cause })
+  if (cause instanceof globalThis.TypeError) return new TypeError({ cause: cause })
+  if (cause instanceof globalThis.URIError) return new URIError({ cause: cause })
+
+  // Predefined DOMException Errors
+  if (typeof globalThis.QuotaExceededError === 'function' && cause instanceof globalThis.QuotaExceededError) {
+    return new QuotaExceededError({ cause: cause })
+  }
+
+  // Base DOMException Errors
+  if (cause instanceof DOMException) {
+    switch (cause.name) {
+      case 'QuotaExceededError':
+        return new QuotaExceededError({ cause: cause })
+      case 'NoModificationAllowedError':
+        return new NoModificationAllowedError({ cause: cause })
+      case 'NotFoundError':
+        return new NotFoundError({ cause: cause })
+      case 'NotAllowedError':
+        return new NotAllowedError({ cause: cause })
+      case 'TypeMismatchError':
+        return new TypeMismatchError({ cause: cause })
+      case 'InvalidStateError':
+        return new InvalidStateError({ cause: cause })
+      case 'AbortError':
+        return new AbortError({ cause: cause })
+      case 'InvalidModificationError':
+        return new InvalidModificationError({ cause: cause })
+      case 'SecurityError':
+        return new SecurityError({ cause: cause })
+      case 'DataCloneError':
+        return new DataCloneError({ cause: cause })
+      default:
+        break
+    }
+  }
+
+  if (cause instanceof Error) return new UnknownError({ description: cause.message, cause: cause })
+
+  return new UnknownError({ cause: cause })
 }
