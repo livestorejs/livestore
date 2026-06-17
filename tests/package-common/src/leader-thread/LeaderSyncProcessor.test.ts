@@ -441,7 +441,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       for (let i = 0; i < 10; i++) {
         const event = eventFactory.todoCreated.next({ id: `session_1_${i}`, text: '', completed: false })
-        yield* testContext.pushEncoded(event).pipe(Effect.repeatN(1), Effect.ignore)
+        yield* testContext.pushEncoded(event).pipe(Effect.repeat({ times: 1 }), Effect.ignore)
       }
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(10), Stream.runDrain)
