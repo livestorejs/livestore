@@ -226,13 +226,13 @@ export const layer = Layer.succeed(
   Opfs.of({
     getRootDirectoryHandle: Effect.tryPromise({
       try: () => navigator.storage.getDirectory(),
-      catch: (u) => WebError.parseWebError(u, [WebError.SecurityError]),
+      catch: (u) => WebError.classifyWebError(u, [WebError.SecurityError]),
     }),
     getFileHandle: (parent: FileSystemDirectoryHandle, name: string, options?: FileSystemGetFileOptions) =>
       Effect.tryPromise({
         try: () => parent.getFileHandle(name, options),
         catch: (u) =>
-          WebError.parseWebError(u, [
+          WebError.classifyWebError(u, [
             WebError.NotAllowedError,
             WebError.TypeError,
             WebError.TypeMismatchError,
@@ -247,7 +247,7 @@ export const layer = Layer.succeed(
       Effect.tryPromise({
         try: () => parent.getDirectoryHandle(name, options),
         catch: (u) =>
-          WebError.parseWebError(u, [
+          WebError.classifyWebError(u, [
             WebError.NotAllowedError,
             WebError.TypeError,
             WebError.TypeMismatchError,
@@ -258,7 +258,7 @@ export const layer = Layer.succeed(
       Effect.tryPromise({
         try: () => parent.removeEntry(name, options),
         catch: (u) =>
-          WebError.parseWebError(u, [
+          WebError.classifyWebError(u, [
             WebError.TypeError,
             WebError.NotAllowedError,
             WebError.InvalidModificationError,
@@ -274,17 +274,17 @@ export const layer = Layer.succeed(
       never
     > =>
       Stream.fromAsyncIterable(directory.values(), (u) =>
-        WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
+        WebError.classifyWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
       ),
     resolve: (parent: FileSystemDirectoryHandle, child: FileSystemHandle) =>
       Effect.tryPromise({
         try: () => parent.resolve(child),
-        catch: (u) => WebError.parseWebError(u),
+        catch: (u) => WebError.classifyWebError(u),
       }).pipe(Effect.map((path) => (path === null ? Option.none() : Option.some(path)))),
     getFile: (handle: FileSystemFileHandle) =>
       Effect.tryPromise({
         try: () => handle.getFile(),
-        catch: (u) => WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
+        catch: (u) => WebError.classifyWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
       }),
     writeFile: (
       handle: FileSystemFileHandle,
@@ -295,7 +295,7 @@ export const layer = Layer.succeed(
         Effect.tryPromise({
           try: () => handle.createWritable(options),
           catch: (u) =>
-            WebError.parseWebError(u, [
+            WebError.classifyWebError(u, [
               WebError.NotAllowedError,
               WebError.NotFoundError,
               WebError.NoModificationAllowedError,
@@ -306,12 +306,12 @@ export const layer = Layer.succeed(
           Effect.tryPromise({
             try: () => stream.write(data),
             catch: (u) =>
-              WebError.parseWebError(u, [WebError.NotAllowedError, WebError.QuotaExceededError, WebError.TypeError]),
+              WebError.classifyWebError(u, [WebError.NotAllowedError, WebError.QuotaExceededError, WebError.TypeError]),
           }),
         (stream) =>
           Effect.tryPromise({
             try: () => stream.close(),
-            catch: (u) => WebError.parseWebError(u, [WebError.TypeError]),
+            catch: (u) => WebError.classifyWebError(u, [WebError.TypeError]),
           }).pipe(Effect.catchCause(() => Effect.void)),
       ),
     appendToFile: (handle: FileSystemFileHandle, data: FileSystemWriteChunkType) =>
@@ -319,7 +319,7 @@ export const layer = Layer.succeed(
         Effect.tryPromise({
           try: () => handle.createWritable({ keepExistingData: true }),
           catch: (u) =>
-            WebError.parseWebError(u, [
+            WebError.classifyWebError(u, [
               WebError.NotAllowedError,
               WebError.NotFoundError,
               WebError.NoModificationAllowedError,
@@ -330,22 +330,22 @@ export const layer = Layer.succeed(
           Effect.gen(function* () {
             const file = yield* Effect.tryPromise({
               try: () => handle.getFile(),
-              catch: (u) => WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
+              catch: (u) => WebError.classifyWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
             })
             yield* Effect.tryPromise({
               try: () => stream.seek(file.size),
-              catch: (u) => WebError.parseWebError(u, [WebError.NotAllowedError, WebError.TypeError]),
+              catch: (u) => WebError.classifyWebError(u, [WebError.NotAllowedError, WebError.TypeError]),
             })
             yield* Effect.tryPromise({
               try: () => stream.write(data),
               catch: (u) =>
-                WebError.parseWebError(u, [WebError.NotAllowedError, WebError.QuotaExceededError, WebError.TypeError]),
+                WebError.classifyWebError(u, [WebError.NotAllowedError, WebError.QuotaExceededError, WebError.TypeError]),
             })
           }),
         (stream) =>
           Effect.tryPromise({
             try: () => stream.close(),
-            catch: (u) => WebError.parseWebError(u, [WebError.TypeError]),
+            catch: (u) => WebError.classifyWebError(u, [WebError.TypeError]),
           }).pipe(Effect.catchCause(() => Effect.void)),
       ),
     truncateFile: (handle: FileSystemFileHandle, size: number) =>
@@ -353,7 +353,7 @@ export const layer = Layer.succeed(
         Effect.tryPromise({
           try: () => handle.createWritable({ keepExistingData: true }),
           catch: (u) =>
-            WebError.parseWebError(u, [
+            WebError.classifyWebError(u, [
               WebError.NotAllowedError,
               WebError.NotFoundError,
               WebError.NoModificationAllowedError,
@@ -364,12 +364,12 @@ export const layer = Layer.succeed(
           Effect.tryPromise({
             try: () => stream.truncate(size),
             catch: (u) =>
-              WebError.parseWebError(u, [WebError.NotAllowedError, WebError.TypeError, WebError.QuotaExceededError]),
+              WebError.classifyWebError(u, [WebError.NotAllowedError, WebError.TypeError, WebError.QuotaExceededError]),
           }),
         (stream) =>
           Effect.tryPromise({
             try: () => stream.close(),
-            catch: (u) => WebError.parseWebError(u, [WebError.TypeError]),
+            catch: (u) => WebError.classifyWebError(u, [WebError.TypeError]),
           }).pipe(Effect.catchCause(() => Effect.void)),
       ),
     createSyncAccessHandle: (handle: FileSystemFileHandle) =>
@@ -377,7 +377,7 @@ export const layer = Layer.succeed(
         Effect.tryPromise({
           try: () => handle.createSyncAccessHandle(),
           catch: (u) =>
-            WebError.parseWebError(u, [
+            WebError.classifyWebError(u, [
               WebError.NotAllowedError,
               WebError.InvalidStateError,
               WebError.NotFoundError,
@@ -393,7 +393,7 @@ export const layer = Layer.succeed(
     ) =>
       Effect.try({
         try: () => handle.read(buffer, options),
-        catch: (u) => WebError.parseWebError(u, [WebError.RangeError, WebError.InvalidStateError, WebError.TypeError]),
+        catch: (u) => WebError.classifyWebError(u, [WebError.RangeError, WebError.InvalidStateError, WebError.TypeError]),
       }),
     syncWrite: (
       handle: FileSystemSyncAccessHandle,
@@ -402,22 +402,22 @@ export const layer = Layer.succeed(
     ) =>
       Effect.try({
         try: () => handle.write(buffer, options),
-        catch: (u) => WebError.parseWebError(u),
+        catch: (u) => WebError.classifyWebError(u),
       }),
     syncTruncate: (handle: FileSystemSyncAccessHandle, size: number) =>
       Effect.try({
         try: () => handle.truncate(size),
-        catch: (u) => WebError.parseWebError(u),
+        catch: (u) => WebError.classifyWebError(u),
       }),
     syncGetSize: (handle: FileSystemSyncAccessHandle) =>
       Effect.try({
         try: () => handle.getSize(),
-        catch: (u) => WebError.parseWebError(u),
+        catch: (u) => WebError.classifyWebError(u),
       }),
     syncFlush: (handle: FileSystemSyncAccessHandle) =>
       Effect.try({
         try: () => handle.flush(),
-        catch: (u) => WebError.parseWebError(u),
+        catch: (u) => WebError.classifyWebError(u),
       }),
   }),
 )
