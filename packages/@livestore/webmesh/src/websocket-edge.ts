@@ -1,6 +1,7 @@
 import {
   type HttpClient,
   Deferred,
+  Duration,
   Effect,
   Result,
   Exit,
@@ -104,8 +105,10 @@ export const makeWebSocketEdge = ({
 
       const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
-      const retryOpenTimeoutSchedule = Schedule.union(Schedule.exponential(100), Schedule.spaced(5000)).pipe(
-        Schedule.whileInput((_: Socket.SocketError) => _.reason === 'OpenTimeout' || _.reason === 'Open'),
+      const retryOpenTimeoutSchedule = Schedule.exponential(100).pipe(
+        Schedule.modifyDelay((_, delay) => Duration.min(delay, Duration.millis(5000))),
+        Schedule.setInputType<Socket.SocketError>(),
+        Schedule.while(({ input }) => input.reason === 'OpenTimeout' || input.reason === 'Open'),
       )
 
       const sendToSocket = yield* socket.writer
