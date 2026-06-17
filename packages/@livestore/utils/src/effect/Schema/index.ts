@@ -1,5 +1,4 @@
 import { Effect, Hash, ParseResult, Result, Schema } from 'effect'
-import type { ParseError } from 'effect/ParseResult'
 import type { ParseOptions } from 'effect/SchemaAST'
 import * as SchemaAST from 'effect/SchemaAST'
 import { Transferable } from 'effect/unstable/workers'
@@ -43,7 +42,7 @@ type TransferableObject = ArrayBuffer | MessagePort
 
 export const encodeWithTransferables =
   <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions) =>
-  (a: A, overrideOptions?: ParseOptions): Effect.Effect<[I, TransferableObject[]], ParseError, R> =>
+  (a: A, overrideOptions?: ParseOptions): Effect.Effect<[I, TransferableObject[]], Schema.SchemaError, R> =>
     Effect.gen(function* () {
       const collector = yield* Transferable.makeCollector
 

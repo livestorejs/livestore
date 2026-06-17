@@ -114,6 +114,7 @@ export {
   Request,
   Runtime,
   RuntimeFlags,
+  SchemaIssue,
   Scope,
   ScopedRef,
   Sink,
@@ -130,7 +131,6 @@ export { FastCheck, TestClock, TestConsole } from 'effect/testing'
 export type { NonEmptyArray } from 'effect/Array'
 export { dual } from 'effect/Function'
 export * as Graph from 'effect/Graph'
-export { TreeFormatter } from 'effect/ParseResult'
 export type { Serializable, SerializableWithResult } from 'effect/Schema'
 export * as SchemaAST from 'effect/SchemaAST'
 export * as Debug from './Debug.ts'

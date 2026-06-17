@@ -934,7 +934,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     return clientSession.leaderThread.events.stream(baseOptions).pipe(
       Stream.mapArrayEffect(Schema.decodeEffect(Schema.Chunk(eventSchema))),
-      Stream.catchTag('ParseError', (cause) => Stream.fail(UnknownError.make({ cause }))),
+      Stream.catchTag('SchemaError', (cause) => Stream.fail(UnknownError.make({ cause }))),
       Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
     )
   }
