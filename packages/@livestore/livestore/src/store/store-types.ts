@@ -23,7 +23,7 @@ import type {
   ReactivityGraphContext,
   SignalDef,
 } from '../live-queries/base-class.ts'
-import { TypeId } from '../live-queries/base-class.ts'
+import { isLiveQueryDef, TypeId } from '../live-queries/base-class.ts'
 import type { DebugRefreshReasonBase, Ref } from '../reactive.ts'
 import type { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
 import type { ReferenceCountedSet } from '../utils/data-structures.ts'
@@ -334,48 +334,7 @@ export namespace Queryable {
   export type Result<TQueryable extends Queryable<any>> = TQueryable extends Queryable<infer TResult> ? TResult : never
 }
 
-/**
- * Type guard that checks if a value is a query or signal definition.
- *
- * Use this to distinguish between definitions (blueprints) and instances (live queries).
- * Definitions are created by `queryDb()`, `computed()`, and `signal()`.
- *
- * @example
- * ```ts
- * const todos$ = queryDb(tables.todos.all())
- *
- * if (isLiveQueryDef(todos$)) {
- *   console.log('This is a definition:', todos$.label)
- * }
- * ```
- */
-export const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<any> => {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-
-  if (!('_tag' in value)) {
-    return false
-  }
-
-  const tag = (value as LiveQueryDef<any> | SignalDef<any>)._tag
-  if (tag !== 'def' && tag !== 'signal-def') {
-    return false
-  }
-
-  const candidate = value as LiveQueryDef<any>
-  if (typeof candidate.make !== 'function') {
-    // The store calls make() to turn the definition into a live query instance.
-    return false
-  }
-
-  if (typeof candidate.hash !== 'string' || typeof candidate.label !== 'string') {
-    // Both identifiers must be present so the store can cache and log the query.
-    return false
-  }
-
-  return true
-}
+export { isLiveQueryDef }
 
 /**
  * Type guard that checks if a value is a live query instance.
