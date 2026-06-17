@@ -595,11 +595,11 @@ export const make = Effect.fnUntraced(function* ({
       // - Resets automatically after successful push
       // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
       yield* Effect.gen(function* () {
-        const iteration = yield* Schedule.CurrentIterationMetadata
+        const iteration = yield* Schedule.CurrentMetadata
 
         const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.result)
 
-        const retries = iteration.recurrence
+        const retries = iteration.attempt
         if (retries > 0 && Result.isSuccess(pushResult)) {
           yield* Effect.spanEvent('backend-push-retry-success', { retries, batchSize: queueItems.length })
         }

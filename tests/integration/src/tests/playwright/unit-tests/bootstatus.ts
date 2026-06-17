@@ -31,7 +31,7 @@ export const test = () =>
     const bootStatusUpdates: BootStatus[] = []
     yield* Queue.take(bootStatusQueue).pipe(
       Effect.tapSync((update) => bootStatusUpdates.push(update)),
-      Effect.repeat(Schedule.forever.pipe(Schedule.untilInput((_: BootStatus) => _.stage === 'done'))),
+      Effect.repeat(Schedule.identity<BootStatus>().pipe(Schedule.while(({ input }) => input.stage !== 'done'))),
     )
 
     return { bootStatusUpdates, migrationsReport: clientSession.leaderThread.initialState.migrationsReport }
