@@ -1,5 +1,4 @@
 import {
-  type ParseResult,
   type Scope,
   type WebChannel,
   Data,
@@ -42,7 +41,7 @@ export const provideSessionInfo = ({
 }: {
   webChannel: WebChannel.WebChannel<Message, Message>
   sessionInfo: SessionInfo
-}): Effect.Effect<void, ParseResult.ParseError> =>
+}): Effect.Effect<void, Schema.SchemaError> =>
   Effect.gen(function* () {
     yield* webChannel.send(sessionInfo)
 
@@ -63,7 +62,7 @@ export const requestSessionInfoSubscription = ({
   webChannel: WebChannel.WebChannel<Message, Message>
   pollInterval?: Duration.Input
   staleTimeout?: Duration.Input
-}): Effect.Effect<Subscribable.Subscribable<HashSet.HashSet<SessionInfo>>, ParseResult.ParseError, Scope.Scope> =>
+}): Effect.Effect<Subscribable.Subscribable<HashSet.HashSet<SessionInfo>>, Schema.SchemaError, Scope.Scope> =>
   Effect.gen(function* () {
     yield* webChannel
       .send(RequestSessions.make({}))

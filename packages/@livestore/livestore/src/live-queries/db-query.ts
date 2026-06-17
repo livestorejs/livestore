@@ -12,7 +12,7 @@ import {
   UnknownError,
 } from '@livestore/common'
 import { deepEqual, objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
-import { Equal, Hash, Predicate, Result, Schema, TreeFormatter } from '@livestore/utils/effect'
+import { Equal, Hash, Predicate, Result, Schema, SchemaIssue } from '@livestore/utils/effect'
 
 import type { Thunk } from '../reactive.ts'
 import { isThunk, NOT_REFRESHED_YET } from '../reactive.ts'
@@ -409,7 +409,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
             const parsedResult = Schema.decodeExit(schemaRef.current!)(rawDbResults)
 
             if (Result.isFailure(parsedResult)) {
-              const parseErrorStr = TreeFormatter.formatErrorSync(parsedResult.failure)
+              const parseErrorStr = SchemaIssue.makeFormatterDefault()(parsedResult.failure.issue)
               const expectedSchemaStr = String(schemaRef.current!.ast)
               const bindValuesStr = bindValues === undefined ? '' : `\nBind values: ${JSON.stringify(bindValues)}`
 
