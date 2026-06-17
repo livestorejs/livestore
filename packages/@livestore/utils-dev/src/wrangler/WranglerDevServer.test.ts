@@ -78,8 +78,8 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
           Effect.result,
         )
 
-        expect(Result.isFailure(result)).toBe(true)
-        if (Result.isFailure(result)) {
+        expect(result._tag).toBe('Failure')
+        if (result._tag === 'Failure') {
           expect(result.failure).toBeInstanceOf(WranglerDevServer.WranglerDevServerError)
         }
       }).pipe(Vitest.withTestCtx(test)),
@@ -96,7 +96,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
 
         // This might succeed or fail depending on actual wrangler behavior
         // The main point is testing timeout functionality
-        expect(['Left', 'Right']).toContain(result._tag)
+        expect(['Failure', 'Success']).toContain(result._tag)
       }).pipe(withErrorTest()(test)),
     )
   })
