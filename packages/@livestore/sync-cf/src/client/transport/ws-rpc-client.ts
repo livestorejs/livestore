@@ -4,7 +4,7 @@ import { splitChunkBySize } from '@livestore/common/sync'
 import { omit } from '@livestore/utils'
 import {
   Chunk,
-  type Duration,
+  Duration,
   Effect,
   Layer,
   Option,
@@ -97,10 +97,12 @@ export const makeWsSync =
       const ProtocolLive = RpcClient.layerProtocolSocketWithIsConnected({
         isConnected,
         retryTransientErrors: Schedule.exponential('1 seconds').pipe(
-          Schedule.union(Schedule.fixed('30 seconds')),
+          Schedule.modifyDelay((_, delay) => Duration.min(delay, Duration.seconds(30))),
           Schedule.jittered,
         ),
-        pingSchedule: Schedule.once.pipe(Schedule.andThen(Schedule.fixed(pingInterval))),
+        pingSchedule: Schedule.recurs(1).pipe(
+          Schedule.andThen(Schedule.fixed(pingInterval)),
+        ),
         url: wsUrl,
       }).pipe(
         Layer.provide(Socket.layerWebSocket(wsUrl)),
