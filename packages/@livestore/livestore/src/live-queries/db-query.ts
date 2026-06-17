@@ -20,7 +20,7 @@ import type { RefreshReason } from '../store/store-types.ts'
 import { StoreInternalsSymbol } from '../store/store-types.ts'
 import { isValidFunctionString } from '../utils/function-string.ts'
 import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.ts'
-import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.ts'
+import { depsToString, isLiveQueryDef, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.ts'
 import { makeExecBeforeFirstRun, rowQueryLabel } from './client-document-get-query.ts'
 
 export type QueryInputRaw<TDecoded, TEncoded> = {
@@ -136,8 +136,8 @@ export const queryDb: {
     }),
     label,
     hash,
-    [Equal.symbol](that: LiveQueryDef<any>): boolean {
-      return this.hash === that.hash
+    [Equal.symbol](that: Equal.Equal): boolean {
+      return isLiveQueryDef(that) && that._tag === 'def' && this.hash === that.hash
     },
     [Hash.symbol](): number {
       return Hash.string(this.hash)
