@@ -286,7 +286,7 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
 
     let writeRequest!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
 
-    const parser = serialization.unsafeMake()
+    const parser = serialization.makeUnsafe()
     const id = 0
 
     const write = (response: RpcMessage.FromServerEncoded) => {
