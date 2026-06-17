@@ -5,6 +5,7 @@ import {
   Exit,
   FiberHandle,
   Option,
+  Predicate,
   Queue,
   Schema,
   type Scope,
@@ -158,7 +159,10 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
             isClientOnlyEvent,
             isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
           }).pipe(
-            Effect.filterOrDieMessage((r) => r._tag !== 'reject', 'Unexpected reject in client-session-sync-processor'),
+            Effect.filterOrElse(
+              (r) => r._tag !== 'reject',
+              () => Effect.die(new Error('Unexpected reject in client-session-sync-processor')),
+            ),
           )
 
           syncStateRef.current = mergeResult.newSyncState
@@ -319,7 +323,12 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         payload: { _tag: 'local-push', newEvents: encodedEvents },
         isClientOnlyEvent,
         isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-      }).pipe(Effect.filterOrDieMessage((r) => r._tag === 'advance', 'Expected advance from local-push merge'))
+      }).pipe(
+        Effect.filterOrElse(
+          Predicate.isTagged('advance'),
+          () => Effect.die(new Error('Expected advance from local-push merge')),
+        ),
+      )
 
       yield* Effect.annotateCurrentSpan({
         batchSize: encodedEvents.length,
