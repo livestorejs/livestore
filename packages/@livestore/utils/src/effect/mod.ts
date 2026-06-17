@@ -1,23 +1,6 @@
 import '../global.ts'
 
-export {
-  AiError,
-  LanguageModel,
-  LanguageModel as AiLanguageModel,
-  McpSchema,
-  McpServer,
-  Model,
-  Model as AiModel,
-  Prompt,
-  Tool,
-  Tool as AiTool,
-  Toolkit,
-  Toolkit as AiToolkit,
-} from '@effect/ai'
-// export { DevTools as EffectDevtools } from '@effect/experimental'
-export { Sse } from '@effect/experimental'
-export * as Otlp from 'effect/unstable/observability/Otlp'
-export * as PlatformError from 'effect/PlatformError'
+export { Otlp } from 'effect/unstable/observability'
 export { Msgpack } from 'effect/unstable/encoding'
 export {
   FetchHttpClient,
@@ -41,7 +24,6 @@ export { Socket } from 'effect/unstable/socket'
 export { Transferable, Worker, WorkerError, WorkerRunner } from 'effect/unstable/workers'
 export {
   Rpc,
-  // RpcClient, // TODO bring back "original" RpcClient from effect/rpc
   RpcClientError,
   RpcGroup,
   RpcMessage,
@@ -69,7 +51,6 @@ export {
   Duration,
   Result,
   Equal,
-  ExecutionStrategy,
   Exit,
   Fiber,
   FileSystem,
@@ -77,30 +58,28 @@ export {
   FiberHandle,
   FiberMap,
   FiberSet,
+  Formatter,
   Function,
-  GlobalValue,
   Hash,
   HashMap,
   HashSet,
   Inspectable,
   identity,
+  Latch,
   Layer,
-  List,
   LogLevel,
-  LogSpan,
   ManagedRuntime,
   Match,
   Metric,
-  MetricState,
   MutableHashMap,
   MutableHashSet,
+  MutableList,
   Option,
   Order,
   Predicate,
-  Pretty,
   PrimaryKey,
+  PlatformError,
   PubSub,
-  // Subscribable,
   pipe,
   Queue,
   RcMap,
@@ -111,30 +90,25 @@ export {
   Ref,
   Request,
   Runtime,
-  RuntimeFlags,
-  SchemaGetter,
-  SchemaIssue,
-  SchemaParser,
-  SchemaTransformation,
   Scope,
   ScopedRef,
+  SchemaIssue,
+  SchemaAST,
+  SchemaGetter,
+  SchemaParser,
+  SchemaRepresentation,
+  SchemaTransformation,
   Semaphore,
   Sink,
-  SortedMap,
-  STM,
   Struct,
+  Graph,
   SynchronizedRef,
   Tracer,
   TxQueue,
   TxRef,
   Types,
 } from 'effect'
-export { FastCheck, TestClock, TestConsole } from 'effect/testing'
-export type { NonEmptyArray } from 'effect/Array'
-export { dual } from 'effect/Function'
-export * as Graph from 'effect/Graph'
-export type { Serializable, SerializableWithResult } from 'effect/Schema'
-export * as SchemaAST from 'effect/SchemaAST'
+export { FastCheck, TestClock, TestConsole, TestSchema } from 'effect/testing'
 export * as Debug from './Debug.ts'
 export * as Effect from './Effect.ts'
 export * from './Error.ts'
