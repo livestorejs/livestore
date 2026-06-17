@@ -5,9 +5,8 @@ import type * as Exit from 'effect/Exit'
 import type * as Fiber from 'effect/Fiber'
 import * as Graph from 'effect/Graph'
 import * as Option from 'effect/Option'
-import * as RuntimeFlags from 'effect/RuntimeFlags'
 import * as Scope from 'effect/Scope'
-import type * as Tracer from 'effect/Tracer'
+import * as Tracer from 'effect/Tracer'
 
 /**
  * How to use:
@@ -151,14 +150,14 @@ type GlobalWithFiberCurrent = {
 }
 
 const patchedTracer = new WeakSet<Tracer.Tracer>()
-const ensureTracerPatched = (currentTracer: Tracer.Tracer) => {
-  if (patchedTracer.has(currentTracer) === true) {
+const ensureTracerPatched = (tracer: Tracer.Tracer) => {
+  if (patchedTracer.has(tracer) === true) {
     return
   }
-  patchedTracer.add(currentTracer)
+  patchedTracer.add(tracer)
 
-  const oldSpanConstructor = currentTracer.span
-  currentTracer.span = function (...args) {
+  const oldSpanConstructor = tracer.span
+  tracer.span = function (...args) {
     const span = oldSpanConstructor.apply(this, args)
     addNode(span)
 
@@ -177,8 +176,8 @@ const ensureTracerPatched = (currentTracer: Tracer.Tracer) => {
     return span
   }
 
-  const oldContext = currentTracer.context
-  currentTracer.context = function (f, fiber, ...args) {
+  const oldContext = tracer.context
+  tracer.context = function (f, fiber, ...args) {
     const context = oldContext.apply(this, [f, fiber, ...args])
     ensureFiberPatched(fiber)
     // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Effect Tracer.context return type is opaque; patching requires cast
@@ -236,9 +235,9 @@ const cleanupScopes = () => {
 const knownFibers = new Set<Fiber.Fiber<any, any>>()
 const ensureFiberPatched = (fiber: Fiber.Fiber<any, any>) => {
   // patch tracer
-  ensureTracerPatched(fiber.currentTracer)
+  ensureTracerPatched(fiber.getRef(Tracer.Tracer))
   // patch scope
-  const currentScope = Context.getOrElse(fiber.currentContext, Scope.Scope, () => undefined)
+  const currentScope = Context.getOrElse(fiber.context, Scope.Scope, () => undefined)
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- casting Scope to ScopeImpl; internal Effect type not publicly exported
   if (currentScope !== undefined) ensureScopePatched(currentScope as any as ScopeImpl, undefined)
   // patch fiber
@@ -422,9 +421,7 @@ export const logDebug = (options: LogDebugOptions = {}) => {
   // fibers
   lines = [...lines, 'Active Fibers:']
   for (const fiber of knownFibers) {
-    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- accessing fiber.currentRuntimeFlags; internal Effect runtime property
-    const interruptible = RuntimeFlags.interruptible((fiber as any).currentRuntimeFlags)
-    lines = [...lines, `- #${fiber.id}${interruptible === false ? ' [uninterruptible]' : ''}`]
+    lines = [...lines, `- #${fiber.id}`]
   }
   if (knownFibers.size === 0) {
     lines = [...lines, '- No active effect fibers']
@@ -451,7 +448,7 @@ export const logDebug = (options: LogDebugOptions = {}) => {
   lines = [...lines, 'Open Scopes:']
   for (const [scope, info] of knownScopes) {
     const fiberIds = Array.from(knownFibers)
-      .filter((fiber) => Context.getOrElse(fiber.currentContext, Scope.Scope, () => undefined) === scope)
+      .filter((fiber) => Context.getOrElse(fiber.context, Scope.Scope, () => undefined) === scope)
       .map((fiber) => `#${fiber.id}`)
       .join(', ')
     const usedByFibers = fiberIds.length > 0 ? ` [used by: ${fiberIds}]` : ''
