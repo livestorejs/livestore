@@ -232,7 +232,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           clientId: 'other-client',
           sessionId: 'static-session-id',
         }),
-      ).pipe(Effect.repeatN(1))
+      ).pipe(Effect.repeat({ times: 1 }))
 
       // Merge invariant violations are defects (not typed errors), so the shutdown
       // deferred receives an Exit with a Die cause containing the error message.

@@ -381,7 +381,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * Increase the capacity of the file system by n.
    */
   addCapacity: (n: number) => Effect.Effect<void, WebError.WebError, Opfs.Opfs | Scope.Scope> = Effect.fn((n: number) =>
-    Effect.repeatN(
+    Effect.replicateEffect(
       Effect.gen({ self: this }, function* () {
         const name = Math.random().toString(36).replace('0.', '')
         const opfs = yield* Opfs.Opfs
@@ -394,6 +394,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
         yield* this.#setAssociatedPath(accessHandle, '', 0)
       }),
       n,
+      { discard: true },
     ),
   )
 
