@@ -96,8 +96,8 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
   // NOTE for message channels, we test both with and without transferables (i.e. proxying)
   const ChannelType = Schema.Literals(['direct', 'proxy(via-messagechannel-edge)', 'proxy'])
   const NodeNames = Schema.Union([
-    Schema.Tuple(Schema.Literal('A'), Schema.Literal('B')),
-    Schema.Tuple(Schema.Literal('B'), Schema.Literal('A')),
+    Schema.Tuple([Schema.Literal('A'), Schema.Literal('B')]),
+    Schema.Tuple([Schema.Literal('B'), Schema.Literal('A')]),
   ])
 
   const fromChannelType = (

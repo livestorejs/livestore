@@ -140,7 +140,7 @@ describe('getColumnDefForSchema', () => {
     })
 
     it('should map tuples to json column', () => {
-      const columnDef = State.SQLite.getColumnDefForSchema(Schema.Tuple(Schema.String, Schema.Number))
+      const columnDef = State.SQLite.getColumnDefForSchema(Schema.Tuple([Schema.String, Schema.Number]))
       expect(columnDef.columnType).toBe('text')
     })
 
