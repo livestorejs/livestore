@@ -1,6 +1,17 @@
 export * from 'effect/unstable/rpc/RpcClient'
 
-import { Cause, Deferred, Effect, Function, Layer, Option, References, Schedule, type Scope } from 'effect'
+import {
+  Cause,
+  Deferred,
+  Effect,
+  Function,
+  Latch,
+  Layer,
+  Option,
+  References,
+  Schedule,
+  type Scope,
+} from 'effect'
 import { RpcClient, RpcClientError, RpcSerialization } from 'effect/unstable/rpc'
 import { Protocol } from 'effect/unstable/rpc/RpcClient'
 import { constPing, type FromServerEncoded } from 'effect/unstable/rpc/RpcMessage'
@@ -175,10 +186,10 @@ const makePinger = Effect.fnUntraced(function* <A, E, R>(
   const manualPingDeferreds = new Set<Deferred.Deferred<void>>()
 
   let recievedPong = true
-  const latch = Effect.unsafeMakeLatch()
+  const latch = Latch.makeUnsafe()
   const reset = () => {
     recievedPong = true
-    latch.unsafeClose()
+    latch.closeUnsafe()
   }
   const onPong = () => {
     recievedPong = true
