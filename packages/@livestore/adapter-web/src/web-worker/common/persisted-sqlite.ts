@@ -6,7 +6,7 @@ import {
   type WebDatabaseMetadataOpfs,
 } from '@livestore/sqlite-wasm/browser'
 import { isDevEnv } from '@livestore/utils'
-import { Chunk, Effect, Option, Order, Schedule, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, Option, Order, pipe, ReadonlyArray as EffectArray, Schedule, Schema, Stream } from '@livestore/utils/effect'
 import { Opfs, type WebError } from '@livestore/utils/effect/browser'
 
 import type * as WorkerSchema from './worker-schema.ts'
@@ -18,24 +18,12 @@ export class PersistedSqliteError extends Schema.TaggedErrorClass<PersistedSqlit
   cause: Schema.optional(Schema.Defect()),
 }) {}
 
-export const readPersistedStateDbFromClientSession: (args: {
-  storageOptions: WorkerSchema.StorageType
-  storeId: string
-  schema: LiveStoreSchema
-}) => Effect.Effect<
-  Uint8Array<ArrayBuffer>,
-  // All the following errors could actually happen:
-  | PersistedSqliteError
-  | WebError.UnknownError
-  | WebError.TypeError
-  | WebError.NotFoundError
-  | WebError.NotAllowedError
-  | WebError.TypeMismatchError
-  | WebError.SecurityError
-  | Opfs.OpfsError,
-  Opfs.Opfs
-> = Effect.fn('@livestore/adapter-web:readPersistedStateDbFromClientSession')(
-  function* ({ storageOptions, storeId, schema }) {
+export const readPersistedStateDbFromClientSession = Effect.fn('@livestore/adapter-web:readPersistedStateDbFromClientSession')(
+  function* ({ storageOptions, storeId, schema }: {
+    storageOptions: WorkerSchema.StorageType
+    storeId: string
+    schema: LiveStoreSchema
+  }) {
     const accessHandlePoolDirString = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
 
     const accessHandlePoolDirHandle = yield* Opfs.getDirectoryHandleByPath(accessHandlePoolDirString)
@@ -53,11 +41,11 @@ export const readPersistedStateDbFromClientSession: (args: {
             const file = yield* opfs.getFile(fileHandle)
             const fileName = yield* Effect.promise(() => decodeAccessHandlePoolFilename(file))
             return { file, fileName }
-          }),
+        }),
         { concurrency: 'unbounded' },
       ),
-      Stream.find(({ fileName }) => fileName === stateDbFileName),
-      Stream.runHead,
+      Stream.filter(({ fileName }) => fileName === stateDbFileName),
+      Stream.runFirst,
     )
 
     if (Option.isNone(stateDbFileOption) === true) {
@@ -253,11 +241,10 @@ const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDire
     Stream.mapEffect((fileHandle) => Opfs.getMetadata(fileHandle)),
     Stream.runCollect,
   )
-  const filesToDelete = filesWithMetadata.pipe(
-    // oxlint-disable-next-line unicorn/no-array-sort -- false positive: Effect Chunk.sort is immutable, not Array#sort (https://github.com/oxc-project/oxc/issues/19110)
-    Chunk.sort(Order.mapInput(Order.Number, (entry: { lastModified: number }) => entry.lastModified)),
-    Chunk.drop(keep),
-    Chunk.toReadonlyArray,
+  const filesToDelete = pipe(
+    filesWithMetadata,
+    EffectArray.sort(Order.mapInput(Order.Number, (entry: { lastModified: number }) => entry.lastModified)),
+    EffectArray.drop(keep),
   )
 
   if (filesToDelete.length === 0) return

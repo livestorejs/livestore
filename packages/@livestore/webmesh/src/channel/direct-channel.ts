@@ -165,7 +165,7 @@ export const makeDirectChannel = ({
         yield* channel.listen.pipe(
           Stream.flatten(),
           // Stream.tap((msg) => Effect.log(`${target}→${channelName}→${nodeName}:message:${msg.message}`)),
-          Stream.tapChunk((chunk) => Queue.offerAll(listenQueue, chunk)),
+          Stream.tapArray((array) => Queue.offerAll(listenQueue, array)),
           Stream.runDrain,
           Effect.tapCauseLogPretty,
           // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
@@ -220,7 +220,7 @@ export const makeDirectChannel = ({
           debugInfo.pendingSends--
         }).pipe(Effect.scoped, Effect.withParentSpan(parentSpan))
 
-      const listen = Stream.fromQueue(listenQueue, { maxChunkSize: 1 }).pipe(Stream.map(Result.succeed))
+      const listen = Stream.fromQueue(listenQueue).pipe(Stream.rechunk(1), Stream.map(Result.succeed))
 
       const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 

@@ -1,4 +1,4 @@
-import { Chunk, Effect, Function, pipe, Stream, SubscriptionRef, Predicate } from 'effect'
+import { Effect, Function, Option, pipe, Stream, SubscriptionRef, Predicate } from 'effect'
 
 export * from 'effect/SubscriptionRef'
 
@@ -13,9 +13,8 @@ export const waitUntil: {
   pipe(
     SubscriptionRef.changes(sref),
     Stream.filter(predicate),
-    Stream.take(1),
-    Stream.runCollect,
-    Effect.map(Chunk.unsafeHead),
+    Stream.runHead,
+    Effect.map(Option.getOrThrow),
   ),
 )
 

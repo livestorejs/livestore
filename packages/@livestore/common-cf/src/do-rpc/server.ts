@@ -1,5 +1,4 @@
 import {
-  Chunk,
   Effect,
   Exit,
   Headers,
@@ -218,7 +217,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
     // Get the stream schemas for proper chunk-level encoding
     // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.Handler doesn't expose successSchema publicly; see https://github.com/Effect-TS/effect/issues/6064
     const streamSchemas = RpcSchema.getStreamSchemas((rpc as any).successSchema.ast)
-    const chunkEncoder =
+    const arrayEncoder =
       Option.isSome(streamSchemas) === true
         ? // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- stream schema success type is inferred as unknown; cast needed for encodeUnknown
           Schema.encodeUnknownEffect(Schema.Array(streamSchemas.value.success as Schema.Schema<any>))
@@ -231,13 +230,12 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
         // Run the stream and send chunks + final exit
         const runStream = Effect.gen(function* () {
           // Process stream chunks - let chunk encoder handle Effect objects properly
-          yield* Stream.runForEachChunk(stream, (chunk) =>
+          yield* Stream.runForEachArray(stream, (array) =>
             Effect.gen(function* () {
-              const chunkArray = Chunk.toReadonlyArray(chunk)
-              if (chunkArray.length === 0) return
+              if (array.length === 0) return
 
               // Encode the chunk using the proper chunk encoder (like official RPC)
-              const encodedValues = yield* chunkEncoder(chunkArray)
+              const encodedValues = yield* arrayEncoder(array)
 
               const chunkMessage = {
                 _tag: 'Chunk' as const,

@@ -1,13 +1,13 @@
 import { IsOfflineError, SyncBackend, UnknownError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/common/schema'
-import { splitChunkBySize } from '@livestore/common/sync'
+import { splitArrayBySize } from '@livestore/common/sync'
 import { omit } from '@livestore/utils'
 import {
-  Chunk,
   Duration,
   Effect,
   Layer,
   Option,
+  ReadonlyArray as EffectArray,
   RpcClient,
   RpcSerialization,
   Schedule,
@@ -168,20 +168,21 @@ export const makeWsSync =
             backendId: backendIdHelper.get(),
           })
 
-          const chunksChunk = yield* Chunk.fromIterable(batch).pipe(
-            splitChunkBySize({
-              maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
-              maxBytes: MAX_WS_MESSAGE_BYTES,
-              encode: encodePayload,
-            }),
-            Effect.mapError((cause) => new UnknownError({ cause })),
-          )
+          if (EffectArray.isReadonlyArrayNonEmpty(batch) === false) {
+            return
+          }
 
-          for (const sub of chunksChunk) {
+          const batchChunks = yield* splitArrayBySize({
+            maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+            maxBytes: MAX_WS_MESSAGE_BYTES,
+            encode: encodePayload,
+          })(batch).pipe(Effect.mapError((cause) => new UnknownError({ cause })))
+
+          for (const batchChunk of batchChunks) {
             yield* rpcClient.SyncWsRpc.Push({
               storeId,
               payload,
-              batch: Chunk.toReadonlyArray(sub),
+              batch: batchChunk,
               backendId: backendIdHelper.get(),
             }).pipe(
               Effect.mapError((cause) =>

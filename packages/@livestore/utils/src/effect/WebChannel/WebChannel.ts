@@ -342,7 +342,7 @@ export const toOpenChannel = <MsgListen, MsgSend>(
             }),
           )
         : identity,
-      Stream.tapChunk((chunk) => Queue.offerAll(queue, chunk)),
+      Stream.tapArray((array) => Queue.offerAll(queue, array)),
       Stream.runDrain,
       // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
       Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
@@ -372,7 +372,7 @@ export const toOpenChannel = <MsgListen, MsgSend>(
     // We're currently limiting the chunk size to 1 to not drop messages in scearnios where
     // the listen stream get subscribed to, only take N messages and then unsubscribe.
     // Without this limit, messages would be dropped.
-    const listen = Stream.fromQueue(queue, { maxChunkSize: 1 })
+    const listen = Stream.fromQueue(queue).pipe(Stream.rechunk(1))
 
     return {
       [WebChannelSymbol]: WebChannelSymbol,
