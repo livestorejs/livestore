@@ -1,9 +1,9 @@
 export * from 'effect/Stream'
 
-import { type Cause, Chunk, Effect, Function, Option, pipe, Ref, Stream } from 'effect'
+import { type Cause, Array, Effect, Function, Option, pipe, Ref, Stream } from 'effect'
 
 export const tapLog = <R, E, A>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
-  tapChunk<never, never, A, void>(Effect.forEach((_) => Effect.succeed(console.log(_))))(stream)
+  tapArray<never, never, A, void>(Effect.forEach((_) => Effect.succeed(console.log(_))))(stream)
 
 export const tapSync =
   <A>(tapFn: (a: A) => unknown) =>
@@ -13,15 +13,24 @@ export const tapSync =
 export const tapLogWithLabel =
   (label: string) =>
   <R, E, A>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
-    tapChunk<never, never, A, void>(Effect.forEach((_) => Effect.succeed(console.log(label, _))))(stream)
+    tapArray<never, never, A, void>(Effect.forEach((_) => Effect.succeed(console.log(label, _))))(stream)
 
-export const tapChunk =
-  <R1, E1, A, Z>(f: (a: Chunk.Chunk<A>) => Effect.Effect<Z, E1, R1>) =>
+/**
+ * Runs an effect once for each array batch emitted by the stream, preserving
+ * the original stream elements.
+ *
+ * Use this for batch-oriented side effects such as `Queue.offerAll`. For
+ * element-wise side effects, prefer `Stream.tap`.
+ *
+ * @see {@link Stream.tap} for running an effect once per element.
+ */
+export const tapArray =
+  <R1, E1, A, Z>(f: (a: ReadonlyArray<A>) => Effect.Effect<Z, E1, R1>) =>
   <R, E>(self: Stream.Stream<A, E, R>): Stream.Stream<A, E1 | E, R1 | R> =>
-    Stream.mapArrayEffect(self, (chunks) =>
+    Stream.mapArrayEffect(self, (array) =>
       pipe(
-        f(chunks),
-        Effect.map(() => chunks),
+        f(array),
+        Effect.map(() => array),
       ),
     )
 
@@ -66,7 +75,7 @@ export const skipRepeated_ = <R, E, A>(
  * It's different than `Stream.runHead` which runs the stream to completion.
  * */
 export const runFirst = <A, E, R>(stream: Stream.Stream<A, E, R>): Effect.Effect<Option.Option<A>, E, R> =>
-  stream.pipe(Stream.take(1), Stream.runCollect, Effect.map(Chunk.head))
+  stream.pipe(Stream.take(1), Stream.runCollect, Effect.map(Array.head))
 
 /**
  * Returns the first element of the stream or throws a `NoSuchElementError` if the stream is empty.
@@ -74,10 +83,10 @@ export const runFirst = <A, E, R>(stream: Stream.Stream<A, E, R>): Effect.Effect
  * */
 export const runFirstUnsafe = <A, E, R>(
   stream: Stream.Stream<A, E, R>,
-): Effect.Effect<A, Cause.NoSuchElementError | E, R> => runFirst(stream).pipe(Effect.flatten)
+): Effect.Effect<A, Cause.NoSuchElementError | E, R> => runFirst(stream).pipe(Effect.flatMap(Effect.fromOption))
 
 export const runCollectReadonlyArray = <A, E, R>(stream: Stream.Stream<A, E, R>): Effect.Effect<readonly A[], E, R> =>
-  stream.pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray))
+  stream.pipe(Stream.runCollect)
 
 /**
  * Concatenates two streams where the second stream has access to the last element

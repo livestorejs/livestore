@@ -1,5 +1,5 @@
 import { memoizeByRef } from '@livestore/utils'
-import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, Option, ReadonlyArray as EffectArray, Schema, Stream } from '@livestore/utils/effect'
 
 import { type SqliteDb, UnknownError } from './adapter-types.ts'
 import type { MaterializeEvent } from './leader-thread/mod.ts'
@@ -99,29 +99,34 @@ LIMIT ${CHUNK_SIZE}
 
   let processedEvents = 0
 
-  yield* Stream.unfoldChunk<
-    Chunk.Chunk<SystemTables.EventlogMetaRow> | { _tag: 'Initial' },
-    SystemTables.EventlogMetaRow
-  >({ _tag: 'Initial' }, (item) => {
-    // End stream if no more rows
-    if (Chunk.isChunk(item) === true && item.length === 0) return Option.none()
+  yield* Stream.paginate(EventSequenceNumber.Client.ROOT, (lastId) =>
+    Effect.sync(() => {
+      const rows = stmt.select<SystemTables.EventlogMetaRow>({
+        $seqNumGlobal: lastId.global,
+        $seqNumClient: lastId.client,
+      } as any as PreparedBindValues)
 
-    const lastId =
-      Chunk.isChunk(item) === true
-        ? Chunk.last(item).pipe(
-            Option.map((_) => ({ global: _.seqNumGlobal, client: _.seqNumClient })),
-            Option.getOrElse(() => EventSequenceNumber.Client.ROOT),
-          )
-        : EventSequenceNumber.Client.ROOT
-    const nextItem = Chunk.fromIterable(
-      stmt.select<SystemTables.EventlogMetaRow>({
-        $seqNumGlobal: lastId?.global,
-        $seqNumClient: lastId?.client,
-      } as any as PreparedBindValues),
-    )
-    const prevItem = Chunk.isChunk(item) === true ? item : Chunk.empty()
-    return Option.some([prevItem, nextItem])
-  }).pipe(
+      if (EffectArray.isReadonlyArrayNonEmpty(rows) === false) {
+        const done: readonly [
+          ReadonlyArray<SystemTables.EventlogMetaRow>,
+          Option.Option<EventSequenceNumber.Client.Composite>,
+        ] = [rows, Option.none()]
+        return done
+      }
+
+      const lastRow = EffectArray.lastNonEmpty(rows)
+      const nextCursor = EventSequenceNumber.Client.Composite.make({
+        global: lastRow.seqNumGlobal,
+        client: lastRow.seqNumClient,
+        rebaseGeneration: lastRow.seqNumRebaseGeneration,
+      })
+      const next: readonly [
+        ReadonlyArray<SystemTables.EventlogMetaRow>,
+        Option.Option<EventSequenceNumber.Client.Composite>,
+      ] = [rows, Option.some(nextCursor)]
+      return next
+    }),
+  ).pipe(
     Stream.bufferArray({ capacity: 2 }),
     Stream.tap((row) =>
       Effect.gen(function* () {

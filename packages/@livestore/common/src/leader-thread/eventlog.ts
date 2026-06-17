@@ -1,5 +1,5 @@
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import { Chunk, Effect, Option, Schema } from '@livestore/utils/effect'
+import { Effect, Option, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
 import { migrateTable } from '../schema-management/migrations.ts'
@@ -107,7 +107,7 @@ export const getEventsFromEventlog = ({
 }: {
   dbEventlog: SqliteDb
   options: StreamEventsOptions
-}): Effect.Effect<Chunk.Chunk<LiveStoreEvent.Client.Encoded>> =>
+}): Effect.Effect<ReadonlyArray<LiveStoreEvent.Client.Encoded>> =>
   Effect.gen(function* () {
     const since = options.since ?? EventSequenceNumber.Client.ROOT
     const batchSize = options.batchSize ?? STREAM_EVENTS_BATCH_SIZE_DEFAULT
@@ -146,7 +146,7 @@ export const getEventsFromEventlog = ({
     const eventlogEvents = yield* Effect.sync(() => dbEventlog.select(makeQuery()))
 
     if (eventlogEvents.length === 0) {
-      return Chunk.empty<LiveStoreEvent.Client.Encoded>()
+      return []
     }
 
     const spanAttributes = {
@@ -174,7 +174,7 @@ export const getEventsFromEventlog = ({
         })
       })
 
-      return Chunk.fromIterable(encodedEvents)
+      return encodedEvents
     }).pipe(Effect.withSpan('@livestore/common:eventlog:getEventsFromEventlog', { attributes: spanAttributes }))
   })
 

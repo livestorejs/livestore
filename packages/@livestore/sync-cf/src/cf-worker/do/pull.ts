@@ -1,6 +1,6 @@
 import { BackendIdMismatchError, SyncBackend, UnknownError } from '@livestore/common'
-import { splitChunkBySize } from '@livestore/common/sync'
-import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
+import { splitArrayBySize } from '@livestore/common/sync'
+import { Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
 import { MAX_PULL_EVENTS_PER_MESSAGE, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SyncMessage } from '../../common/mod.ts'
@@ -50,7 +50,7 @@ export const makeEndingPullStream = ({
 
     return storedEvents.pipe(
       Stream.mapArrayEffect(
-        splitChunkBySize({
+        splitArrayBySize({
           maxItems: MAX_PULL_EVENTS_PER_MESSAGE,
           maxBytes: MAX_WS_MESSAGE_BYTES,
           encode: (batch) =>
@@ -59,14 +59,13 @@ export const makeEndingPullStream = ({
             ),
         }),
       ),
-      Stream.mapAccum(total, (remaining, chunk) => {
-        const asArray = Chunk.toReadonlyArray(chunk)
-        const nextRemaining = Math.max(0, remaining - asArray.length)
+      Stream.mapAccum(total, (remaining, array) => {
+        const nextRemaining = Math.max(0, remaining - array.length)
 
         return [
           nextRemaining,
           SyncMessage.PullResponse.make({
-            batch: asArray,
+            batch: array,
             pageInfo: nextRemaining > 0 ? SyncBackend.pageInfoMoreKnown(nextRemaining) : SyncBackend.pageInfoNoMore,
             backendId,
           }),

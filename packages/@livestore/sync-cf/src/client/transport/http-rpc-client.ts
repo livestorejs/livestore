@@ -1,9 +1,8 @@
 import { SyncBackend, UnknownError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
-import { splitChunkBySize } from '@livestore/common/sync'
+import { splitArrayBySize } from '@livestore/common/sync'
 import { omit } from '@livestore/utils'
 import {
-  Chunk,
   type Duration,
   Effect,
   HttpClient,
@@ -11,6 +10,7 @@ import {
   identity,
   Layer,
   Option,
+  ReadonlyArray as EffectArray,
   RpcClient,
   RpcSerialization,
   Schedule,
@@ -151,7 +151,7 @@ export const makeHttpSync =
                   mapCursor,
                 )
 
-                return Stream.unfoldChunkEffect(initialPhase2Cursor, (currentCursor) =>
+                return Stream.paginate(initialPhase2Cursor, (currentCursor) =>
                   Effect.gen(function* () {
                     yield* Effect.sleep(livePullInterval)
 
@@ -159,14 +159,18 @@ export const makeHttpSync =
                       Stream.runCollect,
                     )
 
-                    const nextCursor = Chunk.last(items).pipe(
+                    const nextCursor = EffectArray.last(items).pipe(
                       Option.flatMap((item) => Option.fromNullable(item.batch.at(-1)?.eventEncoded.seqNum)),
                       Option.map((eventSequenceNumber) => ({ eventSequenceNumber })),
                       Option.orElse(() => currentCursor),
                       mapCursor,
                     )
 
-                    return Option.some([items, nextCursor])
+                    const page: readonly [typeof items, Option.Option<typeof currentCursor>] = [
+                      items,
+                      Option.some(nextCursor),
+                    ]
+                    return page
                   }),
                 )
               })
@@ -190,23 +194,23 @@ export const makeHttpSync =
           }
 
           const backendId = backendIdHelper.get()
-          const batchChunks = yield* Chunk.fromIterable(batch).pipe(
-            splitChunkBySize({
-              maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
-              maxBytes: MAX_HTTP_REQUEST_BYTES,
-              encode: (items) => ({
-                batch: items,
-                storeId,
-                payload,
-                backendId,
-              }),
-            }),
-            Effect.mapError((cause) => new UnknownError({ cause })),
-          )
+          if (EffectArray.isReadonlyArrayNonEmpty(batch) === false) {
+            return
+          }
 
-          for (const chunk of Chunk.toReadonlyArray(batchChunks)) {
-            const chunkArray = Chunk.toReadonlyArray(chunk)
-            yield* rpcClient.SyncHttpRpc.Push({ storeId, payload, batch: chunkArray, backendId })
+          const batchChunks = yield* splitArrayBySize({
+            maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+            maxBytes: MAX_HTTP_REQUEST_BYTES,
+            encode: (items) => ({
+              batch: items,
+              storeId,
+              payload,
+              backendId,
+            }),
+          })(batch).pipe(Effect.mapError((cause) => new UnknownError({ cause })))
+
+          for (const batchChunk of batchChunks) {
+            yield* rpcClient.SyncHttpRpc.Push({ storeId, payload, batch: batchChunk, backendId })
           }
         },
         pushSemaphore.withPermits(1),

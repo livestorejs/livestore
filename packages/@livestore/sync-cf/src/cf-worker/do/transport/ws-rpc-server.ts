@@ -16,7 +16,7 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtx.DoCtxInput, 'fro
         return makeEndingPullStream({ req, payload: req.payload, headers }).pipe(
           // Needed to keep the stream alive on the client side for phase 2 (i.e. not send the `Exit` stream RPC message)
           req.live === true ? Stream.concat(Stream.never) : identity,
-          Stream.provideLayer(DoCtx.layer({ doSelf, doOptions, from: { storeId: req.storeId } })),
+          Stream.provide(DoCtx.layer({ doSelf, doOptions, from: { storeId: req.storeId } })),
           Stream.mapError((cause) =>
             cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
               ? cause

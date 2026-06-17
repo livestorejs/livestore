@@ -1,14 +1,14 @@
 import path from 'node:path'
 
 import { SyncBackend, UnknownError } from '@livestore/common'
-import { MAX_DO_RPC_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST, splitChunkBySize } from '@livestore/sync-cf/common'
+import { MAX_DO_RPC_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST, splitArrayBySize } from '@livestore/sync-cf/common'
 import { omit } from '@livestore/utils'
 import { WranglerDevServer } from '@livestore/utils-dev/wrangler'
 import {
-  Chunk,
   Effect,
   Layer,
   Option,
+  ReadonlyArray as EffectArray,
   RpcClient,
   RpcSerialization,
   type Schedule,
@@ -151,25 +151,27 @@ const makeProxyDoRpcSync = ({
             return
           }
 
-          const chunkedBatches = yield* Chunk.fromIterable(batch).pipe(
-            splitChunkBySize({
-              maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
-              maxBytes: MAX_DO_RPC_REQUEST_BYTES,
-              encode: (items) => ({
-                clientId,
-                storeId,
-                payload,
-                batch: items,
-              }),
-            }),
-          )
+          if (EffectArray.isReadonlyArrayNonEmpty(batch) === false) {
+            return
+          }
 
-          for (const chunk of chunkedBatches) {
+          const chunkedBatches = yield* splitArrayBySize({
+            maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+            maxBytes: MAX_DO_RPC_REQUEST_BYTES,
+            encode: (items) => ({
+              clientId,
+              storeId,
+              payload,
+              batch: items,
+            }),
+          })(batch)
+
+          for (const batchChunk of chunkedBatches) {
             yield* client.Push({
               clientId,
               storeId,
               payload,
-              batch: Chunk.toReadonlyArray(chunk),
+              batch: batchChunk,
             })
           }
         }).pipe(Effect.withSpan('proxy-do-rpc-sync:push'), Effect.orDie),

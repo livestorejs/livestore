@@ -8,7 +8,6 @@ import { events } from '@livestore/livestore/internal/testing-utils'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
-  Chunk,
   Duration,
   Effect,
   FetchHttpClient,
@@ -469,7 +468,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         // const cursorPullResultsChunk = yield* syncBackend
         //   .pull(SyncBackend.cursorFromPullResItem(firstResult))
         //   .pipe(Stream.runCollect)
-        // const cursorPullResults = Chunk.toArray(cursorPullResultsChunk)
+        // const cursorPullResults = cursorPullResultsChunk
         // Check remaining field on cursor-based pull
         // for (let i = 0; i < cursorPullResults.length; i++) {
         //   const result = cursorPullResults[i]!
@@ -505,8 +504,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
       // Take only first 3 emissions from the stream
       // Note: Each emission from the Electric provider contains a batch of events
-      const limitedResultsChunk = yield* syncBackend.pull(Option.none()).pipe(Stream.take(3), Stream.runCollect)
-      const limitedResults = Chunk.toArray(limitedResultsChunk)
+      const limitedResults = yield* syncBackend.pull(Option.none()).pipe(Stream.take(3), Stream.runCollect)
 
       // Should have at least 1 result (Electric batches events)
       expect(limitedResults.length).toBeGreaterThanOrEqual(1)
@@ -529,8 +527,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       }
 
       // Now pull all to verify there were indeed more items available
-      const allResultsChunk = yield* syncBackend.pull(Option.none()).pipe(Stream.runCollect)
-      const allResults = Chunk.toArray(allResultsChunk)
+      const allResults = yield* syncBackend.pull(Option.none()).pipe(Stream.runCollect)
 
       // Count total events across all results
       const totalItemCount = allResults.reduce((acc, r) => acc + r.batch.length, 0)
@@ -590,8 +587,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       }
 
       // Pull all events non-live
-      const allResultsChunk = yield* syncBackend.pull(Option.none()).pipe(Stream.runCollect)
-      const allResults = Chunk.toArray(allResultsChunk)
+      const allResults = yield* syncBackend.pull(Option.none()).pipe(Stream.runCollect)
 
       // Count total events retrieved
       const totalRetrievedEvents = allResults.reduce((acc, r) => acc + r.batch.length, 0)
@@ -624,8 +620,8 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
           metadata: middleEvent.metadata,
         })
 
-        const fromMiddleChunk = yield* syncBackend.pull(middleCursor).pipe(Stream.runCollect)
-        const eventsFromMiddle = Chunk.toArray(fromMiddleChunk).flatMap((r) => r.batch)
+        const fromMiddle = yield* syncBackend.pull(middleCursor).pipe(Stream.runCollect)
+        const eventsFromMiddle = fromMiddle.flatMap((r) => r.batch)
 
         // Should get events after the cursor (or 0 if near the end)
         expect(eventsFromMiddle.length).toBeGreaterThanOrEqual(0)

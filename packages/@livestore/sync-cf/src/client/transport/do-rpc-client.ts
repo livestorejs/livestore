@@ -1,14 +1,14 @@
 import { SyncBackend, UnknownError } from '@livestore/common'
 import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
-import { splitChunkBySize } from '@livestore/common/sync'
+import { splitArrayBySize } from '@livestore/common/sync'
 import { omit, shouldNeverHappen } from '@livestore/utils'
 import {
-  Chunk,
   Effect,
   identity,
   Layer,
   Option,
   Queue,
+  ReadonlyArray as EffectArray,
   RpcClient,
   RpcSerialization,
   Schema,
@@ -110,22 +110,22 @@ export const makeDoRpcSync =
           }
 
           const backendId = backendIdHelper.get()
-          const batchChunks = yield* Chunk.fromIterable(batch).pipe(
-            splitChunkBySize({
-              maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
-              maxBytes: MAX_DO_RPC_REQUEST_BYTES,
-              encode: (items) => ({
-                batch: items,
-                storeId,
-                backendId,
-              }),
-            }),
-            Effect.mapError((cause) => new UnknownError({ cause })),
-          )
+          if (EffectArray.isReadonlyArrayNonEmpty(batch) === false) {
+            return
+          }
 
-          for (const chunk of Chunk.toReadonlyArray(batchChunks)) {
-            const chunkArray = Chunk.toReadonlyArray(chunk)
-            yield* rpcClient.SyncDoRpc.Push({ batch: chunkArray, storeId, backendId })
+          const batchChunks = yield* splitArrayBySize({
+            maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+            maxBytes: MAX_DO_RPC_REQUEST_BYTES,
+            encode: (items) => ({
+              batch: items,
+              storeId,
+              backendId,
+            }),
+          })(batch).pipe(Effect.mapError((cause) => new UnknownError({ cause })))
+
+          for (const batchChunk of batchChunks) {
+            yield* rpcClient.SyncDoRpc.Push({ batch: batchChunk, storeId, backendId })
           }
         },
         Effect.mapError((cause) =>

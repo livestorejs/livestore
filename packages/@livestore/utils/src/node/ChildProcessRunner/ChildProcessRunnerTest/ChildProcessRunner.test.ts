@@ -1,7 +1,7 @@
 import * as ChildProcess from 'node:child_process'
 
 import { assert, describe, it } from '@effect/vitest'
-import { Chunk, Deferred, Effect, Exit, Fiber, Schema, Scope, Stream } from 'effect'
+import { Deferred, Effect, Exit, Fiber, Schema, Scope, Stream } from 'effect'
 import * as EffectWorker from 'effect/unstable/workers/Worker'
 
 export class TestError extends Schema.TaggedErrorClass<TestError>()('TestError', {
@@ -30,7 +30,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
     Effect.gen(function* () {
       const pool = yield* EffectWorker.makePoolSerialized({ size: 1 })
       const people = yield* pool.execute(new GetPersonById({ id: 123 })).pipe(Stream.runCollect)
-      assert.deepStrictEqual(Chunk.toReadonlyArray(people), [
+      assert.deepStrictEqual(people, [
         new Person({ id: 123, name: 'test', data: new Uint8Array([1, 2, 3]) }),
         new Person({ id: 123, name: 'ing', data: new Uint8Array([4, 5, 6]) }),
       ])
@@ -47,7 +47,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
       user = yield* pool.executeEffect(new GetUserById({ id: 123 }))
       assert.deepStrictEqual(user, new User({ id: 123, name: 'custom' }))
       const people = yield* pool.execute(new GetPersonById({ id: 123 })).pipe(Stream.runCollect)
-      assert.deepStrictEqual(Chunk.toReadonlyArray(people), [
+      assert.deepStrictEqual(people, [
         new Person({ id: 123, name: 'test', data: new Uint8Array([1, 2, 3]) }),
         new Person({ id: 123, name: 'ing', data: new Uint8Array([4, 5, 6]) }),
       ])
