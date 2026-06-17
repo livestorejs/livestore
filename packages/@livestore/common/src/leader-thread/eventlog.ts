@@ -201,7 +201,7 @@ export const updateBackendHead = (dbEventlog: SqliteDb, head: EventSequenceNumbe
   dbEventlog.execute(sql`UPDATE ${SYNC_STATUS_TABLE} SET head = ${head.global}`)
 
 export const getBackendIdFromDb = (dbEventlog: SqliteDb): Option.Option<string> =>
-  Option.fromNullable(
+  Option.fromNullishOr(
     dbEventlog.select<{ backendId: string | null }>(sql`select backendId from ${SYNC_STATUS_TABLE}`)[0]?.backendId,
   )
 
