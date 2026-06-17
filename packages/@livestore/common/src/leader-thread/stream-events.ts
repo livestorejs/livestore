@@ -1,4 +1,4 @@
-import { type Subscribable, Chunk, Effect, Option, Queue, Stream } from '@livestore/utils/effect'
+import { type Subscribable, Effect, Option, Queue, Stream } from '@livestore/utils/effect'
 
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
@@ -99,7 +99,7 @@ export const streamEventsWithSyncState = ({
         Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
-      return Stream.paginateChunkEffect(
+      return Stream.paginate(
         { cursor: initialCursor, head: EventSequenceNumber.Client.ROOT },
         ({ cursor, head }) =>
           Effect.gen(function* () {
@@ -112,7 +112,14 @@ export const streamEventsWithSyncState = ({
               options.until !== undefined &&
               EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, options.until) === true
             ) {
-              return [Chunk.empty(), Option.none()]
+              const done: readonly [
+                ReadonlyArray<LiveStoreEvent.Client.Encoded>,
+                Option.Option<{
+                  cursor: EventSequenceNumber.Client.Composite
+                  head: EventSequenceNumber.Client.Composite
+                }>,
+              ] = [[], Option.none()]
+              return done
             }
 
             /**
@@ -158,10 +165,10 @@ export const streamEventsWithSyncState = ({
             })
 
             /**
-             * Eventlog.getEventsFromEventlog returns a Chunk from each
-             * query which is what we emit at each itteration.
+             * Eventlog.getEventsFromEventlog returns a batch from each query
+             * which is what we emit at each itteration.
              */
-            const chunk = yield* Eventlog.getEventsFromEventlog({
+            const events = yield* Eventlog.getEventsFromEventlog({
               dbEventlog,
               options: {
                 ...options,
@@ -193,10 +200,14 @@ export const streamEventsWithSyncState = ({
               'livestore.streamEvents.waitedForHead': waitForHead,
             }
 
-            return yield* Effect.succeed<[Chunk.Chunk<LiveStoreEvent.Client.Encoded>, typeof nextState]>([
-              chunk,
+            const result: readonly [ReadonlyArray<LiveStoreEvent.Client.Encoded>, typeof nextState] = [
+              events,
               nextState,
-            ]).pipe(Effect.withSpan('@livestore/common:streamEvents:segment', { attributes: spanAttributes }))
+            ]
+
+            return yield* Effect.succeed(result).pipe(
+              Effect.withSpan('@livestore/common:streamEvents:segment', { attributes: spanAttributes }),
+            )
           }),
       )
     }),

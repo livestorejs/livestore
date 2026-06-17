@@ -1,7 +1,7 @@
 import { BackendIdMismatchError, ServerAheadError, SyncBackend, UnknownError } from '@livestore/common'
 import { type CfTypes, emitStreamResponse } from '@livestore/common-cf'
-import { splitChunkBySize } from '@livestore/common/sync'
-import { Chunk, Effect, Option, type RpcMessage, Schema } from '@livestore/utils/effect'
+import { splitArrayBySize } from '@livestore/common/sync'
+import { Effect, Option, ReadonlyArray as EffectArray, type RpcMessage, Schema } from '@livestore/utils/effect'
 
 import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SyncMessage } from '../../common/mod.ts'
@@ -89,27 +89,30 @@ export const makePush =
         const connectedClients = ctx.getWebSockets()
 
         // Preparing chunks of responses to make sure we don't exceed the WS message size limit.
-        const responses = yield* Chunk.fromIterable(pushRequest.batch).pipe(
-          splitChunkBySize({
-            maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
-            maxBytes: MAX_WS_MESSAGE_BYTES,
-            encode: (items) =>
-              encodePullResponse(
-                SyncMessage.PullResponse.make({
-                  batch: items.map(
-                    (eventEncoded): PullBatchItem => ({
-                      eventEncoded,
-                      metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
-                    }),
-                  ),
-                  pageInfo: SyncBackend.pageInfoNoMore,
-                  backendId,
-                }),
-              ),
-          }),
-          Effect.map(
-            Chunk.map((eventsChunk) => {
-              const batchWithMetadata = Chunk.toReadonlyArray(eventsChunk).map((eventEncoded) => ({
+        if (EffectArray.isReadonlyArrayNonEmpty(pushRequest.batch) === false) {
+          return
+        }
+
+        const responses = yield* splitArrayBySize({
+          maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+          maxBytes: MAX_WS_MESSAGE_BYTES,
+          encode: (items) =>
+            encodePullResponse(
+              SyncMessage.PullResponse.make({
+                batch: items.map(
+                  (eventEncoded): PullBatchItem => ({
+                    eventEncoded,
+                    metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
+                  }),
+                ),
+                pageInfo: SyncBackend.pageInfoNoMore,
+                backendId,
+              }),
+            ),
+        })(pushRequest.batch).pipe(
+          Effect.map((eventBatch) =>
+            eventBatch.map((events) => {
+              const batchWithMetadata = events.map((eventEncoded) => ({
                 eventEncoded,
                 metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
               }))
