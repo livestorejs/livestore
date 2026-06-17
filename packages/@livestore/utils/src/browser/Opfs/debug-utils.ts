@@ -41,7 +41,6 @@ const buildTree = Effect.fn('@livestore/utils:Opfs.buildTree')(function* () {
     pathSegments: ReadonlyArray<string>,
   ): Effect.Effect<OpfsTreeNode, WebError.WebError, Opfs.Opfs> =>
     Effect.gen(function* () {
-      const opfs = yield* Opfs.Opfs
       const handlesStream = opfs.values(handle)
       const handles = yield* handlesStream.pipe(
         Stream.runCollect,
