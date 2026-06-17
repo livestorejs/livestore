@@ -1,6 +1,6 @@
 export * from 'effect/unstable/rpc/RpcClient'
 
-import { Cause, Deferred, Effect, Function, Layer, Option, Schedule, type Scope } from 'effect'
+import { Cause, Deferred, Effect, Function, Layer, Option, References, Schedule, type Scope } from 'effect'
 import { RpcClient, RpcClientError, RpcSerialization } from 'effect/unstable/rpc'
 import { Protocol } from 'effect/unstable/rpc/RpcClient'
 import { constPing, type FromServerEncoded } from 'effect/unstable/rpc/RpcMessage'
@@ -144,7 +144,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
         }),
         Effect.interruptible,
         Effect.ignore, // Errors are already handled
-        Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),
+        Effect.provideService(References.UnhandledLogLevel, undefined),
         // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
         Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
