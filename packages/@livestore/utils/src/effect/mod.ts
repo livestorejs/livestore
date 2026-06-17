@@ -117,6 +117,7 @@ export {
   SchemaIssue,
   Scope,
   ScopedRef,
+  Semaphore,
   Sink,
   SortedMap,
   STM,
