@@ -120,13 +120,15 @@ const renderSvgWithTheme = (
             cause,
           }),
       }).pipe(
-        Effect.timeoutFail({
-          onTimeout: () =>
-            new RenderTimeoutError({
-              message: `Tldraw render timed out after ${RENDER_TIMEOUT_MS}ms`,
-              diagram: tldrPath,
-              theme,
-            }),
+        Effect.timeoutOrElse({
+          orElse: () =>
+            Effect.fail(
+              new RenderTimeoutError({
+                message: `Tldraw render timed out after ${RENDER_TIMEOUT_MS}ms`,
+                diagram: tldrPath,
+                theme,
+              }),
+            ),
           duration: Duration.millis(RENDER_TIMEOUT_MS),
         }),
       )

@@ -250,14 +250,14 @@ export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>>
  *
  * @see {@link timeoutOrDieMessage} for a version with a custom message.
  * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
- * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
+ * @see {@link Effect.timeoutOrElse} for a version with a custom timeout branch.
  */
 export const timeoutOrDie =
   (duration: Duration.Input) =>
   <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-    Effect.timeoutFailCause(self, {
+    Effect.timeoutOrElse(self, {
       duration,
-      onTimeout: () => Cause.die(new Cause.TimeoutError()),
+      orElse: () => Effect.die(new Cause.TimeoutError()),
     })
 
 /**
@@ -279,14 +279,14 @@ export const timeoutOrDie =
  *
  * @see {@link timeoutOrDie} for a version without a custom message.
  * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
- * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
+ * @see {@link Effect.timeoutOrElse} for a version with a custom timeout branch.
  */
 export const timeoutOrDieMessage =
   (duration: Duration.Input, message: string) =>
   <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-    Effect.timeoutFailCause(self, {
+    Effect.timeoutOrElse(self, {
       duration,
-      onTimeout: () => Cause.die(new Cause.TimeoutError(message)),
+      orElse: () => Effect.die(new Cause.TimeoutError(message)),
     })
 
 export const toForkedDeferred = <R, E, A>(
