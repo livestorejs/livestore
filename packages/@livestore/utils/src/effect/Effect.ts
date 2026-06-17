@@ -26,8 +26,6 @@ export const scopeWithCloseable = <R, E, A>(
   fn: (scope: Scope.Closeable) => Effect.Effect<A, E, R | Scope.Scope>,
 ): Effect.Effect<A, E, R | Scope.Scope> =>
   Effect.gen(function* () {
-    // const parentScope = yield* Scope.Scope
-    // const scope = yield* Scope.fork(parentScope, 'sequential')
     const scope = yield* Scope.make()
     yield* Effect.addFinalizer((exit) => Scope.close(scope, exit))
     return yield* fn(scope).pipe(Scope.provide(scope))
@@ -45,10 +43,7 @@ export const tryAll = <Res>(
   : Res extends Promise<infer A>
     ? Effect.Effect<A, Cause.UnknownError>
     : Effect.Effect<Res, Cause.UnknownError> =>
-  Effect.try({
-    try: () => fn(),
-    catch: (cause) => new Cause.UnknownError(cause),
-  }).pipe(
+  Effect.try({ try: () => fn(), catch: (cause) => new Cause.UnknownError(cause) }).pipe(
     Effect.andThen((fnRes) =>
       Effect.isEffect(fnRes) === true
         ? (fnRes as any as Effect.Effect<any>)
@@ -75,10 +70,7 @@ export const logBefore =
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.tapCause(eff, (cause) =>
     Effect.gen(function* () {
-      if (Cause.hasInterruptsOnly(cause) === true) {
-        // console.log('interrupted', Cause.pretty(err), err)
-        return
-      }
+      if (Cause.hasInterruptsOnly(cause) === true) return
 
       const span = yield* OtelTracer.currentOtelSpan.pipe(
         Effect.catchTag('NoSuchElementError', (_) => Effect.succeed(undefined)),
