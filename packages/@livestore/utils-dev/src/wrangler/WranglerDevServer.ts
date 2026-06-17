@@ -226,8 +226,8 @@ const verifyHttpConnectivity = ({
       Effect.retryOrElse(
         Schedule.exponential('50 millis', 2).pipe(
           Schedule.jittered,
-          Schedule.intersect(Schedule.elapsed.pipe(Schedule.whileOutput(Duration.lessThanOrEqualTo(connectTimeout)))),
-          Schedule.compose(Schedule.count),
+          Schedule.bothLeft(Schedule.during(connectTimeout)),
+          Schedule.bothRight(Schedule.forever),
         ),
         (error, attemptCount) =>
           Effect.fail(

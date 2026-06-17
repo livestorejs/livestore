@@ -54,7 +54,7 @@ export const testMultipleMigrations = () =>
           Effect.tap((status) => {
             if (status.stage === 'migrating') hasMigrated = true
           }),
-          Effect.repeat(Schedule.forever.pipe(Schedule.untilInput((_: BootStatus) => _.stage === 'done'))),
+          Effect.repeat(Schedule.identity<BootStatus>().pipe(Schedule.while(({ input }) => input.stage !== 'done'))),
           // Count a migration when we see a "done" status after a "migrating" status
           Effect.tapSync(() => {
             if (hasMigrated === true) migrationsCount++
