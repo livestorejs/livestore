@@ -1,5 +1,4 @@
-import type { Exit } from 'effect'
-import { Deferred, Effect } from 'effect'
+import { Deferred, Effect, type Exit } from 'effect'
 
 // See https://developer.mozilla.org/en-US/docs/Web/API/Web_Locks_API
 export const withLock =
