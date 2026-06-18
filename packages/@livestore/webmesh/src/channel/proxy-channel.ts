@@ -66,8 +66,8 @@ interface MakeProxyChannelArgs {
   channelName: ChannelName
   target: MeshNodeName
   schema: {
-    send: Schema.Schema<any, any>
-    listen: Schema.Schema<any, any>
+    send: Schema.Codec<any, any>
+    listen: Schema.Codec<any, any>
   }
   /** Optional simulation parameters for testing timing-sensitive behavior */
   simulation?: ProxyChannelSimulationParams
@@ -105,7 +105,7 @@ export const makeProxyChannel = ({
 
       type ProxiedChannelStateEstablished = {
         _tag: 'Established'
-        listenSchema: Schema.Schema<any, any>
+        listenSchema: Schema.Codec<any, any>
         listenQueue: Queue.Queue<any>
         ackMap: Map<string, Deferred.Deferred<void>>
         combinedChannelId: string

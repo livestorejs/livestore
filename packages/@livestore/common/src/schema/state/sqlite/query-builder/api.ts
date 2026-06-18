@@ -39,7 +39,7 @@ export namespace QueryBuilderAst {
     readonly _tag: 'CountQuery'
     readonly tableDef: TableDefBase
     readonly where: ReadonlyArray<QueryBuilderAst.Where>
-    readonly resultSchema: Schema.Schema<number, ReadonlyArray<{ count: number }>>
+    readonly resultSchema: Schema.Codec<number, ReadonlyArray<{ count: number }>>
   }
 
   export interface RowQuery {

@@ -14,7 +14,7 @@ export interface WebChannel<MsgListen, MsgSend, E = never> {
   supportsTransferables: boolean
   closedDeferred: Deferred.Deferred<void>
   shutdown: Effect.Effect<void>
-  schema: { listen: Schema.Schema<MsgListen, any>; send: Schema.Schema<MsgSend, any> }
+  schema: { listen: Schema.Codec<MsgListen, any>; send: Schema.Codec<MsgSend, any> }
   debugInfo?: Record<string, any> | undefined
 }
 
@@ -43,12 +43,12 @@ export const schemaWithWebChannelMessages = <MsgListen, MsgSend>(
 })
 
 export type InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded> =
-  | Schema.Schema<MsgListen | MsgSend, MsgListenEncoded | MsgSendEncoded>
+  | Schema.Codec<MsgListen | MsgSend, MsgListenEncoded | MsgSendEncoded>
   | OutputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
 
 export type OutputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded> = {
-  listen: Schema.Schema<MsgListen, MsgListenEncoded>
-  send: Schema.Schema<MsgSend, MsgSendEncoded>
+  listen: Schema.Codec<MsgListen, MsgListenEncoded>
+  send: Schema.Codec<MsgSend, MsgSendEncoded>
 }
 
 export const mapSchema = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(

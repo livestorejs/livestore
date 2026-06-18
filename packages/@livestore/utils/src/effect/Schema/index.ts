@@ -41,7 +41,7 @@ export const getResolvedPropertySignatures = (
 type TransferableObject = ArrayBuffer | MessagePort
 
 export const encodeWithTransferables =
-  <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions) =>
+  <A, I, R>(schema: Schema.Codec<A, I, R, R>, options?: ParseOptions) =>
   (a: A, overrideOptions?: ParseOptions): Effect.Effect<[I, TransferableObject[]], Schema.SchemaError, R> =>
     Effect.gen(function* () {
       const collector = yield* Transferable.makeCollector
@@ -54,7 +54,7 @@ export const encodeWithTransferables =
     })
 
 export const decodeSyncDebug: <A, I>(
-  schema: Schema.Schema<A, I>,
+  schema: Schema.Codec<A, I>,
   options?: SchemaAST.ParseOptions,
 ) => (i: I, overrideOptions?: SchemaAST.ParseOptions) => A = (schema, options) => (input, overrideOptions) => {
   const res = Schema.decodeExit(schema, options)(input, overrideOptions)
@@ -66,7 +66,7 @@ export const decodeSyncDebug: <A, I>(
 }
 
 export const encodeSyncDebug: <A, I>(
-  schema: Schema.Schema<A, I>,
+  schema: Schema.Codec<A, I>,
   options?: SchemaAST.ParseOptions,
 ) => (a: A, overrideOptions?: SchemaAST.ParseOptions) => I = (schema, options) => (input, overrideOptions) => {
   const res = Schema.encodeExit(schema, options)(input, overrideOptions)
@@ -77,13 +77,13 @@ export const encodeSyncDebug: <A, I>(
   }
 }
 
-export const swap = <A, I, R>(schema: Schema.Schema<A, I, R>): Schema.Schema<I, A, R> =>
+export const swap = <A, I, R>(schema: Schema.Codec<A, I, R, R>): Schema.Codec<I, A, R, R> =>
   Schema.transformOrFail(Schema.toType(schema), Schema.toEncoded(schema), {
     decode: ParseResult.encode(schema),
     encode: ParseResult.decode(schema),
   })
 
-export const Base64FromUint8Array: Schema.Schema<string, Uint8Array> = swap(Schema.Uint8ArrayFromBase64)
+export const Base64FromUint8Array: Schema.Codec<string, Uint8Array> = swap(Schema.Uint8ArrayFromBase64)
 
 export interface JsonArray extends ReadonlyArray<JsonValue> {}
 export interface JsonObject {
@@ -91,7 +91,7 @@ export interface JsonObject {
 }
 export type JsonValue = string | number | boolean | null | JsonObject | JsonArray
 
-export const JsonValue: Schema.Schema<JsonValue> = Schema.Union([
+export const JsonValue: Schema.Codec<JsonValue> = Schema.Union([
   Schema.String,
   Schema.Number,
   Schema.Boolean,

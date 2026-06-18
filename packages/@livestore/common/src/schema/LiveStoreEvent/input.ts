@@ -29,7 +29,7 @@ export type ForSchema<TSchema extends LiveStoreSchema> = {
 }[keyof TSchema['_EventDefMapType']]
 
 /** Effect Schema union of all event types in an EventDefRecord (input format, no sequence numbers). */
-export type ForRecord<TEventDefRecord extends EventDefRecord> = Schema.Schema<
+export type ForRecord<TEventDefRecord extends EventDefRecord> = Schema.Codec<
   {
     [K in keyof TEventDefRecord]: {
       name: K

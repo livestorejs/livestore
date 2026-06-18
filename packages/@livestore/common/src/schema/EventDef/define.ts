@@ -105,7 +105,7 @@ export type DefineEventOptions<TTo, TDerived extends boolean = false> = {
 export const defineEvent = <TName extends string, TType, TEncoded = TType, TDerived extends boolean = false>(
   args: {
     name: TName
-    schema: Schema.Schema<TType, TEncoded>
+    schema: Schema.Codec<TType, TEncoded>
   } & DefineEventOptions<TType, TDerived>,
 ): EventDef<TName, TType, TEncoded, TDerived> => {
   const { name, schema, ...options } = args
@@ -179,7 +179,7 @@ export const defineEvent = <TName extends string, TType, TEncoded = TType, TDeri
 export const synced = <TName extends string, TType, TEncoded = TType>(
   args: {
     name: TName
-    schema: Schema.Schema<TType, TEncoded>
+    schema: Schema.Codec<TType, TEncoded>
   } & Omit<DefineEventOptions<TType>, 'derived' | 'clientOnly'>,
 ): EventDef<TName, TType, TEncoded> => defineEvent({ ...args, clientOnly: false })
 
@@ -213,6 +213,6 @@ export const synced = <TName extends string, TType, TEncoded = TType>(
 export const clientOnly = <TName extends string, TType, TEncoded = TType>(
   args: {
     name: TName
-    schema: Schema.Schema<TType, TEncoded>
+    schema: Schema.Codec<TType, TEncoded>
   } & Omit<DefineEventOptions<TType>, 'derived' | 'clientOnly'>,
 ): EventDef<TName, TType, TEncoded> => defineEvent({ ...args, clientOnly: true })
