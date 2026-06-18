@@ -1,8 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { isNotUndefined } from '@livestore/utils'
-import { Cause, Effect } from '@livestore/utils/effect'
+import { Cause, Effect, Predicate } from '@livestore/utils/effect'
 
 export type TCmdLoggingOptions = {
   readonly logDir?: string
@@ -83,7 +82,7 @@ export const applyLoggingToCommand: (
 ) => Effect.Effect<{ input: string | string[]; subshell: boolean; logPath?: string }> = Effect.fn('cmd.logging.apply')(
   function* (commandInput, options) {
     const asArray = Array.isArray(commandInput)
-    const parts = asArray === true ? commandInput.filter(isNotUndefined) : undefined
+    const parts = asArray === true ? commandInput.filter(Predicate.isNotUndefined) : undefined
 
     const logPath = yield* prepareCmdLogging(options)
 
