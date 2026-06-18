@@ -11,7 +11,6 @@ export * from './promise.ts'
 export * as QR from './qr.ts'
 export * from './set.ts'
 export * from './string.ts'
-export * from './time.ts'
 
 import type * as otel from '@opentelemetry/api'
 import type { Types } from 'effect'
