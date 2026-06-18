@@ -152,7 +152,7 @@ const getColumnForType = (columnType: string, nullable = false): SqliteDsl.Colum
   }
 }
 
-const getColumnForSchema = (schema: Schema.Schema.AnyTop, nullable = false): SqliteDsl.ColumnDefinition.Any => {
+const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.ColumnDefinition.Any => {
   const ast = schema.ast
   // Strip nullable wrapper to get core type
   const coreAst = stripNullable(ast)
@@ -216,7 +216,7 @@ const stripNullable = (ast: SchemaAST.AST): SchemaAST.AST => {
 
 const getLiteralColumnDefinition = (
   ast: SchemaAST.AST,
-  schema: Schema.Schema.AnyTop,
+  schema: Schema.Top,
   nullable: boolean,
   sourceAst: SchemaAST.AST,
 ): SqliteDsl.ColumnDefinition.Any | null => {

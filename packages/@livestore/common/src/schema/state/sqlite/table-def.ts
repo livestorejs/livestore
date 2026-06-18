@@ -193,10 +193,10 @@ export function table<
       }
     | {
         name: TName
-        schema: Schema.Schema.AnyTop
+        schema: Schema.Top
       }
     | {
-        schema: Schema.Schema.AnyTop
+        schema: Schema.Top
       }
   ) &
     Partial<TOptionsInput>,
