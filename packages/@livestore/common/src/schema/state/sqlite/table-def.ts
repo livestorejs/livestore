@@ -59,7 +59,7 @@ export type TableDef<
   insertSchema: SqliteDsl.InsertStructSchemaForColumns<TSqliteDef['columns']>
   // query: QueryBuilder<ReadonlyArray<Schema.Schema.Type<TSchema>>, TableDefBase<TSqliteDef & {}, TOptions>>
   readonly Type: Schema.Schema.Type<TSchema>
-  readonly Encoded: Schema.Schema.Encoded<TSchema>
+  readonly Encoded: TSchema['Encoded']
 } & QueryBuilder<ReadonlyArray<Schema.Schema.Type<TSchema>>, TableDefBase<TSqliteDef & {}, TOptions>>
 
 export type TableOptionsInput = Partial<{
@@ -168,7 +168,7 @@ export function table<
     name: TName
     schema: TSchema
   } & Partial<TOptionsInput>,
-): TableDef<SqliteTableDefForSchemaInput<TName, Schema.Schema.Type<TSchema>, Schema.Schema.Encoded<TSchema>, TSchema>>
+): TableDef<SqliteTableDefForSchemaInput<TName, Schema.Schema.Type<TSchema>, TSchema['Encoded'], TSchema>>
 
 // Overload 3: With schema and no name (uses schema annotations)
 export function table<
@@ -178,7 +178,7 @@ export function table<
   args: {
     schema: TSchema
   } & Partial<TOptionsInput>,
-): TableDef<SqliteTableDefForSchemaInput<string, Schema.Schema.Type<TSchema>, Schema.Schema.Encoded<TSchema>, TSchema>>
+): TableDef<SqliteTableDefForSchemaInput<string, Schema.Schema.Type<TSchema>, TSchema['Encoded'], TSchema>>
 
 // Implementation
 export function table<
@@ -297,9 +297,7 @@ export namespace FromTable {
   }
 
   export type RowEncodeNonNullable<TTableDef extends TableDefBase> = {
-    [K in keyof TTableDef['sqliteDef']['columns']]: Schema.Schema.Encoded<
-      TTableDef['sqliteDef']['columns'][K]['schema']
-    >
+    [K in keyof TTableDef['sqliteDef']['columns']]: (TTableDef['sqliteDef']['columns'][K]['schema'])['Encoded']
   }
 
   export type RowEncoded<TTableDef extends TableDefBase> = Types.Simplify<
@@ -329,7 +327,7 @@ export namespace FromColumns {
   >
 
   export type RowEncodeNonNullable<TColumns extends SqliteDsl.Columns> = {
-    [K in keyof TColumns]: Schema.Schema.Encoded<TColumns[K]['schema']>
+    [K in keyof TColumns]: (TColumns[K]['schema'])['Encoded']
   }
 
   export type NullableColumnNames<TColumns extends SqliteDsl.Columns> = keyof {

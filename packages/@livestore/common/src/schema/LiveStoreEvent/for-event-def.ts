@@ -12,7 +12,7 @@ export type InputDecoded<TEventDef extends EventDef.Any> = {
 /** Event without sequence numbers, with encoded (serialized) args. Used as input to `store.commit()`. */
 export type InputEncoded<TEventDef extends EventDef.Any> = {
   name: TEventDef['name']
-  args: Schema.Schema.Encoded<TEventDef['schema']>
+  args: (TEventDef['schema'])['Encoded']
 }
 
 /** Full event with composite sequence numbers and decoded args. Includes clientId/sessionId for sync. */
@@ -28,7 +28,7 @@ export type Decoded<TEventDef extends EventDef.Any> = {
 /** Full event with composite sequence numbers and encoded args. Includes clientId/sessionId for sync. */
 export type Encoded<TEventDef extends EventDef.Any> = {
   name: TEventDef['name']
-  args: Schema.Schema.Encoded<TEventDef['schema']>
+  args: (TEventDef['schema'])['Encoded']
   seqNum: EventSequenceNumber.Client.Composite
   parentSeqNum: EventSequenceNumber.Client.Composite
   clientId: string
@@ -50,7 +50,7 @@ export type ForRecord<TEventDefRecord extends EventDefRecord> = Schema.Schema<
   {
     [K in keyof TEventDefRecord]: {
       name: K
-      args: Schema.Schema.Encoded<TEventDefRecord[K]['schema']>
+      args: (TEventDefRecord[K]['schema'])['Encoded']
       seqNum: EventSequenceNumber.Client.Composite
       parentSeqNum: EventSequenceNumber.Client.Composite
       clientId: string
