@@ -311,7 +311,7 @@ describe('getColumnDefForSchema', () => {
         readonly value: string
         readonly children: ReadonlyArray<TreeNode>
       }
-      const TreeNode: Schema.Codec<TreeNode> = Schema.Struct({
+      const TreeNode: Schema.Schema<TreeNode> = Schema.Struct({
         value: Schema.String,
         children: Schema.Array(Schema.suspend(() => TreeNode)),
       })

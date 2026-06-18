@@ -83,7 +83,7 @@ export interface JsonObject {
 }
 export type JsonValue = string | number | boolean | null | JsonObject | JsonArray
 
-export const JsonValue: Schema.Codec<JsonValue> = Schema.Union([
+export const JsonValue: Schema.Schema<JsonValue> = Schema.Union([
   Schema.String,
   Schema.Number,
   Schema.Boolean,
