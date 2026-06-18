@@ -47,7 +47,7 @@ import { LeaderThreadCtx } from './types.ts'
 
 export interface MakeLeaderThreadLayerParams {
   storeId: string
-  syncPayloadSchema: Schema.Schema<any> | undefined
+  syncPayloadSchema: Schema.Top | undefined
   syncPayloadEncoded: Schema.Json | undefined
   clientId: string
   schema: LiveStoreSchema
