@@ -1,9 +1,9 @@
-import { Schema, Transferable } from '@livestore/utils/effect'
+import { Effect, Schema, Transferable } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
 const id = Schema.String.pipe(
-  Schema.optional,
-  Schema.withDefaults({ constructor: () => nanoid(10), decoding: () => nanoid(10) }),
+  Schema.withDecodingDefaultType(Effect.sync(() => nanoid(10))),
+  Schema.withConstructorDefault(Effect.sync(() => nanoid(10))),
 )
 
 const defaultPacketFields = {

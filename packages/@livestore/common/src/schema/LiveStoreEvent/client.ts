@@ -1,5 +1,5 @@
 import { deepEqual, memoizeByRef } from '@livestore/utils'
-import { Option, Schema } from '@livestore/utils/effect'
+import { Effect, Option, Schema } from '@livestore/utils/effect'
 
 import type { EventDef } from '../EventDef/mod.ts'
 import * as EventSequenceNumber from '../EventSequenceNumber/mod.ts'
@@ -87,21 +87,20 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
     materializerHashSession: Schema.Option(Schema.Number),
   }).pipe(
     Schema.mutable,
-    Schema.optional,
-    Schema.withDefaults({
-      constructor: () => ({
+    Schema.withDecodingDefaultType(Effect.succeed({
         sessionChangeset: { _tag: 'unset' as const },
         syncMetadata: Option.none(),
         materializerHashLeader: Option.none(),
         materializerHashSession: Option.none(),
-      }),
-      decoding: () => ({
+      }
+    )),
+    Schema.withConstructorDefault(Effect.succeed({
         sessionChangeset: { _tag: 'unset' as const },
         syncMetadata: Option.none(),
         materializerHashLeader: Option.none(),
         materializerHashSession: Option.none(),
-      }),
-    }),
+      }
+    )),
   ),
 }) {
   toJSON = (): any => {
