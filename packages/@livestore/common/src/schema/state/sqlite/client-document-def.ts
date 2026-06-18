@@ -279,7 +279,7 @@ export const deriveEventAndMaterializer = ({
   const derivedSetEventDef = defineEvent({
     name: `${name}Set`,
     schema: Schema.Struct({
-      id: Schema.Union([Schema.String, Schema.UniqueSymbolFromSelf(SessionIdSymbol)]),
+      id: Schema.Union([Schema.String, Schema.UniqueSymbol(SessionIdSymbol)]),
       value: createOptimisticEventSchema({ valueSchema, defaultValue, partialSet }),
     }).annotate({ title: `${name}Set:Args` }),
     clientOnly: true,

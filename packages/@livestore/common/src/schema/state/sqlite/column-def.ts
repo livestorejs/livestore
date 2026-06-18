@@ -181,7 +181,7 @@ const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.Col
   }
 
   if (isUint8ArraySchema(coreAst) === true || isUint8ArraySchema(encodedAst) === true) {
-    return SqliteDsl.blob({ schema: Schema.Uint8ArrayFromSelf as Schema.Codec<Uint8Array<ArrayBuffer>>, nullable })
+    return SqliteDsl.blob({ schema: Schema.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>, nullable })
   }
 
   const literalColumn = getLiteralColumnDefinition(encodedAst, coreSchema, nullable, coreAst)
