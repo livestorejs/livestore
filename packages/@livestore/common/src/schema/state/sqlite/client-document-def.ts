@@ -188,7 +188,7 @@ export const createOptimisticEventSchema = ({
   const targetSchema = partialSet === true ? valueSchema.mapFields(Struct.map(Schema.optional)) : valueSchema
   // The transform decode must yield values in the target schema's ENCODED shape.
   // This keeps JSON columns consistent when Encoded != Type (e.g. Option).
-  const encodeTarget = Schema.encodeEffectSync(targetSchema)
+  const encodeTarget = Schema.encodeSync(targetSchema)
 
   return Schema.transform(
     Schema.Unknown, // Accept any historical event structure

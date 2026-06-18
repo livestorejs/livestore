@@ -72,7 +72,7 @@ export const testMultipleMigrations = () =>
     UnknownError.mapToUnknownError,
     Effect.exit,
     Effect.tapSync((exit) => {
-      window.postMessage(Schema.encodeEffectSync(ResultMultipleMigrations)(ResultMultipleMigrations.make({ exit })))
+      window.postMessage(Schema.encodeSync(ResultMultipleMigrations)(ResultMultipleMigrations.make({ exit })))
     }),
     Effect.provideService(References.MinimumLogLevel, 'Debug'),
     Effect.provide(Layer.mergeAll(Opfs.layer, Logger.layer([Logger.consolePretty()]))),

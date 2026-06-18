@@ -20,7 +20,7 @@ export const test = () =>
     Effect.tapCauseLogPretty,
     Effect.exit,
     Effect.tapSync((exit) => {
-      window.postMessage(Schema.encodeEffectSync(ResultStoreBootError)(ResultStoreBootError.make({ exit })))
+      window.postMessage(Schema.encodeSync(ResultStoreBootError)(ResultStoreBootError.make({ exit })))
     }),
     Effect.scoped,
     provideOtel({}),
