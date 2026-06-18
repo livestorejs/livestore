@@ -87,7 +87,7 @@ export const isDeprecated = <A, I, R>(schema: Schema.Codec<A, I, R, R>): boolean
  * @returns Array of objects containing field name and deprecation reason
  */
 export const findDeprecatedFieldsWithValues = (
-  schema: Schema.Schema.All,
+  schema: Schema.Top,
   args: Record<string, unknown>,
 ): Array<{ field: string; reason: string }> => {
   const result: Array<{ field: string; reason: string }> = []
