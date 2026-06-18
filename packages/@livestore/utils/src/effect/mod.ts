@@ -61,7 +61,6 @@ export {
   Channel,
   Chunk,
   Config,
-  ConfigError,
   ConfigProvider,
   Console,
   Context,
