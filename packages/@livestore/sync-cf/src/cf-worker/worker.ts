@@ -39,7 +39,7 @@ export type MakeWorkerOptions<TEnv extends Env = Env, TSyncPayload = Schema.Json
    * Optionally pass a schema to decode the client-provided payload into a typed object
    * before calling {@link validatePayload}. If omitted, the raw JSON value is forwarded.
    */
-  syncPayloadSchema?: Schema.Codec<TSyncPayload>
+  syncPayloadSchema?: Schema.Schema<TSyncPayload>
   /**
    * Validates the (optionally decoded) payload during WebSocket connection establishment.
    * If {@link syncPayloadSchema} is provided, `payload` will be of the schema's inferred type.
