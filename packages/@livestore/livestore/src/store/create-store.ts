@@ -129,7 +129,7 @@ export type LiveStoreContextProps<
    *   const SyncPayload = Schema.Struct({ authToken: Schema.String })
    *   useStore({ ..., syncPayloadSchema: SyncPayload, syncPayload: { authToken: '...' } })
    */
-  syncPayload?: Schema.Schema.Type<TSyncPayloadSchema>
+  syncPayload?: TSyncPayloadSchema['Type']
 }
 
 export interface CreateStoreOptions<
@@ -205,7 +205,7 @@ export interface CreateStoreOptions<
    *
    * @default undefined
    */
-  syncPayload?: Schema.Schema.Type<TSyncPayloadSchema>
+  syncPayload?: TSyncPayloadSchema['Type']
   /** Options provided to the Store constructor. */
   params?: {
     /** Max events pushed to the leader per write batch. */

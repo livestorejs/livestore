@@ -890,7 +890,7 @@ describe('query builder', () => {
       const contactsTable = makeContactsTable()
 
       type InsertInput = Parameters<(typeof contactsTable)['insert']>[0]
-      type NestedType = Schema.Schema.Type<typeof Nested>
+      type NestedType = (typeof Nested)['Type']
 
       type Assert<T extends true> = T
 
