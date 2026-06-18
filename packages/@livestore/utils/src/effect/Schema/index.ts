@@ -76,21 +76,3 @@ export const encodeSyncDebug: <A, I>(
     return res.success
   }
 }
-
-export interface JsonArray extends ReadonlyArray<JsonValue> {}
-export interface JsonObject {
-  [key: string]: JsonValue
-}
-export type JsonValue = string | number | boolean | null | JsonObject | JsonArray
-
-export const JsonValue: Schema.Schema<JsonValue> = Schema.Union([
-  Schema.String,
-  Schema.Number,
-  Schema.Boolean,
-  Schema.Null,
-  Schema.Array(Schema.suspend(() => JsonValue)),
-  Schema.Record(
-    Schema.String,
-    Schema.suspend(() => JsonValue),
-  ),
-]).annotate({ identifier: 'JsonValue' })
