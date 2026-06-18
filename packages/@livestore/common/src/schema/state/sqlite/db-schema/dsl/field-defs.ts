@@ -103,7 +103,7 @@ const makeColDef =
   <TColumnType extends FieldColumnType>(columnType: TColumnType): ColDefFn<TColumnType> =>
   (def?: ColumnDefinitionInput) => {
     const nullable = def?.nullable ?? false
-    const schemaWithoutNull: Schema.Schema<any> = def?.schema ?? defaultSchemaForColumnType(columnType)
+    const schemaWithoutNull: Schema.Top = def?.schema ?? defaultSchemaForColumnType(columnType)
     const schema = nullable === true ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
     const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
