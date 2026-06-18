@@ -295,8 +295,8 @@ export const deriveEventAndMaterializer = ({
     const schemaProps = Schema.getResolvedPropertySignatures(valueSchema)
     if (schemaProps.length === 0 || partialSet === false) {
       const valueColJsonSchema = Schema.fromJsonString(valueSchema)
-      const encodedInsertValue = Schema.encodeEffectSyncDebug(valueColJsonSchema)(value ?? defaultValue)
-      const encodedUpdateValue = Schema.encodeEffectSyncDebug(valueColJsonSchema)(value)
+      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(value ?? defaultValue)
+      const encodedUpdateValue = Schema.encodeSyncDebug(valueColJsonSchema)(value)
 
       return {
         sql: `INSERT INTO '${name}' (id, value) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET value = ?`,
@@ -306,7 +306,7 @@ export const deriveEventAndMaterializer = ({
     } else {
       const valueColJsonSchema = Schema.fromJsonString(valueSchema.mapFields(Struct.map(Schema.optional)))
 
-      const encodedInsertValue = Schema.encodeEffectSyncDebug(valueColJsonSchema)(
+      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(
         mergeDefaultValues(defaultValue, value),
       )
 
@@ -315,7 +315,7 @@ export const deriveEventAndMaterializer = ({
 
       const keys = Object.keys(value)
       const partialUpdateSchema = valueSchema.mapFields(Struct.pick(keys))
-      const encodedPartialUpdate = Schema.encodeEffectSyncDebug(partialUpdateSchema)(value)
+      const encodedPartialUpdate = Schema.encodeSyncDebug(partialUpdateSchema)(value)
 
       for (const key in encodedPartialUpdate) {
         const encodedValueForKey = encodedPartialUpdate[key]
