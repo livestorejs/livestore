@@ -31,7 +31,7 @@ const resolveStructAst = (ast: SchemaAST.AST): SchemaAST.AST => {
 }
 
 export const getResolvedPropertySignatures = (
-  schema: Schema.Schema.AnyNoContext,
+  schema: Schema.Top,
 ): ReadonlyArray<SchemaAST.PropertySignature> => {
   const resolvedAst = resolveStructAst(schema.ast)
   return SchemaAST.getPropertySignatures(resolvedAst)
