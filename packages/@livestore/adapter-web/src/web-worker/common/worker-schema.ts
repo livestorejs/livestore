@@ -88,7 +88,7 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
     payload: {
       batch: Schema.Array(Schema.toType(LiveStoreEvent.Client.Encoded)),
     },
-    success: Schema.Void as Schema.Codec<void>,
+    success: Schema.Void,
     failure: RejectedPushError,
   },
 ) {}

@@ -55,7 +55,7 @@ type ColumnDefaultArg<T, TNullable extends boolean> =
   | NoDefault
 
 export type ColumnDefinitionInput = {
-  readonly schema?: Schema.Codec<unknown>
+  readonly schema?: Schema.Schema<unknown>
   readonly default?: ColumnDefaultArg<unknown, boolean>
   readonly nullable?: boolean
   readonly primaryKey?: boolean
@@ -68,7 +68,7 @@ export type NoDefault = typeof NoDefault
 export type ColDefFn<TColumnType extends FieldColumnType> = {
   (): {
     columnType: TColumnType
-    schema: Schema.Codec<DefaultEncodedForColumnType<TColumnType>>
+    schema: Schema.Schema<DefaultEncodedForColumnType<TColumnType>>
     default: Option.None<never>
     nullable: false
     primaryKey: false
@@ -259,25 +259,25 @@ export type DefaultEncodedForColumnType<TColumnType extends FieldColumnType> = T
 
 export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(
   columnType: TColumnType,
-): Schema.Codec<DefaultEncodedForColumnType<TColumnType>> => {
+): Schema.Schema<DefaultEncodedForColumnType<TColumnType>> => {
   type T = DefaultEncodedForColumnType<TColumnType>
 
   switch (columnType) {
     case 'text': {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
-      return Schema.String as any as Schema.Codec<T>
+      return Schema.String as any as Schema.Schema<T>
     }
     case 'integer': {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
-      return Schema.Number as any as Schema.Codec<T>
+      return Schema.Number as any as Schema.Schema<T>
     }
     case 'real': {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
-      return Schema.Number as any as Schema.Codec<T>
+      return Schema.Number as any as Schema.Schema<T>
     }
     case 'blob': {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
-      return Schema.Uint8Array as any as Schema.Codec<T>
+      return Schema.Uint8Array as any as Schema.Schema<T>
     }
     default: {
       return casesHandled(columnType)
