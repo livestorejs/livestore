@@ -32,8 +32,8 @@ const isBoundArrayLike = (value: unknown): value is BoundArray<unknown> =>
   (value !== null && typeof value === 'object' && typeof (value as { sizeLimit?: number }).sizeLimit === 'number')
 
 const BoundArraySchemaFromSelf = <A, I, R>(
-  item: Schema.Schema<A, I, R>,
-): Schema.Schema<BoundArray<A>, BoundArray<I>, R> =>
+  item: Schema.Codec<A, I, R, R>,
+): Schema.Codec<BoundArray<A>, BoundArray<I>, R> =>
   Schema.declare(
     [item],
     {
@@ -82,7 +82,7 @@ const BoundArraySchemaFromSelf = <A, I, R>(
     },
   )
 
-export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Schema<ItemDecoded, ItemEncoded>) =>
+export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Codec<ItemDecoded, ItemEncoded>) =>
   Schema.transform(
     Schema.Struct({
       size: Schema.Number,

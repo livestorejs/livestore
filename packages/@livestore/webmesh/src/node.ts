@@ -93,10 +93,10 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
      */
     channelName: string
     schema:
-      | Schema.Schema<MsgListen | MsgSend, any>
+      | Schema.Codec<MsgListen | MsgSend, any>
       | {
-          listen: Schema.Schema<MsgListen, any>
-          send: Schema.Schema<MsgSend, any>
+          listen: Schema.Codec<MsgListen, any>
+          send: Schema.Codec<MsgSend, any>
         }
     /**
      * If possible, prefer using a DirectChannel with transferables (i.e. transferring memory instead of copying it).
@@ -129,7 +129,7 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
    */
   makeBroadcastChannel: <Msg>(args: {
     channelName: string
-    schema: Schema.Schema<Msg, any>
+    schema: Schema.Codec<Msg, any>
   }) => Effect.Effect<WebChannel.WebChannel<Msg, Msg>, never, Scope.Scope>
 }
 

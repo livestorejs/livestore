@@ -34,7 +34,7 @@ export type EventDef<TName extends string, TType, TEncoded = TType, TDerived ext
   name: TName
 
   /** Effect Schema used for validating and encoding/decoding event arguments. */
-  schema: Schema.Schema<TType, TEncoded>
+  schema: Schema.Codec<TType, TEncoded>
 
   options: {
     /**
