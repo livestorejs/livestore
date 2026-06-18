@@ -24,7 +24,7 @@ import { resolveSessionIdSymbolInEventArgs } from '../session-id-symbol.ts'
 import * as SyncState from './syncstate.ts'
 
 /** Serialize value to JSON string for trace attributes */
-const jsonStringify = Schema.encodeEffectSync(Schema.UnknownFromJsonString)
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
 
 /**
  * Rebase behaviour:

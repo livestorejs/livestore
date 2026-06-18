@@ -121,7 +121,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               const attachment = ws.deserializeAttachment()
               const { pullRequestIds, ...rest } = Schema.decodeEffectSync(WebSocketAttachmentSchema)(attachment)
               ws.serializeAttachment(
-                Schema.encodeEffectSync(WebSocketAttachmentSchema)({
+                Schema.encodeSync(WebSocketAttachmentSchema)({
                   ...rest,
                   pullRequestIds: [...pullRequestIds, request.id],
                 }),
@@ -131,7 +131,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               const attachment = ws.deserializeAttachment()
               const { pullRequestIds, ...rest } = Schema.decodeEffectSync(WebSocketAttachmentSchema)(attachment)
               ws.serializeAttachment(
-                Schema.encodeEffectSync(WebSocketAttachmentSchema)({
+                Schema.encodeSync(WebSocketAttachmentSchema)({
                   ...rest,
                   pullRequestIds: pullRequestIds.filter((id) => id !== request.requestId),
                 }),
@@ -170,7 +170,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           // Since we're using websocket hibernation, we need to remember the storeId for subsequent `webSocketMessage` calls
           // Also store forwarded headers so they're available after hibernation resume
           server.serializeAttachment(
-            Schema.encodeEffectSync(WebSocketAttachmentSchema)({ storeId, payload, pullRequestIds: [], headers }),
+            Schema.encodeSync(WebSocketAttachmentSchema)({ storeId, payload, pullRequestIds: [], headers }),
           )
 
           // See https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server

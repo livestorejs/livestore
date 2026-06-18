@@ -113,7 +113,7 @@ import { resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths
 import type { SnippetBundle } from '../vite/snippet-graph.ts'
 import { buildSnippetBundle, __internal as snippetGraphInternal } from '../vite/snippet-graph.ts'
 
-const jsonStringify = Schema.encodeEffectSync(Schema.UnknownFromJsonString)
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
 const jsonStringifyPretty = (value: unknown): string => JSON.stringify(value, null, 2)
 
 type THastRendererResult = {

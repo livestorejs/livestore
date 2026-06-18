@@ -100,7 +100,7 @@ export const makeFactory =
     for (const [name, eventDef] of Object.entries(eventDefs) as [keyof TDefs, TDefs[keyof TDefs]][]) {
       const next = (args: EventFactoriesArgs<TDefs>[typeof name]) => {
         const decoded = eventDef(args)
-        const encodedArgs = Schema.encodeEffectSync(eventDef.schema)(decoded.args)
+        const encodedArgs = Schema.encodeSync(eventDef.schema)(decoded.args)
         const encoded = eventDef.encoded(encodedArgs)
 
         const event = LiveStoreEvent.Global.Encoded.make({
