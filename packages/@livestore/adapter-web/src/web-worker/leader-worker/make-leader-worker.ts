@@ -43,7 +43,7 @@ import * as WorkerSchema from '../common/worker-schema.ts'
 export type WorkerOptions = {
   schema: LiveStoreSchema
   sync?: SyncOptions
-  syncPayloadSchema?: Schema.Schema<any>
+  syncPayloadSchema?: Schema.Top
   otelOptions?: {
     tracer?: otel.Tracer
   }
