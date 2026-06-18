@@ -12,7 +12,7 @@ import { SqliteDsl } from './db-schema/mod.ts'
  * Fields with both null and undefined will emit a warning as this is a lossy conversion.
  */
 export const getColumnDefForSchema = (
-  schema: Schema.Schema.AnyNoContext,
+  schema: Schema.Top,
   propertySignature?: SchemaAST.PropertySignature,
   forceNullable = false,
 ): SqliteDsl.ColumnDefinition.Any => {
@@ -152,7 +152,7 @@ const getColumnForType = (columnType: string, nullable = false): SqliteDsl.Colum
   }
 }
 
-const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false): SqliteDsl.ColumnDefinition.Any => {
+const getColumnForSchema = (schema: Schema.Schema.AnyTop, nullable = false): SqliteDsl.ColumnDefinition.Any => {
   const ast = schema.ast
   // Strip nullable wrapper to get core type
   const coreAst = stripNullable(ast)
@@ -216,7 +216,7 @@ const stripNullable = (ast: SchemaAST.AST): SchemaAST.AST => {
 
 const getLiteralColumnDefinition = (
   ast: SchemaAST.AST,
-  schema: Schema.Schema.AnyNoContext,
+  schema: Schema.Schema.AnyTop,
   nullable: boolean,
   sourceAst: SchemaAST.AST,
 ): SqliteDsl.ColumnDefinition.Any | null => {

@@ -161,7 +161,7 @@ export function table<
 // Overload 2: With schema and explicit name
 export function table<
   TName extends string,
-  TSchema extends Schema.Schema.AnyNoContext,
+  TSchema extends Schema.Top,
   const TOptionsInput extends TableOptionsInput = TableOptionsInput,
 >(
   args: {
@@ -172,7 +172,7 @@ export function table<
 
 // Overload 3: With schema and no name (uses schema annotations)
 export function table<
-  TSchema extends Schema.Schema.AnyNoContext,
+  TSchema extends Schema.Top,
   const TOptionsInput extends TableOptionsInput = TableOptionsInput,
 >(
   args: {
@@ -193,10 +193,10 @@ export function table<
       }
     | {
         name: TName
-        schema: Schema.Schema.AnyNoContext
+        schema: Schema.Schema.AnyTop
       }
     | {
-        schema: Schema.Schema.AnyNoContext
+        schema: Schema.Schema.AnyTop
       }
   ) &
     Partial<TOptionsInput>,
