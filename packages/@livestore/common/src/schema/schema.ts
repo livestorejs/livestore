@@ -1,4 +1,5 @@
-import { isReadonlyArray, shouldNeverHappen } from '@livestore/utils'
+import { shouldNeverHappen } from '@livestore/utils'
+import { ReadonlyArray as EffectArray } from '@livestore/utils/effect'
 
 import type { MigrationOptions } from '../adapter-types.ts'
 import type { EventDef, EventDefRecord, Materializer } from './EventDef/mod.ts'
@@ -108,7 +109,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
 
   const eventsDefsMap = new Map<string, EventDef.AnyWithoutFn>()
 
-  if (isReadonlyArray(inputSchema.events) === true) {
+  if (EffectArray.isArray<InputSchema['events']>(inputSchema.events) === true) {
     for (const eventDef of inputSchema.events) {
       eventsDefsMap.set(eventDef.name, eventDef)
     }

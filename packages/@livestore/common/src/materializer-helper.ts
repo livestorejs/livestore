@@ -1,5 +1,5 @@
-import { isDevEnv, isReadonlyArray } from '@livestore/utils'
-import { Hash, Option, Predicate, Schema } from '@livestore/utils/effect'
+import { isDevEnv } from '@livestore/utils'
+import { Hash, Option, Predicate, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from './adapter-types.ts'
 import type { EventDef, Materializer, MaterializerContextQuery, MaterializerResult } from './schema/EventDef/mod.ts'
@@ -126,7 +126,7 @@ const fromMaterializerResult = (
   bindValues: BindValues
   writeTables: ReadonlySet<string> | undefined
 }> => {
-  if (isReadonlyArray(materializerResult) === true) {
+  if (ReadonlyArray.isArray<MaterializerResult | ReadonlyArray<MaterializerResult>>(materializerResult) === true) {
     return materializerResult.flatMap(fromMaterializerResult)
   }
   if (isQueryBuilder(materializerResult) === true) {
