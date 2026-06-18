@@ -102,7 +102,7 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
         Effect.gen(function* () {
           debugInfo.sendTotal++
 
-          const [messageEncoded, transferables] = yield* Schema.encodeEffectWithTransferables(WindowMessageSend)({
+          const [messageEncoded, transferables] = yield* Schema.encodeWithTransferables(WindowMessageSend)({
             message,
             from: ids.own,
             to: ids.other,
