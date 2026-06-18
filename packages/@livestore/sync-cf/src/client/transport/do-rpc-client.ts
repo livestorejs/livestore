@@ -1,7 +1,7 @@
 import { SyncBackend, UnknownError } from '@livestore/common'
 import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
 import { splitArrayBySize } from '@livestore/common/sync'
-import { omit, shouldNeverHappen } from '@livestore/utils'
+import { shouldNeverHappen } from '@livestore/utils'
 import {
   Effect,
   identity,
@@ -13,6 +13,7 @@ import {
   RpcSerialization,
   Schema,
   Stream,
+  Struct,
   SubscriptionRef,
 } from '@livestore/utils/effect'
 
@@ -94,7 +95,7 @@ export const makeDoRpcSync =
               )
             : identity,
           Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
-          Stream.map((res) => omit(res, ['backendId'])),
+          Stream.map((res) => Struct.omit(res, ['backendId'])),
           Stream.mapError((cause) =>
             cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
               ? cause
