@@ -97,7 +97,7 @@ export type StoreInternals = {
    * Exposed primarily for Devtools (e.g. databrowser) to validate ad‑hoc
    * event payloads. Application code should not depend on it directly.
    */
-  readonly eventSchema: Schema.Schema<LiveStoreEvent.Client.Decoded, LiveStoreEvent.Client.Encoded>
+  readonly eventSchema: Schema.Codec<LiveStoreEvent.Client.Decoded, LiveStoreEvent.Client.Encoded>
 
   /**
    * The active client session backing this Store. Provides access to the

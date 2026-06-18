@@ -966,7 +966,7 @@ describe('query builder', () => {
 })
 
 // TODO nested queries
-// const rawSql = <A, I>(sql: string, params: { [key: string]: any }, schema: Schema.Schema<A, I>) =>
+// const rawSql = <A, I>(sql: string, params: { [key: string]: any }, schema: Schema.Codec<A, I>) =>
 //   ({
 //     sql,
 //     params,

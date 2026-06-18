@@ -261,8 +261,8 @@ export const queueChannelProxy = <MsgListen, MsgSend>({
   schema: inputSchema,
 }: {
   schema:
-    | Schema.Schema<MsgListen | MsgSend, any>
-    | { listen: Schema.Schema<MsgListen, any>; send: Schema.Schema<MsgSend, any> }
+    | Schema.Codec<MsgListen | MsgSend, any>
+    | { listen: Schema.Codec<MsgListen, any>; send: Schema.Codec<MsgSend, any> }
 }): Effect.Effect<QueueChannelProxy<MsgListen, MsgSend>, never, Scope.Scope> =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {

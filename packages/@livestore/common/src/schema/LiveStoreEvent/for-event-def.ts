@@ -36,7 +36,7 @@ export type Encoded<TEventDef extends EventDef.Any> = {
 }
 
 /** Effect Schema union of all event types in an EventDefRecord (with composite sequence numbers). */
-export type ForRecord<TEventDefRecord extends EventDefRecord> = Schema.Schema<
+export type ForRecord<TEventDefRecord extends EventDefRecord> = Schema.Codec<
   {
     [K in keyof TEventDefRecord]: {
       name: K

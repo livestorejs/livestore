@@ -88,7 +88,7 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
     payload: {
       batch: Schema.Array(Schema.toType(LiveStoreEvent.Client.Encoded)),
     },
-    success: Schema.Void as Schema.Schema<void>,
+    success: Schema.Void as Schema.Codec<void>,
     failure: RejectedPushError,
   },
 ) {}
@@ -114,7 +114,7 @@ export class LeaderWorkerInnerStreamEvents extends Schema.TaggedRequest<LeaderWo
 
 export class LeaderWorkerInnerExport extends Schema.TaggedRequest<LeaderWorkerInnerExport>()('Export', {
   payload: {},
-  success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
+  success: Transferable.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>,
   failure: Schema.Never,
 }) {}
 
@@ -122,7 +122,7 @@ export class LeaderWorkerInnerExportEventlog extends Schema.TaggedRequest<Leader
   'ExportEventlog',
   {
     payload: {},
-    success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
+    success: Transferable.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>,
     failure: Schema.Never,
   },
 ) {}
@@ -132,7 +132,7 @@ export class LeaderWorkerInnerGetRecreateSnapshot extends Schema.TaggedRequest<L
   {
     payload: {},
     success: Schema.Struct({
-      snapshot: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
+      snapshot: Transferable.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>,
       migrationsReport: MigrationsReport,
     }),
     failure: Schema.Never,

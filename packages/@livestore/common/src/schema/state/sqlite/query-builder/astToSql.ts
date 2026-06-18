@@ -55,7 +55,7 @@ const getJsonArrayElementSchema = (colSchema: Schema.Top): Schema.Top | undefine
  * Objects/arrays are stringified so they match json_each's TEXT representation.
  */
 const encodeJsonArrayElementValue = (elementSchema: Schema.Top, value: unknown): SqlValue => {
-  const encoded = Schema.encodeSync(elementSchema as Schema.Schema<unknown, SqlValue>)(value)
+  const encoded = Schema.encodeSync(elementSchema as Schema.Codec<unknown, SqlValue>)(value)
 
   if (encoded === null) return null
   if (typeof encoded === 'object') {

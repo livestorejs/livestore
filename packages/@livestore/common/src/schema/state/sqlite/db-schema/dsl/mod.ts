@@ -51,12 +51,12 @@ export const table = <TTableName extends string, TColumns extends Columns, TInde
 export type AnyIfConstained<In, Out> = '__constrained' extends keyof In ? any : Out
 export type EmptyObjIfConstained<In> = '__constrained' extends keyof In ? {} : In
 
-export type StructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Schema<
+export type StructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Codec<
   AnyIfConstained<TCols, FromColumns.RowDecoded<TCols>>,
   AnyIfConstained<TCols, FromColumns.RowEncoded<TCols>>
 >
 
-export type InsertStructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Schema<
+export type InsertStructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Codec<
   AnyIfConstained<TCols, FromColumns.InsertRowDecoded<TCols>>,
   AnyIfConstained<TCols, FromColumns.InsertRowEncoded<TCols>>
 >
