@@ -21,8 +21,8 @@ export class UnknownError extends Schema.TaggedErrorClass<UnknownError>('~@lives
       Layer.catchCause((cause) => {
         const error = Cause.findErrorOption(cause)
         return Option.isSome(error) === true && Schema.is(UnknownError)(error.value) === true
-          ? Layer.fail(error.value)
-          : Layer.fail(new UnknownError({ cause: cause }))
+          ? Layer.effectContext<A, UnknownError, never>(Effect.fail(error.value))
+          : Layer.effectContext<A, UnknownError, never>(Effect.fail(new UnknownError({ cause: cause })))
       }),
     )
 
