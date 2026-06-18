@@ -1,7 +1,7 @@
 import * as OtelTracer from '@effect/opentelemetry/Tracer'
 import { Cause, Console, type Context, Deferred, Duration, Effect, Function, Fiber, pipe, Predicate, Scope, type Stream } from 'effect'
 
-import { isDevEnv, isPromise, objectToString } from '../mod.ts'
+import { isDevEnv, objectToString } from '../mod.ts'
 import { UnknownError } from './Error.ts'
 
 export * from 'effect/Effect'
@@ -53,7 +53,7 @@ export const tryAll = <Res>(
     Effect.andThen((fnRes) =>
       Effect.isEffect(fnRes) === true
         ? (fnRes as any as Effect.Effect<any>)
-        : isPromise(fnRes) === true
+        : Predicate.isPromiseLike(fnRes) === true
           ? Effect.promise(() => fnRes)
           : Effect.succeed(fnRes),
     ),
