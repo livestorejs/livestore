@@ -277,7 +277,7 @@ export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(
     }
     case 'blob': {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
-      return Schema.Uint8ArrayFromSelf as any as Schema.Codec<T>
+      return Schema.Uint8Array as any as Schema.Codec<T>
     }
     default: {
       return casesHandled(columnType)

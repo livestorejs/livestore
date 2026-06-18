@@ -34,7 +34,7 @@ describe('getColumnDefForSchema', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.DateFromNumber)
       expect(columnDef.columnType).toBe('integer')
       expect(Schema.toEncoded(columnDef.schema).toString()).toBe('number')
-      expect(Schema.toType(columnDef.schema).toString()).toBe('DateFromSelf')
+      expect(Schema.toType(columnDef.schema).toString()).toBe('Date')
     })
 
     it('should map Schema.BigInt to text column', () => {
@@ -301,7 +301,7 @@ describe('getColumnDefForSchema', () => {
     it('should handle Uint8Array as blob column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.Uint8Array)
       expect(columnDef.columnType).toBe('blob')
-      expect(objectToString(columnDef.schema)).toBe('Uint8ArrayFromSelf')
+      expect(objectToString(columnDef.schema)).toBe('Uint8Array')
     })
   })
 
