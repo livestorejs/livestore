@@ -11,7 +11,7 @@ export type DiffItem = {
  * Diffs two values for a given schema and traverses downwards and returns a list of differences.
  */
 export const debugDiff =
-  <A, I, R>(base: Schema.Codec<A, I, R, R>) =>
+  <A, I, R>(base: Schema.Top) =>
   (a: A, b: A): DiffItem[] => {
     const bag = [] as DiffItem[]
     debugDiffImpl(base.ast, a, b, '', bag)
