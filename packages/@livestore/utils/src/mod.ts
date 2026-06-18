@@ -19,25 +19,6 @@ import type { Types } from 'effect'
 import { objectToString } from './misc.ts'
 
 /**
- * Recursively expands type aliases for better IDE hover display.
- *
- * Transforms `{ a: string } & { b: number }` into `{ a: string; b: number }`.
- */
-export type Prettify<T> = T extends infer U ? { [K in keyof U]: Prettify<U[K]> } : never
-
-/**
- * Type-level equality check. Returns `true` if `A` and `B` are exactly the same type.
- *
- * @example
- * ```ts
- * type Test1 = TypeEq<string, string> // true
- * type Test2 = TypeEq<string, number> // false
- * type Test3 = TypeEq<{ a: 1 }, { a: 1 }> // true
- * ```
- */
-export type TypeEq<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false
-
-/**
  * Type-level subtype check. Returns `true` if `A` extends `B`.
  *
  * @example
