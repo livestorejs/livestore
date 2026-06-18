@@ -29,9 +29,9 @@ export type StorageTypeOpfs = typeof StorageTypeOpfs.Type
 // export const StorageTypeIndexeddb = Schema.Struct({
 //   type: Schema.Literal('indexeddb'),
 //   /** @default "livestore" */
-//   databaseName: Schema.optionalWith(Schema.String, { default: () => 'livestore' }),
+//   databaseName: Schema.String.pipe(Schema.withDecodingDefaultType(Effect.succeed('livestore'))),
 //   /** @default "livestore-" */
-//   storeNamePrefix: Schema.optionalWith(Schema.String, { default: () => 'livestore-' }),
+//   storeNamePrefix: Schema.String.pipe(Schema.withDecodingDefaultType(Effect.succeed('livestore-'))),
 // })
 
 export const StorageType = Schema.Union([
