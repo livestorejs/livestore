@@ -133,8 +133,8 @@ export type DurableObjectId = string
  */
 export const PERSISTENCE_FORMAT_VERSION = 7
 
-export const encodeOutgoingMessage = Schema.encodeEffectSync(Schema.fromJsonString(SyncMessage.BackendToClientMessage))
-export const encodeIncomingMessage = Schema.encodeEffectSync(Schema.fromJsonString(SyncMessage.ClientToBackendMessage))
+export const encodeOutgoingMessage = Schema.encodeSync(Schema.fromJsonString(SyncMessage.BackendToClientMessage))
+export const encodeIncomingMessage = Schema.encodeSync(Schema.fromJsonString(SyncMessage.ClientToBackendMessage))
 
 /**
  * Extracts the LiveStore sync search parameters from a request. Returns

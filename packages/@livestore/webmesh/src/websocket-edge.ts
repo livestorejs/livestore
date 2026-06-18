@@ -156,7 +156,7 @@ export const makeWebSocketEdge = ({
       )
 
       const initHandshake = (from: string) =>
-        sendToSocket(Schema.encodeEffectSync(MessageMsgpack)({ _tag: 'WSEdgeInit', from }))
+        sendToSocket(Schema.encodeSync(MessageMsgpack)({ _tag: 'WSEdgeInit', from }))
 
       if (socketType._tag === 'leaf') {
         yield* initHandshake(socketType.from)

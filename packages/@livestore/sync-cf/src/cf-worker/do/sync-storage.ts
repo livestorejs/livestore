@@ -52,7 +52,7 @@ export const makeStorage = (
   const D1_MIN_PAGE_SIZE = 1
 
   const decodeEventlogRows = Schema.decodeUnknownSync(Schema.Array(eventlogTable.rowSchema))
-  const jsonStringify = Schema.encodeEffectSync(Schema.UnknownFromJsonString)
+  const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
   const textEncoder = new TextEncoder()
 
   const decreaseLimit = (limit: number) => Math.max(D1_MIN_PAGE_SIZE, Math.floor(limit / 2))

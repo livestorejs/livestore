@@ -55,7 +55,7 @@ const getJsonArrayElementSchema = (colSchema: Schema.Schema.Any): Schema.Schema.
  * Objects/arrays are stringified so they match json_each's TEXT representation.
  */
 const encodeJsonArrayElementValue = (elementSchema: Schema.Schema.Any, value: unknown): SqlValue => {
-  const encoded = Schema.encodeEffectSync(elementSchema as Schema.Schema<unknown, SqlValue>)(value)
+  const encoded = Schema.encodeSync(elementSchema as Schema.Schema<unknown, SqlValue>)(value)
 
   if (encoded === null) return null
   if (typeof encoded === 'object') {
@@ -129,12 +129,12 @@ const formatWhereClause = (
           return op === 'IN' ? '0=1' : '1=1'
         }
 
-        const encodedValues = value.map((v) => Schema.encodeEffectSync(colDef.schema)(v)) as SqlValue[]
+        const encodedValues = value.map((v) => Schema.encodeSync(colDef.schema)(v)) as SqlValue[]
         bindValues.push(...encodedValues)
         const placeholders = encodedValues.map(() => '?').join(', ')
         return `${quotedCol} ${op} (${placeholders})`
       } else {
-        const encodedValue = Schema.encodeEffectSync(colDef.schema)(value)
+        const encodedValue = Schema.encodeSync(colDef.schema)(value)
         bindValues.push(encodedValue as SqlValue)
         return `${quotedCol} ${op} ?`
       }
@@ -158,7 +158,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
     const columns = Object.keys(ast.values)
     const quotedColumns = columns.map(quoteIdentifier)
     const placeholders = columns.map(() => '?').join(', ')
-    const encodedValues = Schema.encodeEffectSync(ast.tableDef.insertSchema)(ast.values)
+    const encodedValues = Schema.encodeSync(ast.tableDef.insertSchema)(ast.values)
 
     // Ensure bind values are added in the same order as columns
     columns.forEach((col) => {
@@ -205,7 +205,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
               if (colDef === undefined) {
                 throw new Error(`Column ${col} not found`)
               }
-              const encodedValue = Schema.encodeEffectSync(colDef.schema)(value)
+              const encodedValue = Schema.encodeSync(colDef.schema)(value)
               bindValues.push(encodedValue as SqlValue)
             }
           })
@@ -237,7 +237,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
       // return shouldNeverHappen('UPDATE query requires at least one column to set.')
     }
 
-    const encodedValues = Schema.encodeEffectSync(ast.tableDef.rowSchema.mapFields(Struct.map(Schema.optional)))(
+    const encodedValues = Schema.encodeSync(ast.tableDef.rowSchema.mapFields(Struct.map(Schema.optional)))(
       ast.values,
     )
 
@@ -289,7 +289,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
     }
 
     // NOTE we're not encoding the id if it's the session id symbol, which needs to be taken care of by the caller
-    const encodedId = ast.id === SessionIdSymbol ? ast.id : Schema.encodeEffectSync(idColDef.schema)(ast.id)
+    const encodedId = ast.id === SessionIdSymbol ? ast.id : Schema.encodeSync(idColDef.schema)(ast.id)
 
     return {
       query: `SELECT * FROM '${ast.tableDef.sqliteDef.name}' WHERE ${quoteIdentifier('id')} = ?`,

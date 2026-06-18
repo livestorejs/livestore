@@ -1146,4 +1146,4 @@ const takePrefixUntil = <A>(
   }))
 
 /** Serialize value to JSON string for trace attributes */
-const jsonStringify = Schema.encodeEffectSync(Schema.UnknownFromJsonString)
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)

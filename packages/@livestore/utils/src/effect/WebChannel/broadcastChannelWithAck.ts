@@ -47,7 +47,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
       const connectedLatch = yield* Latch.make(false)
       const supportsTransferables = false
 
-      const postMessage = (msg: typeof Message.Type) => channel.postMessage(Schema.encodeEffectSync(Message)(msg))
+      const postMessage = (msg: typeof Message.Type) => channel.postMessage(Schema.encodeSync(Message)(msg))
 
       const send = (message: MsgSend) =>
         Effect.gen(function* () {

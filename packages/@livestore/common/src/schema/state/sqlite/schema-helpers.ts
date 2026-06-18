@@ -26,7 +26,7 @@ export const getDefaultValuesEncoded = <TTableDef extends TableDefBase>(
       const defaultValue = column!.default.value
       const resolvedDefault = SqliteDsl.resolveColumnDefault(defaultValue)
 
-      return Schema.encodeEffectSync(column!.schema)(resolvedDefault)
+      return Schema.encodeSync(column!.schema)(resolvedDefault)
     }),
   )
 
