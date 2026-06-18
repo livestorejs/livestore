@@ -29,7 +29,7 @@ const ReleasePlan = Schema.Struct({
   npmTag: Schema.String,
 })
 
-type TReleasePlan = Schema.Schema.Type<typeof ReleasePlan>
+type TReleasePlan = (typeof ReleasePlan)['Type']
 
 type TReleaseTopology = {
   publishablePackages: readonly { name: string; dir: string }[]
