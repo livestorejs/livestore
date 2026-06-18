@@ -50,7 +50,7 @@ export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
 
       const send = (message: any) =>
         Effect.gen(function* () {
-          const [messageEncoded, transferables] = yield* Schema.encodeEffectWithTransferables(schema.send)(message)
+          const [messageEncoded, transferables] = yield* Schema.encodeWithTransferables(schema.send)(message)
           port.postMessage(messageEncoded, transferables)
         })
 
@@ -164,7 +164,7 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
           debugInfo.sendPending++
 
           const id = crypto.randomUUID()
-          const [messageEncoded, transferables] = yield* Schema.encodeEffectWithTransferables(ChannelMessage)({
+          const [messageEncoded, transferables] = yield* Schema.encodeWithTransferables(ChannelMessage)({
             _tag: 'ChannelRequest',
             id,
             payload: message,
