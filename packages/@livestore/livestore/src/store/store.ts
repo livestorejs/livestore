@@ -394,7 +394,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     // Initialize internals bag
     this[StoreInternalsSymbol] = {
-      eventSchema: LiveStoreEvent.Client.makeSchemaMemo(schema) as Schema.Schema<
+      eventSchema: LiveStoreEvent.Client.makeSchemaMemo(schema) as Schema.Codec<
         LiveStoreEvent.Client.Decoded,
         LiveStoreEvent.Client.Encoded
       >,
@@ -609,7 +609,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * ```
    */
   query = <TResult>(
-    query: Queryable<TResult> | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
+    query: Queryable<TResult> | { query: string; bindValues: Bindable; schema?: Schema.Codec<TResult> },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
     this.checkShutdown('query')

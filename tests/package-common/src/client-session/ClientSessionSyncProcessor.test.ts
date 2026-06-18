@@ -45,7 +45,7 @@ import { events, schema, tables } from '../leader-thread/fixture.ts'
 import { makeTestAdapter } from '../test-adapter.ts'
 
 // TODO fix type level - derived events are missing and thus infers to `never` currently
-const eventSchema = LiveStoreEvent.Input.makeSchema(schema) as TODO as Schema.Schema<LiveStoreEvent.Input.Encoded>
+const eventSchema = LiveStoreEvent.Input.makeSchema(schema) as TODO as Schema.Codec<LiveStoreEvent.Input.Encoded>
 const encode = Schema.encodeSync(eventSchema)
 
 const withTestCtx = Vitest.makeWithTestCtx({
@@ -221,7 +221,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         shutdownDeferred,
       })
 
-      const eventSchema = LiveStoreEvent.Input.makeSchema(schema) as TODO as Schema.Schema<LiveStoreEvent.Input.Encoded>
+      const eventSchema = LiveStoreEvent.Input.makeSchema(schema) as TODO as Schema.Codec<LiveStoreEvent.Input.Encoded>
 
       yield* Queue.offer(
         pullQueue,

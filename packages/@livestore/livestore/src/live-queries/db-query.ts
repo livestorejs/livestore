@@ -25,7 +25,7 @@ import { makeExecBeforeFirstRun, rowQueryLabel } from './client-document-get-que
 
 export type QueryInputRaw<TDecoded, TEncoded> = {
   query: string
-  schema: Schema.Schema<TDecoded, TEncoded>
+  schema: Schema.Codec<TDecoded, TEncoded>
   bindValues?: Bindable
   /**
    * Can be provided explicitly to slightly speed up initial query performance
@@ -219,7 +219,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
     this.mapResult = map === undefined ? (rows: any) => rows as TResult : map
 
-    const schemaRef: { current: Schema.Schema<any, any> | undefined } = {
+    const schemaRef: { current: Schema.Codec<any, any> | undefined } = {
       current:
         typeof queryInput === 'function'
           ? undefined
@@ -241,7 +241,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
     const fromQueryBuilder = (qb: QueryBuilder.Any, otelContext: otel.Context | undefined) => {
       try {
         const qbRes = qb.asSql()
-        const schema = getResultSchema(qb) as Schema.Schema<TResultSchema, ReadonlyArray<any>>
+        const schema = getResultSchema(qb) as Schema.Codec<TResultSchema, ReadonlyArray<any>>
         const ast = qb[QueryBuilderAstSymbol]
 
         return {
@@ -329,7 +329,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
     const queriedTablesRef: { current: Set<string> | undefined } = { current: undefined }
 
-    const makeResultsEqual = (resultSchema: Schema.Schema<any, any>) => {
+    const makeResultsEqual = (resultSchema: Schema.Codec<any, any>) => {
       // Creating the equivalence function eagerly in outer scope as it might be expensive
       const eq = Schema.toEquivalence(resultSchema)
       return (a: TResult, b: TResult) => (a === NOT_REFRESHED_YET || b === NOT_REFRESHED_YET ? false : eq(a, b))

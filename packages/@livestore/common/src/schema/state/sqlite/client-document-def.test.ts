@@ -43,7 +43,7 @@ describe('client document table', () => {
   })
 
   describe('materializer', () => {
-    const forSchema = <T>(schema: Schema.Schema<T, any>, value: T, id?: string, options?: { partialSet?: boolean }) => {
+    const forSchema = <T>(schema: Schema.Codec<T, any>, value: T, id?: string, options?: { partialSet?: boolean }) => {
       const Doc = clientDocument({
         name: 'test',
         schema,

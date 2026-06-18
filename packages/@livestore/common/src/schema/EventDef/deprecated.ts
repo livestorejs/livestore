@@ -66,7 +66,7 @@ export const deprecated =
  * @param schema - The schema to check
  * @returns The deprecation reason if deprecated, None otherwise
  */
-export const getDeprecatedReason = <A, I, R>(schema: Schema.Schema<A, I, R>): Option.Option<string> =>
+export const getDeprecatedReason = <A, I, R>(schema: Schema.Codec<A, I, R, R>): Option.Option<string> =>
   SchemaAST.getAnnotation<string>(DeprecatedId)(schema.ast)
 
 /**
@@ -75,7 +75,7 @@ export const getDeprecatedReason = <A, I, R>(schema: Schema.Schema<A, I, R>): Op
  * @param schema - The schema to check
  * @returns true if the schema is deprecated
  */
-export const isDeprecated = <A, I, R>(schema: Schema.Schema<A, I, R>): boolean =>
+export const isDeprecated = <A, I, R>(schema: Schema.Codec<A, I, R, R>): boolean =>
   Option.isSome(getDeprecatedReason(schema))
 
 /**

@@ -46,7 +46,7 @@ export const clientDocument = <
   ...inputOptions
 }: {
   name: TName
-  schema: Schema.Schema<TType, TEncoded>
+  schema: Schema.Codec<TType, TEncoded>
 } & TOptions): ClientDocumentTableDef<
   TName,
   TType,
@@ -181,7 +181,7 @@ export const createOptimisticEventSchema = ({
   defaultValue,
   partialSet,
 }: {
-  valueSchema: Schema.Schema<any, any>
+  valueSchema: Schema.Codec<any, any>
   defaultValue: any
   partialSet: boolean
 }) => {
@@ -272,7 +272,7 @@ export const deriveEventAndMaterializer = ({
   partialSet,
 }: {
   name: string
-  valueSchema: Schema.Schema<any, any>
+  valueSchema: Schema.Codec<any, any>
   defaultValue: any
   partialSet: boolean
 }) => {
@@ -526,7 +526,7 @@ export namespace ClientDocumentTableDef {
      */
     readonly set: SetEventDefLike<TName, TType, TOptions>
     readonly Value: TType
-    readonly valueSchema: Schema.Schema<TType, TEncoded>
+    readonly valueSchema: Schema.Codec<TType, TEncoded>
     readonly default: TOptions['default']
     readonly [ClientDocumentTableDefSymbol]: {
       readonly options: TOptions
