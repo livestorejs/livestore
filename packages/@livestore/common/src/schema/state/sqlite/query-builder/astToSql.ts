@@ -10,7 +10,7 @@ import type { QueryBuilderAst } from './api.ts'
  * Extracts array element schema from a JSON array transformation AST.
  * Returns the element schema, or undefined if not a JSON array transformation.
  */
-const extractArrayElementFromTransformation = (ast: SchemaAST.AST): Schema.Schema.Any | undefined => {
+const extractArrayElementFromTransformation = (ast: SchemaAST.AST): Schema.Top | undefined => {
   if (SchemaAST.isTransformation(ast) === false) return undefined
 
   const toAst = ast.to
@@ -29,7 +29,7 @@ const extractArrayElementFromTransformation = (ast: SchemaAST.AST): Schema.Schem
  * Also handles nullable JSON arrays (Schema.NullOr(Schema.fromJsonString(Schema.Array(...)))).
  * Returns the element schema, or undefined if the column is not a JSON array.
  */
-const getJsonArrayElementSchema = (colSchema: Schema.Schema.Any): Schema.Schema.Any | undefined => {
+const getJsonArrayElementSchema = (colSchema: Schema.Top): Schema.Top | undefined => {
   const ast = colSchema.ast
 
   // Case 1: Direct transformation (non-nullable JSON array)
@@ -54,7 +54,7 @@ const getJsonArrayElementSchema = (colSchema: Schema.Schema.Any): Schema.Schema.
  * Encodes a JSON array element to the representation returned by SQLite's json_each().
  * Objects/arrays are stringified so they match json_each's TEXT representation.
  */
-const encodeJsonArrayElementValue = (elementSchema: Schema.Schema.Any, value: unknown): SqlValue => {
+const encodeJsonArrayElementValue = (elementSchema: Schema.Top, value: unknown): SqlValue => {
   const encoded = Schema.encodeSync(elementSchema as Schema.Schema<unknown, SqlValue>)(value)
 
   if (encoded === null) return null
