@@ -1,5 +1,4 @@
-import type { Prettify } from '@livestore/utils'
-import type { Schema } from '@livestore/utils/effect'
+import type { Schema, Types } from '@livestore/utils/effect'
 
 import type { SqliteDsl } from '../schema/state/sqlite/db-schema/mod.ts'
 
@@ -10,7 +9,7 @@ export type DecodedValuesForTableAll<TSchema extends SqliteDsl.DbSchema, TTableN
 export type DecodedValuesForTablePretty<
   TSchema extends SqliteDsl.DbSchema,
   TTableName extends keyof TSchema,
-> = Prettify<DecodedValuesForTable<TSchema, TTableName>>
+> = Types.Simplify<DecodedValuesForTable<TSchema, TTableName>>
 
 export type DecodedValuesForTable<TSchema extends SqliteDsl.DbSchema, TTableName extends keyof TSchema> = Partial<
   Pick<DecodedValuesForTableAll<TSchema, TTableName>, GetNullableColumnNamesForTable<TSchema, TTableName>>
