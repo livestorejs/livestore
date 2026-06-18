@@ -1,4 +1,4 @@
-import { casesHandled, isNotUndefined, LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
+import { casesHandled, LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
 import {
   type HttpClient,
   type Latch,
@@ -13,6 +13,7 @@ import {
   FiberHandle,
   Layer,
   Option,
+  Predicate,
   Queue,
   ReadonlyArray,
   References,
@@ -831,7 +832,7 @@ export const make = Effect.fnUntraced(function* ({
       ),
     syncState: Subscribable.make({
       get: SubscriptionRef.get(syncStateSref).pipe(Effect.flatMap(Effect.fromNullishOr), Effect.orDieDebugger),
-      changes: SubscriptionRef.changes(syncStateSref).pipe(Stream.filter(isNotUndefined)),
+      changes: SubscriptionRef.changes(syncStateSref).pipe(Stream.filter(Predicate.isNotUndefined)),
     }),
   })
 })

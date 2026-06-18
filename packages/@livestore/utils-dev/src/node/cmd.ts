@@ -1,4 +1,3 @@
-import { isNotUndefined } from '@livestore/utils'
 import {
   Cause,
   ChildProcess,
@@ -8,6 +7,7 @@ import {
   identity,
   Logger,
   type PlatformError,
+  Predicate,
   References,
   Schema,
   Stream,
@@ -46,7 +46,7 @@ export const cmd: (
   const cwd = yield* CurrentWorkingDirectory
 
   const asArray = Array.isArray(commandInput)
-  const parts = asArray === true ? commandInput.filter(isNotUndefined) : undefined
+  const parts = asArray === true ? commandInput.filter(Predicate.isNotUndefined) : undefined
   const [command, ...args] = asArray === true ? (parts as string[]) : commandInput.split(' ')
 
   const debugEnvStr = Object.entries(options?.env ?? {})
@@ -85,11 +85,11 @@ export const cmd: (
     useShell,
   } as const
 
-  const exitCode = yield* isNotUndefined(logPath) === true
+  const exitCode = yield* Predicate.isNotUndefined(logPath) === true
     ? Effect.gen(function* () {
-        yield* Effect.sync(() => console.log(`Logging output to ${logPath}`))
-        return yield* runWithLogging({ ...baseArgs, logPath, threadName: commandDebugStr })
-      })
+      yield* Effect.sync(() => console.log(`Logging output to ${logPath}`))
+      return yield* runWithLogging({ ...baseArgs, logPath, threadName: commandDebugStr })
+    })
     : runWithoutLogging(baseArgs)
 
   if (exitCode !== SUCCESS_EXIT_CODE) {
@@ -116,7 +116,7 @@ export const cmdText: (
   Effect.fn('cmdText')(function* (commandInput, options) {
     const cwd = yield* CurrentWorkingDirectory
     const [command, ...args] =
-      Array.isArray(commandInput) === true ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
+      Array.isArray(commandInput) === true ? commandInput.filter(Predicate.isNotUndefined) : commandInput.split(' ')
     const debugEnvStr = Object.entries(options?.env ?? {})
       .map(([key, value]) => `${key}='${String(value)}' `)
       .join('')

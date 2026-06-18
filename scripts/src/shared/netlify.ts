@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs'
 import os from 'node:os'
 import { join } from 'node:path'
 
-import { isNotUndefined } from '@livestore/utils'
 import { CurrentWorkingDirectory, cmdText } from '@livestore/utils-dev/node'
 import {
   ChildProcess,
@@ -11,6 +10,7 @@ import {
   Fiber,
   HttpClient,
   HttpClientRequest,
+  Predicate,
   Result,
   Schema,
   Stream,
@@ -123,7 +123,7 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
       `--site=${resolvedSiteArg}`,
       message !== undefined ? `--message=${message}` : undefined,
       target._tag === 'prod' ? '--prod' : target._tag === 'alias' ? `--alias=${target.alias}` : undefined,
-    ].filter(isNotUndefined)
+    ].filter(Predicate.isNotUndefined)
 
     /** Capture both stdout and stderr so CLI errors are never silently lost */
     const { stdout: rawOutput, stderr: rawStderr } = yield* Effect.scoped(

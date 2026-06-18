@@ -1,6 +1,6 @@
 import type { LogConfig } from '@livestore/common'
 import { Devtools, isWorkerTransportError, liveStoreVersion, UnknownError } from '@livestore/common'
-import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
+import { isDevEnv, LS_DEV } from '@livestore/utils'
 import {
   Deferred,
   Effect,
@@ -9,6 +9,7 @@ import {
   identity,
   Layer,
   Option,
+  Predicate,
   Ref,
   References,
   Schema,
@@ -59,7 +60,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     | undefined
   >(undefined)
 
-  const waitForWorker = SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined).pipe(
+  const waitForWorker = SubscriptionRef.waitUntil(leaderWorkerContextSubRef, (c) => Predicate.isNotUndefined(c)).pipe(
     Effect.map((_) => _.worker),
   )
 
@@ -86,7 +87,7 @@ const makeWorkerRunner = Effect.gen(function* () {
   ): Stream.Stream<A, E, R> =>
     Effect.gen(function* () {
       yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
-      const { worker, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined)
+      const { worker, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isLeaderWorkerContext)
       const stream = worker
         .execute(req)
         .pipe(Stream.refineOrDie((e) => (isWorkerTransportError(e) === true ? Option.none() : Option.some(e))))
