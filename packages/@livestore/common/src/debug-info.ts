@@ -31,7 +31,7 @@ const isBoundArrayLike = (value: unknown): value is BoundArray<unknown> =>
   value instanceof BoundArray ||
   (value !== null && typeof value === 'object' && typeof (value as { sizeLimit?: number }).sizeLimit === 'number')
 
-const BoundArraySchemaFromSelf = <A, I, R>(
+const BoundArraySchema = <A, I, R>(
   item: Schema.Codec<A, I, R, R>,
 ): Schema.Codec<BoundArray<A>, BoundArray<I>, R> =>
   Schema.declare(
@@ -88,7 +88,7 @@ export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Code
       size: Schema.Number,
       items: Schema.Array(elSchema),
     }),
-    BoundArraySchemaFromSelf(Schema.toType(elSchema)),
+    BoundArraySchema(Schema.toType(elSchema)),
     {
       encode: (_) => ({ size: _.sizeLimit, items: [..._] }),
       decode: (_) => BoundArray.make(_.size, _.items),

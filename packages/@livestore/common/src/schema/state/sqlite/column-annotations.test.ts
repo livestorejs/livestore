@@ -41,8 +41,8 @@ describe.concurrent('annotations', () => {
         expect(() => withColumnType(Schema.Boolean, 'integer')).not.toThrow()
       })
 
-      test('Schema.Uint8ArrayFromSelf with blob column type', () => {
-        expect(() => withColumnType(Schema.Uint8ArrayFromSelf, 'blob')).not.toThrow()
+      test('Schema.Uint8Array with blob column type', () => {
+        expect(() => withColumnType(Schema.Uint8Array, 'blob')).not.toThrow()
       })
 
       test('Schema.Date with text column type', () => {
@@ -129,8 +129,8 @@ describe.concurrent('annotations', () => {
     //     )
     //   })
 
-    //   test('Schema.Uint8ArrayFromSelf with text column type should throw', () => {
-    //     expect(() => withColumnType(Schema.Uint8ArrayFromSelf, 'text')).toThrow(
+    //   test('Schema.Uint8Array with text column type should throw', () => {
+    //     expect(() => withColumnType(Schema.Uint8Array, 'text')).toThrow(
     //       "Schema type 'uint8array' is incompatible with column type 'text'",
     //     )
     //   })
