@@ -14,8 +14,8 @@ import {
 } from '../shared.ts'
 import * as DoCtx from './layer.ts'
 
-const encodePullResponse = Schema.encodeEffectSync(SyncMessage.PullResponse)
-const jsonStringify = Schema.encodeEffectSync(Schema.UnknownFromJsonString)
+const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
 type PullBatchItem = SyncMessage.PullResponse['batch'][number]
 
 export const makePush =
@@ -125,7 +125,7 @@ export const makePush =
 
               return {
                 response,
-                encoded: Schema.encodeEffectSync(SyncMessage.PullResponse)(response),
+                encoded: Schema.encodeSync(SyncMessage.PullResponse)(response),
               }
             }),
           ),

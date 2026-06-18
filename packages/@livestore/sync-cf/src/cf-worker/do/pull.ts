@@ -7,7 +7,7 @@ import { SyncMessage } from '../../common/mod.ts'
 import type { ForwardedHeaders } from '../shared.ts'
 import * as DoCtx from './layer.ts'
 
-const encodePullResponse = Schema.encodeEffectSync(SyncMessage.PullResponse)
+const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
 
 // Notes on stream handling:
 // We're intentionally closing the stream once we've read all existing events
