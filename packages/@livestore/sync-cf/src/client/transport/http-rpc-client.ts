@@ -1,7 +1,6 @@
 import { SyncBackend, UnknownError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
 import { splitArrayBySize } from '@livestore/common/sync'
-import { omit } from '@livestore/utils'
 import {
   type Duration,
   Effect,
@@ -17,6 +16,7 @@ import {
   Schema,
   Semaphore,
   Stream,
+  Struct,
   SubscriptionRef,
   UrlParams,
 } from '@livestore/utils/effect'
@@ -176,7 +176,7 @@ export const makeHttpSync =
               })
             : identity,
           Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
-          Stream.map((res) => omit(res, ['backendId'])),
+          Stream.map((res) => Struct.omit(res, ['backendId'])),
           Stream.mapError((cause) =>
             cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
               ? cause
