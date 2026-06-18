@@ -149,7 +149,7 @@ export namespace FromTable {
   }
 
   export type RowEncodeNonNullable<TTableDefinition extends TableDefinition<any, any>> = {
-    [K in keyof TTableDefinition['columns']]: Schema.Schema.Encoded<TTableDefinition['columns'][K]['schema']>
+    [K in keyof TTableDefinition['columns']]: (TTableDefinition['columns'][K]['schema'])['Encoded']
   }
 
   export type RowEncoded<TTableDefinition extends TableDefinition<any, any>> = Types.Simplify<
@@ -182,7 +182,7 @@ export namespace FromColumns {
   }
 
   export type RowEncodedAll<TColumns extends Columns> = {
-    readonly [K in keyof TColumns]: Schema.Schema.Encoded<TColumns[K]['schema']>
+    readonly [K in keyof TColumns]: (TColumns[K]['schema'])['Encoded']
   }
 
   export type RowEncoded<TColumns extends Columns> = Types.Simplify<
@@ -191,7 +191,7 @@ export namespace FromColumns {
   >
 
   export type RowEncodeNonNullable<TColumns extends Columns> = {
-    readonly [K in keyof TColumns]: Schema.Schema.Encoded<TColumns[K]['schema']>
+    readonly [K in keyof TColumns]: (TColumns[K]['schema'])['Encoded']
   }
 
   export type NullableColumnNames<TColumns extends Columns> = keyof {
