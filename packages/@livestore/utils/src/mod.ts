@@ -138,9 +138,6 @@ export const prop =
 /** Capitalizes the first letter of a string. */
 export const capitalizeFirstLetter = (str: string): string => str.charAt(0).toUpperCase() + str.slice(1)
 
-/** Type guard that checks if a value is a readonly array. */
-export const isReadonlyArray = <I, T>(value: ReadonlyArray<I> | T): value is ReadonlyArray<I> => Array.isArray(value)
-
 /**
  * Use this to make assertion at end of if-else chain that all members of a
  * union have been accounted for.
