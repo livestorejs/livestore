@@ -77,7 +77,7 @@ export type DecodedValuesForColumns<TColumns extends SqliteDsl.Columns> = Partia
   Omit<DecodedValuesForColumnsAll<TColumns>, GetNullableColumnNames<TColumns>>
 
 export type EncodedValuesForColumnsAll<TColumns extends SqliteDsl.Columns> = {
-  [K in keyof TColumns]: Schema.Schema.Encoded<TColumns[K]['schema']>
+  [K in keyof TColumns]: (TColumns[K]['schema'])['Encoded']
 }
 
 export type EncodedValuesForColumns<TColumns extends SqliteDsl.Columns> = Partial<
