@@ -77,14 +77,6 @@ export const encodeSyncDebug: <A, I>(
   }
 }
 
-export const swap = (schema: Schema.Top) =>
-  Schema.transformOrFail(Schema.toType(schema), Schema.toEncoded(schema), {
-    decode: ParseResult.encode(schema),
-    encode: ParseResult.decode(schema),
-  })
-
-export const Base64FromUint8Array: Schema.Codec<string, Uint8Array> = swap(Schema.Uint8ArrayFromBase64)
-
 export interface JsonArray extends ReadonlyArray<JsonValue> {}
 export interface JsonObject {
   [key: string]: JsonValue
