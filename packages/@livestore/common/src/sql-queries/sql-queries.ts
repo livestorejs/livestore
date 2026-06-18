@@ -1,9 +1,8 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { pipe, ReadonlyArray, Result, Schema, SchemaIssue } from '@livestore/utils/effect'
+import { pipe, ReadonlyArray, ReadonlyRecord, Result, Schema, SchemaIssue } from '@livestore/utils/effect'
 
 import type { SqliteDsl } from '../schema/state/sqlite/db-schema/mod.ts'
 import { sql } from '../util.ts'
-import { objectEntries } from './misc.ts'
 import * as ClientTypes from './types.ts'
 
 export type BindValues = {
@@ -278,8 +277,7 @@ export const makeBindValues = <TColumns extends SqliteDsl.Columns, TKeys extends
   skipNil?: boolean
 }): Record<string, any> => {
   const codecMap = pipe(
-    columns,
-    objectEntries,
+    ReadonlyRecord.toEntries(columns),
     ReadonlyArray.map(([columnName, columnDef]) => [
       columnName,
       (value: any) => {
@@ -362,8 +360,7 @@ const buildWhereSql = <TColumns extends SqliteDsl.Columns>({
   }
 
   return pipe(
-    where,
-    objectEntries,
+    ReadonlyRecord.toEntries(where),
     ReadonlyArray.map(([columnName, value]) => `${columnName} ${getWhereOp(columnName, value)}`),
     ReadonlyArray.join(' AND '),
   )

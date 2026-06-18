@@ -1,7 +1,6 @@
 import { IsOfflineError, SyncBackend, UnknownError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/common/schema'
 import { splitArrayBySize } from '@livestore/common/sync'
-import { omit } from '@livestore/utils'
 import {
   Duration,
   Effect,
@@ -15,6 +14,7 @@ import {
   type Scope,
   Socket,
   Stream,
+  Struct,
   SubscriptionRef,
   UrlParams,
 } from '@livestore/utils/effect'
@@ -147,7 +147,7 @@ export const makeWsSync =
             live: options?.live === true,
           }).pipe(
             Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
-            Stream.map((res) => omit(res, ['backendId'])),
+            Stream.map((res) => Struct.omit(res, ['backendId'])),
             Stream.mapError((cause) =>
               cause._tag === 'RpcClientError' && Socket.isSocketError(cause.cause) === true
                 ? new IsOfflineError({ cause: cause.cause })
