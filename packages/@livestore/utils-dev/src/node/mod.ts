@@ -2,7 +2,7 @@ import { performance } from 'node:perf_hooks'
 
 import * as otel from '@opentelemetry/api'
 
-import { IS_BUN, isNonEmptyString } from '@livestore/utils'
+import { IS_BUN } from '@livestore/utils'
 import {
   type Tracer,
   Config,
@@ -42,9 +42,7 @@ export const OtelLiveHttp = ({
 } = {}): Layer.Layer<OtelTracer.OtelTracer | Tracer.Tracer | Tracer.ParentSpan> =>
   Effect.gen(function* () {
     const configRes = yield* Config.all({
-      exporterUrl: Config.string('OTEL_EXPORTER_OTLP_ENDPOINT').pipe(
-        Config.validate({ message: 'OTEL_EXPORTER_OTLP_ENDPOINT must be set', validation: isNonEmptyString }),
-      ),
+      exporterUrl: Config.nonEmptyString('OTEL_EXPORTER_OTLP_ENDPOINT'),
       serviceName:
         serviceName !== undefined
           ? Config.succeed(serviceName)
