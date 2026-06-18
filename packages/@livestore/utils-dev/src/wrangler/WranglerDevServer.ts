@@ -118,6 +118,7 @@ export const make = (args: Options) =>
 
         const readiness = args.readiness ?? {}
         const startupTimeout = readiness.startupTimeout ?? Duration.seconds(IS_CI === true ? 30 : 10)
+        const startupTimeoutDuration = Duration.fromInputUnsafe(startupTimeout)
         const devServer = yield* Effect.promise(() =>
           wrangler.unstable_dev(resolvedMainPath, {
             config: configPath,
@@ -135,7 +136,7 @@ export const make = (args: Options) =>
             (cause) =>
               new WranglerDevServerError({
                 cause,
-                message: `Failed to start wrangler dev server within ${Duration.format(startupTimeout)}`,
+                message: `Failed to start wrangler dev server within ${Duration.format(startupTimeoutDuration)}`,
                 port: preferredPort,
               }),
           ),
