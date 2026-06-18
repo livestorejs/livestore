@@ -32,12 +32,6 @@ export type IsSubtype<A, B> = A extends B ? true : false
 /** Compile-time assertion that `T` is `true`. Useful for type tests. */
 export type AssertTrue<T extends true> = T
 
-/** Removes `readonly` modifier from all properties of `T`. */
-export type Writeable<T> = { -readonly [P in keyof T]: T[P] }
-
-/** Recursively removes `readonly` modifier from all properties. */
-export type DeepWriteable<T> = { -readonly [P in keyof T]: DeepWriteable<T[P]> }
-
 /** Makes all properties of `T` nullable (allows `null`). */
 export type Nullable<T> = { [K in keyof T]: T[K] | null }
 
