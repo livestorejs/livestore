@@ -71,7 +71,7 @@ describe('getColumnDefForSchema', () => {
     it('should map number refinements to real column', () => {
       const refinements = [
         { schema: Schema.Finite, name: 'Finite' },
-        { schema: Schema.Number.pipe(Schema.positive()), name: 'positive' },
+        { schema: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)), name: 'positive' },
         { schema: Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 100 })), name: 'between' },
       ]
 
