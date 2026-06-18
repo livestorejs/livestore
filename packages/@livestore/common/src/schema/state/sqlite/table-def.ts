@@ -57,10 +57,10 @@ export type TableDef<
   // Derived from `sqliteDef`, so only exposed for convenience
   rowSchema: TSchema
   insertSchema: SqliteDsl.InsertStructSchemaForColumns<TSqliteDef['columns']>
-  // query: QueryBuilder<ReadonlyArray<Schema.Schema.Type<TSchema>>, TableDefBase<TSqliteDef & {}, TOptions>>
-  readonly Type: Schema.Schema.Type<TSchema>
+  // query: QueryBuilder<ReadonlyArray<TSchema['Type']>>, TableDefBase<TSqliteDef & {}, TOptions>>
+  readonly Type: TSchema['Type']
   readonly Encoded: TSchema['Encoded']
-} & QueryBuilder<ReadonlyArray<Schema.Schema.Type<TSchema>>, TableDefBase<TSqliteDef & {}, TOptions>>
+} & QueryBuilder<ReadonlyArray<TSchema['Type']>, TableDefBase<TSqliteDef & {}, TOptions>>
 
 export type TableOptionsInput = Partial<{
   indexes: SqliteDsl.Index[]
@@ -168,7 +168,7 @@ export function table<
     name: TName
     schema: TSchema
   } & Partial<TOptionsInput>,
-): TableDef<SqliteTableDefForSchemaInput<TName, Schema.Schema.Type<TSchema>, TSchema['Encoded'], TSchema>>
+): TableDef<SqliteTableDefForSchemaInput<TName, TSchema['Type'], TSchema['Encoded'], TSchema>>
 
 // Overload 3: With schema and no name (uses schema annotations)
 export function table<
@@ -178,7 +178,7 @@ export function table<
   args: {
     schema: TSchema
   } & Partial<TOptionsInput>,
-): TableDef<SqliteTableDefForSchemaInput<string, Schema.Schema.Type<TSchema>, TSchema['Encoded'], TSchema>>
+): TableDef<SqliteTableDefForSchemaInput<string, TSchema['Type'], TSchema['Encoded'], TSchema>>
 
 // Implementation
 export function table<
@@ -306,7 +306,7 @@ export namespace FromTable {
   >
 
   export type RowDecodedAll<TTableDef extends TableDefBase> = {
-    [K in keyof TTableDef['sqliteDef']['columns']]: Schema.Schema.Type<TTableDef['sqliteDef']['columns'][K]['schema']>
+    [K in keyof TTableDef['sqliteDef']['columns']]: (TTableDef['sqliteDef']['columns'][K]['schema'])['Type']
   }
 }
 
@@ -318,7 +318,7 @@ export namespace FromColumns {
   >
 
   export type RowDecodedAll<TColumns extends SqliteDsl.Columns> = {
-    [K in keyof TColumns]: Schema.Schema.Type<TColumns[K]['schema']>
+    [K in keyof TColumns]: (TColumns[K]['schema'])['Type']
   }
 
   export type RowEncoded<TColumns extends SqliteDsl.Columns> = Types.Simplify<

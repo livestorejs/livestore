@@ -85,7 +85,7 @@ const AnyAnnotation = Schema.Union([
   CpuThrottlingRateAnnotation,
   WarmupRunsAnnotation,
 ])
-type AnyAnnotation = Schema.Schema.Type<typeof AnyAnnotation>
+type AnyAnnotation = (typeof AnyAnnotation)['Type']
 
 const Annotations = Schema.NonEmptyArray(AnyAnnotation)
 

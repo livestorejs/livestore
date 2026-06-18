@@ -75,4 +75,4 @@ export const WorkerMessage = Schema.Union([
   RunnerInterrupt,
   StartStubbornWorker,
 ])
-export type WorkerMessage = Schema.Schema.Type<typeof WorkerMessage>
+export type WorkerMessage = (typeof WorkerMessage)['Type']
