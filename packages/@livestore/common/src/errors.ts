@@ -36,9 +36,11 @@ export class MaterializerHashMismatchError extends Schema.TaggedErrorClass<Mater
   '~@livestore/common/MaterializerHashMismatchError',
 )('MaterializerHashMismatchError', {
   eventName: Schema.String,
-  note: Schema.optionalWith(Schema.String, {
-    default: () => 'Please make sure your event materializer is a pure function without side effects.',
-  }),
+  note: Schema.String.pipe(
+    Schema.withDecodingDefaultType(
+      Effect.succeed('Please make sure your event materializer is a pure function without side effects.'),
+    ),
+  ),
 }) {}
 
 export class IntentionalShutdownCause extends Schema.TaggedErrorClass<IntentionalShutdownCause>(
