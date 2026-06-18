@@ -392,9 +392,6 @@ export const isNonEmptyString = (str: string | undefined | null): str is string 
 /** Type guard that checks if a value is a Promise (has a `then` method). */
 export const isPromise = (value: any): value is Promise<unknown> => typeof value?.then === 'function'
 
-/** Type guard that checks if a value is iterable (has a `Symbol.iterator` method). */
-export const isIterable = <T>(value: any): value is Iterable<T> => typeof value?.[Symbol.iterator] === 'function'
-
 /**
  * Type-level utility that removes `undefined` from all property types.
  * Used for compatibility with libraries that don't type optionals as `| undefined`.
