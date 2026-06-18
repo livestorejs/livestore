@@ -111,7 +111,7 @@ export const toDurableObjectHandler =
 
           // Get the exit schema for this RPC
           // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
-          const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Schema<any>
+          const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
 
           let encodedExit: any
           if (exitSchema !== undefined) {
@@ -132,7 +132,7 @@ export const toDurableObjectHandler =
           Effect.catchCause((cause) => {
             // Get the exit schema for this RPC
             // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
-            const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Schema<any>
+            const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
 
             return Effect.gen(function* () {
               let encodedExit: any
@@ -220,9 +220,9 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
     const arrayEncoder =
       Option.isSome(streamSchemas) === true
         ? // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- stream schema success type is inferred as unknown; cast needed for encodeUnknown
-          Schema.encodeUnknownEffect(Schema.Array(streamSchemas.value.success as Schema.Schema<any>))
+          Schema.encodeUnknownEffect(Schema.Array(streamSchemas.value.success as Schema.Top))
         : // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Schema.Any needs explicit cast for Schema.Array compatibility
-          Schema.encodeUnknownEffect(Schema.Array(Schema.Any as Schema.Schema<any>))
+          Schema.encodeUnknownEffect(Schema.Array(Schema.Any as Schema.Top))
 
     // Convert stream to ReadableStream
     const readableStream = new ReadableStream({
@@ -252,7 +252,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
           // Send final exit message with proper schema encoding
           const rawExit = Exit.void
           // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
-          const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Schema<any>
+          const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
           const encodedExit = yield* Schema.encodeUnknownEffect(exitSchema)(rawExit)
 
           const exitMessage = {
@@ -271,7 +271,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
               // Send error exit with proper schema encoding
               const rawExit = Exit.failCause(cause)
               // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
-              const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Schema<any>
+              const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
               const encodedExit = yield* Schema.encodeUnknownEffect(exitSchema)(rawExit)
 
               const exitMessage = {

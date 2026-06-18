@@ -11,7 +11,7 @@ export * from './debug-diff.ts'
 // NOTE this is a temporary workaround until Effect schema has a better way to hash schemas
 // https://github.com/Effect-TS/effect/issues/2719
 // TODO remove this once the issue is resolved
-export const hash = (schema: Schema.Schema<any>) => {
+export const hash = (schema: Schema.Top) => {
   try {
     return Hash.string(JSON.stringify(schema.ast, null, 2))
   } catch {

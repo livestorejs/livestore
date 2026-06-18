@@ -563,7 +563,7 @@ export namespace ClientDocumentTableDef {
         id?: string | SessionIdSymbol,
       ) => { name: `${TName}Set`; args: { id: string; value: TType } }) & {
     readonly name: `${TName}Set`
-    readonly schema: Schema.Schema<any>
+    readonly schema: Schema.Top
     readonly Event: {
       readonly name: `${TName}Set`
       readonly args: { id: string; value: TType }

@@ -49,7 +49,7 @@ export const DEFAULT_UNUSED_CACHE_TIME = typeof window === 'undefined' ? Number.
 export interface RegistryStoreOptions<
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.Json,
+  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
 > extends CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> {
   /**
    * OpenTelemetry configuration for tracing store operations.
@@ -237,7 +237,7 @@ export class StoreRegistry {
   getOrLoad = <
     TSchema extends LiveStoreSchema,
     TContext = {},
-    TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.Json,
+    TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
   >(
     options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): Effect.Effect<Store<TSchema, TContext>, UnknownError, Scope.Scope> =>
@@ -268,7 +268,7 @@ export class StoreRegistry {
   getOrLoadPromise = <
     TSchema extends LiveStoreSchema,
     TContext = {},
-    TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.Json,
+    TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
   >(
     options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): Store<TSchema, TContext> | Promise<Store<TSchema, TContext>> => {
@@ -320,7 +320,7 @@ export class StoreRegistry {
   retain = <
     TSchema extends LiveStoreSchema,
     TContext = {},
-    TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.Json,
+    TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
   >(
     options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): (() => void) => {
@@ -353,7 +353,7 @@ export class StoreRegistry {
   preload = async <
     TSchema extends LiveStoreSchema,
     TContext = {},
-    TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.Json,
+    TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
   >(
     options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): Promise<void> => {
@@ -423,7 +423,7 @@ export class StoreRegistry {
 export const storeOptions = <
   TSchema extends LiveStoreSchema,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.Json,
+  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
 >(
   options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
 ): RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema> => options
