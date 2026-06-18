@@ -216,7 +216,7 @@ export const logDuration =
       const start = Date.now()
       const res = yield* eff
       const end = Date.now()
-      yield* Effect.log(`${label}: ${Duration.format(end - start)}`)
+      yield* Effect.log(`${label}: ${Duration.format(Duration.millis(end - start))}`)
       return res
     })
 

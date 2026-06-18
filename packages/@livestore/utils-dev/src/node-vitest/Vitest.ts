@@ -73,6 +73,7 @@ export const withTestCtx =
   > => {
     const spanName = `${testContext.task.suite?.name}:${testContext.task.name}${suffix !== undefined ? `:${suffix}` : ''}`
     const layer = makeLayer?.(testContext) ?? Layer.empty
+    const timeoutDuration = Duration.fromInputUnsafe(timeout)
 
     const otelLayer =
       DEBUGGER_ACTIVE === true || forceOtel === true
@@ -85,8 +86,8 @@ export const withTestCtx =
       DEBUGGER_ACTIVE === true
         ? identity
         : Effect.logWarnIfTakesLongerThan({
-            duration: Duration.toMillis(timeout) * 0.8,
-            label: `${spanName} approaching timeout (timeout: ${Duration.format(timeout)})`,
+            duration: Duration.toMillis(timeoutDuration) * 0.8,
+            label: `${spanName} approaching timeout (timeout: ${Duration.format(timeoutDuration)})`,
           }),
       DEBUGGER_ACTIVE === true ? identity : Effect.timeout(timeout),
       Effect.provide(combinedLayer),
