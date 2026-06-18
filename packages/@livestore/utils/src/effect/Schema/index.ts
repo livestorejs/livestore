@@ -41,8 +41,8 @@ export const getResolvedPropertySignatures = (
 type TransferableObject = ArrayBuffer | MessagePort
 
 export const encodeWithTransferables =
-  <A, I, R>(schema: Schema.Codec<A, I, R, R>, options?: ParseOptions) =>
-  (a: A, overrideOptions?: ParseOptions): Effect.Effect<[I, TransferableObject[]], Schema.SchemaError, R> =>
+  <A, I>(schema: Schema.Codec<A, I>, options?: ParseOptions) =>
+  (a: A, overrideOptions?: ParseOptions) =>
     Effect.gen(function* () {
       const collector = yield* Transferable.makeCollector
 
@@ -77,7 +77,7 @@ export const encodeSyncDebug: <A, I>(
   }
 }
 
-export const swap = <A, I, R>(schema: Schema.Codec<A, I, R, R>): Schema.Codec<I, A, R, R> =>
+export const swap = (schema: Schema.Top) =>
   Schema.transformOrFail(Schema.toType(schema), Schema.toEncoded(schema), {
     decode: ParseResult.encode(schema),
     encode: ParseResult.decode(schema),

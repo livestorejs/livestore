@@ -31,9 +31,9 @@ const isBoundArrayLike = (value: unknown): value is BoundArray<unknown> =>
   value instanceof BoundArray ||
   (value !== null && typeof value === 'object' && typeof (value as { sizeLimit?: number }).sizeLimit === 'number')
 
-const BoundArraySchema = <A, I, R>(
-  item: Schema.Codec<A, I, R, R>,
-): Schema.Codec<BoundArray<A>, BoundArray<I>, R> =>
+const BoundArraySchema = <A, I, RD, RE>(
+  item: Schema.Codec<A, I, RD, RE>,
+): Schema.Codec<BoundArray<A>, BoundArray<I>, RD, RE> =>
   Schema.declare(
     [item],
     {
