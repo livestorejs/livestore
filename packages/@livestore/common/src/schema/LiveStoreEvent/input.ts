@@ -33,7 +33,7 @@ export type ForRecord<TEventDefRecord extends EventDefRecord> = Schema.Schema<
   {
     [K in keyof TEventDefRecord]: {
       name: K
-      args: Schema.Schema.Type<TEventDefRecord[K]['schema']>
+      args: (TEventDefRecord[K]['schema'])['Type']
     }
   }[keyof TEventDefRecord],
   {

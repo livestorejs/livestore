@@ -166,7 +166,7 @@ export namespace FromTable {
   // >
 
   export type RowDecodedAll<TTableDefinition extends TableDefinition<any, any>> = {
-    [K in keyof TTableDefinition['columns']]: Schema.Schema.Type<TTableDefinition['columns'][K]['schema']>
+    [K in keyof TTableDefinition['columns']]: (TTableDefinition['columns'][K]['schema'])['Type']
   }
 }
 
@@ -178,7 +178,7 @@ export namespace FromColumns {
   >
 
   export type RowDecodedAll<TColumns extends Columns> = {
-    readonly [K in keyof TColumns]: Schema.Schema.Type<TColumns[K]['schema']>
+    readonly [K in keyof TColumns]: (TColumns[K]['schema'])['Type']
   }
 
   export type RowEncodedAll<TColumns extends Columns> = {

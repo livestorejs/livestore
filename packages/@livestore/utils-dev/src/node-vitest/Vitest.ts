@@ -128,12 +128,12 @@ const normalizePropOptions = <Arbs extends Vitest.Vitest.Arbitraries>(
     | number
     | (Vitest.TestOptions & {
         fastCheck?: FC.Parameters<{
-          [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]>
+          [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : (Arbs[K])['Type']
         }>
       }),
 ): Vitest.TestOptions & {
   fastCheck?: FC.Parameters<{
-    [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]>
+    [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : (Arbs[K])['Type']
   }>
 } => {
   // If it's a number, treat as timeout and add our default fastCheck
@@ -187,7 +187,7 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
     E,
     R,
     [
-      { [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]> },
+      { [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : (Arbs[K])['Type'] },
       Vitest.TestContext,
       EnhancedTestContext,
     ]
@@ -196,7 +196,7 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
     | number
     | (Vitest.TestOptions & {
         fastCheck?: FC.Parameters<{
-          [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]>
+          [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : (Arbs[K])['Type']
         }>
       }),
 ) => {

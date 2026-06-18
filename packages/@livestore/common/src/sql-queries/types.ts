@@ -3,7 +3,7 @@ import type { Schema, Types } from '@livestore/utils/effect'
 import type { SqliteDsl } from '../schema/state/sqlite/db-schema/mod.ts'
 
 export type DecodedValuesForTableAll<TSchema extends SqliteDsl.DbSchema, TTableName extends keyof TSchema> = {
-  [K in keyof GetColumns<TSchema, TTableName>]: Schema.Schema.Type<GetColumn<TSchema, TTableName, K>['schema']>
+  [K in keyof GetColumns<TSchema, TTableName>]: (GetColumn<TSchema, TTableName, K>['schema'])['Type']
 }
 
 export type DecodedValuesForTablePretty<
@@ -39,7 +39,7 @@ export const isValidWhereOp = (op: string): op is WhereOp => {
 }
 
 export type EncodedValuesForTableAll<TSchema extends SqliteDsl.DbSchema, TTableName extends keyof TSchema> = {
-  [K in keyof GetColumns<TSchema, TTableName>]: Schema.Schema.Type<GetColumn<TSchema, TTableName, K>['schema']>
+  [K in keyof GetColumns<TSchema, TTableName>]: (GetColumn<TSchema, TTableName, K>['schema'])['Type']
 }
 
 export type EncodedValuesForTable<TSchema extends SqliteDsl.DbSchema, TTableName extends keyof TSchema> = Partial<
@@ -68,7 +68,7 @@ export type GetColumn<
 > = TSchema[TTableName]['columns'][TColumnName]
 
 export type DecodedValuesForColumnsAll<TColumns extends SqliteDsl.Columns> = {
-  [K in keyof TColumns]: Schema.Schema.Type<TColumns[K]['schema']>
+  [K in keyof TColumns]: (TColumns[K]['schema'])['Type']
 }
 
 export type DecodedValuesForColumns<TColumns extends SqliteDsl.Columns> = Partial<
