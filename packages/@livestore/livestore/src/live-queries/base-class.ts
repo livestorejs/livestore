@@ -1,6 +1,5 @@
 import type * as otel from '@opentelemetry/api'
 
-import { isNotNil } from '@livestore/utils'
 import { Equal, Hash, Predicate } from '@livestore/utils/effect'
 
 import * as RG from '../reactive.ts'
@@ -122,7 +121,7 @@ export const depsToString = (deps: DepKey): string => {
   if (typeof deps === 'string' || typeof deps === 'number') {
     return deps.toString()
   }
-  return deps.filter(isNotNil).join(',')
+  return deps.filter(Predicate.isNotNullish).join(',')
 }
 
 /**
