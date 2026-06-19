@@ -656,7 +656,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         },
       )
 
-      const decodeResult = Schema.decodeExit(schema)(rawRes)
+      const decodeResult = Schema.decodeResult(schema)(rawRes)
       if (Result.isSuccess(decodeResult)) {
         return decodeResult.success
       } else {
