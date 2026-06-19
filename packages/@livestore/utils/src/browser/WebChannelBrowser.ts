@@ -40,7 +40,7 @@ export const broadcastChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEn
 
       // TODO also listen to `messageerror` in parallel
       const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
-        Stream.map((_) => Schema.decodeExit(schema.listen)(_.data)),
+        Stream.map((_) => Schema.decodeResult(schema.listen)(_.data)),
         listenToDebugPing(channelName),
       )
 
@@ -114,7 +114,7 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
         Stream.filter((_) => Schema.is(Schema.toEncoded(WindowMessageListen))(_.data)),
         Stream.map((_) => {
           debugInfo.listenTotal++
-          return Schema.decodeExit(schema.listen)(_.data.message)
+          return Schema.decodeResult(schema.listen)(_.data.message)
         }),
         listenToDebugPing('window'),
       )

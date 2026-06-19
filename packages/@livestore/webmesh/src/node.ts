@@ -630,7 +630,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
           const listen = Stream.fromQueue(queue).pipe(
             Stream.filter(Schema.is(WebmeshSchema.BroadcastChannelPacket)),
-            Stream.map((_) => Schema.decodeExit(schema)(_.payload)),
+            Stream.map((_) => Schema.decodeResult(schema)(_.payload)),
           )
 
           const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
