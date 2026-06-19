@@ -11,10 +11,10 @@ import {
   Metric,
   type MetricState,
   Option,
-  ParseResult,
   Pretty,
   ReadonlyArray,
   Schema,
+  SchemaIssue,
 } from '@livestore/utils/effect'
 
 import { printConsoleTable } from './print-console-table.ts'
@@ -44,11 +44,14 @@ const NumberFromDescriptionAnnotation = <T extends string>(typeLiteral: T) =>
       description: Schema.Number,
     }),
     {
-      decode: ({ description, ...rest }, _, ast) =>
+      decode: ({ description, ...rest }) =>
         Effect.sync(() => Number.parseFloat(description)).pipe(
           Effect.filterOrFail(
             (num) => !Number.isNaN(num),
-            () => new ParseResult.Type(ast, description, `Invalid ${rest.type} description: ${description}`),
+            () =>
+              new SchemaIssue.InvalidValue(Option.some(description), {
+                message: `Invalid ${rest.type} description: ${description}`,
+              }),
           ),
           Effect.map((parsedDescription) => ({ ...rest, description: parsedDescription })),
         ),
@@ -341,7 +344,7 @@ export default class MeasurementsReporter implements Reporter {
 
   private computeMetricStates = (): Effect.Effect<
     Record<string, TrackedMeasurementState>,
-    ParseResult.ParseError | MissingAnnotationError
+    Schema.SchemaError | MissingAnnotationError
   > =>
     Effect.all(
       Object.entries(this.measurementsByTestTitle).reduce(
@@ -359,7 +362,7 @@ export default class MeasurementsReporter implements Reporter {
           })
           return acc
         },
-        {} as Record<string, Effect.Effect<TrackedMeasurementState, ParseResult.ParseError | MissingAnnotationError>>,
+        {} as Record<string, Effect.Effect<TrackedMeasurementState, Schema.SchemaError | MissingAnnotationError>>,
       ),
       { concurrency: 'unbounded' },
     )
