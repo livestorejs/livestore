@@ -231,18 +231,12 @@ export const datetime: SpecializedColDefFn<'text', false, Date> = makeSpecialize
 
 export const datetimeInteger: SpecializedColDefFn<'integer', false, Date> = makeSpecializedColDef('integer', {
   _tag: 'baseSchema',
-  baseSchema: Schema.transform(Schema.Number, Schema.Date, {
-    decode: (ms) => new Date(ms),
-    encode: (date) => date.getTime(),
-  }),
+  baseSchema: Schema.DateFromEpochMillis,
 })
 
 export const boolean: SpecializedColDefFn<'integer', false, boolean> = makeSpecializedColDef('integer', {
   _tag: 'baseSchema',
-  baseSchema: Schema.transform(Schema.Number, Schema.Boolean, {
-    decode: (_) => _ === 1,
-    encode: (_) => (_ === true ? 1 : 0),
-  }),
+  baseSchema: Schema.BooleanFromBit,
 })
 
 export type FieldColumnType = 'text' | 'integer' | 'real' | 'blob'

@@ -1,4 +1,4 @@
-import { Effect, Hash, Result, Schema } from 'effect'
+import { Effect, Hash, Result, Schema, SchemaTransformation } from 'effect'
 import type { ParseOptions } from 'effect/SchemaAST'
 import * as SchemaAST from 'effect/SchemaAST'
 import { Transferable } from 'effect/unstable/workers'
@@ -7,6 +7,16 @@ import { shouldNeverHappen } from '../../mod.ts'
 
 export * from 'effect/Schema'
 export * from './debug-diff.ts'
+
+export const DateFromEpochMillis = Schema.Date.pipe(
+  Schema.encodeTo(
+    Schema.Number,
+    SchemaTransformation.transform({
+      decode: (epochMillis) => new Date(epochMillis),
+      encode: (date) => date.getTime(),
+    }),
+  ),
+).annotate({ identifier: 'DateFromEpochMillis' })
 
 // NOTE this is a temporary workaround until Effect schema has a better way to hash schemas
 // https://github.com/Effect-TS/effect/issues/2719

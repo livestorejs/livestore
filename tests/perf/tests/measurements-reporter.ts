@@ -11,10 +11,11 @@ import {
   Metric,
   type MetricState,
   Option,
-  Pretty,
   ReadonlyArray,
   Schema,
+  SchemaGetter,
   SchemaIssue,
+  SchemaTransformation,
 } from '@livestore/utils/effect'
 
 import { printConsoleTable } from './print-console-table.ts'
@@ -37,26 +38,27 @@ const StringDescribedAnnotation = <T extends string>(typeLiteral: T) =>
   })
 
 const NumberFromDescriptionAnnotation = <T extends string>(typeLiteral: T) =>
-  Schema.transformOrFail(
-    StringDescribedAnnotation(typeLiteral),
-    Schema.Struct({
-      type: Schema.Literal(typeLiteral),
-      description: Schema.Number,
-    }),
-    {
-      decode: ({ description, ...rest }) =>
-        Effect.sync(() => Number.parseFloat(description)).pipe(
-          Effect.filterOrFail(
-            (num) => !Number.isNaN(num),
-            () =>
-              new SchemaIssue.InvalidValue(Option.some(description), {
-                message: `Invalid ${rest.type} description: ${description}`,
-              }),
+  StringDescribedAnnotation(typeLiteral).pipe(
+    Schema.decodeTo(
+      Schema.Struct({
+        type: Schema.Literal(typeLiteral),
+        description: Schema.Number,
+      }),
+      SchemaTransformation.transformOrFail({
+        decode: ({ description, ...rest }) =>
+          Effect.sync(() => Number.parseFloat(description)).pipe(
+            Effect.filterOrFail(
+              (num) => !Number.isNaN(num),
+              () =>
+                new SchemaIssue.InvalidValue(Option.some(description), {
+                  message: `Invalid ${rest.type} description: ${description}`,
+                }),
+            ),
+            Effect.map((parsedDescription) => ({ ...rest, description: parsedDescription })),
           ),
-          Effect.map((parsedDescription) => ({ ...rest, description: parsedDescription })),
-        ),
-      encode: ({ description, ...rest }) => Effect.succeed({ ...rest, description: String(description) }),
-    },
+        encode: ({ description, ...rest }) => Effect.succeed({ ...rest, description: String(description) }),
+      }),
+    ),
   )
 
 const MeasurementAnnotation = NumberFromDescriptionAnnotation('measurement')
@@ -92,28 +94,36 @@ type AnyAnnotation = (typeof AnyAnnotation)['Type']
 
 const Annotations = Schema.NonEmptyArray(AnyAnnotation)
 
+type CpuInfo = {
+  readonly model: string
+  readonly speed: number
+}
+
+type CpuSummary = {
+  readonly model: string
+  readonly count: number
+  readonly speed: number
+}
+
 const Cpus = Schema.NonEmptyArray(
   Schema.Struct({
     model: Schema.String,
     speed: Schema.Number,
   }),
 ).pipe(
-  Schema.transform(
+  Schema.decodeTo(
     Schema.Struct({
       model: Schema.String,
       count: Schema.Number,
-      speed: Schema.Number.annotate({
-        pretty: () => (value) => `${(value / 1000).toFixed(2)} GHz`,
-      }),
+      speed: Schema.Number.pipe(Schema.overrideToFormatter(() => (value) => `${(value / 1000).toFixed(2)} GHz`)),
     }),
     {
-      encode: ({ count, ...value }) => ReadonlyArray.replicate(value, count),
-      decode: (cpus) => ({
+      decode: SchemaGetter.transform((cpus: readonly [CpuInfo, ...CpuInfo[]]) => ({
         model: cpus[0].model,
         speed: cpus[0].speed,
         count: cpus.length,
-      }),
-      strict: false,
+      })),
+      encode: SchemaGetter.transform(({ count, ...value }: CpuSummary) => ReadonlyArray.replicate(value, count)),
     },
   ),
 )
@@ -127,15 +137,15 @@ const SystemInfo = Schema.Struct({
   }),
   cpus: Cpus,
   memory: Schema.Struct({
-    total: Schema.Number.annotate({
-      pretty: () => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`,
-    }),
-    free: Schema.Number.annotate({
-      pretty: () => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`,
-    }),
+    total: Schema.Number.pipe(
+      Schema.overrideToFormatter(() => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`),
+    ),
+    free: Schema.Number.pipe(
+      Schema.overrideToFormatter(() => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`),
+    ),
   }),
-}).annotate({
-  pretty: () => (value) => {
+}).pipe(
+  Schema.overrideToFormatter(() => (value) => {
     return `
 🖥️  System Information:
 
@@ -153,14 +163,14 @@ CPU:
 Memory:
   Total: ${value.memory.total}
   Free: ${value.memory.free}`
-  },
-})
+  }),
+)
 
 type SystemInfo = typeof SystemInfo.Type
 
 const decodeSystemInfo = Schema.decodeUnknownSync(SystemInfo)
 
-const PrettySystemInfo = Pretty.make(SystemInfo)
+const PrettySystemInfo = Schema.toFormatter(SystemInfo)
 
 const measurementUnitToDisplayUnit: Record<MeasurementUnit, DisplayUnit> = {
   ms: 'ms',

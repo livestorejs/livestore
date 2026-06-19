@@ -174,7 +174,7 @@ const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.Col
   if (SchemaAST.isNumberKeyword(encodedAst) === true) {
     // Special cases for integer columns
     const id = SchemaAST.getIdentifierAnnotation(coreAst).pipe(Option.getOrElse(() => ''))
-    if (id === 'Int' || id === 'DateFromNumber') {
+    if (id === 'Int' || id === 'DateFromEpochMillis') {
       return SqliteDsl.integer({ schema: coreSchema, nullable })
     }
     return SqliteDsl.real({ schema: coreSchema, nullable })
@@ -229,7 +229,7 @@ const getLiteralColumnDefinition = (
       return SqliteDsl.text({ schema, nullable })
     case 'number': {
       const id = SchemaAST.getIdentifierAnnotation(sourceAst).pipe(Option.getOrElse(() => ''))
-      if (id === 'Int' || id === 'DateFromNumber') {
+      if (id === 'Int' || id === 'DateFromEpochMillis') {
         return SqliteDsl.integer({ schema, nullable })
       }
 
