@@ -1,4 +1,4 @@
-import { Effect, Hash, ParseResult, Result, Schema } from 'effect'
+import { Effect, Hash, Result, Schema } from 'effect'
 import type { ParseOptions } from 'effect/SchemaAST'
 import * as SchemaAST from 'effect/SchemaAST'
 import { Transferable } from 'effect/unstable/workers'
