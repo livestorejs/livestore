@@ -8,7 +8,6 @@ import {
   FetchHttpClient,
   identity,
   Layer,
-  Option,
   Predicate,
   Ref,
   References,
@@ -88,9 +87,13 @@ const makeWorkerRunner = Effect.gen(function* () {
     Effect.gen(function* () {
       yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
       const { worker, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isLeaderWorkerContext)
-      const stream = worker
-        .execute(req)
-        .pipe(Stream.refineOrDie((e) => (isWorkerTransportError(e) === true ? Option.none() : Option.some(e))))
+      const stream = worker.execute(req).pipe(
+        Stream.catchIf(
+          isWorkerTransportError,
+          (e) => Stream.die(e),
+          (e) => Stream.fail(e),
+        ),
+      )
       // It seems the request stream is not automatically interrupted when the scope shuts down
       // so we need to manually interrupt it when the scope shuts down
       const shutdownDeferred = yield* Deferred.make<void>()
