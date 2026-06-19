@@ -60,7 +60,7 @@
     name: 'livestore.RawSql',
     schema: Schema.Struct({
       sql: Schema.String,
-      bindValues: Schema.optional(Schema.Record(Schema.String, Schema.Any)),
+      bindValues: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Any })),
       writeTables: Schema.optional(Schema.ReadonlySet(Schema.String)),
     }),
   })
