@@ -56,7 +56,7 @@ export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
 
       const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
         // Stream.tap((_) => Effect.log(`${label}:message`, _.data)),
-        Stream.map((_) => Schema.decodeExit(schema.listen)(_.data)),
+        Stream.map((_) => Schema.decodeResult(schema.listen)(_.data)),
         listenToDebugPing(label),
       )
 
@@ -187,7 +187,7 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
       const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
         // Stream.onStart(Effect.log(`${label}:listen:start`)),
         // Stream.tap((_) => Effect.log(`${label}:message`, _.data)),
-        Stream.map((_) => Schema.decodeExit(ChannelMessage)(_.data)),
+        Stream.map((_) => Schema.decodeResult(ChannelMessage)(_.data)),
         Stream.tap((msg) =>
           Effect.gen(function* () {
             if (Result.isSuccess(msg)) {

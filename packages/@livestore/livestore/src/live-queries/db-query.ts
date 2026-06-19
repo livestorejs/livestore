@@ -406,7 +406,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
             span.setAttribute('sql.rowsCount', rawDbResults.length)
 
-            const parsedResult = Schema.decodeExit(schemaRef.current!)(rawDbResults)
+            const parsedResult = Schema.decodeResult(schemaRef.current!)(rawDbResults)
 
             if (Result.isFailure(parsedResult)) {
               const parseErrorStr = SchemaIssue.makeFormatterDefault()(parsedResult.failure.issue)
