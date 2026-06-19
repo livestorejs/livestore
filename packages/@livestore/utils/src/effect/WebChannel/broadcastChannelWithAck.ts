@@ -89,7 +89,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
               }
               case 'PayloadMessage': {
                 if (data.to === connectionId) {
-                  return Schema.decodeExit(schema.listen)(data.payload)
+                  return Schema.decodeResult(schema.listen)(data.payload)
                 }
                 return undefined
               }
