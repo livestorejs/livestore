@@ -1,5 +1,5 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { type Option, type Types, Schema, Struct } from '@livestore/utils/effect'
+import { type Option, type Types, Schema, SchemaGetter, Struct } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../session-id-symbol.ts'
 import { sql } from '../../../util.ts'
@@ -190,78 +190,79 @@ export const createOptimisticEventSchema = ({
   // This keeps JSON columns consistent when Encoded != Type (e.g. Option).
   const encodeTarget = Schema.encodeSync(targetSchema)
 
-  return Schema.transform(
-    Schema.Unknown, // Accept any historical event structure
-    targetSchema, // Output current schema
-    {
-      decode: (eventValue) => {
-        // Try direct decode first (for current schema events)
-        try {
-          const decoded = Schema.decodeUnknownSync(targetSchema)(eventValue)
-          // Re-encode so downstream parseJson/column decoding sees encoded values.
-          return encodeTarget(decoded)
-        } catch {
-          // Optimistic decoding for historical events
+  return Schema.Unknown.pipe(
+    Schema.decodeTo(
+      targetSchema, // Output current schema
+      {
+        decode: SchemaGetter.transform((eventValue) => {
+          // Try direct decode first (for current schema events)
+          try {
+            const decoded = Schema.decodeUnknownSync(targetSchema)(eventValue)
+            // Re-encode so downstream parseJson/column decoding sees encoded values.
+            return encodeTarget(decoded)
+          } catch {
+            // Optimistic decoding for historical events
 
-          // Handle null/undefined/non-object cases
-          if (typeof eventValue !== 'object' || eventValue === null) {
-            console.warn(
-              `Client document: Non-object event value, using ${partialSet === true ? 'empty partial' : 'defaults'}`,
-            )
-            return encodeTarget(partialSet === true ? {} : defaultValue)
-          }
-
-          if (partialSet === true) {
-            // For partial sets: only preserve fields that exist in new schema
-            const partialResult: Record<string, unknown> = {}
-            let hasValidFields = false
-
-            for (const [key, value] of Object.entries(eventValue as Record<string, unknown>)) {
-              if (key in defaultValue) {
-                partialResult[key] = value
-                hasValidFields = true
-              }
-              // Drop fields that don't exist in new schema
+            // Handle null/undefined/non-object cases
+            if (typeof eventValue !== 'object' || eventValue === null) {
+              console.warn(
+                `Client document: Non-object event value, using ${partialSet === true ? 'empty partial' : 'defaults'}`,
+              )
+              return encodeTarget(partialSet === true ? {} : defaultValue)
             }
 
-            if (hasValidFields === true) {
+            if (partialSet === true) {
+              // For partial sets: only preserve fields that exist in new schema
+              const partialResult: Record<string, unknown> = {}
+              let hasValidFields = false
+
+              for (const [key, value] of Object.entries(eventValue as Record<string, unknown>)) {
+                if (key in defaultValue) {
+                  partialResult[key] = value
+                  hasValidFields = true
+                }
+                // Drop fields that don't exist in new schema
+              }
+
+              if (hasValidFields === true) {
+                try {
+                  const decoded = Schema.decodeUnknownSync(targetSchema)(partialResult)
+                  return encodeTarget(decoded)
+                } catch {
+                  // Even filtered fields don't match schema
+                  console.warn('Client document: Partial fields incompatible, returning empty partial')
+                  return encodeTarget({})
+                }
+              }
+              return encodeTarget({})
+            } else {
+              // Full set: merge old data with new defaults
+              const merged: Record<string, unknown> = { ...defaultValue }
+
+              // Override defaults with valid fields from old event
+              for (const [key, value] of Object.entries(eventValue as Record<string, unknown>)) {
+                if (key in defaultValue) {
+                  merged[key] = value
+                }
+                // Drop fields that don't exist in new schema
+              }
+
+              // Try to decode the merged value
               try {
-                const decoded = Schema.decodeUnknownSync(targetSchema)(partialResult)
+                const decoded = Schema.decodeUnknownSync(valueSchema)(merged)
                 return encodeTarget(decoded)
               } catch {
-                // Even filtered fields don't match schema
-                console.warn('Client document: Partial fields incompatible, returning empty partial')
-                return encodeTarget({})
+                // Merged value still doesn't match (e.g., type changes)
+                // Fall back to pure defaults
+                console.warn('Client document: Could not preserve event data, using defaults')
+                return encodeTarget(defaultValue)
               }
-            }
-            return encodeTarget({})
-          } else {
-            // Full set: merge old data with new defaults
-            const merged: Record<string, unknown> = { ...defaultValue }
-
-            // Override defaults with valid fields from old event
-            for (const [key, value] of Object.entries(eventValue as Record<string, unknown>)) {
-              if (key in defaultValue) {
-                merged[key] = value
-              }
-              // Drop fields that don't exist in new schema
-            }
-
-            // Try to decode the merged value
-            try {
-              const decoded = Schema.decodeUnknownSync(valueSchema)(merged)
-              return encodeTarget(decoded)
-            } catch {
-              // Merged value still doesn't match (e.g., type changes)
-              // Fall back to pure defaults
-              console.warn('Client document: Could not preserve event data, using defaults')
-              return encodeTarget(defaultValue)
             }
           }
-        }
+        }),
+        encode: SchemaGetter.passthroughSubtype(),
       },
-      encode: (value) => value, // Pass-through for encoding
-    },
+    ),
   )
 }
 
