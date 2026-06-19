@@ -31,7 +31,6 @@ import {
   Exit,
   Fiber,
   Layer,
-  Option,
   Queue,
   Schema,
   Stream,
@@ -271,7 +270,11 @@ export const makeSingleTabAdapter =
         Effect.gen(function* () {
           const innerWorker = yield* Fiber.join(innerWorkerFiber)
           return innerWorker.execute(req).pipe(
-            Stream.refineOrDie((e) => (isWorkerTransportError(e) === true ? Option.none() : Option.some(e))),
+            Stream.catchIf(
+              isWorkerTransportError,
+              (e) => Stream.die(e),
+              (e) => Stream.fail(e),
+            ),
             Stream.withSpan(`@livestore/adapter-web:single-tab:runInWorkerStream:${req._tag}`),
           )
         }).pipe(Stream.unwrap)
