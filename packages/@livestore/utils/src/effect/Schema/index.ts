@@ -1,4 +1,12 @@
-import { Effect, Hash, Result, Schema, SchemaTransformation } from 'effect'
+import {
+  Effect,
+  Hash,
+  Result,
+  Schema,
+  SchemaGetter,
+  SchemaTransformation,
+  Struct,
+} from 'effect'
 import type { ParseOptions } from 'effect/SchemaAST'
 import * as SchemaAST from 'effect/SchemaAST'
 import { Transferable } from 'effect/unstable/workers'
@@ -7,6 +15,17 @@ import { shouldNeverHappen } from '../../mod.ts'
 
 export * from 'effect/Schema'
 export * from './debug-diff.ts'
+
+export const pluck = <const K extends PropertyKey>(key: K) => <Fields extends { readonly [P in K]: Schema.Top }>(
+  schema: Schema.Struct<Fields>
+) => {
+  return schema.mapFields(Struct.pick([key])).pipe(
+    Schema.decodeTo(Schema.toType(schema.fields[key]), {
+      decode: SchemaGetter.transform((whole: any) => whole[key]),
+      encode: SchemaGetter.transform((value) => ({ [key]: value } as any))
+    })
+  )
+};
 
 export const DateFromEpochMillis = Schema.Date.pipe(
   Schema.encodeTo(
