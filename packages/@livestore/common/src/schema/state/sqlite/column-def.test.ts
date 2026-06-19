@@ -198,7 +198,7 @@ describe('getColumnDefForSchema', () => {
 
     it('should handle never schema', () => {
       // Create a schema that should never validate
-      const neverSchema = Schema.String.pipe(Schema.filter(() => false, { message: () => 'Always fails' }))
+      const neverSchema = Schema.String.check(Schema.makeFilter(() => false, { message: 'Always fails' }))
 
       const columnDef = State.SQLite.getColumnDefForSchema(neverSchema)
       expect(columnDef.columnType).toBe('text')

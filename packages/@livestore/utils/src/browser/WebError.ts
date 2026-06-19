@@ -117,14 +117,16 @@ export class URIError extends Schema.TaggedErrorClass<URIError>(`${TypeId}/URIEr
 
 const domExceptionWithName = (expectedName: string) =>
   Schema.instanceOf(DOMException).pipe(
-    Schema.filter((a, options) =>
-      Schema.decodeResult(
-        Schema.toType(
-          Schema.Struct({
-            name: Schema.Literal(expectedName),
-          }),
-        ),
-      )(a, options).pipe((result) => (Result.isFailure(result) ? result.failure.issue : undefined)),
+    Schema.check(
+      Schema.makeFilter((a, _ast, options) =>
+        Schema.decodeResult(
+          Schema.toType(
+            Schema.Struct({
+              name: Schema.Literal(expectedName),
+            }),
+          ),
+        )(a, options).pipe((result) => (Result.isFailure(result) ? result.failure.issue : undefined)),
+      ),
     ),
   )
 
