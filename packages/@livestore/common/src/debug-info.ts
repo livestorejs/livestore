@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { ParseResult, Schema } from '@livestore/utils/effect'
+import { ParseResult, Schema, SchemaGetter } from '@livestore/utils/effect'
 
 import { BoundArray } from './bounded-collections.ts'
 import { PreparedBindValues } from './util.ts'
@@ -55,7 +55,7 @@ const BoundArraySchemaFromSelf = <A, I, RD, RE>(
     },
     {
       description: `BoundArray<${Schema.format(item)}>`,
-      pretty: () => (_) => `BoundArray(${_.length})`,
+      toFormatter: () => (_) => `BoundArray(${_.length})`,
       arbitrary: () => (fc) => fc.anything() as any,
       equivalence: () => {
         const elementEquivalence = Schema.toEquivalence(item)
@@ -83,16 +83,18 @@ const BoundArraySchemaFromSelf = <A, I, RD, RE>(
   )
 
 export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Codec<ItemDecoded, ItemEncoded>) =>
-  Schema.transform(
-    Schema.Struct({
-      size: Schema.Number,
-      items: Schema.Array(elSchema),
-    }),
-    BoundArraySchemaFromSelf(Schema.toType(elSchema)),
-    {
-      encode: (_) => ({ size: _.sizeLimit, items: [..._] }),
-      decode: (_) => BoundArray.make(_.size, _.items),
-    },
+  Schema.Struct({
+    size: Schema.Number,
+    items: Schema.Array(elSchema),
+  }).pipe(
+    Schema.decodeTo(
+      BoundArraySchemaFromSelf(Schema.toType(elSchema)),
+      {
+        decode: SchemaGetter.transform((_) => BoundArray.make(_.size, _.items)),
+        encode: SchemaGetter.transform((_) => ({ size: _.sizeLimit, items: [..._] }),
+        ),
+      },
+    ),
   )
 
 export const DebugInfo = Schema.Struct({

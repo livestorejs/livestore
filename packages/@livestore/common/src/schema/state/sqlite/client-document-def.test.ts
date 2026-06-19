@@ -258,7 +258,7 @@ describe('client document table', () => {
   describe('optimistic schema', () => {
     /** Models persisted JSON using epoch numbers + base64 while app code expects Date + Uint8Array. */
     const valueSchema = Schema.Struct({
-      createdAt: Schema.DateFromNumber,
+      createdAt: Schema.DateFromEpochMillis,
       avatar: Schema.Uint8ArrayFromBase64,
     })
     const defaultValue = {
