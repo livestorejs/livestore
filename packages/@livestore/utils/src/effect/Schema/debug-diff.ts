@@ -35,9 +35,8 @@ const debugDiffImpl = (ast: SchemaAST.AST, a: any, b: any, path: string, bag: Di
           } catch {}
         }
       }
-    } else if (SchemaAST.isTypeLiteral(ast) === true) {
-      const props = SchemaAST.getPropertySignatures(ast)
-      for (const prop of props) {
+    } else if (SchemaAST.isObjects(ast) === true) {
+      for (const prop of ast.propertySignatures) {
         debugDiffImpl(prop.type, a[prop.name], b[prop.name], `${path}.${prop.name.toString()}`, bag)
       }
     } else {
@@ -50,9 +49,8 @@ const debugDiffImpl = (ast: SchemaAST.AST, a: any, b: any, path: string, bag: Di
 const isTaggedUnion = (ast: SchemaAST.AST): boolean => {
   if (SchemaAST.isUnion(ast) === true) {
     return ast.types.every((type) => {
-      if (SchemaAST.isTypeLiteral(type) === false) return false
-      const props = SchemaAST.getPropertySignatures(type)
-      return props.some((prop) => prop.name.toString() === '_tag')
+      if (SchemaAST.isObjects(type) === false) return false
+      return type.propertySignatures.some((prop) => prop.name.toString() === '_tag')
     })
   }
   return false

@@ -1,18 +1,18 @@
-import { type Schema, Function, Option, SchemaAST } from '@livestore/utils/effect'
+import { type Schema, Function, SchemaAST } from '@livestore/utils/effect'
 
 import type { SqliteDsl } from './db-schema/mod.ts'
 
-export const PrimaryKeyId = Symbol.for('livestore/state/sqlite/annotations/primary-key')
+export const PrimaryKeyId = 'livestore/state/sqlite/annotations/primary-key'
 
-export const ColumnType = Symbol.for('livestore/state/sqlite/annotations/column-type')
+export const ColumnType = 'livestore/state/sqlite/annotations/column-type'
 
-export const Default = Symbol.for('livestore/state/sqlite/annotations/default')
+export const Default = 'livestore/state/sqlite/annotations/default'
 
-export const AutoIncrement = Symbol.for('livestore/state/sqlite/annotations/auto-increment')
+export const AutoIncrement = 'livestore/state/sqlite/annotations/auto-increment'
 
-export const Unique = Symbol.for('livestore/state/sqlite/annotations/unique')
+export const Unique = 'livestore/state/sqlite/annotations/unique'
 
-// export const Check = Symbol.for('livestore/state/sqlite/annotations/check')
+// export const Check = 'livestore/state/sqlite/annotations/check'
 
 /*
 Here are the knobs you can turn per-column when you CREATE TABLE (or ALTER TABLE … ADD COLUMN) in SQLite:
@@ -76,12 +76,12 @@ const validateSchemaColumnTypeCompatibility = (
   // TODO actually implement this
 }
 
-const applyAnnotations = <T extends Schema.Top>(schema: T, overrides: Record<PropertyKey, unknown>): T => {
-  const identifier = SchemaAST.getIdentifierAnnotation(schema.ast)
-  const shouldPreserveIdentifier = Option.isSome(identifier) && !(SchemaAST.IdentifierAnnotationId in overrides)
-  const annotations: Record<PropertyKey, unknown> =
+const applyAnnotations = <T extends Schema.Top>(schema: T, overrides: Record<string, unknown>): T => {
+  const identifier = SchemaAST.resolveIdentifier(schema.ast)
+  const shouldPreserveIdentifier = identifier !== undefined && !('identifier' in overrides)
+  const annotations: Record<string, unknown> =
     shouldPreserveIdentifier === true
-      ? { ...overrides, [SchemaAST.IdentifierAnnotationId]: identifier.value }
+      ? { ...overrides, identifier }
       : overrides
 
   return schema.annotate(annotations) as T

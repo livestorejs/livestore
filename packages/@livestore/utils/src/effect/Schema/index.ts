@@ -32,19 +32,11 @@ export const hash = (schema: Schema.Top) => {
   }
 }
 
-const resolveStructAst = (ast: SchemaAST.AST): SchemaAST.AST => {
-  if (SchemaAST.isTransformation(ast) === true) {
-    return resolveStructAst(ast.from)
-  }
-
-  return ast
-}
-
 export const getResolvedPropertySignatures = (
   schema: Schema.Top,
 ): ReadonlyArray<SchemaAST.PropertySignature> => {
-  const resolvedAst = resolveStructAst(schema.ast)
-  return SchemaAST.getPropertySignatures(resolvedAst)
+  const resolvedAst = SchemaAST.toType(schema.ast)
+  return SchemaAST.isObjects(resolvedAst) === true ? resolvedAst.propertySignatures : []
 }
 
 /** Objects that can be transferred between contexts (workers, etc.) */
