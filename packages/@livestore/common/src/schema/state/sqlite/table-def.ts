@@ -1,5 +1,5 @@
 import { type Nullable, shouldNeverHappen } from '@livestore/utils'
-import { Option, Schema, SchemaAST, type Types } from '@livestore/utils/effect'
+import { Schema, SchemaAST, type Types } from '@livestore/utils/effect'
 
 import { getColumnDefForSchema, schemaFieldsToColumns } from './column-def.ts'
 import { SqliteDsl } from './db-schema/mod.ts'
@@ -224,14 +224,12 @@ export function table<
       tempTableName = args.name
     } else {
       // Use title or identifier, with preference for title
-      tempTableName = SchemaAST.getTitleAnnotation(args.schema.ast).pipe(
-        Option.orElse(() => SchemaAST.getIdentifierAnnotation(args.schema.ast)),
-        Option.getOrElse(() =>
-          shouldNeverHappen(
-            'When using schema without explicit name, the schema must have a title or identifier annotation',
-          ),
-        ),
-      )
+      tempTableName =
+        SchemaAST.resolveTitle(args.schema.ast) ??
+        SchemaAST.resolveIdentifier(args.schema.ast) ??
+        shouldNeverHappen(
+          'When using schema without explicit name, the schema must have a title or identifier annotation',
+        )
     }
 
     tableName = tempTableName
