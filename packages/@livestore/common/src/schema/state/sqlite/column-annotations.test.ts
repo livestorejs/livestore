@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { Schema, SchemaAST } from '@livestore/utils/effect'
+import { Schema, SchemaAST, SchemaTransformation } from '@livestore/utils/effect'
 
 import { withColumnType, withPrimaryKey } from './column-annotations.ts'
 
@@ -71,10 +71,15 @@ describe.concurrent('annotations', () => {
       })
 
       test('Transformation schema with compatible base type', () => {
-        const transformSchema = Schema.transform(Schema.String, Schema.String, {
-          decode: (s) => s.toUpperCase(),
-          encode: (s) => s.toLowerCase(),
-        })
+        const transformSchema = Schema.String.pipe(
+          Schema.decodeTo(
+            Schema.String,
+            SchemaTransformation.transform({
+              decode: (s) => s.toUpperCase(),
+              encode: (s) => s.toLowerCase(),
+            }),
+          ),
+        )
         expect(() => withColumnType(transformSchema, 'text')).not.toThrow()
       })
     })

@@ -30,8 +30,8 @@ describe('getColumnDefForSchema', () => {
       expect(Schema.toType(columnDef.schema).toString()).toBe('Date')
     })
 
-    it('should map Schema.DateFromNumber to integer column', () => {
-      const columnDef = State.SQLite.getColumnDefForSchema(Schema.DateFromNumber)
+    it('should map Schema.DateFromEpochMillis to integer column', () => {
+      const columnDef = State.SQLite.getColumnDefForSchema(Schema.DateFromEpochMillis)
       expect(columnDef.columnType).toBe('integer')
       expect(Schema.toEncoded(columnDef.schema).toString()).toBe('number')
       expect(Schema.toType(columnDef.schema).toString()).toBe('Date')
@@ -101,12 +101,7 @@ describe('getColumnDefForSchema', () => {
 
   describe('transformations', () => {
     it('should map transformations based on target type', () => {
-      const StringToNumber = Schema.String.pipe(
-        Schema.transform(Schema.Number, {
-          decode: Number.parseFloat,
-          encode: String,
-        }),
-      )
+      const StringToNumber = Schema.NumberFromString
 
       const columnDef = State.SQLite.getColumnDefForSchema(StringToNumber)
       expect(columnDef.columnType).toBe('text') // Based on the encoded type (String)

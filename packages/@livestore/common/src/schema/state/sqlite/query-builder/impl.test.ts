@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { objectToString } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { Schema, SchemaTransformation } from '@livestore/utils/effect'
 
 import { State } from '../../../mod.ts'
 import type { QueryBuilder } from './api.ts'
@@ -64,9 +64,9 @@ const issue = State.SQLite.table({
     title: State.SQLite.text({ default: '' }),
     creator: State.SQLite.text({ default: '' }),
     priority: State.SQLite.integer({ schema: Schema.Literals([0, 1, 2, 3, 4]), default: 0 }),
-    created: State.SQLite.integer({ schema: Schema.DateFromNumber }),
-    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
-    modified: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+    created: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
+    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromEpochMillis }),
+    modified: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
     kanbanorder: State.SQLite.text({ nullable: false, default: '' }),
   },
   indexes: [
@@ -851,32 +851,33 @@ describe('query builder', () => {
       contactEmail: Schema.String.pipe(State.SQLite.withUnique),
     })
 
-    const Nested = Schema.transform(
-      Flat,
-      Schema.Struct({
-        id: Schema.String,
-        contact: Schema.Struct({
-          firstName: Schema.String,
-          lastName: Schema.String,
-          email: Schema.String,
+    const Nested = Flat.pipe(
+      Schema.decodeTo(
+        Schema.Struct({
+          id: Schema.String,
+          contact: Schema.Struct({
+            firstName: Schema.String,
+            lastName: Schema.String,
+            email: Schema.String,
+          }),
         }),
-      }),
-      {
-        decode: ({ id, contactFirstName, contactLastName, contactEmail }) => ({
-          id,
-          contact: {
-            firstName: contactFirstName,
-            lastName: contactLastName,
-            email: contactEmail,
-          },
+        SchemaTransformation.transform({
+          decode: ({ id, contactFirstName, contactLastName, contactEmail }) => ({
+            id,
+            contact: {
+              firstName: contactFirstName,
+              lastName: contactLastName,
+              email: contactEmail,
+            },
+          }),
+          encode: ({ id, contact }) => ({
+            id,
+            contactFirstName: contact.firstName,
+            contactLastName: contact.lastName,
+            contactEmail: contact.email,
+          }),
         }),
-        encode: ({ id, contact }) => ({
-          id,
-          contactFirstName: contact.firstName,
-          contactLastName: contact.lastName,
-          contactEmail: contact.email,
-        }),
-      },
+      ),
     )
 
     const makeContactsTable = () =>
