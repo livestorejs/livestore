@@ -534,7 +534,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         yield* connectNodesViaBroadcastChannel(nodeA, nodeB)
 
         const err = yield* createChannel(nodeA, 'B', { mode: 'direct' }).pipe(Effect.timeout(200), Effect.flip)
-        expect(err._tag).toBe('TimeoutException')
+        expect(err._tag).toBe('TimeoutError')
       }).pipe(Vitest.withTestCtx(test)),
     )
   })
@@ -905,12 +905,12 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
 
         const nodeACode = Effect.gen(function* () {
           const err = yield* createChannel(nodeA, 'C').pipe(Effect.timeout(200), Effect.flip)
-          expect(err._tag).toBe('TimeoutException')
+          expect(err._tag).toBe('TimeoutError')
         })
 
         const nodeCCode = Effect.gen(function* () {
           const err = yield* createChannel(nodeC, 'A').pipe(Effect.timeout(200), Effect.flip)
-          expect(err._tag).toBe('TimeoutException')
+          expect(err._tag).toBe('TimeoutError')
         })
 
         yield* Effect.all([nodeACode, nodeCCode], { concurrency: 'unbounded' })
@@ -926,12 +926,12 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
 
         const nodeACode = Effect.gen(function* () {
           const err = yield* createChannel(nodeA, 'B').pipe(Effect.timeout(200), Effect.flip)
-          expect(err._tag).toBe('TimeoutException')
+          expect(err._tag).toBe('TimeoutError')
         })
 
         const nodeBCode = Effect.gen(function* () {
           const err = yield* createChannel(nodeB, 'A').pipe(Effect.timeout(200), Effect.flip)
-          expect(err._tag).toBe('TimeoutException')
+          expect(err._tag).toBe('TimeoutError')
         })
 
         yield* Effect.all([nodeACode, nodeBCode], { concurrency: 'unbounded' })

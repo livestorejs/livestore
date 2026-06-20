@@ -243,7 +243,7 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
   // provides the hard PID-tree kill backstop.
   Effect.timeout(Duration.minutes(20)),
   Effect.catchTag(
-    'TimeoutException',
+    'TimeoutError',
     () =>
       new NetlifyError({
         message: 'Netlify deploy timed out after 20 minutes',

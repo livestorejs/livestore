@@ -359,7 +359,7 @@ export const toOpenChannel = <MsgListen, MsgSend>(
           pendingPingDeferredRef.current = { deferred, requestId }
           yield* Deferred.await(deferred).pipe(
             Effect.timeout(timeout),
-            Effect.catchTag('TimeoutException', () => channel.shutdown),
+            Effect.catchTag('TimeoutError', () => channel.shutdown),
           )
         }
       }).pipe(
