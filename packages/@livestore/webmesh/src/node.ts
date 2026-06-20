@@ -366,7 +366,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
         // TODO use a priority queue instead to prioritize network-changes/edge-requests over payloads
         const listenFiber = yield* edgeChannel.listen.pipe(
-          Stream.flatten(),
+          Stream.mapEffect(Effect.fromResult),
           Stream.tap((message) =>
             Effect.gen(function* () {
               const packet = yield* Schema.decodeUnknownEffect(WebmeshSchema.Packet)(message)
