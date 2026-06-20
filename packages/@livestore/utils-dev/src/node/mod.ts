@@ -55,7 +55,7 @@ export const OtelLiveHttp = ({
 
     if (configRes._tag === 'None') {
       const RootSpanLive = Layer.span('DummyRoot', {})
-      return RootSpanLive.pipe(Layer.provideMerge(OtelLiveDummy)) as any
+      return withTracerReference(RootSpanLive.pipe(Layer.provideMerge(OtelLiveDummy)))
     }
 
     const config = configRes.value
@@ -74,7 +74,10 @@ export const OtelLiveHttp = ({
       parent: parentSpan,
     })
 
-    const layer = yield* Layer.memoize(RootSpanLive.pipe(Layer.provideMerge(Layer.mergeAll(OtelLive, OtelTracerLive))))
+    const baseLayer = RootSpanLive.pipe(Layer.provideMerge(Layer.mergeAll(OtelLive, OtelTracerLive)))
+
+    const memoMap = yield* Layer.makeMemoMap
+    const layer = Layer.fromBuild((_, scope) => Layer.buildWithMemoMap(baseLayer, memoMap, scope))
 
     if (traceNodeBootstrap === true && IS_BUN === false) {
       /**
@@ -116,8 +119,8 @@ export const OtelLiveHttp = ({
       }).pipe(Effect.provide(layer), Effect.orDie)
     }
 
-    return layer
-  }).pipe(Layer.unwrap) as any
+    return withTracerReference(layer)
+  }).pipe(Layer.unwrap)
 
 export const logTraceUiUrlForSpan = (printMsg?: (url: string) => string) => (span: otel.Span) =>
   logTraceUiUrlForTraceId(printMsg)(span.spanContext().traceId)
@@ -212,3 +215,12 @@ const computeBootstrapTiming = () => {
 }
 
 const millisToNanos = (millis: number): bigint => BigInt(Math.round(millis * 1_000_000))
+
+/**
+ * Effect v4 installs `Tracer.Tracer` through a `Context.Reference` fiber ref.
+ * The OTEL layers set that reference at runtime, but their layer output type is
+ * `never`, so we localize the public compatibility assertion here.
+ */
+const withTracerReference = <ROut, E, RIn>(
+  layer: Layer.Layer<ROut, E, RIn>,
+): Layer.Layer<ROut | Tracer.Tracer, E, RIn> => layer as Layer.Layer<ROut | Tracer.Tracer, E, RIn>
