@@ -66,7 +66,7 @@ export const makeWebSocket = ({
       }
     }).pipe(
       Effect.tapErrorTag('WebSocketError', () => tryLogWebsocketConnectError(url)),
-      reconnect !== undefined ? Effect.retry(reconnect) : identity,
+      reconnect !== undefined && reconnect !== false ? Effect.retry(reconnect) : identity,
     )
 
     /**
