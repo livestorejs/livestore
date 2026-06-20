@@ -107,7 +107,7 @@ export const makeHttpSync =
       }).pipe(
         UnknownError.mapToUnknownError,
         Effect.timeout(pingTimeout),
-        Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
+        Effect.catchTag('TimeoutError', () => SubscriptionRef.set(isConnected, false)),
       )
 
       const pingInterval = options.ping?.requestInterval ?? 10_000

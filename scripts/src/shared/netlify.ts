@@ -201,7 +201,7 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
   // generous backstop while still well below the shell-level `timeout(1)` wrapper.
   Effect.timeout(Duration.minutes(15)),
   Effect.catchTag(
-    'TimeoutException',
+    'TimeoutError',
     () =>
       new NetlifyError({
         message: 'Netlify deploy timed out after 15 minutes',
