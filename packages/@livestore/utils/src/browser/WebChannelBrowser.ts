@@ -107,7 +107,7 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
             from: ids.own,
             to: ids.other,
           })
-          sendWindow.postMessage(messageEncoded, { targetOrigin, transfer: transferables })
+          sendWindow.postMessage(messageEncoded, targetOrigin, transferables)
         })
 
       const listen = Stream.fromEventListener<MessageEvent>(listenWindow, 'message').pipe(
