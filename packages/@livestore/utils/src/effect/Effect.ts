@@ -230,7 +230,7 @@ export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>>
  * This function allows you to enforce a time limit on the execution of an
  * effect. If the effect does not complete within the given duration, it dies
  * with a {@link Cause.TimeoutError} as an unchecked defect. Unlike
- * {@link Effect.timeout}, which adds `TimeoutException` to the error channel,
+ * {@link Effect.timeout}, which adds `TimeoutError` to the error channel,
  * this function keeps the error channel unchanged by treating the timeout as
  * a defect.
  *
@@ -240,7 +240,7 @@ export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>>
  * - Die with a {@link Cause.TimeoutError} defect if the time limit is exceeded.
  *
  * @see {@link timeoutOrDieMessage} for a version with a custom message.
- * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
+ * @see {@link Effect.timeout} for a version that raises a `TimeoutError` as a typed error.
  * @see {@link Effect.timeoutOrElse} for a version with a custom timeout branch.
  */
 export const timeoutOrDie =
@@ -269,7 +269,7 @@ export const timeoutOrDie =
  *   message if the time limit is exceeded.
  *
  * @see {@link timeoutOrDie} for a version without a custom message.
- * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
+ * @see {@link Effect.timeout} for a version that raises a `TimeoutError` as a typed error.
  * @see {@link Effect.timeoutOrElse} for a version with a custom timeout branch.
  */
 export const timeoutOrDieMessage =
