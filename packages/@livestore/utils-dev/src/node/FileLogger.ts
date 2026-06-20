@@ -1,5 +1,6 @@
 import util from 'node:util'
 
+import { Redactable } from 'effect'
 import { Cause, Inspectable, Logger, type LogLevel, References, ReadonlyArray } from '@livestore/utils/effect'
 
 const withColor = (text: string, ...colors: ReadonlyArray<string>) => {
@@ -49,7 +50,7 @@ export const structuredMessage = (u: unknown): unknown => {
       return String(u)
     }
     default: {
-      return Inspectable.toJSON(u)
+      return Inspectable.toJson(u)
     }
   }
 }
@@ -156,7 +157,7 @@ export const formatPrettyLog = ({
           }),
         )
       } else {
-        logIndented(Inspectable.redact(msg))
+        logIndented(Redactable.redact(msg))
       }
     }
   }
@@ -170,7 +171,7 @@ export const formatPrettyLog = ({
             compact: false,
             breakLength: 120,
           })
-        : Inspectable.redact(value)
+        : Redactable.redact(value)
     logIndented(color(`${key}:`, colors.bold, colors.white), formattedValue)
   }
 
