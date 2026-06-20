@@ -1,4 +1,4 @@
-import { Cause, Deferred, Duration, Result, Exit, identity, Option, PubSub, Queue, Scope } from 'effect'
+import { Cause, Deferred, Duration, Result, Exit, Filter, identity, Option, PubSub, Queue, Scope } from 'effect'
 
 import { shouldNeverHappen } from '../../misc.ts'
 import * as Effect from '../Effect.ts'
@@ -193,20 +193,23 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
               } else if (msg.success._tag === 'ChannelRequest') {
                 debugInfo.listenTotal++
                 port.postMessage(
-                  yield* Schema.encodeEffect(ChannelMessage)({ _tag: 'ChannelRequestAck', reqId: msg.success.id }),
+                  yield* Schema.encodeEffect(ChannelMessage)({ _tag: 'ChannelRequestAck', reqId: msg.success.id }).pipe(
+                    Effect.orDie,
+                  ),
                 )
               }
             }
           }),
         ),
-        Stream.filterMap((msg) =>
-          Result.isFailure(msg)
-            ? Option.some(msg as any)
-            : msg.success._tag === 'ChannelRequest'
-              ? Option.some(Result.succeed(msg.success.payload))
-              : Option.none(),
+        Stream.filterMap(
+          Filter.fromPredicateOption((msg) =>
+            Result.isFailure(msg)
+              ? Option.some(msg as Result.Result<any, any>)
+              : msg.success._tag === 'ChannelRequest'
+                ? Option.some(Result.succeed(msg.success.payload) as Result.Result<any, any>)
+                : Option.none(),
+          ),
         ),
-        (_) => _ as Stream.Stream<Result.Result<any, any>>,
         listenToDebugPing(label),
       )
 
