@@ -72,7 +72,7 @@ const createChannel = (source: MeshNode, target: string, options?: Partial<Param
 
 const getFirstMessage = <T1, T2>(channel: WebChannel.WebChannel<T1, T2>) =>
   channel.listen.pipe(
-    Stream.flatten(),
+    Stream.mapEffect(Effect.fromResult),
     Stream.take(1),
     Stream.runCollect,
     Effect.map(([message]) => message),
@@ -421,9 +421,13 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
                   { concurrency: 'unbounded' },
                 )
 
-                expect(yield* channelAToB.listen.pipe(Stream.flatten(), Stream.take(count), Stream.runCollect)).toEqual(
-                  Chunk.makeBy(count, (i) => ({ message: `B${i}` })),
-                )
+                expect(
+                  yield* channelAToB.listen.pipe(
+                    Stream.mapEffect(Effect.fromResult),
+                    Stream.take(count),
+                    Stream.runCollect,
+                  ),
+                ).toEqual(Chunk.makeBy(count, (i) => ({ message: `B${i}` })))
                 // expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'A2' })
               })
 
@@ -437,9 +441,13 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
                   { concurrency: 'unbounded' },
                 )
 
-                expect(yield* channelBToA.listen.pipe(Stream.flatten(), Stream.take(count), Stream.runCollect)).toEqual(
-                  Chunk.makeBy(count, (i) => ({ message: `A${i}` })),
-                )
+                expect(
+                  yield* channelBToA.listen.pipe(
+                    Stream.mapEffect(Effect.fromResult),
+                    Stream.take(count),
+                    Stream.runCollect,
+                  ),
+                ).toEqual(Chunk.makeBy(count, (i) => ({ message: `A${i}` })))
               })
 
               yield* Effect.all([nodeACode, nodeBCode, connectNodes(nodeA, nodeB).pipe(Effect.delay(100))], {
@@ -469,7 +477,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           const bFiber = yield* Effect.gen(function* () {
             const channelBToA = yield* createChannel(nodeB, 'A')
             yield* channelBToA.listen.pipe(
-              Stream.flatten(),
+              Stream.mapEffect(Effect.fromResult),
               Stream.tap((msg) => channelBToA.send({ message: `resp:${msg.message}` })),
               Stream.take(messageCount),
               Stream.runDrain,
@@ -670,7 +678,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           )
           // Receive responses
           const responses = yield* channelAToC.listen.pipe(
-            Stream.flatten(),
+            Stream.mapEffect(Effect.fromResult),
             Stream.take(messageCount),
             Stream.runCollect,
           )
@@ -687,7 +695,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           )
           // Receive responses
           const responses = yield* channelCToA.listen.pipe(
-            Stream.flatten(),
+            Stream.mapEffect(Effect.fromResult),
             Stream.take(messageCount),
             Stream.runCollect,
           )
@@ -776,7 +784,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             })
 
             yield* channelBToA.listen.pipe(
-              Stream.flatten(),
+              Stream.mapEffect(Effect.fromResult),
               Stream.tap((msg) =>
                 Effect.sync(() => {
                   receivedMessages.push(msg.message)
@@ -865,7 +873,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             })
 
             yield* channelBToA.listen.pipe(
-              Stream.flatten(),
+              Stream.mapEffect(Effect.fromResult),
               Stream.tap((msg) =>
                 Effect.sync(() => {
                   receivedMessages.push(msg.message)
@@ -1281,16 +1289,16 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         const channelOnC = yield* nodeC.makeBroadcastChannel({ channelName: 'test', schema: Schema.String })
 
         const listenOnAFiber = yield* channelOnA.listen.pipe(
-          Stream.flatten(),
+          Stream.mapEffect(Effect.fromResult),
           Stream.runHead,
-          Effect.flatten,
+          Effect.flatMap(Effect.fromOption),
           // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
         )
         const listenOnCFiber = yield* channelOnC.listen.pipe(
-          Stream.flatten(),
+          Stream.mapEffect(Effect.fromResult),
           Stream.runHead,
-          Effect.flatten,
+          Effect.flatMap(Effect.fromOption),
           // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
         )

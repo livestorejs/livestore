@@ -46,7 +46,7 @@ export const provideSessionInfo = ({
     yield* webChannel.send(sessionInfo)
 
     yield* webChannel.listen.pipe(
-      Stream.flatten(),
+      Stream.mapEffect(Effect.fromResult),
       Stream.filter(Schema.is(RequestSessions)),
       Stream.tap(() => webChannel.send(sessionInfo)),
       Stream.runDrain,
@@ -79,7 +79,7 @@ export const requestSessionInfoSubscription = ({
     const sessionInfoSubRef = yield* SubscriptionRef.make<HashSet.HashSet<SessionInfo>>(HashSet.empty())
 
     yield* webChannel.listen.pipe(
-      Stream.flatten(),
+      Stream.mapEffect(Effect.fromResult),
       Stream.filter(Schema.is(SessionInfo)),
       Stream.map(Data.struct),
       Stream.tap(
