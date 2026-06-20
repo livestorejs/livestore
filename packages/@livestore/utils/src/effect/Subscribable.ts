@@ -4,7 +4,15 @@
  * @since 2.0.0
  */
 
-import { Effect, Effectable, Predicate, Readable, Stream, SubscriptionRef } from 'effect'
+import { Effect, Effectable, Function, Predicate, Stream, SubscriptionRef } from 'effect'
+
+const ReadableTypeId: unique symbol = Symbol.for('effect/Readable')
+type ReadableTypeId = typeof ReadableTypeId
+
+interface Readable<A, E = never, R = never> {
+  readonly [ReadableTypeId]: ReadableTypeId
+  readonly get: Effect.Effect<A, E, R>
+}
 
 /**
  * @since 2.0.0
@@ -22,7 +30,7 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface Subscribable<A, E = never, R = never> extends Readable.Readable<A, E, R>, Effect.Effect<A, E, R> {
+export interface Subscribable<A, E = never, R = never> extends Readable<A, E, R>, Effect.Effect<A, E, R> {
   readonly [TypeId]: TypeId
   readonly changes: Stream.Stream<A, E, R>
 }
@@ -33,45 +41,27 @@ export interface Subscribable<A, E = never, R = never> extends Readable.Readable
  */
 export const isSubscribable = (u: unknown): u is Subscribable<unknown, unknown, unknown> => Predicate.hasProperty(u, TypeId)
 
-// const Proto: Omit<Subscribable<any>, 'get' | 'changes'> = {
-//   [Readable.TypeId]: Readable.TypeId,
-//   [TypeId]: TypeId,
-//   pipe() {
-//     return pipeArguments(this, arguments)
-//   },
-// }
-
-class SubscribableImpl<in out A> extends Effectable.Class<A> implements Subscribable<A> {
-  // @ts-expect-error type symbol
-  readonly [TypeId] = TypeId
-  // @ts-expect-error type symbol
-  readonly [Readable.TypeId] = Readable.TypeId
-  readonly get: Effect.Effect<A>
-  readonly changes: Stream.Stream<A>
-  constructor(get: Effect.Effect<A>, changes: Stream.Stream<A>) {
-    super()
-    this.get = get
-    this.changes = changes
-  }
-
-  commit() {
-    return this.get
-  }
-}
+const Proto: Omit<Subscribable<unknown, unknown, unknown>, 'get' | 'changes'> = Object.assign(
+  Effectable.Prototype<Subscribable<unknown, unknown, unknown>>({
+    label: 'Subscribable',
+    evaluate() {
+      return this.get
+    },
+  }),
+  {
+    [ReadableTypeId]: ReadableTypeId,
+    [TypeId]: TypeId,
+  } as const,
+)
 
 /**
  * @since 2.0.0
  * @category constructors
  */
-// export const make = <A, E, R>(options: {
-//   readonly get: Effect.Effect<A, E, R>
-//   readonly changes: Stream.Stream<A, E, R>
-// }): Subscribable<A, E, R> => Object.assign(Object.create(Proto), options)
-
 export const make = <A, E, R>(options: {
   readonly get: Effect.Effect<A, E, R>
   readonly changes: Stream.Stream<A, E, R>
-}): Subscribable<A, E, R> => new SubscribableImpl(options.get as any, options.changes as any) as Subscribable<A, E, R>
+}): Subscribable<A, E, R> => Object.assign(Object.create(Proto), options)
 
 export const fromSubscriptionRef = <A>(ref: SubscriptionRef.SubscriptionRef<A>): Subscribable<A> =>
   make({
