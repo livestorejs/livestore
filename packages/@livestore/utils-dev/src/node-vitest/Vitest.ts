@@ -123,19 +123,17 @@ export type EnhancedTestContext =
 /**
  * Normalizes propOptions to ensure @effect/vitest receives correct fastCheck structure
  */
+type ArbitraryValues<Arbs extends Vitest.Vitest.Arbitraries> = {
+  [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Arbs[K] extends Schema.Schema<infer T> ? T : never
+}
+
+type PropOptions<Arbs extends Vitest.Vitest.Arbitraries> = Omit<Vitest.TestOptions, 'fastCheck'> & {
+  fastCheck?: FC.Parameters<ArbitraryValues<Arbs>>
+}
+
 const normalizePropOptions = <Arbs extends Vitest.Vitest.Arbitraries>(
-  propOptions:
-    | number
-    | (Vitest.TestOptions & {
-        fastCheck?: FC.Parameters<{
-          [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : (Arbs[K])['Type']
-        }>
-      }),
-): Vitest.TestOptions & {
-  fastCheck?: FC.Parameters<{
-    [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : (Arbs[K])['Type']
-  }>
-} => {
+  propOptions: number | PropOptions<Arbs>,
+): PropOptions<Arbs> => {
   // If it's a number, treat as timeout and add our default fastCheck
   if (Predicate.isObject(propOptions) === false) {
     return {
@@ -182,23 +180,8 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
   api: Vitest.Vitest.Tester<R>,
   name: string,
   arbitraries: Arbs,
-  test: Vitest.Vitest.TestFunction<
-    A,
-    E,
-    R,
-    [
-      { [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : (Arbs[K])['Type'] },
-      Vitest.TestContext,
-      EnhancedTestContext,
-    ]
-  >,
-  propOptions:
-    | number
-    | (Vitest.TestOptions & {
-        fastCheck?: FC.Parameters<{
-          [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : (Arbs[K])['Type']
-        }>
-      }),
+  test: Vitest.Vitest.TestFunction<A, E, R, [ArbitraryValues<Arbs>, Vitest.TestContext, EnhancedTestContext]>,
+  propOptions: number | PropOptions<Arbs>,
 ) => {
   const normalizedPropOptions = normalizePropOptions(propOptions)
   const numRuns = normalizedPropOptions.fastCheck?.numRuns ?? 100
