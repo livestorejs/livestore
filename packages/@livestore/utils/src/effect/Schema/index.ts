@@ -48,9 +48,6 @@ export const getResolvedPropertySignatures = (
   return SchemaAST.isObjects(resolvedAst) === true ? resolvedAst.propertySignatures : []
 }
 
-/** Objects that can be transferred between contexts (workers, etc.) */
-type TransferableObject = ArrayBuffer | MessagePort
-
 export const encodeWithTransferables =
   <A, I>(schema: Schema.Codec<A, I>, options?: SchemaAST.ParseOptions) =>
   (a: A, overrideOptions?: SchemaAST.ParseOptions) =>
@@ -61,7 +58,7 @@ export const encodeWithTransferables =
         Effect.provideService(Transferable.Collector, collector),
       )
 
-      return [encoded, collector.readUnsafe() as TransferableObject[]]
+      return [encoded, collector.readUnsafe()] as const
     })
 
 export const decodeSyncDebug: <A, I>(
