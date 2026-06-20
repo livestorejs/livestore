@@ -98,7 +98,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
         )
 
         yield* listenToDevtools({
-          incomingMessages: channel.listen.pipe(Stream.flatten(), Stream.orDie),
+          incomingMessages: channel.listen.pipe(Stream.mapEffect(Effect.fromResult), Stream.orDie),
           sendMessage,
           persistenceInfo,
         })
