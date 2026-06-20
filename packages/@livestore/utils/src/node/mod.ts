@@ -10,9 +10,6 @@ export * as Cli from 'effect/unstable/cli'
 export * as SocketServer from 'effect/unstable/socket/SocketServer'
 export * as PlatformNode from '@effect/platform-node'
 
-export * as ChildProcessRunner from './ChildProcessRunner/ChildProcessRunner.ts'
-export * as ChildProcessWorker from './ChildProcessRunner/ChildProcessWorker.ts'
-
 // Enable debug logging for OpenTelemetry
 // otel.diag.setLogger(new otel.DiagConsoleLogger(), otel.DiagLogLevel.ERROR)
 
