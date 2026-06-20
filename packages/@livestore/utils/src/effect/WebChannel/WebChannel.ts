@@ -1,4 +1,4 @@
-import { Cause, Deferred, Duration, Result, Exit, GlobalValue, identity, Option, PubSub, Queue, Scope } from 'effect'
+import { Cause, Deferred, Duration, Result, Exit, identity, Option, PubSub, Queue, Scope } from 'effect'
 
 import { shouldNeverHappen } from '../../misc.ts'
 import * as Effect from '../Effect.ts'
@@ -86,10 +86,7 @@ export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
     }).pipe(Effect.withSpan(`WebChannel:messagePortChannel`)),
   )
 
-const sameThreadChannels = GlobalValue.globalValue(
-  'livestore:sameThreadChannels',
-  () => new Map<string, PubSub.PubSub<any>>(),
-)
+const sameThreadChannels = new Map<string, PubSub.PubSub<any>>()
 
 export const sameThreadChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
   schema: inputSchema,
