@@ -23,7 +23,7 @@ import { getFreePort } from '@livestore/utils/node'
 export class WranglerDevServerError extends Schema.TaggedErrorClass<WranglerDevServerError>(
   '~@livestore/utils-dev/WranglerDevServerError',
 )('WranglerDevServerError', {
-  cause: Schema.Unknown,
+  cause: Schema.Defect(),
   message: Schema.String,
   port: Schema.Number,
 }) {}
