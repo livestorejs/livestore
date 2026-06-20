@@ -1,4 +1,4 @@
-import { Effect, Cause, Context, type Exit, type Fiber, Graph, Option, Scope, Tracer } from 'effect'
+import { Cause, Context, Effect, type Exit, type Fiber, Graph, Option, Scope, Tracer } from 'effect'
 
 /**
  * How to use:
@@ -38,7 +38,7 @@ const ensureSpan = (traceId: string, spanId: string): [MutableSpanGraph, number]
   let nodeId = info.nodeIdBySpanId.get(spanId)
   if (nodeId === undefined) {
     nodeId = Graph.addNode(info.graph, {
-      span: { _tag: 'ExternalSpan', spanId, traceId, sampled: false, context: Context.empty() },
+      span: { _tag: 'ExternalSpan', spanId, traceId, sampled: false, annotations: Context.empty() },
       events: [],
       exitTag: undefined,
     })
@@ -135,10 +135,19 @@ type EffectDevtoolsHookEvent =
     }
 
 type GlobalWithFiberCurrent = {
-  'effect/FiberCurrent': Fiber.Fiber<any, any> | undefined
+  ['~effect/Fiber/currentFiber']: Fiber.Fiber<any, any> | undefined
   'effect/DevtoolsHook'?: {
     onEvent: (event: EffectDevtoolsHookEvent) => void
   }
+}
+
+type MutableTracer = {
+  span: Tracer.Tracer['span']
+  context?: Tracer.Tracer['context']
+}
+
+type EvaluatablePrimitive<X> = Tracer.EffectPrimitive<X> & {
+  readonly ['~effect/Effect/evaluate']: (fiber: Fiber.Fiber<any, any>) => X
 }
 
 const patchedTracer = new WeakSet<Tracer.Tracer>()
@@ -148,20 +157,23 @@ const ensureTracerPatched = (tracer: Tracer.Tracer) => {
   }
   patchedTracer.add(tracer)
 
-  const oldSpanConstructor = tracer.span
-  tracer.span = function (...args) {
-    const span = oldSpanConstructor.apply(this, args)
+  // Effect v4 exposes the tracer context as readonly and caches it on fibers, so keep mutation localized here.
+  const mutableTracer = tracer as MutableTracer
+
+  const oldSpanConstructor: Tracer.Tracer['span'] = tracer.span
+  mutableTracer.span = function (this: Tracer.Tracer, options: Parameters<Tracer.Tracer['span']>[0]): Tracer.Span {
+    const span = oldSpanConstructor.call(this, options)
     addNode(span)
 
     const oldSpanEnd = span.end
-    span.end = function (endTime, exit, ...args) {
-      oldSpanEnd.apply(this, [endTime, exit, ...args])
+    span.end = function (this: Tracer.Span, endTime, exit) {
+      oldSpanEnd.call(this, endTime, exit)
       addNodeExit(this.traceId, this.spanId, exit)
     }
 
     const oldSpanEvent = span.event
-    span.event = function (name, startTime, attributes, ...args) {
-      oldSpanEvent.apply(this, [name, startTime, attributes, ...args])
+    span.event = function (this: Tracer.Span, name, startTime, attributes) {
+      oldSpanEvent.call(this, name, startTime, attributes)
       addEvent(this.traceId, this.spanId, { name, startTime, attributes: attributes ?? {} })
     }
 
@@ -169,11 +181,16 @@ const ensureTracerPatched = (tracer: Tracer.Tracer) => {
   }
 
   const oldContext = tracer.context
-  tracer.context = function (f, fiber, ...args) {
-    const context = oldContext.apply(this, [f, fiber, ...args])
+  mutableTracer.context = function <X>(
+    this: Tracer.Tracer,
+    primitive: Tracer.EffectPrimitive<X>,
+    fiber: Fiber.Fiber<any, any>,
+  ) {
     ensureFiberPatched(fiber)
-    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Effect Tracer.context return type is opaque; patching requires cast
-    return context as any
+    if (oldContext !== undefined) {
+      return oldContext(primitive, fiber)
+    }
+    return (primitive as EvaluatablePrimitive<X>)['~effect/Effect/evaluate'](fiber)
   }
 }
 
@@ -268,7 +285,7 @@ export const attachSlowDebugInstrumentation = (options: {
   onFiberCompleted = options.onFiberCompleted
   let lastFiber: undefined | Fiber.Fiber<any, any>
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- accessing Effect's global fiber tracking via well-known symbol keys
-  createPropertyInterceptor(globalThis as any as GlobalWithFiberCurrent, 'effect/FiberCurrent', (value) => {
+  createPropertyInterceptor(globalThis as any as GlobalWithFiberCurrent, '~effect/Fiber/currentFiber', (value) => {
     if (value !== undefined && knownFibers.has(value) === true) onFiberResumed?.(value)
     if (value !== undefined) ensureFiberPatched(value)
     if (value == null && lastFiber !== undefined && knownFibers.has(lastFiber) === true) onFiberSuspended?.(lastFiber)
@@ -280,7 +297,7 @@ export const attachSlowDebugInstrumentation = (options: {
       switch (event._tag) {
         case 'ScopeAllocated':
           // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- casting Scope to ScopeImpl; internal Effect type not publicly exported
-          ensureScopePatched(event.scope as any as ScopeImpl, _globalThis['effect/FiberCurrent'])
+          ensureScopePatched(event.scope as any as ScopeImpl, _globalThis['~effect/Fiber/currentFiber'])
           break
         case 'FiberAllocated':
           ensureFiberPatched(event.fiber)
@@ -318,9 +335,9 @@ const getSpanDuration = (span: Tracer.AnySpan): string => {
 }
 
 const filterGraphKeepAncestors = <N, E>(
-  graph: Graph.Graph<N, E>,
+  graph: Graph.Graph<N, E, 'directed'>,
   predicate: (nodeData: N, nodeId: number) => boolean,
-): Graph.Graph<N, E> => {
+): Graph.Graph<N, E, 'directed'> => {
   // Find all root nodes (nodes with no incoming edges)
   const rootNodes = Array.from(Graph.indices(Graph.externals(graph, { direction: 'incoming' })))
   const shouldInclude = new Set<number>()
@@ -349,7 +366,7 @@ const filterGraphKeepAncestors = <N, E>(
   })
 }
 
-const renderSpanNode = (graph: Graph.Graph<GraphNodeInfo, void>, nodeId: number): string[] => {
+const renderSpanNode = (graph: Graph.Graph<GraphNodeInfo, void, 'directed'>, nodeId: number): string[] => {
   const node = Graph.getNode(graph, nodeId)
   if (Option.isNone(node) === true) return []
   const info = node.value
@@ -369,10 +386,10 @@ const renderSpanNode = (graph: Graph.Graph<GraphNodeInfo, void>, nodeId: number)
   return [` ${status} ${name}${durationStr}${runningOnFibers}`]
 }
 
-const renderTree = <N, E, T extends Graph.Kind>(
-  graph: Graph.Graph<N, E, T>,
+const renderTree = <N, E>(
+  graph: Graph.Graph<N, E, 'directed'>,
   nodeIds: Array<number>,
-  renderNode: (graph: Graph.Graph<N, E, T>, nodeId: number) => string[],
+  renderNode: (graph: Graph.Graph<N, E, 'directed'>, nodeId: number) => string[],
 ): string[] => {
   let lines: string[] = []
   for (let childIndex = 0; childIndex < nodeIds.length; childIndex++) {
