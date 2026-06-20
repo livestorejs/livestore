@@ -228,7 +228,7 @@ export const makeDirectChannelInternal = ({
 
               // Now we wait for the other side to respond via the channel
               yield* channel.listen.pipe(
-                Stream.flatten(),
+                Stream.mapEffect(Effect.fromResult),
                 Stream.filter(Schema.is(MeshSchema.DirectChannelPing)),
                 Stream.take(1),
                 Stream.runDrain,
@@ -263,7 +263,7 @@ export const makeDirectChannelInternal = ({
             }).pipe(Effect.andThen(WebChannel.toOpenChannel))
 
             const waitForPongFiber = yield* channel.listen.pipe(
-              Stream.flatten(),
+              Stream.mapEffect(Effect.fromResult),
               Stream.filter(Schema.is(MeshSchema.DirectChannelPong)),
               Stream.take(1),
               Stream.runDrain,

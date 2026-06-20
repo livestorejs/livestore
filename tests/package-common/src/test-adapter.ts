@@ -73,7 +73,7 @@ export const makeTestAdapter = ({
       const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
       const shutdownChannel = yield* makeShutdownChannel(storeId)
       yield* shutdownChannel.listen.pipe(
-        Stream.flatten(),
+        Stream.mapEffect(Effect.fromResult),
         Stream.tap((cause) =>
           adapterArgs.shutdown(cause._tag === 'IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
         ),
