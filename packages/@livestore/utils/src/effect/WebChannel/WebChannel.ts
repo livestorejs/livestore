@@ -1,4 +1,4 @@
-import { Cause, Deferred, Result, Exit, GlobalValue, identity, Option, PubSub, Queue, Scope } from 'effect'
+import { Cause, Deferred, Duration, Result, Exit, GlobalValue, identity, Option, PubSub, Queue, Scope } from 'effect'
 
 import { shouldNeverHappen } from '../../misc.ts'
 import * as Effect from '../Effect.ts'
