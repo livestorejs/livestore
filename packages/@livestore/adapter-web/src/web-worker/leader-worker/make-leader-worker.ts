@@ -81,9 +81,10 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     Effect.annotateLogs({ thread: self.name }),
     Effect.provide(runtimeLayer),
     LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
-    // We're using this custom scheduler to improve op batching behaviour and reduce the overhead
-    // of the Effect fiber services given we have different tradeoffs on a worker thread.
-    // Despite the "message channel" name, is has nothing to do with the `incomingRequestsPort` above.
+    // This v3-era custom scheduler now only swaps Effect v4's default worker fallback
+    // (`setTimeout(0)`) for `MessageChannel`; v4's `MixedScheduler` still owns batching.
+    // TODO: Reconsider whether this is still needed for the leader worker.
+    // Despite the "message channel" name, it has nothing to do with the `incomingRequestsPort` above.
     Effect.withScheduler(Scheduler.messageChannel()),
     // We're increasing the Effect ops limit here to allow for larger chunks of operations at a time
     Effect.withMaxOpsBeforeYield(4096),
