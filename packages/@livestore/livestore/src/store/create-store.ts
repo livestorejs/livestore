@@ -334,7 +334,7 @@ export const createStore = <
           yield* Scope.close(lifetimeScope, exit).pipe(
             Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
             Effect.timeout(1000),
-            Effect.catchTag('TimeoutException', () =>
+            Effect.catchTag('TimeoutError', () =>
               Effect.logError('@livestore/livestore:shutdown: Timed out after 1 second'),
             ),
           )
