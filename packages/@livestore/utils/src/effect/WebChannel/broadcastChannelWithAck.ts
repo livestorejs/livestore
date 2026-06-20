@@ -59,7 +59,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
 
       const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
         Stream.map(({ data }) => data),
-        Stream.map(Schema.decodeEffectOption(Message)),
+        Stream.map(Schema.decodeUnknownOption(Message)),
         Stream.filterMap((_) => _),
         Stream.mapEffect((data) =>
           Effect.gen(function* () {

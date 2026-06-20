@@ -119,7 +119,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
             if (request._tag === 'Request' && request.tag === 'SyncWsRpc.Pull') {
               // Is Pull request: add requestId to pullRequestIds
               const attachment = ws.deserializeAttachment()
-              const { pullRequestIds, ...rest } = Schema.decodeEffectSync(WebSocketAttachmentSchema)(attachment)
+              const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
               ws.serializeAttachment(
                 Schema.encodeSync(WebSocketAttachmentSchema)({
                   ...rest,
@@ -129,7 +129,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
             } else if (request._tag === 'Interrupt') {
               // Is Interrupt request: remove requestId from pullRequestIds
               const attachment = ws.deserializeAttachment()
-              const { pullRequestIds, ...rest } = Schema.decodeEffectSync(WebSocketAttachmentSchema)(attachment)
+              const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
               ws.serializeAttachment(
                 Schema.encodeSync(WebSocketAttachmentSchema)({
                   ...rest,

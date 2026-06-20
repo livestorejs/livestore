@@ -609,7 +609,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * ```
    */
   query = <TResult>(
-    query: Queryable<TResult> | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
+    query: Queryable<TResult> | { query: string; bindValues: Bindable; schema?: Schema.Decoder<TResult> },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
     this.checkShutdown('query')
@@ -623,7 +623,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         },
       ) as any
       if (query.schema !== undefined) {
-        return Schema.decodeEffectSync(query.schema)(res)
+        return Schema.decodeUnknownSync(query.schema)(res)
       }
       return res
     } else if (isQueryBuilder(query) === true) {
