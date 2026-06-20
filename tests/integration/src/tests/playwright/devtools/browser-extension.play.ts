@@ -369,7 +369,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
         }).pipe(
           process.env.CI !== undefined
             ? identity
-            : Effect.tapErrorTag('UnknownException', () => Effect.promise(() => tab1.page.pause())),
+            : Effect.tapErrorTag('UnknownError', () => Effect.promise(() => tab1.page.pause())),
           Effect.raceFirst(
             Fiber.joinAll([
               tab1.pageConsoleFiber,
