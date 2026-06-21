@@ -1,7 +1,6 @@
 import {
   type Scope,
   type WebChannel,
-  Data,
   Duration,
   Effect,
   FiberMap,
@@ -81,7 +80,6 @@ export const requestSessionInfoSubscription = ({
     yield* webChannel.listen.pipe(
       Stream.mapEffect(Effect.fromResult),
       Stream.filter(Schema.is(SessionInfo)),
-      Stream.map(Data.struct),
       Stream.tap(
         Effect.fn(function* (sessionInfo) {
           yield* SubscriptionRef.getAndUpdate(sessionInfoSubRef, HashSet.add(sessionInfo))
