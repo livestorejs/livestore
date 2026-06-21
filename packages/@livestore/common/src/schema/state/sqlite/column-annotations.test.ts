@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { Schema, SchemaAST, SchemaTransformation } from '@livestore/utils/effect'
+import { Schema, SchemaTransformation } from '@livestore/utils/effect'
 
 import { withColumnType, withPrimaryKey } from './column-annotations.ts'
 
@@ -10,7 +10,7 @@ describe.concurrent('annotations', () => {
       const schema = Schema.String
       const result = withPrimaryKey(schema)
 
-      expect(SchemaAST.annotate(result.ast, {})).toMatchInlineSnapshot(`
+      expect(result.ast).toMatchInlineSnapshot(`
         {
           "_tag": "StringKeyword",
           "annotations": {
@@ -185,7 +185,7 @@ describe.concurrent('annotations', () => {
         const schema = Schema.String
         const result = withColumnType(schema, 'text')
 
-        expect(SchemaAST.annotate(result.ast, {})).toMatchInlineSnapshot(`
+        expect(result.ast).toMatchInlineSnapshot(`
           {
             "_tag": "StringKeyword",
             "annotations": {
@@ -201,7 +201,7 @@ describe.concurrent('annotations', () => {
         const schema = withPrimaryKey(Schema.String)
         const result = withColumnType(schema, 'text')
 
-        expect(SchemaAST.annotate(result.ast, {})).toMatchInlineSnapshot(`
+        expect(result.ast).toMatchInlineSnapshot(`
           {
             "_tag": "StringKeyword",
             "annotations": {
