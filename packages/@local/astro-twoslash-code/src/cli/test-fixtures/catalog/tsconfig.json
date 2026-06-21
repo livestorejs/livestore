@@ -29,12 +29,15 @@
       {
         "name": "@effect/language-service",
         "reportSuggestionsAsWarningsInTsc": true,
+        "ignoreEffectWarningsInTscExitCode": true,
         "pipeableMinArgCount": 2,
         "diagnosticSeverity": {
           "missedPipeableOpportunity": "warning",
           "schemaUnionOfLiterals": "warning",
           "anyUnknownInErrorContext": "warning",
-          "preferSchemaOverJson": "warning"
+          "preferSchemaOverJson": "warning",
+          "missingEffectContext": "warning",
+          "missingEffectError": "warning"
         }
       }
     ],

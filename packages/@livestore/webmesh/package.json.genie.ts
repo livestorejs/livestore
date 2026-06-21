@@ -16,7 +16,7 @@ const runtimeDeps = catalog.compose({
   },
   devDependencies: {
     workspace: [utilsDevPkg],
-    external: catalog.pick(...utilsEffectPeerDeps, 'vitest'),
+    external: catalog.pick(...utilsEffectPeerDeps, '@types/node', 'vitest'),
   },
   // Re-expose utils' peer dependencies
   peerDependencies: {

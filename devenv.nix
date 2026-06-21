@@ -281,9 +281,6 @@ in
       genieCoverageExcludes = [ "packages/@livestore/wa-sqlite/" ];
       tsconfig = "tsconfig.dev.json";
     })
-    (taskModules.ts-effect-lsp {
-      tsconfigFile = "tsconfig.dev.json";
-    })
     (taskModules.pnpm { packages = pnpmPackages; })
     # Setup task (auto-runs in enterShell)
     (taskModules.setup {

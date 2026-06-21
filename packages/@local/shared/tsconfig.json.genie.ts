@@ -1,5 +1,6 @@
 import {
   baseTsconfigCompilerOptions,
+  nodeTypes,
   packageTsconfigCompilerOptions,
   packageTsconfigExclude,
   tsconfigJson,
@@ -9,6 +10,7 @@ export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
     ...packageTsconfigCompilerOptions,
+    ...nodeTypes,
     rootDir: '.',
   },
   include: ['./src'],

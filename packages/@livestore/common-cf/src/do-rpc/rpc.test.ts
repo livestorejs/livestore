@@ -18,6 +18,12 @@ import { PlatformNode } from '@livestore/utils/node'
 
 import { TestRpcs } from './test-fixtures/rpc-schema.ts'
 
+declare global {
+  interface ImportMeta {
+    dirname: string
+  }
+}
+
 const testTimeout = 60_000
 
 const withWranglerTest = Vitest.makeWithTestCtx({

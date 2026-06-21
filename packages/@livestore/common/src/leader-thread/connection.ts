@@ -12,6 +12,11 @@ namespace WaSqlite {
   export type SQLiteError = any
 }
 
+const getSqliteErrorCode = (cause: unknown): string | number | undefined =>
+  typeof cause === 'object' && cause !== null && 'code' in cause
+    ? (cause as { code?: string | number }).code
+    : undefined
+
 type ConnectionOptions = {
   /**
    * The database connection locking mode.
@@ -72,8 +77,7 @@ export const execSql = (sqliteDb: SqliteDb, sql: string, bind: BindValues) => {
   const bindValues = prepareBindValues(bind, sql)
   return Effect.try({
     try: () => sqliteDb.execute(sql, bindValues),
-    catch: (cause) =>
-      new SqliteError({ cause, query: { bindValues, sql }, code: (cause as WaSqlite.SQLiteError).code }),
+    catch: (cause) => new SqliteError({ cause, query: { bindValues, sql }, code: getSqliteErrorCode(cause) }),
   }).pipe(
     Effect.asVoid,
     // Effect.logDuration(`@livestore/common:execSql:${sql}`),
@@ -96,8 +100,7 @@ export const execSql = (sqliteDb: SqliteDb, sql: string, bind: BindValues) => {
 export const execSqlPrepared = (sqliteDb: SqliteDb, sql: string, bindValues: PreparedBindValues) => {
   return Effect.try({
     try: () => sqliteDb.execute(sql, bindValues),
-    catch: (cause) =>
-      new SqliteError({ cause, query: { bindValues, sql }, code: (cause as WaSqlite.SQLiteError).code }),
+    catch: (cause) => new SqliteError({ cause, query: { bindValues, sql }, code: getSqliteErrorCode(cause) }),
   }).pipe(
     Effect.asVoid,
     // Effect.logDuration(`@livestore/common:execSqlPrepared:${sql}`),

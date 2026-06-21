@@ -27,6 +27,7 @@ import {
   githubRuleset,
   githubWorkflow,
   megarepoJson,
+  nodeTypes,
   oxfmtConfig,
   oxlintConfig,
   packageTsconfigCompilerOptions as effectUtilsPackageTsconfigCompilerOptions,
@@ -48,7 +49,7 @@ import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from '#mr/effect-utils/geni
 import { livestoreOnlyCatalog, livestoreWorkspaceCatalog } from './external.ts'
 import { livestoreCurrentPackageNames, type LivestorePackageName } from './repo-topology.ts'
 
-export { baseTsconfigCompilerOptions, domLib, reactJsx }
+export { baseTsconfigCompilerOptions, domLib, nodeTypes, reactJsx }
 export {
   baseOxfmtIgnorePatterns,
   baseOxfmtOptions,

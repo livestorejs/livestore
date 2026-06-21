@@ -55,8 +55,8 @@ const BoundArraySchemaFromSelf = <A, I, R>(
     },
     {
       description: `BoundArray<${Schema.format(item)}>`,
-      pretty: () => (_) => `BoundArray(${_.length})`,
-      arbitrary: () => (fc) => fc.anything() as any,
+      pretty: () => (_: unknown) => `BoundArray(${(_ as BoundArray<A>).length})`,
+      arbitrary: () => (fc) => fc.anything(),
       equivalence: () => {
         const elementEquivalence = Schema.equivalence(item)
         return (a: unknown, b: unknown) => {
@@ -80,7 +80,7 @@ const BoundArraySchemaFromSelf = <A, I, R>(
         }
       },
     },
-  )
+  ) as Schema.Schema<BoundArray<A>, BoundArray<I>, R>
 
 export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Schema<ItemDecoded, ItemEncoded>) =>
   Schema.transform(

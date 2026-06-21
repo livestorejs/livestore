@@ -188,7 +188,10 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
           Effect.gen(function* () {
             if (msg._tag === 'Right') {
               if (msg.right._tag === 'ChannelRequestAck') {
-                yield* Deferred.succeed(requestAckMap.get(msg.right.reqId)!, void 0)
+                const ack = requestAckMap.get(msg.right.reqId)
+                if (ack !== undefined) {
+                  yield* Deferred.succeed(ack, void 0)
+                }
               } else if (msg.right._tag === 'ChannelRequest') {
                 debugInfo.listenTotal++
                 port.postMessage(
@@ -200,10 +203,10 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
         ),
         Stream.filterMap((msg) =>
           msg._tag === 'Left'
-            ? Option.some(msg as any)
+            ? Option.some(msg)
             : msg.right._tag === 'ChannelRequest'
               ? Option.some(Either.right(msg.right.payload))
-              : Option.none(),
+              : Option.none<Either.Either<any, any>>(),
         ),
         (_) => _ as Stream.Stream<Either.Either<any, any>>,
         listenToDebugPing(label),

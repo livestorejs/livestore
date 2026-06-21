@@ -5,7 +5,7 @@ const composition = catalog.compose({
   workspace: workspaceMember('tests/wa-sqlite'),
   devDependencies: {
     workspace: [waSqlitePkg],
-    external: catalog.pick('vitest'),
+    external: catalog.pick('@types/node', 'vitest'),
   },
 })
 

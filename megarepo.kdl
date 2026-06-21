@@ -1,5 +1,5 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils#main"
+    effect-utils "overengineeringstudio/effect-utils#schickling/2026-06-19-deps"
     effect "effect-ts/effect"
     livestore-contrib "livestorejs/livestore-contrib"
 }

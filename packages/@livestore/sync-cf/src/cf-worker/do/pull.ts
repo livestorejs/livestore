@@ -29,6 +29,7 @@ export const makeEndingPullStream = ({
 }): Stream.Stream<SyncMessage.PullResponse, UnknownError | BackendIdMismatchError, DoCtx> =>
   Effect.gen(function* () {
     const { doOptions, backendId, storeId, storage } = yield* DoCtx
+    const backendIdString = backendId
 
     if (doOptions?.onPull !== undefined) {
       yield* Effect.tryAll(() =>
@@ -41,7 +42,10 @@ export const makeEndingPullStream = ({
     }
 
     if (req.cursor._tag === 'Some' && req.cursor.value.backendId !== backendId) {
-      return yield* new BackendIdMismatchError({ expected: backendId, received: req.cursor.value.backendId })
+      return yield* new BackendIdMismatchError({
+        expected: backendIdString,
+        received: String(req.cursor.value.backendId),
+      })
     }
 
     const { stream: storedEvents, total } = yield* storage.getEvents(
@@ -55,8 +59,12 @@ export const makeEndingPullStream = ({
           maxBytes: MAX_WS_MESSAGE_BYTES,
           encode: (batch) =>
             encodePullResponse(
-              SyncMessage.PullResponse.make({ batch, pageInfo: SyncBackend.pageInfoNoMore, backendId }),
-            ),
+              SyncMessage.PullResponse.make({
+                batch,
+                pageInfo: SyncBackend.pageInfoNoMore,
+                backendId: backendIdString,
+              }),
+            ) as unknown as string,
         }),
       ),
       Stream.mapAccum(total, (remaining, chunk) => {
@@ -66,9 +74,9 @@ export const makeEndingPullStream = ({
         return [
           nextRemaining,
           SyncMessage.PullResponse.make({
-            batch: asArray,
+            batch: asArray as SyncMessage.PullResponse['batch'],
             pageInfo: nextRemaining > 0 ? SyncBackend.pageInfoMoreKnown(nextRemaining) : SyncBackend.pageInfoNoMore,
-            backendId,
+            backendId: backendIdString,
           }),
         ] as const
       }),
@@ -79,7 +87,7 @@ export const makeEndingPullStream = ({
           }
         }),
       ),
-      Stream.emitIfEmpty(SyncMessage.emptyPullResponse(backendId)),
+      Stream.emitIfEmpty(SyncMessage.emptyPullResponse(backendIdString)),
     )
   }).pipe(
     Stream.unwrap,

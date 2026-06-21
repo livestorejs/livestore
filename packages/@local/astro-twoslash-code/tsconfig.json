@@ -29,12 +29,15 @@
       {
         "name": "@effect/language-service",
         "reportSuggestionsAsWarningsInTsc": true,
+        "ignoreEffectWarningsInTscExitCode": true,
         "pipeableMinArgCount": 2,
         "diagnosticSeverity": {
           "missedPipeableOpportunity": "warning",
           "schemaUnionOfLiterals": "warning",
           "anyUnknownInErrorContext": "warning",
-          "preferSchemaOverJson": "warning"
+          "preferSchemaOverJson": "warning",
+          "missingEffectContext": "warning",
+          "missingEffectError": "warning"
         }
       }
     ],
@@ -43,5 +46,13 @@
     "types": ["node", "astro"]
   },
   "include": ["src", "tests", "examples"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts", "dist", "src/cli/test-fixtures"]
+  "exclude": [
+    "node_modules",
+    "**/dist",
+    "**/node_modules/.pnpm",
+    "**/*.genie.ts",
+    "dist",
+    "src/cli/test-fixtures",
+    "src/vite/test-fixtures"
+  ]
 }

@@ -1,5 +1,7 @@
 import * as React from 'react'
 
+import { shouldNeverHappen } from '@livestore/utils'
+
 /**
  * Creates a reference-counted resource object that is "stable" across React lifecycles.
  *
@@ -102,7 +104,7 @@ export const useRcResource = <T>(
     if (keyRef.current !== undefined && (keyRef.current !== key || scopeRef.current !== scope)) {
       const previousKey = keyRef.current
       // scopeRef.current is set together with keyRef.current below, so it's defined here.
-      const previousBucket = getBucket(scopeRef.current!)
+      const previousBucket = getBucket(scopeRef.current ?? shouldNeverHappen('Missing previous resource scope'))
       const cachedItemForPreviousKey = previousBucket.get(previousKey)
       if (cachedItemForPreviousKey !== undefined && cachedItemForPreviousKey._tag === 'active') {
         cachedItemForPreviousKey.rc--
