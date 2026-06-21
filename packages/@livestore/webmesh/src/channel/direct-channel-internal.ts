@@ -298,22 +298,6 @@ export const makeDirectChannelInternal = ({
         }),
       )
 
-    yield* Effect.gen(function* () {
-      while (true) {
-        const packet = yield* Queue.take(incomingPacketsQueue)
-        const res = yield* processMessagePacket(packet)
-        // We want to give requests another chance to be processed
-        if (res === 'close') {
-          return
-        }
-      }
-    }).pipe(
-      Effect.interruptible,
-      Effect.tapCauseLogPretty,
-      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
-    )
-
     const channelState = channelStateRef.current
 
     if (channelState._tag !== 'Initial') {
@@ -346,6 +330,25 @@ export const makeDirectChannelInternal = ({
     })
 
     yield* edgeRequest
+
+    // Start draining only after `edgeRequest` moved the channel to `RequestSent`. Under Effect v4
+    // an eagerly forked processor can otherwise handle an already-buffered packet while still
+    // `Initial`.
+    yield* Effect.gen(function* () {
+      while (true) {
+        const packet = yield* Queue.take(incomingPacketsQueue)
+        const res = yield* processMessagePacket(packet)
+        // We want to give requests another chance to be processed
+        if (res === 'close') {
+          return
+        }
+      }
+    }).pipe(
+      Effect.interruptible,
+      Effect.tapCauseLogPretty,
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+    )
 
     const channel = yield* Deferred.await(deferred)
 

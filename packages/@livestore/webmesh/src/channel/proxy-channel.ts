@@ -131,6 +131,10 @@ export const makeProxyChannel = ({
       const channelSpan = yield* Effect.currentSpan.pipe(Effect.orDie)
 
       const connectedStateRef = yield* SubscriptionRef.make<ProxiedChannelStateEstablished | false>(false)
+      // Incoming packets can be processed as soon as the queue-draining fiber starts, so state
+      // referenced by established channels must exist before that processor is forked.
+      const listenQueue = yield* Queue.unbounded<any>()
+      const ackMap = new Map<string, Deferred.Deferred<void>>()
 
       const waitForEstablished = Effect.gen(function* () {
         const state = yield* SubscriptionRef.waitUntil(connectedStateRef, (state) => state !== false)
@@ -375,19 +379,7 @@ export const makeProxyChannel = ({
           }),
         )
 
-      yield* Stream.fromQueue(queue).pipe(
-        Stream.tap(processProxyPacket),
-        Stream.runDrain,
-        Effect.tapCauseLogPretty,
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
-      )
-
-      const listenQueue = yield* Queue.unbounded<any>()
-
       yield* Effect.spanEvent(`Connecting`)
-
-      const ackMap = new Map<string, Deferred.Deferred<void>>()
 
       // check if already established via incoming `ProxyChannelRequest` from other side
       // which indicates we already have a edge to the target node
@@ -404,6 +396,16 @@ export const makeProxyChannel = ({
         const retryOnNewEdgeFiber = yield* Stream.fromPubSub(newEdgeAvailablePubSub).pipe(
           Stream.tap(() => edgeRequest),
           Stream.runDrain,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+        )
+
+        // Drain queued proxy packets only after the local side entered `Pending` and sent its
+        // request. Otherwise an already-buffered response can race initialization.
+        yield* Stream.fromQueue(queue).pipe(
+          Stream.tap(processProxyPacket),
+          Stream.runDrain,
+          Effect.tapCauseLogPretty,
           // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
