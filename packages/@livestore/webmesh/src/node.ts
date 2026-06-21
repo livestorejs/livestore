@@ -6,7 +6,6 @@ import {
   Effect,
   Exit,
   Fiber,
-  Option,
   PubSub,
   Queue,
   Schema,
@@ -676,7 +675,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
             '    ',
             value.debugInfo?.channel,
             '\n',
-            indent(`Queue: ${value.queue.unsafeSize().pipe(Option.getOrUndefined)}`, 4),
+            indent(`Queue: ${Queue.sizeUnsafe(value.queue)}`, 4),
             value.queue,
           )
         }
