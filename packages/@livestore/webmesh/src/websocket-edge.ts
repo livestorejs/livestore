@@ -105,10 +105,10 @@ export const makeWebSocketEdge = ({
 
       const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
-      const retryOpenTimeoutSchedule = Schedule.exponential(100).pipe(
-        Schedule.modifyDelay((_, delay) => Duration.min(delay, Duration.millis(5000))),
+      const retryOpenErrorSchedule = Schedule.exponential(100).pipe(
+        Schedule.modifyDelay((_, delay) => Effect.succeed(Duration.min(delay, Duration.millis(5000)))),
         Schedule.setInputType<Socket.SocketError>(),
-        Schedule.while(({ input }) => input.reason === 'OpenTimeout' || input.reason === 'Open'),
+        Schedule.while(({ input }) => input.reason._tag === 'SocketOpenError'),
       )
 
       const sendToSocket = yield* socket.writer
@@ -117,19 +117,22 @@ export const makeWebSocketEdge = ({
         Stream.pipeThroughChannel(Socket.toChannel(socket)),
         Stream.catchTag(
           'SocketError',
-          Effect.fnUntraced(function* (error) {
-            // In the case of the socket being closed, we're interrupting the stream
-            // and close the WebChannel (which can be observed from the outside)
-            if (error.reason === 'Close') {
-              yield* Deferred.succeed(closedDeferred, undefined)
-              yield* isConnectedLatch.close
-              return yield* Effect.interrupt
-            } else {
-              return yield* error
+          (error) => {
+            // In the case of the socket being closed, close the WebChannel
+            // which can be observed from the outside.
+            if (error.reason._tag === 'SocketCloseError') {
+              return Stream.fromEffectDrain(
+                Effect.gen(function* () {
+                  yield* Deferred.succeed(closedDeferred, undefined)
+                  yield* isConnectedLatch.close
+                }),
+              )
             }
-          }),
+
+            return Stream.fail(error)
+          },
         ),
-        Stream.retry(retryOpenTimeoutSchedule),
+        Stream.retry(retryOpenErrorSchedule),
         Stream.tap(
           Effect.fn(function* (bytes) {
             const msg = yield* Schema.decodeEffect(MessageMsgpack)(new Uint8Array(bytes))
