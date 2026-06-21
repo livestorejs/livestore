@@ -263,7 +263,7 @@ describe('getColumnDefForSchema', () => {
 
   describe('enums and literal unions', () => {
     it('should handle enums and literal unions as text', () => {
-      const StatusEnum = Schema.Enums({
+      const StatusEnum = Schema.Enum({
         PENDING: 'pending',
         ACTIVE: 'active',
         INACTIVE: 'inactive',
