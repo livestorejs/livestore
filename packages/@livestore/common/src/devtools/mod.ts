@@ -18,7 +18,7 @@ export const DevtoolsMode = Schema.Union([
 
 export type DevtoolsMode = typeof DevtoolsMode.Type
 
-export const DevtoolsModeTag = DevtoolsMode.pipe(Schema.pluck('_tag'), Schema.toType)
+export const DevtoolsModeTag = Schema.Literals(['node', 'web', 'browser-extension'])
 export type DevtoolsModeTag = typeof DevtoolsModeTag.Type
 
 export const makeNodeName = {
