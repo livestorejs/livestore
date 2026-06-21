@@ -38,19 +38,7 @@ export type TableDef<
   // https://github.com/livestorejs/livestore/issues/382
   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDefConstrained,
   TOptions extends TableOptions = TableOptions,
-  // NOTE we're not using `SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>`
-  // as we don't want the alias type for users to show up, so we're redefining it here
-  // TODO adjust this to `TSchema = Schema.TypeLiteral<` but requires some advance type-level work
-  TSchema = Schema.Codec<
-    SqliteDsl.AnyIfConstained<
-      TSqliteDef['columns'],
-      { readonly [K in keyof TSqliteDef['columns']]: TSqliteDef['columns'][K]['schema']['Type'] }
-    >,
-    SqliteDsl.AnyIfConstained<
-      TSqliteDef['columns'],
-      { readonly [K in keyof TSqliteDef['columns']]: TSqliteDef['columns'][K]['schema']['Encoded'] }
-    >
-  >,
+  TSchema extends Schema.Top = Schema.Struct<SqliteDsl.StructFieldsForColumns<TSqliteDef['columns']>>,
 > = {
   sqliteDef: TSqliteDef
   options: TOptions
