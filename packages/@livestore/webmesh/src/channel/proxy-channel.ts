@@ -282,7 +282,7 @@ export const makeProxyChannel = ({
                   const decodedMessage = yield* Schema.decodeUnknownEffect(establishedState.listenSchema)(
                     bufferedPacket.payload,
                   )
-                  yield* establishedState.listenQueue.pipe(Queue.offer(decodedMessage))
+                  yield* Queue.offer(establishedState.listenQueue, decodedMessage)
                 }
               } else {
                 yield* Effect.logError(
@@ -333,7 +333,7 @@ export const makeProxyChannel = ({
 
               if (channelState._tag === 'Established') {
                 const decodedMessage = yield* Schema.decodeUnknownEffect(channelState.listenSchema)(packet.payload)
-                yield* channelState.listenQueue.pipe(Queue.offer(decodedMessage))
+                yield* Queue.offer(channelState.listenQueue, decodedMessage)
 
                 // Simulation point: delay after adding to listen queue
                 yield* simSleep('onPayload', 'afterListenQueueOffer')
