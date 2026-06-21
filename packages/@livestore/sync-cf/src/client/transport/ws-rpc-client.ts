@@ -97,7 +97,7 @@ export const makeWsSync =
       const ProtocolLive = RpcClient.layerProtocolSocketWithIsConnected({
         isConnected,
         retryTransientErrors: Schedule.exponential('1 seconds').pipe(
-          Schedule.modifyDelay((_, delay) => Duration.min(delay, Duration.seconds(30))),
+          Schedule.modifyDelay((_, delay) => Effect.succeed(Duration.min(delay, Duration.seconds(30)))),
           Schedule.jittered,
         ),
         pingSchedule: Schedule.recurs(1).pipe(
