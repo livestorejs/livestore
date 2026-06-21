@@ -70,7 +70,7 @@ Vitest.describe('websocket-edge', () => {
 
       // WebChannel.Ping should be decodable via the wrapped listen schema
       const pingPayload = { _tag: 'WebChannel.Ping' as const, requestId: 'test-123' }
-      const result = Schema.decodeUnknownExit(schema.listen)(pingPayload)
+      const result = Schema.decodeUnknownResult(schema.listen)(pingPayload)
 
       // mapSchema adds WebChannel messages to the schema
       expect(Result.isSuccess(result)).toBe(true)
