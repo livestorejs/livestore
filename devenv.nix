@@ -320,6 +320,8 @@ in
   ]
   ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.cocoapods ];
 
+  _module.args.geniePkg = effectUtilsPackages.genie;
+
   # Note: PLAYWRIGHT_BROWSERS_PATH is set by inputs.playwright.devenvModules.default
   env = {
     PUPPETEER_SKIP_DOWNLOAD = "1";

@@ -308,12 +308,18 @@ export const livestoreSetupStepsAfterCheckout = [
  */
 export const livestoreSetupSteps = [checkoutStep(), ...livestoreSetupStepsAfterCheckout] as const
 
+const effectUtilsPr805Rev = '0febc86b169248a14fe73dabb83dcbb42895e5ad'
+
 /** Dedicated source-policy job so policy failures do not hide test/lint results. */
 export const livestoreDefaultRefPolicyJob = defaultRefPolicyCheckJob({
   runsOn: namespaceRunner('${{ github.run_id }}'),
   firstPartyOwners: ['overengineeringstudio'],
+  // Temporary PR805 anticipation: exact SHA pins are intentionally not branch-reachability checked.
+  defaultRefs: {
+    'overengineeringstudio/effect-utils': effectUtilsPr805Rev,
+  },
   normalizeGitBranchRefs: true,
-  verifyReachable: true,
+  verifyReachable: false,
 })
 
 /**
