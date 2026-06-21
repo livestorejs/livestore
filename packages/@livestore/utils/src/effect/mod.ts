@@ -53,6 +53,7 @@ export {
   Equal,
   Exit,
   Fiber,
+  Filter,
   FileSystem,
   Terminal,
   FiberHandle,
