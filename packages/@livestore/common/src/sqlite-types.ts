@@ -67,11 +67,8 @@ export type SqliteDbChangeset = {
   apply: () => void
 }
 
-export const PersistenceInfo = Schema.Struct(
-  {
-    fileName: Schema.String,
-  },
-  { key: Schema.String, value: Schema.Any },
-).annotate({ title: 'LiveStore.PersistenceInfo' })
+export const PersistenceInfo = Schema.StructWithRest(Schema.Struct({ fileName: Schema.String }), [
+  Schema.Record(Schema.String, Schema.Any),
+]).annotate({ title: 'LiveStore.PersistenceInfo' })
 
 export type PersistenceInfo<With extends {} = {}> = typeof PersistenceInfo.Type & With
