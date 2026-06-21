@@ -7,6 +7,7 @@ import {
   Exit,
   Option,
   Queue,
+  References,
   Schema,
   Scope,
   Stream,
@@ -122,7 +123,7 @@ export const makeDirectChannel = ({
             Effect.forkIn(makeDirectChannelScope, { startImmediately: true, uninterruptible: 'inherit' }),
             // Given we only call `Effect.exit` later when joining the fiber,
             // we don't want Effect to produce a "unhandled error" log message
-            Effect.withUnhandledErrorLogLevel(Option.none()),
+            Effect.provideService(References.UnhandledLogLevel, undefined),
           )
 
           const raceResult = yield* Effect.raceFirst(makeChannel, waitForNewEdgeFiber.pipe(Effect.disconnect))
