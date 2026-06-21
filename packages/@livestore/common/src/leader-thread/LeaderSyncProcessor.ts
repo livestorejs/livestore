@@ -274,7 +274,10 @@ export const make = Effect.fnUntraced(function* ({
         // It's important that we filter after acquiring the localPushBackendPullMutex, otherwise we might filter with the old generation
         const [droppedItems, filteredItems] = ReadonlyArray.partition(
           batchItems,
-          ([eventEncoded]) => eventEncoded.seqNum.rebaseGeneration >= currentRebaseGeneration,
+          (batchItem) =>
+            batchItem[0].seqNum.rebaseGeneration >= currentRebaseGeneration
+              ? Result.succeed(batchItem)
+              : Result.fail(batchItem),
         )
 
         if (droppedItems.length > 0) {
