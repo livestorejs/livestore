@@ -1,6 +1,6 @@
 import type { Nullable } from '@livestore/utils'
 import { omitUndefineds } from '@livestore/utils'
-import { type Option, type Types, Schema } from '@livestore/utils/effect'
+import { type Option, Schema, Struct, type Types } from '@livestore/utils/effect'
 
 import type * as SqliteAst from '../ast/sqlite.ts'
 import type { ColumnDefinition } from './field-defs.ts'
@@ -51,22 +51,38 @@ export const table = <TTableName extends string, TColumns extends Columns, TInde
 export type AnyIfConstained<In, Out> = '__constrained' extends keyof In ? any : Out
 export type EmptyObjIfConstained<In> = '__constrained' extends keyof In ? {} : In
 
-export type StructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Codec<
-  AnyIfConstained<TCols, FromColumns.RowDecoded<TCols>>,
-  AnyIfConstained<TCols, FromColumns.RowEncoded<TCols>>
+export type StructFieldsForColumns<TCols extends ConstraintColumns> = AnyIfConstained<
+  TCols,
+  { readonly [K in keyof TCols]: TCols[K]['schema'] }
 >
+
+export type StructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Struct<StructFieldsForColumns<TCols>>
 
 export type InsertStructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Codec<
   AnyIfConstained<TCols, FromColumns.InsertRowDecoded<TCols>>,
   AnyIfConstained<TCols, FromColumns.InsertRowEncoded<TCols>>
 >
 
+interface GetColumnSchema extends Struct.Lambda {
+  <TEncoded, TDecoded, TNullable extends boolean>(
+    column: ColumnDefinition<TEncoded, TDecoded, TNullable>,
+  ): ColumnDefinition<TEncoded, TDecoded, TNullable>['schema']
+  readonly '~lambda.out': this['~lambda.in'] extends ColumnDefinition<any, any, any>
+    ? this['~lambda.in']['schema']
+    : never
+}
+
+const getColumnSchema = Struct.lambda<GetColumnSchema>((column) => column.schema)
+
+const structFieldsForColumns = <TCols extends ConstraintColumns>(columns: TCols): StructFieldsForColumns<TCols> =>
+  Struct.map(columns, getColumnSchema)
+
 export const structSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(
   tableDef: TTableDefinition,
 ): StructSchemaForColumns<TTableDefinition['columns']> =>
-  Schema.Struct(Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.schema]))).annotate({
+  Schema.Struct(structFieldsForColumns(tableDef.columns)).annotate({
     title: tableDef.name,
-  }) as any
+  })
 
 export const insertStructSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(
   tableDef: TTableDefinition,

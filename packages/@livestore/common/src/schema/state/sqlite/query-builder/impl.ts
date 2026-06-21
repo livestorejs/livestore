@@ -21,7 +21,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         const [col] = params as any as [string]
         return makeQueryBuilder(tableDef, {
           ...ast,
-          resultSchemaSingle: ast.resultSchemaSingle.pipe(Schema.pluck(col)),
+          resultSchemaSingle: ast.tableDef.rowSchema.pipe(Schema.pluck(col)),
           select: { columns: [col] },
         })
       }
@@ -33,7 +33,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       return makeQueryBuilder(tableDef, {
         ...ast,
         resultSchemaSingle:
-          columns.length === 0 ? ast.resultSchemaSingle : ast.resultSchemaSingle.mapFields(Struct.pick(columns)),
+          columns.length === 0 ? ast.resultSchemaSingle : ast.tableDef.rowSchema.mapFields(Struct.pick(columns)),
         select: { columns },
       }) as any
     },
