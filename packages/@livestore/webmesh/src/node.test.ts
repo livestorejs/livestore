@@ -2,7 +2,7 @@ import { expect } from 'vitest'
 
 import { IS_CI, omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Chunk, Deferred, Effect, Exit, Fiber, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
+import { Deferred, Effect, Exit, Fiber, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
 
 import { Packet } from './mesh-schema.ts'
 import type { MeshNode } from './node.ts'
@@ -416,7 +416,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
 
                 // send 10 times A1
                 yield* Effect.forEach(
-                  Chunk.makeBy(count, (i) => ({ message: `A${i}` })),
+                  Array.from({ length: count }, (_, i) => ({ message: `A${i}` })),
                   channelAToB.send,
                   { concurrency: 'unbounded' },
                 )
@@ -427,7 +427,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
                     Stream.take(count),
                     Stream.runCollect,
                   ),
-                ).toEqual(Chunk.makeBy(count, (i) => ({ message: `B${i}` })))
+                ).toEqual(Array.from({ length: count }, (_, i) => ({ message: `B${i}` })))
                 // expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'A2' })
               })
 
@@ -436,7 +436,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
 
                 // send 10 times B1
                 yield* Effect.forEach(
-                  Chunk.makeBy(count, (i) => ({ message: `B${i}` })),
+                  Array.from({ length: count }, (_, i) => ({ message: `B${i}` })),
                   channelBToA.send,
                   { concurrency: 'unbounded' },
                 )
@@ -447,7 +447,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
                     Stream.take(count),
                     Stream.runCollect,
                   ),
-                ).toEqual(Chunk.makeBy(count, (i) => ({ message: `A${i}` })))
+                ).toEqual(Array.from({ length: count }, (_, i) => ({ message: `A${i}` })))
               })
 
               yield* Effect.all([nodeACode, nodeBCode, connectNodes(nodeA, nodeB).pipe(Effect.delay(100))], {
@@ -672,7 +672,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           const channelAToC = yield* createChannel(nodeA, 'C', { mode: 'proxy' })
           // Send multiple messages concurrently
           yield* Effect.forEach(
-            Chunk.makeBy(messageCount, (i) => ({ message: `A${i}` })),
+            Array.from({ length: messageCount }, (_, i) => ({ message: `A${i}` })),
             channelAToC.send,
             { concurrency: 'unbounded' },
           )
@@ -689,7 +689,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           const channelCToA = yield* createChannel(nodeC, 'A', { mode: 'proxy' })
           // Send multiple messages concurrently
           yield* Effect.forEach(
-            Chunk.makeBy(messageCount, (i) => ({ message: `C${i}` })),
+            Array.from({ length: messageCount }, (_, i) => ({ message: `C${i}` })),
             channelCToA.send,
             { concurrency: 'unbounded' },
           )
@@ -758,7 +758,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             // With forked ACKs, all messages get processed immediately at receiver
             // With blocking ACKs, messages would be processed one at a time with delays
             yield* Effect.forEach(
-              Chunk.makeBy(MESSAGE_COUNT, (i) => ({ message: `msg${i}` })),
+              Array.from({ length: MESSAGE_COUNT }, (_, i) => ({ message: `msg${i}` })),
               channelAToB.send,
               { concurrency: 'unbounded' },
             )
@@ -850,7 +850,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
 
             // Send all messages concurrently
             yield* Effect.forEach(
-              Chunk.makeBy(MESSAGE_COUNT, (i) => ({ message: `msg${i}` })),
+              Array.from({ length: MESSAGE_COUNT }, (_, i) => ({ message: `msg${i}` })),
               channelAToB.send,
               { concurrency: 'unbounded' },
             )

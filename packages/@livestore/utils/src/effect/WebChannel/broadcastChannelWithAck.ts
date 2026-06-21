@@ -40,7 +40,9 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {
       const channel = new BroadcastChannel(channelName)
-      const messageQueue = yield* Queue.unbounded<MsgSend>()
+      // BroadcastChannel messages are dropped unless a listener is already registered. Effect v4
+      // makes stream startup ordering explicit, so buffer events from channel construction time.
+      const messageQueue = yield* Effect.acquireRelease(Queue.unbounded<MessageEvent>(), Queue.shutdown)
       const connectionId = crypto.randomUUID()
       const schema = mapSchema(inputSchema)
 
@@ -50,6 +52,12 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
 
       const postMessage = (msg: typeof Message.Type) => channel.postMessage(Schema.encodeSync(Message)(msg))
 
+      const handler = (event: MessageEvent) => {
+        Queue.offerUnsafe(messageQueue, event)
+      }
+      channel.addEventListener('message', handler)
+      yield* Effect.addFinalizer(() => Effect.sync(() => channel.removeEventListener('message', handler)))
+
       const send = (message: MsgSend) =>
         Effect.gen(function* () {
           yield* connectedLatch.await
@@ -58,7 +66,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
           postMessage(PayloadMessage.make({ from: connectionId, to: peerIdRef.current!, payload }))
         })
 
-      const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
+      const listen = Stream.fromQueue(messageQueue).pipe(
         Stream.map(({ data }) => data),
         Stream.filterMap(Filter.fromPredicateOption(Schema.decodeUnknownOption(Message))),
         Stream.mapEffect((data) =>
@@ -110,7 +118,6 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
         Effect.gen(function* () {
           postMessage(DisconnectMessage.make({ from: connectionId }))
           channel.close()
-          yield* Queue.shutdown(messageQueue)
         }),
       )
 
