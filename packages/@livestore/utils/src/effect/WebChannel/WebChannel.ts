@@ -48,13 +48,23 @@ export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
 
       const label = debugId === undefined ? 'messagePort' : `messagePort:${debugId}`
 
+      // In Effect v4, forking a consumer is not a readiness handshake. Install the MessagePort
+      // listener while constructing the channel and buffer into a scoped queue so early messages
+      // are not lost before `listen` is pulled.
+      const messageQueue = yield* Effect.acquireRelease(Queue.unbounded<MessageEvent>(), Queue.shutdown)
+      const handler = (event: MessageEvent) => {
+        Queue.offerUnsafe(messageQueue, event)
+      }
+      port.addEventListener('message', handler)
+      yield* Effect.addFinalizer(() => Effect.sync(() => port.removeEventListener('message', handler)))
+
       const send = (message: any) =>
         Effect.gen(function* () {
           const [messageEncoded, transferables] = yield* Schema.encodeWithTransferables(schema.send)(message)
           port.postMessage(messageEncoded, transferables)
         })
 
-      const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
+      const listen = Stream.fromQueue(messageQueue).pipe(
         // Stream.tap((_) => Effect.log(`${label}:message`, _.data)),
         Stream.map((_) => Schema.decodeResult(schema.listen)(_.data)),
         listenToDebugPing(label),
@@ -155,6 +165,15 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
         id: debugId,
       }
 
+      // The ack channel sends protocol messages during setup. Buffer MessagePort events eagerly so
+      // the initial ping/pong cannot race a lazily-started `listen` stream under Effect v4.
+      const messageQueue = yield* Effect.acquireRelease(Queue.unbounded<MessageEvent>(), Queue.shutdown)
+      const handler = (event: MessageEvent) => {
+        Queue.offerUnsafe(messageQueue, event)
+      }
+      port.addEventListener('message', handler)
+      yield* Effect.addFinalizer(() => Effect.sync(() => port.removeEventListener('message', handler)))
+
       const send = (message: any) =>
         Effect.gen(function* () {
           debugInfo.sendTotal++
@@ -179,9 +198,7 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
           debugInfo.sendPending--
         })
 
-      // TODO re-implement this via `port.onmessage`
-      // https://github.com/livestorejs/livestore/issues/262
-      const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
+      const listen = Stream.fromQueue(messageQueue).pipe(
         // Stream.onStart(Effect.log(`${label}:listen:start`)),
         // Stream.tap((_) => Effect.log(`${label}:message`, _.data)),
         Stream.map((_) => Schema.decodeResult(ChannelMessage)(_.data)),
