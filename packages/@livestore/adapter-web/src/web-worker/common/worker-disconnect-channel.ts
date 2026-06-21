@@ -1,7 +1,7 @@
 import { type Effect, Schema, type Scope, type WebChannel } from '@livestore/utils/effect'
 import { WebChannelBrowser } from '@livestore/utils/effect/browser'
 
-export class DedicatedWorkerDisconnectBroadcast extends Schema.TaggedStruct('DedicatedWorkerDisconnectBroadcast', {}) {}
+export const DedicatedWorkerDisconnectBroadcast = Schema.TaggedStruct('DedicatedWorkerDisconnectBroadcast', {})
 
 /** Used across workers for leader election purposes */
 export const makeWorkerDisconnectChannel = (

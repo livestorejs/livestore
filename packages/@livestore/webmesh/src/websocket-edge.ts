@@ -20,16 +20,16 @@ import {
 import * as WebmeshSchema from './mesh-schema.ts'
 import type { MeshNode } from './node.ts'
 
-export class WSEdgeInit extends Schema.TaggedStruct('WSEdgeInit', {
+export const WSEdgeInit = Schema.TaggedStruct('WSEdgeInit', {
   from: Schema.String,
-}) {}
+})
 
-export class WSEdgePayload extends Schema.TaggedStruct('WSEdgePayload', {
+export const WSEdgePayload = Schema.TaggedStruct('WSEdgePayload', {
   from: Schema.String,
   payload: Schema.Any,
-}) {}
+})
 
-export class WSEdgeMessage extends Schema.Union([WSEdgeInit, WSEdgePayload]) {}
+export const WSEdgeMessage = Schema.Union([WSEdgeInit, WSEdgePayload])
 
 export const MessageMsgpack = Msgpack.schema(WSEdgeMessage)
 
