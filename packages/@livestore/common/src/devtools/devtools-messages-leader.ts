@@ -13,7 +13,9 @@ export const DatabaseFileInfoReq = LSDReqResMessage('LSD.Leader.DatabaseFileInfo
 
 export const DatabaseFileInfo = Schema.Struct({
   fileSize: Schema.Number,
-  persistenceInfo: Schema.Struct({ fileName: Schema.String }, { key: Schema.String, value: Schema.Any }),
+  persistenceInfo: Schema.StructWithRest(Schema.Struct({ fileName: Schema.String }), [
+    Schema.Record(Schema.String, Schema.Any),
+  ]),
 })
 
 export const DatabaseFileInfoRes = LSDReqResMessage('LSD.Leader.DatabaseFileInfoRes', {
