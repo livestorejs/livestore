@@ -19,16 +19,25 @@ import { shouldNeverHappen } from '../../misc.ts'
 export * from 'effect/Schema'
 export * from './debug-diff.ts'
 
+type PluckSchema<Fields extends Schema.Struct.Fields, K extends keyof Fields> = Schema.Codec<
+  Fields[K]['Type'],
+  Schema.Struct<Pick<Fields, K>>['Encoded'],
+  Schema.Struct<Pick<Fields, K>>['DecodingServices'],
+  Schema.Struct<Pick<Fields, K>>['EncodingServices']
+>
+
 export const pluck = <const K extends PropertyKey>(key: K) => <Fields extends { readonly [P in K]: Schema.Top }>(
-  schema: Schema.Struct<Fields>
-) => {
+  schema: Schema.Struct<Fields>,
+): PluckSchema<Fields, K & keyof Fields> => {
+  const field = schema.fields[key] as Fields[K & keyof Fields]
+
   return schema.mapFields(Struct.pick([key])).pipe(
-    Schema.decodeTo(Schema.toType(schema.fields[key]), {
+    Schema.decodeTo(Schema.toType(field), {
       decode: SchemaGetter.transform((whole: any) => whole[key]),
-      encode: SchemaGetter.transform((value) => ({ [key]: value } as any))
-    })
-  )
-};
+      encode: SchemaGetter.transform((value) => ({ [key]: value }) as any),
+    }),
+  ) as unknown as PluckSchema<Fields, K & keyof Fields>
+}
 
 export const head = <S extends Schema.Top>(array: Schema.$Array<S>): Schema.decodeTo<Schema.Option<Schema.toType<S>>, Schema.$Array<S>> =>
   array.pipe(

@@ -60,6 +60,7 @@ export const clientDocument = <
       value: inputOptions.default.value,
     },
   } satisfies ClientDocumentTableOptions<TType>
+  const canPartialSet = options.partialSet === true && Schema.getResolvedPropertySignatures(valueSchema).length > 0
 
   // Column needs optimistic schema to read historical data formats
   const optimisticColumnSchema = createOptimisticEventSchema({
@@ -82,7 +83,7 @@ export const clientDocument = <
     name,
     valueSchema,
     defaultValue: options.default.value,
-    partialSet: options.partialSet,
+    partialSet: canPartialSet,
   })
 
   const setEventDef = (...args: any[]) => {
@@ -94,8 +95,8 @@ export const clientDocument = <
   Object.defineProperty(setEventDef, 'schema', {
     value: Schema.Struct({
       id: Schema.String,
-      value: options.partialSet === true ? valueSchema.mapFields(Struct.map(Schema.optional)) : valueSchema,
-    }).annotate({ title: `${name}Set:Args` }),
+      value: canPartialSet === true ? partialStructSchema(valueSchema) : valueSchema,
+    }).annotate({ title: `${name}Set:Args` }) as Schema.Codec<any, any>,
   })
   Object.defineProperty(setEventDef, 'options', {
     value: { derived: true, clientOnly: true, facts: undefined, deprecated: undefined },
@@ -157,6 +158,21 @@ export const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T
   }, {} as any)
 }
 
+const partialStructSchema = (
+  schema: Schema.Codec<any, any>,
+): Schema.Codec<any, any> =>
+  (schema as unknown as Schema.Struct<Schema.Struct.Fields>).mapFields(
+    Struct.map(Schema.optional),
+  ) as unknown as Schema.Codec<any, any>
+
+const pickStructSchema = (
+  schema: Schema.Codec<any, any>,
+  keys: ReadonlyArray<string>,
+): Schema.Codec<Record<string, unknown>, Record<string, unknown>> =>
+  (schema as unknown as Schema.Struct<Schema.Struct.Fields>).mapFields(
+    Struct.pick(keys as readonly any[]),
+  ) as unknown as Schema.Codec<Record<string, unknown>, Record<string, unknown>>
+
 /**
  * Creates an optimistic schema that accepts historical event formats
  * and transforms them to the current schema, preserving data and intent.
@@ -184,8 +200,9 @@ export const createOptimisticEventSchema = ({
   valueSchema: Schema.Codec<any, any>
   defaultValue: any
   partialSet: boolean
-}) => {
-  const targetSchema = partialSet === true ? valueSchema.mapFields(Struct.map(Schema.optional)) : valueSchema
+}): Schema.Codec<any, unknown> => {
+  const canPartialSet = partialSet === true && Schema.getResolvedPropertySignatures(valueSchema).length > 0
+  const targetSchema = canPartialSet === true ? partialStructSchema(valueSchema) : valueSchema
   // The transform decode must yield values in the target schema's ENCODED shape.
   // This keeps JSON columns consistent when Encoded != Type (e.g. Option).
   const encodeTarget = Schema.encodeSync(targetSchema)
@@ -206,12 +223,12 @@ export const createOptimisticEventSchema = ({
             // Handle null/undefined/non-object cases
             if (typeof eventValue !== 'object' || eventValue === null) {
               console.warn(
-                `Client document: Non-object event value, using ${partialSet === true ? 'empty partial' : 'defaults'}`,
+                `Client document: Non-object event value, using ${canPartialSet === true ? 'empty partial' : 'defaults'}`,
               )
-              return encodeTarget(partialSet === true ? {} : defaultValue)
+              return encodeTarget(canPartialSet === true ? {} : defaultValue)
             }
 
-            if (partialSet === true) {
+            if (canPartialSet === true) {
               // For partial sets: only preserve fields that exist in new schema
               const partialResult: Record<string, unknown> = {}
               let hasValidFields = false
@@ -263,7 +280,7 @@ export const createOptimisticEventSchema = ({
         encode: SchemaGetter.passthroughSubtype(),
       },
     ),
-  )
+  ) as Schema.Codec<any, unknown>
 }
 
 export const deriveEventAndMaterializer = ({
@@ -295,7 +312,7 @@ export const deriveEventAndMaterializer = ({
     // Override the full value if it's not an object or no partial set is allowed
     const schemaProps = Schema.getResolvedPropertySignatures(valueSchema)
     if (schemaProps.length === 0 || partialSet === false) {
-      const valueColJsonSchema = Schema.fromJsonString(valueSchema)
+      const valueColJsonSchema = Schema.fromJsonString(valueSchema) as Schema.Codec<any, string>
       const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(value ?? defaultValue)
       const encodedUpdateValue = Schema.encodeSyncDebug(valueColJsonSchema)(value)
 
@@ -305,7 +322,7 @@ export const deriveEventAndMaterializer = ({
         writeTables: new Set([name]),
       }
     } else {
-      const valueColJsonSchema = Schema.fromJsonString(valueSchema.mapFields(Struct.map(Schema.optional)))
+      const valueColJsonSchema = Schema.fromJsonString(partialStructSchema(valueSchema)) as Schema.Codec<any, string>
 
       const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(
         mergeDefaultValues(defaultValue, value),
@@ -315,8 +332,8 @@ export const deriveEventAndMaterializer = ({
       const setBindValues: unknown[] = []
 
       const keys = Object.keys(value)
-      const partialUpdateSchema = valueSchema.mapFields(Struct.pick(keys))
-      const encodedPartialUpdate = Schema.encodeSyncDebug(partialUpdateSchema)(value)
+      const partialUpdateSchema = pickStructSchema(valueSchema, keys)
+      const encodedPartialUpdate = Schema.encodeSyncDebug(partialUpdateSchema)(value) as Record<string, unknown>
 
       for (const key in encodedPartialUpdate) {
         const encodedValueForKey = encodedPartialUpdate[key]
@@ -564,7 +581,7 @@ export namespace ClientDocumentTableDef {
         id?: string | SessionIdSymbol,
       ) => { name: `${TName}Set`; args: { id: string; value: TType } }) & {
     readonly name: `${TName}Set`
-    readonly schema: Schema.Top
+    readonly schema: Schema.Codec<any, any>
     readonly Event: {
       readonly name: `${TName}Set`
       readonly args: { id: string; value: TType }
