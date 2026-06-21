@@ -32,7 +32,7 @@ export namespace QueryBuilderAst {
     readonly limit: Option.Option<number>
     readonly tableDef: TableDefBase
     readonly where: ReadonlyArray<QueryBuilderAst.Where>
-    readonly resultSchemaSingle: Schema.Top
+    readonly resultSchemaSingle: Schema.Codec<any, any>
   }
 
   export interface CountQuery {
@@ -55,7 +55,7 @@ export namespace QueryBuilderAst {
     readonly values: Record<string, unknown>
     readonly onConflict: OnConflict | undefined
     readonly returning: string[] | undefined
-    readonly resultSchema: Schema.Top
+    readonly resultSchema: Schema.Codec<any, any>
   }
 
   export interface OnConflict {
@@ -76,7 +76,7 @@ export namespace QueryBuilderAst {
     readonly values: Record<string, unknown>
     readonly where: ReadonlyArray<QueryBuilderAst.Where>
     readonly returning: string[] | undefined
-    readonly resultSchema: Schema.Top
+    readonly resultSchema: Schema.Codec<any, any>
   }
 
   export interface DeleteQuery {
@@ -84,7 +84,7 @@ export namespace QueryBuilderAst {
     readonly tableDef: TableDefBase
     readonly where: ReadonlyArray<QueryBuilderAst.Where>
     readonly returning: string[] | undefined
-    readonly resultSchema: Schema.Top
+    readonly resultSchema: Schema.Codec<any, any>
   }
 
   export type WriteQuery = InsertQuery | UpdateQuery | DeleteQuery

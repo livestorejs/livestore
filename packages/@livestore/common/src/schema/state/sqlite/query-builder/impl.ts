@@ -320,7 +320,7 @@ export const invalidQueryBuilder = (msg?: string) => {
   return shouldNeverHappen(`Invalid query builder${msg !== undefined ? `: ${msg}` : ''}`)
 }
 
-export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Top => {
+export const getResultSchema = (qb: QueryBuilder<any, any, any>) => {
   const queryAst = qb[QueryBuilderAstSymbol]
   switch (queryAst._tag) {
     case 'SelectQuery': {
