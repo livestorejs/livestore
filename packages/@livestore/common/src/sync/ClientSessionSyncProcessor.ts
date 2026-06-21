@@ -3,9 +3,9 @@ import { LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
 import {
   Effect,
   Exit,
+  Filter,
   FiberHandle,
   Option,
-  Predicate,
   Queue,
   Schema,
   type Scope,
@@ -324,8 +324,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         isClientOnlyEvent,
         isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
       }).pipe(
-        Effect.filterOrElse(
-          Predicate.isTagged('advance'),
+        Effect.filterMapOrElse(
+          Filter.tagged<typeof SyncState.MergeResult.Type>()('advance'),
           () => Effect.die(new Error('Expected advance from local-push merge')),
         ),
       )
