@@ -212,7 +212,7 @@ export const makeSingleTabAdapter =
       const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker-${storeId}-${sessionId}` })
 
       // Set up communication with the dedicated worker via the outer protocol
-      const _dedicatedWorkerFiber = yield* Worker.makeSerialized<WorkerSchema.LeaderWorkerOuterRequest>({
+      const _dedicatedWorkerFiber = yield* Worker.makeSerialized<typeof WorkerSchema.LeaderWorkerOuterRequest.Type>({
         initialMessage: () => new WorkerSchema.LeaderWorkerOuterInitialMessage({ port: mc.port1, storeId, clientId }),
       }).pipe(
         Effect.provide(BrowserWorker.layer(() => worker)),

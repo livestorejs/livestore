@@ -315,7 +315,7 @@ export const makePersistedAdapter =
         // and adding the `sessionId` to make it easier to debug which session a worker belongs to in logs
         const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker-${storeId}-${sessionId}` })
 
-        yield* Worker.makeSerialized<WorkerSchema.LeaderWorkerOuterRequest>({
+        yield* Worker.makeSerialized<typeof WorkerSchema.LeaderWorkerOuterRequest.Type>({
           initialMessage: () => new WorkerSchema.LeaderWorkerOuterInitialMessage({ port: mc.port1, storeId, clientId }),
         }).pipe(
           Effect.provide(BrowserWorker.layer(() => worker)),
