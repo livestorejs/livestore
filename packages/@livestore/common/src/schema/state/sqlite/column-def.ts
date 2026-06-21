@@ -157,7 +157,10 @@ const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.Col
   const ast = schema.ast
   // Strip nullable wrapper to get core type
   const coreAst = stripNullable(ast)
-  const coreSchema = stripNullable(ast) === ast ? schema : Schema.make(coreAst)
+  const coreSchema = (stripNullable(ast) === ast ? schema : Schema.make(coreAst)) as Schema.Codec<
+    any,
+    any
+  >
 
   // Special case: Boolean is transformed to integer in SQLite
   if (SchemaAST.isBoolean(coreAst) === true) {
@@ -217,7 +220,7 @@ const stripNullable = (ast: SchemaAST.AST): SchemaAST.AST => {
 
 const getLiteralColumnDefinition = (
   ast: SchemaAST.AST,
-  schema: Schema.Top,
+  schema: Schema.Codec<any, any>,
   nullable: boolean,
   sourceAst: SchemaAST.AST,
 ): SqliteDsl.ColumnDefinition.Any | null => {
