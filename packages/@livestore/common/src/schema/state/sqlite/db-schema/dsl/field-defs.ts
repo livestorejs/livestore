@@ -226,7 +226,7 @@ export const json: SpecializedColDefFn<'text', true, unknown> = makeSpecializedC
 
 export const datetime: SpecializedColDefFn<'text', false, Date> = makeSpecializedColDef('text', {
   _tag: 'baseSchema',
-  baseSchema: Schema.Date,
+  baseSchema: Schema.DateFromString,
 })
 
 export const datetimeInteger: SpecializedColDefFn<'integer', false, Date> = makeSpecializedColDef('integer', {
