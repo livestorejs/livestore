@@ -6,7 +6,7 @@ import { Duration, Effect } from '@livestore/utils/effect'
  */
 export class TimeoutSet<V> {
   private values = new Map<V, number>()
-  private timeoutHandle: NodeJS.Timeout | undefined
+  private timeoutHandle: ReturnType<typeof setTimeout> | undefined
   private readonly timeoutMs: number
 
   private constructor({ timeout }: { timeout: Duration.Input }) {
