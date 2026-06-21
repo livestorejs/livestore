@@ -115,7 +115,7 @@ export const isQueryBuilder = (value: unknown): value is QueryBuilder<any, any, 
 
 export type QueryBuilder<
   TResult,
-  TTableDef extends TableDefBase,
+  TTableDef extends TableDefBase<any, any>,
   /** Used to gradually remove features from the API based on the query context */
   TWithout extends QueryBuilder.ApiFeature = never,
 > = {
