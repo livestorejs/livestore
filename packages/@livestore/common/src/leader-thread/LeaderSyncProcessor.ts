@@ -666,7 +666,7 @@ export const make = Effect.fnUntraced(function* ({
         },
         links:
           ctxRef.current?.span !== undefined
-            ? [{ _tag: 'SpanLink', span: ctxRef.current.span, attributes: {} }]
+            ? [{ span: ctxRef.current.span, attributes: {} }]
             : undefined,
       }),
     )
