@@ -3,77 +3,59 @@
 exports[`FieldDefs > boolean 1`] = `
 {
   "autoIncrement": false,
-  "columnType": "text",
+  "columnType": "integer",
   "default": {
     "_id": "Option",
     "_tag": "None",
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": [Function],
+  "schema": {
+    "ast": "Boolean",
+    "decodedAst": "Boolean",
+    "encodedAst": "Union",
+  },
 }
 `;
 
 exports[`FieldDefs > boolean 2`] = `
 {
   "autoIncrement": false,
-  "columnType": "text",
+  "columnType": "integer",
   "default": {
     "_id": "Option",
     "_tag": "None",
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": [Function],
+  "schema": {
+    "ast": "Boolean",
+    "decodedAst": "Boolean",
+    "encodedAst": "Union",
+  },
 }
 `;
 
 exports[`FieldDefs > boolean 3`] = `
 {
   "autoIncrement": false,
-  "columnType": "text",
+  "columnType": "integer",
   "default": {
     "_id": "Option",
     "_tag": "Some",
-    "value": null,
+    "value": false,
   },
-  "nullable": true,
+  "nullable": false,
   "primaryKey": false,
-  "schema": [Function],
+  "schema": {
+    "ast": "Boolean",
+    "decodedAst": "Boolean",
+    "encodedAst": "Union",
+  },
 }
 `;
 
-exports[`FieldDefs > boolean 4`] = `
-{
-  "autoIncrement": false,
-  "columnType": "text",
-  "default": {
-    "_id": "Option",
-    "_tag": "Some",
-    "value": "foo",
-  },
-  "nullable": true,
-  "primaryKey": false,
-  "schema": [Function],
-}
-`;
-
-exports[`FieldDefs > boolean 5`] = `
-{
-  "autoIncrement": false,
-  "columnType": "text",
-  "default": {
-    "_id": "Option",
-    "_tag": "Some",
-    "value": "foo",
-  },
-  "nullable": true,
-  "primaryKey": false,
-  "schema": [Function],
-}
-`;
-
-exports[`FieldDefs > boolean 6`] = `
+exports[`FieldDefs > datetime 1`] = `
 {
   "autoIncrement": false,
   "columnType": "text",
@@ -83,11 +65,33 @@ exports[`FieldDefs > boolean 6`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": [Function],
+  "schema": {
+    "ast": "Declaration",
+    "decodedAst": "Declaration",
+    "encodedAst": "String",
+  },
 }
 `;
 
-exports[`FieldDefs > boolean 7`] = `
+exports[`FieldDefs > datetime 2`] = `
+{
+  "autoIncrement": false,
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "None",
+  },
+  "nullable": false,
+  "primaryKey": false,
+  "schema": {
+    "ast": "Declaration",
+    "decodedAst": "Declaration",
+    "encodedAst": "String",
+  },
+}
+`;
+
+exports[`FieldDefs > datetime 3`] = `
 {
   "autoIncrement": false,
   "columnType": "text",
@@ -98,11 +102,71 @@ exports[`FieldDefs > boolean 7`] = `
   },
   "nullable": true,
   "primaryKey": false,
-  "schema": [Function],
+  "schema": {
+    "ast": "Union",
+    "decodedAst": "Union",
+    "encodedAst": "Union",
+  },
 }
 `;
 
-exports[`FieldDefs > boolean 8`] = `
+exports[`FieldDefs > datetime 4`] = `
+{
+  "autoIncrement": false,
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "Some",
+    "value": 2022-02-02T00:00:00.000Z,
+  },
+  "nullable": false,
+  "primaryKey": false,
+  "schema": {
+    "ast": "Declaration",
+    "decodedAst": "Declaration",
+    "encodedAst": "String",
+  },
+}
+`;
+
+exports[`FieldDefs > json 1`] = `
+{
+  "autoIncrement": false,
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "None",
+  },
+  "nullable": false,
+  "primaryKey": false,
+  "schema": {
+    "ast": "Any",
+    "decodedAst": "Any",
+    "encodedAst": "String",
+  },
+}
+`;
+
+exports[`FieldDefs > json 2`] = `
+{
+  "autoIncrement": false,
+  "columnType": "text",
+  "default": {
+    "_id": "Option",
+    "_tag": "Some",
+    "value": null,
+  },
+  "nullable": true,
+  "primaryKey": false,
+  "schema": {
+    "ast": "Union",
+    "decodedAst": "Union",
+    "encodedAst": "Union",
+  },
+}
+`;
+
+exports[`FieldDefs > json 3`] = `
 {
   "autoIncrement": false,
   "columnType": "text",
@@ -115,11 +179,15 @@ exports[`FieldDefs > boolean 8`] = `
   },
   "nullable": true,
   "primaryKey": false,
-  "schema": [Function],
+  "schema": {
+    "ast": "Union",
+    "decodedAst": "Union",
+    "encodedAst": "Union",
+  },
 }
 `;
 
-exports[`FieldDefs > boolean 9`] = `
+exports[`FieldDefs > text 1`] = `
 {
   "autoIncrement": false,
   "columnType": "text",
@@ -129,11 +197,15 @@ exports[`FieldDefs > boolean 9`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": [Function],
+  "schema": {
+    "ast": "String",
+    "decodedAst": "String",
+    "encodedAst": "String",
+  },
 }
 `;
 
-exports[`FieldDefs > boolean 10`] = `
+exports[`FieldDefs > text 2`] = `
 {
   "autoIncrement": false,
   "columnType": "text",
@@ -143,11 +215,15 @@ exports[`FieldDefs > boolean 10`] = `
   },
   "nullable": false,
   "primaryKey": false,
-  "schema": [Function],
+  "schema": {
+    "ast": "String",
+    "decodedAst": "String",
+    "encodedAst": "String",
+  },
 }
 `;
 
-exports[`FieldDefs > boolean 11`] = `
+exports[`FieldDefs > text 3`] = `
 {
   "autoIncrement": false,
   "columnType": "text",
@@ -158,64 +234,48 @@ exports[`FieldDefs > boolean 11`] = `
   },
   "nullable": true,
   "primaryKey": false,
-  "schema": [Function],
+  "schema": {
+    "ast": "Union",
+    "decodedAst": "Union",
+    "encodedAst": "Union",
+  },
 }
 `;
 
-exports[`FieldDefs > boolean 12`] = `
+exports[`FieldDefs > text 4`] = `
 {
   "autoIncrement": false,
   "columnType": "text",
   "default": {
     "_id": "Option",
     "_tag": "Some",
-    "value": 2022-02-02T00:00:00.000Z,
+    "value": "foo",
   },
-  "nullable": false,
+  "nullable": true,
   "primaryKey": false,
-  "schema": [Function],
+  "schema": {
+    "ast": "Union",
+    "decodedAst": "Union",
+    "encodedAst": "Union",
+  },
 }
 `;
 
-exports[`FieldDefs > boolean 13`] = `
+exports[`FieldDefs > text 5`] = `
 {
   "autoIncrement": false,
-  "columnType": "integer",
-  "default": {
-    "_id": "Option",
-    "_tag": "None",
-  },
-  "nullable": false,
-  "primaryKey": false,
-  "schema": [Function],
-}
-`;
-
-exports[`FieldDefs > boolean 14`] = `
-{
-  "autoIncrement": false,
-  "columnType": "integer",
-  "default": {
-    "_id": "Option",
-    "_tag": "None",
-  },
-  "nullable": false,
-  "primaryKey": false,
-  "schema": [Function],
-}
-`;
-
-exports[`FieldDefs > boolean 15`] = `
-{
-  "autoIncrement": false,
-  "columnType": "integer",
+  "columnType": "text",
   "default": {
     "_id": "Option",
     "_tag": "Some",
-    "value": false,
+    "value": "foo",
   },
-  "nullable": false,
+  "nullable": true,
   "primaryKey": false,
-  "schema": [Function],
+  "schema": {
+    "ast": "Union",
+    "decodedAst": "Union",
+    "encodedAst": "Union",
+  },
 }
 `;

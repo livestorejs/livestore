@@ -4,33 +4,50 @@ import { Schema } from '@livestore/utils/effect'
 
 import * as F from './field-defs.ts'
 
-describe.concurrent('FieldDefs', () => {
+describe('FieldDefs', () => {
   test('text', () => {
-    expect(F.text()).toMatchSnapshot()
-    expect(F.text({})).toMatchSnapshot()
-    expect(F.text({ default: null, nullable: true })).toMatchSnapshot()
-    expect(F.text({ schema: Schema.Literal('foo'), nullable: true, default: 'foo' })).toMatchSnapshot()
-    expect(F.text({ schema: Schema.Union([Schema.Literal('foo')]), nullable: true, default: 'foo' })).toMatchSnapshot()
+    expect(columnDefSnapshot(F.text())).toMatchSnapshot()
+    expect(columnDefSnapshot(F.text({}))).toMatchSnapshot()
+    expect(columnDefSnapshot(F.text({ default: null, nullable: true }))).toMatchSnapshot()
+    expect(columnDefSnapshot(F.text({ schema: Schema.Literal('foo'), nullable: true, default: 'foo' }))).toMatchSnapshot()
+    expect(
+      columnDefSnapshot(F.text({ schema: Schema.Union([Schema.Literal('foo')]), nullable: true, default: 'foo' })),
+    ).toMatchSnapshot()
   })
 
   test('json', () => {
-    expect(F.json()).toMatchSnapshot()
-    expect(F.json({ default: null, nullable: true })).toMatchSnapshot()
+    expect(columnDefSnapshot(F.json())).toMatchSnapshot()
+    expect(columnDefSnapshot(F.json({ default: null, nullable: true }))).toMatchSnapshot()
     expect(
-      F.json({ schema: Schema.Struct({ name: Schema.String }), default: { name: 'Bob' }, nullable: true }),
+      columnDefSnapshot(
+        F.json({ schema: Schema.Struct({ name: Schema.String }), default: { name: 'Bob' }, nullable: true }),
+      ),
     ).toMatchSnapshot()
   })
 
   test('datetime', () => {
-    expect(F.datetime()).toMatchSnapshot()
-    expect(F.datetime({})).toMatchSnapshot()
-    expect(F.datetime({ default: null, nullable: true })).toMatchSnapshot()
-    expect(F.datetime({ default: new Date('2022-02-02') })).toMatchSnapshot()
+    expect(columnDefSnapshot(F.datetime())).toMatchSnapshot()
+    expect(columnDefSnapshot(F.datetime({}))).toMatchSnapshot()
+    expect(columnDefSnapshot(F.datetime({ default: null, nullable: true }))).toMatchSnapshot()
+    expect(columnDefSnapshot(F.datetime({ default: new Date('2022-02-02') }))).toMatchSnapshot()
   })
 
   test('boolean', () => {
-    expect(F.boolean()).toMatchSnapshot()
-    expect(F.boolean({})).toMatchSnapshot()
-    expect(F.boolean({ default: false })).toMatchSnapshot()
+    expect(columnDefSnapshot(F.boolean())).toMatchSnapshot()
+    expect(columnDefSnapshot(F.boolean({}))).toMatchSnapshot()
+    expect(columnDefSnapshot(F.boolean({ default: false }))).toMatchSnapshot()
   })
+})
+
+const columnDefSnapshot = (columnDef: F.ColumnDefinition.Any) => ({
+  ...columnDef,
+  schema: schemaSnapshot(columnDef.schema),
+})
+
+// Effect schemas expose a large inspectable object graph. Snapshot only the
+// schema shape this DSL cares about.
+const schemaSnapshot = (schema: Schema.Codec<unknown, unknown>) => ({
+  ast: schema.ast._tag,
+  encodedAst: Schema.toEncoded(schema).ast._tag,
+  decodedAst: Schema.toType(schema).ast._tag,
 })
