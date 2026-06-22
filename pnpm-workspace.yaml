@@ -33,6 +33,7 @@ packages:
   - tests/wa-sqlite
 
 overrides:
+  '@playwright/test': 1.61.0
   effect: 3.21.4
   '@effect/platform': 0.96.2
   '@effect/platform-browser': 0.76.0

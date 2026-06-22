@@ -5,6 +5,11 @@ const examplesWorkspaceSettings = {
   linkWorkspacePackages: true,
   /** Dedupe packages pulled in transitively by older example/peer-deps dependencies */
   overrides: catalog.pick(
+    // The standalone examples declare @playwright/test 1.59.1, but CI runs their
+    // e2e tests against the Nix-provided Playwright browsers built for the
+    // catalog version (1.61.0). Align the installed version so the example tests
+    // find the matching browser revision.
+    '@playwright/test',
     'effect',
     '@effect/platform',
     '@effect/platform-browser',
