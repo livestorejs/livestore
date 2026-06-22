@@ -49,7 +49,7 @@ jobs:
         env:
           FIRST_PARTY_OWNERS_JSON: '["overengineeringstudio"]'
           DEFAULT_REF: main
-          DEFAULT_REFS_JSON: '{"overengineeringstudio/effect-utils":"0febc86b169248a14fe73dabb83dcbb42895e5ad"}'
+          DEFAULT_REFS_JSON: '{}'
           VERIFY_REACHABLE: '0'
           NORMALIZE_GIT_BRANCH_REFS: '1'
         run: |
