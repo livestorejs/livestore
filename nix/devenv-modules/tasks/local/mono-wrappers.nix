@@ -488,7 +488,7 @@ in
 
     "lint:check:madge" = {
       description = "Check circular dependencies with madge";
-      exec = "./scripts/node_modules/.bin/madge --circular --no-spinner examples/*/src packages/*/*/src";
+      exec = "madge --circular --no-spinner examples/*/src packages/*/*/src";
       after = [ "pnpm:install" ];
     };
 

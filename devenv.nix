@@ -106,7 +106,7 @@ let
       exit 1
     fi
 
-    playwright_bin="tests/integration/node_modules/.bin/playwright"
+    playwright_bin="scripts/bin/playwright"
     if [ ! -x "$playwright_bin" ]; then
       echo "Expected Playwright binary not found: $playwright_bin" >&2
       echo "Run release:devtools-artifact:certify-liveness instead of the no-install variant when dependencies are not installed yet." >&2
@@ -161,7 +161,7 @@ let
         PLAYWRIGHT_HEADLESS="''${PLAYWRIGHT_HEADLESS:-1}" \
         LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
         DT_PASSTHROUGH=1 \
-        ./node_modules/.bin/playwright test \
+        playwright test \
           src/tests/playwright/devtools/web.play.ts \
           --reporter=line
     )
