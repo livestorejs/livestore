@@ -83,6 +83,137 @@
       "avoidNodeModulesLayoutAsApi": true,
       "consumeContractArtifact": true
     },
+    "generatedArtifact": {
+      "checkCommand": "DT_PASSTHROUGH=1 genie --check",
+      "command": "DT_PASSTHROUGH=1 genie",
+      "generated": true,
+      "inputFingerprint": "324bdfb5668e72c52052305d049700ba0c3b308eef2ffe6608b9d09a7116dff5",
+      "semanticInputs": {
+        "effectUtils": {
+          "commit": "df396b6599157e7861a80d333e80bb2ebdfbe82f",
+          "ref": "main"
+        },
+        "generator": "projectionArtifact.json from #mr/effect-utils/packages/@overeng/genie/src/runtime/projection-artifact/mod.ts",
+        "packageManager": {
+          "name": "pnpm",
+          "version": "11.8.0"
+        },
+        "sources": [
+          "pnpm-install-contract.json.genie.ts",
+          "package.json.genie.ts",
+          "pnpm-workspace.yaml.genie.ts",
+          "megarepo.lock members.effect-utils"
+        ],
+        "workspaceData": {
+          "allowBuilds": {
+            "@mixedbread/cli": true,
+            "@myobie/pty": false,
+            "@parcel/watcher": false,
+            "cbor-extract": true,
+            "dtrace-provider": true,
+            "esbuild": false,
+            "fsevents": false,
+            "msgpackr-extract": false,
+            "node-pty": false,
+            "protobufjs": true,
+            "puppeteer": true,
+            "sharp": false,
+            "unix-dgram": false,
+            "workerd": true
+          },
+          "dedupePeerDependents": true,
+          "enableGlobalVirtualStore": true,
+          "ignoreScripts": true,
+          "injectWorkspacePackages": false,
+          "minimumReleaseAgeExclude": ["@effect/platform", "@types/node", "effect"],
+          "optimisticRepeatInstall": false,
+          "packageExtensions": {
+            "react-error-boundary": {
+              "dependencies": {
+                "@types/react": "19.2.17",
+                "@types/react-dom": "19.2.3"
+              }
+            },
+            "starlight-auto-sidebar": {
+              "dependencies": {
+                "astro": ">=5.0.0"
+              }
+            },
+            "starlight-links-validator": {
+              "dependencies": {
+                "astro": ">=5.0.0"
+              }
+            },
+            "starlight-sidebar-topics": {
+              "dependencies": {
+                "astro": ">=5.0.0"
+              }
+            },
+            "typedoc": {
+              "dependencies": {
+                "typedoc-plugin-markdown": "^4.8.1"
+              }
+            }
+          },
+          "packageImportMethod": "clone-or-copy",
+          "packages": [
+            "docs",
+            "docs/src/content/_assets/code",
+            "examples/*",
+            "packages/@livestore/adapter-cloudflare",
+            "packages/@livestore/adapter-web",
+            "packages/@livestore/common",
+            "packages/@livestore/common-cf",
+            "packages/@livestore/effect-playwright",
+            "packages/@livestore/framework-toolkit",
+            "packages/@livestore/livestore",
+            "packages/@livestore/peer-deps",
+            "packages/@livestore/react",
+            "packages/@livestore/sqlite-wasm",
+            "packages/@livestore/sync-cf",
+            "packages/@livestore/utils",
+            "packages/@livestore/utils-dev",
+            "packages/@livestore/wa-sqlite",
+            "packages/@livestore/webmesh",
+            "packages/@local/astro-tldraw",
+            "packages/@local/astro-twoslash-code",
+            "packages/@local/astro-twoslash-code/example",
+            "packages/@local/shared",
+            "scripts",
+            "tests/integration",
+            "tests/package-common",
+            "tests/perf",
+            "tests/perf-eventlog",
+            "tests/sync-provider",
+            "tests/wa-sqlite"
+          ],
+          "peerDependencyRules": {
+            "allowedVersions": {
+              "@effect/experimental": ">=0.58.0",
+              "@effect/platform": ">=0.94.2",
+              "@effect/rpc": ">=0.73.0",
+              "eslint": ">=10.0.0",
+              "typescript": ">=6.0.0",
+              "vitest": ">=4.0.0"
+            }
+          },
+          "pmOnFail": "ignore",
+          "sideEffectsCache": false,
+          "storeDir": ".devenv/pnpm-store-pure-v1",
+          "strictPeerDependencies": false,
+          "strictStorePkgContentCheck": true,
+          "supportedArchitectures": {
+            "cpu": ["x64", "arm64"],
+            "libc": ["glibc", "musl"],
+            "os": ["linux", "darwin"]
+          },
+          "verifyDepsBeforeRun": false,
+          "verifyStoreIntegrity": true
+        }
+      },
+      "source": "pnpm-install-contract.json.genie.ts",
+      "warning": "DO NOT EDIT - changes will be overwritten"
+    },
     "nixIntegration": {
       "fixedOutputDependencyPrepUsesLiveGlobalVirtualStore": false,
       "liveInstallUsesGlobalVirtualStore": true

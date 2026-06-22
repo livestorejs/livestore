@@ -4,8 +4,17 @@ packages/@livestore/wa-sqlite/demo/benchmarks/*.sql linguist-vendored
 
 # Genie-generated files - collapse in GitHub PR diffs
 # These files are generated from *.genie.ts sources
+.changeset/config.json linguist-generated=true
+.github/repo-settings.json linguist-generated=true
+.oxfmtrc.json linguist-generated=true
+.oxlintrc.json linguist-generated=true
+**/.oxlintrc.json linguist-generated=true
 package.json linguist-generated=true
 **/package.json linguist-generated=true
+pnpm-install-contract.json linguist-generated=true
+pnpm-workspace.yaml linguist-generated=true
+**/pnpm-workspace.yaml linguist-generated=true
+scripts/src/generated/*.json linguist-generated=true
 tsconfig.json linguist-generated=true
 **/tsconfig.json linguist-generated=true
 tsconfig.*.json linguist-generated=true
