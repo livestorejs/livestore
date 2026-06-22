@@ -107,10 +107,20 @@ Vitest.describe('isEqualEncoded', () => {
     expect(isEqualEncoded(a, b)).toBe(true)
   })
 
-  Vitest.it('should consider Effect Schema UndefinedOr-encoded args equal to their JSON-roundtripped form', () => {
+  Vitest.it('should consider Effect Schema UndefinedOr-encoded args with explicit undefined equal to their JSON-roundtripped form', () => {
     const argsSchema = Schema.Struct({
       id: Schema.String,
       flag: Schema.UndefinedOr(Schema.Boolean),
+    })
+    const localArgs = Schema.encodeUnknownSync(argsSchema)({ id: 'abc', flag: undefined } as any)
+    const wireArgs = JSON.parse(JSON.stringify(localArgs))
+    expect(isEqualEncoded(makeEncodedEvent(localArgs), makeEncodedEvent(wireArgs))).toBe(true)
+  })
+
+  Vitest.it('should consider Effect Schema optionalKey-encoded args equal to their JSON-roundtripped form', () => {
+    const argsSchema = Schema.Struct({
+      id: Schema.String,
+      label: Schema.optionalKey(Schema.String),
     })
     const localArgs = Schema.encodeUnknownSync(argsSchema)({ id: 'abc' } as any)
     const wireArgs = JSON.parse(JSON.stringify(localArgs))
