@@ -87,10 +87,10 @@
       "checkCommand": "DT_PASSTHROUGH=1 genie --check",
       "command": "DT_PASSTHROUGH=1 genie",
       "generated": true,
-      "inputFingerprint": "324bdfb5668e72c52052305d049700ba0c3b308eef2ffe6608b9d09a7116dff5",
+      "inputFingerprint": "24c508c2414ac94c222137f72894004495c56010ee45c63f4db071993f320607",
       "semanticInputs": {
         "effectUtils": {
-          "commit": "df396b6599157e7861a80d333e80bb2ebdfbe82f",
+          "commit": "ff93cf0f616d2e73683b7ac1b8831574bf117aca",
           "ref": "main"
         },
         "generator": "projectionArtifact.json from #mr/effect-utils/packages/@overeng/genie/src/runtime/projection-artifact/mod.ts",
