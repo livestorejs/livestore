@@ -313,6 +313,10 @@ in
     pkgs.jq
     pkgs.unzip
     pkgs.deno
+    # d2 for the astro-d2 docs diagrams. The npm terrastruct-d2-bin binary is not
+    # usable under the pure-pnpm install (its postinstall is skipped), so provide
+    # the matching d2 version (0.7.1) from Nix on PATH instead.
+    pkgs.d2
   ]
   ++ lib.optionals (!pkgs.stdenv.isDarwin) [
     pkgs.stdenv.cc.cc.lib

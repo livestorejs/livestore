@@ -113,6 +113,8 @@ dedupePeerDependents: true
 
 strictPeerDependencies: false
 
+publicHoistPattern: ['@parcel/watcher*']
+
 injectWorkspacePackages: false
 
 enableGlobalVirtualStore: true

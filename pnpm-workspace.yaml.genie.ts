@@ -70,6 +70,14 @@ export default pnpmWorkspaceYaml.root({
   injectWorkspacePackages: false,
   allowBuilds: repoPnpmAllowBuilds,
   packageExtensions: repoPackageExtensions,
+  /**
+   * The published @livestore/devtools-vite bundles @parcel/watcher, whose
+   * runtime `require('@parcel/watcher-<platform>')` must resolve from the
+   * consumer. Under the isolated pure-pnpm store these prebuilt platform
+   * packages are not reachable, so hoist them publicly to keep the bundled
+   * native loader working in example/integration builds.
+   */
+  publicHoistPattern: ['@parcel/watcher*'],
   /** Relaxed until @livestore/devtools-vite publishes with updated Effect peer ranges */
   strictPeerDependencies: false,
   ...examplesWorkspaceSettings,
