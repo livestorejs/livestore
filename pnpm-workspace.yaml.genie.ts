@@ -54,6 +54,26 @@ export const repoPackageExtensions = {
       'typedoc-plugin-markdown': '^4.8.1',
     },
   },
+  /**
+   * The published @livestore/devtools-vite bundles @parcel/watcher and does a
+   * runtime `require('@parcel/watcher-<platform>')`. Under the pure-pnpm global
+   * virtual store that prebuilt platform package is not reachable from the
+   * bundle's location, so the example/integration vite builds fail with
+   * "Cannot require module ./build/Release/watcher.node". Inject the platform
+   * packages directly into devtools-vite's dependency closure so the require
+   * resolves. Declared optional + os/cpu-scoped so only the matching platform
+   * is installed.
+   */
+  '@livestore/devtools-vite': {
+    optionalDependencies: {
+      '@parcel/watcher-linux-x64-glibc': '2.5.6',
+      '@parcel/watcher-linux-x64-musl': '2.5.6',
+      '@parcel/watcher-linux-arm64-glibc': '2.5.6',
+      '@parcel/watcher-linux-arm64-musl': '2.5.6',
+      '@parcel/watcher-darwin-x64': '2.5.6',
+      '@parcel/watcher-darwin-arm64': '2.5.6',
+    },
+  },
 } as const
 
 export default pnpmWorkspaceYaml.root({
@@ -70,14 +90,6 @@ export default pnpmWorkspaceYaml.root({
   injectWorkspacePackages: false,
   allowBuilds: repoPnpmAllowBuilds,
   packageExtensions: repoPackageExtensions,
-  /**
-   * The published @livestore/devtools-vite bundles @parcel/watcher, whose
-   * runtime `require('@parcel/watcher-<platform>')` must resolve from the
-   * consumer. Under the isolated pure-pnpm store these prebuilt platform
-   * packages are not reachable, so hoist them publicly to keep the bundled
-   * native loader working in example/integration builds.
-   */
-  publicHoistPattern: ['@parcel/watcher*'],
   /** Relaxed until @livestore/devtools-vite publishes with updated Effect peer ranges */
   strictPeerDependencies: false,
   ...examplesWorkspaceSettings,

@@ -18,6 +18,17 @@
       "workerd": true
     },
     "packageExtensions": {
+      "@livestore/devtools-vite": {
+        "dependencies": {},
+        "optionalDependencies": {
+          "@parcel/watcher-darwin-arm64": "2.5.6",
+          "@parcel/watcher-darwin-x64": "2.5.6",
+          "@parcel/watcher-linux-arm64-glibc": "2.5.6",
+          "@parcel/watcher-linux-arm64-musl": "2.5.6",
+          "@parcel/watcher-linux-x64-glibc": "2.5.6",
+          "@parcel/watcher-linux-x64-musl": "2.5.6"
+        }
+      },
       "react-error-boundary": {
         "dependencies": {
           "@types/react": "19.2.17",
@@ -87,7 +98,7 @@
       "checkCommand": "DT_PASSTHROUGH=1 genie --check",
       "command": "DT_PASSTHROUGH=1 genie",
       "generated": true,
-      "inputFingerprint": "24c508c2414ac94c222137f72894004495c56010ee45c63f4db071993f320607",
+      "inputFingerprint": "884b94af58c43411508d1beb728c5a49af10d155e2aa1ba2d88e8b015ef5f408",
       "semanticInputs": {
         "effectUtils": {
           "commit": "ff93cf0f616d2e73683b7ac1b8831574bf117aca",
@@ -128,6 +139,17 @@
           "minimumReleaseAgeExclude": ["@effect/platform", "@types/node", "effect"],
           "optimisticRepeatInstall": false,
           "packageExtensions": {
+            "@livestore/devtools-vite": {
+              "dependencies": {},
+              "optionalDependencies": {
+                "@parcel/watcher-darwin-arm64": "2.5.6",
+                "@parcel/watcher-darwin-x64": "2.5.6",
+                "@parcel/watcher-linux-arm64-glibc": "2.5.6",
+                "@parcel/watcher-linux-arm64-musl": "2.5.6",
+                "@parcel/watcher-linux-x64-glibc": "2.5.6",
+                "@parcel/watcher-linux-x64-musl": "2.5.6"
+              }
+            },
             "react-error-boundary": {
               "dependencies": {
                 "@types/react": "19.2.17",

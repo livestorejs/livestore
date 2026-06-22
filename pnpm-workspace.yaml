@@ -76,6 +76,15 @@ packageExtensions:
   typedoc:
     dependencies:
       typedoc-plugin-markdown: ^4.8.1
+  '@livestore/devtools-vite':
+    optionalDependencies:
+      '@parcel/watcher-linux-x64-glibc': 2.5.6
+      '@parcel/watcher-linux-x64-musl': 2.5.6
+      '@parcel/watcher-linux-arm64-glibc': 2.5.6
+      '@parcel/watcher-linux-arm64-musl': 2.5.6
+      '@parcel/watcher-darwin-x64': 2.5.6
+      '@parcel/watcher-darwin-arm64': 2.5.6
+    dependencies: {}
 
 peerDependencyRules:
   allowedVersions:
@@ -112,8 +121,6 @@ supportedArchitectures:
 dedupePeerDependents: true
 
 strictPeerDependencies: false
-
-publicHoistPattern: ['@parcel/watcher*']
 
 injectWorkspacePackages: false
 

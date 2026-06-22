@@ -31,7 +31,7 @@ overrides:
   '@tanstack/start-server-core': 1.169.15
   '@tanstack/start-client-core': 1.170.12
 
-packageExtensionsChecksum: sha256-jseAQPnlAB0Ey4ju6XD/4VJD19cFZ4pgYGn1idj4Vm4=
+packageExtensionsChecksum: sha256-bQhLgXr89t1isGkdQL5eLykUgF8vnK74ZHsVhQAaMwI=
 
 importers:
 
@@ -3320,6 +3320,7 @@ packages:
 
   '@astrojs/check@0.9.4':
     resolution: {integrity: sha512-IOheHwCtpUfvogHHsvu0AbeRZEnjJg3MopdLddkJE70mULItS/Vh37BHcI00mcOJcH1vhD3odbpvWokpxam7xA==}
+    hasBin: true
     peerDependencies:
       typescript: ^5.0.0
 
@@ -3334,6 +3335,7 @@ packages:
 
   '@astrojs/language-server@2.16.9':
     resolution: {integrity: sha512-L9kddTg+ZSO3X0Pwfx0ZPO+Z+eSSq0/39jXRyIkHzcBICzusdn2T464R4P6K0WcDZ6pMkLlFpuGS73u1pOnMSw==}
+    hasBin: true
     peerDependencies:
       prettier: ^3.0.0
       prettier-plugin-astro: '>=0.11.0'
@@ -4974,6 +4976,7 @@ packages:
 
   '@expo/cli@54.0.10':
     resolution: {integrity: sha512-iw9gAnN6+PKWWLIyYmiskY/wzZjuFMctunqGXuC8BGATWgtr/HpzjVqWbcL3KIX/GvEBCCh74Tkckrh+Ylxh5Q==}
+    hasBin: true
     peerDependencies:
       expo: '*'
       expo-router: '*'
@@ -5649,6 +5652,7 @@ packages:
 
   '@livestore/cli@0.4.0':
     resolution: {integrity: sha512-nWGoz2drvxcrO/YueBrgCJ3PlAXg8TL/iqo6rgArwrqEcgVl3eWVMvu88WDk2M2D8OfrR2BXsyGpL6nHzO/j4w==}
+    hasBin: true
     peerDependencies:
       '@effect/ai': ^0.35.0
       '@effect/cli': 0.75.2
@@ -10723,6 +10727,7 @@ packages:
 
   expo@54.0.12:
     resolution: {integrity: sha512-BVvG1A9BlKAOBwczMi7XThOLzI3TUShkV/yRnAMGvQP5SQFDq7UojkZLLG285gg3OvkoqjMUE0tZvVXbvuI4tA==}
+    hasBin: true
     peerDependencies:
       '@expo/dom-webview': '*'
       '@expo/metro-runtime': '*'
@@ -12237,6 +12242,7 @@ packages:
   madge@8.0.0:
     resolution: {integrity: sha512-9sSsi3TBPhmkTCIpVQF0SPiChj1L7Rq9kU2KDG1o6v2XH9cCw086MopjVCD+vuoL5v8S77DTbVopTO8OUiQpIw==}
     engines: {node: '>=18'}
+    hasBin: true
     peerDependencies:
       typescript: ^5.4.4
     peerDependenciesMeta:
@@ -13620,6 +13626,7 @@ packages:
   react-native@0.81.4:
     resolution: {integrity: sha512-bt5bz3A/+Cv46KcjV0VQa+fo7MKxs17RCcpzjftINlen4ZDUl0I6Ut+brQ2FToa5oD0IB0xvQHfmsg2EDqsZdQ==}
     engines: {node: '>= 20.19.4'}
+    hasBin: true
     peerDependencies:
       '@types/react': ^19.1.0
       react: 19.2.7
@@ -14003,6 +14010,7 @@ packages:
 
   rwsdk@1.0.0-beta.12:
     resolution: {integrity: sha512-6Maf40CRViAmX07412fsRn9unUNyzcLfpLp18KGsHZEXAJHLvAceRcjxp82TdC4fzAZohIQAk3gYbGdCi/Ulpg==}
+    hasBin: true
     peerDependencies:
       '@cloudflare/vite-plugin': ^1.13.10
       react: 19.2.7
@@ -14758,6 +14766,7 @@ packages:
     resolution: {integrity: sha512-ks6Vjr/jEw0P1gmOVwutM3B7fWxoWBL2KRDb1JfqGVawBmO5UsvmWOQFGHBPl5yxYz4eERr19E6L7NMv+Fej4w==}
     engines: {node: ^18 || >=20}
     deprecated: unmaintained
+    hasBin: true
     peerDependencies:
       typescript: ^5.0.0
     peerDependenciesMeta:
@@ -14835,6 +14844,7 @@ packages:
   typedoc@0.28.11:
     resolution: {integrity: sha512-1FqgrrUYGNuE3kImAiEDgAVVVacxdO4ZVTKbiOVDGkoeSB4sNwQaDpa8mta+Lw5TEzBFmGXzsg0I1NLRIoaSFw==}
     engines: {node: '>= 18', pnpm: '>= 10'}
+    hasBin: true
     peerDependencies:
       typescript: 5.0.x || 5.1.x || 5.2.x || 5.3.x || 5.4.x || 5.5.x || 5.6.x || 5.7.x || 5.8.x || 5.9.x
 
@@ -15071,6 +15081,7 @@ packages:
 
   update-browserslist-db@1.2.3:
     resolution: {integrity: sha512-Js0m9cx+qOgDxo0eMiFGEueWztz+d4+M3rGlmKPT+T4IS/jP4ylw3Nwpu6cpTTP8R1MAC1kF4VbdLt3ARf209w==}
+    hasBin: true
     peerDependencies:
       browserslist: '>= 4.21.0'
 
@@ -15183,6 +15194,7 @@ packages:
   vite@6.4.2:
     resolution: {integrity: sha512-2N/55r4JDJ4gdrCvGgINMy+HH3iRpNIz8K6SFwVsA+JbQScLiC+clmAxBgwiSPgcG9U15QmvqCGWzMbqda5zGQ==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
+    hasBin: true
     peerDependencies:
       '@types/node': ^18.0.0 || ^20.0.0 || >=22.0.0
       jiti: '>=1.21.0'
@@ -15222,6 +15234,7 @@ packages:
   vite@7.3.1:
     resolution: {integrity: sha512-w+N7Hifpc3gRjZ63vYBXA56dvvRlNWRczTdmCBBa+CotUzAPf5b7YMdMR/8CQoeYE5LX3W4wj6RYTgonm1b9DA==}
     engines: {node: ^20.19.0 || >=22.12.0}
+    hasBin: true
     peerDependencies:
       '@types/node': ^20.19.0 || >=22.12.0
       jiti: '>=1.21.0'
@@ -15261,6 +15274,7 @@ packages:
   vite@8.0.16:
     resolution: {integrity: sha512-h9bXPmJichP5fLmVQo3PyaGSDE2n3aPuomeAlVRm0JLmt4rY6zmPKd59HYI4LNW8oTK7tlTsuC7l/m7awx9Jcw==}
     engines: {node: ^20.19.0 || >=22.12.0}
+    hasBin: true
     peerDependencies:
       '@types/node': ^20.19.0 || >=22.12.0
       '@vitejs/devtools': ^0.1.18
@@ -15311,6 +15325,7 @@ packages:
   vitest@4.1.9:
     resolution: {integrity: sha512-nE3/LEyc0z87uHYLZebqCUOaJr2hdtuPp7BQ4BosVFnfltxgAvMG08NyrSGlPpOUWvR27c5flSmYFTNr78L9GQ==}
     engines: {node: ^20.0.0 || ^22.0.0 || >=24.0.0}
+    hasBin: true
     peerDependencies:
       '@edge-runtime/vm': '*'
       '@opentelemetry/api': ^1.9.0
@@ -15602,6 +15617,7 @@ packages:
   wrangler@4.42.2:
     resolution: {integrity: sha512-1iTnbjB4F12KSP1zbfxQL495xarS+vdrZnulQP2SEcAxDTUGn7N9zk1O2WtFOc+Fhcgl+9/sdz/4AL9pF34Pwg==}
     engines: {node: '>=18.0.0'}
+    hasBin: true
     peerDependencies:
       '@cloudflare/workers-types': ^4.20251008.0
     peerDependenciesMeta:
@@ -19016,6 +19032,13 @@ snapshots:
       '@livestore/adapter-web': 0.3.1(ce1d3f243e7c5338abd6544fd6ed5e02)
       '@livestore/utils': 0.3.1(118d3b77d61d6b8bced242ae53bff71b)
       vite: 8.0.16(@types/node@26.0.0)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
+    optionalDependencies:
+      '@parcel/watcher-darwin-arm64': 2.5.6
+      '@parcel/watcher-darwin-x64': 2.5.6
+      '@parcel/watcher-linux-arm64-glibc': 2.5.6
+      '@parcel/watcher-linux-arm64-musl': 2.5.6
+      '@parcel/watcher-linux-x64-glibc': 2.5.6
+      '@parcel/watcher-linux-x64-musl': 2.5.6
     transitivePeerDependencies:
       - '@effect/cli'
       - '@effect/cluster'
@@ -19039,6 +19062,13 @@ snapshots:
       '@livestore/adapter-web': 0.4.0-dev.25(5f6dc8a22f76bb70cff306edbf924a8b)
       '@livestore/utils': 0.4.0-dev.25(5f6dc8a22f76bb70cff306edbf924a8b)
       vite: 7.3.1(@types/node@26.0.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
+    optionalDependencies:
+      '@parcel/watcher-darwin-arm64': 2.5.6
+      '@parcel/watcher-darwin-x64': 2.5.6
+      '@parcel/watcher-linux-arm64-glibc': 2.5.6
+      '@parcel/watcher-linux-arm64-musl': 2.5.6
+      '@parcel/watcher-linux-x64-glibc': 2.5.6
+      '@parcel/watcher-linux-x64-musl': 2.5.6
     transitivePeerDependencies:
       - '@effect/ai'
       - '@effect/cli'
@@ -19065,6 +19095,13 @@ snapshots:
       '@livestore/adapter-web': 0.4.0-dev.25(b1ca09ffc6aac89d234a33adeeca9383)
       '@livestore/utils': 0.4.0-dev.25(b1ca09ffc6aac89d234a33adeeca9383)
       vite: 7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
+    optionalDependencies:
+      '@parcel/watcher-darwin-arm64': 2.5.6
+      '@parcel/watcher-darwin-x64': 2.5.6
+      '@parcel/watcher-linux-arm64-glibc': 2.5.6
+      '@parcel/watcher-linux-arm64-musl': 2.5.6
+      '@parcel/watcher-linux-x64-glibc': 2.5.6
+      '@parcel/watcher-linux-x64-musl': 2.5.6
     transitivePeerDependencies:
       - '@effect/ai'
       - '@effect/cli'
@@ -19091,6 +19128,13 @@ snapshots:
       '@livestore/adapter-web': 0.4.0-dev.25(e014d0a173c64a1af786fbf0af8d9fe6)
       '@livestore/utils': 0.4.0-dev.25(e014d0a173c64a1af786fbf0af8d9fe6)
       vite: 8.0.16(@types/node@26.0.0)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
+    optionalDependencies:
+      '@parcel/watcher-darwin-arm64': 2.5.6
+      '@parcel/watcher-darwin-x64': 2.5.6
+      '@parcel/watcher-linux-arm64-glibc': 2.5.6
+      '@parcel/watcher-linux-arm64-musl': 2.5.6
+      '@parcel/watcher-linux-x64-glibc': 2.5.6
+      '@parcel/watcher-linux-x64-musl': 2.5.6
     transitivePeerDependencies:
       - '@effect/ai'
       - '@effect/cli'
