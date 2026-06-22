@@ -89,7 +89,13 @@ export const makeProtocolSocketWithIsConnected = (options: {
                 error: new RpcClientError.RpcClientError({
                   reason: 'Protocol',
                   message: 'Error decoding message',
-                  cause: defect instanceof CloseEvent ? defect : Cause.fail(defect),
+                  // `CloseEvent` is a DOM global and is undefined in non-DOM runtimes (e.g. the
+                  // Node-based sync-provider DO RPC path), so guard the lookup before `instanceof`
+                  // to avoid throwing a ReferenceError while building the protocol error.
+                  cause:
+                    typeof globalThis.CloseEvent === 'function' && defect instanceof CloseEvent
+                      ? defect
+                      : Cause.fail(defect),
                 }),
               })
             }
