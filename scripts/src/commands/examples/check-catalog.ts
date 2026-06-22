@@ -16,10 +16,15 @@ const workspaceRoot =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
 
 /**
- * Dependencies intentionally allowed to differ from the catalog in examples (e.g. an example that
- * demonstrates an older API). Keep this empty unless there is a concrete, documented reason.
+ * Dependencies intentionally allowed to differ from the catalog in examples. Keep this minimal and
+ * documented.
+ *
+ * - `vite` / `@vitejs/plugin-react`: the catalog is on vite 8 (Rolldown bundler), but the example
+ *   plugin ecosystem is not ready yet — `rwsdk/vite` (web-todomvc-redwood) fails to build under
+ *   Rolldown and the published `@livestore/devtools-vite` still uses vite-7 config APIs. Keep the
+ *   examples on the vite-7 line until the ecosystem supports vite 8, then remove this exception.
  */
-const ALLOWLIST: ReadonlySet<string> = new Set<string>([])
+const ALLOWLIST: ReadonlySet<string> = new Set<string>(['vite', '@vitejs/plugin-react'])
 
 const loadCatalog = Effect.fn('examples/loadCatalog')(function* () {
   // The composed genie catalog lives behind genie's `#mr/` import map which is not resolvable from
