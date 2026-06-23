@@ -24,7 +24,7 @@ import type { SyncMetadata } from '../../common/sync-message-types.ts'
 
 export interface SyncBackendRpcStub extends CfTypes.DurableObjectStub, SyncBackendRpcInterface {}
 
-// TODO we probably need better scoping for the requestIdMailboxMap (i.e. support multiple stores, ...)
+// requestIds are isolate-unique (`@effect/rpc` module-level counter), so one map routes correctly across stores.
 type EffectRpcRequestId = string // 0, 1, 2, ...
 const requestIdMailboxMap = new Map<EffectRpcRequestId, Mailbox.Mailbox<SyncMessage.PullResponse>>()
 
@@ -82,11 +82,16 @@ export const makeDoRpcSync =
                   if (res._tag === 'None')
                     return shouldNeverHappen('There should at least be a no-more page info response')
 
+                  const rpcRequestId = res.value.rpcRequestId
+
                   const mailbox = yield* Mailbox.make<SyncMessage.PullResponse>().pipe(
-                    Effect.acquireRelease((mailbox) => mailbox.shutdown),
+                    // On scope close, drop the map entry so a closed client leaves no stale route.
+                    Effect.acquireRelease((mailbox) =>
+                      mailbox.shutdown.pipe(Effect.zipRight(Effect.sync(() => requestIdMailboxMap.delete(rpcRequestId)))),
+                    ),
                   )
 
-                  requestIdMailboxMap.set(res.value.rpcRequestId, mailbox)
+                  requestIdMailboxMap.set(rpcRequestId, mailbox)
 
                   return Mailbox.toStream(mailbox)
                 }).pipe(Stream.unwrapScoped),
@@ -159,17 +164,14 @@ export const makeDoRpcSync =
     }).pipe(Effect.withSpan('rpc-sync-client:makeDoRpcSync'))
 
 /**
+ * Routes a reverse-RPC chunk into the matching live pull stream. A client DO implementing `syncUpdateRpc`
+ * must gate on its own store liveness — return `true` when the store is gone so the sync DO reaps the
+ * subscription (recovery is a normal catch-up pull on next use, ≈ WebSocket reconnect).
  *
  * ```ts
- * import { DurableObject } from 'cloudflare:workers'
- * import { ClientDoWithRpcCallback } from '@livestore/common-cf'
- *
- * export class MyDurableObject extends DurableObject implements ClientDoWithRpcCallback {
- *   // ...
- *
- *   async syncUpdateRpc(payload: RpcMessage.ResponseChunkEncoded) {
- *     return handleSyncUpdateRpc(payload)
- *   }
+ * async syncUpdateRpc(payload: RpcMessage.ResponseChunkEncoded): Promise<SyncUpdateRpcResult> {
+ *   if (this.#store === undefined) return true
+ *   return handleSyncUpdateRpc(payload)
  * }
  * ```
  */
@@ -181,10 +183,9 @@ export const handleSyncUpdateRpc = (payload: unknown) =>
     const pullStreamMailbox = requestIdMailboxMap.get(decodedPayload.requestId)
 
     if (pullStreamMailbox === undefined) {
-      // Case: DO was hibernated, so we need to manually update the store
-      yield* Effect.log(`No mailbox found for ${decodedPayload.requestId}`)
+      // Transient: live pull not (re)registered yet. Drop the chunk; the next pull catches up from the cursor.
+      yield* Effect.logDebug(`No mailbox for requestId ${decodedPayload.requestId}; dropping chunk (transient)`)
     } else {
-      // Case: DO was still alive, so the existing `pull` will pick up the new events
       yield* pullStreamMailbox.offer(decoded)
     }
   }).pipe(Effect.withSpan('rpc-sync-client:rpcCallback'), Effect.tapCauseLogPretty, Effect.runPromise)

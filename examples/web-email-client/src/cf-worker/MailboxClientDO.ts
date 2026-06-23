@@ -120,7 +120,8 @@ export class MailboxClientDO extends DurableObject<Env> implements ClientDoWithR
   }
 
   async syncUpdateRpc(payload: unknown) {
-    // Make sure to wake up the store before processing the sync update
-    await handleSyncUpdateRpc(payload)
+    // Store gone (hibernated): ask the sync DO to drop this subscription; it recovers on next use.
+    if (this.hasStore === false) return true
+    return handleSyncUpdateRpc(payload)
   }
 }

@@ -1,5 +1,4 @@
 import { DurableObject } from 'cloudflare:workers'
-import type { AlarmInvocationInfo } from '@cloudflare/workers-types'
 
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { nanoid } from '@livestore/livestore'
@@ -65,15 +64,11 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
         console.log(`todos for store (${this.storeId})`, todos)
       })
     }
-
-    await this.ctx.storage.setAlarm(Date.now() + 1000)
-  }
-
-  alarm(_alarmInfo?: AlarmInvocationInfo): void | Promise<void> {
-    this.subscribeToStore()
   }
 
   async syncUpdateRpc(payload: unknown) {
-    await handleSyncUpdateRpc(payload)
+    // Store gone (hibernated): ask the sync DO to drop this subscription; it recovers on next use.
+    if (this.hasCachedStore === false) return true
+    return handleSyncUpdateRpc(payload)
   }
 }

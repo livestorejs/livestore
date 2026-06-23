@@ -36,3 +36,21 @@ export const contextTable = State.SQLite.table({
     backendId: State.SQLite.text({}),
   },
 })
+
+/**
+ * Persisted DO-RPC live-pull subscriptions — one row per subscribing caller DO.
+ *
+ * ⚠️  IMPORTANT: Any changes to this schema require bumping PERSISTENCE_FORMAT_VERSION in shared.ts
+ */
+export const rpcSubscriptionTable = State.SQLite.table({
+  name: `rpc_subscription_${PERSISTENCE_FORMAT_VERSION}`,
+  columns: {
+    durableObjectId: State.SQLite.text({ primaryKey: true }),
+    bindingName: State.SQLite.text({}),
+    requestId: State.SQLite.text({}),
+    storeId: State.SQLite.text({}),
+    payload: State.SQLite.text({ nullable: true }),
+    /** Compare-and-delete token (not a timestamp); see `makeRpcSubscriptions`. */
+    generation: State.SQLite.integer({}),
+  },
+})
