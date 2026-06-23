@@ -63,6 +63,14 @@ export const repoPackageExtensions = {
    * packages directly into devtools-vite's dependency closure so the require
    * resolves. Declared optional + os/cpu-scoped so only the matching platform
    * is installed.
+   *
+   * Still needed by the examples + integration-playwright jobs, which install
+   * @livestore/devtools-vite from npm — that published package still ships the
+   * OLD bundled build (0.4.0-dev.25) with the platform-scoped require. The
+   * certify path uses the repinned source artifact (release/devtools-artifact.json),
+   * which is already fixed (bare `require('@parcel/watcher')`), so this block is
+   * removable once the fixed devtools-vite is republished to npm (not just as a
+   * source artifact).
    */
   '@livestore/devtools-vite': {
     optionalDependencies: {
