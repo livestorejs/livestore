@@ -153,17 +153,28 @@ let
       fi
     done
 
+    # Route through run-tests.ts's devtools command so the vite dev server is
+    # started (the raw `playwright test` invocation never started it, causing
+    # ERR_CONNECTION_REFUSED). `--web-only` scopes the run to web.play.ts so the
+    # browser-extension test's chrome-setup dependency doesn't apply. The
+    # devtools command sets FORCE_PLAYWRIGHT_VIA_CLI/PLAYWRIGHT_SUITE/
+    # PLAYWRIGHT_HEADLESS itself; LIVESTORE_DEVTOOLS_ENFORCE_LICENSE and
+    # DT_PASSTHROUGH are inherited from this ambient env (Effect's Command
+    # merges env with process.env).
+    #
+    # Disable in-browser OTEL export (matches ci.yml's "Disable in Vite"): now
+    # that the page actually loads, it would otherwise POST traces to the
+    # devenv-defaulted VITE_OTEL_EXPORTER_OTLP_ENDPOINT (http://localhost:4318),
+    # which in the validate-release-plan job has no collector and surfaces a
+    # console error that effect-playwright turns into a SiteError test failure.
     (
       cd tests/integration
       CI=true \
-        FORCE_PLAYWRIGHT_VIA_CLI=1 \
-        PLAYWRIGHT_SUITE=devtools \
-        PLAYWRIGHT_HEADLESS="''${PLAYWRIGHT_HEADLESS:-1}" \
         LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
+        VITE_OTEL_EXPORTER_OTLP_ENDPOINT= \
+        PLAYWRIGHT_HEADLESS="''${PLAYWRIGHT_HEADLESS:-1}" \
         DT_PASSTHROUGH=1 \
-        playwright test \
-          src/tests/playwright/devtools/web.play.ts \
-          --reporter=line
+        bun ./scripts/run-tests.ts devtools --mode headless --web-only
     )
 
     certification_path="''${LIVESTORE_DEVTOOLS_CERTIFICATION:-release/devtools-artifact.certification.json}"

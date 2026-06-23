@@ -307,7 +307,7 @@ const testIntegrationAllCommand = Cli.Command.make(
       [
         integrationTests.miscTest.handler({ mode: 'headless', localDevtoolsPreview }),
         integrationTests.todomvcTest.handler({ mode: 'headless', localDevtoolsPreview }),
-        integrationTests.devtoolsTest.handler({ mode: 'headless', localDevtoolsPreview }),
+        integrationTests.devtoolsTest.handler({ mode: 'headless', localDevtoolsPreview, webOnly: false }),
         syncProviderTest.handler({ provider: Option.none() }),
         waSqliteTest.handler({}),
       ],
