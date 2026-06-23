@@ -74,99 +74,95 @@ Vitest.describe('DO-RPC live pull across sync-DO hibernation', { timeout: testTi
 
   Vitest.afterAll(async () => await runtime.dispose())
 
-  Vitest.scopedLive(
-    'resident DO-RPC client stops receiving live events after the sync DO evicts',
-    (test) =>
-      Effect.gen(function* () {
-        const { makeProvider, port } = yield* SyncProviderImpl.pipe(
-          Effect.map((_) => ({ makeProvider: _.makeProvider, port: _.providerSpecific.port as number })),
-        )
+  Vitest.scopedLive('resident DO-RPC client stops receiving live events after the sync DO evicts', (test) =>
+    Effect.gen(function* () {
+      const { makeProvider, port } = yield* SyncProviderImpl.pipe(
+        Effect.map((_) => ({ makeProvider: _.makeProvider, port: _.providerSpecific.port as number })),
+      )
 
-        // Unique per run so persisted DO state from a prior run can't poison the head (ServerAheadError).
-        const storeId = `do-rpc-hibernation-${nanoid()}`
-        const factory = makeFactory({ client, startSeq: 1, initialParent: 'root' })
-        const base = `http://localhost:${port}`
-        const getJson = (path: string) =>
-          Effect.promise(() => fetch(`${base}${path}`).then((r) => r.json() as Promise<any>))
+      // Unique per run so persisted DO state from a prior run can't poison the head (ServerAheadError).
+      const storeId = `do-rpc-hibernation-${nanoid()}`
+      const factory = makeFactory({ client, startSeq: 1, initialParent: 'root' })
+      const base = `http://localhost:${port}`
+      const getJson = (path: string): Effect.Effect<any> =>
+        Effect.promise(() => fetch(`${base}${path}`).then((r) => r.json()))
 
-        const syncBackend = yield* makeProvider({ storeId, clientId: client.clientId, payload: undefined })
+      const syncBackend = yield* makeProvider({ storeId, clientId: client.clientId, payload: undefined })
 
-        // Collect every todo id the live pull delivers, into a shared array.
-        const received: string[] = []
-        yield* syncBackend
-          .pull(Option.none(), { live: true })
-          .pipe(
-            Stream.runForEach((res) =>
-              Effect.sync(() => {
-                for (const item of res.batch) {
-                  const id = todoId(item)
-                  if (id !== undefined) received.push(id)
-                }
-              }),
-            ),
-            Effect.forkScoped,
-          )
-
-        // Let the initial (live) pull register its subscription on the sync DO before pushing.
-        yield* Effect.sleep('1 second')
-
-        // 1. Baseline — push an event and confirm it IS delivered live (the subscription channel works).
-        yield* syncBackend.push([factory.todoCreated.next({ id: 'before-evict', text: 'before', completed: false })])
-        yield* Effect.sync(() => received.includes('before-evict')).pipe(
-          Effect.flatMap((ok) => (ok ? Effect.void : Effect.fail(new Error('not yet delivered')))),
-          Effect.retry(Schedule.spaced('300 millis')),
-          Effect.timeout('10 seconds'),
-        )
-
-        // 2. Snapshot instance ids (precondition baseline).
-        const serverId1 = (yield* getJson(`/instance/sync?storeId=${storeId}`)).instanceId as string
-        const clientId1 = (yield* getJson('/instance/client')).instanceId as string
-
-        // 3. Idle the SYNC DO past the eviction window, while keeping the CLIENT DO warm
-        //    (ping /instance/client — a local no-op that never touches the sync DO).
-        yield* getJson('/instance/client').pipe(Effect.delay('3 seconds'), Effect.repeat(Schedule.recurs(4)))
-        yield* Effect.sleep(`${SERVER_IDLE_MS - 12_000} millis`)
-
-        // 4. PROVE the precondition: sync DO reconstructed (evicted), client DO stayed resident.
-        const serverId2 = (yield* getJson(`/instance/sync?storeId=${storeId}`)).instanceId as string
-        const clientId2 = (yield* getJson('/instance/client')).instanceId as string
-        expect(serverId2, 'sync DO should have evicted+reconstructed (new instance id)').not.toBe(serverId1)
-        expect(clientId2, 'client DO should have stayed resident (same instance id)').toBe(clientId1)
-
-        // 5. Push a new event AFTER the sync DO evicted.
-        yield* syncBackend.push([factory.todoCreated.next({ id: 'after-evict', text: 'after', completed: false })])
-
-        // 6. Give live delivery ample time (baseline took <1s).
-        yield* Effect.sleep('4 seconds')
-
-        // 7. Control — the server DID store the post-eviction event (a fresh non-live pull returns it),
-        //    so the ONLY thing that failed is live delivery over the lost subscription.
-        const stored = yield* syncBackend.pull(Option.none(), { live: false }).pipe(
-          Stream.runFold([] as string[], (acc, res) => {
+      // Collect every todo id the live pull delivers, into a shared array.
+      const received: string[] = []
+      yield* syncBackend.pull(Option.none(), { live: true }).pipe(
+        Stream.runForEach((res) =>
+          Effect.sync(() => {
             for (const item of res.batch) {
               const id = todoId(item)
-              if (id !== undefined) acc.push(id)
+              if (id !== undefined) received.push(id)
             }
-            return acc
           }),
-        )
-        expect(stored, 'server should have stored both events').toEqual(
-          expect.arrayContaining(['before-evict', 'after-evict']),
-        )
+        ),
+        Effect.forkScoped,
+      )
 
-        yield* Effect.logInfo('[do-rpc-hibernation] repro evidence', {
-          serverEvicted: serverId1 !== serverId2,
-          clientResident: clientId1 === clientId2,
-          liveReceived: received,
-          storedOnServer: stored,
-        })
+      // Let the initial (live) pull register its subscription on the sync DO before pushing.
+      yield* Effect.sleep('1 second')
 
-        // 8. The bug: the resident DO-RPC client received the pre-eviction event but NOT the post-eviction one.
-        expect(received, 'live pull received the pre-eviction event').toContain('before-evict')
-        expect(received, 'live pull should have received the post-eviction event (currently lost)').toContain(
-          'after-evict',
-        )
-      }).pipe(Effect.provide(runtime)),
+      // 1. Baseline — push an event and confirm it IS delivered live (the subscription channel works).
+      yield* syncBackend.push([factory.todoCreated.next({ id: 'before-evict', text: 'before', completed: false })])
+      yield* Effect.sync(() => received.includes('before-evict')).pipe(
+        Effect.flatMap((ok) => (ok ? Effect.void : Effect.fail(new Error('not yet delivered')))),
+        Effect.retry(Schedule.spaced('300 millis')),
+        Effect.timeout('10 seconds'),
+      )
+
+      // 2. Snapshot instance ids (precondition baseline).
+      const serverId1 = (yield* getJson(`/instance/sync?storeId=${storeId}`)).instanceId as string
+      const clientId1 = (yield* getJson('/instance/client')).instanceId as string
+
+      // 3. Idle the SYNC DO past the eviction window, while keeping the CLIENT DO warm
+      //    (ping /instance/client — a local no-op that never touches the sync DO).
+      yield* getJson('/instance/client').pipe(Effect.delay('3 seconds'), Effect.repeat(Schedule.recurs(4)))
+      yield* Effect.sleep(`${SERVER_IDLE_MS - 12_000} millis`)
+
+      // 4. PROVE the precondition: sync DO reconstructed (evicted), client DO stayed resident.
+      const serverId2 = (yield* getJson(`/instance/sync?storeId=${storeId}`)).instanceId as string
+      const clientId2 = (yield* getJson('/instance/client')).instanceId as string
+      expect(serverId2, 'sync DO should have evicted+reconstructed (new instance id)').not.toBe(serverId1)
+      expect(clientId2, 'client DO should have stayed resident (same instance id)').toBe(clientId1)
+
+      // 5. Push a new event AFTER the sync DO evicted.
+      yield* syncBackend.push([factory.todoCreated.next({ id: 'after-evict', text: 'after', completed: false })])
+
+      // 6. Give live delivery ample time (baseline took <1s).
+      yield* Effect.sleep('4 seconds')
+
+      // 7. Control — the server DID store the post-eviction event (a fresh non-live pull returns it),
+      //    so the ONLY thing that failed is live delivery over the lost subscription.
+      const stored = yield* syncBackend.pull(Option.none(), { live: false }).pipe(
+        Stream.runFold([] as string[], (acc, res) => {
+          for (const item of res.batch) {
+            const id = todoId(item)
+            if (id !== undefined) acc.push(id)
+          }
+          return acc
+        }),
+      )
+      expect(stored, 'server should have stored both events').toEqual(
+        expect.arrayContaining(['before-evict', 'after-evict']),
+      )
+
+      yield* Effect.logInfo('[do-rpc-hibernation] repro evidence', {
+        serverEvicted: serverId1 !== serverId2,
+        clientResident: clientId1 === clientId2,
+        liveReceived: received,
+        storedOnServer: stored,
+      })
+
+      // 8. The bug: the resident DO-RPC client received the pre-eviction event but NOT the post-eviction one.
+      expect(received, 'live pull received the pre-eviction event').toContain('before-evict')
+      expect(received, 'live pull should have received the post-eviction event (currently lost)').toContain(
+        'after-evict',
+      )
+    }).pipe(Effect.provide(runtime)),
   )
 
   // Reaping (#2/#4): once the client reports its store is gone, the sync DO must drop the persisted
@@ -182,8 +178,8 @@ Vitest.describe('DO-RPC live pull across sync-DO hibernation', { timeout: testTi
         const storeId = `do-rpc-reap-${nanoid()}`
         const factory = makeFactory({ client, startSeq: 1, initialParent: 'root' })
         const base = `http://localhost:${port}`
-        const getJson = (path: string) =>
-          Effect.promise(() => fetch(`${base}${path}`).then((r) => r.json() as Promise<any>))
+        const getJson = (path: string): Effect.Effect<any> =>
+          Effect.promise(() => fetch(`${base}${path}`).then((r) => r.json()))
         const subCount = () =>
           getJson(`/rpc-subscriptions/count?storeId=${storeId}`).pipe(Effect.map((r) => r.count as number))
 
@@ -192,19 +188,17 @@ Vitest.describe('DO-RPC live pull across sync-DO hibernation', { timeout: testTi
         const syncBackend = yield* makeProvider({ storeId, clientId: client.clientId, payload: undefined })
 
         const received: string[] = []
-        yield* syncBackend
-          .pull(Option.none(), { live: true })
-          .pipe(
-            Stream.runForEach((res) =>
-              Effect.sync(() => {
-                for (const item of res.batch) {
-                  const id = todoId(item)
-                  if (id !== undefined) received.push(id)
-                }
-              }),
-            ),
-            Effect.forkScoped,
-          )
+        yield* syncBackend.pull(Option.none(), { live: true }).pipe(
+          Stream.runForEach((res) =>
+            Effect.sync(() => {
+              for (const item of res.batch) {
+                const id = todoId(item)
+                if (id !== undefined) received.push(id)
+              }
+            }),
+          ),
+          Effect.forkScoped,
+        )
 
         yield* Effect.sleep('1 second') // let the live pull register its subscription
 

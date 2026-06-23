@@ -108,8 +108,7 @@ const makeHelpers = (serverUrl: string, storeId: string) =>
       getEventlog: () =>
         client.get('/store/eventlog').pipe(Effect.flatMap(HttpClientResponse.schemaBodyJson(EventlogSchema))),
       /** Control: boots the store (catch-up pull) and returns the materialized todos. */
-      getTodos: () =>
-        client.get('/store/todos').pipe(Effect.flatMap(HttpClientResponse.schemaBodyJson(TodosSchema))),
+      getTodos: () => client.get('/store/todos').pipe(Effect.flatMap(HttpClientResponse.schemaBodyJson(TodosSchema))),
     }
   })
 
@@ -181,7 +180,9 @@ Vitest.describe('adapter-cloudflare — client-host hibernation (live-pull deliv
       )
 
       // Preconditions: live delivery worked while resident, and the store DO actually hibernated.
-      expect(afterBefore.eventlogCount, 'before-evict should be delivered live while resident').toBeGreaterThanOrEqual(1)
+      expect(afterBefore.eventlogCount, 'before-evict should be delivered live while resident').toBeGreaterThanOrEqual(
+        1,
+      )
       expect(afterEvict.instanceId, 'store DO should have evicted+reconstructed during the idle window').not.toBe(
         instance1,
       )

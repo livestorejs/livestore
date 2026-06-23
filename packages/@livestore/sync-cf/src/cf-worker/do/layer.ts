@@ -165,9 +165,9 @@ const makeRpcSubscriptions = (ctx: CfTypes.DurableObjectState): RpcSubscriptions
         nextGeneration(),
       ),
     all: () => {
-      const rows = ctx.storage.sql
-        .exec(`SELECT * FROM "${table}"`)
-        .toArray() as Array<typeof rpcSubscriptionTable.rowSchema.Type>
+      const rows = ctx.storage.sql.exec(`SELECT * FROM "${table}"`).toArray() as Array<
+        typeof rpcSubscriptionTable.rowSchema.Type
+      >
       return rows.map(
         (row): RpcSubscription => ({
           storeId: row.storeId,

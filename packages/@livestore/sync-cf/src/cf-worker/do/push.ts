@@ -177,7 +177,12 @@ export const makePush =
                 env,
                 requestId: subscription.requestId,
                 values: [encoded],
-              }).pipe(Effect.disconnect, Effect.timeout(RPC_SUBSCRIBER_CALL_TIMEOUT), Effect.tapCauseLogPretty, Effect.exit)
+              }).pipe(
+                Effect.disconnect,
+                Effect.timeout(RPC_SUBSCRIBER_CALL_TIMEOUT),
+                Effect.tapCauseLogPretty,
+                Effect.exit,
+              )
 
               if (Exit.isFailure(exit)) break // Transient — keep the subscription, retry next push.
 

@@ -77,9 +77,7 @@ const makeHelpers = (serverUrl: string, storeId: string) =>
     return {
       /** Cheap probe: per-instance uuid + current long-period timer count. Does NOT boot the store. */
       getInstance: () =>
-        client
-          .get('/store/instance')
-          .pipe(Effect.flatMap(HttpClientResponse.schemaBodyJson(InstanceSchema))),
+        client.get('/store/instance').pipe(Effect.flatMap(HttpClientResponse.schemaBodyJson(InstanceSchema))),
 
       /**
        * Boots the full Store inside the DO (DO-RPC sync to SyncBackendDO) and commits one event.

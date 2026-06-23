@@ -14,7 +14,7 @@ export interface Env {
 }
 
 /** Wires the REAL (now timer-less) `setupDurableObjectWebSocketRpc` server onto `self`. */
-const setupServer = (self: DurableObject, instanceId: string) => {
+const setupServer = (self: DurableObject<Env, unknown>, instanceId: string) => {
   const handlersLayer = HibRpcs.toLayer({
     Ping: () => Effect.succeed({}),
     InstanceId: () => Effect.succeed({ id: instanceId }),

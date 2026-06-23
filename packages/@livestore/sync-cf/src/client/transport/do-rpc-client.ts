@@ -87,7 +87,9 @@ export const makeDoRpcSync =
                   const mailbox = yield* Mailbox.make<SyncMessage.PullResponse>().pipe(
                     // On scope close, drop the map entry so a closed client leaves no stale route.
                     Effect.acquireRelease((mailbox) =>
-                      mailbox.shutdown.pipe(Effect.zipRight(Effect.sync(() => requestIdMailboxMap.delete(rpcRequestId)))),
+                      mailbox.shutdown.pipe(
+                        Effect.zipRight(Effect.sync(() => requestIdMailboxMap.delete(rpcRequestId))),
+                      ),
                     ),
                   )
 
