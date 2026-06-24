@@ -1,7 +1,7 @@
 import { BackendIdMismatchError, ServerAheadError, SyncBackend, UnknownError } from '@livestore/common'
 import { type CfTypes, emitStreamResponse } from '@livestore/common-cf'
 import { splitChunkBySize } from '@livestore/common/sync'
-import { Chunk, Duration, Effect, Exit, Option, type RpcMessage, Schema } from '@livestore/utils/effect'
+import { Chunk, Duration, Effect, Option, type RpcMessage, Schema } from '@livestore/utils/effect'
 
 import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SyncMessage } from '../../common/mod.ts'
@@ -184,7 +184,7 @@ export const makePush =
                 Effect.exit,
               )
 
-              if (Exit.isFailure(exit)) break // Transient — keep the subscription, retry next push.
+              if (exit._tag === 'Failure') break // Transient — keep the subscription, retry next push.
 
               if (exit.value === true) {
                 unsubscribe = true

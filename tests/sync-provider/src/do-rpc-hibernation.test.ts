@@ -109,7 +109,7 @@ Vitest.describe('DO-RPC live pull across sync-DO hibernation', { timeout: testTi
       // 1. Baseline — push an event and confirm it IS delivered live (the subscription channel works).
       yield* syncBackend.push([factory.todoCreated.next({ id: 'before-evict', text: 'before', completed: false })])
       yield* Effect.sync(() => received.includes('before-evict')).pipe(
-        Effect.flatMap((ok) => (ok ? Effect.void : Effect.fail(new Error('not yet delivered')))),
+        Effect.flatMap((ok) => (ok === true ? Effect.void : Effect.fail(new Error('not yet delivered')))),
         Effect.retry(Schedule.spaced('300 millis')),
         Effect.timeout('10 seconds'),
       )
@@ -204,7 +204,7 @@ Vitest.describe('DO-RPC live pull across sync-DO hibernation', { timeout: testTi
 
         yield* syncBackend.push([factory.todoCreated.next({ id: 'live-1', text: 'one', completed: false })])
         yield* Effect.sync(() => received.includes('live-1')).pipe(
-          Effect.flatMap((ok) => (ok ? Effect.void : Effect.fail(new Error('not yet delivered')))),
+          Effect.flatMap((ok) => (ok === true ? Effect.void : Effect.fail(new Error('not yet delivered')))),
           Effect.retry(Schedule.spaced('300 millis')),
           Effect.timeout('10 seconds'),
         )

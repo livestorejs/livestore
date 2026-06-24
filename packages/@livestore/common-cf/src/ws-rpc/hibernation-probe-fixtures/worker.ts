@@ -57,7 +57,7 @@ export class TimerDO extends DurableObject<Env, unknown> {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
-    const ns = url.pathname.startsWith('/timer') ? env.TIMER_DO : env.CONTROL_DO
+    const ns = url.pathname.startsWith('/timer') === true ? env.TIMER_DO : env.CONTROL_DO
     return ns.get(ns.idFromName('probe')).fetch(request)
   },
 }

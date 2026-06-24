@@ -77,7 +77,7 @@ export class SentinelRpcDO extends DurableObject<Env, unknown> {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
-    const ns = url.pathname.startsWith('/sentinel') ? env.SENTINEL_RPC_DO : env.REAL_RPC_DO
+    const ns = url.pathname.startsWith('/sentinel') === true ? env.SENTINEL_RPC_DO : env.REAL_RPC_DO
     return ns.get(ns.idFromName('rpc')).fetch(request)
   },
 }

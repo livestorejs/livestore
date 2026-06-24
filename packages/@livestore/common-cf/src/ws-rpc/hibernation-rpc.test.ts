@@ -63,7 +63,7 @@ const observeHibernation = ({ path, withLivePull }: { path: string; withLivePull
   Effect.gen(function* () {
     const client = yield* RpcClient.make(HibRpcs)
     yield* client.Ping({})
-    if (withLivePull) {
+    if (withLivePull === true) {
       yield* client.Live({}).pipe(Stream.runDrain, Effect.forkScoped)
       yield* Effect.sleep(500)
     }

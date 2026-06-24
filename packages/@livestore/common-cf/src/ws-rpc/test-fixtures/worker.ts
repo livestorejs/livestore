@@ -27,7 +27,7 @@ let liveLongTimers = 0
     return id
   }) as typeof globalThis.setInterval
   globalThis.clearInterval = ((id?: any) => {
-    if (id !== undefined && ids.delete(id)) liveLongTimers = ids.size
+    if (id !== undefined && ids.delete(id) === true) liveLongTimers = ids.size
     realClearInterval(id)
   }) as typeof globalThis.clearInterval
 }
