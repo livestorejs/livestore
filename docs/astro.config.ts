@@ -31,6 +31,67 @@ const port = 5252
 
 const branch = getBranchName()
 
+const docsRedirect = (from: string, to: string) => [[from, to]] as const
+
+const docsRedirects = Object.fromEntries([
+  ...docsRedirect('/getting-started', '/getting-started/react-web'),
+  ...docsRedirect('/misc/sponsoring', '/sustainable-open-source/sponsoring'),
+
+  ...docsRedirect('/data-modeling', '/building-with-livestore/data-modeling'),
+  ...docsRedirect('/data-modeling/complex-ui-state', '/building-with-livestore/complex-ui-state'),
+  ...docsRedirect('/data-modeling/ai-agent', '/building-with-livestore/examples/ai-agent'),
+  ...docsRedirect('/data-modeling/todo-workspaces', '/building-with-livestore/examples/todo-workspaces'),
+  ...docsRedirect('/data-modeling/turnbased-game', '/building-with-livestore/examples/turnbased-game'),
+
+  ...docsRedirect('/reference/debugging', '/building-with-livestore/debugging'),
+  ...docsRedirect('/reference/events', '/building-with-livestore/events'),
+  ...docsRedirect('/reference/reactivity-system', '/building-with-livestore/reactivity-system'),
+  ...docsRedirect('/reference/store', '/building-with-livestore/store'),
+  ...docsRedirect('/reference/syncing', '/building-with-livestore/syncing'),
+  ...docsRedirect('/reference/cli', '/building-with-livestore/tools/cli'),
+  ...docsRedirect('/reference/devtools', '/building-with-livestore/devtools'),
+  ...docsRedirect('/reference/mcp', '/building-with-livestore/tools/mcp'),
+  ...docsRedirect('/reference/opentelemetry', '/building-with-livestore/opentelemetry'),
+  ...docsRedirect('/reference/concepts', '/overview/concepts'),
+  ...docsRedirect('/reference/syncing/server-side-clients', '/patterns/server-side-clients'),
+  ...docsRedirect('/reference/syncing/sync-provider', '/sync-providers/cloudflare'),
+  ...docsRedirect('/reference/syncing/sync-provider/cloudflare', '/sync-providers/cloudflare'),
+  ...docsRedirect('/reference/syncing/sync-provider/custom', '/sync-providers/custom'),
+  ...docsRedirect('/reference/syncing/sync-provider/electricsql', '/sync-providers/electricsql'),
+  ...docsRedirect('/reference/syncing/sync-provider/s2', '/sync-providers/s2'),
+  ...docsRedirect('/reference/state/materializers', '/building-with-livestore/state/materializers'),
+  ...docsRedirect('/reference/state/sql-queries', '/building-with-livestore/state/sql-queries'),
+  ...docsRedirect('/reference/state/sqlite-schema-effect', '/building-with-livestore/state/sqlite-schema-effect'),
+  ...docsRedirect('/reference/state/sqlite-schema', '/building-with-livestore/state/sqlite-schema'),
+  ...docsRedirect('/reference/state/sqlite', '/building-with-livestore/state/sqlite'),
+  ...docsRedirect('/reference/framework-integrations/custom-elements', '/framework-integrations/custom-elements'),
+  ...docsRedirect('/reference/framework-integrations/react-integration', '/framework-integrations/react-integration'),
+  ...docsRedirect('/reference/framework-integrations/solid-integration', '/framework-integrations/solid-integration'),
+  ...docsRedirect('/reference/framework-integrations/vue-integration', '/framework-integrations/vue-integration'),
+  ...docsRedirect(
+    '/reference/platform-adapters/cloudflare-durable-object-adapter',
+    '/platform-adapters/cloudflare-durable-object-adapter',
+  ),
+  ...docsRedirect('/reference/platform-adapters/electron-adapter', '/platform-adapters/electron-adapter'),
+  ...docsRedirect('/reference/platform-adapters/expo-adapter', '/platform-adapters/expo-adapter'),
+  ...docsRedirect('/reference/platform-adapters/node-adapter', '/platform-adapters/node-adapter'),
+  ...docsRedirect('/reference/platform-adapters/tauri-adapter', '/platform-adapters/tauri-adapter'),
+  ...docsRedirect('/reference/platform-adapters/web-adapter', '/platform-adapters/web-adapter'),
+
+  ...docsRedirect('/evaluation/performance', '/misc/performance'),
+  ...docsRedirect('/evaluation/performance-benchmarks', '/misc/performance'),
+  ...docsRedirect('/evaluation/state-of-the-project', '/misc/state-of-the-project'),
+  ...docsRedirect('/evaluation/how-livestore-works', '/overview/how-livestore-works'),
+  ...docsRedirect('/evaluation/technology-comparison', '/overview/technology-comparison'),
+  ...docsRedirect('/evaluation/when-livestore', '/overview/when-livestore'),
+  ...docsRedirect('/evaluation/design-decisions', '/understanding-livestore/design-decisions'),
+  ...docsRedirect('/evaluation/event-sourcing', '/understanding-livestore/event-sourcing'),
+
+  ...docsRedirect('/contributing/contributing', '/sustainable-open-source/contributing/info'),
+  ...docsRedirect('/contributing/docs', '/sustainable-open-source/contributing/docs'),
+  ...docsRedirect('/contributing/monorepo', '/sustainable-open-source/contributing/monorepo'),
+]) satisfies Record<string, string>
+
 // Netlify preview domain (see https://docs.netlify.com/configure-builds/environment-variables/#build-metadata)
 const domain =
   process.env.DEPLOY_PRIME_URL !== undefined
@@ -364,11 +425,7 @@ export default defineConfig({
       },
     }),
   ],
-  redirects: {
-    '/getting-started': '/getting-started/react-web',
-    '/reference/syncing/sync-provider': '/reference/syncing/sync-provider/cloudflare',
-    '/misc/sponsoring': '/sustainable-open-source/sponsoring',
-  },
+  redirects: docsRedirects,
   vite: {
     resolve: {
       alias: {

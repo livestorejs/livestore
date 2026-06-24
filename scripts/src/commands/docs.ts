@@ -47,6 +47,17 @@ class DocsPhaseTimeoutError extends Schema.TaggedError<DocsPhaseTimeoutError>()(
   durationMs: Schema.Number,
 }) {}
 
+class DocsDeployProbeError extends Schema.TaggedError<DocsDeployProbeError>()('DocsDeployProbeError', {
+  label: Schema.String,
+  path: Schema.String,
+  message: Schema.String,
+  expectedStatus: Schema.Array(Schema.Number),
+  actualStatus: Schema.Number,
+  expectedLocationPath: Schema.optional(Schema.String),
+  actualLocation: Schema.optional(Schema.String),
+  cause: Schema.optional(Schema.Defect),
+}) {}
+
 const ProdDeployStateSchema = Schema.Struct({
   site: Schema.String,
   siteId: Schema.String,
@@ -102,6 +113,37 @@ type PrDeployAliases = {
   /** Commit-specific alias unique to each commit (e.g. `pr-123-abc1234`) */
   commitAlias: string
 }
+
+type DocsDeployProbe = {
+  label: string
+  path: string
+  expectedStatus: ReadonlyArray<number>
+  expectedLocationPath?: string
+}
+
+const docsDeployProbes: ReadonlyArray<DocsDeployProbe> = [
+  {
+    label: 'canonical complex UI state page',
+    path: '/building-with-livestore/complex-ui-state/',
+    expectedStatus: [200],
+  },
+  {
+    label: 'legacy data-modeling complex UI state redirect',
+    path: '/data-modeling/complex-ui-state/',
+    expectedStatus: [301, 302, 307, 308],
+    expectedLocationPath: '/building-with-livestore/complex-ui-state/',
+  },
+  {
+    label: 'missing docs route',
+    path: '/this-does-not-exist/',
+    expectedStatus: [404],
+  },
+  {
+    label: 'dev-only docs slugs API route',
+    path: '/api/docs-slugs.json',
+    expectedStatus: [404],
+  },
+]
 
 const formatDocsDeploymentSummaryMarkdown = ({
   site,
@@ -319,6 +361,73 @@ const verifyMarkdownNegotiation = (deployUrl: string) =>
 
     yield* Effect.log(`Markdown negotiation OK at ${deployUrl}/ (content-type=${rootContentType ?? 'probe-skipped'})`)
   }).pipe(Effect.withSpan('docs.deploy.verify.markdown-negotiation', { attributes: { deployUrl } }))
+
+const runDocsDeployProbe = Effect.fn('docs.deploy.verify.probe')(function* (deployUrl: string, probe: DocsDeployProbe) {
+  const url = new URL(probe.path, deployUrl)
+  const response = yield* Effect.tryPromise({
+    try: () =>
+      fetch(url, {
+        redirect: probe.expectedLocationPath === undefined ? 'follow' : 'manual',
+      }),
+    catch: (cause) =>
+      new DocsDeployProbeError({
+        label: probe.label,
+        path: probe.path,
+        message: `Docs deploy probe failed to fetch ${url.toString()}`,
+        expectedStatus: [...probe.expectedStatus],
+        actualStatus: 0,
+        expectedLocationPath: probe.expectedLocationPath,
+        cause,
+      }),
+  }).pipe(Effect.timeout(Duration.seconds(60)))
+
+  const responseStatus = Reflect.get(response, 'status')
+  const actualStatus = typeof responseStatus === 'number' ? responseStatus : 0
+  const headers = Reflect.get(response, 'headers')
+  const getHeader = headers === undefined ? undefined : Reflect.get(headers, 'get')
+  const actualLocationValue = typeof getHeader === 'function' ? getHeader.call(headers, 'location') : undefined
+  const actualLocation = typeof actualLocationValue === 'string' ? actualLocationValue : undefined
+  const expectedStatus = [...probe.expectedStatus]
+
+  if (expectedStatus.includes(actualStatus) === false) {
+    return yield* new DocsDeployProbeError({
+      label: probe.label,
+      path: probe.path,
+      message: `Docs deploy probe "${probe.label}" expected HTTP ${expectedStatus.join('|')} but got ${actualStatus}`,
+      expectedStatus,
+      actualStatus,
+      expectedLocationPath: probe.expectedLocationPath,
+      actualLocation,
+    })
+  }
+
+  if (probe.expectedLocationPath !== undefined) {
+    const actualLocationPath = actualLocation === undefined ? undefined : new URL(actualLocation, url).pathname
+    if (actualLocationPath !== probe.expectedLocationPath) {
+      return yield* new DocsDeployProbeError({
+        label: probe.label,
+        path: probe.path,
+        message: `Docs deploy probe "${probe.label}" expected redirect to ${probe.expectedLocationPath} but got ${
+          actualLocation ?? 'no location header'
+        }`,
+        expectedStatus,
+        actualStatus,
+        expectedLocationPath: probe.expectedLocationPath,
+        actualLocation,
+      })
+    }
+  }
+
+  yield* Effect.log(`Docs deploy probe OK: ${probe.label} (${probe.path} -> HTTP ${actualStatus})`)
+})
+
+const verifyDocsDeploy = Effect.fn('docs.deploy.verify.routes')(function* (deployUrl: string) {
+  yield* verifyMarkdownNegotiation(deployUrl)
+  yield* Effect.all(
+    docsDeployProbes.map((probe) => runDocsDeployProbe(deployUrl, probe)),
+    { concurrency: 1 },
+  )
+})
 
 export const docsCommand = Cli.Command.make('docs').pipe(
   Cli.Command.withSubcommands([
@@ -667,11 +776,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             return
           }
 
-          // Verify root returns Markdown on Accept negotiation (use commitDeploy URL as canonical).
-          // `verifyMarkdownNegotiation` wraps the request in `Effect.timeout(60s)` + non-fatal fallback
-          // — the Netlify deploy is the source of truth, the CDN sometimes needs a few seconds to
-          // start serving the freshly published root (see livestorejs/livestore#1279, #1280).
-          yield* verifyMarkdownNegotiation(commitDeploy.deploy_url)
+          yield* verifyDocsDeploy(commitDeploy.deploy_url)
 
           if (purgeCdn === true) {
             const purgeSiteId = commitDeploy.site_id
@@ -765,7 +870,7 @@ const runVerifyPhase = Effect.fn('docs.deploy.verify')(function* () {
   const state = yield* readProdDeployState
   yield* Effect.log(`Verifying prod docs deploy: ${state.deployUrl} (deployId=${state.deployId})`)
 
-  yield* verifyMarkdownNegotiation(state.deployUrl)
+  yield* verifyDocsDeploy(state.deployUrl)
 
   const repo = process.env.GITHUB_REPOSITORY ?? 'livestorejs/livestore'
   const runUrl = state.runId !== undefined ? `https://github.com/${repo}/actions/runs/${state.runId}` : undefined
