@@ -115,20 +115,11 @@ export default githubWorkflow({
         ...livestoreSetupSteps,
         otelSetupStep,
         {
-          name: 'Build docs snippets',
-          run: runDevenvTasksBefore('docs:deploy:prod:phase:snippets'),
-        },
-        {
-          name: 'Build docs diagrams',
-          run: runDevenvTasksBefore('docs:deploy:prod:phase:diagrams'),
-        },
-        {
-          name: 'Build Astro docs bundle',
-          run: runDevenvTasksBefore('docs:deploy:prod:phase:astro'),
-        },
-        {
-          name: 'Upload docs to Netlify',
-          run: runDevenvTasksBefore('docs:deploy:prod:phase:upload'),
+          // Option A: a single `netlify deploy --build` runs the full
+          // `@netlify/build` pipeline (framework build incl. snippets/diagrams +
+          // serverless/edge bundling) and uploads, then writes deploy-state.json.
+          name: 'Build + deploy docs to Netlify',
+          run: runDevenvTasksBefore('docs:deploy:prod:phase:build-deploy'),
           env: {
             NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
           },

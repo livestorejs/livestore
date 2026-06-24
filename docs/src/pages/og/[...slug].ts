@@ -17,7 +17,8 @@ const docs = await getCollection(
 // frontmatter data as value.
 const pages = Object.fromEntries(docs.map(({ data, id }) => [id, { data }]))
 
-const ogRoute = OGImageRoute({
+// astro-og-canvas >=0.10 made `OGImageRoute` async; it now returns a Promise.
+const ogRoute = await OGImageRoute({
   pages,
   param: 'slug',
   getImageOptions: (_id: string, page: (typeof pages)[string]) => ({
@@ -30,9 +31,12 @@ const ogRoute = OGImageRoute({
   }),
 })
 
-export const prerender = ogEnabled
+export const prerender = true
 
-export const getStaticPaths = ogEnabled === true ? ogRoute.getStaticPaths : () => []
+// Astro 6 requires `getStaticPaths` to be a statically-detectable export on dynamic routes.
+// Keep it a plain function declaration and gate OG generation inside it via `ogEnabled`.
+export const getStaticPaths: typeof ogRoute.getStaticPaths = (context) =>
+  ogEnabled === true ? ogRoute.getStaticPaths(context) : []
 
 let generationQueue: Promise<void> = Promise.resolve()
 
