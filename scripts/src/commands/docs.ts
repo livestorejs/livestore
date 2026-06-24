@@ -131,7 +131,7 @@ const docsDeployProbes: ReadonlyArray<DocsDeployProbe> = [
     label: 'legacy data-modeling complex UI state redirect',
     path: '/data-modeling/complex-ui-state/',
     expectedStatus: [301, 302, 307, 308],
-    expectedLocationPath: '/building-with-livestore/complex-ui-state/',
+    expectedLocationPath: '/building-with-livestore/complex-ui-state',
   },
   {
     label: 'missing docs route',
