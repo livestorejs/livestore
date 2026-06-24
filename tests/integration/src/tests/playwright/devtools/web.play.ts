@@ -98,6 +98,29 @@ const makeTabPair = (
       const rootSpanContext = yield* Effect.tryPromise(() =>
         page
           .waitForFunction('window.__debugLiveStore?.default !== undefined')
+          // TEMP DIAGNOSTIC (DevTools certify-liveness, gated on
+          // LIVESTORE_DEVTOOLS_DIAGNOSTICS): on the `.default` boot-gate timeout,
+          // dump which __debugLiveStore stores booted and the served DevTools panel
+          // load state so a non-green certify run still teaches us whether the app
+          // store (app-root) is present but the plugin-served panel store is missing.
+          // Remove once the certify is reliably green. See tmp/devtools-vite-followup.
+          .catch(async (error) => {
+            if (process.env.LIVESTORE_DEVTOOLS_DIAGNOSTICS === undefined) throw error
+            const keys = await page
+              .evaluate('Object.keys(window.__debugLiveStore || {})')
+              .catch((e) => `eval-failed: ${e}`)
+            const url = page.url()
+            // Probe the plugin-served DevTools panel directly (independent of the app page).
+            const panelUrl = `${url.split('/devtools/')[0]}/_livestore/web`
+            const panelProbe = await page.request
+              .get(panelUrl)
+              .then(async (r) => ({ status: r.status(), bodyLen: (await r.text()).length }))
+              .catch((e) => `request-failed: ${e}`)
+            console.error(
+              `[devtools-certify-diagnostic] .default gate timed out. __debugLiveStore keys=${JSON.stringify(keys)} appUrl=${url} panelUrl=${panelUrl} panelProbe=${JSON.stringify(panelProbe)}`,
+            )
+            throw error
+          })
           .then(() => page.evaluate('window.__debugLiveStore.default._dev.otel.rootSpanContext()')),
       ).pipe(Effect.andThen(Schema.decodeUnknown(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))))
 

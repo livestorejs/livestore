@@ -113,45 +113,102 @@ let
       exit 1
     fi
 
-    backup_dir="$(mktemp -d)"
-    package_links=(
-      "tests/integration/node_modules/@livestore/devtools-vite"
-    )
+    # The installed @livestore/devtools-vite is a pnpm symlink into the global
+    # virtual store (GVS). When the default Node loader (and Vite) realpaths it,
+    # its runtime deps (@livestore/adapter-web, @livestore/utils) resolve through
+    # the GVS link dir's own node_modules — i.e. the proper published-shaped
+    # *dist* of the pinned version — exactly as the passing ci.yml symlink
+    # install does.
+    #
+    # The previous approach replaced the symlink with a *real directory* (cp -a
+    # of the unpacked tarball) at the logical location. A real dir there is no
+    # longer realpathed into the GVS, so dep resolution walks up
+    # tests/integration/node_modules and binds @livestore/* to raw workspace TS
+    # source instead of the GVS dist — a *severed* closure that differs from what
+    # ci.yml exercises and silently breaks the served DevTools panel boot.
+    #
+    # Principled fix: keep the symlink semantics. Build a writable copy of the
+    # GVS link dir that PRESERVES its node_modules sibling closure (relative
+    # symlinks rewritten to absolute targets so they survive the copy), overlay
+    # only the repacked dist + version-stamped package.json onto the copy's
+    # devtools-vite, then point the installed symlink at this copy. The plugin
+    # then runs the REPACKED dist while resolving its deps through an INTACT
+    # closure (GVS dist), matching the passing install.
+    package_link="tests/integration/node_modules/@livestore/devtools-vite"
+    if [ ! -L "$package_link" ]; then
+      echo "Expected installed @livestore/devtools-vite to be a pnpm symlink: $package_link" >&2
+      exit 1
+    fi
 
-    for index in "''${!package_links[@]}"; do
-      package_link="''${package_links[$index]}"
-      if [ ! -e "$package_link" ]; then
-        echo "Expected installed @livestore/devtools-vite package link not found: $package_link" >&2
-        exit 1
-      fi
-      cp -a "$package_link" "$backup_dir/devtools-vite-$index"
-    done
+    gvs_pkg_dir="$(realpath "$package_link")"
+    # gvs_pkg_dir = .../<integrity>/node_modules/@livestore/devtools-vite
+    # gvs_integrity_dir = .../<integrity>/ (holds node_modules with the closure)
+    gvs_integrity_dir="$(dirname "$(dirname "$(dirname "$gvs_pkg_dir")")")"
+    orig_link_target="$(readlink "$package_link")"
+
+    closure_dir="$(mktemp -d)"
+    overlay_dir="$(mktemp -d)"
 
     restore_node_modules() {
-      for index in "''${!package_links[@]}"; do
-        package_link="''${package_links[$index]}"
-        rm -rf "$package_link"
-        cp -a "$backup_dir/devtools-vite-$index" "$package_link"
-      done
-      rm -rf "$backup_dir"
+      rm -rf "$package_link"
+      ln -s "$orig_link_target" "$package_link"
+      rm -rf "$closure_dir" "$overlay_dir"
     }
     trap restore_node_modules EXIT
 
-    unpack_dir="$(mktemp -d)"
-    tar -xzf "$repacked_tarball" -C "$unpack_dir"
-    for package_link in "''${package_links[@]}"; do
-      rm -rf "$package_link"
-      cp -a "$unpack_dir/package" "$package_link"
-    done
-    rm -rf "$unpack_dir"
+    # Copy the GVS integrity dir (its node_modules holds the dependency closure)
+    # preserving its symlinks.
+    cp -a "$gvs_integrity_dir/." "$closure_dir/"
 
-    for package_link in "''${package_links[@]}"; do
-      package_version="$(bun -e "console.log(require('./$package_link/package.json').version)")"
-      if [ "$package_version" != "$LIVESTORE_RELEASE_VERSION" ]; then
-        echo "Expected $package_link to contain exact DevTools artifact version $LIVESTORE_RELEASE_VERSION, found $package_version" >&2
-        exit 1
+    # Rewrite copied node_modules symlinks (relative -> absolute, resolved from
+    # the original GVS dir) so the closure still points at the real store.
+    copied_nm="$closure_dir/node_modules"
+    orig_nm="$gvs_integrity_dir/node_modules"
+    while IFS= read -r link; do
+      rel="''${link#$copied_nm/}"
+      abs="$(realpath "$orig_nm/$rel" 2>/dev/null || true)"
+      if [ -n "$abs" ]; then
+        rm "$link"
+        ln -s "$abs" "$link"
       fi
-    done
+    done < <(find "$copied_nm" -maxdepth 3 -type l)
+
+    # Overlay the repacked dist + version-stamped package.json onto the copy.
+    tar -xzf "$repacked_tarball" -C "$overlay_dir"
+    copy_pkg="$copied_nm/@livestore/devtools-vite"
+    rm -rf "$copy_pkg/dist" "$copy_pkg/package.json"
+    cp -a "$overlay_dir/package/dist" "$copy_pkg/dist"
+    cp -a "$overlay_dir/package/package.json" "$copy_pkg/package.json"
+
+    package_version="$(bun -e "console.log(require('$copy_pkg/package.json').version)")"
+    if [ "$package_version" != "$LIVESTORE_RELEASE_VERSION" ]; then
+      echo "Expected repacked DevTools to contain exact artifact version $LIVESTORE_RELEASE_VERSION, found $package_version" >&2
+      exit 1
+    fi
+
+    # Point the installed symlink at the intact-closure copy.
+    rm -rf "$package_link"
+    ln -s "$copy_pkg" "$package_link"
+
+    # Verify the closure is genuinely intact (deps resolve to GVS dist, not
+    # severed). This guards against a future GVS layout change re-severing it.
+    bun -e '
+      const { createRequire } = require("node:module");
+      const fs = require("node:fs");
+      const path = require("node:path");
+      // Resolve from the realpath, mirroring the default Node loader / Vite,
+      // which realpath a module before resolving its deps.
+      const pkg = fs.realpathSync("'"$package_link"'");
+      const req = createRequire(path.join(pkg, "package.json"));
+      for (const dep of ["@livestore/adapter-web", "@livestore/utils", "vite"]) {
+        const r = req.resolve(dep);
+        if (!r.includes("/links/")) {
+          console.error(`Severed closure: ''${dep} resolved to ''${r} (expected GVS dist)`);
+          process.exit(1);
+        }
+      }
+      console.log("DevTools plugin closure verified intact (deps resolve to GVS dist)");
+    '
 
     # Route through run-tests.ts's devtools command so the vite dev server is
     # started (the raw `playwright test` invocation never started it, causing
@@ -174,6 +231,7 @@ let
         VITE_OTEL_EXPORTER_OTLP_ENDPOINT= \
         PLAYWRIGHT_HEADLESS="''${PLAYWRIGHT_HEADLESS:-1}" \
         DT_PASSTHROUGH=1 \
+        LIVESTORE_DEVTOOLS_DIAGNOSTICS=1 \
         bun ./scripts/run-tests.ts devtools --mode headless --web-only
     )
 
