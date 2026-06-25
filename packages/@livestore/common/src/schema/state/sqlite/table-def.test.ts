@@ -1,7 +1,6 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
-import { objectToString } from '@livestore/utils'
-import { Schema, SchemaTransformation } from '@livestore/utils/effect'
+import { Schema, SchemaAST, SchemaTransformation, TestSchema } from '@livestore/utils/effect'
 
 import { State } from '../../mod.ts'
 
@@ -59,7 +58,7 @@ describe('table function overloads', () => {
     )
   })
 
-  it('should work with columns parameter', () => {
+  it('should work with columns parameter', async () => {
     const todosTable = State.SQLite.table({
       name: 'todos',
       columns: {
@@ -74,7 +73,6 @@ describe('table function overloads', () => {
       },
     })
 
-    expect((todosTable.rowSchema as any).fields.completed.toString()).toMatchInlineSnapshot(`"(number <-> boolean)"`)
     expect(todosTable.sqliteDef.name).toBe('todos')
     expect(todosTable.sqliteDef.columns).toHaveProperty('id')
     expect(todosTable.sqliteDef.columns).toHaveProperty('text')
@@ -82,15 +80,42 @@ describe('table function overloads', () => {
     expect(todosTable.sqliteDef.columns).toHaveProperty('optionalComplex')
 
     expect(todosTable.sqliteDef.columns.optionalBoolean.nullable).toBe(true)
-    expect(objectToString(todosTable.sqliteDef.columns.optionalBoolean.schema)).toBe('(number <-> boolean) | null')
-    expect((todosTable.rowSchema as any).fields.optionalBoolean.toString()).toBe('(number <-> boolean) | null')
+    expect(Schema.encodeSync(todosTable.sqliteDef.columns.optionalBoolean.schema)(false)).toBe(0)
 
     expect(todosTable.sqliteDef.columns.optionalComplex.nullable).toBe(true)
-    expect(objectToString(todosTable.sqliteDef.columns.optionalComplex.schema)).toBe(
-      '(parseJson <-> { readonly color: string } | undefined) | null',
+
+    const asserts = new TestSchema.Asserts(todosTable.rowSchema)
+    await asserts.decoding().succeed(
+      {
+        id: 'todo-1',
+        text: 'Buy milk',
+        completed: 1,
+        optionalBoolean: null,
+        optionalComplex: JSON.stringify({ color: 'red' }),
+      },
+      {
+        id: 'todo-1',
+        text: 'Buy milk',
+        completed: true,
+        optionalBoolean: null,
+        optionalComplex: { color: 'red' },
+      },
     )
-    expect((todosTable.rowSchema as any).fields.optionalComplex.toString()).toBe(
-      '(parseJson <-> { readonly color: string } | undefined) | null',
+    await asserts.decoding().succeed(
+      {
+        id: 'todo-1',
+        text: 'Buy milk',
+        completed: 0,
+        optionalBoolean: null,
+        optionalComplex: null,
+      },
+      {
+        id: 'todo-1',
+        text: 'Buy milk',
+        completed: false,
+        optionalBoolean: null,
+        optionalComplex: null,
+      },
     )
   })
 
@@ -267,7 +292,7 @@ describe('table function overloads', () => {
     expect(todosTable.sqliteDef.name).toBe('TodoItem')
   })
 
-  it('should properly infer types from schema', () => {
+  it('should properly infer types from schema', async () => {
     const UserSchema = Schema.Struct({
       id: Schema.String,
       name: Schema.String,
@@ -298,13 +323,6 @@ describe('table function overloads', () => {
     type ActiveColumn = typeof userTable.sqliteDef.columns.active
     type MetadataColumn = typeof userTable.sqliteDef.columns.metadata
 
-    // Should derive proper column schema
-    expect((userTable.rowSchema as any).fields.age.toString()).toMatchInlineSnapshot(`"Int"`)
-    expect((userTable.rowSchema as any).fields.active.toString()).toMatchInlineSnapshot(`"(number <-> boolean)"`)
-    expect((userTable.rowSchema as any).fields.metadata.toString()).toMatchInlineSnapshot(
-      `"(parseJson <-> { readonly [x: string]: unknown }) | null"`,
-    )
-
     // These should compile without errors
     const _idCheck: IdColumn['schema']['Type'] = 'string'
     const _nameCheck: NameColumn['schema']['Type'] = 'string'
@@ -319,6 +337,28 @@ describe('table function overloads', () => {
     expect(userTable.sqliteDef.columns.active.columnType).toBe('integer')
     expect(userTable.sqliteDef.columns.metadata.columnType).toBe('text')
     expect(userTable.sqliteDef.columns.metadata.nullable).toBe(true)
+
+    const asserts = new TestSchema.Asserts(userTable.rowSchema)
+    await asserts.decoding().succeed(
+      {
+        id: 'test-id',
+        name: 'John',
+        age: 30,
+        active: 1,
+        metadata: JSON.stringify({ key1: 'value1', key2: 123 }),
+      },
+      {
+        id: 'test-id',
+        name: 'John',
+        age: 30,
+        active: true,
+        metadata: { key1: 'value1', key2: 123 },
+      },
+    )
+    const activeAsserts = new TestSchema.Asserts(userTable.sqliteDef.columns.active.schema)
+    const metadataAsserts = new TestSchema.Asserts(userTable.sqliteDef.columns.metadata.schema)
+    await activeAsserts.decoding().succeed(0, false)
+    await metadataAsserts.decoding().succeed(null)
   })
 
   it('should allow omitting nullable fields in insert()', () => {
@@ -466,9 +506,7 @@ describe('table function overloads', () => {
     })
 
     expect(shapes.sqliteDef.columns.kind.columnType).toBe('text')
-
-    const kindSchema = objectToString(shapes.sqliteDef.columns.kind.schema)
-    expect(kindSchema).toContain('"circle" | "square"')
+    expect(SchemaAST.isUnion(Schema.toEncoded(shapes.sqliteDef.columns.kind.schema).ast)).toBe(true)
 
     expect(() =>
       shapes
@@ -487,5 +525,27 @@ describe('table function overloads', () => {
         })
         .asSql(),
     ).not.toThrow()
+  })
+
+  it('treats optional common union fields as nullable columns', () => {
+    const StateSchema = Schema.Union([
+      Schema.Struct({
+        kind: Schema.Literal('empty'),
+        note: Schema.optional(Schema.String),
+      }),
+      Schema.Struct({
+        kind: Schema.Literal('ready'),
+        note: Schema.optional(Schema.String),
+      }),
+    ])
+
+    const states = State.SQLite.table({
+      name: 'states',
+      schema: StateSchema,
+    })
+
+    expect(states.sqliteDef.columns.kind.columnType).toBe('text')
+    expect(states.sqliteDef.columns.note.columnType).toBe('text')
+    expect(states.sqliteDef.columns.note.nullable).toBe(true)
   })
 })
