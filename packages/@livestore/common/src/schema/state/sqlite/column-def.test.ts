@@ -1,7 +1,6 @@
 import { assert, describe, expect, it } from 'vitest'
 
-import { objectToString } from '@livestore/utils'
-import { Schema, Struct } from '@livestore/utils/effect'
+import { Schema, SchemaAST, Struct, TestSchema } from '@livestore/utils/effect'
 
 import * as State from '../mod.ts'
 import { withAutoIncrement, withColumnType, withDefault, withPrimaryKey, withUnique } from './column-annotations.ts'
@@ -26,15 +25,17 @@ describe('getColumnDefForSchema', () => {
     it('should map Schema.Date to text column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.Date)
       expect(columnDef.columnType).toBe('text')
-      expect(Schema.toEncoded(columnDef.schema).toString()).toBe('string')
-      expect(Schema.toType(columnDef.schema).toString()).toBe('Date')
+      expect(Schema.toEncoded(columnDef.schema).ast._tag).toBe('String')
+      expect(SchemaAST.resolveAt<{ readonly _tag: string }>('typeConstructor')(Schema.toType(columnDef.schema).ast))
+        .toEqual({ _tag: 'Date' })
     })
 
     it('should map Schema.DateFromEpochMillis to integer column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.DateFromEpochMillis)
       expect(columnDef.columnType).toBe('integer')
-      expect(Schema.toEncoded(columnDef.schema).toString()).toBe('number')
-      expect(Schema.toType(columnDef.schema).toString()).toBe('Date')
+      expect(Schema.toEncoded(columnDef.schema).ast._tag).toBe('Number')
+      expect(SchemaAST.resolveAt<{ readonly _tag: string }>('typeConstructor')(Schema.toType(columnDef.schema).ast))
+        .toEqual({ _tag: 'Date' })
     })
 
     it('should map Schema.BigInt to text column', () => {
@@ -47,6 +48,9 @@ describe('getColumnDefForSchema', () => {
     it('should map Schema.Int to integer column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.Int)
       expect(columnDef.columnType).toBe('integer')
+
+      const positiveInt = State.SQLite.getColumnDefForSchema(Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)))
+      expect(positiveInt.columnType).toBe('integer')
     })
 
     it('should map string refinements to text column', () => {
@@ -71,7 +75,6 @@ describe('getColumnDefForSchema', () => {
     it('should map number refinements to real column', () => {
       const refinements = [
         { schema: Schema.Finite, name: 'Finite' },
-        { schema: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)), name: 'positive' },
         { schema: Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 100 })), name: 'between' },
       ]
 
@@ -293,10 +296,14 @@ describe('getColumnDefForSchema', () => {
   })
 
   describe('binary data', () => {
-    it('should handle Uint8Array as blob column', () => {
+    it('should handle Uint8Array as blob column', async () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.Uint8Array)
       expect(columnDef.columnType).toBe('blob')
-      expect(objectToString(columnDef.schema)).toBe('Uint8Array')
+      expect(SchemaAST.resolveAt<{ readonly _tag: string }>('typeConstructor')(Schema.toType(columnDef.schema).ast))
+        .toEqual({ _tag: 'Uint8Array' })
+
+      const asserts = new TestSchema.Asserts(columnDef.schema)
+      await asserts.decoding().succeed(new Uint8Array([1, 2, 3]))
     })
   })
 
@@ -317,7 +324,7 @@ describe('getColumnDefForSchema', () => {
   })
 
   describe('schema-based table definitions', () => {
-    it('should handle optional fields in schema', () => {
+    it('should handle optional fields in schema', async () => {
       const UserSchema = Schema.Struct({
         id: Schema.String,
         name: Schema.String,
@@ -338,12 +345,16 @@ describe('getColumnDefForSchema', () => {
       expect(userTable.sqliteDef.columns.id.nullable).toBe(false)
       expect(userTable.sqliteDef.columns.name.nullable).toBe(false)
 
-      // Row schema should show | null for optional fields
-      expect((userTable.rowSchema as any).fields.email.toString()).toBe('string | null')
-      expect((userTable.rowSchema as any).fields.age.toString()).toBe('number | null')
+      const asserts = new TestSchema.Asserts(userTable.rowSchema)
+      await asserts.decoding().succeed({
+        id: 'user-1',
+        name: 'Ada',
+        email: null,
+        age: null,
+      })
     })
 
-    it('should handle optional boolean with proper transformation', () => {
+    it('should handle optional boolean with proper transformation', async () => {
       const schema = Schema.Struct({
         id: Schema.String,
         active: Schema.optional(Schema.Boolean),
@@ -353,11 +364,13 @@ describe('getColumnDefForSchema', () => {
 
       expect(table.sqliteDef.columns.active.nullable).toBe(true)
       expect(table.sqliteDef.columns.active.columnType).toBe('integer')
-      expect(objectToString(table.sqliteDef.columns.active.schema)).toBe('(number <-> boolean) | null')
-      expect(String((table.rowSchema as any).fields.active)).toBe('(number <-> boolean) | null')
+      const asserts = new TestSchema.Asserts(table.rowSchema)
+      await asserts.decoding().succeed({ id: 'row-1', active: 1 }, { id: 'row-1', active: true })
+      expect(Schema.encodeSync(table.sqliteDef.columns.active.schema)(false)).toBe(0)
+      await asserts.decoding().succeed({ id: 'row-1', active: null })
     })
 
-    it('should handle optional complex types with JSON encoding', () => {
+    it('should handle optional complex types with JSON encoding', async () => {
       const schema = Schema.Struct({
         id: Schema.String,
         metadata: Schema.optional(Schema.Struct({ color: Schema.String })),
@@ -368,17 +381,27 @@ describe('getColumnDefForSchema', () => {
 
       expect(table.sqliteDef.columns.metadata.nullable).toBe(true)
       expect(table.sqliteDef.columns.metadata.columnType).toBe('text')
-      expect((table.rowSchema as any).fields.metadata.toString()).toBe(
-        '(parseJson <-> { readonly color: string }) | null',
-        // '(parseJson <-> { readonly color: string } | null)', //  not sure yet about which semantics we want here
-      )
 
       expect(table.sqliteDef.columns.tags.nullable).toBe(true)
       expect(table.sqliteDef.columns.tags.columnType).toBe('text')
-      expect((table.rowSchema as any).fields.tags.toString()).toBe('(parseJson <-> ReadonlyArray<string>) | null')
+
+      const asserts = new TestSchema.Asserts(table.rowSchema)
+      await asserts.decoding().succeed(
+        {
+          id: 'row-1',
+          metadata: JSON.stringify({ color: 'red' }),
+          tags: JSON.stringify(['urgent', 'local']),
+        },
+        {
+          id: 'row-1',
+          metadata: { color: 'red' },
+          tags: ['urgent', 'local'],
+        },
+      )
+      await asserts.decoding().succeed({ id: 'row-1', metadata: null, tags: null })
     })
 
-    it('should handle Schema.NullOr', () => {
+    it('should handle Schema.NullOr', async () => {
       const schema = Schema.Struct({
         id: Schema.String,
         description: Schema.NullOr(Schema.String),
@@ -390,11 +413,20 @@ describe('getColumnDefForSchema', () => {
       expect(table.sqliteDef.columns.description.nullable).toBe(true)
       expect(table.sqliteDef.columns.count.nullable).toBe(true)
 
-      expect((table.rowSchema as any).fields.description.toString()).toBe('string | null')
-      expect((table.rowSchema as any).fields.count.toString()).toBe('Int | null')
+      const asserts = new TestSchema.Asserts(table.rowSchema)
+      await asserts.decoding().succeed({
+        id: 'row-1',
+        description: 'ready',
+        count: 1,
+      })
+      await asserts.decoding().succeed({
+        id: 'row-1',
+        description: null,
+        count: null,
+      })
     })
 
-    it('should treat unions of string literals as text columns without JSON parsing', () => {
+    it('should treat unions of string literals as text columns without JSON parsing', async () => {
       const schema = Schema.Struct({
         id: Schema.String,
         status: Schema.Literals(['idle', 'running', 'stopped']),
@@ -403,11 +435,13 @@ describe('getColumnDefForSchema', () => {
       const table = State.SQLite.table({ name: 'timers', schema })
 
       expect(table.sqliteDef.columns.status.columnType).toBe('text')
-      expect(objectToString(table.sqliteDef.columns.status.schema)).toBe('"idle" | "running" | "stopped"')
-      expect(String((table.rowSchema as any).fields.status)).toBe('"idle" | "running" | "stopped"')
+      expect(Schema.toEncoded(table.sqliteDef.columns.status.schema).ast._tag).toBe('Union')
+
+      const asserts = new TestSchema.Asserts(table.rowSchema)
+      await asserts.decoding().succeed({ id: 'timer-1', status: 'idle' })
     })
 
-    it('should handle Schema.NullOr with complex types', () => {
+    it('should handle Schema.NullOr with complex types', async () => {
       const schema = Schema.Struct({
         data: Schema.NullOr(Schema.Struct({ value: Schema.Number })),
       }).annotate({ title: 'test' })
@@ -416,10 +450,13 @@ describe('getColumnDefForSchema', () => {
 
       expect(table.sqliteDef.columns.data.nullable).toBe(true)
       expect(table.sqliteDef.columns.data.columnType).toBe('text')
-      expect((table.rowSchema as any).fields.data.toString()).toBe('(parseJson <-> { readonly value: number }) | null')
+
+      const asserts = new TestSchema.Asserts(table.rowSchema)
+      await asserts.decoding().succeed({ data: JSON.stringify({ value: 42 }) }, { data: { value: 42 } })
+      await asserts.decoding().succeed({ data: null })
     })
 
-    it('should handle mixed nullable and optional fields', () => {
+    it('should handle mixed nullable and optional fields', async () => {
       const schema = Schema.Struct({
         nullableText: Schema.NullOr(Schema.String),
         optionalText: Schema.optional(Schema.String),
@@ -433,12 +470,15 @@ describe('getColumnDefForSchema', () => {
       expect(table.sqliteDef.columns.optionalText.nullable).toBe(true)
       expect(table.sqliteDef.columns.optionalJson.nullable).toBe(true)
 
-      // Schema representations
-      expect((table.rowSchema as any).fields.nullableText.toString()).toBe('string | null')
-      expect((table.rowSchema as any).fields.optionalText.toString()).toBe('string | null')
-      expect((table.rowSchema as any).fields.optionalJson.toString()).toBe(
-        '(parseJson <-> { readonly x: number }) | null',
-      )
+      const nullableTextAsserts = new TestSchema.Asserts(table.sqliteDef.columns.nullableText.schema)
+      const optionalTextAsserts = new TestSchema.Asserts(table.sqliteDef.columns.optionalText.schema)
+      const optionalJsonAsserts = new TestSchema.Asserts(table.sqliteDef.columns.optionalJson.schema)
+
+      await nullableTextAsserts.decoding().succeed('hello')
+      await nullableTextAsserts.decoding().succeed(null)
+      await optionalTextAsserts.decoding().succeed(null)
+      await optionalJsonAsserts.decoding().succeed(JSON.stringify({ x: 1 }), { x: 1 })
+      await optionalJsonAsserts.decoding().succeed(null)
     })
 
     // TODO bring back some time later
