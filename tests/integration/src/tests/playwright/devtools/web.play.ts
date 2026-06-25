@@ -65,6 +65,32 @@ const makeTabPair = (
       await page.pause()
     })
 
+    // TEMP DIAGNOSTIC (DevTools certify-liveness, gated on
+    // LIVESTORE_DEVTOOLS_DIAGNOSTICS): collect the app page's browser console,
+    // page errors, and the network outcomes for the plugin-served DevTools panel
+    // assets + RPC. Listeners must attach BEFORE `goto` (below), otherwise the
+    // history is gone by the time the `.default` boot-gate `.catch` fires. The
+    // existing `page.request.get` probe is a server-side fetch (always 200) and
+    // teaches us nothing about the browser's real asset loads — these listeners
+    // capture the in-browser truth instead. Remove once the certify is reliably
+    // green. See tmp/devtools-vite-followup.
+    const diagConsole: string[] = []
+    const diagNetwork: string[] = []
+    if (process.env.LIVESTORE_DEVTOOLS_DIAGNOSTICS !== undefined) {
+      page.on('console', (msg) => {
+        diagConsole.push(`[console.${msg.type()}] (${msg.location().url}) ${msg.text()}`)
+      })
+      page.on('pageerror', (err) => {
+        diagConsole.push(`[pageerror] ${err.message}`)
+      })
+      page.on('response', (res) => {
+        const u = res.url()
+        if (/(_livestore|devtools-bundle|livestore-devtools\/rpc|\/static\/)/.test(u) === true) {
+          diagNetwork.push(`${res.status()} ${u}`)
+        }
+      })
+    }
+
     // Inject display version override before page loads for compatibility overlay assertions.
     if (options?.appVersionOverride !== undefined) {
       yield* Effect.tryPromise(() =>
@@ -116,8 +142,33 @@ const makeTabPair = (
               .get(panelUrl)
               .then(async (r) => ({ status: r.status(), bodyLen: (await r.text()).length }))
               .catch((e) => `request-failed: ${e}`)
+            // Probe the in-browser load of the injected panel boot script + css
+            // (the assets that boot the `.default` store). These run in the page
+            // context, so a 404 here = asset-path/relocation issue (a); a 200 +
+            // a pageerror = broken panel bundle (b).
+            const browserAssetProbe = await page
+              .evaluate(async () => {
+                const base = `${location.origin}/_livestore`
+                const check = async (p: string) => {
+                  try {
+                    const r = await fetch(`${base}${p}`)
+                    return { p, status: r.status, len: (await r.text()).length }
+                  } catch (e) {
+                    return { p, error: String(e) }
+                  }
+                }
+                return Promise.all([check('/static/index.js'), check('/static/devtools-vite.css')])
+              })
+              .catch((e) => `browser-asset-probe-failed: ${e}`)
+            const frames = page.frames().map((f) => ({ url: f.url(), name: f.name() }))
             console.error(
-              `[devtools-certify-diagnostic] .default gate timed out. __debugLiveStore keys=${JSON.stringify(keys)} appUrl=${url} panelUrl=${panelUrl} panelProbe=${JSON.stringify(panelProbe)}`,
+              `[devtools-certify-diagnostic] .default gate timed out.\n` +
+                `  __debugLiveStore keys=${JSON.stringify(keys)} appUrl=${url}\n` +
+                `  panelUrl=${panelUrl} panelProbe=${JSON.stringify(panelProbe)}\n` +
+                `  browserAssetProbe=${JSON.stringify(browserAssetProbe)}\n` +
+                `  frames=${JSON.stringify(frames)}\n` +
+                `  network(${diagNetwork.length})=${JSON.stringify(diagNetwork)}\n` +
+                `  console(${diagConsole.length})=\n    ${diagConsole.join('\n    ')}`,
             )
             throw error
           })
