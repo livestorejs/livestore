@@ -68,7 +68,7 @@ export type NoDefault = typeof NoDefault
 export type ColDefFn<TColumnType extends FieldColumnType> = {
   (): {
     columnType: TColumnType
-    schema: Schema.Schema<DefaultEncodedForColumnType<TColumnType>>
+    schema: Schema.Codec<DefaultEncodedForColumnType<TColumnType>>
     default: Option.None<never>
     nullable: false
     primaryKey: false
