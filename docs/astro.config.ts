@@ -9,7 +9,6 @@ import astroD2 from 'astro-d2'
 import { defineConfig, envField } from 'astro/config'
 import rehypeMermaid from 'rehype-mermaid'
 import remarkCustomHeaderId from 'remark-custom-header-id'
-import starlightContextualMenu from 'starlight-contextual-menu'
 // import starlightAutoSidebar from 'starlight-auto-sidebar'
 import starlightLinksValidator from 'starlight-links-validator'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
@@ -24,12 +23,74 @@ import { getBranchName } from './src/data/data.ts'
 import { rehypeExternalLinks } from './src/plugins/rehype/externalLinks.js'
 import { remarkGithubIssueLinks } from './src/plugins/remark/githubIssueLinks.js'
 import { createCopyPageClipboardFallbackIntegration } from './src/plugins/starlight/contextual-menu-fallback/plugin.ts'
+import starlightContextualMenu from './src/plugins/starlight/contextual-menu/index.js'
 import starlightMarkdown from './src/plugins/starlight/markdown/index.js'
 import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.js'
 
 const port = 5252
 
 const branch = getBranchName()
+
+const docsRedirect = (from: string, to: string) => [[from, to]] as const
+
+const docsRedirects = Object.fromEntries([
+  ...docsRedirect('/getting-started', '/getting-started/react-web'),
+  ...docsRedirect('/misc/sponsoring', '/sustainable-open-source/sponsoring'),
+
+  ...docsRedirect('/data-modeling', '/building-with-livestore/data-modeling'),
+  ...docsRedirect('/data-modeling/complex-ui-state', '/building-with-livestore/complex-ui-state'),
+  ...docsRedirect('/data-modeling/ai-agent', '/building-with-livestore/examples/ai-agent'),
+  ...docsRedirect('/data-modeling/todo-workspaces', '/building-with-livestore/examples/todo-workspaces'),
+  ...docsRedirect('/data-modeling/turnbased-game', '/building-with-livestore/examples/turnbased-game'),
+
+  ...docsRedirect('/reference/debugging', '/building-with-livestore/debugging'),
+  ...docsRedirect('/reference/events', '/building-with-livestore/events'),
+  ...docsRedirect('/reference/reactivity-system', '/building-with-livestore/reactivity-system'),
+  ...docsRedirect('/reference/store', '/building-with-livestore/store'),
+  ...docsRedirect('/reference/syncing', '/building-with-livestore/syncing'),
+  ...docsRedirect('/reference/cli', '/building-with-livestore/tools/cli'),
+  ...docsRedirect('/reference/devtools', '/building-with-livestore/devtools'),
+  ...docsRedirect('/reference/mcp', '/building-with-livestore/tools/mcp'),
+  ...docsRedirect('/reference/opentelemetry', '/building-with-livestore/opentelemetry'),
+  ...docsRedirect('/reference/concepts', '/overview/concepts'),
+  ...docsRedirect('/reference/syncing/server-side-clients', '/patterns/server-side-clients'),
+  ...docsRedirect('/reference/syncing/sync-provider', '/sync-providers/cloudflare'),
+  ...docsRedirect('/reference/syncing/sync-provider/cloudflare', '/sync-providers/cloudflare'),
+  ...docsRedirect('/reference/syncing/sync-provider/custom', '/sync-providers/custom'),
+  ...docsRedirect('/reference/syncing/sync-provider/electricsql', '/sync-providers/electricsql'),
+  ...docsRedirect('/reference/syncing/sync-provider/s2', '/sync-providers/s2'),
+  ...docsRedirect('/reference/state/materializers', '/building-with-livestore/state/materializers'),
+  ...docsRedirect('/reference/state/sql-queries', '/building-with-livestore/state/sql-queries'),
+  ...docsRedirect('/reference/state/sqlite-schema-effect', '/building-with-livestore/state/sqlite-schema-effect'),
+  ...docsRedirect('/reference/state/sqlite-schema', '/building-with-livestore/state/sqlite-schema'),
+  ...docsRedirect('/reference/state/sqlite', '/building-with-livestore/state/sqlite'),
+  ...docsRedirect('/reference/framework-integrations/custom-elements', '/framework-integrations/custom-elements'),
+  ...docsRedirect('/reference/framework-integrations/react-integration', '/framework-integrations/react-integration'),
+  ...docsRedirect('/reference/framework-integrations/solid-integration', '/framework-integrations/solid-integration'),
+  ...docsRedirect('/reference/framework-integrations/vue-integration', '/framework-integrations/vue-integration'),
+  ...docsRedirect(
+    '/reference/platform-adapters/cloudflare-durable-object-adapter',
+    '/platform-adapters/cloudflare-durable-object-adapter',
+  ),
+  ...docsRedirect('/reference/platform-adapters/electron-adapter', '/platform-adapters/electron-adapter'),
+  ...docsRedirect('/reference/platform-adapters/expo-adapter', '/platform-adapters/expo-adapter'),
+  ...docsRedirect('/reference/platform-adapters/node-adapter', '/platform-adapters/node-adapter'),
+  ...docsRedirect('/reference/platform-adapters/tauri-adapter', '/platform-adapters/tauri-adapter'),
+  ...docsRedirect('/reference/platform-adapters/web-adapter', '/platform-adapters/web-adapter'),
+
+  ...docsRedirect('/evaluation/performance', '/misc/performance'),
+  ...docsRedirect('/evaluation/performance-benchmarks', '/misc/performance'),
+  ...docsRedirect('/evaluation/state-of-the-project', '/misc/state-of-the-project'),
+  ...docsRedirect('/evaluation/how-livestore-works', '/overview/how-livestore-works'),
+  ...docsRedirect('/evaluation/technology-comparison', '/overview/technology-comparison'),
+  ...docsRedirect('/evaluation/when-livestore', '/overview/when-livestore'),
+  ...docsRedirect('/evaluation/design-decisions', '/understanding-livestore/design-decisions'),
+  ...docsRedirect('/evaluation/event-sourcing', '/understanding-livestore/event-sourcing'),
+
+  ...docsRedirect('/contributing/contributing', '/sustainable-open-source/contributing/info'),
+  ...docsRedirect('/contributing/docs', '/sustainable-open-source/contributing/docs'),
+  ...docsRedirect('/contributing/monorepo', '/sustainable-open-source/contributing/monorepo'),
+]) satisfies Record<string, string>
 
 // Netlify preview domain (see https://docs.netlify.com/configure-builds/environment-variables/#build-metadata)
 const domain =
@@ -48,7 +109,13 @@ export default defineConfig({
   site,
   output: 'static',
   server: { port, host: '0.0.0.0' },
-  adapter: process.env.NODE_ENV === 'production' ? netlify() : undefined,
+  // `imageCDN: false` keeps Astro's image service local (sharp) instead of the
+  // Netlify external Image CDN. The external service has no `transform` method,
+  // and because the docs have `prerender=false` endpoints Astro injects the
+  // `/_image` route into the SSR function — with the external service that route
+  // rejects every request with a 500. Disabling it optimizes remote images at
+  // build time with sharp and backs `/_image` with the local sharp service (200).
+  adapter: process.env.NODE_ENV === 'production' ? netlify({ imageCDN: false }) : undefined,
   image: {
     domains: ['gitbucket.schickling.dev'],
   },
@@ -135,15 +202,15 @@ export default defineConfig({
               'index',
               {
                 label: 'Getting started',
-                autogenerate: { directory: 'getting-started' },
+                items: [{ autogenerate: { directory: 'getting-started' } }],
               },
               {
                 label: 'Tutorial',
-                autogenerate: { directory: 'tutorial' },
+                items: [{ autogenerate: { directory: 'tutorial' } }],
               },
               {
                 label: 'Overview',
-                autogenerate: { directory: 'overview' },
+                items: [{ autogenerate: { directory: 'overview' } }],
               },
               {
                 label: 'Building with LiveStore',
@@ -162,30 +229,30 @@ export default defineConfig({
                   'building-with-livestore/opentelemetry',
                   'building-with-livestore/production-checklist',
                   // Then nested directories with explicit labels
-                  { label: 'State', autogenerate: { directory: 'building-with-livestore/state' } },
-                  { label: 'Tools', autogenerate: { directory: 'building-with-livestore/tools' } },
-                  { label: 'Examples', autogenerate: { directory: 'building-with-livestore/examples' } },
+                  { label: 'State', items: [{ autogenerate: { directory: 'building-with-livestore/state' } }] },
+                  { label: 'Tools', items: [{ autogenerate: { directory: 'building-with-livestore/tools' } }] },
+                  { label: 'Examples', items: [{ autogenerate: { directory: 'building-with-livestore/examples' } }] },
                 ],
               },
               {
                 label: 'Framework integrations',
-                autogenerate: { directory: 'framework-integrations' },
+                items: [{ autogenerate: { directory: 'framework-integrations' } }],
               },
               {
                 label: 'Platform adapters',
-                autogenerate: { directory: 'platform-adapters' },
+                items: [{ autogenerate: { directory: 'platform-adapters' } }],
               },
               {
                 label: 'Sync providers',
-                autogenerate: { directory: 'sync-providers' },
+                items: [{ autogenerate: { directory: 'sync-providers' } }],
               },
               {
                 label: 'Patterns',
-                autogenerate: { directory: 'patterns' },
+                items: [{ autogenerate: { directory: 'patterns' } }],
               },
               {
                 label: 'Understanding LiveStore',
-                autogenerate: { directory: 'understanding-livestore' },
+                items: [{ autogenerate: { directory: 'understanding-livestore' } }],
               },
               {
                 label: 'Sustainable open source',
@@ -193,13 +260,13 @@ export default defineConfig({
                   'sustainable-open-source/sponsoring',
                   {
                     label: 'Contributing',
-                    autogenerate: { directory: 'sustainable-open-source/contributing' },
+                    items: [{ autogenerate: { directory: 'sustainable-open-source/contributing' } }],
                   },
                 ],
               },
               {
                 label: 'Miscellaneous',
-                autogenerate: { directory: 'misc' },
+                items: [{ autogenerate: { directory: 'misc' } }],
               },
               {
                 label: 'Changelog',
@@ -219,31 +286,31 @@ export default defineConfig({
               'api', // 'api/index.mdx'
               {
                 label: '@livestore/livestore',
-                autogenerate: { directory: 'api/livestore' },
                 collapsed: true,
+                items: [{ autogenerate: { directory: 'api/livestore' } }],
               },
               {
                 label: '@livestore/react',
-                autogenerate: { directory: 'api/react' },
                 collapsed: true,
+                items: [{ autogenerate: { directory: 'api/react' } }],
               },
               {
                 label: 'Adapters',
                 items: [
                   {
                     label: '@livestore/adapter-web',
-                    autogenerate: { directory: 'api/adapter-web' },
                     collapsed: true,
+                    items: [{ autogenerate: { directory: 'api/adapter-web' } }],
                   },
                   {
                     label: '@livestore/adapter-node',
-                    autogenerate: { directory: 'api/adapter-node' },
                     collapsed: true,
+                    items: [{ autogenerate: { directory: 'api/adapter-node' } }],
                   },
                   {
                     label: '@livestore/adapter-expo',
-                    autogenerate: { directory: 'api/adapter-expo' },
                     collapsed: true,
+                    items: [{ autogenerate: { directory: 'api/adapter-expo' } }],
                   },
                 ],
               },
@@ -252,13 +319,13 @@ export default defineConfig({
                 items: [
                   {
                     label: '@livestore/sync-cf',
-                    autogenerate: { directory: 'api/sync-cf' },
                     collapsed: true,
+                    items: [{ autogenerate: { directory: 'api/sync-cf' } }],
                   },
                   {
                     label: '@livestore/sync-electric',
-                    autogenerate: { directory: 'api/sync-electric' },
                     collapsed: true,
+                    items: [{ autogenerate: { directory: 'api/sync-electric' } }],
                   },
                 ],
               },
@@ -358,10 +425,7 @@ export default defineConfig({
       },
     }),
   ],
-  redirects: {
-    '/getting-started': '/getting-started/react-web',
-    '/reference/syncing/sync-provider': '/reference/syncing/sync-provider/cloudflare',
-  },
+  redirects: docsRedirects,
   vite: {
     resolve: {
       alias: {

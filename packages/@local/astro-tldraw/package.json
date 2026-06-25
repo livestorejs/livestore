@@ -33,12 +33,12 @@
     "@opentelemetry/resources": "2.8.0",
     "@standard-schema/spec": "1.1.0",
     "@types/node": "26.0.0",
-    "astro": "5.13.4",
+    "astro": "6.4.6",
     "effect": "3.21.4",
     "vitest": "4.1.9"
   },
   "peerDependencies": {
-    "astro": "^5.0.0"
+    "astro": "^5 || ^6"
   },
   "$genie": {
     "source": "package.json.genie.ts",

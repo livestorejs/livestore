@@ -39,6 +39,9 @@ repos/
 .vercel
 .netlify
 
+# Created by the Netlify CLI when it bundles Deno edge functions during deploy
+deno.lock
+
 _tmp*
 .tmp*
 

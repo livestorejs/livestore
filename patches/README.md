@@ -4,9 +4,11 @@
 
 See `contributor-docs/workarounds/starlight-contextual-menu.md` for the full rationale and cleanup plan.
 
-### starlight-contextual-menu@0.1.3.patch
-
-This patch adds option normalization plus an `injectMarkdownRoutes` flag so our docs can reuse the contextual menu integration without letting it reinject the Markdown routes that we already provide locally. Without the patch, the plugin always calls `starlightMarkdownIntegration`, causing duplicate `/index.md` routes and router collisions in Astro.
+The upstream `starlight-contextual-menu` package is pinned to `astro@^5` and is
+unmaintained for Astro 6, so it is no longer an npm dependency or patch target.
+Its small source is vendored under `docs/src/plugins/starlight/contextual-menu/`;
+the `injectMarkdownRoutes` flag that the old patch added now lives directly in the
+vendored `index.js`.
 
 ### starlight-markdown@0.1.5.patch
 

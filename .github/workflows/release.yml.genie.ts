@@ -349,28 +349,13 @@ fi`,
          * re-running the entire publish chain.
          */
         {
-          name: 'Deploy production docs — snippets',
+          // Option A: a single `netlify deploy --build` runs the full
+          // `@netlify/build` pipeline (framework build incl. snippets/diagrams +
+          // serverless/edge bundling) and uploads, then writes deploy-state.json.
+          name: 'Deploy production docs — build + deploy',
           if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
-          'timeout-minutes': 25,
-          run: runDevenvTasksBefore('docs:deploy:prod:phase:snippets'),
-        },
-        {
-          name: 'Deploy production docs — diagrams',
-          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
-          'timeout-minutes': 25,
-          run: runDevenvTasksBefore('docs:deploy:prod:phase:diagrams'),
-        },
-        {
-          name: 'Deploy production docs — astro build',
-          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
-          'timeout-minutes': 25,
-          run: runDevenvTasksBefore('docs:deploy:prod:phase:astro'),
-        },
-        {
-          name: 'Deploy production docs — upload',
-          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
-          'timeout-minutes': 25,
-          run: runDevenvTasksBefore('docs:deploy:prod:phase:upload'),
+          'timeout-minutes': 30,
+          run: runDevenvTasksBefore('docs:deploy:prod:phase:build-deploy'),
           env: {
             NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
           },

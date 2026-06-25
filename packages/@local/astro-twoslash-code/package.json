@@ -14,15 +14,15 @@
   "dependencies": {
     "@effect/platform-node": "0.107.0",
     "@livestore/utils": "workspace:^",
-    "astro-expressive-code": "0.41.5",
-    "expressive-code": "0.41.5",
+    "astro-expressive-code": "0.43.1",
+    "expressive-code": "0.43.1",
     "expressive-code-twoslash": "0.5.3",
     "hast": "1.0.0",
     "hast-util-to-html": "9.0.4",
     "typescript": "6.0.3"
   },
   "devDependencies": {
-    "@astrojs/starlight": "0.35.2",
+    "@astrojs/starlight": "0.40.0",
     "@effect/ai": "0.36.0",
     "@effect/cli": "0.75.2",
     "@effect/cluster": "0.59.0",
@@ -43,13 +43,13 @@
     "@standard-schema/spec": "1.1.0",
     "@types/hast": "3.0.4",
     "@types/node": "26.0.0",
-    "astro": "5.13.4",
+    "astro": "6.4.6",
     "effect": "3.21.4",
     "vitest": "4.1.9"
   },
   "peerDependencies": {
-    "@astrojs/starlight": "^0.35.0",
-    "astro": "^5.0.0"
+    "@astrojs/starlight": "^0.35 || ^0.40",
+    "astro": "^5 || ^6"
   },
   "$genie": {
     "source": "package.json.genie.ts",
