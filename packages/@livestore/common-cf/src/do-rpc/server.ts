@@ -3,8 +3,8 @@ import {
   Exit,
   Headers,
   type Layer,
-  type NonEmptyArray,
   Option,
+  type ReadonlyArray,
   Rpc,
   type RpcGroup,
   type RpcMessage,
@@ -172,7 +172,7 @@ export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(functio
   env: Record<string, any>
   callerContext: { bindingName: string; durableObjectId: string }
   requestId: string
-  values: NonEmptyArray<any>
+  values: ReadonlyArray.NonEmptyReadonlyArray<any>
 }) {
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- CF worker env bindings are typed as Record<string, any>; narrowing to known DO namespace
   const clientDoNamespace = env[callerContext.bindingName] as
