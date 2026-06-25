@@ -221,6 +221,27 @@ describe('client document table', () => {
       `)
     })
 
+    test('struct union with shared fields fully replaces', () => {
+      const ValueSchema = Schema.Union([
+        Schema.Struct({ kind: Schema.Literal('a'), value: Schema.String }),
+        Schema.Struct({ kind: Schema.Literal('b'), value: Schema.String }),
+      ])
+
+      expect(forSchema(ValueSchema, { kind: 'a', value: 'hello' }, 'id1')).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "id1",
+            "{"kind":"a","value":"hello"}",
+            "{"kind":"a","value":"hello"}",
+          ],
+          "sql": "INSERT INTO 'test' (id, value) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET value = ?",
+          "writeTables": Set {
+            "test",
+          },
+        }
+      `)
+    })
+
     test('array value', () => {
       expect(forSchema(Schema.Array(Schema.String), ['hello', 'world'], 'id1')).toMatchInlineSnapshot(`
         {
