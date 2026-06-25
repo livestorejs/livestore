@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+set -euo pipefail
+exec "$(dirname "$0")/run-node-bin" vite bin/vite.js "$@"

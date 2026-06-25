@@ -38,6 +38,7 @@ export const makePush =
     Effect.gen(function* () {
       // yield* Effect.log(`Pushing ${decodedMessage.batch.length} events`, decodedMessage.batch)
       const { backendId, storage, currentHeadRef, updateCurrentHead, rpcSubscriptions } = yield* DoCtx
+      const backendIdString = backendId
 
       if (pushRequest.batch.length === 0) {
         return SyncMessage.PushAck.make({})
@@ -54,7 +55,10 @@ export const makePush =
       }
 
       if (pushRequest.backendId._tag === 'Some' && pushRequest.backendId.value !== backendId) {
-        return yield* new BackendIdMismatchError({ expected: backendId, received: pushRequest.backendId.value })
+        return yield* new BackendIdMismatchError({
+          expected: backendIdString,
+          received: String(pushRequest.backendId.value),
+        })
       }
 
       // This part of the code needs to run sequentially to avoid race conditions
@@ -71,7 +75,10 @@ export const makePush =
           //   backendId,
           // })
 
-          return yield* new ServerAheadError({ minimumExpectedNum: currentHead, providedNum: firstEventParent })
+          return yield* new ServerAheadError({
+            minimumExpectedNum: currentHead as never,
+            providedNum: firstEventParent as never,
+          })
         }
 
         const createdAt = new Date().toISOString()
@@ -98,26 +105,26 @@ export const makePush =
                 SyncMessage.PullResponse.make({
                   batch: items.map(
                     (eventEncoded): PullBatchItem => ({
-                      eventEncoded,
+                      eventEncoded: eventEncoded,
                       metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
                     }),
                   ),
                   pageInfo: SyncBackend.pageInfoNoMore,
-                  backendId,
+                  backendId: backendIdString,
                 }),
-              ),
+              ) as unknown as string,
           }),
           Effect.map(
             Chunk.map((eventsChunk) => {
               const batchWithMetadata = Chunk.toReadonlyArray(eventsChunk).map((eventEncoded) => ({
-                eventEncoded,
+                eventEncoded: eventEncoded,
                 metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
               }))
 
               const response = SyncMessage.PullResponse.make({
                 batch: batchWithMetadata,
                 pageInfo: SyncBackend.pageInfoNoMore,
-                backendId,
+                backendId: backendIdString,
               })
 
               return {

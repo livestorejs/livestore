@@ -1,5 +1,7 @@
 import {
   baseTsconfigCompilerOptions,
+  domLib,
+  nodeTypes,
   packageTsconfigCompilerOptions,
   packageTsconfigExclude,
   refs,
@@ -10,6 +12,8 @@ export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
     ...packageTsconfigCompilerOptions,
+    ...nodeTypes,
+    lib: domLib,
     resolveJsonModule: true,
   },
   include: ['./src'],

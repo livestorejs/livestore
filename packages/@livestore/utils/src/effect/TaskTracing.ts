@@ -5,6 +5,8 @@ import { pipe } from 'effect/Function'
 import * as Layer from 'effect/Layer'
 import * as Tracer from 'effect/Tracer'
 
+type TaskSpan = Tracer.AnySpan & { runInTask?: (f: () => unknown) => unknown }
+
 export const withAsyncTaggingTracing =
   (makeTrace: (name: string) => { run: (fn: any) => any }) =>
   <A, E, R>(eff: Effect.Effect<A, E, R>) => {
@@ -18,7 +20,7 @@ export const withAsyncTaggingTracing =
         span: (name, ...args) => {
           const span = oldTracer.span(name, ...args)
           const trace = makeTrace(name)
-          ;(span as any).runInTask = (f: any) => trace.run(f)
+          ;(span as TaskSpan).runInTask = (f) => trace.run(f)
           return span
         },
         context: (f, fiber) => {
@@ -27,9 +29,9 @@ export const withAsyncTaggingTracing =
           if (maybeParentSpan._tag === 'None') return oldTracer.context(f, fiber)
           const parentSpan = maybeParentSpan.value
           if (parentSpan._tag === 'ExternalSpan') return oldTracer.context(f, fiber)
-          const span = parentSpan
+          const span = parentSpan as TaskSpan
           if ('runInTask' in span && typeof span.runInTask === 'function') {
-            return span.runInTask(() => oldTracer.context(f, fiber))
+            return span.runInTask(() => oldTracer.context(f, fiber)) as never
           }
 
           return oldTracer.context(f, fiber)

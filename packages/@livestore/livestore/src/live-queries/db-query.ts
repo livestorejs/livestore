@@ -339,11 +339,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
     // TODO also support derived equality for `map` (probably will depend on having an easy way to transform a schema without an `encode` step)
     // This would mean dropping the `map` option
     const resultsEqual =
-      map === undefined
-        ? schemaRef.current === undefined
-          ? (a: TResult, b: TResult) => makeResultsEqual(schemaRef.current!)(a, b)
-          : makeResultsEqual(schemaRef.current)
-        : undefined
+      map === undefined && schemaRef.current !== undefined ? makeResultsEqual(schemaRef.current) : undefined
 
     const results$ = this.reactivityGraph.makeThunk<TResult>(
       (get, setDebugInfo, queryContext, otelContext, debugRefreshReason) =>
@@ -406,11 +402,12 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
             span.setAttribute('sql.rowsCount', rawDbResults.length)
 
-            const parsedResult = Schema.decodeEither(schemaRef.current!)(rawDbResults)
+            const resultSchema = schemaRef.current ?? shouldNeverHappen('Missing live query result schema')
+            const parsedResult = Schema.decodeEither(resultSchema)(rawDbResults)
 
             if (parsedResult._tag === 'Left') {
               const parseErrorStr = TreeFormatter.formatErrorSync(parsedResult.left)
-              const expectedSchemaStr = String(schemaRef.current!.ast)
+              const expectedSchemaStr = String(resultSchema.ast)
               const bindValuesStr = bindValues === undefined ? '' : `\nBind values: ${JSON.stringify(bindValues)}`
 
               return shouldNeverHappen(

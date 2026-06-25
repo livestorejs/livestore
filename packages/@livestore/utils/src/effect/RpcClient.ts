@@ -9,6 +9,8 @@ import { constVoid, identity } from 'effect/Function'
 
 import * as SubscriptionRef from './SubscriptionRef.ts'
 
+type ProtocolWithPinger = Protocol['Type'] & { readonly pinger: SocketPinger }
+
 // This is based on `makeProtocolSocket` / `layerProtocolSocket` from `@effect/rpc` in order to:
 // - Add a `isConnected` subscription ref to track the connection state
 // - Add a ping schedule to the socket
@@ -38,7 +40,11 @@ export const makeProtocolSocketWithIsConnected = (options: {
       const write = yield* socket.writer
       const parser = serialization.unsafeMake()
 
-      const pinger = yield* makePinger(write(parser.encode(constPing)!), options?.pingSchedule)
+      const encodedPing = parser.encode(constPing)
+      const pinger = yield* makePinger(
+        encodedPing === undefined ? Effect.void : write(encodedPing),
+        options?.pingSchedule,
+      )
 
       yield* Effect.suspend(() => {
         // We rely on the heartbeat watchdog while streaming arbitrarily long payloads.
@@ -83,7 +89,13 @@ export const makeProtocolSocketWithIsConnected = (options: {
                 error: new RpcClientError.RpcClientError({
                   reason: 'Protocol',
                   message: 'Error decoding message',
-                  cause: Cause.fail(defect),
+                  // `CloseEvent` is a DOM global and is undefined in non-DOM runtimes (e.g. the
+                  // Node-based sync-provider DO RPC path), so guard the lookup before `instanceof`
+                  // to avoid throwing a ReferenceError while building the protocol error.
+                  cause:
+                    typeof globalThis.CloseEvent === 'function' && defect instanceof CloseEvent
+                      ? defect
+                      : Cause.fail(defect),
                 }),
               })
             }
@@ -163,7 +175,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
     }),
   )
 
-export const SocketPinger = Effect.map(RpcClient.Protocol, (protocol) => (protocol as any).pinger as SocketPinger)
+export const SocketPinger = Effect.map(RpcClient.Protocol, (protocol) => (protocol as ProtocolWithPinger).pinger)
 
 export type SocketPinger = Effect.Effect.Success<ReturnType<typeof makePinger>>
 

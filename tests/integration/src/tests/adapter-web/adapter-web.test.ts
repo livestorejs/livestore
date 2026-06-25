@@ -41,7 +41,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       const port = yield* getFreePort.pipe(Effect.map(String))
 
       // Start a Vite dev server for the React fixtures without devtools plugin
-      yield* cmd(`./node_modules/.bin/vite --config ${viteConfigRel} dev --port ${port}`, {
+      yield* cmd(`vite --config ${viteConfigRel} dev --port ${port}`, {
         env: {
           TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined, // ensure devtools plugin is disabled
           LSD_DEVTOOLS_LOCAL_PREVIEW: undefined,
@@ -113,7 +113,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       const port = yield* getFreePort.pipe(Effect.map(String))
 
       // Start a Vite dev server for the React fixtures
-      yield* cmd(`./node_modules/.bin/vite --config ${viteConfigRel} dev --port ${port}`, {
+      yield* cmd(`vite --config ${viteConfigRel} dev --port ${port}`, {
         env: {
           TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined,
           LSD_DEVTOOLS_LOCAL_PREVIEW: undefined,
@@ -176,7 +176,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
     Effect.gen(function* () {
       const port = yield* getFreePort.pipe(Effect.map(String))
 
-      yield* cmd(`./node_modules/.bin/vite --config ${viteConfigRel} dev --port ${port}`, {
+      yield* cmd(`vite --config ${viteConfigRel} dev --port ${port}`, {
         env: {
           TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined,
           LSD_DEVTOOLS_LOCAL_PREVIEW: undefined,

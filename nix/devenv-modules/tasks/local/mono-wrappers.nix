@@ -454,7 +454,7 @@ in
 
     "lint:check:madge" = {
       description = "Check circular dependencies with madge";
-      exec = "./scripts/node_modules/.bin/madge --circular --no-spinner examples/*/src packages/*/*/src";
+      exec = "madge --circular --no-spinner examples/*/src packages/*/*/src";
       after = [ "pnpm:install" ];
     };
 
@@ -475,12 +475,19 @@ in
       '';
     };
 
+    "lint:check:examples-catalog" = {
+      description = "Check that standalone example dependency versions match the monorepo catalog";
+      exec = "mono examples check-catalog";
+      after = [ "pnpm:install" ];
+    };
+
     "lint:full" = {
       description = "Run full lint checks (lint:check + madge + markdown import guard)";
       after = [
         "lint:check"
         "lint:check:madge"
         "lint:check:md-imports"
+        "lint:check:examples-catalog"
       ];
     };
 

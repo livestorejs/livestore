@@ -76,14 +76,21 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
 
       const storageRow = doSelf.ctx.storage.sql
         .exec(`SELECT * FROM "${contextTable.sqliteDef.name}" WHERE storeId = ?`, storeId)
-        .toArray()[0] as typeof contextTable.rowSchema.Type | undefined
+        .toArray()[0]
 
       const currentHeadRef = { current: storageRow?.currentHead ?? EventSequenceNumber.Client.ROOT.global }
 
       // TODO do concistency check with eventlog table to make sure the head is consistent
 
       // Should be the same backendId for lifetime of the Durable Object
-      const backendId = storageRow?.backendId ?? nanoid()
+      const storedBackendId = storageRow?.backendId
+      if (storedBackendId !== undefined && typeof storedBackendId !== 'string') {
+        return yield* UnknownError.make({
+          cause: new Error(`Expected stored backendId to be a string, got ${typeof storedBackendId}`),
+        })
+      }
+
+      const backendId = storedBackendId ?? nanoid()
 
       const updateCurrentHead = (currentHead: EventSequenceNumber.Global.Type) => {
         doSelf.ctx.storage.sql.exec(

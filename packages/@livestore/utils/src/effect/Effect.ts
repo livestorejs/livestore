@@ -53,7 +53,7 @@ export const tryAll = <Res>(
   Effect.try(() => fn()).pipe(
     Effect.andThen((fnRes) =>
       Effect.isEffect(fnRes) === true
-        ? (fnRes as any as Effect.Effect<any>)
+        ? (fnRes as Effect.Effect<any>)
         : isPromise(fnRes) === true
           ? Effect.promise(() => fnRes)
           : Effect.succeed(fnRes),

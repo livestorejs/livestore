@@ -7,7 +7,7 @@
     ".": "./src/index.ts"
   },
   "devDependencies": {
-    "@types/node": "25.3.3"
+    "@types/node": "26.0.0"
   },
   "$genie": {
     "source": "package.json.genie.ts",

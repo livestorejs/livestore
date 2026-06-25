@@ -83,7 +83,7 @@ export const lintCommand = Cli.Command.make(
     }
 
     // Shell needed for wildcards
-    yield* cmd('./scripts/node_modules/.bin/madge --circular --no-spinner examples/*/src packages/*/*/src', {
+    yield* cmd('madge --circular --no-spinner examples/*/src packages/*/*/src', {
       shell: true,
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 

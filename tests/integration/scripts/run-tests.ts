@@ -19,6 +19,15 @@ export const localDevtoolsPreviewOption = Cli.Options.boolean('local-devtools-pr
   Cli.Options.withDefault(false),
 )
 
+/**
+ * Scopes the devtools playwright run to `web.play.ts` only.
+ *
+ * Used by the release certify-liveness harness, which only needs the web
+ * devtools test. Scoping avoids running `browser-extension.play.ts`, whose
+ * chrome-extension setup dependency the certify harness doesn't provide.
+ */
+export const webOnlyOption = Cli.Options.boolean('web-only').pipe(Cli.Options.withDefault(false))
+
 const viteDevServer = ({
   useWorkspacePort,
   useDevtoolsLocalPreview,
@@ -31,7 +40,7 @@ const viteDevServer = ({
     const devPort =
       useWorkspacePort === true ? '4444' : yield* getFreePort.pipe(Effect.map(String), UnknownError.mapToUnknownError)
 
-    yield* cmd(`./node_modules/.bin/vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`, {
+    yield* cmd(`vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`, {
       env: {
         // Relative to vite config
         TEST_LIVESTORE_SCHEMA_PATH_JSON: yield* Schema.encode(Schema.parseJson())(
@@ -73,7 +82,7 @@ export const miscTest: Cli.Command.Command<
             FORCE_PLAYWRIGHT_VIA_CLI: '1',
             PLAYWRIGHT_SUITE: 'misc',
             LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
-            DEV_SERVER_COMMAND: `./node_modules/.bin/vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`,
+            DEV_SERVER_COMMAND: `vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`,
             PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
             PLAYWRIGHT_UI: mode === 'ui' ? '1' : '0',
           },
@@ -151,15 +160,17 @@ export const devtoolsTest: Cli.Command.Command<
   {
     readonly mode: 'headless' | 'ui' | 'dev-server'
     readonly localDevtoolsPreview: boolean
+    readonly webOnly: boolean
   }
 > = Cli.Command.make(
   'devtools',
   {
     mode: modeOption,
     localDevtoolsPreview: localDevtoolsPreviewOption,
+    webOnly: webOnlyOption,
   },
   Effect.fn(
-    function* ({ mode, localDevtoolsPreview }) {
+    function* ({ mode, localDevtoolsPreview, webOnly }) {
       const { devPort } = yield* viteDevServer({
         app: 'todomvc',
         useWorkspacePort: mode === 'dev-server',
@@ -171,22 +182,22 @@ export const devtoolsTest: Cli.Command.Command<
         Effect.catchAll(() => Effect.succeed(undefined)),
       )
 
+      const testTarget =
+        webOnly === true ? 'src/tests/playwright/devtools/web.play.ts' : 'src/tests/playwright/devtools/*'
+
       if (mode === 'dev-server') {
         return yield* Effect.never
       } else {
-        yield* cmd(
-          ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/devtools/*'],
-          {
-            env: {
-              FORCE_PLAYWRIGHT_VIA_CLI: '1',
-              PLAYWRIGHT_SUITE: 'devtools',
-              PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
-              PLAYWRIGHT_UI: mode === 'ui' ? '1' : '0',
-              LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
-              SPAN_CONTEXT_JSON: spanContext,
-            },
+        yield* cmd(['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, testTarget], {
+          env: {
+            FORCE_PLAYWRIGHT_VIA_CLI: '1',
+            PLAYWRIGHT_SUITE: 'devtools',
+            PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
+            PLAYWRIGHT_UI: mode === 'ui' ? '1' : '0',
+            LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
+            SPAN_CONTEXT_JSON: spanContext,
           },
-        ).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+        }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
       }
     },
     Effect.withSpan('test:devtools'),

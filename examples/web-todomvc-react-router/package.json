@@ -10,19 +10,19 @@
     "@livestore/react": "0.4.0",
     "@livestore/wa-sqlite": "0.4.0",
     "@overengineering/fps-meter": "0.2.4",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
     "react-router": "7.9.4",
     "react-router-dom": "7.9.4",
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
     "@livestore/devtools-vite": "0.4.0-dev.25",
-    "@playwright/test": "1.59.1",
-    "@types/react": "19.2.7",
+    "@playwright/test": "1.61.0",
+    "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.2",
-    "typescript": "5.9.3",
+    "typescript": "6.0.3",
     "vite": "7.3.1"
   },
   "engines": {

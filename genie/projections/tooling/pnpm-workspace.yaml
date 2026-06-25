@@ -10,6 +10,9 @@ peerDependencyRules:
     '@effect/experimental': '>=0.58.0'
     '@effect/platform': '>=0.94.2'
     '@effect/rpc': '>=0.73.0'
+    eslint: '>=10.0.0'
+    typescript: '>=6.0.0'
+    vitest: '>=4.0.0'
 
 enableGlobalVirtualStore: true
 
@@ -23,6 +26,10 @@ verifyStoreIntegrity: true
 
 strictStorePkgContentCheck: true
 
+ignoreScripts: true
+
+minimumReleaseAgeExclude: ['@effect/platform', '@types/node', effect]
+
 pmOnFail: ignore
 
 optimisticRepeatInstall: false
@@ -35,13 +42,14 @@ supportedArchitectures:
   libc: [glibc, musl]
 
 allowBuilds:
-  '@parcel/watcher': true
-  '@myobie/pty': true
-  esbuild: true
-  msgpackr-extract: true
-  node-pty: true
-  sharp: true
-  unix-dgram: true
+  '@parcel/watcher': false
+  '@myobie/pty': false
+  esbuild: false
+  fsevents: false
+  msgpackr-extract: false
+  node-pty: false
+  sharp: false
+  unix-dgram: false
   '@mixedbread/cli': true
   cbor-extract: true
   dtrace-provider: true
@@ -52,7 +60,7 @@ allowBuilds:
 packageExtensions:
   react-error-boundary:
     dependencies:
-      '@types/react': 19.2.7
+      '@types/react': 19.2.17
       '@types/react-dom': 19.2.3
   starlight-auto-sidebar:
     dependencies:

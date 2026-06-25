@@ -65,6 +65,32 @@ const makeTabPair = (
       await page.pause()
     })
 
+    // TEMP DIAGNOSTIC (DevTools certify-liveness, gated on
+    // LIVESTORE_DEVTOOLS_DIAGNOSTICS): collect the app page's browser console,
+    // page errors, and the network outcomes for the plugin-served DevTools panel
+    // assets + RPC. Listeners must attach BEFORE `goto` (below), otherwise the
+    // history is gone by the time the `.default` boot-gate `.catch` fires. The
+    // existing `page.request.get` probe is a server-side fetch (always 200) and
+    // teaches us nothing about the browser's real asset loads — these listeners
+    // capture the in-browser truth instead. Remove once the certify is reliably
+    // green. See tmp/devtools-vite-followup.
+    const diagConsole: string[] = []
+    const diagNetwork: string[] = []
+    if (process.env.LIVESTORE_DEVTOOLS_DIAGNOSTICS !== undefined) {
+      page.on('console', (msg) => {
+        diagConsole.push(`[console.${msg.type()}] (${msg.location().url}) ${msg.text()}`)
+      })
+      page.on('pageerror', (err) => {
+        diagConsole.push(`[pageerror] ${err.message}`)
+      })
+      page.on('response', (res) => {
+        const u = res.url()
+        if (/(_livestore|devtools-bundle|livestore-devtools\/rpc|\/static\/)/.test(u) === true) {
+          diagNetwork.push(`${res.status()} ${u}`)
+        }
+      })
+    }
+
     // Inject display version override before page loads for compatibility overlay assertions.
     if (options?.appVersionOverride !== undefined) {
       yield* Effect.tryPromise(() =>
@@ -98,6 +124,54 @@ const makeTabPair = (
       const rootSpanContext = yield* Effect.tryPromise(() =>
         page
           .waitForFunction('window.__debugLiveStore?.default !== undefined')
+          // TEMP DIAGNOSTIC (DevTools certify-liveness, gated on
+          // LIVESTORE_DEVTOOLS_DIAGNOSTICS): on the `.default` boot-gate timeout,
+          // dump which __debugLiveStore stores booted and the served DevTools panel
+          // load state so a non-green certify run still teaches us whether the app
+          // store (app-root) is present but the plugin-served panel store is missing.
+          // Remove once the certify is reliably green. See tmp/devtools-vite-followup.
+          .catch(async (error) => {
+            if (process.env.LIVESTORE_DEVTOOLS_DIAGNOSTICS === undefined) throw error
+            const keys = await page
+              .evaluate('Object.keys(window.__debugLiveStore || {})')
+              .catch((e) => `eval-failed: ${e}`)
+            const url = page.url()
+            // Probe the plugin-served DevTools panel directly (independent of the app page).
+            const panelUrl = `${url.split('/devtools/')[0]}/_livestore/web`
+            const panelProbe = await page.request
+              .get(panelUrl)
+              .then(async (r) => ({ status: r.status(), bodyLen: (await r.text()).length }))
+              .catch((e) => `request-failed: ${e}`)
+            // Probe the in-browser load of the injected panel boot script + css
+            // (the assets that boot the `.default` store). These run in the page
+            // context, so a 404 here = asset-path/relocation issue (a); a 200 +
+            // a pageerror = broken panel bundle (b).
+            const browserAssetProbe = await page
+              .evaluate(async () => {
+                const base = `${location.origin}/_livestore`
+                const check = async (p: string) => {
+                  try {
+                    const r = await fetch(`${base}${p}`)
+                    return { p, status: r.status, len: (await r.text()).length }
+                  } catch (e) {
+                    return { p, error: String(e) }
+                  }
+                }
+                return Promise.all([check('/static/index.js'), check('/static/devtools-vite.css')])
+              })
+              .catch((e) => `browser-asset-probe-failed: ${e}`)
+            const frames = page.frames().map((f) => ({ url: f.url(), name: f.name() }))
+            console.error(
+              `[devtools-certify-diagnostic] .default gate timed out.\n` +
+                `  __debugLiveStore keys=${JSON.stringify(keys)} appUrl=${url}\n` +
+                `  panelUrl=${panelUrl} panelProbe=${JSON.stringify(panelProbe)}\n` +
+                `  browserAssetProbe=${JSON.stringify(browserAssetProbe)}\n` +
+                `  frames=${JSON.stringify(frames)}\n` +
+                `  network(${diagNetwork.length})=${JSON.stringify(diagNetwork)}\n` +
+                `  console(${diagConsole.length})=\n    ${diagConsole.join('\n    ')}`,
+            )
+            throw error
+          })
           .then(() => page.evaluate('window.__debugLiveStore.default._dev.otel.rootSpanContext()')),
       ).pipe(Effect.andThen(Schema.decodeUnknown(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))))
 
@@ -386,7 +460,7 @@ const shutdownTab = Effect.fn('shutdown-tab')(function* (tab: PW.Page, options?:
   ).pipe(Effect.timeout(1000))
 
   if (didShutdown === false && options?.expectStore !== false) {
-    yield* Effect.dieMessage('Expected LiveStore debug store to be available for shutdown')
+    return yield* Effect.dieMessage('Expected LiveStore debug store to be available for shutdown')
   }
 
   if (didShutdown === true) {

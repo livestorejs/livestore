@@ -5,6 +5,7 @@ import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Effect, Option } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 
+import { alignCatalogCommand, checkCatalogCommand } from './check-catalog.ts'
 import { copyTodomvcSrc } from './copy-examples.ts'
 import {
   command as deployExamplesCommand,
@@ -85,5 +86,7 @@ export const examplesCommand = Cli.Command.make('examples').pipe(
     validateLinksCommand,
     examplesRunCommand,
     examplesTestCommand,
+    checkCatalogCommand,
+    alignCatalogCommand,
   ]),
 )

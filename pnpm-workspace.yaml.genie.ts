@@ -54,6 +54,34 @@ export const repoPackageExtensions = {
       'typedoc-plugin-markdown': '^4.8.1',
     },
   },
+  /**
+   * The published @livestore/devtools-vite bundles @parcel/watcher and does a
+   * runtime `require('@parcel/watcher-<platform>')`. Under the pure-pnpm global
+   * virtual store that prebuilt platform package is not reachable from the
+   * bundle's location, so the example/integration vite builds fail with
+   * "Cannot require module ./build/Release/watcher.node". Inject the platform
+   * packages directly into devtools-vite's dependency closure so the require
+   * resolves. Declared optional + os/cpu-scoped so only the matching platform
+   * is installed.
+   *
+   * Still needed by the examples + integration-playwright jobs, which install
+   * @livestore/devtools-vite from npm — that published package still ships the
+   * OLD bundled build (0.4.0-dev.25) with the platform-scoped require. The
+   * certify path uses the repinned source artifact (release/devtools-artifact.json),
+   * which is already fixed (bare `require('@parcel/watcher')`), so this block is
+   * removable once the fixed devtools-vite is republished to npm (not just as a
+   * source artifact).
+   */
+  '@livestore/devtools-vite': {
+    optionalDependencies: {
+      '@parcel/watcher-linux-x64-glibc': '2.5.6',
+      '@parcel/watcher-linux-x64-musl': '2.5.6',
+      '@parcel/watcher-linux-arm64-glibc': '2.5.6',
+      '@parcel/watcher-linux-arm64-musl': '2.5.6',
+      '@parcel/watcher-darwin-x64': '2.5.6',
+      '@parcel/watcher-darwin-arm64': '2.5.6',
+    },
+  },
 } as const
 
 export default pnpmWorkspaceYaml.root({

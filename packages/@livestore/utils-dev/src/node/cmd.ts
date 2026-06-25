@@ -51,7 +51,8 @@ export const cmd: (
 
   const asArray = Array.isArray(commandInput)
   const parts = asArray === true ? commandInput.filter(isNotUndefined) : undefined
-  const [command, ...args] = asArray === true ? (parts as string[]) : commandInput.split(' ')
+  const [commandMaybe, ...args] = asArray === true ? (parts as string[]) : commandInput.split(' ')
+  const command = commandMaybe ?? ''
 
   const debugEnvStr = Object.entries(options?.env ?? {})
     .map(([key, value]) => `${key}='${String(value)}' `)
@@ -98,7 +99,7 @@ export const cmd: (
 
   if (exitCode !== SUCCESS_EXIT_CODE) {
     return yield* CmdError.make({
-      command: command!,
+      command: command,
       args,
       cwd,
       env: options?.env ?? {},
@@ -119,8 +120,9 @@ export const cmdText: (
 ) => Effect.Effect<string, PlatformError.PlatformError, CommandExecutor.CommandExecutor | CurrentWorkingDirectory> =
   Effect.fn('cmdText')(function* (commandInput, options) {
     const cwd = yield* CurrentWorkingDirectory
-    const [command, ...args] =
+    const [commandMaybe, ...args] =
       Array.isArray(commandInput) === true ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
+    const command = commandMaybe ?? ''
     const debugEnvStr = Object.entries(options?.env ?? {})
       .map(([key, value]) => `${key}='${String(value)}' `)
       .join('')
@@ -131,7 +133,7 @@ export const cmdText: (
     yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
     yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, command, cwd })
 
-    return yield* Command.make(command!, ...args).pipe(
+    return yield* Command.make(command, ...args).pipe(
       // inherit = Stream stderr to process.stderr, pipe = Stream stderr to process.stdout
       Command.stderr(options?.stderr ?? 'inherit'),
       Command.workingDirectory(cwd),

@@ -1,8 +1,16 @@
-import { baseTsconfigCompilerOptions, packageTsconfigExclude, tsconfigJson } from '../../genie/repo.ts'
+import {
+  baseTsconfigCompilerOptions,
+  domLib,
+  nodeTypes,
+  packageTsconfigExclude,
+  tsconfigJson,
+} from '../../genie/repo.ts'
 
 export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
+    ...nodeTypes,
+    lib: domLib,
     noEmit: true,
   },
   include: ['test'],

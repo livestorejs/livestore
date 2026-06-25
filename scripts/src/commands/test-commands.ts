@@ -251,7 +251,7 @@ export const testPerfCommand = Cli.Command.make(
   'perf',
   {},
   Effect.fn(function* () {
-    yield* cmd('NODE_OPTIONS=--disable-warning=ExperimentalWarning pnpm playwright test', {
+    yield* cmd('NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test', {
       shell: true,
       env: { FORCE_PLAYWRIGHT_VIA_CLI: '1' },
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/perf')))
@@ -307,7 +307,7 @@ const testIntegrationAllCommand = Cli.Command.make(
       [
         integrationTests.miscTest.handler({ mode: 'headless', localDevtoolsPreview }),
         integrationTests.todomvcTest.handler({ mode: 'headless', localDevtoolsPreview }),
-        integrationTests.devtoolsTest.handler({ mode: 'headless', localDevtoolsPreview }),
+        integrationTests.devtoolsTest.handler({ mode: 'headless', localDevtoolsPreview, webOnly: false }),
         syncProviderTest.handler({ provider: Option.none() }),
         waSqliteTest.handler({}),
       ],

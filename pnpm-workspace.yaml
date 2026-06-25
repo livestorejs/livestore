@@ -33,36 +33,36 @@ packages:
   - tests/wa-sqlite
 
 overrides:
-  effect: 3.21.2
-  '@effect/platform': 0.96.1
+  effect: 3.21.4
+  '@effect/platform': 0.96.2
   '@effect/platform-browser': 0.76.0
-  '@effect/platform-bun': 0.89.0
-  '@effect/platform-node': 0.106.0
-  '@effect/platform-node-shared': 0.59.0
-  '@effect/cli': 0.75.1
+  '@effect/platform-bun': 0.90.0
+  '@effect/platform-node': 0.107.0
+  '@effect/platform-node-shared': 0.60.0
+  '@effect/cli': 0.75.2
   '@effect/experimental': 0.60.0
   '@effect/opentelemetry': 0.63.0
   '@effect/printer': 0.49.0
   '@effect/printer-ansi': 0.49.0
   '@effect/typeclass': 0.40.0
-  react: 19.2.3
-  react-dom: 19.2.3
-  '@tanstack/router-core': 1.145.7
-  '@tanstack/history': 1.145.7
-  '@tanstack/react-router': 1.145.7
-  '@tanstack/react-start': 1.145.10
+  react: 19.2.7
+  react-dom: 19.2.7
+  '@tanstack/router-core': 1.171.13
+  '@tanstack/history': 1.162.0
+  '@tanstack/react-router': 1.170.16
+  '@tanstack/react-start': 1.168.26
   '@tanstack/router-devtools': 1.145.7
   '@tanstack/router-devtools-core': 1.145.7
   '@tanstack/react-router-devtools': 1.145.7
-  '@tanstack/router-plugin': 1.145.10
-  '@tanstack/start-plugin-core': 1.145.7
-  '@tanstack/start-server-core': 1.145.7
-  '@tanstack/start-client-core': 1.145.7
+  '@tanstack/router-plugin': 1.168.18
+  '@tanstack/start-plugin-core': 1.171.18
+  '@tanstack/start-server-core': 1.169.15
+  '@tanstack/start-client-core': 1.170.12
 
 packageExtensions:
   react-error-boundary:
     dependencies:
-      '@types/react': 19.2.7
+      '@types/react': 19.2.17
       '@types/react-dom': 19.2.3
   starlight-auto-sidebar:
     dependencies:
@@ -76,27 +76,42 @@ packageExtensions:
   typedoc:
     dependencies:
       typedoc-plugin-markdown: ^4.8.1
+  '@livestore/devtools-vite':
+    optionalDependencies:
+      '@parcel/watcher-linux-x64-glibc': 2.5.6
+      '@parcel/watcher-linux-x64-musl': 2.5.6
+      '@parcel/watcher-linux-arm64-glibc': 2.5.6
+      '@parcel/watcher-linux-arm64-musl': 2.5.6
+      '@parcel/watcher-darwin-x64': 2.5.6
+      '@parcel/watcher-darwin-arm64': 2.5.6
+    dependencies: {}
 
 peerDependencyRules:
   allowedVersions:
     '@effect/experimental': '>=0.58.0'
     '@effect/platform': '>=0.94.2'
     '@effect/rpc': '>=0.73.0'
+    eslint: '>=10.0.0'
+    typescript: '>=6.0.0'
+    vitest: '>=4.0.0'
 
 allowBuilds:
-  '@parcel/watcher': true
-  '@myobie/pty': true
-  esbuild: true
-  msgpackr-extract: true
-  node-pty: true
-  sharp: true
-  unix-dgram: true
+  '@parcel/watcher': false
+  '@myobie/pty': false
+  esbuild: false
+  fsevents: false
+  msgpackr-extract: false
+  node-pty: false
+  sharp: false
+  unix-dgram: false
   '@mixedbread/cli': true
   cbor-extract: true
   dtrace-provider: true
   protobufjs: true
   puppeteer: true
   workerd: true
+
+minimumReleaseAgeExclude: ['@effect/platform', '@types/node', effect]
 
 supportedArchitectures:
   os: [linux, darwin]
@@ -120,6 +135,8 @@ optimisticRepeatInstall: false
 verifyDepsBeforeRun: false
 
 linkWorkspacePackages: true
+
+ignoreScripts: true
 
 sideEffectsCache: false
 

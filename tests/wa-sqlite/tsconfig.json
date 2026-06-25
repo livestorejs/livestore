@@ -3,7 +3,7 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": ["ES2024"],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowImportingTsExtensions": true,
@@ -29,15 +29,19 @@
       {
         "name": "@effect/language-service",
         "reportSuggestionsAsWarningsInTsc": true,
+        "ignoreEffectWarningsInTscExitCode": true,
         "pipeableMinArgCount": 2,
         "diagnosticSeverity": {
           "missedPipeableOpportunity": "warning",
           "schemaUnionOfLiterals": "warning",
           "anyUnknownInErrorContext": "warning",
-          "preferSchemaOverJson": "warning"
+          "preferSchemaOverJson": "warning",
+          "missingEffectContext": "warning",
+          "missingEffectError": "warning"
         }
       }
     ],
+    "types": ["node"],
     "noEmit": true
   },
   "include": ["test"],

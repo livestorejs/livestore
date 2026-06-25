@@ -497,6 +497,6 @@ export const makeProxyChannel = ({
         } as {}),
       } satisfies WebChannel.WebChannel<any, any>
 
-      return webChannel as WebChannel.WebChannel<any, any>
+      return webChannel
     }).pipe(Effect.withSpanScoped('makeProxyChannel')),
   )

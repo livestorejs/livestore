@@ -10,5 +10,5 @@ export default tsconfigJson({
     types: ['node', 'astro'],
   },
   include: ['src', 'tests', 'examples'],
-  exclude: [...packageTsconfigExclude, 'dist', 'src/cli/test-fixtures'],
+  exclude: [...packageTsconfigExclude, 'dist', 'src/cli/test-fixtures', 'src/vite/test-fixtures'],
 })

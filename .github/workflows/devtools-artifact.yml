@@ -87,7 +87,7 @@ jobs:
           FIRST_PARTY_OWNERS_JSON: '["overengineeringstudio"]'
           DEFAULT_REF: main
           DEFAULT_REFS_JSON: '{}'
-          VERIFY_REACHABLE: '1'
+          VERIFY_REACHABLE: '0'
           NORMALIZE_GIT_BRANCH_REFS: '1'
         run: |
           nix shell nixpkgs#nodejs_24 -c node <<'NODE'

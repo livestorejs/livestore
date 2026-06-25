@@ -50,6 +50,16 @@ const runtimeDeps = catalog.compose({
         'vitest',
         'wrangler',
       ),
+      /**
+       * Required for `release:devtools-artifact:certify-liveness`: that task
+       * `cp -a`-replaces `node_modules/@livestore/devtools-vite` with the
+       * repacked artifact, severing it from devtools-vite's own dependency
+       * closure (so the `packageExtensions` injection in pnpm-workspace.yaml
+       * does not survive). The fixed devtools-vite does a bare
+       * `require('@parcel/watcher')`, so the meta package must be resolvable
+       * directly from `tests/integration/node_modules/` under pure-pnpm GVS.
+       */
+      '@parcel/watcher': '^2.5.0',
       'react-error-boundary': '6.1.1',
       'todomvc-app-css': '2.4.3',
     },

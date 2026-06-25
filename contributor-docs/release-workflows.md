@@ -308,6 +308,54 @@ Use `livestoreVersion` to correlate the republished npm package and GitHub
 Chrome ZIP asset with the LiveStore release group or snapshot.
 Do not use `devtoolsArtifact.devtoolsVersion` for compatibility or ordering.
 
+### Where the pinned artifact comes from
+
+The artifact `release/devtools-artifact.json` points at is produced **outside**
+this repo. DevTools source and artifact production are owned by `overeng`; this
+repo only owns the release decision (which artifact to pin and ship under a
+LiveStore version). The boundary is specified in
+[`context/devtools-artifact-release/`](../context/devtools-artifact-release/spec.md):
+
+```
+overeng devtools-vite source
+  -> overeng `release:devtools:artifact:publish`
+  -> immutable public artifact on
+     livestorejs/livestore-devtools-artifacts (GitHub release per build id)
+  -> repin release/devtools-artifact.json (this repo)
+  -> LiveStore release CI repacks @livestore/devtools-vite + Chrome ZIP
+```
+
+Each published artifact is a GitHub release tagged `devtools-artifact-<build-id>`
+(for example `devtools-artifact-dt-20260623-4684daf4`) carrying
+`release-metadata.json`, `livestore-devtools-vite.tgz`, and
+`livestore-devtools-chrome.zip`. The pin records only the immutable artifact
+identity (the metadata/tarball/chrome URLs plus their SHA-256 hashes); the
+DevTools version and compatibility range live in the artifact's own
+`release-metadata.json`, not in the pin.
+
+#### Runbook: cutting a new artifact after a devtools-vite source change
+
+When the DevTools source actually changes (per the cadence invariant above, a
+normal LiveStore release does **not** need this):
+
+1. Land the source change in the `overeng` devtools-vite repo.
+2. Cut a new immutable artifact with the overeng `release:devtools:artifact:publish`
+   task. This builds and publishes a new `devtools-artifact-<build-id>` GitHub
+   release on `livestorejs/livestore-devtools-artifacts`.
+3. Repin `release/devtools-artifact.json` here to the new build id (all five
+   `artifact.*` URL/SHA fields), following "Updating the DevTools artifact
+   manifest" below.
+4. Re-run the certification e2e and snapshot the passed certification entry.
+
+Note: the source artifact and the npm `@livestore/devtools-vite` package are two
+distinct distribution surfaces. `release:devtools-artifact:certify-liveness`
+exercises the **source artifact** (it repacks the pinned tarball over the
+GVS-linked package), while the examples and integration-playwright jobs install
+the **npm package**. A source fix only reaches certify after the artifact is
+repinned, and only reaches examples/playwright after the npm package is
+republished — repin and npm publish must both happen for a fix to be fully
+adopted.
+
 ## Updating the DevTools artifact manifest
 
 When a new public DevTools artifact should be included in the next LiveStore
