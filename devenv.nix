@@ -173,6 +173,16 @@ let
       fi
     done < <(find "$copied_nm" -maxdepth 3 -type l)
 
+    # plugin.js imports @parcel/watcher directly (bundled). The pnpm symlink
+    # install resolved it via Node's walk-up to the hoisted
+    # tests/integration/node_modules/@parcel/watcher; relocating the plugin into
+    # this isolated closure loses that walk-up. Re-add it, symlinked to the same
+    # GVS realpath the hoisted entry points at — it native-loads its platform
+    # `.node` from its OWN integrity closure, so a symlink anywhere works.
+    watcher_real="$(realpath "tests/integration/node_modules/@parcel/watcher")"
+    mkdir -p "$copied_nm/@parcel"
+    ln -sf "$watcher_real" "$copied_nm/@parcel/watcher"
+
     # Overlay the repacked dist + version-stamped package.json onto the copy.
     tar -xzf "$repacked_tarball" -C "$overlay_dir"
     copy_pkg="$copied_nm/@livestore/devtools-vite"
@@ -190,25 +200,34 @@ let
     rm -rf "$package_link"
     ln -s "$copy_pkg" "$package_link"
 
-    # Verify the closure is genuinely intact (deps resolve to GVS dist, not
-    # severed). This guards against a future GVS layout change re-severing it.
-    bun -e '
+    # Verify the closure is genuinely intact (every dep the plugin imports at
+    # runtime resolves to the GVS store, not severed), and that the native
+    # @parcel/watcher addon actually loads. This guards against a future GVS
+    # layout change re-severing it. Run under `node` (not `bun`): the vite dev
+    # server that imports plugin.js runs under node, and node provides the
+    # libstdc++ the watcher addon links against.
+    node -e '
       const { createRequire } = require("node:module");
       const fs = require("node:fs");
       const path = require("node:path");
       // Resolve from the realpath, mirroring the default Node loader / Vite,
       // which realpath a module before resolving its deps.
-      const pkg = fs.realpathSync("'"$package_link"'");
+      const pkg = fs.realpathSync(process.argv[1]);
       const req = createRequire(path.join(pkg, "package.json"));
-      for (const dep of ["@livestore/adapter-web", "@livestore/utils", "vite"]) {
+      for (const dep of ["@livestore/adapter-web", "@livestore/utils", "vite", "@parcel/watcher"]) {
         const r = req.resolve(dep);
         if (!r.includes("/links/")) {
-          console.error(`Severed closure: ''${dep} resolved to ''${r} (expected GVS dist)`);
+          console.error(`Severed closure: ''${dep} resolved to ''${r} (expected GVS store)`);
           process.exit(1);
         }
       }
-      console.log("DevTools plugin closure verified intact (deps resolve to GVS dist)");
-    '
+      const watcher = req("@parcel/watcher");
+      if (typeof watcher.subscribe !== "function") {
+        console.error("@parcel/watcher failed to native-load (subscribe is not a function)");
+        process.exit(1);
+      }
+      console.log("DevTools plugin closure verified intact (deps resolve to GVS store; @parcel/watcher native-loads)");
+    ' "$package_link"
 
     # Route through run-tests.ts's devtools command so the vite dev server is
     # started (the raw `playwright test` invocation never started it, causing
