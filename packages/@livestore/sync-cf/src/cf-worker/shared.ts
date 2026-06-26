@@ -119,7 +119,7 @@ export type DurableObjectId = string
  * CRITICAL: Increment this version whenever you modify the database schema structure.
  *
  * Bump required when:
- * - Adding/removing/renaming columns in eventlogTable or contextTable (see sqlite.ts)
+ * - Adding/removing/renaming columns in eventlogTable, contextTable, or rpcSubscriptionTable (see sqlite.ts)
  * - Changing column types or constraints
  * - Modifying primary keys or indexes
  *
@@ -157,7 +157,7 @@ export const matchSyncRequest = (request: CfTypes.Request): SearchParams | undef
 export type RpcSubscription = {
   storeId: StoreId
   payload?: Schema.JsonValue
-  subscribedAt: number
+  generation: number
   /** Effect RPC request ID */
   requestId: string
   callerContext: {

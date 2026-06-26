@@ -18,9 +18,16 @@ import {
 
 import type * as CfTypes from '../cf-types.ts'
 
+/**
+ * `true` asks the sync DO to reap this subscription (the client's store is gone); `void`/`false` keeps it.
+ * Primitive, not an object: CF's DO-RPC stub wraps object returns in `& Disposable`, which the producer's
+ * `Effect.tryPromise` can't consume.
+ */
+export type SyncUpdateRpcResult = void | boolean
+
 export interface ClientDoWithRpcCallback {
   __DURABLE_OBJECT_BRAND: never
-  syncUpdateRpc: (payload: RpcMessage.ResponseChunkEncoded) => Promise<void>
+  syncUpdateRpc: (payload: RpcMessage.ResponseChunkEncoded) => Promise<SyncUpdateRpcResult>
 }
 
 /**
@@ -163,7 +170,7 @@ export const toDurableObjectHandler =
       return encoded
     }).pipe(Effect.provide(options.layer), Effect.scoped, Effect.orDie)
 
-/** Out-of-band RPC stream response emission back to the caller DO */
+/** Emits a reverse-RPC chunk to the caller DO; returns its {@link SyncUpdateRpcResult} reap verdict. */
 export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(function* ({
   callerContext,
   env,
@@ -188,7 +195,10 @@ export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(functio
 
   const res: RpcMessage.ResponseChunkEncoded = { _tag: 'Chunk', requestId, values }
 
-  yield* Effect.tryPromise(() => clientDo.syncUpdateRpc(res))
+  // The annotation collapses CF's union-of-promises stub return so `Effect.tryPromise` can infer it.
+  const verdict = yield* Effect.tryPromise((): Promise<void | boolean> => clientDo.syncUpdateRpc(res))
+
+  return verdict === true
 })
 
 /**

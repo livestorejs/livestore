@@ -12,6 +12,26 @@ export interface Env {
   TEST_RPC_DO: DurableObjectNamespace<TestRpcDurableObject>
 }
 
+let liveLongTimers = 0
+{
+  const LONG_MS = 1_000_000 // the Effect.never timer is 2_147_483_647
+  const realSetInterval = globalThis.setInterval
+  const realClearInterval = globalThis.clearInterval
+  const ids = new Set<ReturnType<typeof setInterval>>()
+  globalThis.setInterval = ((cb: any, ms?: number, ...args: any[]) => {
+    const id = realSetInterval(cb, ms as any, ...args)
+    if ((ms ?? 0) > LONG_MS) {
+      ids.add(id)
+      liveLongTimers = ids.size
+    }
+    return id
+  }) as typeof globalThis.setInterval
+  globalThis.clearInterval = ((id?: any) => {
+    if (id !== undefined && ids.delete(id) === true) liveLongTimers = ids.size
+    realClearInterval(id)
+  }) as typeof globalThis.clearInterval
+}
+
 export class TestRpcDurableObject extends DurableObject<Env, unknown> {
   override __DURABLE_OBJECT_BRAND = 'TestRpcDurableObject' as never
 
@@ -50,6 +70,8 @@ export class TestRpcDurableObject extends DurableObject<Env, unknown> {
           Stream.map((n) => n),
           Stream.schedule(Schedule.spaced(delay)),
         ),
+      Live: () => Stream.make(1, 2, 3).pipe(Stream.concat(Stream.fromEffect(Effect.async<never>(() => {})))),
+      GetLongTimerCount: () => Effect.sync(() => ({ count: liveLongTimers })),
     })
 
     const ServerLive = RpcServer.layer(TestRpcs).pipe(Layer.provide(handlersLayer))
