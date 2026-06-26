@@ -5,7 +5,7 @@
 import type * as CF from '@cloudflare/workers-types'
 
 // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridging standard Web API types to Cloudflare Worker types; inherent platform type mismatch
-const cfGlobalThis = globalThis as typeof globalThis & {
+const cfGlobalThis = globalThis as unknown as {
   ReadableStream: typeof CF.ReadableStream
   Request: typeof CF.Request
   Response: typeof CF.Response

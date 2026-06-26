@@ -26,17 +26,22 @@ declare global {
      */
     readonly message: string
     /**
-     * A number representing the quota limit in bytes, or undefined.
+     * A number representing the quota limit in bytes, or null.
      *
      * [MDN Reference](https://developer.mozilla.org/en-US/docs/Web/API/QuotaExceededError/quota)
      */
-    readonly quota?: number
+    readonly quota: number | null
     /**
-     * A number representing the requested amount of storage in bytes, or undefined.
+     * A number representing the requested amount of storage in bytes, or null.
      *
      * [MDN Reference](https://developer.mozilla.org/en-US/docs/Web/API/QuotaExceededError/requested)
      */
-    readonly requested?: number
+    readonly requested: number | null
+  }
+
+  interface QuotaExceededErrorOptions {
+    quota?: number
+    requested?: number
   }
 
   /**
@@ -48,10 +53,8 @@ declare global {
    *
    * [MDN Reference](https://developer.mozilla.org/en-US/docs/Web/API/QuotaExceededError)
    */
-  var QuotaExceededError:
-    | {
-        prototype: QuotaExceededError
-        new (message?: string, options?: { quota: number; requested: number }): QuotaExceededError
-      }
-    | undefined
+  var QuotaExceededError: {
+    prototype: QuotaExceededError
+    new (message?: string, options?: QuotaExceededErrorOptions): QuotaExceededError
+  }
 }
