@@ -49,6 +49,6 @@ export const makeExecBeforeFirstRun =
 
     store.commit(
       { otelContext, skipRefresh: true, label: `${table.sqliteDef.name}.set:${idVal}` },
-      table.set(explicitDefaultValues, idVal as TODO),
+      table.set(explicitDefaultValues, idVal as any),
     )
   }

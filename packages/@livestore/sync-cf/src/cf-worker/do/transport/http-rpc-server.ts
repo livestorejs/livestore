@@ -22,7 +22,7 @@ export const createHttpRpcHandler = Effect.fn('createHttpRpcHandler')(function* 
   const webHandler = yield* httpApp.pipe(Effect.map(HttpApp.toWebHandler))
 
   const response = yield* Effect.promise(
-    () => webHandler(request as TODO as Request) as TODO as Promise<CfTypes.Response>,
+    () => webHandler(request as unknown as Request) as unknown as Promise<CfTypes.Response>,
   ).pipe(Effect.timeout(10000))
 
   if (responseHeaders !== undefined) {

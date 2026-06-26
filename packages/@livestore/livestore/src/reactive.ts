@@ -31,7 +31,7 @@ import type { Types } from '@livestore/utils/effect'
 export const NOT_REFRESHED_YET = Symbol.for('NOT_REFRESHED_YET')
 export type NOT_REFRESHED_YET = typeof NOT_REFRESHED_YET
 
-export type GetAtom = <T>(atom: Atom<T, any, any>, otelContext?: otel.Context, debugRefreshReason?: TODO) => T
+export type GetAtom = <T>(atom: Atom<T, any, any>, otelContext?: otel.Context, debugRefreshReason?: any) => T
 
 export type Ref<T, TContext, TDebugRefreshReason extends DebugRefreshReason> = {
   _tag: 'ref'
@@ -76,7 +76,7 @@ export type Effect<TDebugRefreshReason extends DebugRefreshReason> = {
   id: string
   isDestroyed: boolean
   doEffect: (otelContext?: otel.Context, debugRefreshReason?: TDebugRefreshReason) => void
-  sub: Set<Atom<any, TODO, TODO>>
+  sub: Set<Atom<any, any, any>>
   label?: string | undefined
   invocations: number
 }

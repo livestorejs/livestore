@@ -5,11 +5,12 @@ import type { HelperTypes } from '@livestore/common-cf'
 import { Effect, Schema } from '@livestore/utils/effect'
 
 import type { CfTypes, SearchParams } from '../common/mod.ts'
-import type { CfDeclare } from './mod.ts'
+import { CfDeclare } from './mod.ts'
 import { type Env, type ForwardedHeaders, matchSyncRequest } from './shared.ts'
 
-// NOTE We need to redeclare runtime types here to avoid type conflicts with the lib.dom Response type.
-declare class Response extends CfDeclare.Response {}
+type Response = CfTypes.Response
+
+const Response = CfDeclare.Response
 
 // HINT: If we ever extend user's custom worker RPC, type T can help here with expected return type safety. Currently unused.
 export type CFWorker<TEnv extends Env = Env, _T extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined> = {

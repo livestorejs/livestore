@@ -29,12 +29,12 @@ import { createDoRpcHandler } from './transport/do-rpc-server.ts'
 import { createHttpRpcHandler } from './transport/http-rpc-server.ts'
 import { makeRpcServer } from './transport/ws-rpc-server.ts'
 
-// NOTE We need to redeclare runtime types here to avoid type conflicts with the lib.dom Response type.
-// TODO get rid of those once CF fixed their type mismatch in the worker types
-declare class Request extends CfDeclare.Request {}
-declare class Response extends CfDeclare.Response {}
-declare class WebSocketPair extends CfDeclare.WebSocketPair {}
-declare class WebSocketRequestResponsePair extends CfDeclare.WebSocketRequestResponsePair {}
+type Request = CfTypes.Request
+type Response = CfTypes.Response
+
+const Response = CfDeclare.Response
+const WebSocketPair = CfDeclare.WebSocketPair
+const WebSocketRequestResponsePair = CfDeclare.WebSocketRequestResponsePair
 
 const DurableObjectBase = DurableObject as any as new (
   state: CfTypes.DurableObjectState,

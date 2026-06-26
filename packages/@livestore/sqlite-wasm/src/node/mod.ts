@@ -128,5 +128,5 @@ const makeNodeFsDb = ({
     // NOTE SQLite will return a "disk I/O error" if the file path is too long.
     const dbPointer = sqlite3.open_v2Sync(fileName, undefined, vfsName)
 
-    return { dbPointer, vfs: {} as UNUSED<'only needed in web adapter currently and should longer-term be removed'> }
+    return { dbPointer, vfs: {} as any }
   }).pipe(UnknownError.mapToUnknownError)
