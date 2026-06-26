@@ -2,10 +2,10 @@ import { env as importedEnv } from 'cloudflare:workers'
 
 import { UnknownError } from '@livestore/common'
 import type { HelperTypes } from '@livestore/common-cf'
+import { CfDeclare } from '@livestore/common-cf/declare'
 import { Effect, Schema } from '@livestore/utils/effect'
 
 import type { CfTypes, SearchParams } from '../common/mod.ts'
-import { CfDeclare } from './mod.ts'
 import { type Env, type ForwardedHeaders, matchSyncRequest } from './shared.ts'
 
 const Response = CfDeclare.Response
