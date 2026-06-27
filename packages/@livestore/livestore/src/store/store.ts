@@ -33,6 +33,7 @@ import {
   Inspectable,
   Option,
   OtelTracer,
+  Queue,
   Result,
   Schema,
   Stream,
@@ -584,7 +585,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         yield* Effect.acquireRelease(
           Effect.sync(() =>
-            this.subscribe(query, (result) => emit.single(result), {
+            this.subscribe(query, (result) => { Queue.offerUnsafe(emit, result) }, {
               ...options,
               otelContext,
             }),
