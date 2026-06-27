@@ -26,7 +26,7 @@ import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.ts'
 import { checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
 
-export class TestError extends Schema.TaggedError<TestError>()('TestError', {
+export class TestError extends Schema.TaggedErrorClass<TestError>()('TestError', {
   message: Schema.String,
 }) {}
 
@@ -50,9 +50,9 @@ const makeTabPair = (
     const isUnused = (p: PW.Page) => !usedPages.has(p)
 
     const newPage = Effect.gen(function* () {
-      // const pageEventFiber = yield* Effect.async((cb) => {
+      // const pageEventFiber = yield* Effect.callback((cb) => {
       //   browserContext.on('page', () => cb(Effect.void))
-      // }).pipe(Effect.fork)
+      // }).pipe(Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }))
 
       const page = yield* Effect.tryPromise(() => browserContext.newPage())
       // yield* Fiber.await(pageEventFiber)
@@ -86,7 +86,10 @@ const makeTabPair = (
       page,
       name: `${tabName}-page`,
       shouldEvaluateArgs: false,
-    }).pipe(Effect.fork)
+    }).pipe(
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
+    )
 
     usedPages.add(page)
 
@@ -102,7 +105,10 @@ const makeTabPair = (
       page: devtools,
       name: `${tabName}-devtools`,
       shouldEvaluateArgs: false,
-    }).pipe(Effect.fork)
+    }).pipe(
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
+    )
 
     usedPages.add(devtools)
 
@@ -146,13 +152,13 @@ const runTest =
     testInfo: PW.TestInfo,
   ) => {
     const outerLayer = Layer.mergeAll(
-      Logger.prettyWithThread('playwright-worker'),
-      PlatformNode.NodeContext.layer,
+      Logger.layer([Logger.consolePretty()]),
+      PlatformNode.NodeServices.layer,
       FetchHttpClient.layer,
     )
 
     return Effect.gen(function* () {
-      const parentSpanContext = (yield* Schema.decodeUnknown(Schema.parseJson())(
+      const parentSpanContext = (yield* Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)(
         process.env.SPAN_CONTEXT_JSON ?? '{}',
       )) as otel.SpanContext
       const parentSpan = OtelTracer.makeExternalSpan({
@@ -177,7 +183,7 @@ const runTest =
         Effect.annotateLogs({ thread }),
         Effect.provide(layer),
       )
-    }).pipe(Effect.tapCauseLogPretty, Effect.provide(outerLayer), Effect.runPromise)
+    }).pipe(Effect.tapCauseLogPretty, Effect.runPromiseWith(outerLayer))
   }
 
 const getExtensionPath = Effect.gen(function* () {
@@ -215,7 +221,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
       extensionPath,
       launchOptions: { args: ['--auto-open-devtools-for-tabs'] },
     })
-  }).pipe(Layer.unwrapEffect)
+  }).pipe(Layer.unwrap)
 
 ;(['persisted', 'inmemory'] as const).forEach((adapter) => {
   test(
@@ -445,7 +451,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
               tabLocalhost.devtoolsConsoleFiber,
               tabLoopback.pageConsoleFiber,
               tabLoopback.devtoolsConsoleFiber,
-            ]).pipe(Effect.ignoreLogged),
+            ]).pipe(Effect.ignore),
           ),
         )
       }),

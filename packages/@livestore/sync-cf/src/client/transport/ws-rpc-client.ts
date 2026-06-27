@@ -1,13 +1,12 @@
 import { IsOfflineError, SyncBackend, UnknownError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/common/schema'
-import { splitChunkBySize } from '@livestore/common/sync'
-import { omit } from '@livestore/utils'
+import { splitArrayBySize } from '@livestore/common/sync'
 import {
-  Chunk,
-  type Duration,
+  Duration,
   Effect,
   Layer,
   Option,
+  ReadonlyArray as EffectArray,
   RpcClient,
   RpcSerialization,
   Schedule,
@@ -15,6 +14,7 @@ import {
   type Scope,
   Socket,
   Stream,
+  Struct,
   SubscriptionRef,
   UrlParams,
 } from '@livestore/utils/effect'
@@ -48,12 +48,12 @@ export interface WsSyncOptions {
      * How long to wait for a ping response before timing out
      * @default 10 seconds
      */
-    requestTimeout?: Duration.DurationInput
+    requestTimeout?: Duration.Input
     /**
      * How often to send ping requests
      * @default 10 seconds
      */
-    requestInterval?: Duration.DurationInput
+    requestInterval?: Duration.Input
   }
 }
 
@@ -70,7 +70,7 @@ export const makeWsSync =
   (options: WsSyncOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
     Effect.gen(function* () {
-      const urlParamsData = yield* Schema.encode(SearchParamsSchema)({
+      const urlParamsData = yield* Schema.encodeEffect(SearchParamsSchema)({
         storeId,
         payload,
         transport: 'ws',
@@ -89,7 +89,7 @@ export const makeWsSync =
       // }
       // TODO bring this back in a cross-platform way
       // if (navigator.onLine === false) {
-      //   yield* Effect.async((cb) => self.addEventListener('online', () => cb(Effect.void)))
+      //   yield* Effect.callback((cb) => self.addEventListener('online', () => cb(Effect.void)))
       // }
 
       const pingInterval = options.ping?.requestInterval ?? 10_000
@@ -97,10 +97,12 @@ export const makeWsSync =
       const ProtocolLive = RpcClient.layerProtocolSocketWithIsConnected({
         isConnected,
         retryTransientErrors: Schedule.exponential('1 seconds').pipe(
-          Schedule.union(Schedule.fixed('30 seconds')),
+          Schedule.modifyDelay((_, delay) => Duration.min(delay, Duration.seconds(30))),
           Schedule.jittered,
         ),
-        pingSchedule: Schedule.once.pipe(Schedule.andThen(Schedule.fixed(pingInterval))),
+        pingSchedule: Schedule.recurs(1).pipe(
+          Schedule.andThen(Schedule.fixed(pingInterval)),
+        ),
         url: wsUrl,
       }).pipe(
         Layer.provide(Socket.layerWebSocket(wsUrl)),
@@ -145,7 +147,7 @@ export const makeWsSync =
             live: options?.live === true,
           }).pipe(
             Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
-            Stream.map((res) => omit(res, ['backendId'])),
+            Stream.map((res) => Struct.omit(res, ['backendId'])),
             Stream.mapError((cause) =>
               cause._tag === 'RpcClientError' && Socket.isSocketError(cause.cause) === true
                 ? new IsOfflineError({ cause: cause.cause })
@@ -166,20 +168,21 @@ export const makeWsSync =
             backendId: backendIdHelper.get(),
           })
 
-          const chunksChunk = yield* Chunk.fromIterable(batch).pipe(
-            splitChunkBySize({
-              maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
-              maxBytes: MAX_WS_MESSAGE_BYTES,
-              encode: encodePayload,
-            }),
-            Effect.mapError((cause) => new UnknownError({ cause })),
-          )
+          if (EffectArray.isReadonlyArrayNonEmpty(batch) === false) {
+            return
+          }
 
-          for (const sub of chunksChunk) {
+          const batchChunks = yield* splitArrayBySize({
+            maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+            maxBytes: MAX_WS_MESSAGE_BYTES,
+            encode: encodePayload,
+          })(batch).pipe(Effect.mapError((cause) => new UnknownError({ cause })))
+
+          for (const batchChunk of batchChunks) {
             yield* rpcClient.SyncWsRpc.Push({
               storeId,
               payload,
-              batch: Chunk.toReadonlyArray(sub),
+              batch: batchChunk,
               backendId: backendIdHelper.get(),
             }).pipe(
               Effect.mapError((cause) =>

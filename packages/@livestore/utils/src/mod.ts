@@ -4,7 +4,6 @@ export * from './binary.ts'
 export * from './Deferred.ts'
 export * from './env.ts'
 export * from './fast-deep-equal.ts'
-export * from './guards.ts'
 export * from './misc.ts'
 export * from './NoopTracer.ts'
 export * from './object/index.ts'
@@ -12,31 +11,11 @@ export * from './promise.ts'
 export * as QR from './qr.ts'
 export * from './set.ts'
 export * from './string.ts'
-export * from './time.ts'
 
 import type * as otel from '@opentelemetry/api'
 import type { Types } from 'effect'
 
 import { objectToString } from './misc.ts'
-
-/**
- * Recursively expands type aliases for better IDE hover display.
- *
- * Transforms `{ a: string } & { b: number }` into `{ a: string; b: number }`.
- */
-export type Prettify<T> = T extends infer U ? { [K in keyof U]: Prettify<U[K]> } : never
-
-/**
- * Type-level equality check. Returns `true` if `A` and `B` are exactly the same type.
- *
- * @example
- * ```ts
- * type Test1 = TypeEq<string, string> // true
- * type Test2 = TypeEq<string, number> // false
- * type Test3 = TypeEq<{ a: 1 }, { a: 1 }> // true
- * ```
- */
-export type TypeEq<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false
 
 /**
  * Type-level subtype check. Returns `true` if `A` extends `B`.
@@ -51,12 +30,6 @@ export type IsSubtype<A, B> = A extends B ? true : false
 
 /** Compile-time assertion that `T` is `true`. Useful for type tests. */
 export type AssertTrue<T extends true> = T
-
-/** Removes `readonly` modifier from all properties of `T`. */
-export type Writeable<T> = { -readonly [P in keyof T]: T[P] }
-
-/** Recursively removes `readonly` modifier from all properties. */
-export type DeepWriteable<T> = { -readonly [P in keyof T]: DeepWriteable<T[P]> }
 
 /** Makes all properties of `T` nullable (allows `null`). */
 export type Nullable<T> = { [K in keyof T]: T[K] | null }
@@ -164,9 +137,6 @@ export const prop =
 
 /** Capitalizes the first letter of a string. */
 export const capitalizeFirstLetter = (str: string): string => str.charAt(0).toUpperCase() + str.slice(1)
-
-/** Type guard that checks if a value is a readonly array. */
-export const isReadonlyArray = <I, T>(value: ReadonlyArray<I> | T): value is ReadonlyArray<I> => Array.isArray(value)
 
 /**
  * Use this to make assertion at end of if-else chain that all members of a
@@ -414,12 +384,6 @@ export const memoizeByRef = <T extends (arg: any) => any>(fn: T): T => {
 export const isNonEmptyString = (str: string | undefined | null): str is string => {
   return typeof str === 'string' && str.length > 0
 }
-
-/** Type guard that checks if a value is a Promise (has a `then` method). */
-export const isPromise = (value: any): value is Promise<unknown> => typeof value?.then === 'function'
-
-/** Type guard that checks if a value is iterable (has a `Symbol.iterator` method). */
-export const isIterable = <T>(value: any): value is Iterable<T> => typeof value?.[Symbol.iterator] === 'function'
 
 /**
  * Type-level utility that removes `undefined` from all property types.

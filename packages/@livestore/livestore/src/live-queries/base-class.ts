@@ -1,6 +1,5 @@
 import type * as otel from '@opentelemetry/api'
 
-import { isNotNil } from '@livestore/utils'
 import { Equal, Hash, Predicate } from '@livestore/utils/effect'
 
 import * as RG from '../reactive.ts'
@@ -54,7 +53,7 @@ export interface SignalDef<T> extends LiveQueryDef<T, 'signal-def'> {
   label: string
   /** Creates a reference-counted signal instance bound to a Store's reactivity graph */
   make: (ctx: ReactivityGraphContext) => RcRef<ISignal<T>>
-  [Equal.symbol](that: SignalDef<T>): boolean
+  [Equal.symbol](that: Equal.Equal): boolean
   [Hash.symbol](): number
 }
 
@@ -122,7 +121,7 @@ export const depsToString = (deps: DepKey): string => {
   if (typeof deps === 'string' || typeof deps === 'number') {
     return deps.toString()
   }
-  return deps.filter(isNotNil).join(',')
+  return deps.filter(Predicate.isNotNullish).join(',')
 }
 
 /**
@@ -146,13 +145,46 @@ export interface LiveQueryDef<TResult, TTag extends string = 'def'> {
   label: string
   /** Unique identifier derived from the query string or explicit deps; used for caching */
   hash: string
-  [Equal.symbol](that: LiveQueryDef<TResult, TTag>): boolean
+  [Equal.symbol](that: Equal.Equal): boolean
   [Hash.symbol](): number
 }
 
 export namespace LiveQueryDef {
   export type Any = LiveQueryDef<any, 'def' | 'signal-def'>
 }
+
+/**
+ * Type guard that checks if a value is a query or signal definition.
+ *
+ * Use this to distinguish between definitions (blueprints) and instances (live queries).
+ * Definitions are created by `queryDb()`, `computed()`, and `signal()`.
+ *
+ * @example
+ * ```ts
+ * const todos$ = queryDb(tables.todos.all())
+ *
+ * if (isLiveQueryDef(todos$)) {
+ *   console.log('This is a definition:', todos$.label)
+ * }
+ * ```
+ */
+export const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<any> => {
+  if (!Predicate.isTagged(value, 'def') && !Predicate.isTagged(value, 'signal-def')) {
+    return false
+  }
+
+  return (
+    Predicate.hasProperty(value, 'make') &&
+    Predicate.isFunction(value.make) &&
+    Predicate.hasProperty(value, 'hash') &&
+    Predicate.isString(value.hash) &&
+    Predicate.hasProperty(value, 'label') &&
+    Predicate.isString(value.label)
+  )
+}
+
+export const isSignalDef = (value: unknown): value is SignalDef<any> =>
+  isLiveQueryDef(value) && Predicate.isTagged(value, 'signal-def')
 
 /**
  * A live query instance bound to a specific Store.

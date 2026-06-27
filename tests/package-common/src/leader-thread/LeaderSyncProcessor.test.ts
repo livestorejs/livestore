@@ -23,16 +23,15 @@ import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
-  Chunk,
   Context,
   Deferred,
   Duration,
   Effect,
   FetchHttpClient,
   Layer,
-  Logger,
-  LogLevel,
   Queue,
+  References,
+  Result,
   type Scope,
   Stream,
   WebChannel,
@@ -68,7 +67,7 @@ const withTestCtx = (
   Vitest.makeWithTestCtx({
     makeLayer: () =>
       Layer.provideMerge(LeaderThreadCtxLive(args), PlatformNode.NodeFileSystem.layer).pipe(
-        Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
+        Layer.provide(Layer.succeed(References.MinimumLogLevel, 'Debug')),
       ),
     forceOtel: true,
   })
@@ -88,7 +87,7 @@ const seedPaginatedBackendTodos = (mockBackend: MockSyncBackend) => {
 }
 
 Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
-  Vitest.scopedLive('sync', (test) =>
+  Vitest.live('sync', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
@@ -116,7 +115,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     }).pipe(withTestCtx()(test)),
   )
 
-  Vitest.scopedLive('non-live paginated pull does not stall local pushes', (test) =>
+  Vitest.live('non-live paginated pull does not stall local pushes', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
@@ -162,7 +161,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     ),
   )
 
-  Vitest.scopedLive('mid-pagination pull failure releases local push mutex', (test) =>
+  Vitest.live('mid-pagination pull failure releases local push mutex', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
@@ -227,7 +226,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     ),
   )
 
-  Vitest.scopedLive('mid-pagination pull interruption releases local push mutex', (test) =>
+  Vitest.live('mid-pagination pull interruption releases local push mutex', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
@@ -290,7 +289,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     ),
   )
 
-  Vitest.scopedLive('local push old-gen items fail promptly with StaleRebaseGenerationError', (test) =>
+  Vitest.live('local push old-gen items fail promptly with StaleRebaseGenerationError', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
@@ -337,7 +336,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   // pull first, then push + latency in between
 
   // In this test we're simulating a client leader that is behind the backend
-  Vitest.scopedLive('invalid push', (test) =>
+  Vitest.live('invalid push', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
@@ -371,13 +370,13 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         { id: '2', text: 't2', completed: 0, deletedAt: null },
       ])
 
-      const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
+      const queueResults = yield* Queue.clear(testContext.pullQueue)
       expect(queueResults[0]!.payload._tag).toEqual('upstream-advance')
       expect(queueResults[1]!.payload._tag).toEqual('upstream-rebase')
     }).pipe(withTestCtx()(test)),
   )
 
-  Vitest.scopedLive('many local pushes', (test) =>
+  Vitest.live('many local pushes', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
@@ -402,12 +401,12 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
       expect(result.length).toEqual(numberOfPushes)
 
-      const queueResults = yield* Queue.takeAll(testContext.pullQueue).pipe(Effect.map(Chunk.toReadonlyArray))
+      const queueResults = yield* Queue.clear(testContext.pullQueue)
       expect(queueResults.every((result) => result.payload._tag === 'upstream-advance')).toBe(true)
     }).pipe(withTestCtx()(test)),
   )
 
-  Vitest.scopedLive('concurrent pushes', (test) =>
+  Vitest.live('concurrent pushes', (test) =>
     Effect.gen(function* () {
       const testContext = yield* TestContext
       const eventFactory = testContext.eventFactory
@@ -418,7 +417,10 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       for (let i = 0; i < 5; i++) {
         yield* testContext.mockSyncBackend
           .advance(backendFactory.todoCreated.next({ id: `backend_${i}`, text: '', completed: false }))
-          .pipe(Effect.fork)
+          .pipe(
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
+          )
       }
 
       for (let i = 0; i < 5; i++) {
@@ -432,14 +434,14 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   )
 
   // Duplicate local push events could e.g. caused by multiple client sessions
-  Vitest.scopedLive('handles duplicate local push events', (test) =>
+  Vitest.live('handles duplicate local push events', (test) =>
     Effect.gen(function* () {
       const testContext = yield* TestContext
       const eventFactory = testContext.eventFactory
 
       for (let i = 0; i < 10; i++) {
         const event = eventFactory.todoCreated.next({ id: `session_1_${i}`, text: '', completed: false })
-        yield* testContext.pushEncoded(event).pipe(Effect.repeatN(1), Effect.ignoreLogged)
+        yield* testContext.pushEncoded(event).pipe(Effect.repeat({ times: 1 }), Effect.ignore)
       }
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(10), Stream.runDrain)
@@ -456,7 +458,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
    * client, different session) wakes with stale state and enqueues [e2, e7, e8]. The leader should
    * reject the batch with `LeaderAheadError`, forcing session B to rebase locally.
    */
-  Vitest.scopedLive('leader push API rejects stale batch from secondary session', (test) =>
+  Vitest.live('leader push API rejects stale batch from secondary session', (test) =>
     Effect.gen(function* () {
       const testContext = yield* TestContext
 
@@ -492,14 +494,14 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       // Session B resumes with a stale pending mutation followed by two fresh events
       const pushResult = yield* testContext
         .pushEncoded(staleEventB, followUpB1, followUpB2)
-        .pipe(Effect.either, Effect.timeout(Duration.seconds(5)))
+        .pipe(Effect.result, Effect.timeout(Duration.seconds(5)))
 
-      expect(pushResult._tag).toBe('Left')
-      if (pushResult._tag !== 'Left') {
+      expect(Result.isFailure(pushResult)).toBe(true)
+      if (Result.isSuccess(pushResult)) {
         return
       }
 
-      const error = pushResult.left
+      const error = pushResult.failure
       expect(error._tag).toBe('LeaderAheadError')
       if (error._tag !== 'LeaderAheadError') {
         return
@@ -514,7 +516,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   // - aborting local pushes
   // - processHead works properly
 
-  Vitest.scopedLive('simulate ServerAheadError push error', (test) =>
+  Vitest.live('simulate ServerAheadError push error', (test) =>
     Effect.gen(function* () {
       const testContext = yield* TestContext
       const eventFactory = testContext.eventFactory
@@ -555,7 +557,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   //   3) new local push events are queued (rebase generation 1)
   //   4) queue is processed -> old local push events should be filtered out because they have an older rebase generation
 
-  Vitest.scopedLive('accepts rebased client events when generation increases', (test) =>
+  Vitest.live('accepts rebased client events when generation increases', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
 
@@ -594,7 +596,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   )
 
   // Regression test for push fiber stalling when livePull=false and backend push errors occur
-  Vitest.scopedLive('recovers from backend push errors without live pull', (test) =>
+  Vitest.live('recovers from backend push errors without live pull', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
@@ -625,7 +627,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   )
 
   // Should escalate and shutdown on BackendIdMismatchError when onBackendIdMismatch='shutdown' (legacy behavior)
-  Vitest.scopedLive('shutdowns on BackendIdMismatchError push', (test) =>
+  Vitest.live('shutdowns on BackendIdMismatchError push', (test) =>
     Effect.gen(function* () {
       const testContext = yield* TestContext
       const eventFactory = testContext.eventFactory
@@ -639,7 +641,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: 'mismatch', text: 'x', completed: false }))
 
       // Expect a shutdown message to be sent with BackendIdMismatchError
-      const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
+      const shutdownMsg = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
 
       expect(shutdownMsg._tag).toEqual('BackendIdMismatchError')
     }).pipe(
@@ -653,7 +655,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   // Tests for onBackendIdMismatch option
 
   // Should clear databases and shutdown with IntentionalShutdownCause when onBackendIdMismatch='reset'
-  Vitest.scopedLive('clears databases on BackendIdMismatchError push with reset', (test) =>
+  Vitest.live('clears databases on BackendIdMismatchError push with reset', (test) =>
     Effect.gen(function* () {
       const testContext = yield* TestContext
       const leaderThreadCtx = yield* LeaderThreadCtx
@@ -682,7 +684,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }))
 
       // Expect a shutdown message with IntentionalShutdownCause and reason 'backend-id-mismatch'
-      const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
+      const shutdownMsg = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
 
       expect(shutdownMsg._tag).toEqual('IntentionalShutdownCause')
       expect((shutdownMsg as IntentionalShutdownCause).reason).toEqual('backend-id-mismatch')
@@ -701,7 +703,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   )
 
   // Should shutdown without clearing databases when onBackendIdMismatch='shutdown'
-  Vitest.scopedLive('shutdowns without clearing on BackendIdMismatchError push with shutdown', (test) =>
+  Vitest.live('shutdowns without clearing on BackendIdMismatchError push with shutdown', (test) =>
     Effect.gen(function* () {
       const testContext = yield* TestContext
       const leaderThreadCtx = yield* LeaderThreadCtx
@@ -729,7 +731,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }))
 
       // Expect a shutdown message with BackendIdMismatchError (not IntentionalShutdownCause)
-      const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
+      const shutdownMsg = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
 
       expect(shutdownMsg._tag).toEqual('BackendIdMismatchError')
 
@@ -742,7 +744,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   )
 
   // Should ignore BackendIdMismatchError and continue when onBackendIdMismatch='ignore'
-  Vitest.scopedLive('ignores BackendIdMismatchError push when ignore', (test) =>
+  Vitest.live('ignores BackendIdMismatchError push when ignore', (test) =>
     Effect.gen(function* () {
       const testContext = yield* TestContext
       const leaderThreadCtx = yield* LeaderThreadCtx
@@ -792,7 +794,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   // initial pull, not on live pulls after advance. The core functionality for handling
   // BackendIdMismatchError is shared with the push path via maybeShutdownOnError.
   // The real pull scenario is tested in integration tests with actual sync providers.
-  Vitest.scopedLive.skip('clears databases on BackendIdMismatchError pull with reset', (test) =>
+  Vitest.live.skip('clears databases on BackendIdMismatchError pull with reset', (test) =>
     Effect.gen(function* () {
       // This test would require more complex mocking of the pull stream to inject errors
       // during live pulls. For now, we rely on push tests and integration tests.
@@ -804,7 +806,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
 type LeaderEventFactory = ReturnType<typeof makeEventFactory>
 
-class TestContext extends Context.Tag('TestContext')<
+class TestContext extends Context.Service<
   TestContext,
   {
     mockSyncBackend: MockSyncBackend
@@ -816,7 +818,7 @@ class TestContext extends Context.Tag('TestContext')<
       ...events: ReadonlyArray<LiveStoreEvent.Global.Encoded>
     ) => Effect.Effect<void, RejectedPushError, Scope.Scope | LeaderThreadCtx>
   }
->() {}
+>()('TestContext') {}
 
 const LeaderThreadCtxLive = ({
   syncProcessor,
@@ -905,18 +907,22 @@ const LeaderThreadCtxLive = ({
           Queue.take,
           Effect.flip,
           Effect.intoDeferred(shutdownDeferred),
-          Effect.forkScoped,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
       }
 
-      return Layer.succeed(TestContext, {
-        mockSyncBackend,
-        shutdownDeferred,
-        pullQueue,
-        eventFactory,
-        pushEncoded,
-      })
-    }).pipe(Layer.unwrapScoped, Layer.provide(leaderContextLayer))
+      return Layer.succeed(
+        TestContext,
+        TestContext.of({
+          mockSyncBackend,
+          shutdownDeferred,
+          pullQueue,
+          eventFactory,
+          pushEncoded,
+        }),
+      )
+    }).pipe(Layer.unwrap, Layer.provide(leaderContextLayer))
 
     return leaderContextLayer.pipe(Layer.merge(testContextLayer))
-  }).pipe(Layer.unwrapScoped)
+  }).pipe(Layer.unwrap)

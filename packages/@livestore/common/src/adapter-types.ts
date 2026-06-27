@@ -2,6 +2,7 @@ import {
   type Effect,
   type Exit,
   type Queue,
+  type Latch,
   Schema,
   type Scope,
   type SubscriptionRef,
@@ -28,7 +29,7 @@ export * from './sqlite-types.ts'
 export interface ClientSession {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
   sqliteDb: SqliteDb
-  devtools: { enabled: false } | { enabled: true; pullLatch: Effect.Latch; pushLatch: Effect.Latch }
+  devtools: { enabled: false } | { enabled: true; pullLatch: Latch.Latch; pushLatch: Latch.Latch }
   clientId: string
   sessionId: string
   /** Status info whether current session is leader or not */
@@ -57,7 +58,7 @@ export const BootStateProgress = Schema.Struct({
  * - `storage-unavailable`: OPFS access denied for other reasons (permissions, quota)
  * - `unknown`: Unexpected error during storage initialization
  */
-export const BootWarningReason = Schema.Literal('private-browsing', 'storage-unavailable', 'unknown')
+export const BootWarningReason = Schema.Literals(['private-browsing', 'storage-unavailable', 'unknown'])
 export type BootWarningReason = typeof BootWarningReason.Type
 
 /**
@@ -67,10 +68,10 @@ export type BootWarningReason = typeof BootWarningReason.Type
  * - `persisted`: Data is persisted to disk (e.g., via OPFS)
  * - `in-memory`: Data is only stored in memory and will be lost on page refresh
  */
-export const StorageMode = Schema.Literal('persisted', 'in-memory')
+export const StorageMode = Schema.Literals(['persisted', 'in-memory'])
 export type StorageMode = typeof StorageMode.Type
 
-export const BootStatus = Schema.Union(
+export const BootStatus = Schema.Union([
   Schema.Struct({ stage: Schema.Literal('loading') }),
   Schema.Struct({ stage: Schema.Literal('migrating'), progress: BootStateProgress }),
   Schema.Struct({ stage: Schema.Literal('rehydrating'), progress: BootStateProgress }),
@@ -85,7 +86,7 @@ export const BootStatus = Schema.Union(
     reason: BootWarningReason,
     message: Schema.String,
   }),
-).annotations({ title: 'BootStatus' })
+]).annotate({ title: 'BootStatus' })
 
 export type BootStatus = typeof BootStatus.Type
 
@@ -145,7 +146,7 @@ export interface AdapterArgs {
    *
    * @default undefined
    */
-  syncPayloadSchema: Schema.Schema<any> | undefined
+  syncPayloadSchema: Schema.Top | undefined
   /** Encoded representation of the sync payload matching `syncPayloadSchema`. */
-  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadEncoded: Schema.Json | undefined
 }

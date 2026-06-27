@@ -1,5 +1,5 @@
-import { isDevEnv, isNil, isReadonlyArray } from '@livestore/utils'
-import { Hash, Option, Schema } from '@livestore/utils/effect'
+import { isDevEnv } from '@livestore/utils'
+import { Hash, Option, Predicate, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from './adapter-types.ts'
 import type { EventDef, Materializer, MaterializerContextQuery, MaterializerResult } from './schema/EventDef/mod.ts'
@@ -39,7 +39,9 @@ export const getExecStatementsFromMaterializer = ({
       : event.decoded
 
   const eventArgsEncoded =
-    isNil(event.decoded?.args) === true ? undefined : Schema.encodeUnknownSync(eventDef.schema)(event.decoded.args)
+    Predicate.isNotUndefined(event.decoded) && Predicate.isNotNullish(event.decoded.args)
+      ? Schema.encodeUnknownSync(eventDef.schema)(event.decoded.args)
+      : undefined
 
   const query: MaterializerContextQuery = (
     rawQueryOrQueryBuilder:
@@ -53,7 +55,7 @@ export const getExecStatementsFromMaterializer = ({
       const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
       const rawResults = dbState.select(query, prepareBindValues(bindValues, query))
       const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
-      return Schema.decodeSync(resultSchema)(rawResults)
+      return Schema.decodeUnknownSync(resultSchema)(rawResults)
     } else {
       const { query, bindValues } = rawQueryOrQueryBuilder
       return dbState.select(query, prepareBindValues(bindValues, query))
@@ -124,7 +126,7 @@ const fromMaterializerResult = (
   bindValues: BindValues
   writeTables: ReadonlySet<string> | undefined
 }> => {
-  if (isReadonlyArray(materializerResult) === true) {
+  if (ReadonlyArray.isArray<MaterializerResult | ReadonlyArray<MaterializerResult>>(materializerResult) === true) {
     return materializerResult.flatMap(fromMaterializerResult)
   }
   if (isQueryBuilder(materializerResult) === true) {

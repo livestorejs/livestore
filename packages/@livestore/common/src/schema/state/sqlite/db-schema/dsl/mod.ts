@@ -1,7 +1,6 @@
 import type { Nullable } from '@livestore/utils'
 import { omitUndefineds } from '@livestore/utils'
-import type { Option, Types } from '@livestore/utils/effect'
-import { Schema } from '@livestore/utils/effect'
+import { type Option, type Types, Schema } from '@livestore/utils/effect'
 
 import type * as SqliteAst from '../ast/sqlite.ts'
 import type { ColumnDefinition } from './field-defs.ts'
@@ -52,12 +51,12 @@ export const table = <TTableName extends string, TColumns extends Columns, TInde
 export type AnyIfConstained<In, Out> = '__constrained' extends keyof In ? any : Out
 export type EmptyObjIfConstained<In> = '__constrained' extends keyof In ? {} : In
 
-export type StructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Schema<
+export type StructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Codec<
   AnyIfConstained<TCols, FromColumns.RowDecoded<TCols>>,
   AnyIfConstained<TCols, FromColumns.RowEncoded<TCols>>
 >
 
-export type InsertStructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Schema<
+export type InsertStructSchemaForColumns<TCols extends ConstraintColumns> = Schema.Codec<
   AnyIfConstained<TCols, FromColumns.InsertRowDecoded<TCols>>,
   AnyIfConstained<TCols, FromColumns.InsertRowEncoded<TCols>>
 >
@@ -65,7 +64,7 @@ export type InsertStructSchemaForColumns<TCols extends ConstraintColumns> = Sche
 export const structSchemaForTable = <TTableDefinition extends TableDefinition<any, any>>(
   tableDef: TTableDefinition,
 ): StructSchemaForColumns<TTableDefinition['columns']> =>
-  Schema.Struct(Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.schema]))).annotations({
+  Schema.Struct(Object.fromEntries(tableDef.ast.columns.map((column) => [column.name, column.schema]))).annotate({
     title: tableDef.name,
   }) as any
 
@@ -80,7 +79,7 @@ export const insertStructSchemaForTable = <TTableDefinition extends TableDefinit
         column.nullable === true || column.default._tag === 'Some' ? Schema.optional(column.schema) : column.schema,
       ]),
     ),
-  ).annotations({
+  ).annotate({
     title: tableDef.name,
   }) as any
 
@@ -150,7 +149,7 @@ export namespace FromTable {
   }
 
   export type RowEncodeNonNullable<TTableDefinition extends TableDefinition<any, any>> = {
-    [K in keyof TTableDefinition['columns']]: Schema.Schema.Encoded<TTableDefinition['columns'][K]['schema']>
+    [K in keyof TTableDefinition['columns']]: (TTableDefinition['columns'][K]['schema'])['Encoded']
   }
 
   export type RowEncoded<TTableDefinition extends TableDefinition<any, any>> = Types.Simplify<
@@ -167,7 +166,7 @@ export namespace FromTable {
   // >
 
   export type RowDecodedAll<TTableDefinition extends TableDefinition<any, any>> = {
-    [K in keyof TTableDefinition['columns']]: Schema.Schema.Type<TTableDefinition['columns'][K]['schema']>
+    [K in keyof TTableDefinition['columns']]: (TTableDefinition['columns'][K]['schema'])['Type']
   }
 }
 
@@ -179,11 +178,11 @@ export namespace FromColumns {
   >
 
   export type RowDecodedAll<TColumns extends Columns> = {
-    readonly [K in keyof TColumns]: Schema.Schema.Type<TColumns[K]['schema']>
+    readonly [K in keyof TColumns]: (TColumns[K]['schema'])['Type']
   }
 
   export type RowEncodedAll<TColumns extends Columns> = {
-    readonly [K in keyof TColumns]: Schema.Schema.Encoded<TColumns[K]['schema']>
+    readonly [K in keyof TColumns]: (TColumns[K]['schema'])['Encoded']
   }
 
   export type RowEncoded<TColumns extends Columns> = Types.Simplify<
@@ -192,7 +191,7 @@ export namespace FromColumns {
   >
 
   export type RowEncodeNonNullable<TColumns extends Columns> = {
-    readonly [K in keyof TColumns]: Schema.Schema.Encoded<TColumns[K]['schema']>
+    readonly [K in keyof TColumns]: (TColumns[K]['schema'])['Encoded']
   }
 
   export type NullableColumnNames<TColumns extends Columns> = keyof {

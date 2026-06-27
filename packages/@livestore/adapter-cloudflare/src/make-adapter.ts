@@ -18,7 +18,7 @@ import {
 import { LiveStoreEvent } from '@livestore/livestore'
 import { CF_SQL_VFS_REQUIRED_PRAGMAS, sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { Effect, FetchHttpClient, Layer, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, Queue, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 
 import { makeSqliteDb as makeDoSqliteDb } from './make-sqlite-db.ts'
 
@@ -127,7 +127,7 @@ export const makeAdapter =
             export: Effect.sync(() => dbState.export()),
             getEventlogData: Effect.sync(() => dbEventlog.export()),
             syncState: syncProcessor.syncState,
-            sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+            sendDevtoolsMessage: (message) => Queue.offer(extraIncomingMessagesQueue, message),
             networkStatus,
           },
           {
@@ -155,7 +155,7 @@ export const makeAdapter =
             //     node: webmeshNode,
             //     url: `ws://${devtoolsOptions.host}:${devtoolsOptions.port}`,
             //     openTimeout: 500,
-            //   }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+            //   }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }))
           }
         }),
         leaderThread,

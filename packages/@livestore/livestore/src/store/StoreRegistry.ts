@@ -1,8 +1,9 @@
-import { LogConfig, OtelLiveDummy, provideOtel, UnknownError } from '@livestore/common'
+import { OtelLiveDummy, provideOtel, UnknownError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { omitUndefineds } from '@livestore/utils'
+import { isDevEnv, omitUndefineds } from '@livestore/utils'
 import {
   Cause,
+  type Context,
   Effect,
   Equal,
   Exit,
@@ -10,9 +11,10 @@ import {
   Hash,
   Layer,
   ManagedRuntime,
+  Result,
   type OtelTracer,
   RcMap,
-  Runtime,
+  References,
   type Schema,
   type Scope,
 } from '@livestore/utils/effect'
@@ -47,7 +49,7 @@ export const DEFAULT_UNUSED_CACHE_TIME = typeof window === 'undefined' ? Number.
 export interface RegistryStoreOptions<
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
 > extends CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> {
   /**
    * OpenTelemetry configuration for tracing store operations.
@@ -99,10 +101,10 @@ type StoreRegistryConfig = {
     >
   >
   /**
-   * Custom Effect runtime for all registry operations (loading, caching, etc.).
-   * When the runtime's scope closes, all managed stores are automatically shut down.
+   * Custom Effect context for all registry operations (loading, caching, etc.).
+   * When the context's scope closes, all managed stores are automatically shut down.
    */
-  runtime?: Runtime.Runtime<Scope.Scope | OtelTracer.OtelTracer>
+  context?: Context.Context<Scope.Scope | OtelTracer.OtelTracer>
 }
 
 /**
@@ -150,14 +152,14 @@ export class StoreRegistry {
   readonly #rcMap: RcMap.RcMap<StoreCacheKey, Store<any, any>, UnknownError>
 
   /**
-   * Effect runtime providing Scope and OtelTracer for all registry operations.
-   * When the runtime's scope closes, all managed stores are automatically shut down.
+   * Effect context providing Scope and OtelTracer for all registry operations.
+   * When the context's scope closes, all managed stores are automatically shut down.
    */
-  readonly #runtime: Runtime.Runtime<Scope.Scope | OtelTracer.OtelTracer>
+  readonly #context: Context.Context<Scope.Scope | OtelTracer.OtelTracer>
 
   /**
    * Disposal callback for the runtime created by the registry.
-   * Undefined when caller provided their own runtime (caller owns cleanup in that case).
+   * Undefined when caller provided their own services (caller owns cleanup in that case).
    */
   readonly #disposeOwnedRuntime: (() => Promise<void>) | undefined
 
@@ -181,11 +183,11 @@ export class StoreRegistry {
    * ```
    */
   constructor(config: StoreRegistryConfig = {}) {
-    if (config.runtime !== undefined) {
-      this.#runtime = config.runtime
+    if (config.context !== undefined) {
+      this.#context = config.context
     } else {
       const ownedRuntime = ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy))
-      this.#runtime = ownedRuntime.runtimeEffect.pipe(Effect.runSync)
+      this.#context = ownedRuntime.contextEffect.pipe(Effect.runSync)
       this.#disposeOwnedRuntime = () => ownedRuntime.dispose()
     }
 
@@ -194,9 +196,17 @@ export class StoreRegistry {
         // Merge registry defaults with call-site options (call-site takes precedence)
         const mergedOptions = { ...config.defaultOptions, ...options }
         return createStore(mergedOptions).pipe(
-          Effect.catchAllDefect((cause) => UnknownError.make({ cause })),
+          Effect.catchDefect((cause) => UnknownError.make({ cause })),
           Effect.withSpan(`StoreRegistry.lookup:${mergedOptions.storeId}`),
-          LogConfig.withLoggerConfig(mergedOptions, { threadName: 'window' }),
+          Effect.provide(
+            Layer.mergeAll(
+              mergedOptions.logger ?? Layer.empty,
+              Layer.succeed(
+                References.MinimumLogLevel,
+                mergedOptions.logLevel ?? (isDevEnv() === true ? 'Debug' : 'Info'),
+              ),
+            ),
+          ),
           provideOtel(
             omitUndefineds({
               parentSpanContext: mergedOptions.otelOptions?.rootSpanContext,
@@ -207,7 +217,7 @@ export class StoreRegistry {
       },
       idleTimeToLive: ({ options }: StoreCacheKey) =>
         options.unusedCacheTime ?? config.defaultOptions?.unusedCacheTime ?? DEFAULT_UNUSED_CACHE_TIME,
-    }).pipe(Runtime.runSync(this.#runtime))
+    }).pipe(Effect.runSyncWith(this.#context))
   }
 
   /**
@@ -227,11 +237,11 @@ export class StoreRegistry {
   getOrLoad = <
     TSchema extends LiveStoreSchema,
     TContext = {},
-    TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+    TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
   >(
     options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): Effect.Effect<Store<TSchema, TContext>, UnknownError, Scope.Scope> =>
-    Effect.gen(this, function* () {
+    Effect.gen({ self: this }, function* () {
       // Cast options to satisfy StoreCacheKey's wider type (type safety enforced at API boundary)
       const key = new StoreCacheKey(options)
       const store = yield* RcMap.get(this.#rcMap, key)
@@ -258,22 +268,22 @@ export class StoreRegistry {
   getOrLoadPromise = <
     TSchema extends LiveStoreSchema,
     TContext = {},
-    TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+    TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
   >(
     options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): Store<TSchema, TContext> | Promise<Store<TSchema, TContext>> => {
-    const exit = this.getOrLoad(options).pipe(Effect.scoped, Runtime.runSyncExit(this.#runtime))
+    const exit = this.getOrLoad(options).pipe(Effect.scoped, Effect.runSyncExitWith(this.#context))
 
     if (Exit.isSuccess(exit) === true) return exit.value
 
     // Check if the failure is due to async work
-    const defect = Cause.dieOption(exit.cause)
-    if (defect._tag !== 'Some') {
+    const defect = Cause.findDefect(exit.cause)
+    if (Result.isFailure(defect)) {
       // Handle synchronous failure
       throw Cause.squash(exit.cause)
     }
 
-    if (Runtime.isAsyncFiberException(defect.value) === false) {
+    if (Cause.isAsyncFiberError(defect.success) === false) {
       // Handle synchronous failure
       throw Cause.squash(exit.cause)
     }
@@ -285,9 +295,9 @@ export class StoreRegistry {
     if (cached !== undefined) return cached as Promise<Store<TSchema, TContext>>
 
     // Create and cache the promise
-    const fiber = defect.value.fiber as Fiber.RuntimeFiber<Store<TSchema, TContext>>
+    const fiber = defect.value.fiber as Fiber.Fiber<Store<TSchema, TContext>>
     const promise = Fiber.join(fiber)
-      .pipe(Runtime.runPromise(this.#runtime))
+      .pipe(Effect.runPromiseWith(this.#context))
       .finally(() => this.#loadingPromises.delete(storeId))
 
     this.#loadingPromises.set(storeId, promise)
@@ -310,11 +320,11 @@ export class StoreRegistry {
   retain = <
     TSchema extends LiveStoreSchema,
     TContext = {},
-    TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+    TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
   >(
     options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): (() => void) => {
-    const release = Effect.gen(this, function* () {
+    const release = Effect.gen({ self: this }, function* () {
       // Cast options to satisfy StoreCacheKey's wider type (type safety enforced at API boundary)
       const key = new StoreCacheKey(options)
       yield* RcMap.get(this.#rcMap, key)
@@ -322,7 +332,7 @@ export class StoreRegistry {
       // When `release()` is called, the fiber is interrupted, closing the scope
       // and releasing the RcMap entry (which may trigger disposal after idleTimeToLive).
       yield* Effect.never
-    }).pipe(Effect.scoped, Runtime.runCallback(this.#runtime))
+    }).pipe(Effect.scoped, Effect.runCallbackWith(this.#context))
 
     return () => release()
   }
@@ -343,7 +353,7 @@ export class StoreRegistry {
   preload = async <
     TSchema extends LiveStoreSchema,
     TContext = {},
-    TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+    TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
   >(
     options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): Promise<void> => {
@@ -365,7 +375,7 @@ export class StoreRegistry {
    * @returns A promise that resolves when disposal is complete
    *
    * @remarks
-   * - No-op if a custom `runtime` was provided to the constructor (caller owns cleanup)
+   * - No-op if a custom `context` was provided to the constructor (caller owns cleanup)
    * - Idempotent: safe to call multiple times
    * - After disposal, the registry should not be used
    */
@@ -413,7 +423,7 @@ export class StoreRegistry {
 export const storeOptions = <
   TSchema extends LiveStoreSchema,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
 >(
   options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
 ): RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema> => options

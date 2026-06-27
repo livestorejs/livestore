@@ -1,7 +1,7 @@
 import { BackendIdMismatchError, ServerAheadError, SyncBackend, UnknownError } from '@livestore/common'
 import { type CfTypes, emitStreamResponse } from '@livestore/common-cf'
-import { splitChunkBySize } from '@livestore/common/sync'
-import { Chunk, Effect, Option, type RpcMessage, Schema } from '@livestore/utils/effect'
+import { splitArrayBySize } from '@livestore/common/sync'
+import { Effect, Option, ReadonlyArray as EffectArray, type RpcMessage, Schema } from '@livestore/utils/effect'
 
 import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SyncMessage } from '../../common/mod.ts'
@@ -12,10 +12,10 @@ import {
   type StoreId,
   WebSocketAttachmentSchema,
 } from '../shared.ts'
-import { DoCtx } from './layer.ts'
+import * as DoCtx from './layer.ts'
 
 const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
-const jsonStringify = Schema.encodeSync(Schema.parseJson())
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
 type PullBatchItem = SyncMessage.PullResponse['batch'][number]
 
 export const makePush =
@@ -27,7 +27,7 @@ export const makePush =
     ctx,
     env,
   }: {
-    payload: Schema.JsonValue | undefined
+    payload: Schema.Json | undefined
     headers: ForwardedHeaders | undefined
     options: MakeDurableObjectClassOptions | undefined
     storeId: StoreId
@@ -37,7 +37,7 @@ export const makePush =
   (pushRequest: Omit<SyncMessage.PushRequest, '_tag'>) =>
     Effect.gen(function* () {
       // yield* Effect.log(`Pushing ${decodedMessage.batch.length} events`, decodedMessage.batch)
-      const { backendId, storage, currentHeadRef, updateCurrentHead, rpcSubscriptions } = yield* DoCtx
+      const { backendId, storage, currentHeadRef, updateCurrentHead, rpcSubscriptions } = yield* DoCtx.DoCtx
 
       if (pushRequest.batch.length === 0) {
         return SyncMessage.PushAck.make({})
@@ -89,27 +89,30 @@ export const makePush =
         const connectedClients = ctx.getWebSockets()
 
         // Preparing chunks of responses to make sure we don't exceed the WS message size limit.
-        const responses = yield* Chunk.fromIterable(pushRequest.batch).pipe(
-          splitChunkBySize({
-            maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
-            maxBytes: MAX_WS_MESSAGE_BYTES,
-            encode: (items) =>
-              encodePullResponse(
-                SyncMessage.PullResponse.make({
-                  batch: items.map(
-                    (eventEncoded): PullBatchItem => ({
-                      eventEncoded,
-                      metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
-                    }),
-                  ),
-                  pageInfo: SyncBackend.pageInfoNoMore,
-                  backendId,
-                }),
-              ),
-          }),
-          Effect.map(
-            Chunk.map((eventsChunk) => {
-              const batchWithMetadata = Chunk.toReadonlyArray(eventsChunk).map((eventEncoded) => ({
+        if (EffectArray.isReadonlyArrayNonEmpty(pushRequest.batch) === false) {
+          return
+        }
+
+        const responses = yield* splitArrayBySize({
+          maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+          maxBytes: MAX_WS_MESSAGE_BYTES,
+          encode: (items) =>
+            encodePullResponse(
+              SyncMessage.PullResponse.make({
+                batch: items.map(
+                  (eventEncoded): PullBatchItem => ({
+                    eventEncoded,
+                    metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
+                  }),
+                ),
+                pageInfo: SyncBackend.pageInfoNoMore,
+                backendId,
+              }),
+            ),
+        })(pushRequest.batch).pipe(
+          Effect.map((eventBatch) =>
+            eventBatch.map((events) => {
+              const batchWithMetadata = events.map((eventEncoded) => ({
                 eventEncoded,
                 metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
               }))
@@ -140,7 +143,7 @@ export const makePush =
 
             // NOTE we're also sending the pullRes chunk to the pushing ws client as confirmation
             for (const conn of connectedClients) {
-              const attachment = yield* Schema.decode(WebSocketAttachmentSchema)(conn.deserializeAttachment())
+              const attachment = yield* Schema.decodeEffect(WebSocketAttachmentSchema)(conn.deserializeAttachment())
 
               // We're doing something a bit "advanced" here as we're directly emitting Effect RPC-compatible
               // response messsages on the Effect RPC-managed websocket connection to the WS client.
@@ -178,11 +181,12 @@ export const makePush =
         Effect.tapCauseLogPretty,
         Effect.withSpan('push-rpc-broadcast'),
         Effect.uninterruptible, // We need to make sure Effect RPC doesn't interrupt this fiber
-        Effect.fork,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       // We need to yield here to make sure the fork above is kicked off before we let Effect RPC finish the request
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
 
       return SyncMessage.PushAck.make({})
     }).pipe(
@@ -208,9 +212,9 @@ const blockConcurrencyWhile =
   (ctx: CfTypes.DurableObjectState) =>
   <A, E, R>(eff: Effect.Effect<A, E, R>) =>
     Effect.gen(function* () {
-      const runtime = yield* Effect.runtime<R>()
+      const services = yield* Effect.context<R>()
       const exit = yield* Effect.promise(() =>
-        ctx.blockConcurrencyWhile(() => eff.pipe(Effect.provide(runtime), Effect.runPromiseExit)),
+        ctx.blockConcurrencyWhile(() => eff.pipe(Effect.runPromiseExitWith(services))),
       )
 
       return yield* exit

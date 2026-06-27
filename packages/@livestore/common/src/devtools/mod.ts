@@ -1,5 +1,4 @@
-import type { Effect, Scope, WebChannel } from '@livestore/utils/effect'
-import { Schema } from '@livestore/utils/effect'
+import { type Effect, type Scope, type WebChannel, Schema } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import type { MeshNode } from '@livestore/webmesh'
 
@@ -8,18 +7,18 @@ import * as SessionInfo from './devtools-sessioninfo.ts'
 export * from './devtools-messages.ts'
 export * as SessionInfo from './devtools-sessioninfo.ts'
 
-export const DevtoolsMode = Schema.Union(
+export const DevtoolsMode = Schema.Union([
   Schema.TaggedStruct('node', {
     /** WebSocket URL */
     url: Schema.String,
   }),
   Schema.TaggedStruct('web', {}),
   Schema.TaggedStruct('browser-extension', {}),
-)
+])
 
 export type DevtoolsMode = typeof DevtoolsMode.Type
 
-export const DevtoolsModeTag = DevtoolsMode.pipe(Schema.pluck('_tag'), Schema.typeSchema)
+export const DevtoolsModeTag = DevtoolsMode.pipe(Schema.pluck('_tag'), Schema.toType)
 export type DevtoolsModeTag = typeof DevtoolsModeTag.Type
 
 export const makeNodeName = {

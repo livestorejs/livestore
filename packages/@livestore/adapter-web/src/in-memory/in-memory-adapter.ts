@@ -21,8 +21,17 @@ import { LiveStoreEvent } from '@livestore/common/schema'
 import type { MakeWebSqliteDb } from '@livestore/sqlite-wasm/browser'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { tryAsFunctionAndNew } from '@livestore/utils'
-import type { Scope } from '@livestore/utils/effect'
-import { Effect, FetchHttpClient, Fiber, Layer, type Schema, SubscriptionRef, Worker } from '@livestore/utils/effect'
+import {
+  type Scope,
+  Effect,
+  FetchHttpClient,
+  Fiber,
+  Layer,
+  Queue,
+  type Schema,
+  SubscriptionRef,
+  Worker,
+} from '@livestore/utils/effect'
 import { BrowserWorker } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as Webmesh from '@livestore/webmesh'
@@ -129,7 +138,8 @@ export const makeInMemoryAdapter =
               Effect.provide(BrowserWorker.layer(() => sharedWebWorker)),
               Effect.tapCauseLogPretty,
               UnknownError.mapToUnknownError,
-              Effect.forkScoped,
+              // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+              Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
             )
           : undefined
 
@@ -191,8 +201,8 @@ export interface MakeLeaderThreadArgs {
   clientId: string
   makeSqliteDb: MakeWebSqliteDb
   syncOptions: SyncOptions | undefined
-  syncPayloadEncoded: Schema.JsonValue | undefined
-  syncPayloadSchema: Schema.Schema<any> | undefined
+  syncPayloadEncoded: Schema.Json | undefined
+  syncPayloadSchema: Schema.Top | undefined
   importSnapshot: Uint8Array<ArrayBuffer> | undefined
   devtoolsEnabled: boolean
   sharedWorkerFiber: SharedWorkerFiber | undefined
@@ -211,13 +221,13 @@ const makeLeaderThread = ({
   sharedWorkerFiber,
 }: MakeLeaderThreadArgs) =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime()
+    const services = yield* Effect.context()
 
     const makeDb = (_kind: 'state' | 'eventlog') => {
       return makeSqliteDb({
         _tag: 'in-memory',
         configureDb: (db) =>
-          configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
+          configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(services)),
       })
     }
 
@@ -282,7 +292,7 @@ const makeLeaderThread = ({
         export: Effect.sync(() => dbState.export()),
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         syncState: syncProcessor.syncState,
-        sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+        sendDevtoolsMessage: (message) => Queue.offer(extraIncomingMessagesQueue, message),
         networkStatus,
       })
 
@@ -339,7 +349,11 @@ const makeDevtoolsOptions = ({
           node,
           worker: sharedWorker,
           target: makeSharedWorkerNodeName({ storeId }),
-        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+        }).pipe(
+          Effect.tapCauseLogPretty,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+        )
 
         return { node, persistenceInfo, mode: 'direct' }
       }),

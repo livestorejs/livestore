@@ -29,7 +29,7 @@
  */
 
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { Result, Schema } from '@livestore/utils/effect'
 
 import type { EventDef } from './event-def.ts'
 import type { EventDefFactInput, EventDefFacts } from './facts.ts'
@@ -105,15 +105,15 @@ export type DefineEventOptions<TTo, TDerived extends boolean = false> = {
 export const defineEvent = <TName extends string, TType, TEncoded = TType, TDerived extends boolean = false>(
   args: {
     name: TName
-    schema: Schema.Schema<TType, TEncoded>
+    schema: Schema.Codec<TType, TEncoded>
   } & DefineEventOptions<TType, TDerived>,
 ): EventDef<TName, TType, TEncoded, TDerived> => {
   const { name, schema, ...options } = args
 
   const makePartialEvent = (args: TType) => {
-    const res = Schema.validateEither(schema)(args)
-    if (res._tag === 'Left') {
-      shouldNeverHappen(`Invalid event args for event '${name}':`, res.left.message, '\n')
+    const res = Schema.decodeResult(Schema.toType(schema))(args)
+    if (Result.isFailure(res)) {
+      shouldNeverHappen(`Invalid event args for event '${name}':`, res.failure.message, '\n')
     }
     return { name: name, args }
   }
@@ -179,7 +179,7 @@ export const defineEvent = <TName extends string, TType, TEncoded = TType, TDeri
 export const synced = <TName extends string, TType, TEncoded = TType>(
   args: {
     name: TName
-    schema: Schema.Schema<TType, TEncoded>
+    schema: Schema.Codec<TType, TEncoded>
   } & Omit<DefineEventOptions<TType>, 'derived' | 'clientOnly'>,
 ): EventDef<TName, TType, TEncoded> => defineEvent({ ...args, clientOnly: false })
 
@@ -202,7 +202,7 @@ export const synced = <TName extends string, TType, TEncoded = TType>(
  *   name: 'UiStateSet',
  *   schema: Schema.Struct({
  *     selectedTodoId: Schema.NullOr(Schema.String),
- *     filterMode: Schema.Literal('all', 'active', 'completed'),
+ *     filterMode: Schema.Literals(['all', 'active', 'completed']),
  *   }),
  * })
  *
@@ -213,6 +213,6 @@ export const synced = <TName extends string, TType, TEncoded = TType>(
 export const clientOnly = <TName extends string, TType, TEncoded = TType>(
   args: {
     name: TName
-    schema: Schema.Schema<TType, TEncoded>
+    schema: Schema.Codec<TType, TEncoded>
   } & Omit<DefineEventOptions<TType>, 'derived' | 'clientOnly'>,
 ): EventDef<TName, TType, TEncoded> => defineEvent({ ...args, clientOnly: true })

@@ -2,7 +2,7 @@ import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import type { BootStatus } from '@livestore/common'
 import { liveStoreStorageFormatVersion, UnknownError } from '@livestore/common'
-import { Chunk, Effect, Layer, Logger, LogLevel, Queue, Schedule, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, Layer, Logger, Queue, References, Schedule, Schema, Stream } from '@livestore/utils/effect'
 import { Opfs } from '@livestore/utils/effect/browser'
 
 import { ResultMultipleMigrations } from '../bridge.ts'
@@ -54,7 +54,7 @@ export const testMultipleMigrations = () =>
           Effect.tap((status) => {
             if (status.stage === 'migrating') hasMigrated = true
           }),
-          Effect.repeat(Schedule.forever.pipe(Schedule.untilInput((_: BootStatus) => _.stage === 'done'))),
+          Effect.repeat(Schedule.identity<BootStatus>().pipe(Schedule.while(({ input }) => input.stage !== 'done'))),
           // Count a migration when we see a "done" status after a "migrating" status
           Effect.tapSync(() => {
             if (hasMigrated === true) migrationsCount++
@@ -74,34 +74,35 @@ export const testMultipleMigrations = () =>
     Effect.tapSync((exit) => {
       window.postMessage(Schema.encodeSync(ResultMultipleMigrations)(ResultMultipleMigrations.make({ exit })))
     }),
-    Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.provide(Layer.mergeAll(Opfs.Opfs.Default, Logger.pretty)),
+    Effect.provideService(References.MinimumLogLevel, 'Debug'),
+    Effect.provide(Layer.mergeAll(Opfs.layer, Logger.layer([Logger.consolePretty()]))),
     Effect.scoped,
     Effect.runPromise,
   )
 
 const collectArchiveSnapshot = Effect.gen(function* () {
   const segments = [`livestore-${storeId}@${liveStoreStorageFormatVersion}`, 'archive']
+  const opfs = yield* Opfs.Opfs
 
-  let handle = yield* Opfs.Opfs.getRootDirectoryHandle
+  let handle = yield* opfs.getRootDirectoryHandle
   for (const segment of segments) {
-    handle = yield* Opfs.Opfs.getDirectoryHandle(handle, segment)
+    handle = yield* opfs.getDirectoryHandle(handle, segment)
   }
 
-  const handlesStream = yield* Opfs.Opfs.values(handle)
+  const handlesStream = opfs.values(handle)
 
   const fileChunks = yield* handlesStream.pipe(
     Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
     Stream.mapEffect((fileHandle) =>
       Effect.gen(function* () {
-        const file = yield* Opfs.Opfs.getFile(fileHandle)
+        const file = yield* opfs.getFile(fileHandle)
         return { name: fileHandle.name, size: file.size, lastModified: file.lastModified }
       }),
     ),
     Stream.runCollect,
   )
 
-  return fileChunks.pipe(Chunk.toReadonlyArray)
+  return fileChunks
 }).pipe(
   Effect.catchTag('NotFoundError', () => Effect.succeed([])),
   UnknownError.mapToUnknownError,

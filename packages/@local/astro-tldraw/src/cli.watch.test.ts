@@ -1,8 +1,8 @@
 import path from 'node:path'
 
-import { FileSystem } from '@effect/platform'
 import { NodeFileSystem } from '@effect/platform-node'
 import * as Vitest from '@effect/vitest'
+import { FileSystem } from 'effect'
 import { Effect, Queue } from 'effect'
 
 import { resolveCachePaths } from './cache.ts'
@@ -59,7 +59,7 @@ Vitest.describe('summarizeWatchEvent', () => {
 })
 
 Vitest.describe('watchDiagrams', () => {
-  Vitest.scopedLive(
+  Vitest.live(
     'runs initial build on start (empty diagrams dir)',
     Effect.fn(function* () {
       const fs = yield* FileSystem.FileSystem
@@ -78,7 +78,9 @@ Vitest.describe('watchDiagrams', () => {
         onRebuild: (info) => Queue.offer(rebuildEvents, info),
       })
 
-      yield* Effect.forkScoped(watchEffect)
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+
+      yield* Effect.forkScoped(watchEffect, { startImmediately: true, uninterruptible: 'inherit' })
 
       const initial = yield* Queue.take(rebuildEvents).pipe(Effect.timeout('5 seconds'), Effect.orDie)
       Vitest.expect(initial.reason).toBe('initial')
@@ -87,7 +89,7 @@ Vitest.describe('watchDiagrams', () => {
     { timeout: 10000 },
   )
 
-  Vitest.scopedLive(
+  Vitest.live(
     'ignores non-.tldr file changes',
     Effect.fn(function* () {
       const fs = yield* FileSystem.FileSystem
@@ -106,7 +108,9 @@ Vitest.describe('watchDiagrams', () => {
         onRebuild: (info) => Queue.offer(rebuildEvents, info),
       })
 
-      yield* Effect.forkScoped(watchEffect)
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+
+      yield* Effect.forkScoped(watchEffect, { startImmediately: true, uninterruptible: 'inherit' })
 
       /* Wait for initial build */
       const initial = yield* Queue.take(rebuildEvents).pipe(Effect.timeout('5 seconds'), Effect.orDie)
@@ -124,7 +128,7 @@ Vitest.describe('watchDiagrams', () => {
     { timeout: 10000 },
   )
 
-  Vitest.scopedLive(
+  Vitest.live(
     'triggers rebuild when .tldr file is created',
     Effect.fn(function* () {
       const fs = yield* FileSystem.FileSystem
@@ -143,7 +147,9 @@ Vitest.describe('watchDiagrams', () => {
         onRebuild: (info) => Queue.offer(rebuildEvents, info),
       })
 
-      yield* Effect.forkScoped(watchEffect)
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+
+      yield* Effect.forkScoped(watchEffect, { startImmediately: true, uninterruptible: 'inherit' })
 
       /* Wait for initial build */
       const initial = yield* Queue.take(rebuildEvents).pipe(Effect.timeout('5 seconds'), Effect.orDie)

@@ -33,7 +33,7 @@ export const makeSelect = <T>(
       const { query, bindValues } = queryStrOrQueryBuilder.asSql()
       const resultSchema = getResultSchema(queryStrOrQueryBuilder)
       const results = select(query, bindValues as unknown as PreparedBindValues)
-      return Schema.decodeSync(resultSchema)(results)
+      return Schema.decodeUnknownSync(resultSchema)(results)
     } else {
       return select(queryStrOrQueryBuilder, maybeBindValues)
     }

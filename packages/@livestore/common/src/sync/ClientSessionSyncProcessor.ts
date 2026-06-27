@@ -1,16 +1,17 @@
 /// <reference lib="dom" />
 import { LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
 import {
-  BucketQueue,
   Effect,
   Exit,
   FiberHandle,
   Option,
+  Predicate,
   Queue,
   Schema,
   type Scope,
   Stream,
   Subscribable,
+  TxQueue,
 } from '@livestore/utils/effect'
 
 import type { ClientSession } from '../adapter-types.ts'
@@ -23,7 +24,7 @@ import { resolveSessionIdSymbolInEventArgs } from '../session-id-symbol.ts'
 import * as SyncState from './syncstate.ts'
 
 /** Serialize value to JSON string for trace attributes */
-const jsonStringify = Schema.encodeSync(Schema.parseJson())
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
 
 /**
  * Rebase behaviour:
@@ -100,7 +101,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
-  const leaderPushQueue = yield* BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>()
+  const leaderPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.fn('client-session-sync-processor:boot')(function* () {
     if (
@@ -124,18 +125,18 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     const leaderPushingFiberHandle = yield* FiberHandle.make()
 
     const backgroundLeaderPushing = Effect.gen(function* () {
-      const batch = yield* BucketQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
+      const batch = yield* TxQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
       yield* clientSession.leaderThread.events.push(batch).pipe(
         Effect.catchIf(isRejectedPushError, () => {
           debugInfo.rejectCount++
-          return BucketQueue.clear(leaderPushQueue)
+          return TxQueue.clear(leaderPushQueue)
         }),
       )
     }).pipe(
       Effect.forever,
       Effect.interruptible,
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
+      Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
     )
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
@@ -158,7 +159,10 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
             isClientOnlyEvent,
             isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
           }).pipe(
-            Effect.filterOrDieMessage((r) => r._tag !== 'reject', 'Unexpected reject in client-session-sync-processor'),
+            Effect.filterOrElse(
+              (r) => r._tag !== 'reject',
+              () => Effect.die(new Error('Unexpected reject in client-session-sync-processor')),
+            ),
           )
 
           syncStateRef.current = mergeResult.newSyncState
@@ -181,7 +185,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
             if (SIMULATION_ENABLED === true) yield* simSleep('pull', '2_before_leader_push_queue_clear')
 
             // Reset the leader push queue since we're rebasing and will push again
-            yield* BucketQueue.clear(leaderPushQueue)
+            yield* TxQueue.clear(leaderPushQueue)
 
             if (SIMULATION_ENABLED === true) yield* simSleep('pull', '3_before_rebase_rollback')
 
@@ -203,7 +207,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
             if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
 
-            yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
+            yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
 
             if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
 
@@ -221,7 +225,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
           if (mergeResult.newEvents.length === 0) {
             // If there are no new events, we need to update the sync state as well
-            yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+            yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
             return
           }
 
@@ -246,10 +250,10 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           refreshTables(writeTables)
 
           // We're only triggering the sync state update after all events have been materialized
-          yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+          yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
         }).pipe(
           Effect.tapCauseLogPretty,
-          Effect.catchAllCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
+          Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
         ),
       ),
       Stream.runDrain,
@@ -257,7 +261,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       Effect.interruptible,
       Effect.withSpan('client-session-sync-processor:pull'),
       Effect.tapCauseLogPretty,
-      Effect.forkScoped,
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
     )
   })()
 
@@ -267,7 +272,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     let baseEventSequenceNumber = syncStateRef.current.localHead
     return yield* Effect.forEach(events, ({ name, args }) =>
       Effect.gen(function* () {
-        const eventDef = yield* Effect.fromNullable(schema.eventsDefsMap.get(name)).pipe(Effect.orDieDebugger)
+        const eventDef = yield* Effect.fromNullishOr(schema.eventsDefsMap.get(name)).pipe(Effect.orDieDebugger)
         const nextNumPair = EventSequenceNumber.Client.nextPair({
           seqNum: baseEventSequenceNumber,
           isClientOnly: eventDef.options.clientOnly,
@@ -318,7 +323,12 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         payload: { _tag: 'local-push', newEvents: encodedEvents },
         isClientOnlyEvent,
         isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-      }).pipe(Effect.filterOrDieMessage((r) => r._tag === 'advance', 'Expected advance from local-push merge'))
+      }).pipe(
+        Effect.filterOrElse(
+          Predicate.isTagged('advance'),
+          () => Effect.die(new Error('Expected advance from local-push merge')),
+        ),
+      )
 
       yield* Effect.annotateCurrentSpan({
         batchSize: encodedEvents.length,
@@ -331,8 +341,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       })
 
       syncStateRef.current = mergeResult.newSyncState
-      yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
-      yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
+      yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
+      yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
     },
   )
 
@@ -356,9 +366,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         Effect.gen(function* () {
           console.log('debugInfo', debugInfo)
           console.log('syncState', syncStateRef.current)
-          const pushQueueSize = yield* BucketQueue.size(leaderPushQueue)
-          console.log('pushQueueSize', pushQueueSize)
-          const pushQueueItems = yield* BucketQueue.peekAll(leaderPushQueue)
+          const pushQueueItems = yield* snapshotTxQueue(leaderPushQueue)
+          console.log('pushQueueSize', pushQueueItems.length)
           console.log(
             'pushQueueItems',
             pushQueueItems.map((_) => _.toJSON()),
@@ -368,6 +377,13 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     },
   } satisfies ClientSessionSyncProcessor
 })
+
+const snapshotTxQueue = <A>(queue: TxQueue.TxQueue<A>): Effect.Effect<ReadonlyArray<A>> =>
+  Effect.tx(Effect.gen(function* () {
+    const items = yield* TxQueue.clear(queue)
+    yield* TxQueue.offerAll(queue, items)
+    return items
+  }))
 
 export interface ClientSessionSyncProcessor {
   boot: Effect.Effect<void, never, Scope.Scope>
@@ -397,11 +413,11 @@ const SIMULATION_ENABLED = true
 // Warning: High values for the simulation params can lead to very long test runs since those get multiplied with the number of events
 export const ClientSessionSyncProcessorSimulationParams = Schema.Struct({
   pull: Schema.Struct({
-    '1_before_leader_push_fiber_interrupt': Schema.Int.pipe(Schema.between(0, 15)),
-    '2_before_leader_push_queue_clear': Schema.Int.pipe(Schema.between(0, 15)),
-    '3_before_rebase_rollback': Schema.Int.pipe(Schema.between(0, 15)),
-    '4_before_leader_push_queue_offer': Schema.Int.pipe(Schema.between(0, 15)),
-    '5_before_leader_push_fiber_run': Schema.Int.pipe(Schema.between(0, 15)),
+    '1_before_leader_push_fiber_interrupt': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
+    '2_before_leader_push_queue_clear': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
+    '3_before_rebase_rollback': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
+    '4_before_leader_push_queue_offer': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
+    '5_before_leader_push_fiber_run': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
   }),
 })
 type ClientSessionSyncProcessorSimulationParams = typeof ClientSessionSyncProcessorSimulationParams.Type

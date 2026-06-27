@@ -1,29 +1,27 @@
 import { performance } from 'node:perf_hooks'
 
-import * as OtelNodeSdk from '@effect/opentelemetry/NodeSdk'
 import * as otel from '@opentelemetry/api'
-import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 
-import { IS_BUN, isNonEmptyString } from '@livestore/utils'
-import type { Tracer } from '@livestore/utils/effect'
-import { Config, Effect, FiberRef, Layer, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
+import { IS_BUN } from '@livestore/utils'
+import {
+  type Tracer,
+  Config,
+  Context,
+  Effect,
+  Exit,
+  FetchHttpClient,
+  Layer,
+  Option,
+  OtelTracer,
+  Otlp,
+  Schema,
+} from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
 
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 export * from './cmd.ts'
-export {
-  type DockerComposeArgs,
-  DockerComposeError,
-  type DockerComposeOperations,
-  DockerComposeService,
-  type LogsOptions,
-  type StartOptions,
-  startDockerComposeServicesScoped,
-} from './DockerComposeService/DockerComposeService.ts'
+export * from './DockerCompose/mod.ts'
 export * as FileLogger from './FileLogger.ts'
 export * from './workspace.ts'
 
@@ -41,12 +39,10 @@ export const OtelLiveHttp = ({
   rootSpanAttributes?: Record<string, unknown>
   skipLogUrl?: boolean
   traceNodeBootstrap?: boolean
-} = {}): Layer.Layer<OtelTracer.OtelTracer | Tracer.ParentSpan> =>
+} = {}): Layer.Layer<OtelTracer.OtelTracer | Tracer.Tracer | Tracer.ParentSpan> =>
   Effect.gen(function* () {
     const configRes = yield* Config.all({
-      exporterUrl: Config.string('OTEL_EXPORTER_OTLP_ENDPOINT').pipe(
-        Config.validate({ message: 'OTEL_EXPORTER_OTLP_ENDPOINT must be set', validation: isNonEmptyString }),
-      ),
+      exporterUrl: Config.nonEmptyString('OTEL_EXPORTER_OTLP_ENDPOINT'),
       serviceName:
         serviceName !== undefined
           ? Config.succeed(serviceName)
@@ -64,41 +60,21 @@ export const OtelLiveHttp = ({
 
     const config = configRes.value
 
-    const resource = { serviceName: config.serviceName }
-
-    const metricReader = new PeriodicExportingMetricReader({
-      exporter: new OTLPMetricExporter({ url: `${config.exporterUrl}/v1/metrics` }),
-      exportIntervalMillis: 1000,
-    })
-
-    const OtelLive = OtelNodeSdk.layer(() => ({
-      resource,
-      metricReader,
-      spanProcessor: new BatchSpanProcessor(
-        new OTLPTraceExporter({ url: `${config.exporterUrl}/v1/traces`, headers: {} }),
-        { scheduledDelayMillis: 50 },
-      ),
-    })).pipe(
-      // If an OpenTelemetry backend is not available, the `OtelNodeSdk` layer
-      // will ignore the error when attempting to connect and emit a debug log
-      // stating the reason for the error (in this case `ECONNREFUSED`). This
-      // can cause problems for programs which rely on clean `stdout` (e.g.
-      // command-line applications). To remedy this, the below code sets the
-      // minimum log level `FiberRef` to `"None"` for the duration of the
-      // `OtelNodeSdk`'s layer constructor.
-      //
-      // This can likely be removed when Livestore is migrated to the Effect
-      // native Otlp exporters.
-      Layer.locally(FiberRef.currentMinimumLogLevel, LogLevel.None),
-    )
+    const OtelLive = Otlp.layerJson({
+      baseUrl: config.exporterUrl,
+      metricsExportInterval: 1000,
+      tracerExportInterval: 50,
+      resource: { serviceName: config.serviceName },
+    }).pipe(Layer.provide(FetchHttpClient.layer))
+    const OtelTracerLive = Layer.succeed(OtelTracer.OtelTracer, otel.trace.getTracer(config.serviceName))
 
     const RootSpanLive = Layer.span(config.rootSpanName, {
       attributes: { config, ...rootSpanAttributes },
-      onEnd: skipLogUrl === true ? undefined : (span: any) => logTraceUiUrlForSpan()(span.span),
+      onEnd: skipLogUrl === true ? undefined : (span) => logTraceUiUrlForTraceId()(span.traceId),
       parent: parentSpan,
     })
 
-    const layer = yield* Layer.memoize(RootSpanLive.pipe(Layer.provideMerge(OtelLive)))
+    const layer = yield* Layer.memoize(RootSpanLive.pipe(Layer.provideMerge(Layer.mergeAll(OtelLive, OtelTracerLive))))
 
     if (traceNodeBootstrap === true && IS_BUN === false) {
       /**
@@ -106,35 +82,48 @@ export const OtelLiveHttp = ({
        * Note: Skipped in Bun since performance.nodeTiming is not properly supported.
        */
       yield* Effect.gen(function* () {
-        const tracer = yield* OtelTracer.OtelTracer
-        const currentSpan = yield* OtelTracer.currentOtelSpan
+        const tracer = yield* Effect.tracer
+        const currentSpan = yield* Effect.currentSpan
 
         const { nodeTiming, endAbs, durationAttr } = computeBootstrapTiming()
 
-        const bootSpan = tracer.startSpan(
-          'node-bootstrap',
-          {
-            startTime: nodeTiming.nodeStart,
-            attributes: {
-              'node.timing.nodeStart': nodeTiming.nodeStart,
-              'node.timing.environment': nodeTiming.environment,
-              'node.timing.bootstrapComplete': nodeTiming.bootstrapComplete,
-              'node.timing.loopStart': nodeTiming.loopStart,
-              'node.timing.duration': durationAttr,
-            },
-          },
-          otel.trace.setSpanContext(otel.context.active(), currentSpan.spanContext()),
-        )
+        const bootSpan = tracer.span({
+          name: 'node-bootstrap',
+          parent: Option.some(currentSpan),
+          annotations: Context.empty(),
+          links: [],
+          startTime: millisToNanos(
+            IS_BUN === true && typeof nodeTiming.nodeStart === 'number'
+              ? nodeTiming.nodeStart
+              : performance.timeOrigin + nodeTiming.nodeStart,
+          ),
+          kind: 'internal',
+          root: false,
+          sampled: true,
+        })
 
-        bootSpan.end(endAbs)
+        for (const [key, value] of Object.entries({
+          'node.timing.nodeStart': nodeTiming.nodeStart,
+          'node.timing.environment': nodeTiming.environment,
+          'node.timing.bootstrapComplete': nodeTiming.bootstrapComplete,
+          'node.timing.loopStart': nodeTiming.loopStart,
+          'node.timing.duration': durationAttr,
+        })) {
+          if (value !== undefined) bootSpan.attribute(key, value)
+        }
+
+        bootSpan.end(millisToNanos(endAbs), Exit.void)
       }).pipe(Effect.provide(layer), Effect.orDie)
     }
 
     return layer
-  }).pipe(Layer.unwrapScoped) as any
+  }).pipe(Layer.unwrap) as any
 
 export const logTraceUiUrlForSpan = (printMsg?: (url: string) => string) => (span: otel.Span) =>
-  getTracingBackendUrl(span).pipe(
+  logTraceUiUrlForTraceId(printMsg)(span.spanContext().traceId)
+
+const logTraceUiUrlForTraceId = (printMsg?: (url: string) => string) => (traceId: string) =>
+  getTracingBackendUrl(traceId).pipe(
     Effect.tap((url) => {
       if (url === undefined) {
         return Effect.logWarning('No tracing backend url found')
@@ -148,17 +137,17 @@ export const logTraceUiUrlForSpan = (printMsg?: (url: string) => string) => (spa
     }),
   )
 
-export const getTracingBackendUrl = (span: otel.Span) =>
+export const getTracingBackendUrl = (traceIdOrSpan: string | otel.Span) =>
   Effect.gen(function* () {
     const endpoint = yield* Config.string('GRAFANA_ENDPOINT').pipe(Config.option, Effect.orDie)
     if (endpoint._tag === 'None') return
 
-    const traceId = span.spanContext().traceId
+    const traceId = typeof traceIdOrSpan === 'string' ? traceIdOrSpan : traceIdOrSpan.spanContext().traceId
 
     // Grafana + Tempo
 
     const grafanaEndpoint = endpoint.value
-    const left = yield* Schema.encode(Schema.parseJson())({
+    const left = yield* Schema.encodeEffect(Schema.UnknownFromJsonString)({
       datasource: 'tempo',
       queries: [{ query: traceId, queryType: 'traceql', refId: 'A' }],
       range: { from: 'now-1h', to: 'now' },
@@ -221,3 +210,5 @@ const computeBootstrapTiming = () => {
 
   return { nodeTiming, startAbs, endAbs, durationAttr } as const
 }
+
+const millisToNanos = (millis: number): bigint => BigInt(Math.round(millis * 1_000_000))

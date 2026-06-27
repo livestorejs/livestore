@@ -1,9 +1,7 @@
 import { SyncBackend, UnknownError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
-import { splitChunkBySize } from '@livestore/common/sync'
-import { omit } from '@livestore/utils'
+import { splitArrayBySize } from '@livestore/common/sync'
 import {
-  Chunk,
   type Duration,
   Effect,
   HttpClient,
@@ -11,11 +9,14 @@ import {
   identity,
   Layer,
   Option,
+  ReadonlyArray as EffectArray,
   RpcClient,
   RpcSerialization,
   Schedule,
   Schema,
+  Semaphore,
   Stream,
+  Struct,
   SubscriptionRef,
   UrlParams,
 } from '@livestore/utils/effect'
@@ -41,7 +42,7 @@ export interface HttpSyncOptions {
      * How often to poll for new events
      * @default 5 seconds
      */
-    pollInterval?: Duration.DurationInput
+    pollInterval?: Duration.Input
   }
   ping?: {
     /**
@@ -52,12 +53,12 @@ export interface HttpSyncOptions {
      * How long to wait for a ping response before timing out
      * @default 10 seconds
      */
-    requestTimeout?: Duration.DurationInput
+    requestTimeout?: Duration.Input
     /**
      * How often to send ping requests
      * @default 10 seconds
      */
-    requestInterval?: Duration.DurationInput
+    requestInterval?: Duration.Input
   }
 }
 
@@ -73,7 +74,7 @@ export const makeHttpSync =
 
       const livePullInterval = options.livePull?.pollInterval ?? 5_000
 
-      const urlParamsData = yield* Schema.encode(SearchParamsSchema)({
+      const urlParamsData = yield* Schema.encodeEffect(SearchParamsSchema)({
         storeId,
         payload,
         transport: 'http',
@@ -113,7 +114,12 @@ export const makeHttpSync =
 
       if (options.ping?.enabled !== false) {
         // Automatically ping the server to keep the connection alive
-        yield* ping.pipe(Effect.repeat(Schedule.spaced(pingInterval)), Effect.tapCauseLogPretty, Effect.forkScoped)
+        yield* ping.pipe(
+          Effect.repeat(Schedule.spaced(pingInterval)),
+          Effect.tapCauseLogPretty,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+        )
       }
 
       // Helps already establish a TCP connection to the server
@@ -139,13 +145,13 @@ export const makeHttpSync =
             ? // Phase 2: Simulate `live` pull by polling for new events
               Stream.concatWithLastElement((lastElement) => {
                 const initialPhase2Cursor = lastElement.pipe(
-                  Option.flatMap((_) => Option.fromNullable(_.batch.at(-1)?.eventEncoded.seqNum)),
+                  Option.flatMap((_) => Option.fromNullishOr(_.batch.at(-1)?.eventEncoded.seqNum)),
                   Option.map((eventSequenceNumber) => ({ eventSequenceNumber })),
                   Option.orElse(() => cursor),
                   mapCursor,
                 )
 
-                return Stream.unfoldChunkEffect(initialPhase2Cursor, (currentCursor) =>
+                return Stream.paginate(initialPhase2Cursor, (currentCursor) =>
                   Effect.gen(function* () {
                     yield* Effect.sleep(livePullInterval)
 
@@ -153,20 +159,24 @@ export const makeHttpSync =
                       Stream.runCollect,
                     )
 
-                    const nextCursor = Chunk.last(items).pipe(
-                      Option.flatMap((item) => Option.fromNullable(item.batch.at(-1)?.eventEncoded.seqNum)),
+                    const nextCursor = EffectArray.last(items).pipe(
+                      Option.flatMap((item) => Option.fromNullishOr(item.batch.at(-1)?.eventEncoded.seqNum)),
                       Option.map((eventSequenceNumber) => ({ eventSequenceNumber })),
                       Option.orElse(() => currentCursor),
                       mapCursor,
                     )
 
-                    return Option.some([items, nextCursor])
+                    const page: readonly [typeof items, Option.Option<typeof currentCursor>] = [
+                      items,
+                      Option.some(nextCursor),
+                    ]
+                    return page
                   }),
                 )
               })
             : identity,
           Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
-          Stream.map((res) => omit(res, ['backendId'])),
+          Stream.map((res) => Struct.omit(res, ['backendId'])),
           Stream.mapError((cause) =>
             cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
               ? cause
@@ -175,7 +185,7 @@ export const makeHttpSync =
           Stream.withSpan('http-sync-client:pull'),
         )
 
-      const pushSemaphore = yield* Effect.makeSemaphore(1)
+      const pushSemaphore = yield* Semaphore.make(1)
 
       const push: SyncBackend.SyncBackend<SyncMetadata>['push'] = Effect.fn('http-sync-client:push')(
         function* (batch) {
@@ -184,23 +194,23 @@ export const makeHttpSync =
           }
 
           const backendId = backendIdHelper.get()
-          const batchChunks = yield* Chunk.fromIterable(batch).pipe(
-            splitChunkBySize({
-              maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
-              maxBytes: MAX_HTTP_REQUEST_BYTES,
-              encode: (items) => ({
-                batch: items,
-                storeId,
-                payload,
-                backendId,
-              }),
-            }),
-            Effect.mapError((cause) => new UnknownError({ cause })),
-          )
+          if (EffectArray.isReadonlyArrayNonEmpty(batch) === false) {
+            return
+          }
 
-          for (const chunk of Chunk.toReadonlyArray(batchChunks)) {
-            const chunkArray = Chunk.toReadonlyArray(chunk)
-            yield* rpcClient.SyncHttpRpc.Push({ storeId, payload, batch: chunkArray, backendId })
+          const batchChunks = yield* splitArrayBySize({
+            maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+            maxBytes: MAX_HTTP_REQUEST_BYTES,
+            encode: (items) => ({
+              batch: items,
+              storeId,
+              payload,
+              backendId,
+            }),
+          })(batch).pipe(Effect.mapError((cause) => new UnknownError({ cause })))
+
+          for (const batchChunk of batchChunks) {
+            yield* rpcClient.SyncHttpRpc.Push({ storeId, payload, batch: batchChunk, backendId })
           }
         },
         pushSemaphore.withPermits(1),

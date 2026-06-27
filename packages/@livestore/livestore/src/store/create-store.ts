@@ -8,12 +8,12 @@ import {
   type ClientSessionDevtoolsChannel,
   type ClientSessionSyncProcessorSimulationParams,
   type IntentionalShutdownCause,
-  LogConfig,
   type MaterializeError,
   type MigrationsReport,
   provideOtel,
   type ServerAheadError,
   UnknownError,
+  type LogConfig,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { isDevEnv, LS_DEV, omitUndefineds } from '@livestore/utils'
@@ -27,7 +27,7 @@ import {
   Layer,
   OtelTracer,
   Queue,
-  Runtime,
+  References,
   Schema,
   Scope,
   TaskTracing,
@@ -64,29 +64,28 @@ declare global {
  * const { store } = yield* AppStore.Tag
  * ```
  */
-export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/effect/LiveStoreContextRunning')<
-  LiveStoreContextRunning,
-  LiveStoreContextRunning_
->() {
+export class LiveStoreContextRunning extends Context.Service<
+  LiveStoreContextRunning, LiveStoreContextRunning_
+>()('@livestore/livestore/effect/LiveStoreContextRunning') {
   static fromDeferred = Effect.gen(function* () {
     const deferred = yield* DeferredStoreContext
-    const ctx = yield* deferred
-    return Layer.succeed(LiveStoreContextRunning, ctx)
-  }).pipe(Layer.unwrapScoped)
+    const ctx = yield* Deferred.await(deferred)
+    return Layer.succeed(LiveStoreContextRunning, LiveStoreContextRunning.of(ctx))
+  }).pipe(Layer.unwrap)
 }
 
 /**
  * @deprecated Use `StoreContext.DeferredTag` from `makeStoreContext()` instead.
  */
-export class DeferredStoreContext extends Context.Tag('@livestore/livestore/effect/DeferredStoreContext')<
+export class DeferredStoreContext extends Context.Service<
   DeferredStoreContext,
-  Deferred.Deferred<LiveStoreContextRunning['Type'], UnknownError>
->() {}
+  Deferred.Deferred<LiveStoreContextRunning['Service'], UnknownError>
+>()('@livestore/livestore/effect/DeferredStoreContext') {}
 
 export type LiveStoreContextProps<
   TSchema extends LiveStoreSchema,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
 > = {
   schema: TSchema
   /**
@@ -115,7 +114,7 @@ export type LiveStoreContextProps<
   /**
    * Schema describing the shape of the sync payload and used to encode it.
    *
-   * - If omitted, `Schema.JsonValue` is used (no additional typing/validation).
+   * - If omitted, `Schema.Json` is used (no additional typing/validation).
    * - Prefer exporting a schema from your app (e.g. `export const SyncPayload = Schema.Struct({ authToken: Schema.String })`)
    *   and pass it here to get end-to-end type safety and validation.
    */
@@ -130,15 +129,14 @@ export type LiveStoreContextProps<
    *   const SyncPayload = Schema.Struct({ authToken: Schema.String })
    *   useStore({ ..., syncPayloadSchema: SyncPayload, syncPayload: { authToken: '...' } })
    */
-  syncPayload?: Schema.Schema.Type<TSyncPayloadSchema>
+  syncPayload?: TSyncPayloadSchema['Type']
 }
 
 export interface CreateStoreOptions<
   TSchema extends LiveStoreSchema,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
->
-  extends LogConfig.WithLoggerOptions {
+  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
+> extends LogConfig.LoggerOptions {
   /** The LiveStore schema defining tables, events, and materializers. */
   schema: TSchema
   /** Adapter used for data storage and synchronization. */
@@ -193,7 +191,7 @@ export interface CreateStoreOptions<
   /**
    * Schema describing the shape of the sync payload and used to encode it.
    *
-   * - If omitted, `Schema.JsonValue` is used (no additional typing/validation).
+   * - If omitted, `Schema.Json` is used (no additional typing/validation).
    * - Prefer exporting a schema from your app (e.g. `export const SyncPayload = Schema.Struct({ authToken: Schema.String })`)
    *   and pass it here to get end-to-end type safety and validation.
    */
@@ -207,7 +205,7 @@ export interface CreateStoreOptions<
    *
    * @default undefined
    */
-  syncPayload?: Schema.Schema.Type<TSyncPayloadSchema>
+  syncPayload?: TSyncPayloadSchema['Type']
   /** Options provided to the Store constructor. */
   params?: {
     /** Max events pushed to the leader per write batch. */
@@ -226,7 +224,7 @@ export interface CreateStoreOptions<
 export type CreateStoreOptionsPromise<
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
 > = CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> & {
   signal?: AbortSignal
   otelOptions?: Partial<OtelOptions>
@@ -236,7 +234,7 @@ export type CreateStoreOptionsPromise<
 export const createStorePromise = async <
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
 >({
   signal,
   otelOptions,
@@ -244,15 +242,15 @@ export const createStorePromise = async <
 }: CreateStoreOptionsPromise<TSchema, TContext, TSyncPayloadSchema>): Promise<Store<TSchema, TContext>> =>
   Effect.gen(function* () {
     const scope = yield* Scope.make()
-    const runtime = yield* Effect.runtime()
+    const services = yield* Effect.context()
 
     if (signal !== undefined) {
       signal.addEventListener('abort', () => {
-        Scope.close(scope, Exit.void).pipe(Effect.tapCauseLogPretty, Runtime.runFork(runtime))
+        Scope.close(scope, Exit.void).pipe(Effect.tapCauseLogPretty, Effect.runForkWith(services))
       })
     }
 
-    return yield* createStore({ ...options }).pipe(Scope.extend(scope))
+    return yield* createStore({ ...options }).pipe(Scope.provide(scope))
   }).pipe(
     Effect.withSpan('createStore', {
       attributes: { storeId: options.storeId, disableDevtools: options.disableDevtools },
@@ -260,14 +258,19 @@ export const createStorePromise = async <
     provideOtel(omitUndefineds({ parentSpanContext: otelOptions?.rootSpanContext, otelTracer: otelOptions?.tracer })),
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: 'window' }),
-    LogConfig.withLoggerConfig(options, { threadName: 'window' }),
+    Effect.provide(
+      Layer.mergeAll(
+        options.logger ?? Layer.empty,
+        Layer.succeed(References.MinimumLogLevel, options.logLevel ?? (isDevEnv() === true ? 'Debug' : 'Info')),
+      ),
+    ),
     Effect.runPromise,
   )
 
 export const createStore = <
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
 >({
   schema,
   adapter,
@@ -296,32 +299,33 @@ export const createStore = <
     yield* Effect.addFinalizer((_) => Scope.close(lifetimeScope, _))
 
     const debugInstanceId = debug?.instanceId ?? nanoid(10)
-    const resolvedSyncPayloadSchema = (syncPayloadSchema ?? Schema.JsonValue) as TSyncPayloadSchema
+    const resolvedSyncPayloadSchema = (syncPayloadSchema ?? Schema.Json) as TSyncPayloadSchema
 
     return yield* Effect.gen(function* () {
       const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
       const otelRootSpanContext = otel.trace.setSpan(otel.context.active(), span)
       const otelTracer = yield* OtelTracer.OtelTracer
 
-      const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
+      const bootStatusQueue = yield* Effect.acquireRelease(Queue.unbounded<BootStatus>(), Queue.shutdown)
 
       yield* Queue.take(bootStatusQueue).pipe(
         Effect.tapSync((status) => onBootStatus?.(status)),
-        Effect.tap((status) => (status.stage === 'done' ? Queue.shutdown(bootStatusQueue) : Effect.void)),
+        Effect.tap((status) => (status.stage === 'done' ? Queue.shutdown(bootStatusQueue).pipe(Effect.asVoid) : Effect.void)),
         Effect.forever,
         Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       const storeDeferred = yield* Deferred.make<Store>()
 
       const connectDevtoolsToStore_ = (storeDevtoolsChannel: ClientSessionDevtoolsChannel) =>
         Effect.gen(function* () {
-          const store = yield* storeDeferred
+          const store = yield* Deferred.await(storeDeferred)
           yield* connectDevtoolsToStore({ storeDevtoolsChannel, store })
         })
 
-      const runtime = yield* Effect.runtime<Scope.Scope>()
+      const services = yield* Effect.context<Scope.Scope>()
 
       const shutdown = (
         exit: Exit.Exit<IntentionalShutdownCause, UnknownError | MaterializeError | BackendIdMismatchError>,
@@ -342,7 +346,7 @@ export const createStore = <
           yield* Effect.logDebug('LiveStore shutdown complete')
         }).pipe(
           Effect.withSpan('@livestore/livestore:shutdown'),
-          Effect.provide(runtime),
+          Effect.provide(services),
           Effect.tapCauseLogPretty,
           // Given that the shutdown flow might also interrupt the effect that is calling the shutdown,
           // we want to detach the shutdown effect so it's not interrupted by itself
@@ -353,7 +357,7 @@ export const createStore = <
       const syncPayloadEncoded =
         syncPayload === undefined
           ? undefined
-          : yield* Schema.encode(resolvedSyncPayloadSchema)(syncPayload).pipe(UnknownError.mapToUnknownError)
+          : yield* Schema.encodeEffect(resolvedSyncPayloadSchema)(syncPayload).pipe(UnknownError.mapToUnknownError)
 
       const clientSession: ClientSession = yield* adapter({
         schema,
@@ -383,7 +387,7 @@ export const createStore = <
         schema,
         context,
         otelOptions: { tracer: otelTracer, rootSpanContext: otelRootSpanContext },
-        effectContext: { lifetimeScope, runtime },
+        effectContext: { lifetimeScope, services },
         // TODO find a better way to detect if we're running LiveStore in the LiveStore devtools
         // But for now this is a good enough approximation with little downsides
         __runningInDevtools: !getDevtoolsEnabled(disableDevtools),
@@ -408,13 +412,18 @@ export const createStore = <
           boot(store, { migrationsReport: clientSession.leaderThread.initialState.migrationsReport, parentSpan: span }),
         ).pipe(
           UnknownError.mapToUnknownError,
-          Effect.provide(Layer.succeed(LiveStoreContextRunning, { stage: 'running', store: store as any as Store })),
+          Effect.provide(
+            Layer.succeed(
+              LiveStoreContextRunning,
+              LiveStoreContextRunning.of({ stage: 'running', store: store as any as Store }),
+            ),
+          ),
           Effect.withSpan('createStore:boot'),
         )
       }
 
       // NOTE it's important to yield here to allow the forked Effect in the store constructor to run
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
 
       if (batchUpdates !== undefined) {
         // Replacing the default batchUpdates function with the provided one after boot
@@ -438,7 +447,7 @@ export const createStore = <
       Effect.withSpan('createStore', { attributes: { debugInstanceId, storeId } }),
       Effect.annotateLogs({ debugInstanceId, storeId }),
       LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
-      Scope.extend(lifetimeScope),
+      Scope.provide(lifetimeScope),
     )
   })
 

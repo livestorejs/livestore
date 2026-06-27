@@ -1,12 +1,12 @@
 import * as Vitest from '@effect/vitest'
-import { Effect, Schema, Stream } from 'effect'
+import { Effect, Fiber, Schema, Stream } from 'effect'
 import { JSDOM } from 'jsdom'
 
 import * as WebChannel from '../../browser/WebChannelBrowser.ts'
 
 Vitest.describe('WebChannel', () => {
   Vitest.describe('windowChannel', () => {
-    Vitest.scopedLive('should work with 2 windows', () =>
+    Vitest.live('should work with 2 windows', () =>
       Effect.gen(function* () {
         const windowA = new JSDOM().window as unknown as globalThis.Window
         const windowB = new JSDOM().window as unknown as globalThis.Window
@@ -23,12 +23,13 @@ Vitest.describe('WebChannel', () => {
             Stream.flatten(),
             Stream.runHead,
             Effect.flatten,
-            Effect.fork,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
           yield* channelToB.send(1)
 
-          Vitest.expect(yield* msgFromBFiber).toEqual(2)
+          Vitest.expect(yield* Fiber.join(msgFromBFiber)).toEqual(2)
         })
 
         const codeSideB = Effect.gen(function* () {
@@ -43,19 +44,20 @@ Vitest.describe('WebChannel', () => {
             Stream.flatten(),
             Stream.runHead,
             Effect.flatten,
-            Effect.fork,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
           yield* channelToA.send(2)
 
-          Vitest.expect(yield* msgFromAFiber).toEqual(1)
+          Vitest.expect(yield* Fiber.join(msgFromAFiber)).toEqual(1)
         })
 
         yield* Effect.all([codeSideA, codeSideB], { concurrency: 'unbounded' })
       }),
     )
 
-    Vitest.scopedLive('should work with the same window', () =>
+    Vitest.live('should work with the same window', () =>
       Effect.gen(function* () {
         const window = new JSDOM().window as unknown as globalThis.Window
 
@@ -71,12 +73,13 @@ Vitest.describe('WebChannel', () => {
             Stream.flatten(),
             Stream.runHead,
             Effect.flatten,
-            Effect.fork,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
           yield* channelToB.send(1)
 
-          Vitest.expect(yield* msgFromBFiber).toEqual(2)
+          Vitest.expect(yield* Fiber.join(msgFromBFiber)).toEqual(2)
         })
 
         const codeSideB = Effect.gen(function* () {
@@ -91,12 +94,13 @@ Vitest.describe('WebChannel', () => {
             Stream.flatten(),
             Stream.runHead,
             Effect.flatten,
-            Effect.fork,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
           yield* channelToA.send(2)
 
-          Vitest.expect(yield* msgFromAFiber).toEqual(1)
+          Vitest.expect(yield* Fiber.join(msgFromAFiber)).toEqual(1)
         })
 
         yield* Effect.all([codeSideA, codeSideB], { concurrency: 'unbounded' })

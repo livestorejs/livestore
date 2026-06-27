@@ -30,16 +30,16 @@ delete process.env.https_proxy
 delete process.env.ALL_PROXY
 delete process.env.all_proxy
 
-const { WranglerDevServerService } = await import('@livestore/utils-dev/wrangler')
+const { WranglerDevServer } = await import('@livestore/utils-dev/wrangler')
 
 const withTestCtx = Vitest.makeWithTestCtx({
   timeout: testTimeout,
   makeLayer: () =>
     Layer.mergeAll(
-      WranglerDevServerService.Default({
+      WranglerDevServer.layer({
         cwd: fixturesDir,
         readiness: { connectTimeout: Duration.seconds(15) },
-      }).pipe(Layer.provide(Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer))),
+      }).pipe(Layer.provide(Layer.mergeAll(PlatformNode.NodeServices.layer, FetchHttpClient.layer))),
       FetchHttpClient.layer,
     ),
 })
@@ -95,7 +95,7 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
               Schema.Struct({
                 todos: Schema.Array(Schema.Struct({ id: Schema.String, title: Schema.String })),
                 persistence: PersistenceSnapshotSchema,
-                resetSnapshot: Schema.Union(Schema.Null, ResetPersistenceSnapshotSchema),
+                resetSnapshot: Schema.Union([Schema.Null, ResetPersistenceSnapshotSchema]),
               }),
             ),
           ),
@@ -133,7 +133,7 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
 Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
   Vitest.live('keeps Durable Object state when resetPersistence is not requested', (test) =>
     Effect.gen(function* () {
-      const server = yield* WranglerDevServerService
+      const server = yield* WranglerDevServer.WranglerDevServer
       const storeId = `cf-adapter-${nanoid(6)}`
       const { createTodo, listTodos, getPersistenceSnapshot } = yield* makeStoreHelpers(server.url, storeId)
 
@@ -159,7 +159,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
 
   Vitest.live('clears Durable Object persistence when resetPersistence is true', (test) =>
     Effect.gen(function* () {
-      const server = yield* WranglerDevServerService
+      const server = yield* WranglerDevServer.WranglerDevServer
       const storeId = `cf-reset-${nanoid(6)}`
       const { createTodo, listTodos, getPersistenceSnapshot, resetStore } = yield* makeStoreHelpers(server.url, storeId)
 
@@ -202,7 +202,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
 
   Vitest.live('rows written is below 20 per todo created', (test) =>
     Effect.gen(function* () {
-      const server = yield* WranglerDevServerService
+      const server = yield* WranglerDevServer.WranglerDevServer
       const storeId = `cf-writes-steady-state-${nanoid(6)}`
       const { createTodo, listTodos, getMetrics, resetMetrics } = yield* makeStoreHelpers(server.url, storeId)
 
@@ -231,7 +231,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
 
   Vitest.live('cold start reopens persisted VFS state with zero writes', (test) =>
     Effect.gen(function* () {
-      const server = yield* WranglerDevServerService
+      const server = yield* WranglerDevServer.WranglerDevServer
       const storeId = `cf-writes-snapshot-restore-${nanoid(6)}`
       const { createTodo, listTodos, getMetrics, resetMetrics, shutdownStore } = yield* makeStoreHelpers(
         server.url,
@@ -268,7 +268,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
 
   Vitest.live('data survives multiple shutdown cycles', (test) =>
     Effect.gen(function* () {
-      const server = yield* WranglerDevServerService
+      const server = yield* WranglerDevServer.WranglerDevServer
       const storeId = `cf-writes-multi-cycle-${nanoid(6)}`
       const { createTodo, listTodos, shutdownStore } = yield* makeStoreHelpers(server.url, storeId)
 
@@ -294,7 +294,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
 
   Vitest.live('rows written is below 20 per todo created after cold start', (test) =>
     Effect.gen(function* () {
-      const server = yield* WranglerDevServerService
+      const server = yield* WranglerDevServer.WranglerDevServer
       const storeId = `cf-writes-post-restart-${nanoid(6)}`
       const { createTodo, listTodos, getMetrics, resetMetrics, shutdownStore } = yield* makeStoreHelpers(
         server.url,

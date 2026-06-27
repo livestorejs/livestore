@@ -12,19 +12,19 @@ import { SqliteDsl } from './db-schema/mod.ts'
  * Fields with both null and undefined will emit a warning as this is a lossy conversion.
  */
 export const getColumnDefForSchema = (
-  schema: Schema.Schema.AnyNoContext,
+  schema: Schema.Top,
   propertySignature?: SchemaAST.PropertySignature,
   forceNullable = false,
 ): SqliteDsl.ColumnDefinition.Any => {
   const ast = schema.ast
 
   // Extract annotations
-  const getAnnotation = <T>(annotationId: symbol): Option.Option<T> =>
+  const getAnnotation = <T>(annotationId: string): Option.Option<T> =>
     propertySignature !== undefined
       ? hasPropertyAnnotation<T>(propertySignature, annotationId)
-      : SchemaAST.getAnnotation<T>(annotationId)(ast)
+      : Option.fromUndefinedOr(SchemaAST.resolveAt<T>(annotationId)(ast))
 
-  const columnType = SchemaAST.getAnnotation<SqliteDsl.FieldColumnType>(ColumnType)(ast)
+  const columnType = Option.fromUndefinedOr(SchemaAST.resolveAt<SqliteDsl.FieldColumnType>(ColumnType)(ast))
 
   // Check if schema has null (e.g., Schema.NullOr) or undefined or if it's forced nullable (optional field)
   const isNullable = forceNullable === true || hasNull(ast) === true || hasUndefined(ast) === true
@@ -50,13 +50,13 @@ export const getColumnDefForSchema = (
 
 const hasPropertyAnnotation = <T>(
   propertySignature: SchemaAST.PropertySignature,
-  annotationId: symbol,
+  annotationId: string,
 ): Option.Option<T> => {
-  if ('annotations' in propertySignature && propertySignature.annotations !== undefined) {
-    const annotation = SchemaAST.getAnnotation<T>(annotationId)(propertySignature as any)
-    if (Option.isSome(annotation) === true) return annotation
+  const keyAnnotation = propertySignature.type.context?.annotations?.[annotationId] as T | undefined
+  if (keyAnnotation !== undefined) {
+    return Option.some(keyAnnotation)
   }
-  return SchemaAST.getAnnotation<T>(annotationId)(propertySignature.type)
+  return Option.fromUndefinedOr(SchemaAST.resolveAt<T>(annotationId)(propertySignature.type))
 }
 
 /**
@@ -72,10 +72,11 @@ export const schemaFieldsToColumns = (
   for (const prop of propertySignatures) {
     if (typeof prop.name !== 'string') continue
 
+    const isOptional = SchemaAST.isOptional(prop.type)
     const fieldSchema = Schema.make(prop.type)
 
     // Warn about lossy conversion for fields with both null and undefined
-    if (prop.isOptional === true) {
+    if (isOptional === true) {
       const { hasNull, hasUndefined } = checkNullUndefined(fieldSchema.ast)
       if (hasNull === true && hasUndefined === true) {
         console.warn(`Field '${prop.name}' has both null and undefined - treating | undefined as | null`)
@@ -83,7 +84,7 @@ export const schemaFieldsToColumns = (
     }
 
     // Get column definition - pass nullable flag for optional fields
-    const columnDef = getColumnDefForSchema(fieldSchema, prop, prop.isOptional === true)
+    const columnDef = getColumnDefForSchema(fieldSchema, prop, isOptional === true)
 
     // Check for primary key and unique annotations
     const hasPrimaryKey = hasPropertyAnnotation<boolean>(prop, PrimaryKeyId).pipe(Option.getOrElse(() => false))
@@ -112,8 +113,8 @@ const checkNullUndefined = (ast: SchemaAST.AST): { hasNull: boolean; hasUndefine
   let hasUndefined = false
 
   const visit = (type: SchemaAST.AST): void => {
-    if (SchemaAST.isUndefinedKeyword(type) === true) hasUndefined = true
-    else if (SchemaAST.isLiteral(type) === true && type.literal === null) hasNull = true
+    if (SchemaAST.isUndefined(type) === true) hasUndefined = true
+    else if (SchemaAST.isNull(type) === true) hasNull = true
     else if (SchemaAST.isUnion(type) === true) type.types.forEach(visit)
   }
 
@@ -122,7 +123,7 @@ const checkNullUndefined = (ast: SchemaAST.AST): { hasNull: boolean; hasUndefine
 }
 
 const hasNull = (ast: SchemaAST.AST): boolean => {
-  if (SchemaAST.isLiteral(ast) === true && ast.literal === null) return true
+  if (SchemaAST.isNull(ast) === true) return true
   if (SchemaAST.isUnion(ast) === true) {
     return ast.types.some((type) => hasNull(type))
   }
@@ -130,7 +131,7 @@ const hasNull = (ast: SchemaAST.AST): boolean => {
 }
 
 const hasUndefined = (ast: SchemaAST.AST): boolean => {
-  if (SchemaAST.isUndefinedKeyword(ast) === true) return true
+  if (SchemaAST.isUndefined(ast) === true) return true
   if (SchemaAST.isUnion(ast) === true) {
     return ast.types.some((type) => hasUndefined(type))
   }
@@ -152,36 +153,36 @@ const getColumnForType = (columnType: string, nullable = false): SqliteDsl.Colum
   }
 }
 
-const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false): SqliteDsl.ColumnDefinition.Any => {
+const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.ColumnDefinition.Any => {
   const ast = schema.ast
   // Strip nullable wrapper to get core type
   const coreAst = stripNullable(ast)
   const coreSchema = stripNullable(ast) === ast ? schema : Schema.make(coreAst)
 
   // Special case: Boolean is transformed to integer in SQLite
-  if (SchemaAST.isBooleanKeyword(coreAst) === true) {
+  if (SchemaAST.isBoolean(coreAst) === true) {
     return SqliteDsl.boolean({ nullable })
   }
 
   // Get the encoded AST - what actually gets stored in SQLite
-  const encodedAst = Schema.encodedSchema(coreSchema).ast
+  const encodedAst = Schema.toEncoded(coreSchema).ast
 
   // Check if the encoded type matches SQLite native types
-  if (SchemaAST.isStringKeyword(encodedAst) === true) {
+  if (SchemaAST.isString(encodedAst) === true) {
     return SqliteDsl.text({ schema: coreSchema, nullable })
   }
 
-  if (SchemaAST.isNumberKeyword(encodedAst) === true) {
+  if (SchemaAST.isNumber(encodedAst) === true) {
     // Special cases for integer columns
-    const id = SchemaAST.getIdentifierAnnotation(coreAst).pipe(Option.getOrElse(() => ''))
-    if (id === 'Int' || id === 'DateFromNumber') {
+    const id = SchemaAST.resolveIdentifier(coreAst) ?? ''
+    if (id === 'Int' || id === 'DateFromEpochMillis') {
       return SqliteDsl.integer({ schema: coreSchema, nullable })
     }
     return SqliteDsl.real({ schema: coreSchema, nullable })
   }
 
   if (isUint8ArraySchema(coreAst) === true || isUint8ArraySchema(encodedAst) === true) {
-    return SqliteDsl.blob({ schema: Schema.Uint8ArrayFromSelf as Schema.Schema<Uint8Array<ArrayBuffer>>, nullable })
+    return SqliteDsl.blob({ schema: Schema.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>, nullable })
   }
 
   const literalColumn = getLiteralColumnDefinition(encodedAst, coreSchema, nullable, coreAst)
@@ -200,7 +201,7 @@ const stripNullable = (ast: SchemaAST.AST): SchemaAST.AST => {
 
   // Filter out null/undefined members while preserving any annotations on the union
   const coreTypes = ast.types.filter(
-    (type) => !(SchemaAST.isLiteral(type) && type.literal === null) && !SchemaAST.isUndefinedKeyword(type),
+    (type) => SchemaAST.isNull(type) === false && SchemaAST.isUndefined(type) === false,
   )
 
   if (coreTypes.length === 0 || coreTypes.length === ast.types.length) {
@@ -211,12 +212,12 @@ const stripNullable = (ast: SchemaAST.AST): SchemaAST.AST => {
     return coreTypes[0]!
   }
 
-  return SchemaAST.Union.make(coreTypes, ast.annotations)
+  return new SchemaAST.Union(coreTypes, ast.mode, ast.annotations)
 }
 
 const getLiteralColumnDefinition = (
   ast: SchemaAST.AST,
-  schema: Schema.Schema.AnyNoContext,
+  schema: Schema.Top,
   nullable: boolean,
   sourceAst: SchemaAST.AST,
 ): SqliteDsl.ColumnDefinition.Any | null => {
@@ -228,8 +229,8 @@ const getLiteralColumnDefinition = (
     case 'string':
       return SqliteDsl.text({ schema, nullable })
     case 'number': {
-      const id = SchemaAST.getIdentifierAnnotation(sourceAst).pipe(Option.getOrElse(() => ''))
-      if (id === 'Int' || id === 'DateFromNumber') {
+      const id = SchemaAST.resolveIdentifier(sourceAst) ?? ''
+      if (id === 'Int' || id === 'DateFromEpochMillis') {
         return SqliteDsl.integer({ schema, nullable })
       }
 
@@ -264,7 +265,7 @@ const extractLiteralValues = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.Liter
 const getLiteralValueType = (
   literals: ReadonlyArray<SchemaAST.LiteralValue>,
 ): 'string' | 'number' | 'boolean' | 'bigint' | null => {
-  const literalTypes = new Set(literals.map((value) => (value === null ? 'null' : typeof value)))
+  const literalTypes = new Set(literals.map((value) => typeof value))
   if (literalTypes.size !== 1) return null
 
   const [literalType] = literalTypes
@@ -274,13 +275,13 @@ const getLiteralValueType = (
 }
 
 const isUint8ArraySchema = (ast: SchemaAST.AST): boolean => {
-  const identifier = SchemaAST.getIdentifierAnnotation(ast)
-  if (Option.isSome(identifier) === true && identifier.value.includes('Uint8Array') === true) {
+  const identifier = SchemaAST.resolveIdentifier(ast)
+  if (identifier !== undefined && identifier.includes('Uint8Array') === true) {
     return true
   }
 
-  if (SchemaAST.isTupleType(ast) === true) {
-    return ast.elements.length === 0 && ast.rest.length === 1 && SchemaAST.isNumberKeyword(ast.rest[0]!.type)
+  if (SchemaAST.isArrays(ast) === true) {
+    return ast.elements.length === 0 && ast.rest.length === 1 && SchemaAST.isNumber(ast.rest[0]!)
   }
 
   return false

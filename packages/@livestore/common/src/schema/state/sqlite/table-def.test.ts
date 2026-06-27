@@ -1,7 +1,7 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
 import { objectToString } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { Schema, SchemaTransformation } from '@livestore/utils/effect'
 
 import { State } from '../../mod.ts'
 
@@ -11,7 +11,7 @@ describe('table function overloads', () => {
       id: Schema.String,
       text: Schema.String,
       completed: Schema.Boolean,
-    }).annotations({ title: 'todos' })
+    }).annotate({ title: 'todos' })
 
     const todosTable = State.SQLite.table({
       schema: TodoSchema,
@@ -25,7 +25,7 @@ describe('table function overloads', () => {
       id: Schema.String,
       text: Schema.String,
       completed: Schema.Boolean,
-    }).annotations({ identifier: 'TodoItem' })
+    }).annotate({ identifier: 'TodoItem' })
 
     const todosTable = State.SQLite.table({ schema: TodoSchema })
 
@@ -37,7 +37,7 @@ describe('table function overloads', () => {
       id: Schema.String,
       text: Schema.String,
       completed: Schema.Boolean,
-    }).annotations({
+    }).annotate({
       title: 'todos',
       identifier: 'TodoItem',
     })
@@ -205,32 +205,33 @@ describe('table function overloads', () => {
       contactEmail: Schema.String.pipe(State.SQLite.withUnique),
     })
 
-    const Nested = Schema.transform(
-      Flat,
-      Schema.Struct({
-        id: Schema.String,
-        contact: Schema.Struct({
-          firstName: Schema.String,
-          lastName: Schema.String,
-          email: Schema.String,
+    const Nested = Flat.pipe(
+      Schema.decodeTo(
+        Schema.Struct({
+          id: Schema.String,
+          contact: Schema.Struct({
+            firstName: Schema.String,
+            lastName: Schema.String,
+            email: Schema.String,
+          }),
         }),
-      }),
-      {
-        decode: ({ id, contactFirstName, contactLastName, contactEmail }) => ({
-          id,
-          contact: {
-            firstName: contactFirstName,
-            lastName: contactLastName,
-            email: contactEmail,
-          },
+        SchemaTransformation.transform({
+          decode: ({ id, contactFirstName, contactLastName, contactEmail }) => ({
+            id,
+            contact: {
+              firstName: contactFirstName,
+              lastName: contactLastName,
+              email: contactEmail,
+            },
+          }),
+          encode: ({ id, contact }) => ({
+            id,
+            contactFirstName: contact.firstName,
+            contactLastName: contact.lastName,
+            contactEmail: contact.email,
+          }),
         }),
-        encode: ({ id, contact }) => ({
-          id,
-          contactFirstName: contact.firstName,
-          contactLastName: contact.lastName,
-          contactEmail: contact.email,
-        }),
-      },
+      ),
     )
 
     const contactsTable = State.SQLite.table({
@@ -272,7 +273,7 @@ describe('table function overloads', () => {
       name: Schema.String,
       age: Schema.Int,
       active: Schema.Boolean,
-      metadata: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+      metadata: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
     })
 
     const userTable = State.SQLite.table({
@@ -446,7 +447,7 @@ describe('table function overloads', () => {
     })
     const CircleSchema = Schema.Struct({
       kind: Schema.Literal('circle'),
-      data: Schema.parseJson(CircleDataSchema),
+      data: Schema.fromJsonString(CircleDataSchema),
     })
 
     const SquareDataSchema = Schema.Struct({
@@ -454,10 +455,10 @@ describe('table function overloads', () => {
     })
     const SquareSchema = Schema.Struct({
       kind: Schema.Literal('square'),
-      data: Schema.parseJson(SquareDataSchema),
+      data: Schema.fromJsonString(SquareDataSchema),
     })
 
-    const ShapeSchema = Schema.Union(CircleSchema, SquareSchema)
+    const ShapeSchema = Schema.Union([CircleSchema, SquareSchema])
 
     const shapes = State.SQLite.table({
       name: 'shapes',

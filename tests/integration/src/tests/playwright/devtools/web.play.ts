@@ -8,8 +8,7 @@ import { test } from '@playwright/test'
 
 import * as Playwright from '@livestore/effect-playwright'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import type { Scope } from '@livestore/utils/effect'
-import { Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
+import { type Scope, Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
 
 import { checkConnectionRemainsActive, checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
 
@@ -84,7 +83,10 @@ const makeTabPair = (
       page,
       name: `${tabName}-page`,
       shouldEvaluateArgs: false,
-    }).pipe(Effect.forkScoped)
+    }).pipe(
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+    )
 
     usedPages.add(page)
     yield* Effect.addFinalizer(() => Effect.sync(() => usedPages.delete(page)))
@@ -99,7 +101,9 @@ const makeTabPair = (
         page
           .waitForFunction('window.__debugLiveStore?.default !== undefined')
           .then(() => page.evaluate('window.__debugLiveStore.default._dev.otel.rootSpanContext()')),
-      ).pipe(Effect.andThen(Schema.decodeUnknown(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))))
+      ).pipe(
+        Effect.andThen(Schema.decodeUnknownEffect(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))),
+      )
 
       yield* Effect.linkSpanCurrent(
         Tracer.externalSpan({
@@ -115,7 +119,10 @@ const makeTabPair = (
       page: devtools,
       name: `${tabName}-devtools`,
       shouldEvaluateArgs: false,
-    }).pipe(Effect.forkScoped)
+    }).pipe(
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+    )
 
     const devtoolsRoute =
       options?.devtoolsRoute === 'direct-session'
@@ -133,7 +140,7 @@ const PWLive = Effect.gen(function* () {
   const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
 
   return Playwright.browserContextLayer({ persistentContextPath })
-}).pipe(Layer.unwrapEffect)
+}).pipe(Layer.unwrap)
 
 const runTest =
   <E>(eff: Effect.Effect<void, E, Playwright.BrowserContext | Scope.Scope>) =>
@@ -159,7 +166,7 @@ const runTest =
       Effect.provide(layer),
       Effect.tapCauseLogPretty,
       Effect.annotateLogs({ thread }),
-      Effect.provide(Logger.prettyWithThread(thread)),
+      Effect.provide(Logger.layer([Logger.consolePretty()])),
       Effect.runPromise,
     )
   }
@@ -386,7 +393,7 @@ const shutdownTab = Effect.fn('shutdown-tab')(function* (tab: PW.Page, options?:
   ).pipe(Effect.timeout(1000))
 
   if (didShutdown === false && options?.expectStore !== false) {
-    yield* Effect.dieMessage('Expected LiveStore debug store to be available for shutdown')
+    yield* Effect.die(new Error('Expected LiveStore debug store to be available for shutdown'))
   }
 
   if (didShutdown === true) {

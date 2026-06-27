@@ -2,14 +2,15 @@ import {
   Cause,
   Deferred,
   Effect,
-  Either,
+  Fiber,
+  Result,
   Exit,
   Option,
   Queue,
   Schema,
   Scope,
   Stream,
-  TQueue,
+  TxQueue,
   WebChannel,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -49,7 +50,7 @@ export const makeDirectChannel = ({
       const sourceId = nanoid()
 
       const listenQueue = yield* Queue.unbounded<any>()
-      const sendQueue = yield* TQueue.unbounded<[msg: any, deferred: Deferred.Deferred<void>]>()
+      const sendQueue = yield* TxQueue.unbounded<[msg: any, deferred: Deferred.Deferred<void>]>()
 
       const initialEdgeDeferred = yield* Deferred.make<void>()
 
@@ -66,7 +67,7 @@ export const makeDirectChannel = ({
         const resultDeferred = yield* Deferred.make<{
           channel: WebChannel.WebChannel<any, any>
           channelVersion: number
-          makeDirectChannelScope: Scope.CloseableScope
+          makeDirectChannelScope: Scope.Closeable
         }>()
 
         while (true) {
@@ -99,7 +100,8 @@ export const makeDirectChannel = ({
             Stream.take(1),
             Stream.runDrain,
             Effect.as('new-edge' as const),
-            Effect.fork,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
           const makeChannel = makeDirectChannelInternal({
@@ -115,8 +117,9 @@ export const makeDirectChannel = ({
             sendPacket,
             scope: makeDirectChannelScope,
           }).pipe(
-            Scope.extend(makeDirectChannelScope),
-            Effect.forkIn(makeDirectChannelScope),
+            Scope.provide(makeDirectChannelScope),
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkIn(makeDirectChannelScope, { startImmediately: true, uninterruptible: 'inherit' }),
             // Given we only call `Effect.exit` later when joining the fiber,
             // we don't want Effect to produce a "unhandled error" log message
             Effect.withUnhandledErrorLogLevel(Option.none()),
@@ -133,11 +136,12 @@ export const makeDirectChannel = ({
               yield* Scope.close(makeDirectChannelScope, channelExit)
 
               if (
-                Cause.isFailType(channelExit.cause) === true &&
-                Schema.is(WebmeshSchema.DirectChannelResponseNoTransferables)(channelExit.cause.error) === true
+                Option.exists(Cause.findErrorOption(channelExit.cause), (error) =>
+                  Schema.is(WebmeshSchema.DirectChannelResponseNoTransferables)(error),
+                ) === true
               ) {
                 // Only retry when there is a new edge available
-                yield* waitForNewEdgeFiber.pipe(Effect.exit)
+                yield* Effect.exit(Fiber.join(waitForNewEdgeFiber))
               }
             } else {
               const channel = channelExit.value
@@ -149,7 +153,7 @@ export const makeDirectChannel = ({
         }
 
         // Now we wait until the first channel is established
-        const { channel, makeDirectChannelScope, channelVersion } = yield* resultDeferred
+        const { channel, makeDirectChannelScope, channelVersion } = yield* Deferred.await(resultDeferred)
 
         yield* Effect.spanEvent(`Connected#${channelVersion}`)
         debugInfo.isConnected = true
@@ -161,26 +165,30 @@ export const makeDirectChannel = ({
         yield* channel.listen.pipe(
           Stream.flatten(),
           // Stream.tap((msg) => Effect.log(`${target}→${channelName}→${nodeName}:message:${msg.message}`)),
-          Stream.tapChunk((chunk) => Queue.offerAll(listenQueue, chunk)),
+          Stream.tapArray((array) => Queue.offerAll(listenQueue, array)),
           Stream.runDrain,
           Effect.tapCauseLogPretty,
-          Effect.forkIn(makeDirectChannelScope),
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkIn(makeDirectChannelScope, { startImmediately: true, uninterruptible: 'inherit' }),
         )
 
         yield* Effect.gen(function* () {
           while (true) {
-            const [msg, deferred] = yield* TQueue.peek(sendQueue)
+            const [msg, deferred] = yield* TxQueue.peek(sendQueue)
             // NOTE we don't need an explicit retry flow here since in case of the channel being closed,
             // the send will never succeed. Meanwhile the send-loop fiber will be interrupted and
             // given we only peeked at the queue, the message to send is still there.
             yield* channel.send(msg)
             yield* Deferred.succeed(deferred, void 0)
-            yield* TQueue.take(sendQueue) // Remove the message from the queue
+            yield* TxQueue.take(sendQueue) // Remove the message from the queue
           }
-        }).pipe(Effect.forkIn(makeDirectChannelScope))
+        }).pipe(
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkIn(makeDirectChannelScope, { startImmediately: true, uninterruptible: 'inherit' }),
+        )
 
         // Wait until the channel is closed and then try to reconnect
-        yield* channel.closedDeferred
+        yield* Deferred.await(channel.closedDeferred)
 
         yield* Scope.close(makeDirectChannelScope, Exit.succeed('channel-closed'))
 
@@ -191,7 +199,8 @@ export const makeDirectChannel = ({
         Effect.scoped, // Additionally scoping here to clean up finalizers after each loop run
         Effect.forever,
         Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
       //#endregion reconnect-loop
 
@@ -204,16 +213,16 @@ export const makeDirectChannel = ({
           debugInfo.pendingSends++
           debugInfo.totalSends++
 
-          yield* TQueue.offer(sendQueue, [message, sentDeferred])
+          yield* TxQueue.offer(sendQueue, [message, sentDeferred])
 
-          yield* sentDeferred
+          yield* Deferred.await(sentDeferred)
 
           debugInfo.pendingSends--
         }).pipe(Effect.scoped, Effect.withParentSpan(parentSpan))
 
-      const listen = Stream.fromQueue(listenQueue, { maxChunkSize: 1 }).pipe(Stream.map(Either.right))
+      const listen = Stream.fromQueue(listenQueue).pipe(Stream.rechunk(1), Stream.map(Result.succeed))
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
       const webChannel = {
         [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,

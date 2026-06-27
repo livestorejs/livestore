@@ -5,13 +5,13 @@ import * as PW from '@playwright/test'
 import { envTruish } from '@livestore/utils'
 import { Context, Effect, Layer, Option, Schema, Stream } from '@livestore/utils/effect'
 
-export class BrowserContext extends Context.Tag('Playwright.BrowserContext')<
+export class BrowserContext extends Context.Service<
   BrowserContext,
   {
     browserContext: PW.BrowserContext
     // backgroundPageConsoleFiber: Fiber.Fiber<void, SiteError> | undefined
   }
->() {}
+>()('Playwright.BrowserContext') {}
 
 export type MakeBrowserContextParams = {
   extensionPath?: string
@@ -74,19 +74,19 @@ export const browserContext = ({
 
       // TODO bring back once Playwright supports console messages for workers/service workers
       // const backgroundPage = browserContext.serviceWorkers()[0] ?? (yield* Effect.promise(() => browserContext.waitForEvent('serviceworker')))
-      // backgroundPageConsoleFiber = yield* handlePageConsole(backgroundPage, 'background').pipe(Effect.fork)
+      // backgroundPageConsoleFiber = yield* handlePageConsole(backgroundPage, 'background').pipe(Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }))
     }
 
     yield* Effect.addFinalizer(() => Effect.promise(() => browserContext.close()))
 
-    return {
+    return BrowserContext.of({
       browserContext,
       // backgroundPageConsoleFiber
-    }
+    })
   })
 
 export const browserContextLayer = (params: MakeBrowserContextParams) =>
-  Layer.scoped(BrowserContext, browserContext(params))
+  Layer.effect(BrowserContext, browserContext(params))
 
 export const withPage = <T>(f: () => Promise<T>, options?: { label?: string }): Effect.Effect<T, SiteError> =>
   Effect.tryPromise({
@@ -94,11 +94,11 @@ export const withPage = <T>(f: () => Promise<T>, options?: { label?: string }): 
     catch: (cause) => new SiteError({ label: options?.label ?? f.toString(), messages: cause }),
   }).pipe(Effect.withSpan(`withPage:${options?.label ?? f.toString()}`))
 
-export class ConsoleMessage extends Schema.TaggedStruct('Playwright.ConsoleMessage', {
-  type: Schema.Literal('error', 'log', 'warn', 'info', 'debug', 'group', 'groupCollapsed', 'groupEnd'),
+export const ConsoleMessage = Schema.TaggedStruct('Playwright.ConsoleMessage', {
+  type: Schema.Literals(['error', 'log', 'warn', 'info', 'debug', 'group', 'groupCollapsed', 'groupEnd']),
   message: Schema.String,
   args: Schema.Array(Schema.Any),
-}) {}
+})
 
 type PlaywrightConsoleMessageType =
   | 'log'
@@ -196,7 +196,7 @@ export const pageConsole = ({
   label: string
   shouldEvaluateArgs: boolean
 }) =>
-  Stream.asyncPush<typeof ConsoleMessage.Type, SiteError>((emit) =>
+  Stream.callback<typeof ConsoleMessage.Type, SiteError>((emit) =>
     Effect.acquireRelease(
       Effect.sync(() => {
         const errorGroupRef = ref<{ errorMessages: (typeof ConsoleMessage.Type)[] } | undefined>(undefined)
@@ -254,8 +254,11 @@ export const pageConsole = ({
     ),
   )
 
-export class SiteError extends Schema.TaggedError<SiteError>('~@livestore/effect-playwright/SiteError')('SiteError', {
-  // TODO remove `label` again once error tracing works properly with Playwright
-  label: Schema.String,
-  messages: Schema.Union(Schema.Array(ConsoleMessage), Schema.Defect),
-}) {}
+export class SiteError extends Schema.TaggedErrorClass<SiteError>('~@livestore/effect-playwright/SiteError')(
+  'SiteError',
+  {
+    // TODO remove `label` again once error tracing works properly with Playwright
+    label: Schema.String,
+    messages: Schema.Union([Schema.Array(ConsoleMessage), Schema.Defect()]),
+  },
+) {}

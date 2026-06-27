@@ -3,7 +3,7 @@ import { env as importedEnv } from 'cloudflare:workers'
 import { UnknownError } from '@livestore/common'
 import type { HelperTypes } from '@livestore/common-cf'
 import { CfDeclare } from '@livestore/common-cf/declare'
-import { Effect, Schema } from '@livestore/utils/effect'
+import { Effect, Result, Schema } from '@livestore/utils/effect'
 
 import type { CfTypes, SearchParams } from '../common/mod.ts'
 import { type Env, type ForwardedHeaders, matchSyncRequest } from './shared.ts'
@@ -30,7 +30,7 @@ export type ValidatePayloadContext = {
  * Options accepted by {@link makeWorker}. The Durable Object binding has to be
  * supplied explicitly so we never fall back to deprecated defaults when Cloudflare config changes.
  */
-export type MakeWorkerOptions<TEnv extends Env = Env, TSyncPayload = Schema.JsonValue> = {
+export type MakeWorkerOptions<TEnv extends Env = Env, TSyncPayload = Schema.Json> = {
   /**
    * Binding name of the sync Durable Object declared in wrangler config.
    */
@@ -73,7 +73,7 @@ export type MakeWorkerOptions<TEnv extends Env = Env, TSyncPayload = Schema.Json
 export const makeWorker = <
   TEnv extends Env = Env,
   TDurableObjectRpc extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined,
-  TSyncPayload = Schema.JsonValue,
+  TSyncPayload = Schema.Json,
 >(
   options: MakeWorkerOptions<TEnv, TSyncPayload>,
 ): CFWorker<TEnv, TDurableObjectRpc> => {
@@ -149,7 +149,7 @@ const requestHeadersToMap = (request: CfTypes.Request): ForwardedHeaders => {
  *
  * @example Token-based authentication
  * ```ts
- * const validatePayload = (payload: Schema.JsonValue | undefined, context: { storeId: string }) => {
+ * const validatePayload = (payload: Schema.Json | undefined, context: { storeId: string }) => {
  *   if (payload?.authToken !== 'insecure-token-change-me') {
  *     throw new Error('Invalid auth token')
  *   }
@@ -158,7 +158,7 @@ const requestHeadersToMap = (request: CfTypes.Request): ForwardedHeaders => {
  *
  * @example Cookie-based authentication
  * ```ts
- * const validatePayload = async (payload: Schema.JsonValue | undefined, { storeId, headers }) => {
+ * const validatePayload = async (payload: Schema.Json | undefined, { storeId, headers }) => {
  *   const cookie = headers.get('cookie')
  *   const session = await validateSessionFromCookie(cookie)
  *   if (!session) throw new Error('Unauthorized')
@@ -171,7 +171,7 @@ export const handleSyncRequest = <
   TEnv extends Env = Env,
   TDurableObjectRpc extends CfTypes.Rpc.DurableObjectBranded | undefined = undefined,
   CFHostMetada = unknown,
-  TSyncPayload = Schema.JsonValue,
+  TSyncPayload = Schema.Json,
 >({
   request,
   searchParams: { storeId, payload, transport },
@@ -200,29 +200,29 @@ export const handleSyncRequest = <
       // Always decode with the supplied schema when present, even if payload is undefined.
       // This ensures required payloads are enforced by the schema.
       if (syncPayloadSchema !== undefined) {
-        const decodedEither = Schema.decodeUnknownEither(syncPayloadSchema)(payload)
-        if (decodedEither._tag === 'Left') {
-          const message = decodedEither.left.toString()
+        const decodedResult = Schema.decodeUnknownExit(syncPayloadSchema)(payload)
+        if (Result.isFailure(decodedResult)) {
+          const message = decodedResult.failure.toString()
           console.error('Invalid payload (decode failed)', message)
           return new Response(message, { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
 
         const result = yield* Effect.promise(async () =>
-          validatePayload(decodedEither.right, { storeId, headers: requestHeaders }),
-        ).pipe(UnknownError.mapToUnknownError, Effect.either)
+          validatePayload(decodedResult.success, { storeId, headers: requestHeaders }),
+        ).pipe(UnknownError.mapToUnknownError, Effect.result)
 
-        if (result._tag === 'Left') {
-          console.error('Invalid payload (validation failed)', result.left)
-          return new Response(result.left.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
+        if (Result.isFailure(result)) {
+          console.error('Invalid payload (validation failed)', result.failure)
+          return new Response(result.failure.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
       } else {
         const result = yield* Effect.promise(async () =>
           validatePayload(payload as TSyncPayload, { storeId, headers: requestHeaders }),
-        ).pipe(UnknownError.mapToUnknownError, Effect.either)
+        ).pipe(UnknownError.mapToUnknownError, Effect.result)
 
-        if (result._tag === 'Left') {
-          console.error('Invalid payload (validation failed)', result.left)
-          return new Response(result.left.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
+        if (Result.isFailure(result)) {
+          console.error('Invalid payload (validation failed)', result.failure)
+          return new Response(result.failure.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
       }
     }

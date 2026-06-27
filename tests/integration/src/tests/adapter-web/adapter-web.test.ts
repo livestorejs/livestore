@@ -18,7 +18,7 @@ const withTestCtx = Vitest.makeWithTestCtx({
   timeout: testTimeout,
   makeLayer: () =>
     Layer.mergeAll(
-      PlatformNode.NodeContext.layer,
+      PlatformNode.NodeServices.layer,
       FetchHttpClient.layer,
       browserContextLayer({ persistentContextPath: '', headless: true }),
     ),
@@ -36,7 +36,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
    * What we assert:
    * - After releasing the barrier, both pages render "Adapter Web Test App" within a timeout.
    */
-  Vitest.scopedLive('two tabs boot (shared-worker stable)', (test) =>
+  Vitest.live('two tabs boot (shared-worker stable)', (test) =>
     Effect.gen(function* () {
       const port = yield* getFreePort.pipe(Effect.map(String))
 
@@ -46,7 +46,11 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
           TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined, // ensure devtools plugin is disabled
           LSD_DEVTOOLS_LOCAL_PREVIEW: undefined,
         },
-      }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)), Effect.forkScoped)
+      }).pipe(
+        Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)),
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+      )
 
       const appUrl = (pathname: string) => `http://localhost:${port}${pathname}`
 
@@ -91,7 +95,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
           catch: () => false,
         }).pipe(
           Effect.map(() => true),
-          Effect.catchAll(() => Effect.succeed(false)),
+          Effect.catch(() => Effect.succeed(false)),
         )
 
       const [boot1, boot2] = yield* Effect.all([didBoot(page1), didBoot(page2)])
@@ -108,7 +112,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
    * @see https://github.com/livestorejs/livestore/issues/321
    * @see https://issues.chromium.org/issues/40290702
    */
-  Vitest.scopedLive('single-tab mode fallback (SharedWorker disabled)', (test) =>
+  Vitest.live('single-tab mode fallback (SharedWorker disabled)', (test) =>
     Effect.gen(function* () {
       const port = yield* getFreePort.pipe(Effect.map(String))
 
@@ -118,7 +122,11 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
           TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined,
           LSD_DEVTOOLS_LOCAL_PREVIEW: undefined,
         },
-      }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)), Effect.forkScoped)
+      }).pipe(
+        Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)),
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+      )
 
       const appUrl = (pathname: string) => `http://localhost:${port}${pathname}`
 
@@ -151,7 +159,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
         catch: () => false,
       }).pipe(
         Effect.map(() => true),
-        Effect.catchAll(() => Effect.succeed(false)),
+        Effect.catch(() => Effect.succeed(false)),
       )
 
       expect(didBoot).toBe(true)
@@ -172,7 +180,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
    * Verifies that two tabs in single-tab mode operate independently
    * (no cross-tab synchronization when SharedWorker is unavailable).
    */
-  Vitest.scopedLive('single-tab mode: tabs operate independently', (test) =>
+  Vitest.live('single-tab mode: tabs operate independently', (test) =>
     Effect.gen(function* () {
       const port = yield* getFreePort.pipe(Effect.map(String))
 
@@ -181,7 +189,11 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
           TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined,
           LSD_DEVTOOLS_LOCAL_PREVIEW: undefined,
         },
-      }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)), Effect.forkScoped)
+      }).pipe(
+        Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)),
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+      )
 
       const appUrl = (pathname: string) => `http://localhost:${port}${pathname}`
 
@@ -227,7 +239,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
           catch: () => false,
         }).pipe(
           Effect.map(() => true),
-          Effect.catchAll(() => Effect.succeed(false)),
+          Effect.catch(() => Effect.succeed(false)),
         )
 
       const [boot1, boot2] = yield* Effect.all([didBoot(page1), didBoot(page2)])

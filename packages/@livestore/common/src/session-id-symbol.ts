@@ -19,7 +19,7 @@ import type { Bindable, SqlValue } from './util.ts'
  * const uiState = State.SQLite.clientDocument({
  *   name: 'ui_state',
  *   schema: Schema.Struct({
- *     theme: Schema.Literal('dark', 'light', 'system'),
+ *     theme: Schema.Literals(['dark', 'light', 'system']),
  *     user: Schema.String,
  *     showToolbar: Schema.Boolean,
  *   }),
@@ -43,11 +43,11 @@ export const resolveSessionIdSymbolInBindValues = (
   bindValues: BindableWithSessionIdSymbol,
   sessionId: string,
 ): Bindable => {
-  return Predicate.isRecord(bindValues) === true
-    ? (Object.fromEntries(
+  return Array.isArray(bindValues) === true
+    ? bindValues.map((value) => (value === SessionIdSymbol ? sessionId : value))
+    : (Object.fromEntries(
         Object.entries(bindValues).map(([key, value]) => [key, value === SessionIdSymbol ? sessionId : value]),
       ) as Record<string, SqlValue>)
-    : bindValues.map((value) => (value === SessionIdSymbol ? sessionId : value))
 }
 
 export const resolveSessionIdSymbolInEventArgs = (args: unknown, sessionId: string): unknown => {

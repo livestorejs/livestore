@@ -1,5 +1,6 @@
-import { Devtools, isWorkerTransportError, LogConfig, liveStoreVersion, UnknownError } from '@livestore/common'
-import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
+import type { LogConfig } from '@livestore/common'
+import { Devtools, isWorkerTransportError, liveStoreVersion, UnknownError } from '@livestore/common'
+import { isDevEnv, LS_DEV } from '@livestore/utils'
 import {
   Deferred,
   Effect,
@@ -7,8 +8,9 @@ import {
   FetchHttpClient,
   identity,
   Layer,
-  Option,
+  Predicate,
   Ref,
+  References,
   Schema,
   Scope,
   Stream,
@@ -52,12 +54,12 @@ const makeWorkerRunner = Effect.gen(function* () {
   const leaderWorkerContextSubRef = yield* SubscriptionRef.make<
     | {
         worker: Worker.SerializedWorkerPool<WorkerSchema.LeaderWorkerInnerRequest>
-        scope: Scope.CloseableScope
+        scope: Scope.Closeable
       }
     | undefined
   >(undefined)
 
-  const waitForWorker = SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined).pipe(
+  const waitForWorker = SubscriptionRef.waitUntil(leaderWorkerContextSubRef, (c) => Predicate.isNotUndefined(c)).pipe(
     Effect.map((_) => _.worker),
   )
 
@@ -84,10 +86,14 @@ const makeWorkerRunner = Effect.gen(function* () {
   ): Stream.Stream<A, E, R> =>
     Effect.gen(function* () {
       yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
-      const { worker, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined)
-      const stream = worker
-        .execute(req)
-        .pipe(Stream.refineOrDie((e) => (isWorkerTransportError(e) === true ? Option.none() : Option.some(e))))
+      const { worker, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isLeaderWorkerContext)
+      const stream = worker.execute(req).pipe(
+        Stream.catchIf(
+          isWorkerTransportError,
+          (e) => Stream.die(e),
+          (e) => Stream.fail(e),
+        ),
+      )
       // It seems the request stream is not automatically interrupted when the scope shuts down
       // so we need to manually interrupt it when the scope shuts down
       const shutdownDeferred = yield* Deferred.make<void>()
@@ -95,7 +101,7 @@ const makeWorkerRunner = Effect.gen(function* () {
 
       // Here we're creating an empty stream that will finish when the scope shuts down
       const scopeShutdownStream = Effect.gen(function* () {
-        yield* shutdownDeferred
+        yield* Deferred.await(shutdownDeferred)
         return Stream.empty
       }).pipe(Stream.unwrap)
 
@@ -113,7 +119,7 @@ const makeWorkerRunner = Effect.gen(function* () {
       // NOTE we're already unsetting the current worker here, so new incoming requests are queued for the new worker
       yield* SubscriptionRef.set(leaderWorkerContextSubRef, undefined)
 
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
 
       yield* Scope.close(prevWorker.scope, Exit.void).pipe(
         Effect.logWarnIfTakesLongerThan({
@@ -136,13 +142,13 @@ const makeWorkerRunner = Effect.gen(function* () {
   const InvariantsSchema = Schema.Struct({
     storeId: Schema.String,
     storageOptions: WorkerSchema.StorageType,
-    syncPayloadEncoded: Schema.UndefinedOr(Schema.JsonValue),
+    syncPayloadEncoded: Schema.UndefinedOr(Schema.Json),
     liveStoreVersion: Schema.Literal(liveStoreVersion),
     devtoolsEnabled: Schema.Boolean,
   })
   type Invariants = typeof InvariantsSchema.Type
   const invariantsRef = yield* Ref.make<Invariants | undefined>(undefined)
-  const sameInvariants = Schema.equivalence(InvariantsSchema)
+  const sameInvariants = Schema.toEquivalence(InvariantsSchema)
 
   // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `SerializedRunner.Handlers` uses `any` in the R channel
   return WorkerRunner.layerSerialized(WorkerSchema.SharedWorkerRequest, {
@@ -184,7 +190,8 @@ const makeWorkerRunner = Effect.gen(function* () {
             Stream.tap(() => reset),
             Stream.runDrain,
             Effect.tapCauseLogPretty,
-            Effect.forkScoped,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
           const workerLayer = yield* Layer.build(BrowserWorker.layer(() => port))
@@ -206,10 +213,19 @@ const makeWorkerRunner = Effect.gen(function* () {
             node,
             worker,
             target: Devtools.makeNodeName.client.leader({ storeId, clientId }),
-          }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+          }).pipe(
+            Effect.tapCauseLogPretty,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+          )
 
           yield* SubscriptionRef.set(leaderWorkerContextSubRef, { worker, scope })
-        }).pipe(Effect.tapCauseLogPretty, Scope.extend(scope), Effect.forkIn(scope))
+        }).pipe(
+          Effect.tapCauseLogPretty,
+          Scope.provide(scope),
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkIn(scope, { startImmediately: true, uninterruptible: 'inherit' }),
+        )
       }).pipe(Effect.withSpan('@livestore/adapter-web:shared-worker:updateMessagePort'), Effect.tapCauseLogPretty),
 
     // Proxied requests
@@ -232,9 +248,9 @@ const makeWorkerRunner = Effect.gen(function* () {
     // Accept devtools connections (from leader and client sessions)
     'WebmeshWorker.CreateConnection': WebmeshWorker.CreateConnection,
   })
-}).pipe(Layer.unwrapScoped)
+}).pipe(Layer.unwrap)
 
-export const makeWorker = (options?: LogConfig.WithLoggerOptions): void => {
+export const makeWorker = (options?: LogConfig.LoggerOptions): void => {
   const runtimeLayer = Layer.mergeAll(
     FetchHttpClient.layer,
     WebmeshWorker.CacheService.layer({ nodeName: makeSharedWorkerNodeName({ storeId }) }),
@@ -253,7 +269,12 @@ export const makeWorker = (options?: LogConfig.WithLoggerOptions): void => {
     // TODO remove type-cast (currently needed to silence a tsc bug)
     // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- TSC bug workaround; the cast uses `any` as an intermediate
     (_) => _ as any as Effect.Effect<void>,
-    LogConfig.withLoggerConfig(options, { threadName: self.name }),
+    Effect.provide(
+      Layer.mergeAll(
+        options?.logger ?? Layer.empty,
+        Layer.succeed(References.MinimumLogLevel, options?.logLevel ?? (isDevEnv() === true ? 'Debug' : 'Info')),
+      ),
+    ),
     Effect.runFork,
   )
 }

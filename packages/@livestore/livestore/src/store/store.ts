@@ -24,8 +24,8 @@ import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
 import { assertNever, isDevEnv, objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
-import type { Scope } from '@livestore/utils/effect'
 import {
+  type Scope,
   Cause,
   Effect,
   Exit,
@@ -33,7 +33,7 @@ import {
   Inspectable,
   Option,
   OtelTracer,
-  Runtime,
+  Result,
   Schema,
   Stream,
 } from '@livestore/utils/effect'
@@ -213,7 +213,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       materializeEvent: Effect.fn('client-session-sync-processor:materialize-event')(
         (eventEncoded, { withChangeset, materializerHashLeader }) =>
           // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
-          Effect.gen(this, function* () {
+          Effect.gen({ self: this }, function* () {
             const resolution = yield* resolveEventDef(schema, {
               operation: '@livestore/livestore:store:materializeEvent',
               event: eventEncoded,
@@ -320,7 +320,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           : {}),
       },
       confirmUnsavedChanges,
-    }).pipe(Runtime.runSync(effectContext.runtime))
+    }).pipe(Effect.runSyncWith(effectContext.services))
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     const tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> } = {}
@@ -370,7 +370,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         })
     }
 
-    const boot = Effect.gen(this, function* () {
+    const boot = Effect.gen({ self: this }, function* () {
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
           // Remove all table refs from the reactivity graph
@@ -394,7 +394,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     // Initialize internals bag
     this[StoreInternalsSymbol] = {
-      eventSchema: LiveStoreEvent.Client.makeSchemaMemo(schema) as Schema.Schema<
+      eventSchema: LiveStoreEvent.Client.makeSchemaMemo(schema) as Schema.Codec<
         LiveStoreEvent.Client.Decoded,
         LiveStoreEvent.Client.Encoded
       >,
@@ -574,10 +574,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   }
 
   subscribeStream = <TResult>(query: Queryable<TResult>, options?: SubscribeOptions<TResult>): Stream.Stream<TResult> =>
-    Stream.asyncPush<TResult>((emit) =>
-      Effect.gen(this, function* () {
+    Stream.callback<TResult>((emit) =>
+      Effect.gen({ self: this }, function* () {
         const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(
-          Effect.catchTag('NoSuchElementException', () => Effect.succeed(undefined)),
+          Effect.catchTag('NoSuchElementError', () => Effect.succeed(undefined)),
         )
         const otelContext =
           otelSpan !== undefined ? otel.trace.setSpan(otel.context.active(), otelSpan) : otel.context.active()
@@ -609,7 +609,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * ```
    */
   query = <TResult>(
-    query: Queryable<TResult> | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
+    query: Queryable<TResult> | { query: string; bindValues: Bindable; schema?: Schema.Decoder<TResult> },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
     this.checkShutdown('query')
@@ -623,7 +623,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         },
       ) as any
       if (query.schema !== undefined) {
-        return Schema.decodeSync(query.schema)(res)
+        return Schema.decodeUnknownSync(query.schema)(res)
       }
       return res
     } else if (isQueryBuilder(query) === true) {
@@ -656,9 +656,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         },
       )
 
-      const decodeResult = Schema.decodeEither(schema)(rawRes)
-      if (decodeResult._tag === 'Right') {
-        return decodeResult.right
+      const decodeResult = Schema.decodeResult(schema)(rawRes)
+      if (Result.isSuccess(decodeResult)) {
+        return decodeResult.success
       } else {
         return shouldNeverHappen(
           'Failed to decode query result with for schema:',
@@ -666,7 +666,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           'raw result:',
           rawRes,
           'decode error:',
-          decodeResult.left,
+          decodeResult.failure,
         )
       }
     } else if (query._tag === 'def') {
@@ -790,7 +790,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
 
-    Effect.gen(this, function* () {
+    Effect.gen({ self: this }, function* () {
       const commitsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.commitsSpanContext)
       commitsSpan?.addEvent('commit')
       const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
@@ -798,7 +798,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       if (events.length === 0) return
 
-      const localRuntime = yield* Effect.runtime()
+      const localServices = yield* Effect.context()
 
       const encodedEvents = yield* this[StoreInternalsSymbol].syncProcessor.encodeEvents(events)
 
@@ -807,7 +807,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           const materialize = () =>
             this[StoreInternalsSymbol].syncProcessor
               .materializeEvents(encodedEvents)
-              .pipe(Runtime.runSync(localRuntime))
+              .pipe(Effect.runSyncWith(localServices))
           return events.length > 1 ? this[StoreInternalsSymbol].sqliteDbWrapper.txn(materialize) : materialize()
         },
         catch: (cause) => UnknownError.make({ cause }),
@@ -852,9 +852,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           ...(options?.spanLinks?.map(OtelTracer.makeSpanLink) ?? []),
         ],
       }),
-      Effect.tapErrorCause(Effect.logError),
-      Effect.catchAllCause((cause) => Effect.fork(this.shutdown(cause))),
-      Runtime.runSync(this[StoreInternalsSymbol].effectContext.runtime),
+      Effect.tapCause(Effect.logError),
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.catchCause((cause) => Effect.forkChild(this.shutdown(cause), { startImmediately: true, uninterruptible: 'inherit' })),
+      Effect.runSyncWith(this[StoreInternalsSymbol].effectContext.services),
     )
   }
   //#endregion commit
@@ -932,8 +933,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     }
 
     return clientSession.leaderThread.events.stream(baseOptions).pipe(
-      Stream.mapChunksEffect(Schema.decode(Schema.ChunkFromSelf(eventSchema))),
-      Stream.catchTag('ParseError', (cause) => Stream.fail(UnknownError.make({ cause }))),
+      Stream.mapEffect(Schema.decodeEffect(eventSchema)),
+      Stream.catchTag('SchemaError', (cause) => Stream.fail(UnknownError.make({ cause }))),
       Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
     )
   }
@@ -1026,7 +1027,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     )
 
     return () => {
-      Fiber.interrupt(fiber).pipe(Runtime.runFork(this[StoreInternalsSymbol].effectContext.runtime))
+      Fiber.interrupt(fiber).pipe(Effect.runForkWith(this[StoreInternalsSymbol].effectContext.services))
     }
   }
 
@@ -1100,7 +1101,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    */
   _dev = {
     downloadDb: (source: 'local' | 'leader' = 'local') => {
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const data =
           source === 'local'
             ? this[StoreInternalsSymbol].sqliteDbWrapper.export()
@@ -1110,14 +1111,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     },
 
     downloadEventlogDb: () => {
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const data = yield* this[StoreInternalsSymbol].clientSession.leaderThread.getEventlogData
         downloadBlob(data, `livestore-eventlog-${Date.now()}.db`)
       }).pipe(this.runEffectFork)
     },
 
     hardReset: (mode: 'all-data' | 'only-app-db' = 'all-data') => {
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const clientId = this[StoreInternalsSymbol].clientSession.clientId
         yield* this[StoreInternalsSymbol].clientSession.leaderThread.sendDevtoolsMessage(
           Devtools.Leader.ResetAllData.Request.make({ liveStoreVersion, mode, requestId: nanoid(), clientId }),
@@ -1141,14 +1142,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     // NOTE: Explicit return type needed to avoid TS2742 (inferred type references internal path)
     syncStates: (): Promise<{ session: SyncState.SyncState; leader: SyncState.SyncState }> =>
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const session = yield* this[StoreInternalsSymbol].syncProcessor.syncState
         const leader = yield* this[StoreInternalsSymbol].clientSession.leaderThread.syncState
         return { session, leader }
       }).pipe(this.runEffectPromise),
 
     printSyncStates: () => {
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const session = yield* this[StoreInternalsSymbol].syncProcessor.syncState
         yield* Effect.log(
           `Session sync state: ${objectToString(session.localHead)} (upstream: ${objectToString(session.upstreamHead)})`,
@@ -1177,13 +1178,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
   private runEffectFork = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) =>
     effect.pipe(
-      Effect.forkIn(this[StoreInternalsSymbol].effectContext.lifetimeScope),
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkIn(this[StoreInternalsSymbol].effectContext.lifetimeScope, { startImmediately: true, uninterruptible: 'inherit' }),
       Effect.tapCauseLogPretty,
-      Runtime.runFork(this[StoreInternalsSymbol].effectContext.runtime),
+      Effect.runForkWith(this[StoreInternalsSymbol].effectContext.services),
     )
 
   private runEffectPromise = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) =>
-    effect.pipe(Effect.tapCauseLogPretty, Runtime.runPromise(this[StoreInternalsSymbol].effectContext.runtime))
+    effect.pipe(Effect.tapCauseLogPretty, Effect.runPromiseWith(this[StoreInternalsSymbol].effectContext.services))
 
   private getCommitArgs = (
     firstEventOrTxnFnOrOptions: any,

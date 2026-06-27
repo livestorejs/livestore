@@ -1,7 +1,7 @@
 import type * as otel from '@opentelemetry/api'
 
-import type { BootStatus, BootWarningReason, SqliteDb, SyncOptions } from '@livestore/common'
-import { Devtools, LogConfig, UnknownError } from '@livestore/common'
+import type { BootStatus, BootWarningReason, LogConfig, SqliteDb, SyncOptions } from '@livestore/common'
+import { Devtools, UnknownError } from '@livestore/common'
 import type { DevtoolsOptions, StreamEventsOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
@@ -15,13 +15,18 @@ import { LiveStoreEvent } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
-import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
 import {
+  type HttpClient,
+  type Scope,
+  type WorkerError,
+  Cause,
   Effect,
   FetchHttpClient,
   identity,
   Layer,
   OtelTracer,
+  Queue,
+  References,
   Scheduler,
   Schema,
   Stream,
@@ -38,11 +43,11 @@ import * as WorkerSchema from '../common/worker-schema.ts'
 export type WorkerOptions = {
   schema: LiveStoreSchema
   sync?: SyncOptions
-  syncPayloadSchema?: Schema.Schema<any>
+  syncPayloadSchema?: Schema.Top
   otelOptions?: {
     tracer?: otel.Tracer
   }
-} & LogConfig.WithLoggerOptions
+} & LogConfig.LoggerOptions
 
 if (isDevEnv() === true) {
   globalThis.__debugLiveStoreUtils = {
@@ -61,12 +66,12 @@ export const makeWorker = (options: WorkerOptions) => {
 export const makeWorkerEffect = (options: WorkerOptions) => {
   const TracingLive =
     options.otelOptions?.tracer !== undefined
-      ? Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+      ? OtelTracer.layerWithoutOtelTracer.pipe(
           Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
         )
-      : undefined
+      : Layer.empty
 
-  const runtimeLayer = Layer.mergeAll(FetchHttpClient.layer, TracingLive ?? Layer.empty)
+  const runtimeLayer = Layer.mergeAll(FetchHttpClient.layer, TracingLive)
 
   return makeWorkerRunnerOuter(options).pipe(
     Layer.provide(BrowserWorkerRunner.layer),
@@ -77,12 +82,17 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     Effect.provide(runtimeLayer),
     LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
     // We're using this custom scheduler to improve op batching behaviour and reduce the overhead
-    // of the Effect fiber runtime given we have different tradeoffs on a worker thread.
+    // of the Effect fiber services given we have different tradeoffs on a worker thread.
     // Despite the "message channel" name, is has nothing to do with the `incomingRequestsPort` above.
     Effect.withScheduler(Scheduler.messageChannel()),
     // We're increasing the Effect ops limit here to allow for larger chunks of operations at a time
     Effect.withMaxOpsBeforeYield(4096),
-    LogConfig.withLoggerConfig({ logger: options.logger, logLevel: options.logLevel }, { threadName: self.name }),
+    Effect.provide(
+      Layer.mergeAll(
+        options.logger ?? Layer.empty,
+        Layer.succeed(References.MinimumLogLevel, options.logLevel ?? (isDevEnv() === true ? 'Debug' : 'Info')),
+      ),
+    ),
   )
 }
 
@@ -101,17 +111,18 @@ const makeWorkerRunnerOuter = (
           Effect.tapCauseLogPretty,
           Effect.provide(
             Layer.mergeAll(
-              Opfs.Opfs.Default,
+              Opfs.layer,
               WebmeshWorker.CacheService.layer({
                 nodeName: Devtools.makeNodeName.client.leader({ storeId, clientId }),
               }),
             ),
           ),
-          Effect.forkScoped,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
         return Layer.empty
-      }).pipe(Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage'), Layer.unwrapScoped),
+      }).pipe(Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage'), Layer.unwrap),
   })
 
 const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }: WorkerOptions) =>
@@ -120,7 +131,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
-        const runtime = yield* Effect.runtime()
+        const services = yield* Effect.context()
 
         // Check OPFS availability and determine storage mode
         const opfsCheck = yield* checkOpfsAvailability
@@ -139,27 +150,41 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         const opfsDirectory = useOpfs === true ? yield* sanitizeOpfsDir(storageOptions.directory, storeId) : undefined
 
         const makeOpfsDb = (kind: 'state' | 'eventlog') =>
-          makeSqliteDb({
-            _tag: 'opfs',
-            opfsDirectory: opfsDirectory!,
-            fileName: kind === 'state' ? getStateDbFileName(schema) : 'eventlog.db',
-            configureDb: (db) =>
-              configureConnection(db, {
-                //  The persisted databases use the AccessHandlePoolVFS which always uses a single database connection.
-                //  Multiple connections are not supported. This means that we can use the exclusive locking mode to
-                //  avoid unnecessary system calls and enable the use of the WAL journal mode without the use of shared memory.
-                // TODO bring back exclusive locking mode when `WAL` is working properly
-                // lockingMode: 'EXCLUSIVE',
-                foreignKeys: true,
-              }).pipe(Effect.provide(runtime), Effect.runSync),
-          }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
+          Effect.acquireRelease(
+            makeSqliteDb({
+              _tag: 'opfs',
+              opfsDirectory: opfsDirectory!,
+              fileName: kind === 'state' ? getStateDbFileName(schema) : 'eventlog.db',
+              configureDb: (db) =>
+                configureConnection(db, {
+                  //  The persisted databases use the AccessHandlePoolVFS which always uses a single database connection.
+                  //  Multiple connections are not supported. This means that we can use the exclusive locking mode to
+                  //  avoid unnecessary system calls and enable the use of the WAL journal mode without the use of shared memory.
+                  // TODO bring back exclusive locking mode when `WAL` is working properly
+                  // lockingMode: 'EXCLUSIVE',
+                  foreignKeys: true,
+                }).pipe(Effect.runSyncWith(services)),
+            }),
+            (db) =>
+              Effect.try({
+                try: () => db.close(),
+                catch: (cause) => new Cause.UnknownError(cause),
+              }).pipe(Effect.ignore),
+          )
 
         const makeInMemoryDb = () =>
-          makeSqliteDb({
-            _tag: 'in-memory',
-            configureDb: (db) =>
-              configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
-          }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
+          Effect.acquireRelease(
+            makeSqliteDb({
+              _tag: 'in-memory',
+              configureDb: (db) =>
+                configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(services)),
+            }),
+            (db) =>
+              Effect.try({
+                try: () => db.close(),
+                catch: (cause) => new Cause.UnknownError(cause),
+              }).pipe(Effect.ignore),
+          )
 
         // Use OPFS if available, otherwise fall back to in-memory
         const [dbState, dbEventlog] =
@@ -200,7 +225,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         Effect.withPerformanceMeasure('@livestore/adapter-web:worker:InitialMessage'),
         Effect.withSpan('@livestore/adapter-web:worker:InitialMessage'),
         Effect.annotateSpans({ debugInstanceId }),
-        Layer.unwrapScoped,
+        Layer.unwrap,
       ),
     GetRecreateSnapshot: Effect.fn('@livestore/adapter-web:worker:GetRecreateSnapshot')(function* () {
       const workerCtx = yield* LeaderThreadCtx
@@ -219,7 +244,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         const { syncProcessor } = yield* LeaderThreadCtx // <- syncState comes from here
         return syncProcessor.pull({ cursor })
       }).pipe(
-        Stream.unwrapScoped,
+        Stream.unwrap,
         // For debugging purposes
         // Stream.tapLogWithLabel('@livestore/adapter-web:worker:PullStream'),
       ),
@@ -238,7 +263,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
             options: streamOptions,
           })
         }),
-        Stream.unwrapScoped,
+        Stream.unwrap,
         Stream.withSpan('@livestore/adapter-web:worker:StreamEvents'),
       ),
     Export: () =>
@@ -263,7 +288,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return workerCtx.syncProcessor.syncState.changes
-      }).pipe(Stream.unwrapScoped),
+      }).pipe(Stream.unwrap),
     GetNetworkStatus: Effect.fn('@livestore/adapter-web:worker:GetNetworkStatus')(function* () {
       const workerCtx = yield* LeaderThreadCtx
       return yield* workerCtx.networkStatus
@@ -272,7 +297,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return workerCtx.networkStatus.changes
-      }).pipe(Stream.unwrapScoped),
+      }).pipe(Stream.unwrap),
     Shutdown: Effect.fn('@livestore/adapter-web:worker:Shutdown')(function* () {
       yield* Effect.logDebug('[@livestore/adapter-web:worker] Shutdown')
 
@@ -281,7 +306,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       yield* Effect.sleep(300)
     }),
     ExtraDevtoolsMessage: ({ message }) =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
+      Effect.andThen(LeaderThreadCtx, (_) => Queue.offer(_.extraIncomingMessagesQueue, message)).pipe(
         Effect.withSpan('@livestore/adapter-web:worker:ExtraDevtoolsMessage'),
       ),
     'WebmeshWorker.CreateConnection': WebmeshWorker.CreateConnection,
@@ -328,7 +353,7 @@ const checkOpfsAvailability = Effect.gen(function* () {
   const opfs = yield* Opfs.Opfs
   return yield* opfs.getRootDirectoryHandle.pipe(
     Effect.as(undefined),
-    Effect.catchAll((error) => {
+    Effect.catch((error) => {
       const reason: BootWarningReason =
         Schema.is(WebError.SecurityError)(error) === true || Schema.is(WebError.NotAllowedError)(error) === true
           ? 'private-browsing'

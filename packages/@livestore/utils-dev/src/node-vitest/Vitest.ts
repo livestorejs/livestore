@@ -14,6 +14,7 @@ import {
   Predicate,
   type Schema,
   type Scope,
+  type Tracer,
 } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
 
@@ -29,18 +30,18 @@ export const makeWithTestCtx: <ROut = never, E1 = never, RIn = never>(
   self: Effect.Effect<A, E, R>,
 ) => Effect.Effect<
   A,
-  E | E1 | Cause.TimeoutException,
+  E | E1 | Cause.TimeoutError,
   // Exclude dependencies provided by `withTestCtx` from the layer dependencies
-  | Exclude<RIn, OtelTracer.OtelTracer | Scope.Scope>
+  | Exclude<RIn, OtelTracer.OtelTracer | Tracer.Tracer | Scope.Scope>
   // Exclude dependencies provided by `withTestCtx` **and** dependencies produced
   // by the layer from the effect dependencies
-  | Exclude<R, ROut | OtelTracer.OtelTracer | Scope.Scope>
+  | Exclude<R, ROut | OtelTracer.OtelTracer | Tracer.Tracer | Scope.Scope>
 > = (ctxParams) => (testContext: Vitest.TestContext) => withTestCtx(testContext, ctxParams)
 
 export type WithTestCtxParams<ROut, E1, RIn> = {
   suffix?: string
   makeLayer?: (testContext: Vitest.TestContext) => Layer.Layer<ROut, E1, RIn | Scope.Scope>
-  timeout?: Duration.DurationInput
+  timeout?: Duration.Input
   forceOtel?: boolean
 }
 
@@ -55,7 +56,7 @@ export const withTestCtx =
     }: {
       suffix?: string
       makeLayer?: (testContext: Vitest.TestContext) => Layer.Layer<ROut, E1, RIn>
-      timeout?: Duration.DurationInput
+      timeout?: Duration.Input
       forceOtel?: boolean
     } = {},
   ) =>
@@ -63,15 +64,16 @@ export const withTestCtx =
     self: Effect.Effect<A, E, R>,
   ): Effect.Effect<
     A,
-    E | E1 | Cause.TimeoutException,
+    E | E1 | Cause.TimeoutError,
     // Exclude dependencies provided internally from the provided layer's dependencies
-    | Exclude<RIn, OtelTracer.OtelTracer | Scope.Scope>
+    | Exclude<RIn, OtelTracer.OtelTracer | Tracer.Tracer | Scope.Scope>
     // Exclude dependencies provided internally **and** dependencies produced by the
     // provided layer from the effect dependencies
-    | Exclude<R, ROut | OtelTracer.OtelTracer | Scope.Scope>
+    | Exclude<R, ROut | OtelTracer.OtelTracer | Tracer.Tracer | Scope.Scope>
   > => {
     const spanName = `${testContext.task.suite?.name}:${testContext.task.name}${suffix !== undefined ? `:${suffix}` : ''}`
     const layer = makeLayer?.(testContext) ?? Layer.empty
+    const timeoutDuration = Duration.fromInputUnsafe(timeout)
 
     const otelLayer =
       DEBUGGER_ACTIVE === true || forceOtel === true
@@ -84,8 +86,8 @@ export const withTestCtx =
       DEBUGGER_ACTIVE === true
         ? identity
         : Effect.logWarnIfTakesLongerThan({
-            duration: Duration.toMillis(timeout) * 0.8,
-            label: `${spanName} approaching timeout (timeout: ${Duration.format(timeout)})`,
+            duration: Duration.toMillis(timeoutDuration) * 0.8,
+            label: `${spanName} approaching timeout (timeout: ${Duration.format(timeoutDuration)})`,
           }),
       DEBUGGER_ACTIVE === true ? identity : Effect.timeout(timeout),
       Effect.provide(combinedLayer),
@@ -126,12 +128,12 @@ const normalizePropOptions = <Arbs extends Vitest.Vitest.Arbitraries>(
     | number
     | (Vitest.TestOptions & {
         fastCheck?: FC.Parameters<{
-          [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]>
+          [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : (Arbs[K])['Type']
         }>
       }),
 ): Vitest.TestOptions & {
   fastCheck?: FC.Parameters<{
-    [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]>
+    [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : (Arbs[K])['Type']
   }>
 } => {
   // If it's a number, treat as timeout and add our default fastCheck
@@ -185,7 +187,7 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
     E,
     R,
     [
-      { [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]> },
+      { [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : (Arbs[K])['Type'] },
       Vitest.TestContext,
       EnhancedTestContext,
     ]
@@ -194,7 +196,7 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
     | number
     | (Vitest.TestOptions & {
         fastCheck?: FC.Parameters<{
-          [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : Schema.Schema.Type<Arbs[K]>
+          [K in keyof Arbs]: Arbs[K] extends FC.Arbitrary<infer T> ? T : (Arbs[K])['Type']
         }>
       }),
 ) => {

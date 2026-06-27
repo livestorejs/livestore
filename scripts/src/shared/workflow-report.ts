@@ -49,7 +49,7 @@ export const emitWorkflowReportRecord = (record: WorkflowReportRecord) =>
     yield* fs
       .writeFileString(outputPath, `${line}\n`, { flag: 'a' })
       .pipe(
-        Effect.catchAll((cause) =>
+        Effect.catch((cause) =>
           Effect.logWarning(`Unable to append workflow-report record to ${outputPath}: ${String(cause)}`),
         ),
       )

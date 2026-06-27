@@ -9,8 +9,8 @@ import {
   FetchHttpClient,
   Layer,
   Logger,
-  LogLevel,
   Otlp,
+  References,
   RpcMessage,
   Schema,
   type Scope,
@@ -24,7 +24,7 @@ import {
   type SyncBackendRpcInterface,
   WebSocketAttachmentSchema,
 } from '../shared.ts'
-import { DoCtx } from './layer.ts'
+import * as DoCtx from './layer.ts'
 import { createDoRpcHandler } from './transport/do-rpc-server.ts'
 import { createHttpRpcHandler } from './transport/http-rpc-server.ts'
 import { makeRpcServer } from './transport/ws-rpc-server.ts'
@@ -49,14 +49,14 @@ export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) =
 /**
  * Creates a Durable Object class for handling WebSocket-based sync.
  * A sync Durable Object is uniquely scoped to a specific `storeId`.
- * 
+ *
  * The sync DO supports 3 transport modes:
  * - HTTP JSON-RPC
  * - WebSocket
  * - Durable Object RPC calls (only works in combination with `@livestore/adapter-cf`)
  *
  * Example:
- * 
+ *
  * ```ts
  * // In your Cloudflare Worker file
  * import { makeDurableObject } from '@livestore/sync-cf/cf-worker'
@@ -85,11 +85,9 @@ export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) =
 export const makeDurableObject: MakeDurableObjectClass = (options) => {
   const enabledTransports = options?.enabledTransports ?? new Set(['http', 'ws', 'do-rpc'])
 
-  const Logging = Logger.consoleWithThread('SyncDo')
-
   const Observability: Layer.Layer<never> =
     options?.otel?.baseUrl !== undefined
-      ? (Otlp.layer({
+      ? (Otlp.layerJson({
           baseUrl: options.otel.baseUrl,
           tracerExportInterval: 50,
           resource: {
@@ -118,7 +116,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
             if (request._tag === 'Request' && request.tag === 'SyncWsRpc.Pull') {
               // Is Pull request: add requestId to pullRequestIds
               const attachment = ws.deserializeAttachment()
-              const { pullRequestIds, ...rest } = Schema.decodeSync(WebSocketAttachmentSchema)(attachment)
+              const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
               ws.serializeAttachment(
                 Schema.encodeSync(WebSocketAttachmentSchema)({
                   ...rest,
@@ -128,7 +126,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
             } else if (request._tag === 'Interrupt') {
               // Is Interrupt request: remove requestId from pullRequestIds
               const attachment = ws.deserializeAttachment()
-              const { pullRequestIds, ...rest } = Schema.decodeSync(WebSocketAttachmentSchema)(attachment)
+              const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
               ws.serializeAttachment(
                 Schema.encodeSync(WebSocketAttachmentSchema)({
                   ...rest,
@@ -144,7 +142,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     }
 
     override fetch = async (request: CfTypes.Request): Promise<CfTypes.Response> =>
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const searchParams = matchSyncRequest(request)
         if (searchParams === undefined) {
           throw new Error('No search params found in request URL')
@@ -198,11 +196,11 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         })
       }).pipe(
         Effect.tapCauseLogPretty, // Also log errors to console before catching them
-        Effect.catchAllCause((cause) =>
+        Effect.catchCause((cause) =>
           Effect.succeed(new Response('Error', { status: 500, statusText: cause.toString() })),
         ),
         Effect.withSpan('@livestore/sync-cf:durable-object:fetch'),
-        Effect.provide(DoCtx.Default({ doSelf: this, doOptions: options, from: request })),
+        Effect.provide(DoCtx.layer({ doSelf: this, doOptions: options, from: request })),
         this.runEffectAsPromise,
       )
 
@@ -235,8 +233,14 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     private runEffectAsPromise = <T, E = never>(effect: Effect.Effect<T, E, Scope.Scope>): Promise<T> =>
       effect.pipe(
         Effect.tapCauseLogPretty,
-        Logger.withMinimumLogLevel(LogLevel.Debug),
-        Effect.provide(Layer.mergeAll(Observability, Logging)),
+        Effect.annotateLogs({ thread: 'SyncDo' }),
+        Effect.provide(
+          Layer.mergeAll(
+            Observability,
+            Logger.layer([Logger.consoleStructured]),
+            Layer.succeed(References.MinimumLogLevel, 'Debug'),
+          ),
+        ),
         Effect.scoped,
         Effect.runPromise,
       )

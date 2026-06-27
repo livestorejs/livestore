@@ -22,7 +22,7 @@ export const threadTables = {
       senderName: State.SQLite.text({ nullable: true }), // Display name
       timestamp: State.SQLite.integer({ schema: Schema.DateFromNumber }),
       messageType: State.SQLite.text({
-        schema: Schema.Literal('received', 'sent', 'draft'),
+        schema: Schema.Literals(['received', 'sent', 'draft']),
       }),
     },
   }),

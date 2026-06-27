@@ -1,4 +1,4 @@
-import { Deferred, Exit, Scope } from 'effect'
+import { Cause, Deferred, Exit, Scope } from 'effect'
 
 import * as Effect from '../effect/Effect.ts'
 import * as Schema from '../effect/Schema/index.ts'
@@ -25,21 +25,26 @@ export const broadcastChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEn
 
       const channel = new BroadcastChannel(channelName)
 
-      yield* Effect.addFinalizer(() => Effect.try(() => channel.close()).pipe(Effect.ignoreLogged))
+      yield* Effect.addFinalizer(() =>
+        Effect.try({
+          try: () => channel.close(),
+          catch: (cause) => new Cause.UnknownError(cause),
+        }).pipe(Effect.ignore),
+      )
 
       const send = (message: MsgSend) =>
         Effect.gen(function* () {
-          const messageEncoded = yield* Schema.encode(schema.send)(message)
+          const messageEncoded = yield* Schema.encodeEffect(schema.send)(message)
           channel.postMessage(messageEncoded)
         })
 
       // TODO also listen to `messageerror` in parallel
       const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
-        Stream.map((_) => Schema.decodeEither(schema.listen)(_.data)),
+        Stream.map((_) => Schema.decodeResult(schema.listen)(_.data)),
         listenToDebugPing(channelName),
       )
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
       const supportsTransferables = false
 
       return {
@@ -85,13 +90,13 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
         message: schema.listen,
         from: Schema.Literal(ids.other),
         to: Schema.Literal(ids.own),
-      }).annotations({ title: 'webmesh.WindowMessageListen' })
+      }).annotate({ title: 'webmesh.WindowMessageListen' })
 
       const WindowMessageSend = Schema.Struct({
         message: schema.send,
         from: Schema.Literal(ids.own),
         to: Schema.Literal(ids.other),
-      }).annotations({ title: 'webmesh.WindowMessageSend' })
+      }).annotate({ title: 'webmesh.WindowMessageSend' })
 
       const send = (message: MsgSend) =>
         Effect.gen(function* () {
@@ -106,15 +111,15 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
         })
 
       const listen = Stream.fromEventListener<MessageEvent>(listenWindow, 'message').pipe(
-        Stream.filter((_) => Schema.is(Schema.encodedSchema(WindowMessageListen))(_.data)),
+        Stream.filter((_) => Schema.is(Schema.toEncoded(WindowMessageListen))(_.data)),
         Stream.map((_) => {
           debugInfo.listenTotal++
-          return Schema.decodeEither(schema.listen)(_.data.message)
+          return Schema.decodeResult(schema.listen)(_.data.message)
         }),
         listenToDebugPing('window'),
       )
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
       const supportsTransferables = true
 
       return {

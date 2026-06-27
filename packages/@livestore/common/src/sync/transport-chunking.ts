@@ -1,14 +1,14 @@
-import { Chunk, Effect, Schema } from '@livestore/utils/effect'
+import { Effect, ReadonlyArray as EffectArray, Schema } from '@livestore/utils/effect'
 
 const textEncoder = new TextEncoder()
 
 /**
- * Configuration describing how to break a chunk into smaller payload-safe chunks.
+ * Configuration describing how to break an array batch into smaller payload-safe batches.
  */
 export interface ChunkingOptions<A> {
-  /** Maximum number of items that may appear in any emitted chunk. */
+  /** Maximum number of items that may appear in any emitted batch. */
   readonly maxItems: number
-  /** Maximum encoded byte size allowed for any emitted chunk. */
+  /** Maximum encoded byte size allowed for any emitted batch. */
   readonly maxBytes: number
   /**
    * Callback that produces a JSON-serialisable structure whose byte size should
@@ -22,21 +22,23 @@ export interface ChunkingOptions<A> {
   readonly measure?: (items: ReadonlyArray<A>) => number
 }
 
-/**
- * Derives a function that splits an input chunk into sub-chunks confined by
- * both item count and encoded byte size limits. Designed for transports with
- * strict frame caps (e.g. Cloudflare hibernated WebSockets).
- */
-export class OversizeChunkItemError extends Schema.TaggedError<OversizeChunkItemError>(
+export class OversizeChunkItemError extends Schema.TaggedErrorClass<OversizeChunkItemError>(
   '~@livestore/common/OversizeChunkItemError',
 )('OversizeChunkItemError', {
   size: Schema.Number,
   maxBytes: Schema.Number,
 }) {}
 
-export const splitChunkBySize =
+/**
+ * Derives a function that splits an input array into sub-arrays confined by
+ * both item count and encoded byte size limits. Designed for stream boundaries
+ * and transports with strict frame caps (e.g. Cloudflare hibernated WebSockets).
+ */
+export const splitArrayBySize =
   <A>(options: ChunkingOptions<A>) =>
-  (chunk: Chunk.Chunk<A>): Effect.Effect<Chunk.Chunk<Chunk.Chunk<A>>, OversizeChunkItemError> =>
+  (
+    items: EffectArray.NonEmptyReadonlyArray<A>,
+  ): Effect.Effect<EffectArray.NonEmptyArray<ReadonlyArray<A>>, OversizeChunkItemError> =>
     Effect.gen(function* () {
       const maxItems = Math.max(1, options.maxItems)
       const maxBytes = Math.max(1, options.maxBytes)
@@ -52,41 +54,31 @@ export const splitChunkBySize =
         return textEncoder.encode(JSON.stringify(encoded)).byteLength
       }
 
-      const items = Chunk.toReadonlyArray(chunk)
-      if (items.length === 0) {
-        return Chunk.fromIterable<Chunk.Chunk<A>>([])
+      const [first, ...rest] = items
+      let current: EffectArray.NonEmptyArray<A> = [first]
+      const result: EffectArray.NonEmptyArray<ReadonlyArray<A>> = [current]
+
+      if (computeSize(current) > maxBytes) {
+        return yield* new OversizeChunkItemError({ size: computeSize(current), maxBytes })
       }
 
-      const result: Array<Chunk.Chunk<A>> = []
-      let current: Array<A> = []
-
-      const flushCurrent = () => {
-        if (current.length > 0) {
-          result.push(Chunk.fromIterable(current))
-          current = []
-        }
-      }
-
-      for (const item of items) {
+      for (const item of rest) {
         current.push(item)
         const exceedsLimit = current.length > maxItems || computeSize(current) > maxBytes
 
         if (exceedsLimit === true) {
-          // remove the item we just added and emit the previous chunk if it exists
-          const last = current.pop()!
-          flushCurrent()
+          // Remove the item we just added; the previous batch was already recorded in `result`.
+          current.splice(current.length - 1, 1)
+          current = [item]
 
-          if (last !== undefined) {
-            current = [last]
-            const singleItemTooLarge = computeSize(current) > maxBytes
-            if (singleItemTooLarge === true || current.length > maxItems) {
-              return yield* new OversizeChunkItemError({ size: computeSize([last]), maxBytes })
-            }
+          const singleItemTooLarge = computeSize(current) > maxBytes
+          if (singleItemTooLarge === true || current.length > maxItems) {
+            return yield* new OversizeChunkItemError({ size: computeSize(current), maxBytes })
           }
+
+          result.push(current)
         }
       }
 
-      flushCurrent()
-
-      return Chunk.fromIterable(result)
+      return result
     })

@@ -31,7 +31,6 @@ import {
   Exit,
   Fiber,
   Layer,
-  Option,
   Queue,
   Schema,
   Stream,
@@ -155,7 +154,7 @@ export const makeSingleTabAdapter =
 
       const sqlite3 = yield* Effect.promise(() => loadSqlite3())
 
-      const storageOptions = yield* Schema.decode(WorkerSchema.StorageType)(options.storage)
+      const storageOptions = yield* Schema.decodeEffect(WorkerSchema.StorageType)(options.storage)
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
@@ -199,7 +198,8 @@ export const makeSingleTabAdapter =
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       // In single-tab mode, we always have the lock (we're always the leader)
@@ -212,15 +212,16 @@ export const makeSingleTabAdapter =
       const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker-${storeId}-${sessionId}` })
 
       // Set up communication with the dedicated worker via the outer protocol
-      const _dedicatedWorkerFiber = yield* Worker.makeSerialized<WorkerSchema.LeaderWorkerOuterRequest>({
+      const _dedicatedWorkerFiber = yield* Worker.makeSerialized<typeof WorkerSchema.LeaderWorkerOuterRequest.Type>({
         initialMessage: () => new WorkerSchema.LeaderWorkerOuterInitialMessage({ port: mc.port1, storeId, clientId }),
       }).pipe(
         Effect.provide(BrowserWorker.layer(() => worker)),
         UnknownError.mapToUnknownError,
-        Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+        Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
         Effect.withSpan('@livestore/adapter-web:single-tab:setupDedicatedWorker'),
         Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       // Set up the inner worker communication via port2 (like SharedWorker would do)
@@ -243,9 +244,10 @@ export const makeSingleTabAdapter =
         Effect.provide(innerWorkerContext),
         Effect.tapCauseLogPretty,
         Effect.orDie,
-        Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+        Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
         Effect.withSpan('@livestore/adapter-web:single-tab:setupInnerWorker'),
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       // Helper to run requests against the worker
@@ -268,7 +270,11 @@ export const makeSingleTabAdapter =
         Effect.gen(function* () {
           const innerWorker = yield* Fiber.join(innerWorkerFiber)
           return innerWorker.execute(req).pipe(
-            Stream.refineOrDie((e) => (isWorkerTransportError(e) === true ? Option.none() : Option.some(e))),
+            Stream.catchIf(
+              isWorkerTransportError,
+              (e) => Stream.die(e),
+              (e) => Stream.fail(e),
+            ),
             Stream.withSpan(`@livestore/adapter-web:single-tab:runInWorkerStream:${req._tag}`),
           )
         }).pipe(Stream.unwrap)
@@ -277,18 +283,20 @@ export const makeSingleTabAdapter =
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
-        Effect.tapErrorCause((cause) =>
-          Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
+        Effect.tapCause((cause) =>
+          Cause.hasInterruptsOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
         ),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
-      yield* Queue.awaitShutdown(bootStatusQueue).pipe(
+      yield* Queue.await(bootStatusQueue).pipe(
         Effect.andThen(Fiber.interrupt(bootStatusFiber)),
         Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       // Get initial snapshot (either from fast-path or from worker)
@@ -344,7 +352,7 @@ export const makeSingleTabAdapter =
         Effect.gen(function* () {
           if (
             Exit.isFailure(ex) === true &&
-            Exit.isInterrupted(ex) === false &&
+            Exit.hasInterrupts(ex) === false &&
             Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) === false &&
             Schema.is(StoreInterrupted)(Cause.squash(ex.cause)) === false
           ) {
@@ -427,7 +435,7 @@ export const makeSingleTabAdapter =
       })
 
       return clientSession
-    }).pipe(Effect.provide(Opfs.Opfs.Default), UnknownError.mapToUnknownError)
+    }).pipe(Effect.provide(Opfs.layer), UnknownError.mapToUnknownError)
 
 /** Persists clientId/sessionId to storage */
 const getPersistedId = (key: string, storageType: 'session' | 'local') => {
@@ -484,7 +492,7 @@ const checkOpfsAvailability = Effect.gen(function* () {
   const opfs = yield* Opfs.Opfs
   return yield* opfs.getRootDirectoryHandle.pipe(
     Effect.as(undefined),
-    Effect.catchAll((error) => {
+    Effect.catch((error) => {
       const reason: BootWarningReason =
         Schema.is(WebError.SecurityError)(error) === true || Schema.is(WebError.NotAllowedError)(error) === true
           ? 'private-browsing'

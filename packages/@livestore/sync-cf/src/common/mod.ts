@@ -1,17 +1,16 @@
-import { OversizeChunkItemError, splitChunkBySize } from '@livestore/common/sync'
+export { OversizeChunkItemError, splitArrayBySize } from '@livestore/common/sync'
 import { Schema } from '@livestore/utils/effect'
 
 export type { CfTypes } from '@livestore/common-cf'
 export * from './constants.ts'
 export { SyncHttpRpc } from './http-rpc-schema.ts'
 export * as SyncMessage from './sync-message-types.ts'
-export { OversizeChunkItemError, splitChunkBySize }
 
 export const SearchParamsSchema = Schema.Struct({
   storeId: Schema.String,
-  payload: Schema.compose(Schema.StringFromUriComponent, Schema.parseJson(Schema.JsonValue)).pipe(Schema.UndefinedOr),
+  payload: Schema.StringFromUriComponent.pipe(Schema.decodeTo(Schema.fromJsonString(Schema.Json)), Schema.UndefinedOr),
   // NOTE `do-rpc` is handled differently
-  transport: Schema.Literal('http', 'ws'),
+  transport: Schema.Literals(['http', 'ws']),
 })
 
 export type SearchParams = typeof SearchParamsSchema.Type

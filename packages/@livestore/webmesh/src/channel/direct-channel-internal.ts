@@ -1,6 +1,17 @@
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
-import type { PubSub } from '@livestore/utils/effect'
-import { Deferred, Effect, Exit, Predicate, Queue, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
+import {
+  type PubSub,
+  Deferred,
+  Effect,
+  Exit,
+  Fiber,
+  Predicate,
+  Queue,
+  Schema,
+  Scope,
+  Stream,
+  WebChannel,
+} from '@livestore/utils/effect'
 
 import { type ChannelName, type MeshNodeName, type MessageQueueItem, packetAsOtelAttributes } from '../common.ts'
 import * as MeshSchema from '../mesh-schema.ts'
@@ -42,7 +53,7 @@ export const makeDirectChannelInternal = ({
 }: MakeDirectChannelArgs & {
   channelVersion: number
   /** We're passing in the closeable scope from the wrapping direct channel */
-  scope: Scope.CloseableScope
+  scope: Scope.Closeable
   sourceId: string
 }): Effect.Effect<
   WebChannel.WebChannel<any, any>,
@@ -79,8 +90,8 @@ export const makeDirectChannelInternal = ({
     const deferred = yield* makeDeferredResult()
 
     const schema = {
-      send: Schema.Union(schema_.send, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong),
-      listen: Schema.Union(schema_.listen, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong),
+      send: Schema.Union([schema_.send, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong]),
+      listen: Schema.Union([schema_.listen, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong]),
     }
 
     const channelStateRef: { current: ChannelState } = {
@@ -256,7 +267,8 @@ export const makeDirectChannelInternal = ({
               Stream.filter(Schema.is(MeshSchema.DirectChannelPong)),
               Stream.take(1),
               Stream.runDrain,
-              Effect.fork,
+              // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+              Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
             )
 
             // There seems to be some scenario where the initial ping message is lost.
@@ -267,7 +279,7 @@ export const makeDirectChannelInternal = ({
               .send(MeshSchema.DirectChannelPing.make({}))
               .pipe(Effect.timeout(10), Effect.retry({ times: 2 }))
 
-            yield* waitForPongFiber
+            yield* Fiber.join(waitForPongFiber)
 
             yield* Effect.spanEvent(`loser side: established`)
             channelStateRef.current = { _tag: 'Established', otherSourceId: channelState.otherSourceId }
@@ -295,7 +307,12 @@ export const makeDirectChannelInternal = ({
           return
         }
       }
-    }).pipe(Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
+    }).pipe(
+      Effect.interruptible,
+      Effect.tapCauseLogPretty,
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+    )
 
     const channelState = channelStateRef.current
 
@@ -330,7 +347,7 @@ export const makeDirectChannelInternal = ({
 
     yield* edgeRequest
 
-    const channel = yield* deferred
+    const channel = yield* Deferred.await(deferred)
 
     return channel
   }).pipe(Effect.withSpanScoped(`makeDirectChannel:${channelVersion}`))

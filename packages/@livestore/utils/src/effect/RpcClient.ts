@@ -1,11 +1,21 @@
-export * from '@effect/rpc/RpcClient'
+export * from 'effect/unstable/rpc/RpcClient'
 
-import { Socket } from '@effect/platform'
-import { RpcClient, RpcClientError, RpcSerialization } from '@effect/rpc'
-import { Protocol } from '@effect/rpc/RpcClient'
-import { constPing, type FromServerEncoded } from '@effect/rpc/RpcMessage'
-import { Cause, Deferred, Effect, Layer, Option, Schedule, type Scope } from 'effect'
-import { constVoid, identity } from 'effect/Function'
+import {
+  Cause,
+  Deferred,
+  Effect,
+  Function,
+  Latch,
+  Layer,
+  Option,
+  References,
+  Schedule,
+  type Scope,
+} from 'effect'
+import { RpcClient, RpcClientError, RpcSerialization } from 'effect/unstable/rpc'
+import { Protocol } from 'effect/unstable/rpc/RpcClient'
+import { constPing, type FromServerEncoded } from 'effect/unstable/rpc/RpcMessage'
+import { Socket } from 'effect/unstable/socket'
 
 import * as SubscriptionRef from './SubscriptionRef.ts'
 
@@ -20,7 +30,7 @@ export const layerProtocolSocketWithIsConnected = (options: {
   readonly isConnected: SubscriptionRef.SubscriptionRef<boolean>
   readonly pingSchedule?: Schedule.Schedule<unknown> | undefined
 }): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | Socket.Socket> =>
-  Layer.scoped(Protocol, makeProtocolSocketWithIsConnected(options))
+  Layer.effect(Protocol, makeProtocolSocketWithIsConnected(options))
 
 export const makeProtocolSocketWithIsConnected = (options: {
   readonly url: string
@@ -36,7 +46,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
       const serialization = yield* RpcSerialization.RpcSerialization
 
       const write = yield* socket.writer
-      const parser = serialization.unsafeMake()
+      const parser = serialization.makeUnsafe()
 
       const pinger = yield* makePinger(write(parser.encode(constPing)!), options?.pingSchedule)
 
@@ -46,7 +56,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
         // don't contain explicit `Pong` messages don't trigger the open-timeout defect.
         // (The actual pong handler still calls `onPong()` to resolve manual pings.)
         // CHANGED: don't reset parser on every message
-        // parser = serialization.unsafeMake()
+        // parser = serialization.makeUnsafe()
         pinger.reset()
         return socket
           .runRaw((message) => {
@@ -75,7 +85,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
                     ),
                   )
                 },
-                step: constVoid,
+                step: Function.constVoid,
               })
             } catch (defect) {
               return writeResponse({
@@ -90,7 +100,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
           })
           .pipe(
             Effect.raceFirst(
-              Effect.zipRight(
+              Effect.andThen(
                 pinger.timeout,
                 Effect.fail(
                   new Socket.SocketGenericError({
@@ -102,7 +112,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
             ),
           )
       }).pipe(
-        Effect.zipRight(
+        Effect.andThen(
           Effect.fail(
             new Socket.SocketCloseError({
               reason: 'Close',
@@ -111,14 +121,14 @@ export const makeProtocolSocketWithIsConnected = (options: {
             }),
           ),
         ),
-        Effect.tapErrorCause(
+        Effect.tapCause(
           Effect.fn(function* (cause) {
             // CHANGED: set isConnected to false on error
             if (options?.isConnected !== undefined) {
               yield* SubscriptionRef.set(options.isConnected, false)
             }
 
-            const error = Cause.failureOption(cause)
+            const error = Cause.findErrorOption(cause)
             if (
               options?.retryTransientErrors !== undefined &&
               Option.isSome(error) === true &&
@@ -138,15 +148,16 @@ export const makeProtocolSocketWithIsConnected = (options: {
           }),
         ),
         // CHANGED: make configurable via schedule
-        options?.retryTransientErrors !== undefined ? Effect.retry(options.retryTransientErrors) : identity,
+        options?.retryTransientErrors !== undefined ? Effect.retry(options.retryTransientErrors) : Function.identity,
         Effect.annotateLogs({
           module: 'RpcClient',
           method: 'makeProtocolSocket',
         }),
         Effect.interruptible,
         Effect.ignore, // Errors are already handled
-        Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),
-        Effect.forkScoped,
+        Effect.provideService(References.UnhandledLogLevel, undefined),
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       return {
@@ -165,7 +176,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
 
 export const SocketPinger = Effect.map(RpcClient.Protocol, (protocol) => (protocol as any).pinger as SocketPinger)
 
-export type SocketPinger = Effect.Effect.Success<ReturnType<typeof makePinger>>
+export type SocketPinger = Effect.Success<ReturnType<typeof makePinger>>
 
 const makePinger = Effect.fnUntraced(function* <A, E, R>(
   writePing: Effect.Effect<A, E, R>,
@@ -175,16 +186,16 @@ const makePinger = Effect.fnUntraced(function* <A, E, R>(
   const manualPingDeferreds = new Set<Deferred.Deferred<void>>()
 
   let recievedPong = true
-  const latch = Effect.unsafeMakeLatch()
+  const latch = Latch.makeUnsafe()
   const reset = () => {
     recievedPong = true
-    latch.unsafeClose()
+    latch.closeUnsafe()
   }
   const onPong = () => {
     recievedPong = true
     // CHANGED: mark all manual ping deferreds as done
     for (const deferred of manualPingDeferreds) {
-      Deferred.unsafeDone(deferred, Effect.void)
+      Deferred.doneUnsafe(deferred, Effect.void)
     }
   }
   yield* Effect.suspend(() => {
@@ -198,14 +209,15 @@ const makePinger = Effect.fnUntraced(function* <A, E, R>(
     Effect.ignore,
     Effect.forever,
     Effect.interruptible,
-    Effect.forkScoped,
+    // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+    Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
   )
 
   // CHANGED: add manual ping
   const ping = Effect.gen(function* () {
     const deferred = yield* Deferred.make<void>()
     manualPingDeferreds.add(deferred)
-    yield* deferred
+    yield* Deferred.await(deferred)
     manualPingDeferreds.delete(deferred)
   })
 

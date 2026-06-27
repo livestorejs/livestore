@@ -10,7 +10,7 @@ describe.concurrent('FieldDefs', () => {
     expect(F.text({})).toMatchSnapshot()
     expect(F.text({ default: null, nullable: true })).toMatchSnapshot()
     expect(F.text({ schema: Schema.Literal('foo'), nullable: true, default: 'foo' })).toMatchSnapshot()
-    expect(F.text({ schema: Schema.Union(Schema.Literal('foo')), nullable: true, default: 'foo' })).toMatchSnapshot()
+    expect(F.text({ schema: Schema.Union([Schema.Literal('foo')]), nullable: true, default: 'foo' })).toMatchSnapshot()
   })
 
   test('json', () => {

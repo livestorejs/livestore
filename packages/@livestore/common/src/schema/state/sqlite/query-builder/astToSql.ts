@@ -1,5 +1,5 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema, SchemaAST } from '@livestore/utils/effect'
+import { Schema, SchemaAST, SchemaTransformation, Struct } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../../session-id-symbol.ts'
 import type { SqlValue } from '../../../../util.ts'
@@ -7,42 +7,39 @@ import type { State } from '../../../mod.ts'
 import type { QueryBuilderAst } from './api.ts'
 
 /**
- * Extracts array element schema from a JSON array transformation AST.
- * Returns the element schema, or undefined if not a JSON array transformation.
+ * Extracts array element schema from a JSON array AST with a JSON string encoding.
+ * Returns the element schema, or undefined if the AST is not a JSON array.
  */
-const extractArrayElementFromTransformation = (ast: SchemaAST.AST): Schema.Schema.Any | undefined => {
-  if (SchemaAST.isTransformation(ast) === false) return undefined
+const extractJsonArrayElementSchema = (ast: SchemaAST.AST): Schema.Top | undefined => {
+  if (hasJsonStringEncoding(ast) === false) return undefined
 
-  const toAst = ast.to
-  // Check if the "to" side is a TupleType (Effect's internal representation of Array)
-  if (SchemaAST.isTupleType(toAst) === false) return undefined
+  const typeAst = SchemaAST.toType(ast)
+  // Check if the type side is Arrays (Effect's internal representation of Array)
+  if (SchemaAST.isArrays(typeAst) === false) return undefined
 
-  // For Schema.Array, rest contains { type: AST } elements - get the first one's type
-  const restElement = toAst.rest[0]
+  // For Schema.Array, rest contains the element AST - get the first one.
+  const restElement = typeAst.rest[0]
   if (restElement === undefined) return undefined
 
-  return Schema.make(restElement.type)
+  return Schema.make(restElement)
 }
 
 /**
- * For JSON array columns, extracts the element schema from Schema.parseJson(Schema.Array(ElementSchema)).
- * Also handles nullable JSON arrays (Schema.NullOr(Schema.parseJson(Schema.Array(...)))).
+ * For JSON array columns, extracts the element schema from Schema.fromJsonString(Schema.Array(ElementSchema)).
+ * Also handles nullable JSON arrays (Schema.NullOr(Schema.fromJsonString(Schema.Array(...)))).
  * Returns the element schema, or undefined if the column is not a JSON array.
  */
-const getJsonArrayElementSchema = (colSchema: Schema.Schema.Any): Schema.Schema.Any | undefined => {
+const getJsonArrayElementSchema = (colSchema: Schema.Top): Schema.Top | undefined => {
   const ast = colSchema.ast
 
-  // Case 1: Direct transformation (non-nullable JSON array)
-  // Schema.parseJson(Schema.Array(ElementSchema)) creates a Transformation AST
-  if (SchemaAST.isTransformation(ast) === true) {
-    return extractArrayElementFromTransformation(ast)
-  }
+  // Case 1: Direct JSON string encoding (non-nullable JSON array)
+  const direct = extractJsonArrayElementSchema(ast)
+  if (direct !== undefined) return direct
 
-  // Case 2: Nullable JSON array - Schema.NullOr wraps the parseJson in a Union
-  // Structure: Union([Transformation (JSON array), Literal (null)])
+  // Case 2: Nullable JSON array - Schema.NullOr wraps the JSON array in a Union.
   if (SchemaAST.isUnion(ast) === true) {
     for (const member of ast.types) {
-      const result = extractArrayElementFromTransformation(member)
+      const result = extractJsonArrayElementSchema(member)
       if (result !== undefined) return result
     }
   }
@@ -50,12 +47,15 @@ const getJsonArrayElementSchema = (colSchema: Schema.Schema.Any): Schema.Schema.
   return undefined
 }
 
+const hasJsonStringEncoding = (ast: SchemaAST.AST): boolean =>
+  ast.encoding?.some((link) => link.transformation === SchemaTransformation.fromJsonString) === true
+
 /**
  * Encodes a JSON array element to the representation returned by SQLite's json_each().
  * Objects/arrays are stringified so they match json_each's TEXT representation.
  */
-const encodeJsonArrayElementValue = (elementSchema: Schema.Schema.Any, value: unknown): SqlValue => {
-  const encoded = Schema.encodeSync(elementSchema as Schema.Schema<unknown, SqlValue>)(value)
+const encodeJsonArrayElementValue = (elementSchema: Schema.Top, value: unknown): SqlValue => {
+  const encoded = Schema.encodeSync(elementSchema as Schema.Codec<unknown, SqlValue>)(value)
 
   if (encoded === null) return null
   if (typeof encoded === 'object') {
@@ -237,7 +237,9 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
       // return shouldNeverHappen('UPDATE query requires at least one column to set.')
     }
 
-    const encodedValues = Schema.encodeSync(Schema.partial(ast.tableDef.rowSchema))(ast.values)
+    const encodedValues = Schema.encodeSync(ast.tableDef.rowSchema.mapFields(Struct.map(Schema.optional)))(
+      ast.values,
+    )
 
     // Ensure bind values are added in the same order as columns
     setColumns.forEach((col) => {

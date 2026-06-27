@@ -28,7 +28,7 @@ export const runTest =
       Effect.provide(PWLive),
       Effect.tapCauseLogPretty,
       Effect.annotateLogs({ thread }),
-      Effect.provide(Logger.prettyWithThread(thread)),
+      Effect.provide(Logger.layer([Logger.consolePretty()])),
       Effect.runPromise,
     )
   }
@@ -37,7 +37,7 @@ const PWLive = Effect.gen(function* () {
   const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
 
   return Playwright.browserContextLayer({ persistentContextPath })
-}).pipe(Layer.unwrapEffect)
+}).pipe(Layer.unwrap)
 
 export const runAndGetExit = <Tag extends string, A>({
   importPath,
@@ -46,7 +46,7 @@ export const runAndGetExit = <Tag extends string, A>({
 }: {
   importPath: string
   exportName: string
-  schema: Schema.TaggedStruct<Tag, { exit: Schema.Exit<Schema.Schema<A>, typeof UnknownError, typeof Schema.Defect> }>
+  schema: Schema.TaggedStruct<Tag, { exit: Schema.Exit<Schema.Schema<A>, typeof UnknownError, ReturnType<typeof Schema.Defect>> }>
 }) =>
   Effect.gen(function* () {
     const { browserContext } = yield* Playwright.BrowserContext
@@ -58,7 +58,10 @@ export const runAndGetExit = <Tag extends string, A>({
       ),
     )
 
-    const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(Effect.fork)
+    const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
+    )
 
     return yield* Effect.gen(function* () {
       const deferred = yield* Deferred.make<(typeof schema.Type)['exit']>()
@@ -79,6 +82,6 @@ export const runAndGetExit = <Tag extends string, A>({
         }),
       )
 
-      return yield* deferred.pipe(Effect.timeout(runAndGetExitTimeoutMs))
+      return yield* Deferred.await(deferred).pipe(Effect.timeout(runAndGetExitTimeoutMs))
     }).pipe(Effect.raceFirst(Fiber.joinAll([pageConsoleFiber]) as Effect.Effect<never, Playwright.SiteError>))
   })

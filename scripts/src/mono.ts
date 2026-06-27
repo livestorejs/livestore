@@ -1,5 +1,5 @@
 import { cmd, LivestoreWorkspace, OtelLiveHttp } from '@livestore/utils-dev/node'
-import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, References } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 
 import { debugCommand } from './commands/debug.ts'
@@ -14,14 +14,14 @@ import { updateDepsCommand } from './commands/update-deps.ts'
 const tsCommand = Cli.Command.make(
   'ts',
   {
-    watch: Cli.Options.boolean('watch').pipe(Cli.Options.withDefault(false)),
-    clean: Cli.Options.boolean('clean').pipe(
-      Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Clean build artifacts before compilation'),
+    watch: Cli.Flag.boolean('watch').pipe(Cli.Flag.withDefault(false)),
+    clean: Cli.Flag.boolean('clean').pipe(
+      Cli.Flag.withDefault(false),
+      Cli.Flag.withDescription('Clean build artifacts before compilation'),
     ),
-    noCheck: Cli.Options.boolean('no-check').pipe(
-      Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Disable full type checking (only critical parse and emit errors will be reported)'),
+    noCheck: Cli.Flag.boolean('no-check').pipe(
+      Cli.Flag.withDefault(false),
+      Cli.Flag.withDescription('Disable full type checking (only critical parse and emit errors will be reported)'),
     ),
   },
   Effect.fn(function* ({ watch, clean, noCheck }) {
@@ -70,7 +70,7 @@ if (import.meta.main) {
   })
 
   const layer = Layer.mergeAll(
-    PlatformNode.NodeContext.layer,
+    PlatformNode.NodeServices.layer,
     FetchHttpClient.layer,
     OtelLiveHttp({
       serviceName: 'mono',
@@ -85,7 +85,7 @@ if (import.meta.main) {
   cli(process.argv).pipe(
     Effect.provide(layer),
     Effect.annotateLogs({ thread: 'mono' }),
-    Logger.withMinimumLogLevel(LogLevel.Debug),
+    Effect.provideService(References.MinimumLogLevel, 'Debug'),
     Effect.scoped,
     PlatformNode.NodeRuntime.runMain,
   )

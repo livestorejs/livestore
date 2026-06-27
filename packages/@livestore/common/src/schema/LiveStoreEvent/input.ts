@@ -15,7 +15,7 @@ import type * as ForEventDef from './for-event-def.ts'
 export const Encoded = Schema.Struct({
   name: Schema.String,
   args: Schema.Any,
-}).annotations({ title: 'LiveStoreEvent.Input.Encoded' })
+}).annotate({ title: 'LiveStoreEvent.Input.Encoded' })
 
 /** Event without sequence numbers, with decoded (native TypeScript) args. */
 export type Decoded = ForEventDef.InputDecoded<EventDef.Any>
@@ -29,17 +29,17 @@ export type ForSchema<TSchema extends LiveStoreSchema> = {
 }[keyof TSchema['_EventDefMapType']]
 
 /** Effect Schema union of all event types in an EventDefRecord (input format, no sequence numbers). */
-export type ForRecord<TEventDefRecord extends EventDefRecord> = Schema.Schema<
+export type ForRecord<TEventDefRecord extends EventDefRecord> = Schema.Codec<
   {
     [K in keyof TEventDefRecord]: {
       name: K
-      args: Schema.Schema.Type<TEventDefRecord[K]['schema']>
+      args: (TEventDefRecord[K]['schema'])['Type']
     }
   }[keyof TEventDefRecord],
   {
     [K in keyof TEventDefRecord]: {
       name: K
-      args: Schema.Schema.Encoded<TEventDefRecord[K]['schema']>
+      args: (TEventDefRecord[K]['schema'])['Encoded']
     }
   }[keyof TEventDefRecord]
 >
@@ -53,11 +53,11 @@ export type ForRecord<TEventDefRecord extends EventDefRecord> = Schema.Schema<
  * ```
  */
 export const makeSchema = <TSchema extends LiveStoreSchema>(schema: TSchema): ForRecord<TSchema['_EventDefMapType']> =>
-  Schema.Union(
+  Schema.Union([
     ...[...schema.eventsDefsMap.values()].map((def) =>
       Schema.Struct({
         name: Schema.Literal(def.name),
         args: def.schema,
       }),
     ),
-  ).annotations({ title: 'LiveStoreEvent.Input' }) as any
+  ]).annotate({ title: 'LiveStoreEvent.Input' }) as any

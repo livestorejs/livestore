@@ -6,27 +6,27 @@ import {
   HttpServer,
   Layer,
   Logger,
-  LogLevel,
   Option,
+  References,
   RpcSerialization,
   Stream,
 } from '@livestore/utils/effect'
 
 import { SyncDoRpc } from '../../../common/do-rpc-schema.ts'
 import { SyncMessage } from '../../../common/mod.ts'
-import { DoCtx, type DoCtxInput } from '../layer.ts'
+import * as DoCtx from '../layer.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
 
 export interface DoRpcHandlerOptions {
   payload: Uint8Array<ArrayBuffer>
-  input: Omit<DoCtxInput, 'from'>
+  input: Omit<DoCtx.DoCtxInput, 'from'>
 }
 
 export const createDoRpcHandler = (
   options: DoRpcHandlerOptions,
 ): Effect.Effect<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream> =>
-  Effect.gen(this, function* () {
+  Effect.gen({ self: this }, function* () {
     const { payload, input } = options
     // const { rpcSubscriptions, backendId, doOptions, ctx, env } = yield* DoCtx
 
@@ -36,8 +36,8 @@ export const createDoRpcHandler = (
         return Effect.succeed(SyncMessage.Pong.make({}))
       },
       'SyncDoRpc.Pull': (req, { headers }) =>
-        Effect.gen(this, function* () {
-          const { rpcSubscriptions } = yield* DoCtx
+        Effect.gen({ self: this }, function* () {
+          const { rpcSubscriptions } = yield* DoCtx.DoCtx
 
           // TODO rename `req.rpcContext` to something more appropriate
           if (req.rpcContext !== undefined) {
@@ -58,23 +58,23 @@ export const createDoRpcHandler = (
             ...res,
             rpcRequestId: Headers.get(headers, 'x-rpc-request-id').pipe(Option.getOrThrow),
           })),
-          Stream.provideLayer(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
+          Stream.provide(DoCtx.layer({ ...input, from: { storeId: req.storeId } })),
           Stream.mapError((cause) =>
             cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
               ? cause
               : new UnknownError({ cause }),
           ),
-          Stream.tapErrorCause(Effect.log),
+          Stream.tapCause(Effect.log),
         ),
       'SyncDoRpc.Push': (req) =>
-        Effect.gen(this, function* () {
-          const { doOptions, ctx, env, storeId } = yield* DoCtx
+        Effect.gen({ self: this }, function* () {
+          const { doOptions, ctx, env, storeId } = yield* DoCtx.DoCtx
           // DO-RPC doesn't have HTTP headers context - headers are undefined
           const push = makePush({ storeId, payload: req.payload, headers: undefined, options: doOptions, ctx, env })
 
           return yield* push(req)
         }).pipe(
-          Effect.provide(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
+          Effect.provide(DoCtx.layer({ ...input, from: { storeId: req.storeId } })),
           Effect.mapError((cause) =>
             cause._tag === 'UnknownError' ||
             cause._tag === 'ServerAheadError' ||
@@ -87,11 +87,15 @@ export const createDoRpcHandler = (
     })
 
     const handler = toDurableObjectHandler(SyncDoRpc, {
-      layer: Layer.mergeAll(RpcLive, RpcSerialization.layerJson, HttpServer.layerContext).pipe(
-        Layer.provide(Logger.consoleWithThread('SyncDo')),
-        Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
+      layer: Layer.mergeAll(RpcLive, RpcSerialization.layerJson, HttpServer.layerServices).pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            Logger.layer([Logger.consoleStructured]),
+            Layer.succeed(References.MinimumLogLevel, 'Debug'),
+          ),
+        ),
       ),
     })
 
-    return yield* handler(payload)
+    return yield* handler(payload).pipe(Effect.annotateLogs({ thread: 'SyncDo' }))
   }).pipe(Effect.withSpan('createDoRpcHandler'))

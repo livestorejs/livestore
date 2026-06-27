@@ -2,7 +2,7 @@ import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { Effect, FileSystem, Queue, Schema } from '@livestore/utils/effect'
+import { Effect, FileSystem, Queue } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
 import { type WatchSnippetsRebuildInfo, watchSnippets } from './snippets.ts'
@@ -32,20 +32,24 @@ const writeInitialProject = (fs: FileSystem.FileSystem, projectRoot: string): Ef
 
     yield* fs.writeFileString(snippetPath, 'export const value = 1\n').pipe(Effect.orDie)
     yield* fs.writeFileString(docsPath, createDocsImportSource('../content/_assets/code/example.ts')).pipe(Effect.orDie)
-    const tsconfigJson = yield* Schema.encode(Schema.parseJson({ space: 2 }))({
-      compilerOptions: {
-        target: 'ESNext',
-        module: 'ESNext',
-        moduleResolution: 'Bundler',
-        jsx: 'react-jsx',
-        types: ['node'],
-        skipLibCheck: true,
-        allowImportingTsExtensions: true,
-        noEmit: true,
+    const tsconfigJson = JSON.stringify(
+      {
+        compilerOptions: {
+          target: 'ESNext',
+          module: 'ESNext',
+          moduleResolution: 'Bundler',
+          jsx: 'react-jsx',
+          types: ['node'],
+          skipLibCheck: true,
+          allowImportingTsExtensions: true,
+          noEmit: true,
+        },
+        include: ['./**/*'],
+        exclude: ['./node_modules'],
       },
-      include: ['./**/*'],
-      exclude: ['./node_modules'],
-    }).pipe(Effect.orDie)
+      null,
+      2,
+    )
     yield* fs.writeFileString(tsconfigPath, tsconfigJson + '\n').pipe(Effect.orDie)
   })
 
@@ -64,7 +68,9 @@ describe('watchSnippets', () => {
         onRebuild: (info) => Queue.offer(rebuildEvents, info),
       })
 
-      yield* Effect.forkScoped(watchEffect)
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+
+      yield* Effect.forkScoped(watchEffect, { startImmediately: true, uninterruptible: 'inherit' })
 
       const initial = yield* Queue.take(rebuildEvents)
       expect(initial.reason).toBe('initial')
@@ -84,6 +90,6 @@ describe('watchSnippets', () => {
       expect(update.renderedCount).toBeGreaterThanOrEqual(0)
     })
 
-    await program.pipe(Effect.scoped, Effect.provide(PlatformNode.NodeFileSystem.layer), Effect.runPromise)
+    await program.pipe(Effect.scoped, Effect.runPromiseWith(PlatformNode.NodeFileSystem.layer))
   }, 10000)
 })

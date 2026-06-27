@@ -165,9 +165,9 @@ const hasTestFiles = (dirPath: string): boolean => {
 export const testUnitCommand = Cli.Command.make(
   'unit',
   {
-    filter: Cli.Options.text('filter').pipe(
-      Cli.Options.optional,
-      Cli.Options.withDescription('Run only test suites whose path includes this substring'),
+    filter: Cli.Flag.text('filter').pipe(
+      Cli.Flag.optional,
+      Cli.Flag.withDescription('Run only test suites whose path includes this substring'),
     ),
   },
   Effect.fn(function* ({ filter }) {
@@ -204,7 +204,7 @@ export const testUnitCommand = Cli.Command.make(
       // Ignoring them for now but we should fix them eventually
       for (const vitestPath of vitestPathsToRunSequentially) {
         yield* runTestGroup(vitestPath)(
-          cmd(`vitest run ${vitestPath}`).pipe(Effect.ignoreLogged, Effect.provide(LivestoreWorkspace.toCwd())),
+          cmd(`vitest run ${vitestPath}`).pipe(Effect.ignore, Effect.provide(LivestoreWorkspace.toCwd())),
         )
       }
 
@@ -273,9 +273,9 @@ const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]
 export const syncProviderTest = Cli.Command.make(
   'sync-provider',
   {
-    provider: Cli.Options.choice('provider', [...providerKeys]).pipe(
-      Cli.Options.optional,
-      Cli.Options.withDescription('Run only a specific sync provider test suite'),
+    provider: Cli.Flag.choice('provider', [...providerKeys]).pipe(
+      Cli.Flag.optional,
+      Cli.Flag.withDescription('Run only a specific sync provider test suite'),
     ),
   },
   Effect.fn(function* ({ provider }: { provider: Option.Option<TSyncProviderChoice> }) {
@@ -297,9 +297,7 @@ export const syncProviderTest = Cli.Command.make(
 const testIntegrationAllCommand = Cli.Command.make(
   'all',
   {
-    concurrency: Cli.Options.choice('concurrency', ['sequential', 'parallel']).pipe(
-      Cli.Options.withDefault('parallel'),
-    ),
+    concurrency: Cli.Flag.choice('concurrency', ['sequential', 'parallel']).pipe(Cli.Flag.withDefault('parallel')),
     localDevtoolsPreview: integrationTests.localDevtoolsPreviewOption,
   },
   Effect.fn(function* ({ concurrency, localDevtoolsPreview }) {

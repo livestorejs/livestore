@@ -1,7 +1,7 @@
 import path from 'node:path'
 
 import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
-import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
+import { Effect, FileSystem, Result, Schema } from '@livestore/utils/effect'
 
 /**
  * Given the LiveStore monorepo is sometimes embedded in another git repo as a submodule,
@@ -16,12 +16,15 @@ export const hasParentGitRepo = Effect.gen(function* () {
   }).pipe(Effect.provide(LivestoreWorkspace.toCwd('..')), Effect.isSuccess)
 })
 
-export class GithubSummaryWriteError extends Schema.TaggedError<GithubSummaryWriteError>()('GithubSummaryWriteError', {
-  context: Schema.String,
-  message: Schema.String,
-  path: Schema.String,
-  cause: Schema.optional(Schema.Unknown),
-}) {}
+export class GithubSummaryWriteError extends Schema.TaggedErrorClass<GithubSummaryWriteError>()(
+  'GithubSummaryWriteError',
+  {
+    context: Schema.String,
+    message: Schema.String,
+    path: Schema.String,
+    cause: Schema.optional(Schema.Unknown),
+  },
+) {}
 
 const sanitizeMarkdownCell = (value: string) => value.replaceAll('|', '\\|').replaceAll('\n', ' ')
 
@@ -68,11 +71,11 @@ export const appendGithubSummaryMarkdown = ({ markdown, context }: { markdown: s
             cause,
           }),
       ),
-      Effect.either,
+      Effect.result,
     )
 
-    if (writeResult._tag === 'Left') {
-      const error = writeResult.left
+    if (Result.isFailure(writeResult)) {
+      const error = writeResult.failure
       yield* Effect.logWarning(`Unable to append ${context} summary to ${summaryPath}: ${error.message}`)
       return
     }

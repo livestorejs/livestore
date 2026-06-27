@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { ParseResult, Schema } from '@livestore/utils/effect'
+import { ParseResult, Schema, SchemaGetter } from '@livestore/utils/effect'
 
 import { BoundArray } from './bounded-collections.ts'
 import { PreparedBindValues } from './util.ts'
@@ -31,9 +31,9 @@ const isBoundArrayLike = (value: unknown): value is BoundArray<unknown> =>
   value instanceof BoundArray ||
   (value !== null && typeof value === 'object' && typeof (value as { sizeLimit?: number }).sizeLimit === 'number')
 
-const BoundArraySchemaFromSelf = <A, I, R>(
-  item: Schema.Schema<A, I, R>,
-): Schema.Schema<BoundArray<A>, BoundArray<I>, R> =>
+const BoundArraySchemaFromSelf = <A, I, RD, RE>(
+  item: Schema.Codec<A, I, RD, RE>,
+): Schema.Codec<BoundArray<A>, BoundArray<I>, RD, RE> =>
   Schema.declare(
     [item],
     {
@@ -55,10 +55,10 @@ const BoundArraySchemaFromSelf = <A, I, R>(
     },
     {
       description: `BoundArray<${Schema.format(item)}>`,
-      pretty: () => (_) => `BoundArray(${_.length})`,
+      toFormatter: () => (_) => `BoundArray(${_.length})`,
       arbitrary: () => (fc) => fc.anything() as any,
       equivalence: () => {
-        const elementEquivalence = Schema.equivalence(item)
+        const elementEquivalence = Schema.toEquivalence(item)
         return (a: unknown, b: unknown) => {
           if (a === b) {
             return true
@@ -82,24 +82,26 @@ const BoundArraySchemaFromSelf = <A, I, R>(
     },
   )
 
-export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Schema<ItemDecoded, ItemEncoded>) =>
-  Schema.transform(
-    Schema.Struct({
-      size: Schema.Number,
-      items: Schema.Array(elSchema),
-    }),
-    BoundArraySchemaFromSelf(Schema.typeSchema(elSchema)),
-    {
-      encode: (_) => ({ size: _.sizeLimit, items: [..._] }),
-      decode: (_) => BoundArray.make(_.size, _.items),
-    },
+export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Codec<ItemDecoded, ItemEncoded>) =>
+  Schema.Struct({
+    size: Schema.Number,
+    items: Schema.Array(elSchema),
+  }).pipe(
+    Schema.decodeTo(
+      BoundArraySchemaFromSelf(Schema.toType(elSchema)),
+      {
+        decode: SchemaGetter.transform((_) => BoundArray.make(_.size, _.items)),
+        encode: SchemaGetter.transform((_) => ({ size: _.sizeLimit, items: [..._] }),
+        ),
+      },
+    ),
   )
 
 export const DebugInfo = Schema.Struct({
   slowQueries: BoundArraySchema(SlowQueryInfo),
   queryFrameDuration: Schema.Number,
   queryFrameCount: Schema.Number,
-  events: BoundArraySchema(Schema.Tuple(Schema.String, Schema.Any)),
+  events: BoundArraySchema(Schema.Tuple([Schema.String, Schema.Any])),
 })
 
 export type DebugInfo = typeof DebugInfo.Type

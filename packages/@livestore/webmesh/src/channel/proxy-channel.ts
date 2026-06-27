@@ -1,9 +1,9 @@
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
-import type { PubSub } from '@livestore/utils/effect'
 import {
+  type PubSub,
   Deferred,
   Effect,
-  Either,
+  Result,
   Exit,
   Fiber,
   FiberHandle,
@@ -39,11 +39,11 @@ export const ProxyChannelSimulationParams = Schema.Struct({
    */
   onPayload: Schema.Struct({
     /** Delay before sending the ACK response (simulates slow ACK send) */
-    beforeAckSend: Schema.Int.pipe(Schema.between(0, 500)),
+    beforeAckSend: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 500 })),
     /** Delay after forking the ACK send, before adding message to listen queue */
-    afterAckFork: Schema.Int.pipe(Schema.between(0, 500)),
+    afterAckFork: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 500 })),
     /** Delay after adding message to listen queue */
-    afterListenQueueOffer: Schema.Int.pipe(Schema.between(0, 500)),
+    afterListenQueueOffer: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 500 })),
   }),
 })
 
@@ -66,8 +66,8 @@ interface MakeProxyChannelArgs {
   channelName: ChannelName
   target: MeshNodeName
   schema: {
-    send: Schema.Schema<any, any>
-    listen: Schema.Schema<any, any>
+    send: Schema.Codec<any, any>
+    listen: Schema.Codec<any, any>
   }
   /** Optional simulation parameters for testing timing-sensitive behavior */
   simulation?: ProxyChannelSimulationParams
@@ -105,7 +105,7 @@ export const makeProxyChannel = ({
 
       type ProxiedChannelStateEstablished = {
         _tag: 'Established'
-        listenSchema: Schema.Schema<any, any>
+        listenSchema: Schema.Codec<any, any>
         listenQueue: Queue.Queue<any>
         ackMap: Map<string, Deferred.Deferred<void>>
         combinedChannelId: string
@@ -162,8 +162,9 @@ export const makeProxyChannel = ({
       const getCombinedChannelId = (otherSideChannelIdCandidate: string) =>
         [channelIdCandidate, otherSideChannelIdCandidate].toSorted().join('_')
 
-      const earlyPayloadBuffer = yield* Queue.unbounded<typeof MeshSchema.ProxyChannelPayload.Type>().pipe(
-        Effect.acquireRelease(Queue.shutdown),
+      const earlyPayloadBuffer = yield* Effect.acquireRelease(
+        Queue.unbounded<typeof MeshSchema.ProxyChannelPayload.Type>(),
+        Queue.shutdown,
       )
 
       const processProxyPacket = ({ packet, respondToSender }: ProxyQueueItem) =>
@@ -267,7 +268,7 @@ export const makeProxyChannel = ({
               const establishedState = channelStateRef.current
               if (establishedState._tag === 'Established') {
                 //
-                const bufferedPackets = yield* Queue.takeAll(earlyPayloadBuffer)
+                const bufferedPackets = yield* Queue.clear(earlyPayloadBuffer)
                 // yield* Effect.logDebug(
                 //   `[${nodeName}] Draining early payload buffer (${bufferedPackets.length}) after ResponseSuccess`,
                 // )
@@ -278,7 +279,7 @@ export const makeProxyChannel = ({
                     )
                     continue
                   }
-                  const decodedMessage = yield* Schema.decodeUnknown(establishedState.listenSchema)(
+                  const decodedMessage = yield* Schema.decodeUnknownEffect(establishedState.listenSchema)(
                     bufferedPacket.payload,
                   )
                   yield* establishedState.listenQueue.pipe(Queue.offer(decodedMessage))
@@ -321,13 +322,17 @@ export const makeProxyChannel = ({
                 )
               })
 
-              yield* ackSendEffect.pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+              yield* ackSendEffect.pipe(
+                Effect.tapCauseLogPretty,
+                // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+                Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+              )
 
               // Simulation point: delay after forking ACK (before processing message)
               yield* simSleep('onPayload', 'afterAckFork')
 
               if (channelState._tag === 'Established') {
-                const decodedMessage = yield* Schema.decodeUnknown(channelState.listenSchema)(packet.payload)
+                const decodedMessage = yield* Schema.decodeUnknownEffect(channelState.listenSchema)(packet.payload)
                 yield* channelState.listenQueue.pipe(Queue.offer(decodedMessage))
 
                 // Simulation point: delay after adding to listen queue
@@ -374,7 +379,8 @@ export const makeProxyChannel = ({
         Stream.tap(processProxyPacket),
         Stream.runDrain,
         Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       const listenQueue = yield* Queue.unbounded<any>()
@@ -398,7 +404,8 @@ export const makeProxyChannel = ({
         const retryOnNewEdgeFiber = yield* Stream.fromPubSub(newEdgeAvailablePubSub).pipe(
           Stream.tap(() => edgeRequest),
           Stream.runDrain,
-          Effect.forkScoped,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
         const { combinedChannelId: channelId } = yield* waitForEstablished
@@ -410,7 +417,7 @@ export const makeProxyChannel = ({
 
       const send = (message: any) =>
         Effect.gen(function* () {
-          const payload = yield* Schema.encodeUnknown(schema.send)(message)
+          const payload = yield* Schema.encodeUnknownEffect(schema.send)(message)
           const sendFiberHandle = yield* FiberHandle.make<void, never>()
 
           const sentDeferred = yield* Deferred.make<void>()
@@ -441,7 +448,7 @@ export const makeProxyChannel = ({
 
               yield* sendPacket(packet)
 
-              yield* ack
+              yield* Deferred.await(ack)
               yield* Deferred.succeed(sentDeferred, void 0)
 
               debugInfo.pendingSends--
@@ -450,18 +457,19 @@ export const makeProxyChannel = ({
             // TODO make this configurable
             // Schedule.exponential(10): 10, 20, 40, 80, 160, 320, ...
             yield* innerSend.pipe(Effect.timeout(100), Effect.retry(Schedule.exponential(10)), Effect.orDie)
-          }).pipe(Effect.tapErrorCause(Effect.logError))
+          }).pipe(Effect.tapCause(Effect.logError))
 
-          const rerunOnNewChannelFiber = yield* connectedStateRef.changes.pipe(
+          const rerunOnNewChannelFiber = yield* SubscriptionRef.changes(connectedStateRef).pipe(
             Stream.filter((_) => _ === false),
             Stream.tap(() => FiberHandle.run(sendFiberHandle, trySend)),
             Stream.runDrain,
-            Effect.fork,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
           yield* FiberHandle.run(sendFiberHandle, trySend)
 
-          yield* sentDeferred
+          yield* Deferred.await(sentDeferred)
 
           yield* Fiber.interrupt(rerunOnNewChannelFiber)
         }).pipe(
@@ -470,11 +478,11 @@ export const makeProxyChannel = ({
           Effect.withParentSpan(channelSpan),
         )
 
-      const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Either.right))
+      const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Result.succeed))
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
-      const runtime = yield* Effect.runtime()
+      const services = yield* Effect.context()
 
       const webChannel = {
         [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
@@ -489,7 +497,7 @@ export const makeProxyChannel = ({
           debug: {
             ping: (message = 'ping') =>
               send(WebChannel.DebugPingMessage.make({ message })).pipe(
-                Effect.provide(runtime),
+                Effect.provide(services),
                 Effect.tapCauseLogPretty,
                 Effect.runFork,
               ),

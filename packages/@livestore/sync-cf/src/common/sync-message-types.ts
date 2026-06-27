@@ -11,7 +11,7 @@ import { Schema } from '@livestore/utils/effect'
 export const SyncMetadata = Schema.TaggedStruct('SyncMessage.SyncMetadata', {
   /** ISO date format */
   createdAt: Schema.String,
-}).annotations({ title: '@livestore/sync-cf:SyncMetadata' })
+}).annotate({ title: '@livestore/sync-cf:SyncMetadata' })
 
 export type SyncMetadata = typeof SyncMetadata.Type
 
@@ -23,7 +23,7 @@ export const PullRequest = Schema.Struct({
       eventSequenceNumber: EventSequenceNumber.Global.Schema,
     }),
   ),
-}).annotations({ title: '@livestore/sync-cf:PullRequest' })
+}).annotate({ title: '@livestore/sync-cf:PullRequest' })
 
 export type PullRequest = typeof PullRequest.Type
 
@@ -36,7 +36,7 @@ export const PullResponse = Schema.Struct({
   ),
   pageInfo: SyncBackend.PullResPageInfo,
   backendId: BackendId,
-}).annotations({ title: '@livestore/sync-cf:PullResponse' })
+}).annotate({ title: '@livestore/sync-cf:PullResponse' })
 
 export const emptyPullResponse = (backendId: string) =>
   PullResponse.make({
@@ -50,32 +50,32 @@ export type PullResponse = typeof PullResponse.Type
 export const PushRequest = Schema.Struct({
   batch: Schema.Array(LiveStoreEvent.Global.Encoded),
   backendId: Schema.Option(BackendId),
-}).annotations({ title: '@livestore/sync-cf:PushRequest' })
+}).annotate({ title: '@livestore/sync-cf:PushRequest' })
 
 export type PushRequest = typeof PushRequest.Type
 
-export const PushAck = Schema.Struct({}).annotations({
+export const PushAck = Schema.Struct({}).annotate({
   title: '@livestore/sync-cf:PushAck',
 })
 
 export type PushAck = typeof PushAck.Type
 
-export const Ping = Schema.TaggedStruct('SyncMessage.Ping', {}).annotations({ title: '@livestore/sync-cf:Ping' })
+export const Ping = Schema.TaggedStruct('SyncMessage.Ping', {}).annotate({ title: '@livestore/sync-cf:Ping' })
 
 export type Ping = typeof Ping.Type
 
-export const Pong = Schema.TaggedStruct('SyncMessage.Pong', {}).annotations({ title: '@livestore/sync-cf:Pong' })
+export const Pong = Schema.TaggedStruct('SyncMessage.Pong', {}).annotate({ title: '@livestore/sync-cf:Pong' })
 
 export type Pong = typeof Pong.Type
 
 // Admin operations
 export const AdminResetRoomRequest = Schema.TaggedStruct('SyncMessage.AdminResetRoomRequest', {
   adminSecret: Schema.String,
-}).annotations({ title: '@livestore/sync-cf:AdminResetRoomRequest' })
+}).annotate({ title: '@livestore/sync-cf:AdminResetRoomRequest' })
 
 export type AdminResetRoomRequest = typeof AdminResetRoomRequest.Type
 
-export const AdminResetRoomResponse = Schema.TaggedStruct('SyncMessage.AdminResetRoomResponse', {}).annotations({
+export const AdminResetRoomResponse = Schema.TaggedStruct('SyncMessage.AdminResetRoomResponse', {}).annotate({
   title: '@livestore/sync-cf:AdminResetRoomResponse',
 })
 
@@ -83,7 +83,7 @@ export type AdminResetRoomResponse = typeof AdminResetRoomResponse.Type
 
 export const AdminInfoRequest = Schema.TaggedStruct('SyncMessage.AdminInfoRequest', {
   adminSecret: Schema.String,
-}).annotations({ title: '@livestore/sync-cf:AdminInfoRequest' })
+}).annotate({ title: '@livestore/sync-cf:AdminInfoRequest' })
 
 export type AdminInfoRequest = typeof AdminInfoRequest.Type
 
@@ -91,27 +91,27 @@ export const AdminInfoResponse = Schema.TaggedStruct('SyncMessage.AdminInfoRespo
   info: Schema.Struct({
     durableObjectId: Schema.String,
   }),
-}).annotations({ title: '@livestore/sync-cf:AdminInfoResponse' })
+}).annotate({ title: '@livestore/sync-cf:AdminInfoResponse' })
 
 export type AdminInfoResponse = typeof AdminInfoResponse.Type
 
-export const BackendToClientMessage = Schema.Union(
+export const BackendToClientMessage = Schema.Union([
   PullResponse,
   PushAck,
   Pong,
   AdminResetRoomResponse,
   AdminInfoResponse,
-)
+])
 export type BackendToClientMessage = typeof BackendToClientMessage.Type
 
-export const ClientToBackendMessage = Schema.Union(
+export const ClientToBackendMessage = Schema.Union([
   PullRequest,
   PushRequest,
   Ping,
   AdminResetRoomRequest,
   AdminInfoRequest,
-)
+])
 export type ClientToBackendMessage = typeof ClientToBackendMessage.Type
 
-export const Message = Schema.Union(BackendToClientMessage, ClientToBackendMessage)
+export const Message = Schema.Union([BackendToClientMessage, ClientToBackendMessage])
 export type Message = typeof Message.Type

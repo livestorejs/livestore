@@ -1,5 +1,4 @@
 import {
-  Chunk,
   Effect,
   Exit,
   Headers,
@@ -41,7 +40,7 @@ export const toDurableObjectHandler =
   ) => Effect.Effect<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream>) =>
   (serializedPayload) =>
     Effect.gen(function* () {
-      const parser = RpcSerialization.msgPack.unsafeMake()
+      const parser = RpcSerialization.msgPack.makeUnsafe()
 
       // Decode incoming requests - client sends array of requests
       const decoded = parser.decode(serializedPayload)
@@ -72,8 +71,8 @@ export const toDurableObjectHandler =
         // Find the RPC handler
         // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- RpcGroup.requests map returns Rpc.Any; narrowing to AnyWithProps for property access
         const rpc = group.requests.get(request.tag)! as unknown as Rpc.AnyWithProps
-        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- context.unsafeMap dynamic lookup; type safety ensured by RpcGroup registration
-        const entry = context.unsafeMap.get(rpc.key) as Rpc.Handler<Rpcs['_tag']>
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- context.mapUnsafe dynamic lookup; type safety ensured by RpcGroup registration
+        const entry = context.mapUnsafe.get(rpc.key) as Rpc.Handler<Rpcs['_tag']>
 
         if (rpc == null || entry == null) {
           responses.push({
@@ -112,13 +111,13 @@ export const toDurableObjectHandler =
 
           // Get the exit schema for this RPC
           // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
-          const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Schema<any>
+          const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
 
           let encodedExit: any
           if (exitSchema !== undefined) {
             // Use schema encoding for proper serialization
             const rawExit = Exit.succeed(value)
-            encodedExit = yield* Schema.encodeUnknown(exitSchema)(rawExit)
+            encodedExit = yield* Schema.encodeUnknownEffect(exitSchema)(rawExit)
           } else {
             // Fallback to direct exit
             encodedExit = Exit.succeed(value)
@@ -130,17 +129,17 @@ export const toDurableObjectHandler =
             exit: encodedExit,
           }
         }).pipe(
-          Effect.catchAllCause((cause) => {
+          Effect.catchCause((cause) => {
             // Get the exit schema for this RPC
             // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
-            const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Schema<any>
+            const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
 
             return Effect.gen(function* () {
               let encodedExit: any
               if (exitSchema !== undefined) {
                 // Use schema encoding for proper serialization
                 const rawExit = Exit.failCause(cause)
-                encodedExit = yield* Schema.encodeUnknown(exitSchema)(rawExit)
+                encodedExit = yield* Schema.encodeUnknownEffect(exitSchema)(rawExit)
               } else {
                 // Fallback to direct exit
                 encodedExit = Exit.failCause(cause)
@@ -199,7 +198,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
   rpc: Rpc.AnyWithProps,
   entry: Rpc.Handler<Rpcs['_tag']>,
   request: any,
-  parser: ReturnType<typeof RpcSerialization.msgPack.unsafeMake>,
+  parser: ReturnType<typeof RpcSerialization.msgPack.makeUnsafe>,
   layer: Layer.Layer<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>, LE>,
 ): Effect.Effect<CfTypes.ReadableStream, never, Scope.Scope> =>
   Effect.gen(function* () {
@@ -211,19 +210,19 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
       }),
     })
 
-    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch; orDie converts the error to a defect handled by the downstream catchAllCause
+    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch; orDie converts the error to a defect handled by the downstream catchCause
     const stream: Stream.Stream<any, any> =
       Effect.isEffect(handlerResult) === true ? yield* Effect.orDie(handlerResult) : handlerResult
 
     // Get the stream schemas for proper chunk-level encoding
     // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.Handler doesn't expose successSchema publicly; see https://github.com/Effect-TS/effect/issues/6064
     const streamSchemas = RpcSchema.getStreamSchemas((rpc as any).successSchema.ast)
-    const chunkEncoder =
+    const arrayEncoder =
       Option.isSome(streamSchemas) === true
         ? // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- stream schema success type is inferred as unknown; cast needed for encodeUnknown
-          Schema.encodeUnknown(Schema.Array(streamSchemas.value.success as Schema.Schema<any>))
+          Schema.encodeUnknownEffect(Schema.Array(streamSchemas.value.success as Schema.Top))
         : // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Schema.Any needs explicit cast for Schema.Array compatibility
-          Schema.encodeUnknown(Schema.Array(Schema.Any as Schema.Schema<any>))
+          Schema.encodeUnknownEffect(Schema.Array(Schema.Any as Schema.Top))
 
     // Convert stream to ReadableStream
     const readableStream = new ReadableStream({
@@ -231,13 +230,12 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
         // Run the stream and send chunks + final exit
         const runStream = Effect.gen(function* () {
           // Process stream chunks - let chunk encoder handle Effect objects properly
-          yield* Stream.runForEachChunk(stream, (chunk) =>
+          yield* Stream.runForEachArray(stream, (array) =>
             Effect.gen(function* () {
-              const chunkArray = Chunk.toReadonlyArray(chunk)
-              if (chunkArray.length === 0) return
+              if (array.length === 0) return
 
               // Encode the chunk using the proper chunk encoder (like official RPC)
-              const encodedValues = yield* chunkEncoder(chunkArray)
+              const encodedValues = yield* arrayEncoder(array)
 
               const chunkMessage = {
                 _tag: 'Chunk' as const,
@@ -254,8 +252,8 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
           // Send final exit message with proper schema encoding
           const rawExit = Exit.void
           // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
-          const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Schema<any>
-          const encodedExit = yield* Schema.encodeUnknown(exitSchema)(rawExit)
+          const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
+          const encodedExit = yield* Schema.encodeUnknownEffect(exitSchema)(rawExit)
 
           const exitMessage = {
             _tag: 'Exit' as const,
@@ -268,13 +266,13 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
           controller.enqueue(exitSerialized)
           controller.close()
         }).pipe(
-          Effect.catchAllCause((cause) =>
+          Effect.catchCause((cause) =>
             Effect.gen(function* () {
               // Send error exit with proper schema encoding
               const rawExit = Exit.failCause(cause)
               // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
-              const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Schema<any>
-              const encodedExit = yield* Schema.encodeUnknown(exitSchema)(rawExit)
+              const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
+              const encodedExit = yield* Schema.encodeUnknownEffect(exitSchema)(rawExit)
 
               const exitMessage = {
                 _tag: 'Exit' as const,

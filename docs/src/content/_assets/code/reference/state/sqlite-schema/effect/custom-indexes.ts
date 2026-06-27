@@ -5,7 +5,7 @@ const PostSchema = Schema.Struct({
   title: Schema.String,
   authorId: Schema.String,
   createdAt: Schema.Date,
-}).annotations({ title: 'posts' })
+}).annotate({ title: 'posts' })
 
 export const postTable = State.SQLite.table({
   schema: PostSchema,

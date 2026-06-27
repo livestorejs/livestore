@@ -1,9 +1,10 @@
-import { LogConfig, type SyncOptions } from '@livestore/common'
+import type { LogConfig, SyncOptions } from '@livestore/common'
 import type { CfTypes, HelperTypes } from '@livestore/common-cf'
 import { createStore, type LiveStoreSchema, provideOtel } from '@livestore/livestore'
 import type * as CfSyncBackend from '@livestore/sync-cf/cf-worker'
 import { makeDoRpcSync } from '@livestore/sync-cf/client'
-import { Effect, Logger, Scope } from '@livestore/utils/effect'
+import { isDevEnv } from '@livestore/utils'
+import { Effect, Layer, References, Scope } from '@livestore/utils/effect'
 
 import { makeAdapter } from './make-adapter.ts'
 
@@ -49,7 +50,7 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> 
    * @default { _tag: 'Blocking', timeout: 500 }
    */
   initialSyncOptions?: SyncOptions['initialSyncOptions']
-} & LogConfig.WithLoggerOptions
+} & LogConfig.LoggerOptions
 
 /**
  * Creates a LiveStore instance inside a Cloudflare Durable Object.
@@ -128,7 +129,7 @@ export const createStoreDo = <
       },
     })
 
-    return yield* createStore({ schema, adapter, storeId }).pipe(Scope.extend(scope), provideOtel({}))
+    return yield* createStore({ schema, adapter, storeId }).pipe(Scope.provide(scope), provideOtel({}))
   })
 
 /**
@@ -164,10 +165,12 @@ export const createStoreDoPromise = <
   options: CreateStoreDoOptions<TSchema, TEnv, TState>,
 ) =>
   createStoreDo(options).pipe(
-    LogConfig.withLoggerConfig(options, {
-      threadName: 'DoClient',
-      defaultLogger: Logger.consoleWithThread('DoClient'),
-    }),
+    Effect.provide(
+      Layer.mergeAll(
+        options.logger ?? Layer.empty,
+        Layer.succeed(References.MinimumLogLevel, options.logLevel ?? (isDevEnv() === true ? 'Debug' : 'Info')),
+      ),
+    ),
     Effect.tapCauseLogPretty,
     Effect.runPromise,
   )

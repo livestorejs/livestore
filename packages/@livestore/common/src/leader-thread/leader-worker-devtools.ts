@@ -1,4 +1,4 @@
-import { Effect, FiberMap, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import { Cause, Effect, FiberMap, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
 import {
@@ -39,7 +39,11 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
   yield* listenToDevtools({
     incomingMessages: Stream.fromQueue(extraIncomingMessagesQueue),
     sendMessage: () => Effect.void,
-  }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+  }).pipe(
+    Effect.tapCauseLogPretty,
+    // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+    Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+  )
 
   const bootResult = yield* options.boot.pipe(
     Effect.map(Option.some),
@@ -48,7 +52,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
         Effect.as(Option.none()),
       ),
     ),
-    Effect.catchAllCause((cause) =>
+    Effect.catchCause((cause) =>
       Effect.logWarning(
         `[@livestore/devtools] Failed to start devtools server. Devtools will be disabled.`,
         cause,
@@ -81,7 +85,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
             .pipe(
               Effect.withSpan('@livestore/common:leader-thread:devtools:sendToDevtools'),
               Effect.interruptible,
-              Effect.ignoreLogged,
+              Effect.ignore,
             )
 
         const syncState = yield* syncProcessor.syncState
@@ -89,7 +93,8 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
         yield* syncProcessor.pull({ cursor: syncState.localHead }).pipe(
           Stream.tap(({ payload }) => sendMessage(Devtools.Leader.SyncPull.make({ payload, liveStoreVersion }))),
           Stream.runDrain,
-          Effect.forkScoped,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
         yield* listenToDevtools({
@@ -97,7 +102,11 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
           sendMessage,
           persistenceInfo,
         })
-      }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped),
+      }).pipe(
+        Effect.tapCauseLogPretty,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+      ),
     ),
     Stream.runDrain,
   )
@@ -207,10 +216,13 @@ const listenToDevtools = ({
                   Effect.sync(() => db.close()),
                 ).pipe(
                   Effect.flatMap((db) =>
-                    Effect.try(() => {
-                      db.import(data)
-                      const rows = db.select<{ name: string }>(`select name from sqlite_master where type = 'table'`)
-                      return new Set(rows.map((r) => r.name))
+                    Effect.try({
+                      try: () => {
+                        db.import(data)
+                        const rows = db.select<{ name: string }>(`select name from sqlite_master where type = 'table'`)
+                        return new Set(rows.map((r) => r.name))
+                      },
+                      catch: (cause) => new Cause.UnknownError(cause),
                     }),
                   ),
                 )
@@ -220,10 +232,16 @@ const listenToDevtools = ({
                 if (tableNames.has(SystemTables.EVENTLOG_META_TABLE) === true) {
                   databaseKind = 'eventlog'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-                  yield* Effect.try(() => dbEventlog.import(data))
+                  yield* Effect.try({
+                    try: () => dbEventlog.import(data),
+                    catch: (cause) => new Cause.UnknownError(cause),
+                  })
 
                   if (batchId === undefined) {
-                    yield* Effect.try(() => dbState.destroy())
+                    yield* Effect.try({
+                      try: () => dbState.destroy(),
+                      catch: (cause) => new Cause.UnknownError(cause),
+                    })
                   }
                 } else if (
                   tableNames.has(SystemTables.SCHEMA_META_TABLE) === true &&
@@ -231,10 +249,16 @@ const listenToDevtools = ({
                 ) {
                   databaseKind = 'state'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-                  yield* Effect.try(() => dbState.import(data))
+                  yield* Effect.try({
+                    try: () => dbState.import(data),
+                    catch: (cause) => new Cause.UnknownError(cause),
+                  })
 
                   if (batchId === undefined) {
-                    yield* Effect.try(() => dbEventlog.destroy())
+                    yield* Effect.try({
+                      try: () => dbEventlog.destroy(),
+                      catch: (cause) => new Cause.UnknownError(cause),
+                    })
                   }
                 } else {
                   return yield* Effect.fail({ _tag: 'unsupported-database' } as const)
@@ -264,9 +288,9 @@ const listenToDevtools = ({
                     }),
                   ),
                 ),
-                Effect.catchAll((cause) =>
+                Effect.catch((cause) =>
                   Effect.logWarning('Error importing database file', cause).pipe(
-                    Effect.zipRight(
+                    Effect.andThen(
                       sendMessage(
                         Devtools.Leader.LoadDatabaseFile.Error.make({
                           ...reqPayload,
@@ -342,7 +366,7 @@ const listenToDevtools = ({
                 // TODO consider piggybacking on the existing leader-thread sync-pulling
                 yield* syncBackend.pull(Option.none(), { live: true }).pipe(
                   Stream.map((_) => _.batch),
-                  Stream.flattenIterables,
+                  Stream.flattenIterable,
                   Stream.tap(({ eventEncoded, metadata }) =>
                     sendMessage(
                       Devtools.Leader.SyncHistoryRes.make({
@@ -391,9 +415,9 @@ const listenToDevtools = ({
                 yield* Effect.sleep(1000)
 
                 yield* Stream.zipLatest(
-                  syncBackend.isConnected.changes,
+                  SubscriptionRef.changes(syncBackend.isConnected),
                   devtools.enabled === true
-                    ? devtools.syncBackendLatchState.changes
+                    ? SubscriptionRef.changes(devtools.syncBackendLatchState)
                     : Stream.make({ latchClosed: false }),
                 ).pipe(
                   Stream.tap(([isConnected, { latchClosed }]) =>

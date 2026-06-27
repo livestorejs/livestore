@@ -16,7 +16,7 @@ const debugTsCommand = Cli.Command.make('ts').pipe(
     ),
 
     // Show why a file is included in compilation
-    Cli.Command.make('why', { file: Cli.Args.text({ name: 'file' }) }, ({ file }) =>
+    Cli.Command.make('why', { file: Cli.Argument.text({ name: 'file' }) }, ({ file }) =>
       cmd(`tsc --explainFiles | grep -A 5 -B 5 "${file}"`, { shell: true }).pipe(
         Effect.provide(LivestoreWorkspace.toCwd()),
       ),

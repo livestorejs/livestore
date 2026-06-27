@@ -1,5 +1,6 @@
-import type { ParseResult, Scope, WebChannel } from '@livestore/utils/effect'
 import {
+  type Scope,
+  type WebChannel,
   Data,
   Duration,
   Effect,
@@ -30,7 +31,7 @@ export const SessionInfo = Schema.TaggedStruct('SessionInfo', {
 })
 export type SessionInfo = typeof SessionInfo.Type
 
-export const Message = Schema.Union(RequestSessions, SessionInfo)
+export const Message = Schema.Union([RequestSessions, SessionInfo])
 export type Message = typeof Message.Type
 
 /** Usually called in client session */
@@ -40,7 +41,7 @@ export const provideSessionInfo = ({
 }: {
   webChannel: WebChannel.WebChannel<Message, Message>
   sessionInfo: SessionInfo
-}): Effect.Effect<void, ParseResult.ParseError> =>
+}): Effect.Effect<void, Schema.SchemaError> =>
   Effect.gen(function* () {
     yield* webChannel.send(sessionInfo)
 
@@ -59,9 +60,9 @@ export const requestSessionInfoSubscription = ({
   staleTimeout = Duration.seconds(5),
 }: {
   webChannel: WebChannel.WebChannel<Message, Message>
-  pollInterval?: Duration.DurationInput
-  staleTimeout?: Duration.DurationInput
-}): Effect.Effect<Subscribable.Subscribable<HashSet.HashSet<SessionInfo>>, ParseResult.ParseError, Scope.Scope> =>
+  pollInterval?: Duration.Input
+  staleTimeout?: Duration.Input
+}): Effect.Effect<Subscribable.Subscribable<HashSet.HashSet<SessionInfo>>, Schema.SchemaError, Scope.Scope> =>
   Effect.gen(function* () {
     yield* webChannel
       .send(RequestSessions.make({}))
@@ -69,7 +70,8 @@ export const requestSessionInfoSubscription = ({
         Effect.repeat(Schedule.spaced(pollInterval)),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
     const timeoutFiberMap = yield* FiberMap.make<SessionInfo>()
@@ -97,8 +99,12 @@ export const requestSessionInfoSubscription = ({
       ),
       Stream.runDrain,
       Effect.tapCauseLogPretty,
-      Effect.forkScoped,
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
     )
 
-    return Subscribable.make({ get: sessionInfoSubRef.get, changes: sessionInfoSubRef.changes })
+    return Subscribable.make({
+      get: SubscriptionRef.get(sessionInfoSubRef),
+      changes: SubscriptionRef.changes(sessionInfoSubRef),
+    })
   })

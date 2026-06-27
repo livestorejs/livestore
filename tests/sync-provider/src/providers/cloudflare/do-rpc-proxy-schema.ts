@@ -2,13 +2,12 @@ import { BackendIdMismatchError, IsOfflineError, ServerAheadError, UnknownError 
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { SyncMessage } from '@livestore/sync-cf/common'
 /** Explicit type imports so TypeScript can name inferred types in declaration emit (fixes TS2742). */
-import type { Brand, RpcSchema } from '@livestore/utils/effect'
-import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
+import { type Brand, type RpcSchema, Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
 
 const commonFields = {
   clientId: Schema.String,
   storeId: Schema.String,
-  payload: Schema.UndefinedOr(Schema.JsonValue),
+  payload: Schema.UndefinedOr(Schema.Json),
 }
 
 // RPC definitions that mirror the SyncBackend interface
@@ -17,7 +16,7 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
   Rpc.make('Connect', {
     payload: Schema.Struct(commonFields),
     success: Schema.Void,
-    error: Schema.Union(IsOfflineError, UnknownError),
+    error: Schema.Union([IsOfflineError, UnknownError]),
   }),
 
   // Mirror the pull method
@@ -29,7 +28,7 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
     }),
     // Mirror the PullResItem from SyncBackend
     success: SyncMessage.PullResponse,
-    error: Schema.Union(IsOfflineError, UnknownError, BackendIdMismatchError),
+    error: Schema.Union([IsOfflineError, UnknownError, BackendIdMismatchError]),
     stream: true,
   }),
 
@@ -40,7 +39,7 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
       batch: Schema.Array(LiveStoreEvent.Global.Encoded),
     }),
     success: Schema.Void,
-    error: Schema.Union(IsOfflineError, UnknownError, ServerAheadError, BackendIdMismatchError),
+    error: Schema.Union([IsOfflineError, UnknownError, ServerAheadError, BackendIdMismatchError]),
   }),
 
   // Mirror the ping method
@@ -49,7 +48,7 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
       ...commonFields,
     }),
     success: Schema.Void,
-    error: Schema.Union(IsOfflineError, UnknownError),
+    error: Schema.Union([IsOfflineError, UnknownError]),
   }),
 
   // Mirror the isConnected subscription
@@ -66,9 +65,12 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
     payload: Schema.Struct({
       ...commonFields,
     }),
-    success: Schema.Struct({
-      name: Schema.String,
-      description: Schema.String,
-    }).pipe(Schema.extend(Schema.Record({ key: Schema.String, value: Schema.JsonValue }))),
+    success: Schema.StructWithRest(
+      Schema.Struct({
+        name: Schema.String,
+        description: Schema.String,
+      }),
+      [Schema.Record(Schema.String, Schema.Json)],
+    ),
   }),
 ) {}

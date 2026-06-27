@@ -45,30 +45,30 @@
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
-    "@effect/opentelemetry": "4.0.0-beta.78",
-    "@effect/platform-browser": "4.0.0-beta.78",
-    "@effect/platform-bun": "4.0.0-beta.78",
-    "@effect/platform-node": "4.0.0-beta.78",
-    "@effect/platform-node-shared": "4.0.0-beta.78",
-    "@effect/vitest": "4.0.0-beta.78",
+    "@effect/opentelemetry": "4.0.0-beta.83",
+    "@effect/platform-browser": "4.0.0-beta.83",
+    "@effect/platform-bun": "4.0.0-beta.83",
+    "@effect/platform-node": "4.0.0-beta.83",
+    "@effect/platform-node-shared": "4.0.0-beta.83",
+    "@effect/vitest": "4.0.0-beta.83",
     "@livestore/utils-dev": "workspace:^",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/resources": "2.2.0",
     "@standard-schema/spec": "1.1.0",
-    "effect": "4.0.0-beta.78",
-    "vitest": "3.2.4"
+    "effect": "4.0.0-beta.83",
+    "vitest": "4.1.9"
   },
   "peerDependencies": {
-    "@effect/opentelemetry": "^4.0.0-beta.78",
-    "@effect/platform-browser": "^4.0.0-beta.78",
-    "@effect/platform-bun": "^4.0.0-beta.78",
-    "@effect/platform-node": "^4.0.0-beta.78",
-    "@effect/platform-node-shared": "^4.0.0-beta.78",
-    "@effect/vitest": "^4.0.0-beta.78",
+    "@effect/opentelemetry": "^4.0.0-beta.83",
+    "@effect/platform-browser": "^4.0.0-beta.83",
+    "@effect/platform-bun": "^4.0.0-beta.83",
+    "@effect/platform-node": "^4.0.0-beta.83",
+    "@effect/platform-node-shared": "^4.0.0-beta.83",
+    "@effect/vitest": "^4.0.0-beta.83",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/resources": "^2.2.0",
     "@standard-schema/spec": "^1.1.0",
-    "effect": "^4.0.0-beta.78"
+    "effect": "^4.0.0-beta.83"
   },
   "$genie": {
     "source": "package.json.genie.ts",

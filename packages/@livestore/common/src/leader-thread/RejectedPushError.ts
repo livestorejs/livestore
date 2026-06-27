@@ -21,7 +21,7 @@ export const RejectedPushErrorTypeId = '~@livestore/common/RejectedPushError' as
  * This is a defensive check — callers are expected to construct monotonic event batches.
  * The client should rebase and retry.
  */
-export class NonMonotonicBatchError extends Schema.TaggedError<NonMonotonicBatchError>(
+export class NonMonotonicBatchError extends Schema.TaggedErrorClass<NonMonotonicBatchError>(
   `${RejectedPushErrorTypeId}/NonMonotonicBatchError`,
 )('NonMonotonicBatchError', {
   /** The sequence number that broke the monotonic invariant (i.e. the one that is >= the next). */
@@ -47,7 +47,7 @@ export class NonMonotonicBatchError extends Schema.TaggedError<NonMonotonicBatch
  *
  * This happens when events were enqueued before a backend-pull-triggered rebase incremented the generation.
  */
-export class StaleRebaseGenerationError extends Schema.TaggedError<StaleRebaseGenerationError>(
+export class StaleRebaseGenerationError extends Schema.TaggedErrorClass<StaleRebaseGenerationError>(
   `${RejectedPushErrorTypeId}/StaleRebaseGenerationError`,
 )('StaleRebaseGenerationError', {
   /** The leader's current rebase generation. */
@@ -73,7 +73,7 @@ export class StaleRebaseGenerationError extends Schema.TaggedError<StaleRebaseGe
  * This occurs when another client session (or a backend pull) has pushed events that the current
  * session hasn't seen yet.
  */
-export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>(
+export class LeaderAheadError extends Schema.TaggedErrorClass<LeaderAheadError>(
   `${RejectedPushErrorTypeId}/LeaderAheadError`,
 )('LeaderAheadError', {
   minimumExpectedNum: EventSequenceNumber.Client.Composite,
@@ -88,7 +88,7 @@ export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>(
   }
 }
 
-export const RejectedPushError = Schema.Union(LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError)
+export const RejectedPushError = Schema.Union([LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError])
 
 export type RejectedPushError = typeof RejectedPushError.Type
 

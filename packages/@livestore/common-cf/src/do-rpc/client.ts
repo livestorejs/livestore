@@ -14,7 +14,7 @@ import type * as CfTypes from '../cf-types.ts'
 /** Decodes a streaming-RPC `ReadableStream`'s msgpack frames, writing each out as it arrives. */
 const processReadableStream = (
   stream: CfTypes.ReadableStream,
-  parser: ReturnType<typeof RpcSerialization.msgPack.unsafeMake>,
+  parser: ReturnType<typeof RpcSerialization.msgPack.makeUnsafe>,
   writeResponse: (response: any) => Effect.Effect<void>,
 ): Effect.Effect<void> =>
   Effect.gen(function* () {
@@ -57,7 +57,7 @@ interface MakeDoRpcProtocolArgs {
  * This enables direct RPC communication with Durable Objects using Cloudflare's native RPC.
  */
 export const layerProtocolDurableObject = (args: MakeDoRpcProtocolArgs): Layer.Layer<RpcClient.Protocol> =>
-  Layer.scoped(RpcClient.Protocol, makeProtocolDurableObject(args))
+  Layer.effect(RpcClient.Protocol, makeProtocolDurableObject(args))
 
 /**
  * Implementation of the RPC Protocol interface using Cloudflare Durable Object RPC calls.
@@ -69,7 +69,7 @@ const makeProtocolDurableObject = ({
   RpcClient.Protocol.make(
     Effect.fnUntraced(function* (writeResponse) {
       // Not using an actual `FiberMap` here because it seems to shutdown to early
-      // const fiberMap = new Map<string, Fiber.RuntimeFiber<void, never>>()
+      // const fiberMap = new Map<string, Fiber.Fiber<void, never>>()
       const fiberMap = yield* FiberMap.make<string, void, never>()
 
       const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void> => {
@@ -85,7 +85,7 @@ const makeProtocolDurableObject = ({
         }
 
         // MessagePack parsers buffer incomplete frames, so scope one parser to one DO RPC call.
-        const parser = RpcSerialization.msgPack.unsafeMake()
+        const parser = RpcSerialization.msgPack.makeUnsafe()
 
         // Wrap single Request in array to match server expected format
         const serializedPayload = parser.encode([message]) as Uint8Array
@@ -101,13 +101,14 @@ const makeProtocolDurableObject = ({
               writeResponse,
             ).pipe(
               // Effect.tapCauseLogPretty,
-              Effect.fork,
+              // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+              Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
             )
 
             // fiberMap.set(message.id, fiber)
             yield* FiberMap.set(fiberMap, message.id, fiber)
 
-            yield* fiber
+            yield* Fiber.join(fiber)
 
             return
           }

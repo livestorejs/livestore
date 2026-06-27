@@ -1,12 +1,12 @@
 import * as otel from '@opentelemetry/api'
 
 import { makeNoopTracer } from '@livestore/utils'
-import { Effect, identity, Layer, OtelTracer } from '@livestore/utils/effect'
+import { Effect, identity, Layer, OtelTracer, Tracer } from '@livestore/utils/effect'
 
 export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend(() => {
   const OtelTracerLive = Layer.succeed(OtelTracer.OtelTracer, makeNoopTracer())
 
-  const TracingLive = Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+  const TracingLive = OtelTracer.layerWithoutOtelTracer.pipe(
     Layer.provideMerge(OtelTracerLive),
   )
 
@@ -15,12 +15,14 @@ export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend((
 
 export const provideOtel =
   ({ otelTracer, parentSpanContext }: { otelTracer?: otel.Tracer; parentSpanContext?: otel.Context }) =>
-  <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, Exclude<R, OtelTracer.OtelTracer>> => {
+  <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+  ): Effect.Effect<A, E, Exclude<R, OtelTracer.OtelTracer | Tracer.Tracer>> => {
     const OtelTracerLive = Layer.succeed(OtelTracer.OtelTracer, otelTracer ?? makeNoopTracer())
 
-    const TracingLive = Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+    const TracingLive = OtelTracer.layerWithoutOtelTracer.pipe(
       Layer.provideMerge(OtelTracerLive),
-    ) as any as Layer.Layer<OtelTracer.OtelTracer>
+    ) as any as Layer.Layer<OtelTracer.OtelTracer | Tracer.Tracer>
 
     return effect.pipe(
       parentSpanContext !== undefined

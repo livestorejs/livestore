@@ -1,5 +1,5 @@
-import type { Deferred, Either, ParseResult } from 'effect'
-import { Effect, Predicate, Schema, Stream } from 'effect'
+import type { Deferred } from 'effect'
+import { Effect, Predicate, Result, Schema, Stream } from 'effect'
 
 export const WebChannelSymbol = Symbol('WebChannel')
 export type WebChannelSymbol = typeof WebChannelSymbol
@@ -9,12 +9,12 @@ export const isWebChannel = <MsgListen, MsgSend>(value: unknown): value is WebCh
 
 export interface WebChannel<MsgListen, MsgSend, E = never> {
   readonly [WebChannelSymbol]: unknown
-  send: (a: MsgSend) => Effect.Effect<void, ParseResult.ParseError | E>
-  listen: Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>, E>
+  send: (a: MsgSend) => Effect.Effect<void, Schema.SchemaError | E>
+  listen: Stream.Stream<Result.Result<MsgListen, Schema.SchemaError>, E>
   supportsTransferables: boolean
   closedDeferred: Deferred.Deferred<void>
   shutdown: Effect.Effect<void>
-  schema: { listen: Schema.Schema<MsgListen, any>; send: Schema.Schema<MsgSend, any> }
+  schema: { listen: Schema.Codec<MsgListen, any>; send: Schema.Codec<MsgSend, any> }
   debugInfo?: Record<string, any> | undefined
 }
 
@@ -31,24 +31,24 @@ export const WebChannelPong = Schema.TaggedStruct('WebChannel.Pong', {
   requestId: Schema.String,
 })
 
-export const WebChannelHeartbeat = Schema.Union(WebChannelPing, WebChannelPong)
+export const WebChannelHeartbeat = Schema.Union([WebChannelPing, WebChannelPong])
 
 type WebChannelMessages = typeof DebugPingMessage.Type | typeof WebChannelPing.Type | typeof WebChannelPong.Type
 
 export const schemaWithWebChannelMessages = <MsgListen, MsgSend>(
   schema: OutputSchema<MsgListen, MsgSend, any, any>,
 ): OutputSchema<MsgListen | WebChannelMessages, MsgSend | WebChannelMessages, any, any> => ({
-  send: Schema.Union(schema.send, DebugPingMessage, WebChannelPing, WebChannelPong),
-  listen: Schema.Union(schema.listen, DebugPingMessage, WebChannelPing, WebChannelPong),
+  send: Schema.Union([schema.send, DebugPingMessage, WebChannelPing, WebChannelPong]),
+  listen: Schema.Union([schema.listen, DebugPingMessage, WebChannelPing, WebChannelPong]),
 })
 
 export type InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded> =
-  | Schema.Schema<MsgListen | MsgSend, MsgListenEncoded | MsgSendEncoded>
+  | Schema.Codec<MsgListen | MsgSend, MsgListenEncoded | MsgSendEncoded>
   | OutputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
 
 export type OutputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded> = {
-  listen: Schema.Schema<MsgListen, MsgListenEncoded>
-  send: Schema.Schema<MsgSend, MsgSendEncoded>
+  listen: Schema.Codec<MsgListen, MsgListenEncoded>
+  send: Schema.Codec<MsgSend, MsgSendEncoded>
 }
 
 export const mapSchema = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(
@@ -61,13 +61,13 @@ export const mapSchema = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(
 export const listenToDebugPing =
   (channelName: string) =>
   <MsgListen>(
-    stream: Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>>,
-  ): Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>> =>
+    stream: Stream.Stream<Result.Result<MsgListen, Schema.SchemaError>>,
+  ): Stream.Stream<Result.Result<MsgListen, Schema.SchemaError>> =>
     stream.pipe(
       Stream.filterEffect(
         Effect.fn(function* (msg) {
-          if (msg._tag === 'Right' && Schema.is(DebugPingMessage)(msg.right) === true) {
-            yield* Effect.logDebug(`WebChannel:ping [${channelName}] ${msg.right.message}`, msg.right.payload)
+          if (Result.isSuccess(msg) && Schema.is(DebugPingMessage)(msg.success) === true) {
+            yield* Effect.logDebug(`WebChannel:ping [${channelName}] ${msg.success.message}`, msg.success.payload)
             return false
           }
           return true

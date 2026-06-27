@@ -58,24 +58,24 @@ export class SyncState extends Schema.Class<SyncState>('SyncState')({
 /**
  * This payload propagates a rebase from the upstream node
  */
-export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase', {
+export const PayloadUpstreamRebase = Schema.TaggedStruct('upstream-rebase', {
   /** Events which need to be rolled back */
   rollbackEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
   /** Events which need to be applied after the rollback (already rebased by the upstream node) */
   newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
-}) {}
+})
 
-export class PayloadUpstreamAdvance extends Schema.TaggedStruct('upstream-advance', {
+export const PayloadUpstreamAdvance = Schema.TaggedStruct('upstream-advance', {
   newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
-}) {}
+})
 
-export class PayloadLocalPush extends Schema.TaggedStruct('local-push', {
+export const PayloadLocalPush = Schema.TaggedStruct('local-push', {
   newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
-}) {}
+})
 
-export class Payload extends Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush) {}
+export const Payload = Schema.Union([PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush])
 
-export class PayloadUpstream extends Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance) {}
+export const PayloadUpstream = Schema.Union([PayloadUpstreamRebase, PayloadUpstreamAdvance])
 
 /** Only used for debugging purposes */
 export class MergeContext extends Schema.Class<MergeContext>('MergeContext')({
@@ -159,7 +159,7 @@ export class MergeResultReject extends Schema.Class<MergeResultReject>('MergeRes
   }
 }
 
-export class MergeResult extends Schema.Union(MergeResultAdvance, MergeResultRebase, MergeResultReject) {}
+export const MergeResult = Schema.Union([MergeResultAdvance, MergeResultRebase, MergeResultReject])
 
 export const payloadFromMergeResult = (
   mergeResult: typeof MergeResultAdvance.Type | typeof MergeResultRebase.Type,

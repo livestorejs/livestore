@@ -4,10 +4,7 @@
  * @since 2.0.0
  */
 
-import type { SubscriptionRef } from 'effect'
-import { Effect, Effectable, Readable, Stream } from 'effect'
-import { dual } from 'effect/Function'
-import { hasProperty } from 'effect/Predicate'
+import { Effect, Effectable, Predicate, Readable, Stream, SubscriptionRef } from 'effect'
 
 /**
  * @since 2.0.0
@@ -34,7 +31,7 @@ export interface Subscribable<A, E = never, R = never> extends Readable.Readable
  * @since 2.0.0
  * @category refinements
  */
-export const isSubscribable = (u: unknown): u is Subscribable<unknown, unknown, unknown> => hasProperty(u, TypeId)
+export const isSubscribable = (u: unknown): u is Subscribable<unknown, unknown, unknown> => Predicate.hasProperty(u, TypeId)
 
 // const Proto: Omit<Subscribable<any>, 'get' | 'changes'> = {
 //   [Readable.TypeId]: Readable.TypeId,
@@ -78,8 +75,8 @@ export const make = <A, E, R>(options: {
 
 export const fromSubscriptionRef = <A>(ref: SubscriptionRef.SubscriptionRef<A>): Subscribable<A> =>
   make({
-    get: ref.get,
-    changes: ref.changes,
+    get: SubscriptionRef.get(ref),
+    changes: SubscriptionRef.changes(ref),
   })
 
 /**
@@ -97,7 +94,7 @@ export const map: {
    * @category combinators
    */
   <A, E, R, B>(self: Subscribable<A, E, R>, f: (a: NoInfer<A>) => B): Subscribable<B, E, R>
-} = dual(
+} = Function.dual(
   2,
   <A, E, R, B>(self: Subscribable<A, E, R>, f: (a: NoInfer<A>) => B): Subscribable<B, E, R> =>
     make({
@@ -126,7 +123,7 @@ export const mapEffect: {
     self: Subscribable<A, E, R>,
     f: (a: NoInfer<A>) => Effect.Effect<B, E2, R2>,
   ): Subscribable<B, E | E2, R | R2>
-} = dual(
+} = Function.dual(
   2,
   <A, E, R, B, E2, R2>(
     self: Subscribable<A, E, R>,

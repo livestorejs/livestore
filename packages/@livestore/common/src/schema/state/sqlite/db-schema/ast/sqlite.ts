@@ -1,5 +1,5 @@
 import { omitUndefineds } from '@livestore/utils'
-import { type Option, Schema, SchemaAST } from '@livestore/utils/effect'
+import { type Option, Schema, SchemaAST, SchemaTransformation } from '@livestore/utils/effect'
 
 import { hashCode } from '../hash.ts'
 
@@ -25,7 +25,7 @@ export type Column = {
   nullable: boolean
   autoIncrement: boolean
   default: Option.Option<any>
-  schema: Schema.Schema<any>
+  schema: Schema.Top
 }
 
 export const column = (props: Omit<Column, '_tag'>): Column => ({ _tag: 'column', ...props })
@@ -89,9 +89,14 @@ export const dbSchema = (tables: Table[]): DbSchema => ({ _tag: 'dbSchema', tabl
 const isJsonColumn = (column: Column): boolean => {
   if (column.type._tag !== 'text') return false
 
-  // Check if the schema AST is a parseJson transformation
-  const ast = column.schema.ast
-  return ast._tag === 'Transformation' && ast.annotations.schemaId === SchemaAST.ParseJsonSchemaId
+  return hasJsonStringEncoding(column.schema.ast)
+}
+
+const hasJsonStringEncoding = (ast: SchemaAST.AST): boolean => {
+  if (ast.encoding?.some((link) => link.transformation === SchemaTransformation.fromJsonString) === true) {
+    return true
+  }
+  return SchemaAST.isUnion(ast) === true && ast.types.some(hasJsonStringEncoding)
 }
 
 /**

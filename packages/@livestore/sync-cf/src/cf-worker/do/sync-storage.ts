@@ -1,7 +1,7 @@
 import { UnknownError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
 import type { LiveStoreEvent } from '@livestore/common/schema'
-import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, Option, ReadonlyArray as EffectArray, Schema, Stream } from '@livestore/utils/effect'
 
 import { SyncMetadata } from '../../common/sync-message-types.ts'
 import { PERSISTENCE_FORMAT_VERSION, type StoreId } from '../shared.ts'
@@ -52,7 +52,7 @@ export const makeStorage = (
   const D1_MIN_PAGE_SIZE = 1
 
   const decodeEventlogRows = Schema.decodeUnknownSync(Schema.Array(eventlogTable.rowSchema))
-  const jsonStringify = Schema.encodeSync(Schema.parseJson())
+  const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
   const textEncoder = new TextEncoder()
 
   const decreaseLimit = (limit: number) => Math.max(D1_MIN_PAGE_SIZE, Math.floor(limit / 2))
@@ -104,7 +104,7 @@ export const makeStorage = (
 
       const fetchPage = (
         state: State,
-      ): Effect.Effect<Option.Option<readonly [Chunk.Chunk<EmittedEvent>, State]>, UnknownError> =>
+      ): Effect.Effect<readonly [ReadonlyArray<EmittedEvent>, Option.Option<State>], UnknownError> =>
         Effect.gen(function* () {
           const statement =
             state.cursor === undefined
@@ -119,7 +119,8 @@ export const makeStorage = (
           })
 
           if (rawEvents.length === 0) {
-            return Option.none()
+            const done: readonly [ReadonlyArray<EmittedEvent>, Option.Option<State>] = [[], Option.none()]
+            return done
           }
 
           const encodedSize = textEncoder.encode(jsonStringify(rawEvents)).byteLength
@@ -132,20 +133,26 @@ export const makeStorage = (
             }
           }
 
-          const decodedRows = Chunk.fromIterable(decodeEventlogRows(rawEvents))
+          const decodedRows = decodeEventlogRows(rawEvents)
 
-          const eventsChunk = Chunk.map(decodedRows, ({ createdAt, ...eventEncoded }) => ({
+          if (EffectArray.isReadonlyArrayNonEmpty(decodedRows) === false) {
+            const done: readonly [ReadonlyArray<EmittedEvent>, Option.Option<State>] = [[], Option.none()]
+            return done
+          }
+
+          const events = decodedRows.map(({ createdAt, ...eventEncoded }) => ({
             eventEncoded,
             metadata: Option.some(SyncMetadata.make({ createdAt })),
           }))
 
-          const lastSeqNum = Chunk.unsafeLast(decodedRows).seqNum
+          const lastSeqNum = EffectArray.lastNonEmpty(decodedRows).seqNum
           const nextState: State = { cursor: lastSeqNum, limit: computeNextLimit(state.limit, encodedSize) }
 
-          return Option.some([eventsChunk, nextState] as const)
+          const page: readonly [ReadonlyArray<EmittedEvent>, Option.Option<State>] = [events, Option.some(nextState)]
+          return page
         })
 
-      const stream = Stream.unfoldChunkEffect(initialState, fetchPage)
+      const stream = Stream.paginate(initialState, fetchPage)
 
       return { total, stream }
     }).pipe(
@@ -241,7 +248,7 @@ export const makeStorage = (
 
       const fetchPage = (
         state: State,
-      ): Effect.Effect<Option.Option<readonly [Chunk.Chunk<EmittedEvent>, State]>, UnknownError> =>
+      ): Effect.Effect<readonly [ReadonlyArray<EmittedEvent>, Option.Option<State>], UnknownError> =>
         Effect.try({
           try: () => {
             const sql =
@@ -258,24 +265,32 @@ export const makeStorage = (
             for (const row of iter) rows.push(row)
 
             if (rows.length === 0) {
-              return Option.none()
+              const done: readonly [ReadonlyArray<EmittedEvent>, Option.Option<State>] = [[], Option.none()]
+              return done
             }
 
-            const decodedRows = Chunk.fromIterable(decodeEventlogRows(rows))
-            const eventsChunk = Chunk.map(decodedRows, ({ createdAt, ...eventEncoded }) => ({
+            const decodedRows = decodeEventlogRows(rows)
+
+            if (EffectArray.isReadonlyArrayNonEmpty(decodedRows) === false) {
+              const done: readonly [ReadonlyArray<EmittedEvent>, Option.Option<State>] = [[], Option.none()]
+              return done
+            }
+
+            const events = decodedRows.map(({ createdAt, ...eventEncoded }) => ({
               eventEncoded,
               metadata: Option.some(SyncMetadata.make({ createdAt })),
             }))
 
-            const lastSeqNum = Chunk.unsafeLast(decodedRows).seqNum
+            const lastSeqNum = EffectArray.lastNonEmpty(decodedRows).seqNum
             const nextState: State = { cursor: lastSeqNum }
 
-            return Option.some([eventsChunk, nextState] as const)
+            const page: readonly [ReadonlyArray<EmittedEvent>, Option.Option<State>] = [events, Option.some(nextState)]
+            return page
           },
           catch: (error) => new UnknownError({ cause: error, payload: { dbName, stage: 'select' } }),
         })
 
-      const stream = Stream.unfoldChunkEffect(initialState, fetchPage)
+      const stream = Stream.paginate(initialState, fetchPage)
 
       return { total, stream }
     }).pipe(

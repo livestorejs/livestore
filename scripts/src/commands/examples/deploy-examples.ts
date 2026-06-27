@@ -2,7 +2,7 @@ import process from 'node:process'
 
 import { liveStoreVersion } from '@livestore/common'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
-import { Effect, FileSystem, Layer, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
+import { Effect, FileSystem, Layer, Option, References, Result, Schema } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 
 import { cloudflareExamples } from '../../shared/cloudflare-manifest.ts'
@@ -25,7 +25,7 @@ import {
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../../shared/misc.ts'
 import { emitWorkflowReportRecord, nowIsoUtc } from '../../shared/workflow-report.ts'
 
-export class ScriptError extends Schema.TaggedError<ScriptError>()('ScriptError', {
+export class ScriptError extends Schema.TaggedErrorClass<ScriptError>()('ScriptError', {
   message: Schema.String,
 }) {}
 
@@ -45,12 +45,12 @@ const examplesDir = `${workspaceRoot}/examples`
 // Accept only the fields we care about (scripts) while tolerating extra metadata from Vite or toolchains.
 const ExamplePackageJsonSchema = Schema.Struct(
   {
-    scripts: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
+    scripts: Schema.optional(Schema.Record(Schema.String, Schema.String)),
   },
-  Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+  Schema.Record(Schema.String, Schema.Unknown),
 )
 
-const parseExamplePackageJson = Schema.decodeUnknown(Schema.parseJson(ExamplePackageJsonSchema))
+const parseExamplePackageJson = Schema.decodeUnknownEffect(Schema.fromJsonString(ExamplePackageJsonSchema))
 
 export const readExampleSlugs = Effect.fn('deploy-examples/readExampleSlugs')(function* () {
   /**
@@ -64,7 +64,7 @@ export const readExampleSlugs = Effect.fn('deploy-examples/readExampleSlugs')(fu
   for (const entry of entries) {
     const info = yield* fs.stat(`${examplesDir}/${entry}`).pipe(
       Effect.map((stat) => stat.type === 'Directory'),
-      Effect.catchAll(() => Effect.succeed(false)),
+      Effect.catch(() => Effect.succeed(false)),
     )
 
     if (info === true) {
@@ -101,7 +101,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
     for (const example of examples) {
       const isDirectory = yield* fs.stat(`${examplesDir}/${example}`).pipe(
         Effect.map((stat) => stat.type === 'Directory'),
-        Effect.catchAll(() => Effect.succeed(false)),
+        Effect.catch(() => Effect.succeed(false)),
       )
 
       if (isDirectory === false) {
@@ -124,9 +124,9 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
       }
 
       const packageJsonContent = yield* fs.readFileString(packageJsonPath)
-      const decoded = yield* parseExamplePackageJson(packageJsonContent).pipe(Effect.either)
+      const decoded = yield* parseExamplePackageJson(packageJsonContent).pipe(Effect.result)
 
-      if (decoded._tag === 'Left') {
+      if (Result.isFailure(decoded)) {
         if (skipMissing === true) {
           yield* Effect.logWarning(`Skipping ${example}: unable to decode package.json`)
           continue
@@ -134,7 +134,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
         return yield* new ScriptError({ message: `Cannot run tests for ${example}: invalid package.json` })
       }
 
-      const packageJson = decoded.right
+      const packageJson = decoded.success
       if (typeof packageJson.scripts?.test !== 'string') {
         if (skipMissing === true) {
           yield* Effect.logWarning(`Skipping ${example}: no test script defined`)
@@ -256,7 +256,7 @@ const deployExample = ({
     yield* Effect.log(`Deploying ${exampleSlug} as ${workerName}`)
     yield* deployCloudflareWorker({ example: manifest, kind: deploymentKind }).pipe(
       Effect.retry({ times: 2 }),
-      Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${exampleSlug}. Cause:`, cause)),
+      Effect.tapCause((cause) => Effect.logError(`Error deploying ${exampleSlug}. Cause:`, cause)),
     )
 
     yield* Effect.annotateCurrentSpan({ deployment_kind: deploymentKindLabel(deploymentKind) })
@@ -289,8 +289,8 @@ const deployExample = ({
 export const command = Cli.Command.make(
   'deploy',
   {
-    exampleFilter: Cli.Options.text('example-filter').pipe(Cli.Options.withAlias('e'), Cli.Options.optional),
-    prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false)),
+    exampleFilter: Cli.Flag.text('example-filter').pipe(Cli.Flag.withAlias('e'), Cli.Flag.optional),
+    prod: Cli.Flag.boolean('prod').pipe(Cli.Flag.withDefault(false)),
   },
   Effect.fn(function* ({ exampleFilter, prod }) {
     // Ensure credentials are present before kicking off parallel builds; wrangler fails with
@@ -402,8 +402,8 @@ if (import.meta.main === true) {
   })
 
   cli(process.argv).pipe(
-    Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.provide(Layer.mergeAll(PlatformNode.NodeContext.layer, LivestoreWorkspace.fromPath(workspaceRoot))),
+    Effect.provideService(References.MinimumLogLevel, 'Debug'),
+    Effect.provide(Layer.mergeAll(PlatformNode.NodeServices.layer, LivestoreWorkspace.fromPath(workspaceRoot))),
     PlatformNode.NodeRuntime.runMain,
   )
 }

@@ -1,15 +1,13 @@
 import { expect } from 'vitest'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
+import { WranglerDevServer } from '@livestore/utils-dev/wrangler'
 import {
-  Chunk,
   Effect,
   FetchHttpClient,
   Layer,
-  Logger,
-  LogLevel,
   Option,
+  References,
   RpcClient,
   RpcSerialization,
   Stream,
@@ -23,22 +21,26 @@ const testTimeout = 60_000
 const withWranglerTest = Vitest.makeWithTestCtx({
   timeout: testTimeout,
   makeLayer: () =>
-    WranglerDevServerService.Default({
+    WranglerDevServer.layer({
       cwd: `${import.meta.dirname}/test-fixtures`,
     }).pipe(
       Layer.provide(
-        Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer, Logger.minimumLogLevel(LogLevel.Debug)),
+        Layer.mergeAll(
+          PlatformNode.NodeServices.layer,
+          FetchHttpClient.layer,
+          Layer.succeed(References.MinimumLogLevel, 'Debug'),
+        ),
       ),
     ),
 })
 
 const ProtocolLive = Layer.suspend(() =>
   Effect.gen(function* () {
-    const server = yield* WranglerDevServerService
+    const server = yield* WranglerDevServer.WranglerDevServer
     return RpcClient.layerProtocolHttp({
       url: `${server.url}/rpc`,
     }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerJson]))
-  }).pipe(Layer.unwrapEffect),
+  }).pipe(Layer.unwrap),
 )
 
 /**
@@ -61,7 +63,7 @@ const ProtocolLive = Layer.suspend(() =>
 
 Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
   // Direct HTTP RPC client tests
-  Vitest.scopedLive('should call ping method', (test) =>
+  Vitest.live('should call ping method', (test) =>
     Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const result = yield* client.Ping({ message: 'Hello HTTP RPC' })
@@ -69,7 +71,7 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive('should call echo method', (test) =>
+  Vitest.live('should call echo method', (test) =>
     Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const result = yield* client.Echo({ text: 'Echo' })
@@ -77,7 +79,7 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive('should call add method', (test) =>
+  Vitest.live('should call add method', (test) =>
     Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const result = yield* client.Add({ a: 15, b: 25 })
@@ -85,7 +87,7 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive('should handle RPC fail method', (test) =>
+  Vitest.live('should handle RPC fail method', (test) =>
     Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const error = yield* client.Fail({ message: 'test http failure' }).pipe(Effect.exit)
@@ -103,7 +105,7 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive('should handle defect method', (test) =>
+  Vitest.live('should handle defect method', (test) =>
     Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const error = yield* client.Defect({ message: 'test http defect' }).pipe(Effect.exit)
@@ -121,19 +123,19 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive('should handle streaming RPC via HTTP', (test) =>
+  Vitest.live('should handle streaming RPC via HTTP', (test) =>
     Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const stream = client.Stream({}).pipe(
         Stream.take(4),
         Stream.map((c) => c.maybeNumber.pipe(Option.getOrUndefined)),
       )
-      const chunks = yield* Stream.runCollect(stream)
-      expect(Chunk.toReadonlyArray(chunks)).toEqual([1, 4, 9, 16]) // squares of 1,2,3,4
+      const result = yield* Stream.runCollect(stream)
+      expect(result).toEqual([1, 4, 9, 16]) // squares of 1,2,3,4
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive('should handle streaming RPC with error via HTTP', (test) =>
+  Vitest.live('should handle streaming RPC with error via HTTP', (test) =>
     Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const stream = client.StreamError({ count: 5, errorAfter: 4 })
@@ -152,7 +154,7 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive('should handle streaming RPC with defect via HTTP', (test) =>
+  Vitest.live('should handle streaming RPC with defect via HTTP', (test) =>
     Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const stream = client.StreamDefect({ count: 4, defectAfter: 1 })
@@ -171,17 +173,17 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
-  Vitest.scopedLive('should handle stream interruption via HTTP', (test) =>
+  Vitest.live('should handle stream interruption via HTTP', (test) =>
     Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       const stream = client.StreamInterruptible({ delay: 50, interruptAfterCount: 3 }).pipe(Stream.take(3))
-      const chunks = yield* Stream.runCollect(stream)
-      expect(Chunk.toReadonlyArray(chunks)).toEqual([1, 2, 3])
+      const result = yield* Stream.runCollect(stream)
+      expect(result).toEqual([1, 2, 3])
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
   // TODO @IMax153
-  Vitest.scopedLive.skip('should handle streaming RPC bug scenario', (test) =>
+  Vitest.live.skip('should handle streaming RPC bug scenario', (test) =>
     Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)
       yield* client.StreamBugScenarioDoClient({})
@@ -225,7 +227,7 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
         errorSchema: [Function: Never],
         annotations: { _id: 'Context', services: [] },
         middlewares: Set(0) {},
-        key: '@effect/rpc/Rpc/StreamBugScenarioDoServer'
+        key: 'effect/unstable/rpc/Rpc/StreamBugScenarioDoServer'
       } {}
 
       Killing wrangler process...

@@ -1,9 +1,8 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { pipe, ReadonlyArray, Schema, TreeFormatter } from '@livestore/utils/effect'
+import { pipe, ReadonlyArray, ReadonlyRecord, Result, Schema, SchemaIssue } from '@livestore/utils/effect'
 
 import type { SqliteDsl } from '../schema/state/sqlite/db-schema/mod.ts'
 import { sql } from '../util.ts'
-import { objectEntries } from './misc.ts'
 import * as ClientTypes from './types.ts'
 
 export type BindValues = {
@@ -278,15 +277,14 @@ export const makeBindValues = <TColumns extends SqliteDsl.Columns, TKeys extends
   skipNil?: boolean
 }): Record<string, any> => {
   const codecMap = pipe(
-    columns,
-    objectEntries,
+    ReadonlyRecord.toEntries(columns),
     ReadonlyArray.map(([columnName, columnDef]) => [
       columnName,
       (value: any) => {
         if (columnDef.nullable === true && (value === null || value === undefined)) return null
-        const res = Schema.encodeEither(columnDef.schema)(value)
-        if (res._tag === 'Left') {
-          const parseErrorStr = TreeFormatter.formatErrorSync(res.left)
+        const res = Schema.encodeResult(columnDef.schema)(value)
+        if (Result.isFailure(res)) {
+          const parseErrorStr = SchemaIssue.makeFormatterDefault()(res.failure.issue)
           const expectedSchemaStr = String(columnDef.schema.ast)
 
           console.error(
@@ -302,9 +300,9 @@ Value:`,
           )
           // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for SQL decode errors
           debugger
-          throw res.left
+          throw res.failure
         } else {
-          return res.right
+          return res.success
         }
       },
     ]),
@@ -362,8 +360,7 @@ const buildWhereSql = <TColumns extends SqliteDsl.Columns>({
   }
 
   return pipe(
-    where,
-    objectEntries,
+    ReadonlyRecord.toEntries(where),
     ReadonlyArray.map(([columnName, value]) => `${columnName} ${getWhereOp(columnName, value)}`),
     ReadonlyArray.join(' AND '),
   )

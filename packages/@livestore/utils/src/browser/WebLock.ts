@@ -1,5 +1,5 @@
 import type { Exit } from 'effect'
-import { Deferred, Effect, Runtime } from 'effect'
+import { Deferred, Effect } from 'effect'
 
 // See https://developer.mozilla.org/en-US/docs/Web/API/Web_Locks_API
 export const withLock =
@@ -14,7 +14,7 @@ export const withLock =
   }) =>
   <Ctx, E, A>(eff: Effect.Effect<A, E, Ctx>): Effect.Effect<A, E | E2, Ctx> =>
     Effect.gen(function* () {
-      const runtime = yield* Effect.runtime<Ctx>()
+      const services = yield* Effect.context<Ctx>()
 
       const exit = yield* Effect.tryPromise<Exit.Exit<A, E>, E | E2>({
         try: (signal) => {
@@ -25,7 +25,7 @@ export const withLock =
           return navigator.locks.request(lockName, requestOptions, async (lock: Lock | null) => {
             if (lock === null) {
               if (onTaken !== undefined) {
-                const onTakenExit = await Runtime.runPromiseExit(runtime)(onTaken)
+                const onTakenExit = await Effect.runPromiseExitWith(services)(onTaken)
                 if (onTakenExit._tag === 'Failure') {
                   return onTakenExit
                 }
@@ -34,7 +34,7 @@ export const withLock =
             }
 
             // TODO also propagate Effect interruption to the execution
-            return Runtime.runPromiseExit(runtime)(eff)
+            return Effect.runPromiseExitWith(services)(eff)
           }) as unknown as Promise<Exit.Exit<A, E>>
         },
         catch: (err) => err as any as E,
@@ -48,7 +48,7 @@ export const withLock =
     })
 
 export const waitForDeferredLock = (deferred: Deferred.Deferred<void>, lockName: string) =>
-  Effect.async<void>((cb, signal) => {
+  Effect.callback<void>((cb, signal) => {
     if (signal.aborted === true) return
 
     navigator.locks
@@ -71,7 +71,7 @@ export const waitForDeferredLock = (deferred: Deferred.Deferred<void>, lockName:
   })
 
 export const tryGetDeferredLock = (deferred: Deferred.Deferred<void>, lockName: string) =>
-  Effect.async<boolean>((cb, signal) => {
+  Effect.callback<boolean>((cb, signal) => {
     navigator.locks.request(lockName, { mode: 'exclusive', ifAvailable: true }, (lock: Lock | null) => {
       cb(Effect.succeed(lock !== null))
 
@@ -95,7 +95,7 @@ export const tryGetDeferredLock = (deferred: Deferred.Deferred<void>, lockName: 
   })
 
 export const stealDeferredLock = (deferred: Deferred.Deferred<void>, lockName: string) =>
-  Effect.async<boolean>((cb, signal) => {
+  Effect.callback<boolean>((cb, signal) => {
     navigator.locks.request(lockName, { mode: 'exclusive', steal: true }, (lock: Lock | null) => {
       cb(Effect.succeed(lock !== null))
 
@@ -116,7 +116,7 @@ export const stealDeferredLock = (deferred: Deferred.Deferred<void>, lockName: s
   })
 
 export const waitForLock = (lockName: string) =>
-  Effect.async<void>((cb, signal) => {
+  Effect.callback<void>((cb, signal) => {
     if (signal.aborted === true) return
 
     navigator.locks.request(lockName, { mode: 'shared', signal, ifAvailable: false }, (_lock: Lock | null) => {
@@ -126,7 +126,7 @@ export const waitForLock = (lockName: string) =>
 
 /** Attempts to get the lock if available and waits for it to be stolen */
 export const getLockAndWaitForSteal = (lockName: string) =>
-  Effect.async<void>((cb, signal) => {
+  Effect.callback<void>((cb, signal) => {
     if (signal.aborted === true) return
 
     navigator.locks

@@ -1,10 +1,12 @@
 import { objectToString, omitUndefineds } from '@livestore/utils'
 import {
-  Command,
-  type CommandExecutor,
+  ChildProcess,
+  type ChildProcessSpawner,
+  Context,
   Duration,
   Effect,
   Fiber,
+  Layer,
   type PlatformError,
   Schedule,
   Schema,
@@ -12,14 +14,14 @@ import {
   Stream,
 } from '@livestore/utils/effect'
 
-export class DockerComposeError extends Schema.TaggedError<DockerComposeError>(
+export class DockerComposeError extends Schema.TaggedErrorClass<DockerComposeError>(
   '~@livestore/utils-dev/DockerComposeError',
 )('DockerComposeError', {
-  cause: Schema.Defect,
+  cause: Schema.Defect(),
   note: Schema.String,
 }) {}
 
-export interface DockerComposeArgs {
+export interface Options {
   readonly cwd: string
   readonly serviceName?: string
   /** Unique project name to isolate this compose instance. If not provided, a random one is generated. */
@@ -42,7 +44,7 @@ export interface LogsOptions {
   readonly since?: string
 }
 
-export interface DockerComposeOperations {
+export interface Service {
   readonly pull: Effect.Effect<void, DockerComposeError | PlatformError.PlatformError>
   readonly start: (
     options?: StartOptions,
@@ -62,38 +64,43 @@ export interface DockerComposeOperations {
 
 const generateProjectName = (): string => `ls-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-export class DockerComposeService extends Effect.Service<DockerComposeService>()('DockerComposeService', {
-  scoped: (args: DockerComposeArgs) =>
-    Effect.gen(function* () {
-      const { cwd, serviceName } = args
-      const projectName = args.projectName ?? generateProjectName()
+export class DockerCompose extends Context.Service<DockerCompose, Service>()(
+  '@livestore/utils-dev/DockerCompose',
+) {}
 
-      const commandExecutorContext = yield* Effect.context<CommandExecutor.CommandExecutor>()
+export const make = (args: Options) =>
+  Effect.gen(function* () {
+    const { cwd, serviceName } = args
+    const projectName = args.projectName ?? generateProjectName()
 
-      const baseComposeArgs = ['-p', projectName]
+    const commandExecutorContext = yield* Effect.context<ChildProcessSpawner.ChildProcessSpawner>()
+
+    const baseComposeArgs = ['-p', projectName]
 
       const pull = Effect.gen(function* () {
         yield* Effect.log(`Pulling Docker Compose images in ${cwd}`)
 
         // TODO (@IMax153) Refactor the effect command related code below as there is probably a much more elegant way to accomplish what we want here in a more effect idiomatic way.
-        const pullCommand = Command.make('docker', 'compose', ...baseComposeArgs, 'pull').pipe(
-          Command.workingDirectory(cwd),
-          Command.stdout('pipe'),
-          Command.stderr('pipe'),
+        const pullCommand = ChildProcess.make('docker', 'compose', ...baseComposeArgs, 'pull').pipe(
+          ChildProcess.workingDirectory(cwd),
+          ChildProcess.stdout('pipe'),
+          ChildProcess.stderr('pipe'),
         )
 
-        const process = yield* pullCommand.pipe(Command.start, Effect.provide(commandExecutorContext))
+        const process = yield* pullCommand.pipe(ChildProcess.start, Effect.provide(commandExecutorContext))
 
         const stdoutFiber = yield* process.stdout.pipe(
           Stream.decodeText('utf8'),
           Stream.runFold('', (acc, chunk) => acc + chunk),
-          Effect.fork,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
         const stderrFiber = yield* process.stderr.pipe(
           Stream.decodeText('utf8'),
           Stream.runFold('', (acc, chunk) => acc + chunk),
-          Effect.fork,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
         const exitCode = yield* process.exitCode
@@ -137,12 +144,12 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         if (detached === true) startArgs.push('-d')
         if (serviceName !== undefined) startArgs.push(serviceName)
 
-        const command = yield* Command.make(startArgs[0]!, ...startArgs.slice(1)).pipe(
-          Command.workingDirectory(cwd),
-          Command.env(options.env ?? {}),
-          Command.stderr('inherit'),
-          Command.stdout('inherit'),
-          Command.start,
+        const command = yield* ChildProcess.make(startArgs[0]!, ...startArgs.slice(1)).pipe(
+          ChildProcess.workingDirectory(cwd),
+          ChildProcess.env(options.env ?? {}),
+          ChildProcess.stderr('inherit'),
+          ChildProcess.stdout('inherit'),
+          ChildProcess.start,
           Effect.mapError(
             (cause) =>
               new DockerComposeError({
@@ -181,12 +188,12 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
 
         const stopCommand =
           serviceName !== undefined
-            ? Command.make('docker', 'compose', ...baseComposeArgs, 'stop', serviceName)
-            : Command.make('docker', 'compose', ...baseComposeArgs, 'stop')
+            ? ChildProcess.make('docker', 'compose', ...baseComposeArgs, 'stop', serviceName)
+            : ChildProcess.make('docker', 'compose', ...baseComposeArgs, 'stop')
 
         yield* stopCommand.pipe(
-          Command.workingDirectory(cwd),
-          Command.exitCode,
+          ChildProcess.workingDirectory(cwd),
+          ChildProcess.exitCode,
           Effect.flatMap((exitCode: number) =>
             exitCode === 0
               ? Effect.void
@@ -213,9 +220,9 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
           if (since !== undefined) logsArgs.push('--since', since)
           if (serviceName !== undefined) logsArgs.push(serviceName)
 
-          const command = yield* Command.make(logsArgs[0]!, ...logsArgs.slice(1)).pipe(
-            Command.workingDirectory(cwd),
-            Command.start,
+          const command = yield* ChildProcess.make(logsArgs[0]!, ...logsArgs.slice(1)).pipe(
+            ChildProcess.workingDirectory(cwd),
+            ChildProcess.start,
             Effect.mapError(
               (cause) =>
                 new DockerComposeError({
@@ -237,7 +244,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
                 }),
             ),
           )
-        }).pipe(Stream.unwrapScoped)
+        }).pipe(Stream.unwrap)
 
       const down = Effect.fn('downDockerCompose')(function* (options?: {
         readonly env?: Record<string, string>
@@ -251,10 +258,10 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         if (options?.removeOrphans === true) downArgs.push('--remove-orphans')
         if (serviceName !== undefined) downArgs.push(serviceName)
 
-        yield* Command.make(downArgs[0]!, ...downArgs.slice(1)).pipe(
-          Command.workingDirectory(cwd),
-          Command.env(options?.env ?? {}),
-          Command.exitCode,
+        yield* ChildProcess.make(downArgs[0]!, ...downArgs.slice(1)).pipe(
+          ChildProcess.workingDirectory(cwd),
+          ChildProcess.env(options?.env ?? {}),
+          ChildProcess.exitCode,
           Effect.flatMap((exitCode: number) =>
             exitCode === 0
               ? Effect.void
@@ -275,15 +282,16 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
       yield* Effect.addFinalizer(() =>
         down({ volumes: true, removeOrphans: true }).pipe(
           Effect.tap(() => Effect.log(`Docker Compose cleanup completed for project ${projectName}`)),
-          Effect.catchAll((error) =>
+          Effect.catch((error) =>
             Effect.log('Docker Compose cleanup failed for project', projectName, objectToString(error)),
           ),
         ),
       )
 
-      return { pull, start, stop, down, logs, projectName }
-    }),
-}) {}
+    return DockerCompose.of({ pull, start, stop, down, logs, projectName })
+  })
+
+export const layer = (options: Options) => Layer.effect(DockerCompose, make(options))
 
 const performHealthCheck = ({
   url,
@@ -293,14 +301,14 @@ const performHealthCheck = ({
   url: string
   timeout?: Duration.Duration
   interval?: Duration.Duration
-}): Effect.Effect<void, DockerComposeError, CommandExecutor.CommandExecutor | Scope.Scope> =>
+}): Effect.Effect<void, DockerComposeError, ChildProcessSpawner.ChildProcessSpawner | Scope.Scope> =>
   Effect.gen(function* () {
     yield* Effect.log(`Performing health check on ${url}`)
 
-    const checkHealth = Command.make('curl', '-f', '-s', url).pipe(
-      Command.exitCode,
+    const checkHealth = ChildProcess.make('curl', '-f', '-s', url).pipe(
+      ChildProcess.exitCode,
       Effect.map((code: number) => code === 0),
-      Effect.catchAll(() => Effect.succeed(false)),
+      Effect.catch(() => Effect.succeed(false)),
     )
 
     const healthCheck = checkHealth.pipe(
@@ -324,16 +332,16 @@ const performHealthCheck = ({
 
 // Convenience function for scoped Docker Compose operations with automatic cleanup
 export const startDockerComposeServicesScoped = (
-  args: DockerComposeArgs & {
+  args: Options & {
     healthCheck?: StartOptions['healthCheck']
   },
 ): Effect.Effect<
   void,
   DockerComposeError | PlatformError.PlatformError,
-  DockerComposeService | CommandExecutor.CommandExecutor | Scope.Scope
+  DockerCompose | ChildProcessSpawner.ChildProcessSpawner | Scope.Scope
 > =>
   Effect.gen(function* () {
-    const dockerCompose = yield* DockerComposeService
+    const dockerCompose = yield* DockerCompose
 
     // Start the services
     yield* dockerCompose.start({

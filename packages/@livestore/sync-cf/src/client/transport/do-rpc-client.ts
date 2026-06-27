@@ -1,18 +1,19 @@
 import { SyncBackend, UnknownError } from '@livestore/common'
 import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
-import { splitChunkBySize } from '@livestore/common/sync'
-import { omit, shouldNeverHappen } from '@livestore/utils'
+import { splitArrayBySize } from '@livestore/common/sync'
+import { shouldNeverHappen } from '@livestore/utils'
 import {
-  Chunk,
   Effect,
   identity,
   Layer,
-  Mailbox,
   Option,
+  Queue,
+  ReadonlyArray as EffectArray,
   RpcClient,
   RpcSerialization,
   Schema,
   Stream,
+  Struct,
   SubscriptionRef,
 } from '@livestore/utils/effect'
 
@@ -24,9 +25,9 @@ import type { SyncMetadata } from '../../common/sync-message-types.ts'
 
 export interface SyncBackendRpcStub extends CfTypes.DurableObjectStub, SyncBackendRpcInterface {}
 
-// TODO we probably need better scoping for the requestIdMailboxMap (i.e. support multiple stores, ...)
+// TODO we probably need better scoping for the requestIdQueueMap (i.e. support multiple stores, ...)
 type EffectRpcRequestId = string // 0, 1, 2, ...
-const requestIdMailboxMap = new Map<EffectRpcRequestId, Mailbox.Mailbox<SyncMessage.PullResponse>>()
+const requestIdQueueMap = new Map<EffectRpcRequestId, Queue.Queue<SyncMessage.PullResponse>>()
 
 export interface DoRpcSyncOptions {
   /** Durable Object stub that implements the SyncDoRpc interface */
@@ -82,18 +83,19 @@ export const makeDoRpcSync =
                   if (res._tag === 'None')
                     return shouldNeverHappen('There should at least be a no-more page info response')
 
-                  const mailbox = yield* Mailbox.make<SyncMessage.PullResponse>().pipe(
-                    Effect.acquireRelease((mailbox) => mailbox.shutdown),
+                  const queue = yield* Effect.acquireRelease(
+                    Queue.unbounded<SyncMessage.PullResponse>(),
+                    (queue) => Queue.shutdown(queue).pipe(Effect.asVoid),
                   )
 
-                  requestIdMailboxMap.set(res.value.rpcRequestId, mailbox)
+                  requestIdQueueMap.set(res.value.rpcRequestId, queue)
 
-                  return Mailbox.toStream(mailbox)
-                }).pipe(Stream.unwrapScoped),
+                  return Stream.fromQueue(queue)
+                }).pipe(Stream.unwrap),
               )
             : identity,
           Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
-          Stream.map((res) => omit(res, ['backendId'])),
+          Stream.map((res) => Struct.omit(res, ['backendId'])),
           Stream.mapError((cause) =>
             cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
               ? cause
@@ -109,22 +111,22 @@ export const makeDoRpcSync =
           }
 
           const backendId = backendIdHelper.get()
-          const batchChunks = yield* Chunk.fromIterable(batch).pipe(
-            splitChunkBySize({
-              maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
-              maxBytes: MAX_DO_RPC_REQUEST_BYTES,
-              encode: (items) => ({
-                batch: items,
-                storeId,
-                backendId,
-              }),
-            }),
-            Effect.mapError((cause) => new UnknownError({ cause })),
-          )
+          if (EffectArray.isReadonlyArrayNonEmpty(batch) === false) {
+            return
+          }
 
-          for (const chunk of Chunk.toReadonlyArray(batchChunks)) {
-            const chunkArray = Chunk.toReadonlyArray(chunk)
-            yield* rpcClient.SyncDoRpc.Push({ batch: chunkArray, storeId, backendId })
+          const batchChunks = yield* splitArrayBySize({
+            maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+            maxBytes: MAX_DO_RPC_REQUEST_BYTES,
+            encode: (items) => ({
+              batch: items,
+              storeId,
+              backendId,
+            }),
+          })(batch).pipe(Effect.mapError((cause) => new UnknownError({ cause })))
+
+          for (const batchChunk of batchChunks) {
+            yield* rpcClient.SyncDoRpc.Push({ batch: batchChunk, storeId, backendId })
           }
         },
         Effect.mapError((cause) =>
@@ -175,17 +177,17 @@ export const makeDoRpcSync =
  */
 export const handleSyncUpdateRpc = (payload: unknown) =>
   Effect.gen(function* () {
-    const decodedPayload = yield* Schema.decodeUnknown(ResponseChunkEncoded)(payload)
-    const decoded = yield* Schema.decodeUnknown(SyncMessage.PullResponse)(decodedPayload.values[0])
+    const decodedPayload = yield* Schema.decodeUnknownEffect(ResponseChunkEncoded)(payload)
+    const decoded = yield* Schema.decodeUnknownEffect(SyncMessage.PullResponse)(decodedPayload.values[0])
 
-    const pullStreamMailbox = requestIdMailboxMap.get(decodedPayload.requestId)
+    const pullStreamQueue = requestIdQueueMap.get(decodedPayload.requestId)
 
-    if (pullStreamMailbox === undefined) {
+    if (pullStreamQueue === undefined) {
       // Case: DO was hibernated, so we need to manually update the store
-      yield* Effect.log(`No mailbox found for ${decodedPayload.requestId}`)
+      yield* Effect.log(`No pull stream queue found for ${decodedPayload.requestId}`)
     } else {
       // Case: DO was still alive, so the existing `pull` will pick up the new events
-      yield* pullStreamMailbox.offer(decoded)
+      yield* Queue.offer(pullStreamQueue, decoded)
     }
   }).pipe(Effect.withSpan('rpc-sync-client:rpcCallback'), Effect.tapCauseLogPretty, Effect.runPromise)
 

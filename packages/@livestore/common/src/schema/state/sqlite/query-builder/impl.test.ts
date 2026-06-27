@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { objectToString } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { Schema, SchemaTransformation } from '@livestore/utils/effect'
 
 import { State } from '../../../mod.ts'
 import type { QueryBuilder } from './api.ts'
@@ -13,7 +13,7 @@ const todos = State.SQLite.table({
     id: State.SQLite.text({ primaryKey: true }),
     text: State.SQLite.text({ default: '', nullable: false }),
     completed: State.SQLite.boolean({ default: false, nullable: false }),
-    status: State.SQLite.text({ schema: Schema.Literal('active', 'completed') }),
+    status: State.SQLite.text({ schema: Schema.Literals(['active', 'completed']) }),
     deletedAt: State.SQLite.datetime({ nullable: true }),
     // TODO consider leaning more into Effect schema
     // other: Schema.Number.pipe(State.SQLite.asInteger),
@@ -25,7 +25,7 @@ const todosWithIntId = State.SQLite.table({
   columns: {
     id: State.SQLite.integer({ primaryKey: true }),
     text: State.SQLite.text({ default: '', nullable: false }),
-    status: State.SQLite.text({ schema: Schema.Literal('active', 'completed') }),
+    status: State.SQLite.text({ schema: Schema.Literals(['active', 'completed']) }),
   },
 })
 
@@ -41,7 +41,7 @@ const comments = State.SQLite.table({
 const UiState = State.SQLite.clientDocument({
   name: 'UiState',
   schema: Schema.Struct({
-    filter: Schema.Literal('all', 'active', 'completed'),
+    filter: Schema.Literals(['all', 'active', 'completed']),
   }),
   default: { value: { filter: 'all' } },
 })
@@ -49,7 +49,7 @@ const UiState = State.SQLite.clientDocument({
 const UiStateWithDefaultId = State.SQLite.clientDocument({
   name: 'UiState',
   schema: Schema.Struct({
-    filter: Schema.Literal('all', 'active', 'completed'),
+    filter: Schema.Literals(['all', 'active', 'completed']),
   }),
   default: {
     id: 'static',
@@ -63,10 +63,10 @@ const issue = State.SQLite.table({
     id: State.SQLite.integer({ primaryKey: true }),
     title: State.SQLite.text({ default: '' }),
     creator: State.SQLite.text({ default: '' }),
-    priority: State.SQLite.integer({ schema: Schema.Literal(0, 1, 2, 3, 4), default: 0 }),
-    created: State.SQLite.integer({ schema: Schema.DateFromNumber }),
-    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
-    modified: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+    priority: State.SQLite.integer({ schema: Schema.Literals([0, 1, 2, 3, 4]), default: 0 }),
+    created: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
+    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromEpochMillis }),
+    modified: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
     kanbanorder: State.SQLite.text({ nullable: false, default: '' }),
   },
   indexes: [
@@ -83,7 +83,7 @@ const selections = State.SQLite.table({
   },
 })
 
-const Source = Schema.Literal('google', 'linkedin', 'facebook')
+const Source = Schema.Literals(['google', 'linkedin', 'facebook'])
 const ProfileAttribute = Schema.Struct({ key: Schema.String, value: Schema.String })
 
 const personProfiles = State.SQLite.table({
@@ -851,32 +851,33 @@ describe('query builder', () => {
       contactEmail: Schema.String.pipe(State.SQLite.withUnique),
     })
 
-    const Nested = Schema.transform(
-      Flat,
-      Schema.Struct({
-        id: Schema.String,
-        contact: Schema.Struct({
-          firstName: Schema.String,
-          lastName: Schema.String,
-          email: Schema.String,
+    const Nested = Flat.pipe(
+      Schema.decodeTo(
+        Schema.Struct({
+          id: Schema.String,
+          contact: Schema.Struct({
+            firstName: Schema.String,
+            lastName: Schema.String,
+            email: Schema.String,
+          }),
         }),
-      }),
-      {
-        decode: ({ id, contactFirstName, contactLastName, contactEmail }) => ({
-          id,
-          contact: {
-            firstName: contactFirstName,
-            lastName: contactLastName,
-            email: contactEmail,
-          },
+        SchemaTransformation.transform({
+          decode: ({ id, contactFirstName, contactLastName, contactEmail }) => ({
+            id,
+            contact: {
+              firstName: contactFirstName,
+              lastName: contactLastName,
+              email: contactEmail,
+            },
+          }),
+          encode: ({ id, contact }) => ({
+            id,
+            contactFirstName: contact.firstName,
+            contactLastName: contact.lastName,
+            contactEmail: contact.email,
+          }),
         }),
-        encode: ({ id, contact }) => ({
-          id,
-          contactFirstName: contact.firstName,
-          contactLastName: contact.lastName,
-          contactEmail: contact.email,
-        }),
-      },
+      ),
     )
 
     const makeContactsTable = () =>
@@ -890,7 +891,7 @@ describe('query builder', () => {
       const contactsTable = makeContactsTable()
 
       type InsertInput = Parameters<(typeof contactsTable)['insert']>[0]
-      type NestedType = Schema.Schema.Type<typeof Nested>
+      type NestedType = (typeof Nested)['Type']
 
       type Assert<T extends true> = T
 
@@ -966,7 +967,7 @@ describe('query builder', () => {
 })
 
 // TODO nested queries
-// const rawSql = <A, I>(sql: string, params: { [key: string]: any }, schema: Schema.Schema<A, I>) =>
+// const rawSql = <A, I>(sql: string, params: { [key: string]: any }, schema: Schema.Codec<A, I>) =>
 //   ({
 //     sql,
 //     params,

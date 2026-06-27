@@ -21,7 +21,7 @@ export const resolveColumnDefault = <T>(value: ColumnDefaultValue<T>): T | null 
 
 export type ColumnDefinition<TEncoded, TDecoded, TNullable extends boolean = boolean> = {
   readonly columnType: FieldColumnType
-  readonly schema: Schema.Schema<TDecoded, TEncoded>
+  readonly schema: Schema.Codec<TDecoded, TEncoded>
   readonly default: Option.Option<ColumnDefaultValue<TDecoded>>
   /** @default false */
   readonly nullable: TNullable
@@ -82,7 +82,7 @@ export type ColDefFn<TColumnType extends FieldColumnType> = {
     const TPrimaryKey extends boolean = false,
     const TAutoIncrement extends boolean = false,
   >(args: {
-    schema?: Schema.Schema<TDecoded, TEncoded>
+    schema?: Schema.Codec<TDecoded, TEncoded>
     default?: TDefault
     nullable?: TNullable
     primaryKey?: TPrimaryKey
@@ -90,8 +90,8 @@ export type ColDefFn<TColumnType extends FieldColumnType> = {
   }): {
     columnType: TColumnType
     schema: TNullable extends true
-      ? Schema.Schema<NoInfer<TDecoded> | null, NoInfer<TEncoded> | null>
-      : Schema.Schema<NoInfer<TDecoded>, NoInfer<TEncoded>>
+      ? Schema.Codec<NoInfer<TDecoded> | null, NoInfer<TEncoded> | null>
+      : Schema.Codec<NoInfer<TDecoded>, NoInfer<TEncoded>>
     default: TDefault extends NoDefault ? Option.None<never> : Option.Some<NoInfer<TDefault>>
     nullable: NoInfer<TNullable>
     primaryKey: NoInfer<TPrimaryKey>
@@ -103,7 +103,7 @@ const makeColDef =
   <TColumnType extends FieldColumnType>(columnType: TColumnType): ColDefFn<TColumnType> =>
   (def?: ColumnDefinitionInput) => {
     const nullable = def?.nullable ?? false
-    const schemaWithoutNull: Schema.Schema<any> = def?.schema ?? defaultSchemaForColumnType(columnType)
+    const schemaWithoutNull: Schema.Top = def?.schema ?? defaultSchemaForColumnType(columnType)
     const schema = nullable === true ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
     const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
@@ -143,7 +143,7 @@ export type SpecializedColDefFn<
 > = {
   (): {
     columnType: TColumnType
-    schema: Schema.Schema<TBaseDecoded, DefaultEncodedForColumnType<TColumnType>>
+    schema: Schema.Codec<TBaseDecoded, DefaultEncodedForColumnType<TColumnType>>
     default: Option.None<never>
     nullable: false
     primaryKey: false
@@ -158,7 +158,7 @@ export type SpecializedColDefFn<
   >(
     args: TAllowsCustomSchema extends true
       ? {
-          schema?: Schema.Schema<TDecoded, any>
+          schema?: Schema.Codec<TDecoded, any>
           default?: TDefault
           nullable?: TNullable
           primaryKey?: TPrimaryKey
@@ -173,8 +173,8 @@ export type SpecializedColDefFn<
   ): {
     columnType: TColumnType
     schema: TNullable extends true
-      ? Schema.Schema<NoInfer<TDecoded> | null, DefaultEncodedForColumnType<TColumnType> | null>
-      : Schema.Schema<NoInfer<TDecoded>, DefaultEncodedForColumnType<TColumnType>>
+      ? Schema.Codec<NoInfer<TDecoded> | null, DefaultEncodedForColumnType<TColumnType> | null>
+      : Schema.Codec<NoInfer<TDecoded>, DefaultEncodedForColumnType<TColumnType>>
     default: TDefault extends NoDefault ? Option.None<never> : Option.Some<TDefault>
     nullable: NoInfer<TNullable>
     primaryKey: NoInfer<TPrimaryKey>
@@ -187,7 +187,7 @@ type MakeSpecializedColDefFn = {
     columnType: TColumnType,
     opts: {
       _tag: 'baseSchema'
-      baseSchema: Schema.Schema<TBaseDecoded, DefaultEncodedForColumnType<TColumnType>>
+      baseSchema: Schema.Codec<TBaseDecoded, DefaultEncodedForColumnType<TColumnType>>
     },
   ): SpecializedColDefFn<TColumnType, false, TBaseDecoded>
   <TColumnType extends FieldColumnType, TBaseDecoded>(
@@ -195,8 +195,8 @@ type MakeSpecializedColDefFn = {
     opts: {
       _tag: 'baseSchemaFn'
       baseSchemaFn: <TDecoded>(
-        customSchema: Schema.Schema<TDecoded, TBaseDecoded> | undefined,
-      ) => Schema.Schema<TBaseDecoded, DefaultEncodedForColumnType<TColumnType>>
+        customSchema: Schema.Codec<TDecoded, TBaseDecoded> | undefined,
+      ) => Schema.Codec<TBaseDecoded, DefaultEncodedForColumnType<TColumnType>>
     },
   ): SpecializedColDefFn<TColumnType, true, TBaseDecoded>
 }
@@ -221,7 +221,7 @@ const makeSpecializedColDef: MakeSpecializedColDefFn = (columnType, opts) => (de
 
 export const json: SpecializedColDefFn<'text', true, unknown> = makeSpecializedColDef('text', {
   _tag: 'baseSchemaFn',
-  baseSchemaFn: (customSchema) => Schema.parseJson(customSchema ?? Schema.Any),
+  baseSchemaFn: (customSchema) => Schema.fromJsonString(customSchema ?? Schema.Any),
 })
 
 export const datetime: SpecializedColDefFn<'text', false, Date> = makeSpecializedColDef('text', {
@@ -231,18 +231,12 @@ export const datetime: SpecializedColDefFn<'text', false, Date> = makeSpecialize
 
 export const datetimeInteger: SpecializedColDefFn<'integer', false, Date> = makeSpecializedColDef('integer', {
   _tag: 'baseSchema',
-  baseSchema: Schema.transform(Schema.Number, Schema.DateFromSelf, {
-    decode: (ms) => new Date(ms),
-    encode: (date) => date.getTime(),
-  }),
+  baseSchema: Schema.DateFromEpochMillis,
 })
 
 export const boolean: SpecializedColDefFn<'integer', false, boolean> = makeSpecializedColDef('integer', {
   _tag: 'baseSchema',
-  baseSchema: Schema.transform(Schema.Number, Schema.Boolean, {
-    decode: (_) => _ === 1,
-    encode: (_) => (_ === true ? 1 : 0),
-  }),
+  baseSchema: Schema.BooleanFromBit,
 })
 
 export type FieldColumnType = 'text' | 'integer' | 'real' | 'blob'
@@ -277,7 +271,7 @@ export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(
     }
     case 'blob': {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
-      return Schema.Uint8ArrayFromSelf as any as Schema.Schema<T>
+      return Schema.Uint8Array as any as Schema.Schema<T>
     }
     default: {
       return casesHandled(columnType)

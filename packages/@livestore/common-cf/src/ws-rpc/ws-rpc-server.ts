@@ -18,13 +18,13 @@
 import { notYetImplemented, omitUndefineds } from '@livestore/utils'
 import {
   Context,
-  constVoid,
   Effect,
+  Function,
   Exit,
   Layer,
   Logger,
-  LogLevel,
-  Mailbox,
+  Queue,
+  References,
   RpcMessage,
   RpcSerialization,
   RpcServer,
@@ -39,7 +39,7 @@ import type * as CfTypes from '../cf-types.ts'
  * This is useful for reading WebSocket attachment data (e.g., forwarded headers)
  * inside RPC handlers.
  */
-export class WsContext extends Context.Tag('WsContext')<WsContext, { readonly ws: CfTypes.WebSocket }>() {}
+export class WsContext extends Context.Service<WsContext, { readonly ws: CfTypes.WebSocket }>()('WsContext') {}
 
 /**
  * Configuration options for setting up WebSocket RPC on a Durable Object.
@@ -55,7 +55,7 @@ export interface DurableObjectWebSocketRpcConfig {
   webSocketMode: 'hibernate' | 'accept'
   /**
    * Effect RPC layer that requires `RpcServer.Protocol` (and `WsContext` if used)
-   * and provides the RPC server runtime.
+   * and provides the RPC server services.
    *
    * This is typically created by:
    * ```typescript
@@ -148,7 +148,7 @@ export const setupDurableObjectWebSocketRpc = ({
   const serverCtxMap = new Map<
     CfTypes.WebSocket,
     {
-      scope: Scope.CloseableScope
+      scope: Scope.Closeable
       onMessage: (message: string | ArrayBuffer) => Promise<void>
     }
   >()
@@ -163,9 +163,9 @@ export const setupDurableObjectWebSocketRpc = ({
 
       const scope = yield* Scope.make()
 
-      const incomingQueue = yield* Mailbox.make<Uint8Array | string>()
+      const incomingQueue = yield* Queue.unbounded<Uint8Array | string>()
 
-      yield* Scope.addFinalizer(scope, incomingQueue.shutdown)
+      yield* Scope.addFinalizer(scope, Queue.shutdown(incomingQueue).pipe(Effect.asVoid))
 
       const ProtocolLive = layerRpcServerWebsocket({
         ws,
@@ -175,20 +175,22 @@ export const setupDurableObjectWebSocketRpc = ({
 
       const ServerLive = rpcLayer.pipe(Layer.provide(ProtocolLive))
 
-      yield* Layer.launch(ServerLive).pipe(Effect.tapCauseLogPretty, Effect.forkIn(scope))
+      yield* Layer.launch(ServerLive).pipe(
+        Effect.tapCauseLogPretty,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkIn(scope, { startImmediately: true, uninterruptible: 'inherit' }),
+      )
 
-      const runtime = yield* Effect.runtime()
+      const services = yield* Effect.context()
 
       const ctx = {
         scope,
         onMessage: (message: string | ArrayBuffer) =>
-          incomingQueue
-            .offer(message as Uint8Array | string)
+          Queue.offer(incomingQueue, message as Uint8Array | string)
             .pipe(
               Effect.asVoid,
               Effect.withSpan('ws-rpc-server/onMessage', { root: true }),
-              Effect.provide(runtime),
-              Effect.runPromise,
+              Effect.runPromiseWith(services),
             ),
       }
 
@@ -197,8 +199,14 @@ export const setupDurableObjectWebSocketRpc = ({
       return ctx
     }).pipe(
       Effect.tapCauseLogPretty,
-      Logger.withMinimumLogLevel(LogLevel.Debug), // Useful for debugging
-      Effect.provide(Layer.mergeAll(Logger.consoleWithThread('ws-rpc-server'), mainLayer ?? Layer.empty)),
+      Effect.annotateLogs({ thread: 'ws-rpc-server' }),
+      Effect.provide(
+        Layer.mergeAll(
+          Logger.layer([Logger.consoleStructured]),
+          Layer.succeed(References.MinimumLogLevel, 'Debug'), // Useful for debugging
+          mainLayer ?? Layer.empty,
+        ),
+      ),
       Effect.withSpan('effect-ws-rpc-server'),
       Effect.runPromise,
     )
@@ -234,8 +242,8 @@ export const setupDurableObjectWebSocketRpc = ({
 export interface WsRpcServerArgs {
   ws: CfTypes.WebSocket
   onMessage?: (message: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
-  /** Mailbox queue for receiving incoming messages from the WebSocket */
-  incomingQueue: Mailbox.Mailbox<Uint8Array | string>
+  /** Queue for receiving incoming messages from the WebSocket */
+  incomingQueue: Queue.Queue<Uint8Array | string>
 }
 
 /**
@@ -253,7 +261,10 @@ export interface WsRpcServerArgs {
  * @internal This is typically used internally by `setupDurableObjectWebSocketRpc`
  */
 export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
-  Layer.mergeAll(Layer.scoped(RpcServer.Protocol, makeSocketProtocol(args)), Layer.succeed(WsContext, { ws: args.ws }))
+  Layer.mergeAll(
+    Layer.effect(RpcServer.Protocol, makeSocketProtocol(args)),
+    Layer.succeed(WsContext, WsContext.of({ ws: args.ws })),
+  )
 
 /**
  * Creates the low-level RPC protocol implementation for WebSocket communication.
@@ -269,13 +280,13 @@ export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
 const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =>
   Effect.gen(function* () {
     const serialization = yield* RpcSerialization.RpcSerialization
-    const disconnects = yield* Mailbox.make<number>()
+    const disconnects = yield* Queue.unbounded<number>()
 
     const writeRaw = (msg: Uint8Array | string) => Effect.succeed(ws.send(msg))
 
     let writeRequest!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
 
-    const parser = serialization.unsafeMake()
+    const parser = serialization.makeUnsafe()
     const id = 0
 
     const write = (response: RpcMessage.FromServerEncoded) => {
@@ -294,7 +305,7 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
       writeRequest = writeRequest_
 
       // Start processing messages now that writeRequest is available
-      const startProcessing = Mailbox.toStream(incomingQueue).pipe(
+      const startProcessing = Stream.fromQueue(incomingQueue).pipe(
         Stream.tap((data) => {
           try {
             const decoded = parser.decode(data) as ReadonlyArray<RpcMessage.FromClientEncoded>
@@ -309,7 +320,7 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
                 }
                 return writeRequest(id, request)
               },
-              step: constVoid,
+              step: Function.constVoid,
             })
           } catch (cause) {
             return Effect.orDie(writeRaw(parser.encode(RpcMessage.ResponseDefectEncoded(cause))!))
@@ -317,7 +328,8 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
         }),
         Stream.runDrain,
         Effect.tapCauseLogPretty,
-        Effect.fork,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       // Start the message processing

@@ -1,6 +1,5 @@
 import { Devtools } from '@livestore/common'
-import type { Scope, WebChannel } from '@livestore/utils/effect'
-import { Effect, Schema } from '@livestore/utils/effect'
+import { type Scope, type WebChannel, Effect, Schema } from '@livestore/utils/effect'
 import { WebChannelBrowser } from '@livestore/utils/effect/browser'
 
 export const makeSessionInfoBroadcastChannel: Effect.Effect<

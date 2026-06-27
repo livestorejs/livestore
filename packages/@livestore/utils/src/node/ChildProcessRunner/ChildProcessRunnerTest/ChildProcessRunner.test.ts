@@ -1,10 +1,10 @@
 import * as ChildProcess from 'node:child_process'
 
-import * as EffectWorker from '@effect/platform/Worker'
 import { assert, describe, it } from '@effect/vitest'
-import { Chunk, Deferred, Effect, Exit, Fiber, Schema, Scope, Stream } from 'effect'
+import { Deferred, Effect, Exit, Fiber, Schema, Scope, Stream } from 'effect'
+import * as EffectWorker from 'effect/unstable/workers/Worker'
 
-export class TestError extends Schema.TaggedError<TestError>()('TestError', {
+export class TestError extends Schema.TaggedErrorClass<TestError>()('TestError', {
   message: Schema.String,
 }) {}
 
@@ -30,11 +30,11 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
     Effect.gen(function* () {
       const pool = yield* EffectWorker.makePoolSerialized({ size: 1 })
       const people = yield* pool.execute(new GetPersonById({ id: 123 })).pipe(Stream.runCollect)
-      assert.deepStrictEqual(Chunk.toReadonlyArray(people), [
+      assert.deepStrictEqual(people, [
         new Person({ id: 123, name: 'test', data: new Uint8Array([1, 2, 3]) }),
         new Person({ id: 123, name: 'ing', data: new Uint8Array([4, 5, 6]) }),
       ])
-    }).pipe(Effect.scoped, Effect.provide(WorkerLive), Effect.runPromise))
+    }).pipe(Effect.scoped, Effect.runPromiseWith(WorkerLive)))
 
   it('Serialized with initialMessage', () =>
     Effect.gen(function* () {
@@ -47,11 +47,11 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
       user = yield* pool.executeEffect(new GetUserById({ id: 123 }))
       assert.deepStrictEqual(user, new User({ id: 123, name: 'custom' }))
       const people = yield* pool.execute(new GetPersonById({ id: 123 })).pipe(Stream.runCollect)
-      assert.deepStrictEqual(Chunk.toReadonlyArray(people), [
+      assert.deepStrictEqual(people, [
         new Person({ id: 123, name: 'test', data: new Uint8Array([1, 2, 3]) }),
         new Person({ id: 123, name: 'ing', data: new Uint8Array([4, 5, 6]) }),
       ])
-    }).pipe(Effect.scoped, Effect.provide(WorkerLive), Effect.runPromise))
+    }).pipe(Effect.scoped, Effect.runPromiseWith(WorkerLive)))
 
   describe('Process Cleanup', { timeout: 15_000 }, () => {
     const isProcessRunning = (pid: number) => {
@@ -83,7 +83,8 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         }).pipe(Effect.scoped, Effect.provide(WorkerLive))
 
         // Run the test effect but interrupt it after 2 seconds
-        const fiber = yield* Effect.forkScoped(testEffect)
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        const fiber = yield* Effect.forkScoped(testEffect, { startImmediately: true, uninterruptible: 'inherit' })
 
         const workerPid = yield* Deferred.await(workerPidDeferred).pipe(
           Effect.raceFirst(
@@ -118,7 +119,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
           const pool = yield* EffectWorker.makePoolSerialized<WorkerMessage>({
             size: 1,
             initialMessage: () => new InitialMessage({ name: 'test', data: new Uint8Array([1, 2, 3]) }),
-          }).pipe(Scope.extend(scope), Effect.provide(WorkerLive))
+          }).pipe(Scope.provide(scope), Effect.provide(WorkerLive))
 
           const result = yield* pool.executeEffect(new StartStubbornWorker({ blockDuration: 30_000 }))
           workerPid = result.pid
@@ -162,7 +163,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
 
         // Simulate SIGINT being sent to current process (like Ctrl+C in vitest)
         // This should trigger cleanup of child processes
-        yield* Effect.async<void>((resume) => {
+        yield* Effect.callback<void>((resume) => {
           // Store current listeners before we manipulate them
           const currentSIGINTListeners = process.listeners('SIGINT').slice()
 
@@ -202,7 +203,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         } else {
           assert.fail('Worker PID was not captured')
         }
-      }).pipe(Effect.scoped, Effect.provide(WorkerLive), Effect.runPromise))
+      }).pipe(Effect.scoped, Effect.runPromiseWith(WorkerLive)))
 
     it('should clean up multiple concurrent child processes', () =>
       Effect.gen(function* () {
@@ -235,7 +236,8 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         }).pipe(Effect.scoped, Effect.provide(WorkerLive))
 
         // Run with timeout to force termination
-        const fiber = yield* Effect.fork(testEffect)
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        const fiber = yield* Effect.forkChild(testEffect, { startImmediately: true, uninterruptible: 'inherit' })
         yield* Effect.sleep('2 seconds')
         yield* Fiber.interrupt(fiber)
 
@@ -287,7 +289,8 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         }).pipe(Effect.scoped)
 
         // Simulate the exact abortion pattern from node-sync
-        const fiber = yield* Effect.fork(testEffect)
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        const fiber = yield* Effect.forkChild(testEffect, { startImmediately: true, uninterruptible: 'inherit' })
         yield* Effect.sleep('2 seconds')
 
         // Force kill the fiber without proper cleanup (simulates Ctrl+C)

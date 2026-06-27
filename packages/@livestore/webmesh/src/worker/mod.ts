@@ -1,6 +1,5 @@
 import { LS_DEV } from '@livestore/utils'
-import { Context, Deferred, Effect, Layer, Stream, WebChannel } from '@livestore/utils/effect'
-import type { Worker } from '@livestore/utils/effect'
+import { Context, Deferred, Effect, Layer, Stream, WebChannel, type Worker } from '@livestore/utils/effect'
 
 import * as WebmeshSchema from '../mesh-schema.ts'
 import type { MeshNode } from '../node.ts'
@@ -13,22 +12,21 @@ declare global {
   var __debugWebmeshNode: any
 }
 
-export class CacheService extends Context.Tag('@livestore/webmesh:worker:CacheService')<
-  CacheService,
-  { node: MeshNode }
->() {
+export class CacheService extends Context.Service<
+  CacheService, { node: MeshNode }
+>()('@livestore/webmesh:worker:CacheService') {
   static layer = ({ nodeName }: { nodeName: string }) =>
     Effect.gen(function* () {
       const node = yield* makeMeshNode(nodeName)
 
       globalThis.__debugWebmeshNode = node
 
-      return { node }
-    }).pipe(Layer.scoped(CacheService))
+      return CacheService.of({ node })
+    }).pipe(Layer.effect(CacheService))
 }
 
 export const CreateConnection = ({ from, port }: typeof WorkerSchema.CreateConnection.Type) =>
-  Stream.asyncScoped<{}, never, CacheService>((emit) =>
+  Stream.callback<{}, never, CacheService>((emit) =>
     Effect.gen(function* () {
       const { node } = yield* CacheService
 
@@ -68,10 +66,11 @@ export const connectViaWorker = ({
       Stream.tap(() => Deferred.succeed(isConnected, true)),
       Stream.runDrain,
       Effect.tapCauseLogPretty,
-      Effect.forkScoped,
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
     )
 
-    yield* isConnected
+    yield* Deferred.await(isConnected)
 
     const workerConnection = yield* WebChannel.messagePortChannel({
       port: mc.port2,

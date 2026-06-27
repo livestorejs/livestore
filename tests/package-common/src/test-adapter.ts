@@ -25,11 +25,11 @@ import { omitUndefineds } from '@livestore/utils'
 import {
   Effect,
   Deferred,
-  Either,
   Exit,
   FetchHttpClient,
   Layer,
   Queue,
+  Result,
   Stream,
   SubscriptionRef,
   WebChannel,
@@ -80,7 +80,8 @@ export const makeTestAdapter = ({
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
       const syncInMemoryDb = yield* makeSqliteDb({ _tag: 'in-memory' }).pipe(Effect.orDie)
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
@@ -137,13 +138,13 @@ const makeLocalLeaderThread = ({
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions | undefined
-  syncPayloadEncoded: Schema.JsonValue | undefined
-  syncPayloadSchema: Schema.Schema<any> | undefined
+  syncPayloadEncoded: Schema.Json | undefined
+  syncPayloadSchema: Schema.Top | undefined
   testing?: { overrides?: TestingOverrides }
   shutdownChannel: ShutdownChannel.ShutdownChannel
 }) =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime()
+    const services = yield* Effect.context()
 
     const makeDb = (kind: 'state' | 'eventlog') => {
       if (testing?.overrides?.makeLeaderThread !== undefined) {
@@ -155,7 +156,7 @@ const makeLocalLeaderThread = ({
       return makeSqliteDb({
         _tag: 'in-memory',
         configureDb: (db: SqliteDb) =>
-          configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
+          configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(services)),
       })
     }
 
@@ -203,7 +204,7 @@ const makeLocalLeaderThread = ({
           export: Effect.sync(() => dbState.export()),
           getEventlogData: Effect.sync(() => dbEventlog.export()),
           syncState: syncProcessor.syncState,
-          sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+          sendDevtoolsMessage: (message) => Queue.offer(extraIncomingMessagesQueue, message),
           networkStatus,
         },
         { ...omitUndefineds({ overrides: testing?.overrides?.clientSession?.leaderThreadProxy }) },
@@ -221,9 +222,9 @@ const makeShutdownChannel = (storeId: string): Effect.Effect<ShutdownChannel.Shu
     return {
       [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
       send: (message) => Queue.offer(queue, message),
-      listen: Stream.fromQueue(queue).pipe(Stream.map(Either.right)),
+      listen: Stream.fromQueue(queue).pipe(Stream.map(Result.succeed)),
       closedDeferred,
-      shutdown: Queue.shutdown(queue),
+      shutdown: Queue.shutdown(queue).pipe(Effect.asVoid),
       schema: {
         listen: ShutdownChannel.All,
         send: ShutdownChannel.All,

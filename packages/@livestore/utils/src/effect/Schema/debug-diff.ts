@@ -11,7 +11,7 @@ export type DiffItem = {
  * Diffs two values for a given schema and traverses downwards and returns a list of differences.
  */
 export const debugDiff =
-  <A, I, R>(base: Schema.Schema<A, I, R>) =>
+  <A, I, R>(base: Schema.Top) =>
   (a: A, b: A): DiffItem[] => {
     const bag = [] as DiffItem[]
     debugDiffImpl(base.ast, a, b, '', bag)
@@ -19,7 +19,7 @@ export const debugDiff =
   }
 
 const debugDiffImpl = (ast: SchemaAST.AST, a: any, b: any, path: string, bag: DiffItem[]) => {
-  const eq = Schema.equivalence({ ast } as any)
+  const eq = Schema.toEquivalence({ ast } as any)
   if (eq(a, b) === false) {
     // bag.push({ path, a, b, ast })
 
@@ -35,9 +35,8 @@ const debugDiffImpl = (ast: SchemaAST.AST, a: any, b: any, path: string, bag: Di
           } catch {}
         }
       }
-    } else if (SchemaAST.isTypeLiteral(ast) === true) {
-      const props = SchemaAST.getPropertySignatures(ast)
-      for (const prop of props) {
+    } else if (SchemaAST.isObjects(ast) === true) {
+      for (const prop of ast.propertySignatures) {
         debugDiffImpl(prop.type, a[prop.name], b[prop.name], `${path}.${prop.name.toString()}`, bag)
       }
     } else {
@@ -50,9 +49,8 @@ const debugDiffImpl = (ast: SchemaAST.AST, a: any, b: any, path: string, bag: Di
 const isTaggedUnion = (ast: SchemaAST.AST): boolean => {
   if (SchemaAST.isUnion(ast) === true) {
     return ast.types.every((type) => {
-      if (SchemaAST.isTypeLiteral(type) === false) return false
-      const props = SchemaAST.getPropertySignatures(type)
-      return props.some((prop) => prop.name.toString() === '_tag')
+      if (SchemaAST.isObjects(type) === false) return false
+      return type.propertySignatures.some((prop) => prop.name.toString() === '_tag')
     })
   }
   return false

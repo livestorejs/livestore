@@ -1,11 +1,11 @@
 import { BackendIdMismatchError, SyncBackend, UnknownError } from '@livestore/common'
-import { splitChunkBySize } from '@livestore/common/sync'
-import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
+import { splitArrayBySize } from '@livestore/common/sync'
+import { Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
 import { MAX_PULL_EVENTS_PER_MESSAGE, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SyncMessage } from '../../common/mod.ts'
 import type { ForwardedHeaders } from '../shared.ts'
-import { DoCtx } from './layer.ts'
+import * as DoCtx from './layer.ts'
 
 const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
 
@@ -24,11 +24,11 @@ export const makeEndingPullStream = ({
   headers,
 }: {
   req: SyncMessage.PullRequest
-  payload: Schema.JsonValue | undefined
+  payload: Schema.Json | undefined
   headers: ForwardedHeaders | undefined
-}): Stream.Stream<SyncMessage.PullResponse, UnknownError | BackendIdMismatchError, DoCtx> =>
+}): Stream.Stream<SyncMessage.PullResponse, UnknownError | BackendIdMismatchError, DoCtx.DoCtx> =>
   Effect.gen(function* () {
-    const { doOptions, backendId, storeId, storage } = yield* DoCtx
+    const { doOptions, backendId, storeId, storage } = yield* DoCtx.DoCtx
 
     if (doOptions?.onPull !== undefined) {
       yield* Effect.tryAll(() =>
@@ -49,8 +49,8 @@ export const makeEndingPullStream = ({
     )
 
     return storedEvents.pipe(
-      Stream.mapChunksEffect(
-        splitChunkBySize({
+      Stream.mapArrayEffect(
+        splitArrayBySize({
           maxItems: MAX_PULL_EVENTS_PER_MESSAGE,
           maxBytes: MAX_WS_MESSAGE_BYTES,
           encode: (batch) =>
@@ -59,14 +59,13 @@ export const makeEndingPullStream = ({
             ),
         }),
       ),
-      Stream.mapAccum(total, (remaining, chunk) => {
-        const asArray = Chunk.toReadonlyArray(chunk)
-        const nextRemaining = Math.max(0, remaining - asArray.length)
+      Stream.mapAccum(total, (remaining, array) => {
+        const nextRemaining = Math.max(0, remaining - array.length)
 
         return [
           nextRemaining,
           SyncMessage.PullResponse.make({
-            batch: asArray,
+            batch: array,
             pageInfo: nextRemaining > 0 ? SyncBackend.pageInfoMoreKnown(nextRemaining) : SyncBackend.pageInfoNoMore,
             backendId,
           }),

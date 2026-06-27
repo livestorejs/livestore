@@ -1,4 +1,4 @@
-// import * as Transferable from '@effect/platform/Transferable'
+// import * as Transferable from 'effect/unstable/workers/Transferable'
 import * as Schema from 'effect/Schema'
 
 export class User extends Schema.Class<User>('User')({
@@ -67,12 +67,12 @@ export class GetSpan extends Schema.TaggedRequest<GetSpan>()('GetSpan', {
   payload: {},
 }) {}
 
-export const WorkerMessage = Schema.Union(
+export const WorkerMessage = Schema.Union([
   GetUserById,
   GetPersonById,
   InitialMessage,
   GetSpan,
   RunnerInterrupt,
   StartStubbornWorker,
-)
-export type WorkerMessage = Schema.Schema.Type<typeof WorkerMessage>
+])
+export type WorkerMessage = (typeof WorkerMessage)['Type']

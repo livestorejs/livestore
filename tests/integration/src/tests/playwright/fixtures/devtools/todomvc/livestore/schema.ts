@@ -22,7 +22,7 @@ const todos = State.SQLite.table({
     id: State.SQLite.text({ primaryKey: true }),
     text: State.SQLite.text({ default: '' }),
     completed: State.SQLite.boolean({ default: false }),
-    deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
+    deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromEpochMillis }),
   },
 })
 

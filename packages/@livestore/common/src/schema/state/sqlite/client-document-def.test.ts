@@ -43,7 +43,7 @@ describe('client document table', () => {
   })
 
   describe('materializer', () => {
-    const forSchema = <T>(schema: Schema.Schema<T, any>, value: T, id?: string, options?: { partialSet?: boolean }) => {
+    const forSchema = <T>(schema: Schema.Codec<T, any>, value: T, id?: string, options?: { partialSet?: boolean }) => {
       const Doc = clientDocument({
         name: 'test',
         schema,
@@ -202,7 +202,7 @@ describe('client document table', () => {
     test('struct union value', () => {
       expect(
         forSchema(
-          Schema.Union(Schema.Struct({ a: Schema.String }), Schema.Struct({ b: Schema.String })),
+          Schema.Union([Schema.Struct({ a: Schema.String }), Schema.Struct({ b: Schema.String })]),
           { a: 'hello' },
           'id1',
         ),
@@ -258,7 +258,7 @@ describe('client document table', () => {
   describe('optimistic schema', () => {
     /** Models persisted JSON using epoch numbers + base64 while app code expects Date + Uint8Array. */
     const valueSchema = Schema.Struct({
-      createdAt: Schema.DateFromNumber,
+      createdAt: Schema.DateFromEpochMillis,
       avatar: Schema.Uint8ArrayFromBase64,
     })
     const defaultValue = {
@@ -279,7 +279,7 @@ describe('client document table', () => {
         defaultValue,
         partialSet: false,
       })
-      const rowSchema = Schema.parseJson(optimisticSchema)
+      const rowSchema = Schema.fromJsonString(optimisticSchema)
 
       expect(Schema.decodeUnknownSync(rowSchema)(JSON.stringify(value))).toEqual(defaultValue)
     })
@@ -290,7 +290,7 @@ describe('client document table', () => {
         defaultValue,
         partialSet: false,
       })
-      const rowSchema = Schema.parseJson(optimisticSchema)
+      const rowSchema = Schema.fromJsonString(optimisticSchema)
 
       expect(Schema.decodeUnknownSync(rowSchema)(JSON.stringify(validPayload))).toEqual({
         createdAt: new Date(42),
@@ -304,7 +304,7 @@ describe('client document table', () => {
         defaultValue,
         partialSet: false,
       })
-      const rowSchema = Schema.parseJson(optimisticSchema)
+      const rowSchema = Schema.fromJsonString(optimisticSchema)
 
       expect(Schema.decodeUnknownSync(rowSchema)(JSON.stringify(extraFieldsPayload))).toEqual({
         createdAt: new Date(42),

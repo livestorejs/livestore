@@ -6,7 +6,7 @@ import type { Schema } from '@livestore/utils/effect'
 import type { InitialSyncOptions } from '../leader-thread/types.ts'
 import type { SyncBackendConstructor } from './sync-backend.ts'
 
-export type SyncOptions<TPayload = Schema.JsonValue> = {
+export type SyncOptions<TPayload = Schema.Json> = {
   backend?: SyncBackendConstructor<any, TPayload>
   /** @default { _tag: 'Skip' } */
   initialSyncOptions?: InitialSyncOptions

@@ -1,5 +1,4 @@
-import type { Scope, SubscriptionRef } from '@livestore/utils/effect'
-import { Effect, Stream } from '@livestore/utils/effect'
+import { type Scope, type SubscriptionRef, Effect, Latch, Stream } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
 
 import type {
@@ -53,7 +52,7 @@ export const makeClientSession = <R>({
   Effect.gen(function* () {
     const devtools: ClientSession['devtools'] =
       devtoolsEnabled === true
-        ? { enabled: true, pullLatch: yield* Effect.makeLatch(true), pushLatch: yield* Effect.makeLatch(true) }
+        ? { enabled: true, pullLatch: yield* Latch.make(true), pushLatch: yield* Latch.make(true) }
         : { enabled: false }
 
     if (devtoolsEnabled === true) {
@@ -83,7 +82,11 @@ export const makeClientSession = <R>({
         yield* Devtools.SessionInfo.provideSessionInfo({
           webChannel: sessionInfoBroadcastChannel,
           sessionInfo,
-        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+        }).pipe(
+          Effect.tapCauseLogPretty,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+        )
 
         yield* webmeshNode.listenForChannel.pipe(
           Stream.filter(
@@ -117,7 +120,8 @@ export const makeClientSession = <R>({
                 yield* connectDevtoolsToStore(clientSessionDevtoolsChannel)
               },
               Effect.tapCauseLogPretty,
-              Effect.forkScoped,
+              // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+              Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
             ),
           ),
           Stream.runDrain,
@@ -125,7 +129,8 @@ export const makeClientSession = <R>({
       }).pipe(
         Effect.withSpan('@livestore/common:make-client-session:devtools'),
         Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
     }
 

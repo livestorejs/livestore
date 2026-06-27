@@ -16,19 +16,13 @@ export {
 } from '@effect/ai'
 // export { DevTools as EffectDevtools } from '@effect/experimental'
 export { Sse } from '@effect/experimental'
-export * as Otlp from '@effect/opentelemetry/Otlp'
+export * as Otlp from 'effect/unstable/observability/Otlp'
+export * as PlatformError from 'effect/PlatformError'
+export { Msgpack } from 'effect/unstable/encoding'
 export {
-  Command,
-  CommandExecutor,
-  Error as PlatformError,
   FetchHttpClient,
-  FileSystem,
   Headers,
-  HttpApi,
-  HttpApiClient,
-  HttpApiEndpoint,
-  HttpApiGroup,
-  HttpApp,
+  HttpEffect,
   HttpClient,
   HttpClientError,
   HttpClientRequest,
@@ -38,16 +32,13 @@ export {
   HttpServer,
   HttpServerRequest,
   HttpServerResponse,
-  KeyValueStore,
-  MsgPack,
-  Socket,
-  Terminal,
-  Transferable,
   UrlParams,
-  Worker,
-  WorkerError,
-  WorkerRunner,
-} from '@effect/platform'
+} from 'effect/unstable/http'
+export { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup } from 'effect/unstable/httpapi'
+export { KeyValueStore } from 'effect/unstable/persistence'
+export { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
+export { Socket } from 'effect/unstable/socket'
+export { Transferable, Worker, WorkerError, WorkerRunner } from 'effect/unstable/workers'
 export {
   Rpc,
   // RpcClient, // TODO bring back "original" RpcClient from effect/rpc
@@ -60,7 +51,7 @@ export {
   RpcServer,
   RpcTest,
   RpcWorker,
-} from '@effect/rpc'
+} from 'effect/unstable/rpc'
 export * as StandardSchema from '@standard-schema/spec'
 export {
   Array as ReadonlyArray,
@@ -70,26 +61,23 @@ export {
   Channel,
   Chunk,
   Config,
-  ConfigError,
   ConfigProvider,
   Console,
   Context,
   Data,
   Deferred,
   Duration,
-  Either,
+  Result,
   Equal,
   ExecutionStrategy,
   Exit,
-  FastCheck,
   Fiber,
+  FileSystem,
+  Terminal,
   FiberHandle,
-  FiberId,
   FiberMap,
-  FiberRef,
-  FiberRefs,
-  FiberRefsPatch,
   FiberSet,
+  Function,
   GlobalValue,
   Hash,
   HashMap,
@@ -100,7 +88,6 @@ export {
   List,
   LogLevel,
   LogSpan,
-  Mailbox,
   ManagedRuntime,
   Match,
   Metric,
@@ -109,7 +96,6 @@ export {
   MutableHashSet,
   Option,
   Order,
-  ParseResult,
   Predicate,
   Pretty,
   PrimaryKey,
@@ -120,31 +106,35 @@ export {
   RcMap,
   RcRef,
   Record as ReadonlyRecord,
+  References,
   Redacted,
   Ref,
   Request,
   Runtime,
   RuntimeFlags,
+  SchemaGetter,
+  SchemaIssue,
+  SchemaParser,
+  SchemaTransformation,
   Scope,
   ScopedRef,
+  Semaphore,
   Sink,
   SortedMap,
   STM,
+  Struct,
   SynchronizedRef,
-  TestClock,
-  TestServices,
-  TQueue,
-  TRef,
   Tracer,
+  TxQueue,
+  TxRef,
   Types,
 } from 'effect'
+export { FastCheck, TestClock, TestConsole } from 'effect/testing'
 export type { NonEmptyArray } from 'effect/Array'
-export { constVoid, dual } from 'effect/Function'
+export { dual } from 'effect/Function'
 export * as Graph from 'effect/Graph'
-export { TreeFormatter } from 'effect/ParseResult'
 export type { Serializable, SerializableWithResult } from 'effect/Schema'
 export * as SchemaAST from 'effect/SchemaAST'
-export * as BucketQueue from './BucketQueue.ts'
 export * as Debug from './Debug.ts'
 export * as Effect from './Effect.ts'
 export * from './Error.ts'
@@ -154,7 +144,6 @@ export * as RpcClient from './RpcClient.ts'
 export * as Schedule from './Schedule.ts'
 export * as Scheduler from './Scheduler.ts'
 export * as Schema from './Schema/index.ts'
-export * as ServiceContext from './ServiceContext.ts'
 export * as Stream from './Stream.ts'
 export * as Subscribable from './Subscribable.ts'
 export * as SubscriptionRef from './SubscriptionRef.ts'

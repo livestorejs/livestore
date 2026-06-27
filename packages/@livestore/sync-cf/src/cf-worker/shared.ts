@@ -20,7 +20,7 @@ export type ForwardHeadersOption = readonly string[] | ((request: CfTypes.Reques
 /** Context passed to onPush/onPull callbacks */
 export type CallbackContext = {
   storeId: StoreId
-  payload?: Schema.JsonValue
+  payload?: Schema.Json
   /** Headers forwarded from the request (only present if `forwardHeaders` is configured) */
   headers?: ForwardedHeaders
 }
@@ -133,8 +133,8 @@ export type DurableObjectId = string
  */
 export const PERSISTENCE_FORMAT_VERSION = 7
 
-export const encodeOutgoingMessage = Schema.encodeSync(Schema.parseJson(SyncMessage.BackendToClientMessage))
-export const encodeIncomingMessage = Schema.encodeSync(Schema.parseJson(SyncMessage.ClientToBackendMessage))
+export const encodeOutgoingMessage = Schema.encodeSync(Schema.fromJsonString(SyncMessage.BackendToClientMessage))
+export const encodeIncomingMessage = Schema.encodeSync(Schema.fromJsonString(SyncMessage.ClientToBackendMessage))
 
 /**
  * Extracts the LiveStore sync search parameters from a request. Returns
@@ -156,7 +156,7 @@ export const matchSyncRequest = (request: CfTypes.Request): SearchParams | undef
 // RPC subscription storage (TODO refactor)
 export type RpcSubscription = {
   storeId: StoreId
-  payload?: Schema.JsonValue
+  payload?: Schema.Json
   subscribedAt: number
   /** Effect RPC request ID */
   requestId: string
@@ -174,15 +174,15 @@ export interface SyncBackendRpcInterface {
   rpc(payload: Uint8Array): Promise<Uint8Array | CfTypes.ReadableStream>
 }
 
-export const WebSocketAttachmentSchema = Schema.parseJson(
+export const WebSocketAttachmentSchema = Schema.fromJsonString(
   Schema.Struct({
     // Same across all websocket connections
     storeId: Schema.String,
     // Different for each websocket connection
-    payload: Schema.optional(Schema.JsonValue),
+    payload: Schema.optional(Schema.Json),
     pullRequestIds: Schema.Array(Schema.String),
     // Headers forwarded from the initial request (via forwardHeaders option)
-    headers: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
+    headers: Schema.optional(Schema.Record(Schema.String, Schema.String)),
   }),
 )
 

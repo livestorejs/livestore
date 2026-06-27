@@ -14,7 +14,7 @@ import {
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect, Option, Schema } from '@livestore/utils/effect'
+import { Effect, Option, Result, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
 // Verifies the behaviour of LiveStore's unknown-event handling strategies across
@@ -22,7 +22,7 @@ import { PlatformNode } from '@livestore/utils/node'
 // structured failures according to the selected strategy.
 
 Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
-  Vitest.scopedLive('warn strategy keeps event in log and continues', (test) =>
+  Vitest.live('warn strategy keeps event in log and continues', (test) =>
     Effect.gen(function* () {
       const { materializeEvent, dbEventlog } = yield* setup({ strategy: 'warn' })
       const event = makeUnknownEncodedEvent()
@@ -37,7 +37,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 
-  Vitest.scopedLive('ignore strategy behaves like warn but silent', (test) =>
+  Vitest.live('ignore strategy behaves like warn but silent', (test) =>
     Effect.gen(function* () {
       const { materializeEvent, dbEventlog } = yield* setup({ strategy: 'ignore' })
       const event = makeUnknownEncodedEvent()
@@ -52,16 +52,16 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 
-  Vitest.scopedLive('fail strategy surfaces UnknownEventError', (test) =>
+  Vitest.live('fail strategy surfaces UnknownEventError', (test) =>
     Effect.gen(function* () {
       const { materializeEvent } = yield* setup({ strategy: 'fail' })
       const event = makeUnknownEncodedEvent()
 
-      const result = yield* materializeEvent(event, {}).pipe(Effect.either)
-      if (result._tag !== 'Left') {
+      const result = yield* materializeEvent(event, {}).pipe(Effect.result)
+      if (Result.isSuccess(result)) {
         throw new Error('Expected materializeEvent to fail for fail strategy')
       }
-      const error = result.left
+      const error = result.failure
       expect(error._tag).toEqual('MaterializeError')
       if (error.cause._tag !== 'UnknownEventError') {
         throw new Error(`Unexpected failure cause: ${error.cause._tag}`)
@@ -70,7 +70,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 
-  Vitest.scopedLive('callback strategy invokes observer once', (test) =>
+  Vitest.live('callback strategy invokes observer once', (test) =>
     Effect.gen(function* () {
       const calls: Array<{ eventName: string; reason: string }> = []
       const { materializeEvent } = yield* setup({
@@ -88,7 +88,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 
-  Vitest.scopedLive('warn strategy skips events missing materializers', (test) =>
+  Vitest.live('warn strategy skips events missing materializers', (test) =>
     Effect.gen(function* () {
       const knownEvent = Events.synced({
         name: 'known-event',

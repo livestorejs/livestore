@@ -9,8 +9,17 @@ import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import type { OtelTracer, Scope } from '@livestore/utils/effect'
-import { Context, Effect, FetchHttpClient, Layer, Logger, LogLevel, Queue, Stream } from '@livestore/utils/effect'
+import {
+  type OtelTracer,
+  type Scope,
+  Context,
+  Effect,
+  FetchHttpClient,
+  Layer,
+  Queue,
+  References,
+  Stream,
+} from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
 
@@ -22,7 +31,7 @@ const withTestCtx = Vitest.makeWithTestCtx({
       TestContextLive,
       PlatformNode.NodeFileSystem.layer,
       FetchHttpClient.layer,
-      Logger.minimumLogLevel(LogLevel.Debug),
+      Layer.succeed(References.MinimumLogLevel, 'Debug'),
     ),
 })
 
@@ -32,7 +41,7 @@ const withTestCtx = Vitest.makeWithTestCtx({
  * tests/package-common/src/leader-thread/stream-events.test.ts
  */
 Vitest.describe('Store events API', () => {
-  Vitest.scopedLive('should resume when reconnected to sync backend', (test) =>
+  Vitest.live('should resume when reconnected to sync backend', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
       const store = yield* makeStore()
@@ -48,7 +57,8 @@ Vitest.describe('Store events API', () => {
       yield* store.eventsStream().pipe(
         Stream.tap((event) => Queue.offer(eventsQueue, event)),
         Stream.runDrain,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       store.commit(eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }))
@@ -69,7 +79,7 @@ Vitest.describe('Store events API', () => {
   )
 })
 
-class TestContext extends Context.Tag('TestContext')<
+class TestContext extends Context.Service<
   TestContext,
   {
     makeStore: (args?: {
@@ -87,9 +97,9 @@ class TestContext extends Context.Tag('TestContext')<
     mockSyncBackend: MockSyncBackend
     shutdownDeferred: ShutdownDeferred
   }
->() {}
+>()('TestContext') {}
 
-const TestContextLive = Layer.scoped(
+const TestContextLive = Layer.effect(
   TestContext,
   Effect.gen(function* () {
     const mockSyncBackend = yield* makeMockSyncBackend()

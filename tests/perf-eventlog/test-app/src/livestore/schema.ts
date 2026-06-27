@@ -7,14 +7,14 @@ export const tables = {
       id: State.SQLite.text({ primaryKey: true }),
       text: State.SQLite.text({ default: '' }),
       completed: State.SQLite.boolean({ default: false }),
-      deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
+      deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromEpochMillis }),
     },
   }),
   uiState: State.SQLite.clientDocument({
     name: 'uiState',
     schema: Schema.Struct({
       newTodoText: Schema.String,
-      filter: Schema.Literal('all', 'active', 'completed'),
+      filter: Schema.Literals(['all', 'active', 'completed']),
     }),
     default: { id: SessionIdSymbol, value: { newTodoText: '', filter: 'all' } },
   }),

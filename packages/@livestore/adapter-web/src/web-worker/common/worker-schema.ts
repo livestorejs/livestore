@@ -29,21 +29,21 @@ export type StorageTypeOpfs = typeof StorageTypeOpfs.Type
 // export const StorageTypeIndexeddb = Schema.Struct({
 //   type: Schema.Literal('indexeddb'),
 //   /** @default "livestore" */
-//   databaseName: Schema.optionalWith(Schema.String, { default: () => 'livestore' }),
+//   databaseName: Schema.String.pipe(Schema.withDecodingDefaultType(Effect.succeed('livestore'))),
 //   /** @default "livestore-" */
-//   storeNamePrefix: Schema.optionalWith(Schema.String, { default: () => 'livestore-' }),
+//   storeNamePrefix: Schema.String.pipe(Schema.withDecodingDefaultType(Effect.succeed('livestore-'))),
 // })
 
-export const StorageType = Schema.Union(
+export const StorageType = Schema.Union([
   StorageTypeOpfs,
   // StorageTypeIndexeddb
-)
+])
 export type StorageType = typeof StorageType.Type
 export type StorageTypeEncoded = typeof StorageType.Encoded
 
-// export const SyncBackendOptions = Schema.Union(SyncBackendOptionsWebsocket)
-export const SyncBackendOptions = Schema.Record({ key: Schema.String, value: Schema.JsonValue })
-export type SyncBackendOptions = Record<string, Schema.JsonValue>
+// export const SyncBackendOptions = Schema.Union([SyncBackendOptionsWebsocket])
+export const SyncBackendOptions = Schema.Record(Schema.String, Schema.Json)
+export type SyncBackendOptions = Record<string, Schema.Json>
 
 export class LeaderWorkerOuterInitialMessage extends Schema.TaggedRequest<LeaderWorkerOuterInitialMessage>()(
   'InitialMessage',
@@ -54,7 +54,7 @@ export class LeaderWorkerOuterInitialMessage extends Schema.TaggedRequest<Leader
   },
 ) {}
 
-export class LeaderWorkerOuterRequest extends Schema.Union(LeaderWorkerOuterInitialMessage) {}
+export const LeaderWorkerOuterRequest = Schema.Union([LeaderWorkerOuterInitialMessage])
 
 // TODO unify this code with schema from node adapter
 export class LeaderWorkerInnerInitialMessage extends Schema.TaggedRequest<LeaderWorkerInnerInitialMessage>()(
@@ -66,7 +66,7 @@ export class LeaderWorkerInnerInitialMessage extends Schema.TaggedRequest<Leader
       storeId: Schema.String,
       clientId: Schema.String,
       debugInstanceId: Schema.String,
-      syncPayloadEncoded: Schema.UndefinedOr(Schema.JsonValue),
+      syncPayloadEncoded: Schema.UndefinedOr(Schema.Json),
     },
     success: Schema.Void,
     failure: UnknownError,
@@ -86,16 +86,16 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
   'PushToLeader',
   {
     payload: {
-      batch: Schema.Array(Schema.typeSchema(LiveStoreEvent.Client.Encoded)),
+      batch: Schema.Array(Schema.toType(LiveStoreEvent.Client.Encoded)),
     },
-    success: Schema.Void as Schema.Schema<void>,
+    success: Schema.Void,
     failure: RejectedPushError,
   },
 ) {}
 
 export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWorkerInnerPullStream>()('PullStream', {
   payload: {
-    cursor: Schema.typeSchema(EventSequenceNumber.Client.Composite),
+    cursor: Schema.toType(EventSequenceNumber.Client.Composite),
   },
   success: Schema.Struct({
     payload: SyncState.PayloadUpstream,
@@ -114,7 +114,7 @@ export class LeaderWorkerInnerStreamEvents extends Schema.TaggedRequest<LeaderWo
 
 export class LeaderWorkerInnerExport extends Schema.TaggedRequest<LeaderWorkerInnerExport>()('Export', {
   payload: {},
-  success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
+  success: Transferable.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>,
   failure: Schema.Never,
 }) {}
 
@@ -122,7 +122,7 @@ export class LeaderWorkerInnerExportEventlog extends Schema.TaggedRequest<Leader
   'ExportEventlog',
   {
     payload: {},
-    success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
+    success: Transferable.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>,
     failure: Schema.Never,
   },
 ) {}
@@ -132,7 +132,7 @@ export class LeaderWorkerInnerGetRecreateSnapshot extends Schema.TaggedRequest<L
   {
     payload: {},
     success: Schema.Struct({
-      snapshot: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
+      snapshot: Transferable.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>,
       migrationsReport: MigrationsReport,
     }),
     failure: Schema.Never,
@@ -143,7 +143,7 @@ export class LeaderWorkerInnerGetLeaderHead extends Schema.TaggedRequest<LeaderW
   'GetLeaderHead',
   {
     payload: {},
-    success: Schema.typeSchema(EventSequenceNumber.Client.Composite),
+    success: Schema.toType(EventSequenceNumber.Client.Composite),
     failure: Schema.Never,
   },
 ) {}
@@ -201,7 +201,7 @@ export class LeaderWorkerInnerExtraDevtoolsMessage extends Schema.TaggedRequest<
   },
 ) {}
 
-export const LeaderWorkerInnerRequest = Schema.Union(
+export const LeaderWorkerInnerRequest = Schema.Union([
   LeaderWorkerInnerInitialMessage,
   LeaderWorkerInnerBootStatusStream,
   LeaderWorkerInnerPushToLeader,
@@ -218,7 +218,7 @@ export const LeaderWorkerInnerRequest = Schema.Union(
   LeaderWorkerInnerShutdown,
   LeaderWorkerInnerExtraDevtoolsMessage,
   WebmeshWorker.Schema.CreateConnection,
-)
+])
 export type LeaderWorkerInnerRequest = typeof LeaderWorkerInnerRequest.Type
 
 export class SharedWorkerUpdateMessagePort extends Schema.TaggedRequest<SharedWorkerUpdateMessagePort>()(
@@ -241,7 +241,7 @@ export class SharedWorkerUpdateMessagePort extends Schema.TaggedRequest<SharedWo
   },
 ) {}
 
-export const SharedWorkerRequest = Schema.Union(
+export const SharedWorkerRequest = Schema.Union([
   SharedWorkerUpdateMessagePort,
 
   // Proxied requests
@@ -261,5 +261,5 @@ export const SharedWorkerRequest = Schema.Union(
   LeaderWorkerInnerExtraDevtoolsMessage,
 
   WebmeshWorker.Schema.CreateConnection,
-)
+])
 export type SharedWorkerRequest = typeof SharedWorkerRequest.Type

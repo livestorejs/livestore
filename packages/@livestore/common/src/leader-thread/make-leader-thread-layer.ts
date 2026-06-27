@@ -1,9 +1,11 @@
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
-import type { HttpClient, Scope } from '@livestore/utils/effect'
 import {
+  type HttpClient,
+  type Scope,
   Deferred,
   Effect,
   KeyValueStore,
+  Latch,
   Layer,
   PlatformError,
   Queue,
@@ -45,8 +47,8 @@ import { LeaderThreadCtx } from './types.ts'
 
 export interface MakeLeaderThreadLayerParams {
   storeId: string
-  syncPayloadSchema: Schema.Schema<any> | undefined
-  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Top | undefined
+  syncPayloadEncoded: Schema.Json | undefined
   clientId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
@@ -74,7 +76,7 @@ export const makeLeaderThreadLayer = ({
   schema,
   storeId,
   clientId,
-  syncPayloadSchema = Schema.JsonValue,
+  syncPayloadSchema = Schema.Json,
   syncPayloadEncoded,
   makeSqliteDb,
   syncOptions,
@@ -88,9 +90,11 @@ export const makeLeaderThreadLayer = ({
 }: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnknownError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const syncPayloadDecoded =
-      syncPayloadEncoded === undefined ? undefined : yield* Schema.decodeUnknown(syncPayloadSchema)(syncPayloadEncoded)
+      syncPayloadEncoded === undefined
+        ? undefined
+        : yield* Schema.decodeUnknownEffect(syncPayloadSchema)(syncPayloadEncoded)
 
-    const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
+    const bootStatusQueue = yield* Effect.acquireRelease(Queue.unbounded<BootStatus>(), Queue.shutdown)
 
     // Emit boot warning if present (e.g., OPFS unavailable in private browsing)
     if (bootWarning !== undefined) {
@@ -114,7 +118,7 @@ export const makeLeaderThreadLayer = ({
                 KeyValueStore.makeStringOnly({
                   get: (_key) =>
                     Effect.sync(() => Eventlog.getBackendIdFromDb(dbEventlog)).pipe(
-                      Effect.catchAllDefect((cause) =>
+                      Effect.catchDefect((cause) =>
                         PlatformError.BadArgument.make({
                           method: 'getBackendIdFromDb',
                           description: 'Failed to get backendId',
@@ -125,7 +129,7 @@ export const makeLeaderThreadLayer = ({
                     ),
                   set: (_key, value) =>
                     Effect.sync(() => Eventlog.updateBackendId(dbEventlog, value)).pipe(
-                      Effect.catchAllDefect((cause) =>
+                      Effect.catchDefect((cause) =>
                         PlatformError.BadArgument.make({
                           method: 'updateBackendId',
                           module: 'KeyValueStore',
@@ -134,9 +138,9 @@ export const makeLeaderThreadLayer = ({
                         }),
                       ),
                     ),
-                  clear: Effect.dieMessage(`Not implemented. Should never be used.`),
-                  remove: () => Effect.dieMessage(`Not implemented. Should never be used.`),
-                  size: Effect.dieMessage(`Not implemented. Should never be used.`),
+                  clear: Effect.die(new Error(`Not implemented. Should never be used.`)),
+                  remove: () => Effect.die(new Error(`Not implemented. Should never be used.`)),
+                  size: Effect.die(new Error(`Not implemented. Should never be used.`)),
                 }),
               ),
             ),
@@ -144,7 +148,11 @@ export const makeLeaderThreadLayer = ({
 
     if (syncBackend !== undefined) {
       // We're already connecting to the sync backend concurrently
-      yield* syncBackend.connect.pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+      yield* syncBackend.connect.pipe(
+        Effect.tapCauseLogPretty,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+      )
     }
 
     const initialBlockingSyncContext = yield* makeInitialBlockingSyncContext({
@@ -180,15 +188,16 @@ export const makeLeaderThreadLayer = ({
       },
     })
 
-    const extraIncomingMessagesQueue = yield* Queue.unbounded<Devtools.Leader.MessageToApp>().pipe(
-      Effect.acquireRelease(Queue.shutdown),
+    const extraIncomingMessagesQueue = yield* Effect.acquireRelease(
+      Queue.unbounded<Devtools.Leader.MessageToApp>(),
+      Queue.shutdown,
     )
 
     const devtoolsContext =
       devtoolsOptions.enabled === true
         ? {
             enabled: true as const,
-            syncBackendLatch: yield* Effect.makeLatch(true),
+            syncBackendLatch: yield* Latch.make(true),
             syncBackendLatchState: yield* SubscriptionRef.make<{ latchClosed: boolean }>({ latchClosed: false }),
           }
         : { enabled: false as const }
@@ -213,13 +222,13 @@ export const makeLeaderThreadLayer = ({
       devtools: devtoolsContext,
       networkStatus,
       // State will be set during `bootLeaderThread`
-      initialState: {} as any as LeaderThreadCtx['Type']['initialState'],
-    } satisfies typeof LeaderThreadCtx.Service
+      initialState: {} as any as LeaderThreadCtx['Service']['initialState'],
+    } satisfies LeaderThreadCtx['Service']
 
     // @ts-expect-error For debugging purposes
     globalThis.__leaderThreadCtx = ctx
 
-    const layer = Layer.succeed(LeaderThreadCtx, ctx)
+    const layer = Layer.succeed(LeaderThreadCtx, LeaderThreadCtx.of(ctx))
 
     ctx.initialState = yield* bootLeaderThread({
       migrationsReport,
@@ -233,7 +242,7 @@ export const makeLeaderThreadLayer = ({
     Effect.withSpanScoped('@livestore/common:leader-thread'),
     UnknownError.mapToUnknownError,
     Effect.tapCauseLogPretty,
-    Layer.unwrapScoped,
+    Layer.unwrap,
   )
 
 const hasEventlogTables = (db: SqliteDb) => {
@@ -320,7 +329,8 @@ const makeInitialBlockingSyncContext = ({
     if (blockingDeferred !== undefined && initialSyncOptions._tag === 'Blocking') {
       yield* Deferred.succeed(blockingDeferred, void 0).pipe(
         Effect.delay(initialSyncOptions.timeout),
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
     }
 
@@ -361,7 +371,7 @@ const bootLeaderThread = ({
   initialBlockingSyncContext: InitialBlockingSyncContext
   devtoolsOptions: DevtoolsOptions
 }): Effect.Effect<
-  LeaderThreadCtx['Type']['initialState'],
+  LeaderThreadCtx['Service']['initialState'],
   UnknownError | MaterializerHashMismatchError,
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
@@ -378,14 +388,18 @@ const bootLeaderThread = ({
         progress: { done: 0, total: -1 },
       })
 
-      yield* initialBlockingSyncContext.blockingDeferred.pipe(
+      yield* Deferred.await(initialBlockingSyncContext.blockingDeferred).pipe(
         Effect.withSpan('@livestore/common:leader-thread:initial-sync-blocking'),
       )
     }
 
     yield* Queue.offer(bootStatusQueue, { stage: 'done' })
 
-    yield* bootDevtools(devtoolsOptions).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+    yield* bootDevtools(devtoolsOptions).pipe(
+      Effect.tapCauseLogPretty,
+      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+    )
 
     return { migrationsReport, leaderHead: initialLeaderHead }
   })
@@ -421,22 +435,24 @@ export const makeNetworkStatusSubscribable = ({
       }))
 
     if (syncBackend !== undefined) {
-      yield* syncBackend.isConnected.changes.pipe(
+      yield* SubscriptionRef.changes(syncBackend.isConnected).pipe(
         Stream.tap((isConnected) => updateNetworkStatus({ isConnected })),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
     }
 
     if (devtoolsContext.enabled === true) {
-      yield* devtoolsContext.syncBackendLatchState.changes.pipe(
+      yield* SubscriptionRef.changes(devtoolsContext.syncBackendLatchState).pipe(
         Stream.tap(({ latchClosed }) => updateNetworkStatus({ latchClosed })),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
-        Effect.forkScoped,
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
     }
 

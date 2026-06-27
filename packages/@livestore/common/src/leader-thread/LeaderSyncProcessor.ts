@@ -1,7 +1,9 @@
-import { casesHandled, isNotUndefined, LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
-import type { HttpClient, Runtime, Scope, Tracer } from '@livestore/utils/effect'
+import { casesHandled, LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
 import {
-  BucketQueue,
+  type HttpClient,
+  type Latch,
+  type Scope,
+  type Tracer,
   Cause,
   Context,
   Deferred,
@@ -11,13 +13,18 @@ import {
   FiberHandle,
   Layer,
   Option,
+  Predicate,
   Queue,
   ReadonlyArray,
+  References,
+  Result,
   Schedule,
   Schema,
+  Semaphore,
   Stream,
   Subscribable,
   SubscriptionRef,
+  TxQueue,
 } from '@livestore/utils/effect'
 
 import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
@@ -76,10 +83,9 @@ export type TypeId = typeof TypeId
  *
  * See ClientSessionSyncProcessor for how the leader and session sync processors are similar/different.
  */
-export class LeaderSyncProcessor extends Context.Tag('@livestore/common/LeaderSyncProcessor')<
-  LeaderSyncProcessor,
-  Service
->() {}
+export class LeaderSyncProcessor extends Context.Service<
+  LeaderSyncProcessor, Service
+>()('@livestore/common/LeaderSyncProcessor') {}
 
 export interface Service {
   readonly [TypeId]: TypeId
@@ -117,7 +123,7 @@ export interface Service {
   readonly syncState: Subscribable.Subscribable<SyncState.SyncState>
 }
 
-interface MakeOptions {
+interface Options {
   readonly schema: LiveStoreSchema
   readonly dbState: SqliteDb
   readonly initialBlockingSyncContext: InitialBlockingSyncContext
@@ -203,8 +209,8 @@ export const make = Effect.fnUntraced(function* ({
   livePull,
   params,
   testing,
-}: MakeOptions) {
-  const syncBackendPushQueue = yield* BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>()
+}: Options) {
+  const syncBackendPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
   const localPushBatchSize = params.localPushBatchSize ?? 10
   const backendPushBatchSize = params.backendPushBatchSize ?? 50
 
@@ -221,8 +227,8 @@ export const make = Effect.fnUntraced(function* ({
       | undefined
       | {
           span: Tracer.Span
-          devtoolsLatch: Effect.Latch | undefined
-          runtime: Runtime.Runtime<LeaderThreadCtx>
+          devtoolsLatch: Latch.Latch | undefined
+          services: Context.Context<LeaderThreadCtx>
         },
   }
 
@@ -230,9 +236,9 @@ export const make = Effect.fnUntraced(function* ({
     event: LiveStoreEvent.Client.EncodedWithMeta,
     deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>,
   ]
-  const localPushesQueue = yield* BucketQueue.make<LocalPushQueueItem>()
+  const localPushesQueue = yield* TxQueue.unbounded<LocalPushQueueItem>()
   // Ensures mutual exclusion between local push and backend pull processing.
-  const localPushBackendPullMutex = yield* Effect.makeSemaphore(1)
+  const localPushBackendPullMutex = yield* Semaphore.make(1)
 
   /**
    * Additionally to the `syncStateSref` we also need the `pushHeadRef` in order to prevent old/duplicate
@@ -254,11 +260,13 @@ export const make = Effect.fnUntraced(function* ({
         yield* testing.delays.localPushProcessing.pipe(Effect.withSpan('localPushProcessingDelay'))
       }
 
-      const batchItems = yield* BucketQueue.takeBetween(localPushesQueue, 1, localPushBatchSize)
+      const batchItems = yield* TxQueue.takeBetween(localPushesQueue, 1, localPushBatchSize)
 
       // Applies a batch of local pushes, guarded by the localPushBackendPullMutex to ensure mutual exclusion with backend pulling
       yield* Effect.gen(function* () {
-        const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
+        const syncState = yield* Effect.fromNullishOr(yield* SubscriptionRef.get(syncStateSref)).pipe(
+          Effect.orDieDebugger,
+        )
 
         const currentRebaseGeneration = syncState.localHead.rebaseGeneration
 
@@ -322,14 +330,15 @@ export const make = Effect.fnUntraced(function* ({
             // All subsequent pushes with same generation should be rejected as well
             // We're also handling the case where the localPushQueue already contains events
             // from the next generation which we preserve in the queue
-            const remainingEventsMatchingGeneration = yield* BucketQueue.takeSplitWhere(
+            const remainingEventsMatchingGeneration = yield* takePrefixUntil(
               localPushesQueue,
               ([eventEncoded]) => eventEncoded.seqNum.rebaseGeneration >= nextRebaseGeneration,
             )
 
             // TODO we still need to better understand and handle this scenario
-            if (LS_DEV === true && (yield* BucketQueue.size(localPushesQueue)) > 0) {
-              console.log('localPushesQueue is not empty', yield* BucketQueue.size(localPushesQueue))
+            const remainingLocalPushes = yield* snapshotTxQueue(localPushesQueue)
+            if (LS_DEV === true && remainingLocalPushes.length > 0) {
+              console.log('localPushesQueue is not empty', remainingLocalPushes.length)
               // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for unexpected queue state
               debugger
             }
@@ -377,7 +386,7 @@ export const make = Effect.fnUntraced(function* ({
         // Don't sync client-only events
         const globalOrUnknownEvents = mergeResult.newEvents.filter((e) => !isClientOnlyEvent(e))
 
-        yield* BucketQueue.offerAll(syncBackendPushQueue, globalOrUnknownEvents)
+        yield* TxQueue.offerAll(syncBackendPushQueue, globalOrUnknownEvents)
 
         yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
       }).pipe(localPushBackendPullMutex.withPermits(1))
@@ -428,7 +437,9 @@ export const make = Effect.fnUntraced(function* ({
         }
 
         const chunkExit = yield* Effect.gen(function* () {
-          const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
+          const syncState = yield* Effect.fromNullishOr(yield* SubscriptionRef.get(syncStateSref)).pipe(
+            Effect.orDieDebugger,
+          )
 
           yield* Effect.annotateCurrentSpan({
             'merge.newEventsCount': newEvents.length,
@@ -523,7 +534,7 @@ export const make = Effect.fnUntraced(function* ({
         }
       })
 
-    const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
+    const syncState = yield* Effect.fromNullishOr(yield* SubscriptionRef.get(syncStateSref)).pipe(Effect.orDieDebugger)
     const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo({ remoteHead: syncState.upstreamHead.global })
 
     const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
@@ -567,7 +578,7 @@ export const make = Effect.fnUntraced(function* ({
     while (true) {
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
-      const queueItems = yield* BucketQueue.takeBetween(syncBackendPushQueue, 1, backendPushBatchSize)
+      const queueItems = yield* TxQueue.takeBetween(syncBackendPushQueue, 1, backendPushBatchSize)
 
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
@@ -586,22 +597,22 @@ export const make = Effect.fnUntraced(function* ({
       // - Resets automatically after successful push
       // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
       yield* Effect.gen(function* () {
-        const iteration = yield* Schedule.CurrentIterationMetadata
+        const iteration = yield* Schedule.CurrentMetadata
 
-        const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.either)
+        const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.result)
 
-        const retries = iteration.recurrence
-        if (retries > 0 && pushResult._tag === 'Right') {
+        const retries = iteration.attempt
+        if (retries > 0 && Result.isSuccess(pushResult)) {
           yield* Effect.spanEvent('backend-push-retry-success', { retries, batchSize: queueItems.length })
         }
 
-        if (pushResult._tag === 'Left') {
+        if (Result.isFailure(pushResult)) {
           yield* Effect.spanEvent('backend-push-error', {
-            error: pushResult.left.toString(),
+            error: pushResult.failure.toString(),
             retries,
             batchSize: queueItems.length,
           })
-          const error = pushResult.left
+          const error = pushResult.failure
           if (error._tag === 'ServerAheadError') {
             // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
             yield* Effect.logDebug('handled backend-push-error (waiting for interupt caused by pull)', { error })
@@ -641,9 +652,9 @@ export const make = Effect.fnUntraced(function* ({
 
       const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
 
-      yield* BucketQueue.offerAll(localPushesQueue, items)
+      yield* TxQueue.offerAll(localPushesQueue, items)
 
-      yield* Effect.all(deferreds)
+      yield* Effect.all(deferreds.map(Deferred.await))
     }).pipe(
       Effect.withSpan('@livestore/common:LeaderSyncProcessor:push', {
         attributes: {
@@ -663,12 +674,12 @@ export const make = Effect.fnUntraced(function* ({
     boot: Effect.gen(function* () {
       const span = yield* Effect.currentSpan.pipe(Effect.orDie)
       const { devtools, shutdownChannel } = yield* LeaderThreadCtx
-      const runtime = yield* Effect.runtime<LeaderThreadCtx>()
+      const services = yield* Effect.context<LeaderThreadCtx>()
 
       ctxRef.current = {
         span,
         devtoolsLatch: devtools.enabled === true ? devtools.syncBackendLatch : undefined,
-        runtime,
+        services,
       }
 
       /** State transitions need to happen atomically, so we use a Ref to track the state */
@@ -681,7 +692,7 @@ export const make = Effect.fnUntraced(function* ({
           .filter((eventEncoded) => !isClientOnlyEvent(eventEncoded))
 
         if (globalOrUnknownPendingEvents.length > 0) {
-          yield* BucketQueue.offerAll(syncBackendPushQueue, globalOrUnknownPendingEvents)
+          yield* TxQueue.offerAll(syncBackendPushQueue, globalOrUnknownPendingEvents)
         }
       }
 
@@ -693,25 +704,30 @@ export const make = Effect.fnUntraced(function* ({
           if (onError === 'ignore') {
             if (LS_DEV === true) {
               yield* Effect.logDebug(
-                `Ignoring sync error (${cause._tag === 'Fail' ? cause.error._tag : cause._tag})`,
+                `Ignoring sync error (${Option.getOrUndefined(Cause.findErrorOption(cause))?._tag ?? cause.toString()})`,
                 Cause.pretty(cause),
               )
             }
             return
           }
 
-          const errorToSend = Cause.isFailType(cause) === true ? cause.error : UnknownError.make({ cause })
+          const error = Option.getOrUndefined(Cause.findErrorOption(cause))
+          const errorToSend = error === undefined ? UnknownError.make({ cause }) : error
           yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
 
           return yield* Effect.failCause(cause).pipe(Effect.orDie)
         })
 
-      yield* backgroundApplyLocalPushes.pipe(Effect.catchAllCause(maybeShutdownOnError), Effect.forkScoped)
+      yield* backgroundApplyLocalPushes.pipe(
+        Effect.catchCause(maybeShutdownOnError),
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+      )
 
       const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
       const backendPushingEffect = backgroundBackendPushing.pipe(
         Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
-        Effect.catchAllCause(maybeShutdownOnError),
+        Effect.catchCause(maybeShutdownOnError),
       )
 
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
@@ -723,8 +739,8 @@ export const make = Effect.fnUntraced(function* ({
             yield* FiberHandle.clear(backendPushingFiberHandle)
 
             // Reset the sync backend push queue
-            yield* BucketQueue.clear(syncBackendPushQueue)
-            yield* BucketQueue.offerAll(syncBackendPushQueue, filteredRebasedPending)
+            yield* TxQueue.clear(syncBackendPushQueue)
+            yield* TxQueue.offerAll(syncBackendPushQueue, filteredRebasedPending)
 
             // Restart pushing fiber
             yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
@@ -737,11 +753,12 @@ export const make = Effect.fnUntraced(function* ({
           until: (error): error is Exclude<typeof error, IsOfflineError> => error._tag !== 'IsOfflineError',
         }),
         Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
-        Effect.catchAllCause(maybeShutdownOnError),
+        Effect.catchCause(maybeShutdownOnError),
         // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
         // This might be a bug in Effect. Only seems to happen in the browser.
-        Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),
-        Effect.forkScoped,
+        Effect.provideService(References.UnhandledLogLevel, undefined),
+        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       return { initialLeaderHead: initialSyncState.localHead }
@@ -749,7 +766,9 @@ export const make = Effect.fnUntraced(function* ({
     push,
     pushPartial: ({ event: { name, args }, clientId, sessionId }) =>
       Effect.gen(function* () {
-        const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
+        const syncState = yield* Effect.fromNullishOr(yield* SubscriptionRef.get(syncStateSref)).pipe(
+          Effect.orDieDebugger,
+        )
 
         const resolution = yield* resolveEventDef(schema, {
           operation: '@livestore/common:LeaderSyncProcessor:pushPartial',
@@ -786,12 +805,12 @@ export const make = Effect.fnUntraced(function* ({
       ),
     pull: ({ cursor }) =>
       Effect.gen(function* () {
-        const queue = yield* Effect.fromNullable(ctxRef.current?.runtime).pipe(
+        const queue = yield* Effect.fromNullishOr(ctxRef.current?.services).pipe(
           Effect.orDieDebugger,
-          Effect.flatMap((runtime) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))),
+          Effect.flatMap((services) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(services))),
         )
         return Stream.fromQueue(queue)
-      }).pipe(Stream.unwrapScoped),
+      }).pipe(Stream.unwrap),
     /*
       Notes for a potential new `LeaderSyncProcessor.pull` implementation:
 
@@ -807,19 +826,18 @@ export const make = Effect.fnUntraced(function* ({
           - downside: importing the snapshot is expensive
       */
     pullQueue: ({ cursor }) =>
-      Effect.fromNullable(ctxRef.current?.runtime).pipe(
+      Effect.fromNullishOr(ctxRef.current?.services).pipe(
         Effect.orDieDebugger,
-        Effect.flatMap((runtime) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))),
+        Effect.flatMap((services) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(services))),
       ),
     syncState: Subscribable.make({
-      get: syncStateSref.pipe(Effect.flatMap(Effect.fromNullable), Effect.orDieDebugger),
-      changes: syncStateSref.changes.pipe(Stream.filter(isNotUndefined)),
+      get: SubscriptionRef.get(syncStateSref).pipe(Effect.flatMap(Effect.fromNullishOr), Effect.orDieDebugger),
+      changes: SubscriptionRef.changes(syncStateSref).pipe(Stream.filter(Predicate.isNotUndefined)),
     }),
   })
 })
 
-export const layer = (params: MakeOptions): Layer.Layer<LeaderSyncProcessor, never, Scope.Scope> =>
-  Layer.scoped(LeaderSyncProcessor, make(params))
+export const layer = (options: Options) => Layer.effect(LeaderSyncProcessor, make(options))
 
 type MaterializeEventsBatch = (_: {
   batchItems: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
@@ -911,9 +929,12 @@ const makePullQueueSet = Effect.gen(function* () {
 
   const makeQueue: PullQueueSet['makeQueue'] = (cursor) =>
     Effect.gen(function* () {
-      const queue = yield* Queue.unbounded<{
-        payload: typeof SyncState.PayloadUpstream.Type
-      }>().pipe(Effect.acquireRelease(Queue.shutdown))
+      const queue = yield* Effect.acquireRelease(
+        Queue.unbounded<{
+          payload: typeof SyncState.PayloadUpstream.Type
+        }>(),
+        Queue.shutdown,
+      )
 
       yield* Effect.addFinalizer(() => Effect.sync(() => set.delete(queue)))
 
@@ -966,7 +987,7 @@ const makePullQueueSet = Effect.gen(function* () {
       //   ]),
       // )
 
-      yield* queue.offerAll(payloadsSinceCursor)
+      yield* Queue.offerAll(queue, payloadsSinceCursor)
 
       set.add(queue)
 
@@ -1106,5 +1127,23 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
     }
   })
 
+const snapshotTxQueue = <A>(queue: TxQueue.TxQueue<A>): Effect.Effect<ReadonlyArray<A>> =>
+  Effect.tx(Effect.gen(function* () {
+    const items = yield* TxQueue.clear(queue)
+    yield* TxQueue.offerAll(queue, items)
+    return items
+  }))
+
+const takePrefixUntil = <A>(
+  queue: TxQueue.TxQueue<A>,
+  predicate: (value: A) => boolean,
+): Effect.Effect<ReadonlyArray<A>> =>
+  Effect.tx(Effect.gen(function* () {
+    const items = yield* TxQueue.clear(queue)
+    const [prefix, rest] = ReadonlyArray.splitWhere(items, predicate)
+    yield* TxQueue.offerAll(queue, rest)
+    return prefix
+  }))
+
 /** Serialize value to JSON string for trace attributes */
-const jsonStringify = Schema.encodeSync(Schema.parseJson())
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)

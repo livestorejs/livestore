@@ -2,27 +2,28 @@ import { readFileSync } from 'node:fs'
 import os from 'node:os'
 import { join } from 'node:path'
 
-import { isNotUndefined } from '@livestore/utils'
 import { CurrentWorkingDirectory, LivestoreWorkspace, cmdText } from '@livestore/utils-dev/node'
 import {
-  Command,
+  ChildProcess,
   Duration,
   Effect,
   Fiber,
   HttpClient,
   HttpClientRequest,
+  Predicate,
+  Result,
   Schema,
   Stream,
 } from '@livestore/utils/effect'
 
-export class NetlifyError extends Schema.TaggedError<NetlifyError>()('NetlifyError', {
-  reason: Schema.Literal('auth', 'unknown'),
+export class NetlifyError extends Schema.TaggedErrorClass<NetlifyError>()('NetlifyError', {
+  reason: Schema.Literals(['auth', 'unknown']),
   message: Schema.String,
   cause: Schema.optional(Schema.Unknown),
 }) {}
 
-class FileReadError extends Schema.TaggedError<FileReadError>()('FileReadError', {
-  cause: Schema.Defect,
+class FileReadError extends Schema.TaggedErrorClass<FileReadError>()('FileReadError', {
+  cause: Schema.Defect(),
   path: Schema.String,
 }) {}
 
@@ -43,7 +44,7 @@ const NetlifyCliUserSchema = Schema.Struct({
 })
 
 const NetlifyCliConfigSchema = Schema.Struct({
-  users: Schema.optional(Schema.Record({ key: Schema.String, value: NetlifyCliUserSchema })),
+  users: Schema.optional(Schema.Record(Schema.String, NetlifyCliUserSchema)),
 })
 
 const NetlifyPurgeRequestSchema = Schema.Struct({
@@ -154,17 +155,17 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
       `--site=${resolvedSiteArg}`,
       message !== undefined ? `--message=${message}` : undefined,
       target._tag === 'prod' ? '--prod' : target._tag === 'alias' ? `--alias=${target.alias}` : undefined,
-    ].filter(isNotUndefined)
+    ].filter(Predicate.isNotUndefined)
 
     /** Capture both stdout and stderr so CLI errors are never silently lost */
     const { stdout: rawOutput, stderr: rawStderr } = yield* Effect.scoped(
       Effect.gen(function* () {
         const proc = yield* Effect.acquireRelease(
-          Command.make(deployCmd, ...deployRest).pipe(
-            Command.stdout('pipe'),
-            Command.stderr('pipe'),
-            Command.workingDirectory(gitRoot),
-            Command.env({
+          ChildProcess.make(deployCmd, ...deployRest).pipe(
+            ChildProcess.stdout('pipe'),
+            ChildProcess.stderr('pipe'),
+            ChildProcess.workingDirectory(gitRoot),
+            ChildProcess.env({
               CI: '1',
               // The astro adapter only engages with NODE_ENV=production, and the
               // agent-policy wrapper blocks pnpm/astro inside Netlify's spawned
@@ -175,12 +176,12 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
               // The `[build] command`'s astro build reads this to include typedoc.
               STARLIGHT_INCLUDE_API_DOCS: apiDocs === true ? '1' : undefined,
             }),
-            Command.start,
+            ChildProcess.start,
           ),
           (p) =>
             p.isRunning.pipe(
               Effect.flatMap((running) =>
-                running === true ? p.kill().pipe(Effect.catchAll(() => Effect.void)) : Effect.void,
+                running === true ? p.kill().pipe(Effect.catch(() => Effect.void)) : Effect.void,
               ),
               Effect.ignore,
             ),
@@ -189,13 +190,15 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
         const stdoutFiber = yield* proc.stdout.pipe(
           Stream.decodeText('utf8'),
           Stream.runFold('', (acc, chunk) => acc + chunk),
-          Effect.forkScoped,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
         const stderrFiber = yield* proc.stderr.pipe(
           Stream.decodeText('utf8'),
           Stream.runFold('', (acc, chunk) => acc + chunk),
-          Effect.forkScoped,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
         yield* proc.exitCode
@@ -212,8 +215,8 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
       yield* Effect.logWarning(`[deploy-to-netlify] Deploy stderr for ${site}: ${rawStderr}`)
     }
 
-    const result = yield* Schema.decode(Schema.parseJson(NetlifyDeployResultSchema))(rawOutput).pipe(
-      Effect.catchAll((error) =>
+    const result = yield* Schema.decodeEffect(Schema.fromJsonString(NetlifyDeployResultSchema))(rawOutput).pipe(
+      Effect.catch((error) =>
         Effect.gen(function* () {
           yield* Effect.logError(
             `[deploy-to-netlify] Failed to decode Netlify deploy JSON for ${site}; raw output follows:`,
@@ -272,15 +275,15 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     const readResult = yield* Effect.try({
       try: () => readFileSync(candidate, 'utf8'),
       catch: (error) => new FileReadError({ cause: error, path: candidate }),
-    }).pipe(Effect.either)
+    }).pipe(Effect.result)
 
-    if (readResult._tag === 'Right') {
-      configContent = readResult.right
+    if (Result.isSuccess(readResult)) {
+      configContent = readResult.success
       configPath = candidate
       break
     }
 
-    const readError = readResult.left
+    const readError = readResult.failure
     if (isFileMissingError(readError) === true) {
       continue
     }
@@ -299,7 +302,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     })
   }
 
-  const config = yield* Schema.decode(Schema.parseJson(NetlifyCliConfigSchema))(configContent).pipe(
+  const config = yield* Schema.decodeEffect(Schema.fromJsonString(NetlifyCliConfigSchema))(configContent).pipe(
     Effect.mapError(
       (error) =>
         new NetlifyError({
@@ -341,7 +344,7 @@ const resolveSiteIdViaApi = Effect.fn('resolveSiteIdViaApi')(function* (siteName
     )
     .pipe(
       Effect.andThen((res) => res.json),
-      Effect.andThen(Schema.decodeUnknown(NetlifySiteListSchema)),
+      Effect.andThen(Schema.decodeUnknownEffect(NetlifySiteListSchema)),
       Effect.mapError(
         (cause) =>
           new NetlifyError({

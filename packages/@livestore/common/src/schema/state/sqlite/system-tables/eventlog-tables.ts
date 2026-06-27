@@ -30,11 +30,11 @@ export const eventlogMetaTable = table({
     parentSeqNumRebaseGeneration: SqliteDsl.integer({}),
     /** Event definition name */
     name: SqliteDsl.text({}),
-    argsJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Any) }),
+    argsJson: SqliteDsl.text({ schema: Schema.fromJsonString(Schema.Any) }),
     clientId: SqliteDsl.text({}),
     sessionId: SqliteDsl.text({}),
     schemaHash: SqliteDsl.integer({}),
-    syncMetadataJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Option(Schema.JsonValue)) }),
+    syncMetadataJson: SqliteDsl.text({ schema: Schema.fromJsonString(Schema.Option(Schema.Json)) }),
   },
   indexes: [
     { columns: ['seqNumGlobal'], name: 'idx_eventlog_seqNumGlobal' },

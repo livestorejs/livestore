@@ -1,5 +1,5 @@
 import { type Nullable, shouldNeverHappen } from '@livestore/utils'
-import { Option, Schema, SchemaAST, type Types } from '@livestore/utils/effect'
+import { Schema, SchemaAST, type Types } from '@livestore/utils/effect'
 
 import { getColumnDefForSchema, schemaFieldsToColumns } from './column-def.ts'
 import { SqliteDsl } from './db-schema/mod.ts'
@@ -41,7 +41,7 @@ export type TableDef<
   // NOTE we're not using `SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>`
   // as we don't want the alias type for users to show up, so we're redefining it here
   // TODO adjust this to `TSchema = Schema.TypeLiteral<` but requires some advance type-level work
-  TSchema = Schema.Schema<
+  TSchema = Schema.Codec<
     SqliteDsl.AnyIfConstained<
       TSqliteDef['columns'],
       { readonly [K in keyof TSqliteDef['columns']]: TSqliteDef['columns'][K]['schema']['Type'] }
@@ -57,10 +57,10 @@ export type TableDef<
   // Derived from `sqliteDef`, so only exposed for convenience
   rowSchema: TSchema
   insertSchema: SqliteDsl.InsertStructSchemaForColumns<TSqliteDef['columns']>
-  // query: QueryBuilder<ReadonlyArray<Schema.Schema.Type<TSchema>>, TableDefBase<TSqliteDef & {}, TOptions>>
-  readonly Type: Schema.Schema.Type<TSchema>
-  readonly Encoded: Schema.Schema.Encoded<TSchema>
-} & QueryBuilder<ReadonlyArray<Schema.Schema.Type<TSchema>>, TableDefBase<TSqliteDef & {}, TOptions>>
+  // query: QueryBuilder<ReadonlyArray<TSchema['Type']>>, TableDefBase<TSqliteDef & {}, TOptions>>
+  readonly Type: TSchema['Type']
+  readonly Encoded: TSchema['Encoded']
+} & QueryBuilder<ReadonlyArray<TSchema['Type']>, TableDefBase<TSqliteDef & {}, TOptions>>
 
 export type TableOptionsInput = Partial<{
   indexes: SqliteDsl.Index[]
@@ -114,7 +114,7 @@ export type TableOptions = {
  * })
  *
  * // Option 2: With name from schema annotation (title or identifier)
- * const AnnotatedUserSchema = UserSchema.annotations({ title: 'users' })
+ * const AnnotatedUserSchema = UserSchema.annotate({ title: 'users' })
  * const usersTable2 = State.SQLite.table({
  *   schema: AnnotatedUserSchema,
  * })
@@ -127,7 +127,7 @@ export type TableOptions = {
  *   title: Schema.String,
  *   authorId: Schema.String,
  *   createdAt: Schema.Date,
- * }).annotations({ identifier: 'posts' })
+ * }).annotate({ identifier: 'posts' })
  *
  * const postsTable = State.SQLite.table({
  *   schema: PostSchema,
@@ -161,24 +161,24 @@ export function table<
 // Overload 2: With schema and explicit name
 export function table<
   TName extends string,
-  TSchema extends Schema.Schema.AnyNoContext,
+  TSchema extends Schema.Top,
   const TOptionsInput extends TableOptionsInput = TableOptionsInput,
 >(
   args: {
     name: TName
     schema: TSchema
   } & Partial<TOptionsInput>,
-): TableDef<SqliteTableDefForSchemaInput<TName, Schema.Schema.Type<TSchema>, Schema.Schema.Encoded<TSchema>, TSchema>>
+): TableDef<SqliteTableDefForSchemaInput<TName, TSchema['Type'], TSchema['Encoded'], TSchema>>
 
 // Overload 3: With schema and no name (uses schema annotations)
 export function table<
-  TSchema extends Schema.Schema.AnyNoContext,
+  TSchema extends Schema.Top,
   const TOptionsInput extends TableOptionsInput = TableOptionsInput,
 >(
   args: {
     schema: TSchema
   } & Partial<TOptionsInput>,
-): TableDef<SqliteTableDefForSchemaInput<string, Schema.Schema.Type<TSchema>, Schema.Schema.Encoded<TSchema>, TSchema>>
+): TableDef<SqliteTableDefForSchemaInput<string, TSchema['Type'], TSchema['Encoded'], TSchema>>
 
 // Implementation
 export function table<
@@ -193,10 +193,10 @@ export function table<
       }
     | {
         name: TName
-        schema: Schema.Schema.AnyNoContext
+        schema: Schema.Top
       }
     | {
-        schema: Schema.Schema.AnyNoContext
+        schema: Schema.Top
       }
   ) &
     Partial<TOptionsInput>,
@@ -224,14 +224,12 @@ export function table<
       tempTableName = args.name
     } else {
       // Use title or identifier, with preference for title
-      tempTableName = SchemaAST.getTitleAnnotation(args.schema.ast).pipe(
-        Option.orElse(() => SchemaAST.getIdentifierAnnotation(args.schema.ast)),
-        Option.getOrElse(() =>
-          shouldNeverHappen(
-            'When using schema without explicit name, the schema must have a title or identifier annotation',
-          ),
-        ),
-      )
+      tempTableName =
+        SchemaAST.resolveTitle(args.schema.ast) ??
+        SchemaAST.resolveIdentifier(args.schema.ast) ??
+        shouldNeverHappen(
+          'When using schema without explicit name, the schema must have a title or identifier annotation',
+        )
     }
 
     tableName = tempTableName
@@ -297,9 +295,7 @@ export namespace FromTable {
   }
 
   export type RowEncodeNonNullable<TTableDef extends TableDefBase> = {
-    [K in keyof TTableDef['sqliteDef']['columns']]: Schema.Schema.Encoded<
-      TTableDef['sqliteDef']['columns'][K]['schema']
-    >
+    [K in keyof TTableDef['sqliteDef']['columns']]: (TTableDef['sqliteDef']['columns'][K]['schema'])['Encoded']
   }
 
   export type RowEncoded<TTableDef extends TableDefBase> = Types.Simplify<
@@ -308,7 +304,7 @@ export namespace FromTable {
   >
 
   export type RowDecodedAll<TTableDef extends TableDefBase> = {
-    [K in keyof TTableDef['sqliteDef']['columns']]: Schema.Schema.Type<TTableDef['sqliteDef']['columns'][K]['schema']>
+    [K in keyof TTableDef['sqliteDef']['columns']]: (TTableDef['sqliteDef']['columns'][K]['schema'])['Type']
   }
 }
 
@@ -320,7 +316,7 @@ export namespace FromColumns {
   >
 
   export type RowDecodedAll<TColumns extends SqliteDsl.Columns> = {
-    [K in keyof TColumns]: Schema.Schema.Type<TColumns[K]['schema']>
+    [K in keyof TColumns]: (TColumns[K]['schema'])['Type']
   }
 
   export type RowEncoded<TColumns extends SqliteDsl.Columns> = Types.Simplify<
@@ -329,7 +325,7 @@ export namespace FromColumns {
   >
 
   export type RowEncodeNonNullable<TColumns extends SqliteDsl.Columns> = {
-    [K in keyof TColumns]: Schema.Schema.Encoded<TColumns[K]['schema']>
+    [K in keyof TColumns]: (TColumns[K]['schema'])['Encoded']
   }
 
   export type NullableColumnNames<TColumns extends SqliteDsl.Columns> = keyof {

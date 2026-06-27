@@ -61,7 +61,7 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
     }): Effect.Effect<void, EdgeAlreadyExistsError, Scope.Scope>
   }
 
-  removeEdge: (targetNodeName: MeshNodeName) => Effect.Effect<void, Cause.NoSuchElementException>
+  removeEdge: (targetNodeName: MeshNodeName) => Effect.Effect<void, Cause.NoSuchElementError>
 
   hasChannel: ({
     target,
@@ -93,10 +93,10 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
      */
     channelName: string
     schema:
-      | Schema.Schema<MsgListen | MsgSend, any>
+      | Schema.Codec<MsgListen | MsgSend, any>
       | {
-          listen: Schema.Schema<MsgListen, any>
-          send: Schema.Schema<MsgSend, any>
+          listen: Schema.Codec<MsgListen, any>
+          send: Schema.Codec<MsgSend, any>
         }
     /**
      * If possible, prefer using a DirectChannel with transferables (i.e. transferring memory instead of copying it).
@@ -107,7 +107,7 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
      *
      * @default 1 second
      */
-    timeout?: Duration.DurationInput
+    timeout?: Duration.Input
     /**
      * If true, will close an existing channel if it exists.
      *
@@ -129,7 +129,7 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
    */
   makeBroadcastChannel: <Msg>(args: {
     channelName: string
-    schema: Schema.Schema<Msg, any>
+    schema: Schema.Codec<Msg, any>
   }) => Effect.Effect<WebChannel.WebChannel<Msg, Msg>, never, Scope.Scope>
 }
 
@@ -137,16 +137,17 @@ export const makeMeshNode = <TName extends MeshNodeName>(
   nodeName: TName,
 ): Effect.Effect<MeshNode<TName>, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const edgeChannels = new Map<MeshNodeName, { channel: EdgeChannel; listenFiber: Fiber.RuntimeFiber<void> }>()
+    const edgeChannels = new Map<MeshNodeName, { channel: EdgeChannel; listenFiber: Fiber.Fiber<void> }>()
 
     // To avoid unbounded memory growth, we automatically forget about packet ids after a while
     const handledPacketIds = yield* TimeoutSet.make(Duration.minutes(1))
 
-    const newEdgeAvailablePubSub = yield* PubSub.unbounded<MeshNodeName>().pipe(Effect.acquireRelease(PubSub.shutdown))
+    const newEdgeAvailablePubSub = yield* Effect.acquireRelease(PubSub.unbounded<MeshNodeName>(), PubSub.shutdown)
 
-    // const proxyPacketsToProcess = yield* Queue.unbounded<ProxyQueueItem>().pipe(Effect.acquireRelease(Queue.shutdown))
-    // const messagePacketsToProcess = yield* Queue.unbounded<MessageQueueItem>().pipe(
-    //   Effect.acquireRelease(Queue.shutdown),
+    // const proxyPacketsToProcess = yield* Effect.acquireRelease(Queue.unbounded<ProxyQueueItem>(), Queue.shutdown)
+    // const messagePacketsToProcess = yield* Effect.acquireRelease(
+    //   Queue.unbounded<MessageQueueItem>(),
+    //   Queue.shutdown,
     // )
 
     const channelMap = new Map<
@@ -163,8 +164,9 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       }
     >()
 
-    const channelRequestsQueue = yield* Queue.unbounded<ListenForChannelResult>().pipe(
-      Effect.acquireRelease(Queue.shutdown),
+    const channelRequestsQueue = yield* Effect.acquireRelease(
+      Queue.unbounded<ListenForChannelResult>(),
+      Queue.shutdown,
     )
 
     type RequestId = string
@@ -367,7 +369,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           Stream.flatten(),
           Stream.tap((message) =>
             Effect.gen(function* () {
-              const packet = yield* Schema.decodeUnknown(WebmeshSchema.Packet)(message)
+              const packet = yield* Schema.decodeUnknownEffect(WebmeshSchema.Packet)(message)
 
               // console.debug(nodeName, 'recv', packet._tag, packet.source, packet.target)
 
@@ -387,8 +389,9 @@ export const makeMeshNode = <TName extends MeshNodeName>(
                     const channelKey = `target:${packet.source}, channelName:${packet.channelName}` satisfies ChannelKey
 
                     if (channelMap.has(channelKey) === false) {
-                      const channelQueue = yield* Queue.unbounded<MessageQueueItem | ProxyQueueItem>().pipe(
-                        Effect.acquireRelease(Queue.shutdown),
+                      const channelQueue = yield* Effect.acquireRelease(
+                        Queue.unbounded<MessageQueueItem | ProxyQueueItem>(),
+                        Queue.shutdown,
                       )
                       channelMap.set(channelKey, { queue: channelQueue, debugInfo: undefined })
                     }
@@ -442,7 +445,8 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           Effect.interruptible,
           Effect.orDie,
           Effect.tapCauseLogPretty,
-          Effect.forkScoped,
+          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
         edgeChannels.set(targetNodeName, { channel: edgeChannel, listenFiber })
@@ -462,7 +466,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
     const removeEdge: MeshNode['removeEdge'] = (targetNodeName) =>
       Effect.gen(function* () {
         if (edgeChannels.has(targetNodeName) === false) {
-          return yield* new Cause.NoSuchElementException(`No edge found for ${targetNodeName}`)
+          return yield* new Cause.NoSuchElementError(`No edge found for ${targetNodeName}`)
         }
 
         yield* Fiber.interrupt(edgeChannels.get(targetNodeName)!.listenFiber)
@@ -502,8 +506,9 @@ export const makeMeshNode = <TName extends MeshNodeName>(
         }
 
         if (channelMap.has(channelKey) === false) {
-          const channelQueue = yield* Queue.unbounded<MessageQueueItem | ProxyQueueItem>().pipe(
-            Effect.acquireRelease(Queue.shutdown),
+          const channelQueue = yield* Effect.acquireRelease(
+            Queue.unbounded<MessageQueueItem | ProxyQueueItem>(),
+            Queue.shutdown,
           )
           channelMap.set(channelKey, { queue: channelQueue, debugInfo: undefined })
         }
@@ -513,7 +518,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
         yield* Effect.addFinalizer(() => Effect.sync(() => channelMap.delete(channelKey)))
 
         if (mode === 'direct') {
-          const incomingPacketsQueue = yield* Queue.unbounded<any>().pipe(Effect.acquireRelease(Queue.shutdown))
+          const incomingPacketsQueue = yield* Effect.acquireRelease(Queue.unbounded<any>(), Queue.shutdown)
 
           // We're we're draining the queue into another new queue.
           // It's a bit of a mystery why this is needed, since the unit tests also work without it.
@@ -524,7 +529,8 @@ export const makeMeshNode = <TName extends MeshNodeName>(
             Effect.forever,
             Effect.interruptible,
             Effect.tapCauseLogPretty,
-            Effect.forkScoped,
+            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
           // NOTE already retries internally when transferables are required
@@ -541,7 +547,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
           channelMap.set(channelKey, { queue: channelQueue, debugInfo: { channel: webChannel, target } })
 
-          yield* initialEdgeDeferred
+          yield* Deferred.await(initialEdgeDeferred)
 
           return webChannel
         } else {
@@ -605,12 +611,12 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
           const debugInfo = {}
 
-          const queue = yield* Queue.unbounded<any>().pipe(Effect.acquireRelease(Queue.shutdown))
+          const queue = yield* Effect.acquireRelease(Queue.unbounded<any>(), Queue.shutdown)
           broadcastChannelListenQueueMap.set(channelName, queue)
 
           const send = (message: any) =>
             Effect.gen(function* () {
-              const payload = yield* Schema.encode(schema)(message)
+              const payload = yield* Schema.encodeEffect(schema)(message)
               const packet = WebmeshSchema.BroadcastChannelPacket.make({
                 channelName,
                 payload,
@@ -624,10 +630,10 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
           const listen = Stream.fromQueue(queue).pipe(
             Stream.filter(Schema.is(WebmeshSchema.BroadcastChannelPacket)),
-            Stream.map((_) => Schema.decodeEither(schema)(_.payload)),
+            Stream.map((_) => Schema.decodeResult(schema)(_.payload)),
           )
 
-          const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+          const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
           return {
             [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
@@ -644,7 +650,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
     const edgeKeys: MeshNode['edgeKeys'] = Effect.sync(() => new Set(edgeChannels.keys()))
 
-    const runtime = yield* Effect.runtime()
+    const services = yield* Effect.context()
 
     const debug: MeshNode['debug'] = {
       print: () => {
@@ -699,7 +705,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
             yield* Effect.logDebug(`sending ping via channel ${channelKey}`)
             yield* channel.debugInfo.channel.send(msg(`channel ${channelKey}`) as any)
           }
-        }).pipe(Effect.provide(runtime), Effect.tapCauseLogPretty, Effect.runFork)
+        }).pipe(Effect.provide(services), Effect.tapCauseLogPretty, Effect.runFork)
       },
       requestTopology: (timeoutMs = 1000) =>
         Effect.gen(function* () {
@@ -722,7 +728,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           for (const [key, value] of item) {
             yield* Effect.logDebug(`  node '${key}' has edge to: ${Array.from(value.values()).join(', ')}`)
           }
-        }).pipe(Effect.provide(runtime), Effect.tapCauseLogPretty, Effect.runPromise),
+        }).pipe(Effect.provide(services), Effect.tapCauseLogPretty, Effect.runPromise),
     }
 
     return {

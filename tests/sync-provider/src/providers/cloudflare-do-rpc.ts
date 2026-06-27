@@ -1,14 +1,14 @@
 import path from 'node:path'
 
 import { SyncBackend, UnknownError } from '@livestore/common'
-import { MAX_DO_RPC_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST, splitChunkBySize } from '@livestore/sync-cf/common'
+import { MAX_DO_RPC_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST, splitArrayBySize } from '@livestore/sync-cf/common'
 import { omit } from '@livestore/utils'
-import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
+import { WranglerDevServer } from '@livestore/utils-dev/wrangler'
 import {
-  Chunk,
   Effect,
   Layer,
   Option,
+  ReadonlyArray as EffectArray,
   RpcClient,
   RpcSerialization,
   type Schedule,
@@ -26,10 +26,10 @@ export const name = 'Cloudflare Durable Object RPC'
 export const prepare = Effect.void
 
 const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): SyncProviderLayer =>
-  Layer.scoped(
+  Layer.effect(
     SyncProviderImpl,
     Effect.gen(function* () {
-      const server = yield* WranglerDevServerService
+      const server = yield* WranglerDevServer.WranglerDevServer
 
       return {
         makeProvider: (args, options) =>
@@ -44,10 +44,10 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
     }),
   ).pipe(
     Layer.provide(
-      WranglerDevServerService.Default({
+      WranglerDevServer.layer({
         cwd: path.join(import.meta.dirname, 'cloudflare'),
         ...(config?.wranglerConfigPath && { wranglerConfigPath: config.wranglerConfigPath }),
-      }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+      }).pipe(Layer.provide(PlatformNode.NodeServices.layer)),
     ),
     UnknownError.mapToUnknownErrorLayer,
   )
@@ -151,25 +151,27 @@ const makeProxyDoRpcSync = ({
             return
           }
 
-          const chunkedBatches = yield* Chunk.fromIterable(batch).pipe(
-            splitChunkBySize({
-              maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
-              maxBytes: MAX_DO_RPC_REQUEST_BYTES,
-              encode: (items) => ({
-                clientId,
-                storeId,
-                payload,
-                batch: items,
-              }),
-            }),
-          )
+          if (EffectArray.isReadonlyArrayNonEmpty(batch) === false) {
+            return
+          }
 
-          for (const chunk of chunkedBatches) {
+          const chunkedBatches = yield* splitArrayBySize({
+            maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+            maxBytes: MAX_DO_RPC_REQUEST_BYTES,
+            encode: (items) => ({
+              clientId,
+              storeId,
+              payload,
+              batch: items,
+            }),
+          })(batch)
+
+          for (const batchChunk of chunkedBatches) {
             yield* client.Push({
               clientId,
               storeId,
               payload,
-              batch: Chunk.toReadonlyArray(chunk),
+              batch: batchChunk,
             })
           }
         }).pipe(Effect.withSpan('proxy-do-rpc-sync:push'), Effect.orDie),

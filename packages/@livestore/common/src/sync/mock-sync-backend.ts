@@ -1,5 +1,14 @@
-import type { Schema, Scope } from '@livestore/utils/effect'
-import { Effect, Mailbox, Option, Queue, Ref, Stream, SubscriptionRef } from '@livestore/utils/effect'
+import {
+  type Schema,
+  type Scope,
+  Effect,
+  Option,
+  Queue,
+  Ref,
+  Semaphore,
+  Stream,
+  SubscriptionRef,
+} from '@livestore/utils/effect'
 
 import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
@@ -40,7 +49,7 @@ export const makeMockSyncBackend = (
 ): Effect.Effect<MockSyncBackend, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
     const span = yield* Effect.currentSpan.pipe(Effect.orDie)
-    const semaphore = yield* Effect.makeSemaphore(1)
+    const semaphore = yield* Semaphore.make(1)
 
     // State refs
     const syncHeadRef = yield* Ref.make(EventSequenceNumber.Client.ROOT.global)
@@ -49,7 +58,7 @@ export const makeMockSyncBackend = (
 
     // Queues for streaming
     const syncPullQueue = yield* Queue.unbounded<LiveStoreEvent.Global.Encoded>()
-    const pushedEventsQueue = yield* Mailbox.make<LiveStoreEvent.Global.Encoded>()
+    const pushedEventsQueue = yield* Queue.unbounded<LiveStoreEvent.Global.Encoded>()
 
     // Failure simulation state
     const failPushRef = yield* Ref.make<
@@ -164,8 +173,8 @@ export const makeMockSyncBackend = (
 
             yield* Effect.sleep(10).pipe(Effect.withSpan('MockSyncBackend:push:sleep')) // Simulate network latency
 
-            yield* pushedEventsQueue.offerAll(batch)
-            yield* syncPullQueue.offerAll(batch)
+            yield* Queue.offerAll(pushedEventsQueue, batch)
+            yield* Queue.offerAll(syncPullQueue, batch)
             yield* Ref.update(allEventsRef, (events) => events.concat(batch))
             yield* Ref.set(syncHeadRef, batch.at(-1)!.seqNum)
           }).pipe(
@@ -190,7 +199,7 @@ export const makeMockSyncBackend = (
       Effect.gen(function* () {
         yield* Ref.set(syncHeadRef, batch.at(-1)!.seqNum)
         yield* Ref.update(allEventsRef, (events) => events.concat(batch))
-        yield* syncPullQueue.offerAll(batch)
+        yield* Queue.offerAll(syncPullQueue, batch)
       }).pipe(
         Effect.withSpan('MockSyncBackend:advance', {
           parent: span,
@@ -210,7 +219,7 @@ export const makeMockSyncBackend = (
       Ref.set(failPullRef, { remaining: count, error })
 
     return {
-      pushedEvents: Mailbox.toStream(pushedEventsQueue),
+      pushedEvents: Stream.fromQueue(pushedEventsQueue),
       connect: SubscriptionRef.set(syncIsConnectedRef, true),
       disconnect: SubscriptionRef.set(syncIsConnectedRef, false),
       makeSyncBackend,

@@ -5,88 +5,79 @@ import { EventSequenceNumber } from '../schema/mod.ts'
 import { PreparedBindValues } from '../util.ts'
 import { LSDClientSessionChannelMessage, LSDClientSessionReqResMessage } from './devtools-messages-common.ts'
 
-export class DebugInfoReq extends LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoReq', {}) {}
+export const DebugInfoReq = LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoReq', {})
 
-export class DebugInfoRes extends LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoRes', {
+export const DebugInfoRes = LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoRes', {
   debugInfo: DebugInfo,
-}) {}
+})
 
-export class DebugInfoHistorySubscribe extends LSDClientSessionReqResMessage(
-  'LSD.ClientSession.DebugInfoHistorySubscribe',
-  {
-    subscriptionId: Schema.String,
-  },
-) {}
+export const DebugInfoHistorySubscribe = LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoHistorySubscribe', {
+  subscriptionId: Schema.String,
+})
 
-export class DebugInfoHistoryRes extends LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoHistoryRes', {
+export const DebugInfoHistoryRes = LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoHistoryRes', {
   debugInfoHistory: Schema.Array(DebugInfo),
   subscriptionId: Schema.String,
-}) {}
+})
 
-export class DebugInfoHistoryUnsubscribe extends LSDClientSessionReqResMessage(
+export const DebugInfoHistoryUnsubscribe = LSDClientSessionReqResMessage(
   'LSD.ClientSession.DebugInfoHistoryUnsubscribe',
   {
     subscriptionId: Schema.String,
   },
-) {}
+)
 
-export class DebugInfoResetReq extends LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoResetReq', {}) {}
+export const DebugInfoResetReq = LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoResetReq', {})
 
-export class DebugInfoResetRes extends LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoResetRes', {}) {}
+export const DebugInfoResetRes = LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoResetRes', {})
 
-export class DebugInfoRerunQueryReq extends LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoRerunQueryReq', {
+export const DebugInfoRerunQueryReq = LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoRerunQueryReq', {
   queryStr: Schema.String,
   bindValues: Schema.UndefinedOr(PreparedBindValues),
   queriedTables: Schema.ReadonlySet(Schema.String),
-}) {}
+})
 
-export class DebugInfoRerunQueryRes extends LSDClientSessionReqResMessage(
-  'LSD.ClientSession.DebugInfoRerunQueryRes',
-  {},
-) {}
+export const DebugInfoRerunQueryRes = LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoRerunQueryRes', {})
 
-export class SyncHeadSubscribe extends LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadSubscribe', {
+export const SyncHeadSubscribe = LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadSubscribe', {
   subscriptionId: Schema.String,
-}) {}
-export class SyncHeadUnsubscribe extends LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadUnsubscribe', {
+})
+export const SyncHeadUnsubscribe = LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadUnsubscribe', {
   subscriptionId: Schema.String,
-}) {}
-export class SyncHeadRes extends LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadRes', {
+})
+export const SyncHeadRes = LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadRes', {
   local: EventSequenceNumber.Client.Composite,
   upstream: EventSequenceNumber.Client.Composite,
   subscriptionId: Schema.String,
-}) {}
+})
 
-export class ReactivityGraphSubscribe extends LSDClientSessionReqResMessage(
-  'LSD.ClientSession.ReactivityGraphSubscribe',
-  {
-    includeResults: Schema.Boolean,
-    subscriptionId: Schema.String,
-  },
-) {}
+export const ReactivityGraphSubscribe = LSDClientSessionReqResMessage('LSD.ClientSession.ReactivityGraphSubscribe', {
+  includeResults: Schema.Boolean,
+  subscriptionId: Schema.String,
+})
 
-export class ReactivityGraphUnsubscribe extends LSDClientSessionReqResMessage(
+export const ReactivityGraphUnsubscribe = LSDClientSessionReqResMessage(
   'LSD.ClientSession.ReactivityGraphUnsubscribe',
   {
     subscriptionId: Schema.String,
   },
-) {}
+)
 
-export class ReactivityGraphRes extends LSDClientSessionReqResMessage('LSD.ClientSession.ReactivityGraphRes', {
+export const ReactivityGraphRes = LSDClientSessionReqResMessage('LSD.ClientSession.ReactivityGraphRes', {
   reactivityGraph: Schema.Any,
   subscriptionId: Schema.String,
-}) {}
+})
 
-export class LiveQueriesSubscribe extends LSDClientSessionReqResMessage('LSD.ClientSession.LiveQueriesSubscribe', {
+export const LiveQueriesSubscribe = LSDClientSessionReqResMessage('LSD.ClientSession.LiveQueriesSubscribe', {
   subscriptionId: Schema.String,
-}) {}
+})
 
-export class LiveQueriesUnsubscribe extends LSDClientSessionReqResMessage('LSD.ClientSession.LiveQueriesUnsubscribe', {
+export const LiveQueriesUnsubscribe = LSDClientSessionReqResMessage('LSD.ClientSession.LiveQueriesUnsubscribe', {
   subscriptionId: Schema.String,
-}) {}
+})
 
-export class SerializedLiveQuery extends Schema.Struct({
-  _tag: Schema.Literal('computed', 'db', 'graphql', 'signal'),
+export const SerializedLiveQuery = Schema.Struct({
+  _tag: Schema.Literals(['computed', 'db', 'graphql', 'signal']),
   id: Schema.Number,
   label: Schema.String,
   hash: Schema.String,
@@ -96,37 +87,37 @@ export class SerializedLiveQuery extends Schema.Struct({
   activeSubscriptions: Schema.Array(
     Schema.Struct({ frames: Schema.Array(Schema.Struct({ name: Schema.String, filePath: Schema.String })) }),
   ),
-}) {}
+})
 
-export class LiveQueriesRes extends LSDClientSessionReqResMessage('LSD.ClientSession.LiveQueriesRes', {
+export const LiveQueriesRes = LSDClientSessionReqResMessage('LSD.ClientSession.LiveQueriesRes', {
   liveQueries: Schema.Array(SerializedLiveQuery),
   subscriptionId: Schema.String,
-}) {}
+})
 
-export class Ping extends LSDClientSessionReqResMessage('LSD.ClientSession.Ping', {
+export const Ping = LSDClientSessionReqResMessage('LSD.ClientSession.Ping', {
   devtoolsProtocolVersion: Schema.optional(Schema.Number),
-}) {}
+})
 
-export class Pong extends LSDClientSessionReqResMessage('LSD.ClientSession.Pong', {
+export const Pong = LSDClientSessionReqResMessage('LSD.ClientSession.Pong', {
   devtoolsProtocolVersion: Schema.optional(Schema.Number),
-}) {}
+})
 
 /**
  * Sent by the app when the DevTools protocol isn't compatible.
  * Contains package versions for display and protocol versions for the actual compatibility decision.
  */
-export class VersionMismatch extends LSDClientSessionReqResMessage('LSD.ClientSession.VersionMismatch', {
+export const VersionMismatch = LSDClientSessionReqResMessage('LSD.ClientSession.VersionMismatch', {
   /** The version running in the app */
   appVersion: Schema.String,
   /** The version that was sent by DevTools (that caused the mismatch) */
   receivedVersion: Schema.String,
   appDevtoolsProtocolVersion: Schema.Number,
   receivedDevtoolsProtocolVersion: Schema.optional(Schema.Number),
-}) {}
+})
 
-export class Disconnect extends LSDClientSessionChannelMessage('LSD.ClientSession.Disconnect', {}) {}
+export const Disconnect = LSDClientSessionChannelMessage('LSD.ClientSession.Disconnect', {})
 
-export const MessageToApp = Schema.Union(
+export const MessageToApp = Schema.Union([
   DebugInfoReq,
   DebugInfoHistorySubscribe,
   DebugInfoHistoryUnsubscribe,
@@ -140,11 +131,11 @@ export const MessageToApp = Schema.Union(
   Ping,
   SyncHeadSubscribe,
   SyncHeadUnsubscribe,
-).annotations({ identifier: 'LSD.ClientSession.MessageToApp' })
+]).annotate({ identifier: 'LSD.ClientSession.MessageToApp' })
 
 export type MessageToApp = typeof MessageToApp.Type
 
-export const MessageFromApp = Schema.Union(
+export const MessageFromApp = Schema.Union([
   DebugInfoRes,
   DebugInfoHistoryRes,
   DebugInfoResetRes,
@@ -155,6 +146,6 @@ export const MessageFromApp = Schema.Union(
   Pong,
   VersionMismatch,
   SyncHeadRes,
-).annotations({ identifier: 'LSD.ClientSession.MessageFromApp' })
+]).annotate({ identifier: 'LSD.ClientSession.MessageFromApp' })
 
 export type MessageFromApp = typeof MessageFromApp.Type

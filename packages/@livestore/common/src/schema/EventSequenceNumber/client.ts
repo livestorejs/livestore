@@ -177,10 +177,9 @@ const CompositeSchema = S.Struct({
   client: Schema,
   // Client only
   rebaseGeneration: S.Int,
-}).annotations({
-  title: 'EventSequenceNumber.Composite',
-  pretty: () => (seqNum) => toString(seqNum),
 })
+  .annotate({ title: 'EventSequenceNumber.Composite' })
+  .pipe(S.overrideToFormatter(() => (seqNum) => toString(seqNum)))
 
 /**
  * Creates a validated Composite sequence number from input.

@@ -14,8 +14,7 @@ import {
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
-import type { Effect, Runtime, Schema, Scope } from '@livestore/utils/effect'
-import { Deferred, Predicate } from '@livestore/utils/effect'
+import { type Context, Deferred, type Effect, Predicate, type Schema, type Scope } from '@livestore/utils/effect'
 
 import type {
   LiveQuery,
@@ -24,7 +23,7 @@ import type {
   ReactivityGraphContext,
   SignalDef,
 } from '../live-queries/base-class.ts'
-import { TypeId } from '../live-queries/base-class.ts'
+import { isLiveQueryDef, TypeId } from '../live-queries/base-class.ts'
 import type { DebugRefreshReasonBase, Ref } from '../reactive.ts'
 import type { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
 import type { ReferenceCountedSet } from '../utils/data-structures.ts'
@@ -98,7 +97,7 @@ export type StoreInternals = {
    * Exposed primarily for Devtools (e.g. databrowser) to validate ad‑hoc
    * event payloads. Application code should not depend on it directly.
    */
-  readonly eventSchema: Schema.Schema<LiveStoreEvent.Client.Decoded, LiveStoreEvent.Client.Encoded>
+  readonly eventSchema: Schema.Codec<LiveStoreEvent.Client.Decoded, LiveStoreEvent.Client.Encoded>
 
   /**
    * The active client session backing this Store. Provides access to the
@@ -115,14 +114,14 @@ export type StoreInternals = {
   readonly sqliteDbWrapper: SqliteDbWrapper
 
   /**
-   * Effect runtime and scope used to fork background fibers for the Store.
+   * Effect context and scope used to fork background fibers for the Store.
    *
-   * - `runtime` executes effects from imperative Store APIs.
+   * - `services` provides services when executing effects from imperative Store APIs.
    * - `lifetimeScope` owns forked fibers; closed during Store shutdown.
    */
   readonly effectContext: {
-    /** Effect runtime to run Store effects with proper environment. */
-    readonly runtime: Runtime.Runtime<Scope.Scope>
+    /** Effect context used to run Store effects with proper services. */
+    readonly services: Context.Context<Scope.Scope>
     /** Scope that owns all long‑lived fibers spawned by the Store. */
     readonly lifetimeScope: Scope.Scope
   }
@@ -189,7 +188,7 @@ export type StoreConstructorParams<TSchema extends LiveStoreSchema = LiveStoreSc
   context: TContext
   otelOptions: OtelOptions
   effectContext: {
-    runtime: Runtime.Runtime<Scope.Scope>
+    services: Context.Context<Scope.Scope>
     lifetimeScope: Scope.Scope
   }
   confirmUnsavedChanges: boolean
@@ -335,48 +334,7 @@ export namespace Queryable {
   export type Result<TQueryable extends Queryable<any>> = TQueryable extends Queryable<infer TResult> ? TResult : never
 }
 
-/**
- * Type guard that checks if a value is a query or signal definition.
- *
- * Use this to distinguish between definitions (blueprints) and instances (live queries).
- * Definitions are created by `queryDb()`, `computed()`, and `signal()`.
- *
- * @example
- * ```ts
- * const todos$ = queryDb(tables.todos.all())
- *
- * if (isLiveQueryDef(todos$)) {
- *   console.log('This is a definition:', todos$.label)
- * }
- * ```
- */
-export const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<any> => {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-
-  if (!('_tag' in value)) {
-    return false
-  }
-
-  const tag = (value as LiveQueryDef<any> | SignalDef<any>)._tag
-  if (tag !== 'def' && tag !== 'signal-def') {
-    return false
-  }
-
-  const candidate = value as LiveQueryDef<any>
-  if (typeof candidate.make !== 'function') {
-    // The store calls make() to turn the definition into a live query instance.
-    return false
-  }
-
-  if (typeof candidate.hash !== 'string' || typeof candidate.label !== 'string') {
-    // Both identifiers must be present so the store can cache and log the query.
-    return false
-  }
-
-  return true
-}
+export { isLiveQueryDef }
 
 /**
  * Type guard that checks if a value is a live query instance.

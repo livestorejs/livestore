@@ -5,130 +5,132 @@ import { EventSequenceNumber } from '../schema/mod.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { LeaderReqResMessage, LSDMessage, LSDReqResMessage, NetworkStatus } from './devtools-messages-common.ts'
 
-export class ResetAllDataReq extends LSDReqResMessage('LSD.Leader.ResetAllDataReq', {
-  mode: Schema.Literal('all-data', 'only-app-db'),
-}) {}
+export const ResetAllDataReq = LSDReqResMessage('LSD.Leader.ResetAllDataReq', {
+  mode: Schema.Literals(['all-data', 'only-app-db']),
+})
 
-export class DatabaseFileInfoReq extends LSDReqResMessage('LSD.Leader.DatabaseFileInfoReq', {}) {}
+export const DatabaseFileInfoReq = LSDReqResMessage('LSD.Leader.DatabaseFileInfoReq', {})
 
-export class DatabaseFileInfo extends Schema.Struct({
+export const DatabaseFileInfo = Schema.Struct({
   fileSize: Schema.Number,
-  persistenceInfo: Schema.Struct({ fileName: Schema.String }, { key: Schema.String, value: Schema.Any }),
-}) {}
+  persistenceInfo: Schema.StructWithRest(Schema.Struct({ fileName: Schema.String }), [
+    Schema.Record(Schema.String, Schema.Any),
+  ]),
+})
 
-export class DatabaseFileInfoRes extends LSDReqResMessage('LSD.Leader.DatabaseFileInfoRes', {
+export const DatabaseFileInfoRes = LSDReqResMessage('LSD.Leader.DatabaseFileInfoRes', {
   state: DatabaseFileInfo,
   eventlog: DatabaseFileInfo,
-}) {}
+})
 
-export class NetworkStatusSubscribe extends LSDReqResMessage('LSD.Leader.NetworkStatusSubscribe', {
+export const NetworkStatusSubscribe = LSDReqResMessage('LSD.Leader.NetworkStatusSubscribe', {
   subscriptionId: Schema.String,
-}) {}
-export class NetworkStatusUnsubscribe extends LSDReqResMessage('LSD.Leader.NetworkStatusUnsubscribe', {
+})
+export const NetworkStatusUnsubscribe = LSDReqResMessage('LSD.Leader.NetworkStatusUnsubscribe', {
   subscriptionId: Schema.String,
-}) {}
+})
 
-export class NetworkStatusRes extends LSDReqResMessage('LSD.Leader.NetworkStatusRes', {
+export const NetworkStatusRes = LSDReqResMessage('LSD.Leader.NetworkStatusRes', {
   networkStatus: NetworkStatus,
   subscriptionId: Schema.String,
-}) {}
+})
 
-export class SyncingInfoReq extends LSDReqResMessage('LSD.Leader.SyncingInfoReq', {}) {}
+export const SyncingInfoReq = LSDReqResMessage('LSD.Leader.SyncingInfoReq', {})
 
-export class SyncingInfo extends Schema.Struct({
+export const SyncingInfo = Schema.Struct({
   enabled: Schema.Boolean,
-  metadata: Schema.Record({ key: Schema.String, value: Schema.Any }),
-}) {}
+  metadata: Schema.Record(Schema.String, Schema.Any),
+})
 
-export class SyncingInfoRes extends LSDReqResMessage('LSD.Leader.SyncingInfoRes', {
+export const SyncingInfoRes = LSDReqResMessage('LSD.Leader.SyncingInfoRes', {
   syncingInfo: SyncingInfo,
-}) {}
+})
 
-export class SyncHistorySubscribe extends LSDReqResMessage('LSD.Leader.SyncHistorySubscribe', {
+export const SyncHistorySubscribe = LSDReqResMessage('LSD.Leader.SyncHistorySubscribe', {
   subscriptionId: Schema.String,
-}) {}
-export class SyncHistoryUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHistoryUnsubscribe', {
+})
+export const SyncHistoryUnsubscribe = LSDReqResMessage('LSD.Leader.SyncHistoryUnsubscribe', {
   subscriptionId: Schema.String,
-}) {}
-export class SyncHistoryRes extends LSDReqResMessage('LSD.Leader.SyncHistoryRes', {
+})
+export const SyncHistoryRes = LSDReqResMessage('LSD.Leader.SyncHistoryRes', {
   eventEncoded: LiveStoreEvent.Global.Encoded,
-  metadata: Schema.Option(Schema.JsonValue),
+  metadata: Schema.Option(Schema.Json),
   subscriptionId: Schema.String,
-}) {}
+})
 
-export class SyncHeadSubscribe extends LSDReqResMessage('LSD.Leader.SyncHeadSubscribe', {
+export const SyncHeadSubscribe = LSDReqResMessage('LSD.Leader.SyncHeadSubscribe', {
   subscriptionId: Schema.String,
-}) {}
-export class SyncHeadUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHeadUnsubscribe', {
+})
+export const SyncHeadUnsubscribe = LSDReqResMessage('LSD.Leader.SyncHeadUnsubscribe', {
   subscriptionId: Schema.String,
-}) {}
-export class SyncHeadRes extends LSDReqResMessage('LSD.Leader.SyncHeadRes', {
+})
+export const SyncHeadRes = LSDReqResMessage('LSD.Leader.SyncHeadRes', {
   local: EventSequenceNumber.Client.Composite,
   upstream: EventSequenceNumber.Client.Composite,
   subscriptionId: Schema.String,
-}) {}
+})
 
-export class SnapshotReq extends LSDReqResMessage('LSD.Leader.SnapshotReq', {}) {}
+export const SnapshotReq = LSDReqResMessage('LSD.Leader.SnapshotReq', {})
 
-export class SnapshotRes extends LSDReqResMessage('LSD.Leader.SnapshotRes', {
-  snapshot: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
-}) {}
+export const SnapshotRes = LSDReqResMessage('LSD.Leader.SnapshotRes', {
+  snapshot: Transferable.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>,
+})
 
 export const LoadDatabaseFile = LeaderReqResMessage('LSD.Leader.LoadDatabaseFile', {
   payload: {
-    data: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
+    data: Transferable.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>,
     batchId: Schema.optional(Schema.String),
   },
   success: {},
   error: {
-    cause: Schema.Union(
+    cause: Schema.Union([
       Schema.TaggedStruct('unsupported-file', {}),
       Schema.TaggedStruct('unsupported-database', {}),
-      Schema.TaggedStruct('unknown-error', { cause: Schema.Defect }),
-    ),
+      Schema.TaggedStruct('unknown-error', { cause: Schema.Defect() }),
+    ]),
   },
 })
 
 // TODO refactor this to use push/pull semantics
-export class SyncPull extends LSDMessage('LSD.Leader.SyncPull', {
+export const SyncPull = LSDMessage('LSD.Leader.SyncPull', {
   payload: SyncState.PayloadUpstream,
-}) {}
+})
 
 // TODO refactor this to use push/pull semantics
-export class CommitEventReq extends LSDReqResMessage('LSD.Leader.CommitEventReq', {
+export const CommitEventReq = LSDReqResMessage('LSD.Leader.CommitEventReq', {
   eventEncoded: LiveStoreEvent.Input.Encoded,
-}) {}
+})
 
-export class CommitEventRes extends LSDReqResMessage('LSD.Leader.CommitEventRes', {}) {}
+export const CommitEventRes = LSDReqResMessage('LSD.Leader.CommitEventRes', {})
 
-export class EventlogReq extends LSDReqResMessage('LSD.Leader.EventlogReq', {}) {}
+export const EventlogReq = LSDReqResMessage('LSD.Leader.EventlogReq', {})
 
-export class EventlogRes extends LSDReqResMessage('LSD.Leader.EventlogRes', {
-  eventlog: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
-}) {}
+export const EventlogRes = LSDReqResMessage('LSD.Leader.EventlogRes', {
+  eventlog: Transferable.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>,
+})
 
-export class Ping extends LSDReqResMessage('LSD.Leader.Ping', {
+export const Ping = LSDReqResMessage('LSD.Leader.Ping', {
   devtoolsProtocolVersion: Schema.optional(Schema.Number),
-}) {}
+})
 
-export class Pong extends LSDReqResMessage('LSD.Leader.Pong', {
+export const Pong = LSDReqResMessage('LSD.Leader.Pong', {
   devtoolsProtocolVersion: Schema.optional(Schema.Number),
-}) {}
+})
 
 /**
  * Sent by the app when the DevTools protocol isn't compatible.
  * Contains package versions for display and protocol versions for the actual compatibility decision.
  */
-export class VersionMismatch extends LSDReqResMessage('LSD.Leader.VersionMismatch', {
+export const VersionMismatch = LSDReqResMessage('LSD.Leader.VersionMismatch', {
   /** The version running in the app */
   appVersion: Schema.String,
   /** The version that was sent by DevTools (that caused the mismatch) */
   receivedVersion: Schema.String,
   appDevtoolsProtocolVersion: Schema.Number,
   receivedDevtoolsProtocolVersion: Schema.optional(Schema.Number),
-}) {}
+})
 
-export class Disconnect extends LSDReqResMessage('LSD.Leader.Disconnect', {}) {}
+export const Disconnect = LSDReqResMessage('LSD.Leader.Disconnect', {})
 
 export const SetSyncLatch = LeaderReqResMessage('LSD.Leader.SetSyncLatch', {
   payload: {
@@ -139,7 +141,7 @@ export const SetSyncLatch = LeaderReqResMessage('LSD.Leader.SetSyncLatch', {
 
 export const ResetAllData = LeaderReqResMessage('LSD.Leader.ResetAllData', {
   payload: {
-    mode: Schema.Literal('all-data', 'only-app-db'),
+    mode: Schema.Literals(['all-data', 'only-app-db']),
   },
   success: {},
 })
@@ -163,12 +165,12 @@ export const ResetAllData = LeaderReqResMessage('LSD.Leader.ResetAllData', {
 //   failure: UnknownError,
 // }) {}
 
-// export const MessageToApp_ = Schema.Union(DatabaseFileInfo_, NetworkStatus_)
+// export const MessageToApp_ = Schema.Union([DatabaseFileInfo_, NetworkStatus_])
 
 // export type MessageToApp_ = typeof MessageToApp_.Type
 //
 
-export const MessageToApp = Schema.Union(
+export const MessageToApp = Schema.Union([
   SnapshotReq,
   LoadDatabaseFile.Request,
   EventlogReq,
@@ -185,11 +187,11 @@ export const MessageToApp = Schema.Union(
   SyncHeadSubscribe,
   SyncHeadUnsubscribe,
   SetSyncLatch.Request,
-).annotations({ identifier: 'LSD.Leader.MessageToApp' })
+]).annotate({ identifier: 'LSD.Leader.MessageToApp' })
 
 export type MessageToApp = typeof MessageToApp.Type
 
-export const MessageFromApp = Schema.Union(
+export const MessageFromApp = Schema.Union([
   SnapshotRes,
   LoadDatabaseFile.Response,
   EventlogRes,
@@ -205,6 +207,6 @@ export const MessageFromApp = Schema.Union(
   SyncHeadRes,
   ResetAllData.Success,
   SetSyncLatch.Success,
-).annotations({ identifier: 'LSD.Leader.MessageFromApp' })
+]).annotate({ identifier: 'LSD.Leader.MessageFromApp' })
 
 export type MessageFromApp = typeof MessageFromApp.Type
