@@ -4,7 +4,6 @@ description: LiveStore examples built with the Node adapter for server-side envi
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
-import { Image } from 'astro:assets';
 import { contribExamplesUrl, nodeExamples, getExampleDemoLinks } from '../../../data/examples.ts';
 
 # Node Adapter Examples
@@ -18,7 +17,7 @@ Examples using `@livestore/adapter-node` for Node.js server-side applications.
   return (
     <Card title={example.title} key={example.title}>
     {example.image ? (
-      <Image src={example.image.url} width={example.image.width} height={example.image.height} alt={`${example.title} application interface`} />
+      <img src={example.image.url} width={example.image.width} height={example.image.height} alt={`${example.title} application interface`} loading="lazy" decoding="async" />
     ) : (
       <div style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); height: 200px; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 14px; border-radius: 8px;">
         Screenshot coming soon
