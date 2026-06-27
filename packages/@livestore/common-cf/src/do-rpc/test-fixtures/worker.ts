@@ -5,7 +5,7 @@ import { DurableObject } from 'cloudflare:workers'
 import { layerProtocolDurableObject, toDurableObjectHandler } from '@livestore/common-cf'
 import {
   Effect,
-  HttpApp,
+  HttpEffect,
   Layer,
   Option,
   RpcClient,
@@ -76,7 +76,7 @@ export default {
       const url = new URL(request.url)
 
       // Handle HTTP RPC endpoint
-      if (url.pathname === '/rpc') {
+      if (url.pathname === '/rpc/') {
         // Get the test server DO instance
         const doId = env.TEST_RPC_DO.idFromName('test-server')
         const serverDO = env.TEST_RPC_DO.get(doId)
@@ -117,15 +117,14 @@ export default {
                 Effect.tapCause((cause) => Effect.log('log3', cause)),
               ),
           }).pipe(
-            Layer.provideMerge(RpcServer.layerProtocolHttp({ path: '/rpc' })),
             Layer.provideMerge(RpcSerialization.layerJson),
           )
 
-          // Create the HTTP RPC app
-          const httpApp = RpcServer.toHttpApp(TestRpcs).pipe(Effect.provide(handlersLayer))
+          // Create the HTTP RPC effect
+          const httpEffect = yield* RpcServer.toHttpEffect(TestRpcs).pipe(Effect.provide(handlersLayer))
 
           // Run the app and convert to web handler
-          const webHandler = yield* httpApp.pipe(Effect.map(HttpApp.toWebHandler))
+          const webHandler = HttpEffect.toWebHandler(httpEffect)
 
           return yield* Effect.promise(() => webHandler(request))
         }).pipe(
