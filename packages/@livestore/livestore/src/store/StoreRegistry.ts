@@ -16,7 +16,7 @@ import {
   RcMap,
   References,
   type Schema,
-  type Scope,
+  Scope,
 } from '@livestore/utils/effect'
 
 import { type CreateStoreOptions, createStore } from './create-store.ts'
@@ -186,7 +186,7 @@ export class StoreRegistry {
     if (config.context !== undefined) {
       this.#context = config.context
     } else {
-      const ownedRuntime = ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy))
+      const ownedRuntime = ManagedRuntime.make(Layer.mergeAll(Layer.effect(Scope.Scope, Effect.scope), OtelLiveDummy))
       this.#context = ownedRuntime.contextEffect.pipe(Effect.runSync)
       this.#disposeOwnedRuntime = () => ownedRuntime.dispose()
     }
