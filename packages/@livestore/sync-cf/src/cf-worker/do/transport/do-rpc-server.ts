@@ -3,17 +3,11 @@ import { type CfTypes, toDurableObjectHandler } from '@livestore/common-cf'
 import {
   Effect,
   Headers,
-  HttpServer,
-  Layer,
-  Logger,
   Option,
-  References,
-  RpcSerialization,
   Stream,
 } from '@livestore/utils/effect'
 
 import { SyncDoRpc } from '../../../common/do-rpc-schema.ts'
-import { SyncMessage } from '../../../common/mod.ts'
 import * as DoCtx from '../layer.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
@@ -32,9 +26,7 @@ export const createDoRpcHandler = (
 
     // TODO add admin RPCs
     const RpcLive = SyncDoRpc.toLayer({
-      'SyncDoRpc.Ping': (_req) => {
-        return Effect.succeed(SyncMessage.Pong.make({}))
-      },
+      'SyncDoRpc.Ping': () => Effect.void,
       'SyncDoRpc.Pull': (req, { headers }) =>
         Effect.gen({ self: this }, function* () {
           const { rpcSubscriptions } = yield* DoCtx.DoCtx
@@ -87,14 +79,7 @@ export const createDoRpcHandler = (
     })
 
     const handler = toDurableObjectHandler(SyncDoRpc, {
-      layer: Layer.mergeAll(RpcLive, RpcSerialization.layerJson, HttpServer.layerServices).pipe(
-        Layer.provide(
-          Layer.mergeAll(
-            Logger.layer([Logger.consoleStructured]),
-            Layer.succeed(References.MinimumLogLevel, 'Debug'),
-          ),
-        ),
-      ),
+      layer: RpcLive,
     })
 
     return yield* handler(payload).pipe(Effect.annotateLogs({ thread: 'SyncDo' }))
