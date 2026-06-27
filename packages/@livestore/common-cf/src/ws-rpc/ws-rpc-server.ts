@@ -169,6 +169,7 @@ export const setupDurableObjectWebSocketRpc = ({
 
       const ProtocolLive = layerRpcServerWebsocket({
         ws,
+        scope,
         incomingQueue,
         ...omitUndefineds({ onMessage }),
       }).pipe(Layer.provide(RpcSerialization.layerJson))
@@ -241,6 +242,7 @@ export const setupDurableObjectWebSocketRpc = ({
  */
 export interface WsRpcServerArgs {
   ws: CfTypes.WebSocket
+  scope: Scope.Scope
   onMessage?: (message: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
   /** Queue for receiving incoming messages from the WebSocket */
   incomingQueue: Queue.Queue<Uint8Array | string>
@@ -277,7 +279,7 @@ export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
  *
  * @internal Used internally by `layerRpcServerWebsocket`
  */
-const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =>
+const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServerArgs) =>
   Effect.gen(function* () {
     const serialization = yield* RpcSerialization.RpcSerialization
     const disconnects = yield* Queue.unbounded<number>()
@@ -329,7 +331,7 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
         Stream.runDrain,
         Effect.tapCauseLogPretty,
         // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-        Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
+        Effect.forkIn(scope, { startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       // Start the message processing
