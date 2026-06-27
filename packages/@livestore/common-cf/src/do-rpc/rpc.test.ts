@@ -92,15 +92,7 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
       const client = yield* RpcClient.make(TestRpcs)
       const error = yield* client.Fail({ message: 'test http failure' }).pipe(Effect.exit)
       expect(error.toString()).toMatchInlineSnapshot(`
-        "{
-          "_id": "Exit",
-          "_tag": "Failure",
-          "cause": {
-            "_id": "Cause",
-            "_tag": "Die",
-            "defect": "RPC failure: test http failure"
-          }
-        }"
+        "Failure(Cause([Die("RPC failure: test http failure")]))"
       `)
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
@@ -110,15 +102,7 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
       const client = yield* RpcClient.make(TestRpcs)
       const error = yield* client.Defect({ message: 'test http defect' }).pipe(Effect.exit)
       expect(error.toString()).toMatchInlineSnapshot(`
-        "{
-          "_id": "Exit",
-          "_tag": "Failure",
-          "cause": {
-            "_id": "Cause",
-            "_tag": "Die",
-            "defect": "some defect: test http defect"
-          }
-        }"
+        "Failure(Cause([Die("some defect: test http defect")]))"
       `)
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
@@ -141,15 +125,7 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
       const stream = client.StreamError({ count: 5, errorAfter: 4 })
       const error = yield* Stream.runCollect(stream).pipe(Effect.exit)
       expect(error.toString()).toMatchInlineSnapshot(`
-        "{
-          "_id": "Exit",
-          "_tag": "Failure",
-          "cause": {
-            "_id": "Cause",
-            "_tag": "Fail",
-            "failure": "Stream error after 4: got 9"
-          }
-        }"
+        "Failure(Cause([Fail("Stream error after 4: got 9")]))"
       `)
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
@@ -160,15 +136,7 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
       const stream = client.StreamDefect({ count: 4, defectAfter: 1 })
       const error = yield* Stream.runCollect(stream).pipe(Effect.exit)
       expect(error.toString()).toMatchInlineSnapshot(`
-        "{
-          "_id": "Exit",
-          "_tag": "Failure",
-          "cause": {
-            "_id": "Cause",
-            "_tag": "Die",
-            "defect": "Stream defect after 1: got 4"
-          }
-        }"
+        "Failure(Cause([Die("Stream defect after 1: got 4")]))"
       `)
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
