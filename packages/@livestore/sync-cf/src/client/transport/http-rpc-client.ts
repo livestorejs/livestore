@@ -101,7 +101,7 @@ export const makeHttpSync =
       const pingTimeout = options.ping?.requestTimeout ?? 10_000
 
       const ping: SyncBackend.SyncBackend<SyncMetadata>['ping'] = Effect.gen(function* () {
-        yield* rpcClient.SyncHttpRpc.Ping({ storeId, payload })
+        yield* rpcClient['SyncHttpRpc.Ping']({ storeId, payload })
 
         yield* SubscriptionRef.set(isConnected, true)
       }).pipe(
@@ -136,7 +136,7 @@ export const makeHttpSync =
         )
 
       const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (cursor, options) =>
-        rpcClient.SyncHttpRpc.Pull({
+        rpcClient['SyncHttpRpc.Pull']({
           storeId,
           payload,
           cursor: mapCursor(cursor),
@@ -155,7 +155,7 @@ export const makeHttpSync =
                   Effect.gen(function* () {
                     yield* Effect.sleep(livePullInterval)
 
-                    const items = yield* rpcClient.SyncHttpRpc.Pull({ storeId, payload, cursor: currentCursor }).pipe(
+                    const items = yield* rpcClient['SyncHttpRpc.Pull']({ storeId, payload, cursor: currentCursor }).pipe(
                       Stream.runCollect,
                     )
 
@@ -210,7 +210,7 @@ export const makeHttpSync =
           })(batch).pipe(Effect.mapError((cause) => new UnknownError({ cause })))
 
           for (const batchChunk of batchChunks) {
-            yield* rpcClient.SyncHttpRpc.Push({ storeId, payload, batch: batchChunk, backendId })
+            yield* rpcClient['SyncHttpRpc.Push']({ storeId, payload, batch: batchChunk, backendId })
           }
         },
         pushSemaphore.withPermits(1),

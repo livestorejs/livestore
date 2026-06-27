@@ -67,7 +67,7 @@ export const makeDoRpcSync =
       const backendIdHelper = yield* SyncBackend.makeBackendIdHelper
 
       const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (cursor, options) =>
-        rpcClient.SyncDoRpc.Pull({
+        rpcClient['SyncDoRpc.Pull']({
           cursor: cursor.pipe(
             Option.map((a) => ({
               eventSequenceNumber: a.eventSequenceNumber,
@@ -126,7 +126,7 @@ export const makeDoRpcSync =
           })(batch).pipe(Effect.mapError((cause) => new UnknownError({ cause })))
 
           for (const batchChunk of batchChunks) {
-            yield* rpcClient.SyncDoRpc.Push({ batch: batchChunk, storeId, backendId })
+            yield* rpcClient['SyncDoRpc.Push']({ batch: batchChunk, storeId, backendId })
           }
         },
         Effect.mapError((cause) =>
@@ -136,7 +136,7 @@ export const makeDoRpcSync =
         ),
       )
 
-      const ping: SyncBackend.SyncBackend<{ createdAt: string }>['ping'] = rpcClient.SyncDoRpc.Ping({
+      const ping: SyncBackend.SyncBackend<{ createdAt: string }>['ping'] = rpcClient['SyncDoRpc.Ping']({
         storeId,
         payload,
       }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('rpc-sync-client:ping'))
