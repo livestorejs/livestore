@@ -51,7 +51,7 @@ export class LeaderWorkerOuterInitialMessage extends Rpc.make('InitialMessage', 
   error: Schema.Never,
 }) {}
 
-export class LeaderWorkerOuterRequest extends RpcGroup.make(LeaderWorkerOuterInitialMessage) {}
+export class LeaderWorkerOuterRpcs extends RpcGroup.make(LeaderWorkerOuterInitialMessage) {}
 
 // TODO unify this code with schema from node adapter
 export class LeaderWorkerInnerInitialMessage extends Rpc.make('InitialMessage', {
@@ -174,7 +174,7 @@ export class WebmeshWorkerCreateConnection extends Rpc.make('WebmeshWorker.Creat
   stream: true,
 }) {}
 
-export class LeaderWorkerInnerRequest extends RpcGroup.make(
+export class LeaderWorkerInnerRpcs extends RpcGroup.make(
   LeaderWorkerInnerInitialMessage,
   LeaderWorkerInnerBootStatusStream,
   LeaderWorkerInnerPushToLeader,
@@ -210,7 +210,7 @@ export class SharedWorkerUpdateMessagePort extends Rpc.make('UpdateMessagePort',
   error: UnknownError,
 }) {}
 
-export class SharedWorkerRequest extends RpcGroup.make(
+export class SharedWorkerRpcs extends RpcGroup.make(
   SharedWorkerUpdateMessagePort,
 
   // Proxied requests
