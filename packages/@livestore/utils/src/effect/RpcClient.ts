@@ -7,8 +7,8 @@ import {
   Function,
   Latch,
   Layer,
-  Option,
   References,
+  Result,
   Schedule,
   type Scope,
 } from 'effect'
@@ -39,16 +39,22 @@ export const makeProtocolSocketWithIsConnected = (options: {
   readonly isConnected: SubscriptionRef.SubscriptionRef<boolean>
   // CHANGED: add ping schedule
   readonly pingSchedule?: Schedule.Schedule<unknown> | undefined
-}): Effect.Effect<Protocol['Type'], never, Scope.Scope | RpcSerialization.RpcSerialization | Socket.Socket> =>
+}): Effect.Effect<Protocol['Service'], never, Scope.Scope | RpcSerialization.RpcSerialization | Socket.Socket> =>
   Protocol.make(
-    Effect.fnUntraced(function* (writeResponse) {
+    Effect.fnUntraced(function* (writeResponse, clientIds) {
       const socket = yield* Socket.Socket
       const serialization = yield* RpcSerialization.RpcSerialization
+      const requestClientMap = new Map<string, number>()
 
       const write = yield* socket.writer
-      const parser = serialization.makeUnsafe()
+      let parser = serialization.makeUnsafe()
 
       const pinger = yield* makePinger(write(parser.encode(constPing)!), options?.pingSchedule)
+      let currentError: RpcClientError.RpcClientError | undefined
+
+      const markConnected = SubscriptionRef.set(options.isConnected, true)
+      const broadcast = (response: FromServerEncoded) =>
+        Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response))
 
       yield* Effect.suspend(() => {
         // We rely on the heartbeat watchdog while streaming arbitrarily long payloads.
@@ -57,6 +63,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
         // (The actual pong handler still calls `onPong()` to resolve manual pings.)
         // CHANGED: don't reset parser on every message
         // parser = serialization.makeUnsafe()
+        currentError = undefined
         pinger.reset()
         return socket
           .runRaw((message) => {
@@ -73,77 +80,84 @@ export const makeProtocolSocketWithIsConnected = (options: {
                   pinger.reset()
                   if (response._tag === 'Pong') {
                     pinger.onPong()
+                    return markConnected
                   }
-                  return writeResponse(response).pipe(
-                    // CHANGED: set isConnected to true on pong
-                    Effect.tap(
-                      Effect.fn(function* () {
-                        if (options?.isConnected !== undefined) {
-                          yield* SubscriptionRef.set(options.isConnected, true)
-                        }
-                      }),
-                    ),
-                  )
+                  if ('requestId' in response) {
+                    const clientId = requestClientMap.get(response.requestId)
+                    if (clientId !== undefined) {
+                      if (response._tag === 'Exit') {
+                        requestClientMap.delete(response.requestId)
+                      }
+                      return markConnected.pipe(Effect.andThen(writeResponse(clientId, response)))
+                    }
+                  }
+                  return markConnected.pipe(Effect.andThen(broadcast(response)))
                 },
                 step: Function.constVoid,
               })
             } catch (defect) {
-              return writeResponse({
+              return broadcast({
                 _tag: 'ClientProtocolError',
                 error: new RpcClientError.RpcClientError({
-                  reason: 'Protocol',
-                  message: 'Error decoding message',
-                  cause: Cause.fail(defect),
+                  reason: new RpcClientError.RpcClientDefect({
+                    message: 'Error decoding message',
+                    cause: defect,
+                  }),
                 }),
               })
             }
           })
           .pipe(
             Effect.raceFirst(
-              Effect.andThen(
-                pinger.timeout,
+              Effect.flatMap(pinger.timeout, () =>
                 Effect.fail(
-                  new Socket.SocketGenericError({
-                    reason: 'OpenTimeout',
-                    cause: new Error('ping timeout'),
+                  new Socket.SocketError({
+                    reason: new Socket.SocketOpenError({
+                      kind: 'Timeout',
+                      cause: new Error('ping timeout'),
+                    }),
                   }),
                 ),
               ),
             ),
           )
       }).pipe(
-        Effect.andThen(
+        Effect.flatMap(() =>
           Effect.fail(
-            new Socket.SocketCloseError({
-              reason: 'Close',
-              code: 1000,
-              closeReason: 'Closing connection',
+            new Socket.SocketError({
+              reason: new Socket.SocketCloseError({
+                code: 1000,
+                closeReason: 'Closing connection',
+              }),
             }),
           ),
         ),
         Effect.tapCause(
           Effect.fn(function* (cause) {
             // CHANGED: set isConnected to false on error
-            if (options?.isConnected !== undefined) {
-              yield* SubscriptionRef.set(options.isConnected, false)
-            }
+            yield* SubscriptionRef.set(options.isConnected, false)
 
-            const error = Cause.findErrorOption(cause)
+            const error = Cause.findError(cause)
             if (
               options?.retryTransientErrors !== undefined &&
-              Option.isSome(error) === true &&
-              (error.value.reason === 'Open' || error.value.reason === 'OpenTimeout')
+              Result.isSuccess(error) === true &&
+              error.success.reason._tag === 'SocketOpenError'
             ) {
               return
             }
             // yield* Effect.logError('Error in socket', cause)
-            return yield* writeResponse({
+            currentError = new RpcClientError.RpcClientError({
+              reason:
+                Result.isSuccess(error) === true
+                  ? error.success.reason
+                  : new RpcClientError.RpcClientDefect({
+                      message: 'Unknown socket error',
+                      cause: Cause.squash(cause),
+                    }),
+            })
+            return yield* broadcast({
               _tag: 'ClientProtocolError',
-              error: new RpcClientError.RpcClientError({
-                reason: 'Protocol',
-                message: 'Error in socket',
-                cause: Cause.squash(cause),
-              }),
+              error: currentError,
             })
           }),
         ),
@@ -161,7 +175,13 @@ export const makeProtocolSocketWithIsConnected = (options: {
       )
 
       return {
-        send: (request) => {
+        send: (clientId, request) => {
+          if (currentError !== undefined) {
+            return Effect.fail(currentError)
+          }
+          if (request._tag === 'Request') {
+            requestClientMap.set(request.id, clientId)
+          }
           const encoded = parser.encode(request)
           if (encoded === undefined) return Effect.void
 
@@ -180,7 +200,9 @@ export type SocketPinger = Effect.Success<ReturnType<typeof makePinger>>
 
 const makePinger = Effect.fnUntraced(function* <A, E, R>(
   writePing: Effect.Effect<A, E, R>,
-  pingSchedule: Schedule.Schedule<unknown> = Schedule.spaced(10000).pipe(Schedule.addDelay(() => 5000)),
+  pingSchedule: Schedule.Schedule<unknown> = Schedule.spaced(10000).pipe(
+    Schedule.addDelay(() => Effect.succeed(5000)),
+  ),
 ) {
   // CHANGED: add manual ping deferreds
   const manualPingDeferreds = new Set<Deferred.Deferred<void>>()
@@ -200,9 +222,9 @@ const makePinger = Effect.fnUntraced(function* <A, E, R>(
   }
   yield* Effect.suspend(() => {
     // Starting new ping
-    if (recievedPong === false) return latch.open
+    if (recievedPong === false) return Effect.asVoid(latch.open)
     recievedPong = false
-    return writePing
+    return Effect.asVoid(writePing)
   }).pipe(
     // CHANGED: make configurable via schedule
     Effect.schedule(pingSchedule),

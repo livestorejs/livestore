@@ -1,17 +1,7 @@
-import {
-  Effect,
-  Hash,
-  Result,
-  Schema,
-  SchemaGetter,
-  SchemaTransformation,
-  Struct,
-} from 'effect'
-import type { ParseOptions } from 'effect/SchemaAST'
-import * as SchemaAST from 'effect/SchemaAST'
+import { Effect, Hash, Result, Schema, SchemaAST, SchemaGetter, SchemaTransformation, Struct } from 'effect'
 import { Transferable } from 'effect/unstable/workers'
 
-import { shouldNeverHappen } from '../../mod.ts'
+import { shouldNeverHappen } from '../../misc.ts'
 
 export * from 'effect/Schema'
 export * from './debug-diff.ts'
@@ -58,27 +48,24 @@ export const getResolvedPropertySignatures = (
   return SchemaAST.isObjects(resolvedAst) === true ? resolvedAst.propertySignatures : []
 }
 
-/** Objects that can be transferred between contexts (workers, etc.) */
-type TransferableObject = ArrayBuffer | MessagePort
-
 export const encodeWithTransferables =
-  <A, I>(schema: Schema.Codec<A, I>, options?: ParseOptions) =>
-  (a: A, overrideOptions?: ParseOptions) =>
+  <A, I>(schema: Schema.Codec<A, I>, options?: SchemaAST.ParseOptions) =>
+  (a: A, overrideOptions?: SchemaAST.ParseOptions) =>
     Effect.gen(function* () {
       const collector = yield* Transferable.makeCollector
 
-      const encoded: I = yield* Schema.encodeEffect(schema, options)(a, overrideOptions).pipe(
+      const encoded = yield* Schema.encodeEffect(schema, options)(a, overrideOptions).pipe(
         Effect.provideService(Transferable.Collector, collector),
       )
 
-      return [encoded, collector.readUnsafe() as TransferableObject[]]
+      return [encoded, collector.readUnsafe()] as const
     })
 
 export const decodeSyncDebug: <A, I>(
   schema: Schema.Codec<A, I>,
   options?: SchemaAST.ParseOptions,
 ) => (i: I, overrideOptions?: SchemaAST.ParseOptions) => A = (schema, options) => (input, overrideOptions) => {
-  const res = Schema.decodeExit(schema, options)(input, overrideOptions)
+  const res = Schema.decodeResult(schema, options)(input, overrideOptions)
   if (Result.isFailure(res)) {
     return shouldNeverHappen(`decodeSyncDebug failed:`, res.failure)
   } else {
@@ -90,7 +77,7 @@ export const encodeSyncDebug: <A, I>(
   schema: Schema.Codec<A, I>,
   options?: SchemaAST.ParseOptions,
 ) => (a: A, overrideOptions?: SchemaAST.ParseOptions) => I = (schema, options) => (input, overrideOptions) => {
-  const res = Schema.encodeExit(schema, options)(input, overrideOptions)
+  const res = Schema.encodeResult(schema, options)(input, overrideOptions)
   if (Result.isFailure(res)) {
     return shouldNeverHappen(`encodeSyncDebug failed:`, res.failure)
   } else {

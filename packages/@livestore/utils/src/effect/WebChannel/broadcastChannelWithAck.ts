@@ -1,6 +1,7 @@
-import { Deferred, Exit, Latch, Predicate, Queue, Schema, Scope, Stream } from 'effect'
+import { Deferred, Exit, Filter, Latch, Predicate, Queue, Scope, Stream } from 'effect'
 
 import * as Effect from '../Effect.ts'
+import * as Schema from '../Schema/index.ts'
 import type { InputSchema, WebChannel } from './common.ts'
 import { listenToDebugPing, mapSchema, WebChannelSymbol } from './common.ts'
 
@@ -59,8 +60,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
 
       const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
         Stream.map(({ data }) => data),
-        Stream.map(Schema.decodeUnknownOption(Message)),
-        Stream.filterMap((_) => _),
+        Stream.filterMap(Filter.fromPredicateOption(Schema.decodeUnknownOption(Message))),
         Stream.mapEffect((data) =>
           Effect.gen(function* () {
             switch (data._tag) {

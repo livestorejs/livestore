@@ -163,7 +163,7 @@ export const makeDirectChannel = ({
 
         // We'll now forward all incoming messages to the listen queue
         yield* channel.listen.pipe(
-          Stream.flatten(),
+          Stream.mapEffect(Effect.fromResult),
           // Stream.tap((msg) => Effect.log(`${target}→${channelName}→${nodeName}:message:${msg.message}`)),
           Stream.tapArray((array) => Queue.offerAll(listenQueue, array)),
           Stream.runDrain,

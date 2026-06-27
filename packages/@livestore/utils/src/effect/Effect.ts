@@ -1,8 +1,7 @@
 import * as OtelTracer from '@effect/opentelemetry/Tracer'
 import { Cause, Console, type Context, Deferred, Duration, Effect, Function, Fiber, pipe, Predicate, Scope, type Stream } from 'effect'
 
-import { isDevEnv, objectToString } from '../mod.ts'
-import { UnknownError } from './Error.ts'
+import { isDevEnv, objectToString } from '../misc.ts'
 
 export * from 'effect/Effect'
 export { spanEvent } from './spanEvent.ts'
@@ -27,8 +26,6 @@ export const scopeWithCloseable = <R, E, A>(
   fn: (scope: Scope.Closeable) => Effect.Effect<A, E, R | Scope.Scope>,
 ): Effect.Effect<A, E, R | Scope.Scope> =>
   Effect.gen(function* () {
-    // const parentScope = yield* Scope.Scope
-    // const scope = yield* Scope.fork(parentScope, 'sequential')
     const scope = yield* Scope.make()
     yield* Effect.addFinalizer((exit) => Scope.close(scope, exit))
     return yield* fn(scope).pipe(Scope.provide(scope))
@@ -46,10 +43,7 @@ export const tryAll = <Res>(
   : Res extends Promise<infer A>
     ? Effect.Effect<A, Cause.UnknownError>
     : Effect.Effect<Res, Cause.UnknownError> =>
-  Effect.try({
-    try: () => fn(),
-    catch: (cause) => new Cause.UnknownError(cause),
-  }).pipe(
+  Effect.try({ try: () => fn(), catch: (cause) => new Cause.UnknownError(cause) }).pipe(
     Effect.andThen((fnRes) =>
       Effect.isEffect(fnRes) === true
         ? (fnRes as any as Effect.Effect<any>)
@@ -76,10 +70,7 @@ export const logBefore =
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.tapCause(eff, (cause) =>
     Effect.gen(function* () {
-      if (Cause.hasInterruptsOnly(cause) === true) {
-        // console.log('interrupted', Cause.pretty(err), err)
-        return
-      }
+      if (Cause.hasInterruptsOnly(cause) === true) return
 
       const span = yield* OtelTracer.currentOtelSpan.pipe(
         Effect.catchTag('NoSuchElementError', (_) => Effect.succeed(undefined)),
@@ -239,7 +230,7 @@ export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>>
  * This function allows you to enforce a time limit on the execution of an
  * effect. If the effect does not complete within the given duration, it dies
  * with a {@link Cause.TimeoutError} as an unchecked defect. Unlike
- * {@link Effect.timeout}, which adds `TimeoutException` to the error channel,
+ * {@link Effect.timeout}, which adds `TimeoutError` to the error channel,
  * this function keeps the error channel unchanged by treating the timeout as
  * a defect.
  *
@@ -249,7 +240,7 @@ export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>>
  * - Die with a {@link Cause.TimeoutError} defect if the time limit is exceeded.
  *
  * @see {@link timeoutOrDieMessage} for a version with a custom message.
- * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
+ * @see {@link Effect.timeout} for a version that raises a `TimeoutError` as a typed error.
  * @see {@link Effect.timeoutOrElse} for a version with a custom timeout branch.
  */
 export const timeoutOrDie =
@@ -278,7 +269,7 @@ export const timeoutOrDie =
  *   message if the time limit is exceeded.
  *
  * @see {@link timeoutOrDie} for a version without a custom message.
- * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
+ * @see {@link Effect.timeout} for a version that raises a `TimeoutError` as a typed error.
  * @see {@link Effect.timeoutOrElse} for a version with a custom timeout branch.
  */
 export const timeoutOrDieMessage =
