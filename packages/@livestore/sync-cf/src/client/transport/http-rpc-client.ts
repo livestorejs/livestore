@@ -1,5 +1,5 @@
 import { SyncBackend, UnknownError } from '@livestore/common'
-import type { EventSequenceNumber } from '@livestore/common/schema'
+import type { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { splitArrayBySize } from '@livestore/common/sync'
 import {
   type Duration,
@@ -25,6 +25,8 @@ import { MAX_HTTP_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST } from '../../commo
 import { SyncHttpRpc } from '../../common/http-rpc-schema.ts'
 import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
+
+type PushBatchItem = LiveStoreEvent.Global.Encoded
 
 export interface HttpSyncOptions {
   /**
@@ -201,7 +203,7 @@ export const makeHttpSync =
           const batchChunks = yield* splitArrayBySize({
             maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
             maxBytes: MAX_HTTP_REQUEST_BYTES,
-            encode: (items) => ({
+            encode: (items: ReadonlyArray<PushBatchItem>) => ({
               batch: items,
               storeId,
               payload,
