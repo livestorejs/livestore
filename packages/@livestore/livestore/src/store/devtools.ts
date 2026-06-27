@@ -43,6 +43,7 @@ export const connectDevtoolsToStore = Effect.fn('LSD.devtools.connectStoreToDevt
   const liveQueriesSubscriptions: SubMap = new Map()
   const debugInfoHistorySubscriptions: SubMap = new Map()
   const syncHeadClientSessionSubscriptions: SubMap = new Map()
+  const services = yield* Effect.context()
 
   const { clientId, sessionId } = store[StoreInternalsSymbol].clientSession
 
@@ -303,11 +304,11 @@ export const connectDevtoolsToStore = Effect.fn('LSD.devtools.connectStoreToDevt
         syncHeadClientSessionSubscriptions.set(
           subscriptionId,
           store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
-            Stream.tap((syncState) => send(syncState)),
+            Stream.tap((syncState) => Effect.sync(() => send(syncState))),
             Stream.runDrain,
             Effect.interruptible,
             Effect.tapCauseLogPretty,
-            Effect.runCallback,
+            Effect.runCallbackWith(services),
           ),
         )
 
