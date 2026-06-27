@@ -15,6 +15,42 @@
 }:
 let
   pnpm = "${inputs.effect-utils.lib.mkPnpm { inherit pkgs; }}/bin/pnpm";
+  tofu = "${pkgs.opentofu}/bin/tofu";
+  jq = "${pkgs.jq}/bin/jq";
+
+  # Shared preamble for the Netlify IaC tasks (.infra/iac/netlify).
+  #
+  # Injects the three runtime inputs OpenTofu needs as TF_VAR_* env vars,
+  # preferring an already-set env var (so CI can pass them directly) and falling
+  # back to the canonical source:
+  #   - netlify_api_token: existing Netlify CLI login (~/.config/netlify/config.json)
+  #   - state_encryption_passphrase + mxbai_api_key: 1Password via op-proxy
+  # Then runs `tofu init` against the encrypted local backend.
+  netlifyIacPreamble = ''
+    set -euo pipefail
+    cd "$DEVENV_ROOT/.infra/iac/netlify"
+
+    if [ -z "''${TF_VAR_netlify_api_token:-}" ]; then
+      if [ -n "''${NETLIFY_AUTH_TOKEN:-}" ]; then
+        export TF_VAR_netlify_api_token="$NETLIFY_AUTH_TOKEN"
+      else
+        export TF_VAR_netlify_api_token="$(${jq} -r '.users | to_entries[0].value.auth.token' "$HOME/.config/netlify/config.json")"
+      fi
+    fi
+
+    if [ -z "''${TF_VAR_state_encryption_passphrase:-}" ]; then
+      # Item: LiveStore vault / "livestore-tofu-state-encryption" / password.
+      # Addressed by vault+item id (the name-based op:// path resolves unreliably
+      # through op-proxy for this item).
+      export TF_VAR_state_encryption_passphrase="$(op-proxy read 'op://lyqreoqpojah7krktywucyjh5y/7daew6uco4ao4lpdrjpvutvjoi/password' --reason 'livestore netlify IaC state encryption' --cache 1d)"
+    fi
+
+    if [ -z "''${TF_VAR_mxbai_api_key:-}" ]; then
+      export TF_VAR_mxbai_api_key="$(op-proxy read 'op://ialr3ed3depgv523r3bqojsyjq/6lpbvcuq6mdasuheabe3ms7rdm/djua6eaktvatttoxnu6e6qsqai' --reason 'livestore netlify IaC mxbai key' --cache 1d)"
+    fi
+
+    ${tofu} init -input=false >/dev/null
+  '';
 in
 {
   tasks = {
@@ -394,6 +430,33 @@ in
         ${pnpm} --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build
       '';
       after = [ "examples:install" ];
+    };
+
+    # =========================================================================
+    # Infra (Infrastructure as Code — .infra/iac/)
+    #
+    # OpenTofu-managed desired state for LiveStore's public infrastructure.
+    # Currently owns the two runtime env vars on the `livestore-docs` Netlify
+    # site (MXBAI_API_KEY, MXBAI_VECTOR_STORE_ID). State is committed encrypted
+    # (OpenTofu native state encryption); secrets are injected at runtime via
+    # op-proxy/1Password (or env vars in CI). Seeds livestorejs/livestore#1244.
+    # See .infra/iac/netlify/README.md.
+    # =========================================================================
+
+    "infra:netlify:plan" = {
+      description = "Plan the livestore-docs Netlify env-var IaC (read-only; never applies)";
+      exec = ''
+        ${netlifyIacPreamble}
+        ${tofu} plan -input=false
+      '';
+    };
+
+    "infra:netlify:apply" = {
+      description = "Apply the livestore-docs Netlify env-var IaC (only after plan shows No changes / intended diff)";
+      exec = ''
+        ${netlifyIacPreamble}
+        ${tofu} apply -input=false
+      '';
     };
 
     # =========================================================================
