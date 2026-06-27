@@ -59,16 +59,18 @@ export const makeEndingPullStream = ({
             ),
         }),
       ),
-      Stream.mapAccum(total, (remaining, array) => {
+      Stream.mapAccum(() => total, (remaining, array) => {
         const nextRemaining = Math.max(0, remaining - array.length)
 
         return [
           nextRemaining,
-          SyncMessage.PullResponse.make({
-            batch: array,
-            pageInfo: nextRemaining > 0 ? SyncBackend.pageInfoMoreKnown(nextRemaining) : SyncBackend.pageInfoNoMore,
-            backendId,
-          }),
+          [
+            SyncMessage.PullResponse.make({
+              batch: array,
+              pageInfo: nextRemaining > 0 ? SyncBackend.pageInfoMoreKnown(nextRemaining) : SyncBackend.pageInfoNoMore,
+              backendId,
+            }),
+          ],
         ] as const
       }),
       Stream.tap(
