@@ -39,7 +39,7 @@ export type MakeWorkerOptions<TEnv extends Env = Env, TSyncPayload = Schema.Json
    * Optionally pass a schema to decode the client-provided payload into a typed object
    * before calling {@link validatePayload}. If omitted, the raw JSON value is forwarded.
    */
-  syncPayloadSchema?: Schema.Schema<TSyncPayload>
+  syncPayloadSchema?: Schema.Decoder<TSyncPayload>
   /**
    * Validates the (optionally decoded) payload during WebSocket connection establishment.
    * If {@link syncPayloadSchema} is provided, `payload` will be of the schema's inferred type.
@@ -200,7 +200,7 @@ export const handleSyncRequest = <
       // Always decode with the supplied schema when present, even if payload is undefined.
       // This ensures required payloads are enforced by the schema.
       if (syncPayloadSchema !== undefined) {
-        const decodedResult = Schema.decodeUnknownExit(syncPayloadSchema)(payload)
+        const decodedResult = Schema.decodeUnknownResult(syncPayloadSchema)(payload)
         if (Result.isFailure(decodedResult)) {
           const message = decodedResult.failure.toString()
           console.error('Invalid payload (decode failed)', message)
