@@ -302,7 +302,7 @@ const makeStoreTag = <TSchema extends LiveStoreSchema, TStoreId extends string>(
       })
     }
 
-    static use<A, E, R>(f: (ctx: RunningType) => Effect.Effect<A, E, R>) {
+    static override use<A, E, R>(f: (ctx: RunningType) => Effect.Effect<A, E, R>) {
       return Effect.flatMap(Tag, f)
     }
   }
