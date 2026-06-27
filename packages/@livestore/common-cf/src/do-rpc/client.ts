@@ -3,6 +3,7 @@ import {
   Fiber,
   FiberMap,
   Layer,
+  Option,
   RpcClient,
   type RpcMessage,
   RpcSerialization,
@@ -65,19 +66,21 @@ export const layerProtocolDurableObject = (args: MakeDoRpcProtocolArgs): Layer.L
  */
 const makeProtocolDurableObject = ({
   callRpc,
-}: MakeDoRpcProtocolArgs): Effect.Effect<RpcClient.Protocol['Type'], never, Scope.Scope> =>
+}: MakeDoRpcProtocolArgs): Effect.Effect<RpcClient.Protocol['Service'], never, Scope.Scope> =>
   RpcClient.Protocol.make(
     Effect.fnUntraced(function* (writeResponse) {
       // Not using an actual `FiberMap` here because it seems to shutdown to early
       // const fiberMap = new Map<string, Fiber.Fiber<void, never>>()
       const fiberMap = yield* FiberMap.make<string, void, never>()
 
-      const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void> => {
+      const send = (clientId: number, message: RpcMessage.FromClientEncoded): Effect.Effect<void> => {
         if (message._tag !== 'Request') {
           if (message._tag === 'Interrupt') {
             return Effect.gen(function* () {
               const fiber = yield* FiberMap.get(fiberMap, message.requestId)
-              yield* Fiber.interrupt(fiber)
+              if (Option.isSome(fiber) === true) {
+                yield* Fiber.interrupt(fiber.value)
+              }
             }).pipe(Effect.orDie)
           }
 
@@ -98,7 +101,7 @@ const makeProtocolDurableObject = ({
             const fiber = yield* processReadableStream(
               serializedResponse as CfTypes.ReadableStream,
               parser,
-              writeResponse,
+              (response) => writeResponse(clientId, response),
             ).pipe(
               // Effect.tapCauseLogPretty,
               // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
@@ -126,7 +129,7 @@ const makeProtocolDurableObject = ({
 
           // Process each response
           for (const response of responseArray) {
-            yield* writeResponse(response)
+            yield* writeResponse(clientId, response)
           }
         }).pipe(Effect.withSpan('do-rpc-client:send'), Effect.orDie) // Ensure never error type
       }
