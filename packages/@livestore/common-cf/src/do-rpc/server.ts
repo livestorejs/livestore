@@ -84,8 +84,7 @@ export const toDurableObjectHandler =
         }
 
         // Check if this is a streaming RPC
-        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.Handler doesn't expose successSchema publicly; see https://github.com/Effect-TS/effect/issues/6064
-        const isStream = RpcSchema.isStreamSchema((rpc as any).successSchema)
+        const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
 
         // For streaming RPCs with only one request, return ReadableStream directly
         if (isStream === true && requests.length === 1) {
@@ -95,18 +94,21 @@ export const toDurableObjectHandler =
         // Execute the handler
         const result = yield* Effect.gen(function* () {
           const handlerResult = entry.handler(request.payload, {
-            clientId: 0, // TODO: add proper clientId if needed
+            client: new Rpc.ServerClient(0), // TODO: add proper clientId if needed
+            requestId: request.id,
             headers: Headers.fromInput({
               'x-rpc-request-id': request.id.toString(),
             }),
+            rpc,
           })
+          const effectOrStream = Rpc.isWrapper(handlerResult) ? handlerResult.value : handlerResult
 
           let value: any
-          if (Effect.isEffect(handlerResult) === true) {
+          if (Effect.isEffect(effectOrStream) === true) {
             // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch
-            value = yield* handlerResult
+            value = yield* effectOrStream
           } else {
-            value = handlerResult
+            value = effectOrStream
           }
 
           // Get the exit schema for this RPC
@@ -117,7 +119,7 @@ export const toDurableObjectHandler =
           if (exitSchema !== undefined) {
             // Use schema encoding for proper serialization
             const rawExit = Exit.succeed(value)
-            encodedExit = yield* Schema.encodeUnknownEffect(exitSchema)(rawExit)
+            encodedExit = yield* Schema.encodeUnknownEffect(Schema.toCodecJson(exitSchema))(rawExit)
           } else {
             // Fallback to direct exit
             encodedExit = Exit.succeed(value)
@@ -139,7 +141,7 @@ export const toDurableObjectHandler =
               if (exitSchema !== undefined) {
                 // Use schema encoding for proper serialization
                 const rawExit = Exit.failCause(cause)
-                encodedExit = yield* Schema.encodeUnknownEffect(exitSchema)(rawExit)
+                encodedExit = yield* Schema.encodeUnknownEffect(Schema.toCodecJson(exitSchema))(rawExit)
               } else {
                 // Fallback to direct exit
                 encodedExit = Exit.failCause(cause)
@@ -160,7 +162,7 @@ export const toDurableObjectHandler =
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- msgPack parser.encode returns unknown; cast to expected wire format
       const encoded = parser.encode(responses) as Uint8Array<ArrayBuffer>
       return encoded
-    }).pipe(Effect.provide(options.layer), Effect.scoped, Effect.orDie)
+    }).pipe(Effect.provide(options.layer), Effect.scoped, Effect.orDie) as Effect.Effect<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream>
 
 /** Out-of-band RPC stream response emission back to the caller DO */
 export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(function* ({
@@ -204,25 +206,31 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
   Effect.gen(function* () {
     // Execute the handler to get the stream
     const handlerResult = entry.handler(request.payload, {
-      clientId: 0, // TODO: add proper clientId if needed
+      client: new Rpc.ServerClient(0), // TODO: add proper clientId if needed
+      requestId: request.id,
       headers: Headers.fromInput({
         'x-rpc-request-id': request.id.toString(),
       }),
+      rpc,
     })
+    const effectOrStream = Rpc.isWrapper(handlerResult) ? handlerResult.value : handlerResult
 
     // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch; orDie converts the error to a defect handled by the downstream catchCause
     const stream: Stream.Stream<any, any> =
-      Effect.isEffect(handlerResult) === true ? yield* Effect.orDie(handlerResult) : handlerResult
+      Effect.isEffect(effectOrStream) === true ? yield* Effect.orDie(effectOrStream)
+        : effectOrStream
 
     // Get the stream schemas for proper chunk-level encoding
     // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.Handler doesn't expose successSchema publicly; see https://github.com/Effect-TS/effect/issues/6064
-    const streamSchemas = RpcSchema.getStreamSchemas((rpc as any).successSchema.ast)
-    const arrayEncoder =
-      Option.isSome(streamSchemas) === true
-        ? // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- stream schema success type is inferred as unknown; cast needed for encodeUnknown
-          Schema.encodeUnknownEffect(Schema.Array(streamSchemas.value.success as Schema.Top))
-        : // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Schema.Any needs explicit cast for Schema.Array compatibility
-          Schema.encodeUnknownEffect(Schema.Array(Schema.Any as Schema.Top))
+    const streamSchemas = RpcSchema.isStreamSchema(rpc.successSchema)
+      ? Option.some({
+        success: rpc.successSchema.success,
+        error: rpc.successSchema.error,
+      })
+      : Option.none()
+    const arrayEncoder = Option.isSome(streamSchemas) === true
+      ? Schema.encodeUnknownEffect(Schema.toCodecJson(Schema.Array(streamSchemas.value.success)))
+      : Schema.encodeUnknownEffect(Schema.toCodecJson(Schema.Array(Schema.Any)))
 
     // Convert stream to ReadableStream
     const readableStream = new ReadableStream({
@@ -253,7 +261,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
           const rawExit = Exit.void
           // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
           const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
-          const encodedExit = yield* Schema.encodeUnknownEffect(exitSchema)(rawExit)
+          const encodedExit = yield* Schema.encodeUnknownEffect(Schema.toCodecJson(exitSchema))(rawExit)
 
           const exitMessage = {
             _tag: 'Exit' as const,
@@ -272,7 +280,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
               const rawExit = Exit.failCause(cause)
               // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
               const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
-              const encodedExit = yield* Schema.encodeUnknownEffect(exitSchema)(rawExit)
+              const encodedExit = yield* Schema.encodeUnknownEffect(Schema.toCodecJson(exitSchema))(rawExit)
 
               const exitMessage = {
                 _tag: 'Exit' as const,
@@ -289,7 +297,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
         )
 
         // Run the stream processing
-        runStream.pipe(Effect.provide(layer), Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
+        runStream.pipe(Effect.provide(layer), Effect.scoped, Effect.tapCauseLogPretty, _ => _ as Effect.Effect<void>, Effect.runPromise)
       },
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridging standard Web API ReadableStream to Cloudflare Worker ReadableStream type
     }) as any as CfTypes.ReadableStream
