@@ -1,6 +1,6 @@
 import type { UnknownError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
-import { Effect, Schema, UrlParams } from '@livestore/utils/effect'
+import { Effect, Result, Schema } from '@livestore/utils/effect'
 
 import type { SearchParams } from '../common/mod.ts'
 import { SearchParamsSchema, SyncMessage } from '../common/mod.ts'
@@ -136,6 +136,8 @@ export const PERSISTENCE_FORMAT_VERSION = 7
 export const encodeOutgoingMessage = Schema.encodeSync(Schema.fromJsonString(SyncMessage.BackendToClientMessage))
 export const encodeIncomingMessage = Schema.encodeSync(Schema.fromJsonString(SyncMessage.ClientToBackendMessage))
 
+const SearchParamsFromUrlSearchParams = Schema.fromURLSearchParams(SearchParamsSchema)
+
 /**
  * Extracts the LiveStore sync search parameters from a request. Returns
  * `undefined` when the request does not carry valid sync metadata so callers
@@ -143,14 +145,13 @@ export const encodeIncomingMessage = Schema.encodeSync(Schema.fromJsonString(Syn
  */
 export const matchSyncRequest = (request: CfTypes.Request): SearchParams | undefined => {
   const url = new URL(request.url)
-  const urlParams = UrlParams.fromInput(url.searchParams)
-  const paramsResult = UrlParams.schemaStruct(SearchParamsSchema)(urlParams).pipe(Effect.option, Effect.runSync)
+  const paramsResult = Schema.decodeUnknownResult(SearchParamsFromUrlSearchParams)(url.searchParams)
 
-  if (paramsResult._tag === 'None') {
+  if (Result.isFailure(paramsResult)) {
     return undefined
   }
 
-  return paramsResult.value
+  return paramsResult.success
 }
 
 // RPC subscription storage (TODO refactor)
