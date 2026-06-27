@@ -1,4 +1,17 @@
-import { Effect, Hash, Result, Schema, SchemaAST, SchemaGetter, SchemaTransformation, Struct } from 'effect'
+import {
+  Array,
+  Effect,
+  Function,
+  Hash,
+  Option,
+  Result,
+  Schema,
+  SchemaAST,
+  SchemaGetter,
+  SchemaIssue,
+  SchemaTransformation,
+  Struct,
+} from 'effect'
 import { Transferable } from 'effect/unstable/workers'
 
 import { shouldNeverHappen } from '../../misc.ts'
@@ -6,16 +19,68 @@ import { shouldNeverHappen } from '../../misc.ts'
 export * from 'effect/Schema'
 export * from './debug-diff.ts'
 
+type PluckSchema<Fields extends Schema.Struct.Fields, K extends keyof Fields> = Schema.Codec<
+  Fields[K]['Type'],
+  Schema.Struct<Pick<Fields, K>>['Encoded'],
+  Schema.Struct<Pick<Fields, K>>['DecodingServices'],
+  Schema.Struct<Pick<Fields, K>>['EncodingServices']
+>
+
 export const pluck = <const K extends PropertyKey>(key: K) => <Fields extends { readonly [P in K]: Schema.Top }>(
-  schema: Schema.Struct<Fields>
-) => {
+  schema: Schema.Struct<Fields>,
+): PluckSchema<Fields, K & keyof Fields> => {
+  const field = schema.fields[key] as Fields[K & keyof Fields]
+
   return schema.mapFields(Struct.pick([key])).pipe(
-    Schema.decodeTo(Schema.toType(schema.fields[key]), {
+    Schema.decodeTo(Schema.toType(field), {
       decode: SchemaGetter.transform((whole: any) => whole[key]),
-      encode: SchemaGetter.transform((value) => ({ [key]: value } as any))
-    })
+      encode: SchemaGetter.transform((value) => ({ [key]: value }) as any),
+    }),
+  ) as unknown as PluckSchema<Fields, K & keyof Fields>
+}
+
+export const head = <S extends Schema.Top>(array: Schema.$Array<S>): Schema.decodeTo<Schema.Option<Schema.toType<S>>, Schema.$Array<S>> =>
+  array.pipe(
+    Schema.decodeTo(
+      Schema.Option(Schema.toType(array.value)),
+      SchemaTransformation.transform({
+        decode: Array.head,
+        encode: Option.match({
+          onNone: () => [],
+          onSome: Array.of,
+        }),
+      }),
+    ),
   )
-};
+
+type HeadOrElse<S extends Schema.Top> = Schema.decodeTo<Schema.toType<S>, Schema.$Array<S>>
+
+export const headOrElse: {
+  <S extends Schema.Top>(array: Schema.$Array<S>, orElse?: () => S['Type']): HeadOrElse<S>
+  (): <S extends Schema.Top>(array: Schema.$Array<S>) => HeadOrElse<S>
+  <S extends Schema.Top>(orElse: () => S['Type']): (array: Schema.$Array<S>) => HeadOrElse<S>
+} = Function.dual(
+  (args) => Schema.isSchema(args[0]),
+  <S extends Schema.Top>(array: Schema.$Array<S>, orElse?: () => S['Type']): HeadOrElse<S> =>
+    array.pipe(
+      Schema.decodeTo(
+        Schema.toType(array.value),
+        SchemaTransformation.transformOrFail({
+          decode: (array) =>
+            Array.isReadonlyArrayNonEmpty(array) === true
+              ? Effect.succeed(Array.headNonEmpty(array))
+              : orElse === undefined
+                ? Effect.fail(
+                    new SchemaIssue.InvalidValue(Option.some(array), {
+                      message: 'Unable to retrieve the first element of an empty array',
+                    }),
+                  )
+                : Effect.succeed(orElse()),
+          encode: (value) => Effect.succeed(Array.of(value)),
+        }),
+      ),
+    ),
+)
 
 export const DateFromEpochMillis = Schema.Date.pipe(
   Schema.encodeTo(

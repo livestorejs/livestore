@@ -1,4 +1,4 @@
-import { Effect, KeyValueStore, Option } from '@livestore/utils/effect'
+import { Effect, KeyValueStore } from '@livestore/utils/effect'
 
 import { UnknownError } from '../errors.ts'
 
@@ -10,8 +10,8 @@ export const makeBackendIdHelper = Effect.gen(function* () {
 
   const setBackendId = (backendId: string) =>
     Effect.gen(function* () {
-      if (backendIdRef.current._tag === 'None' || backendIdRef.current.value !== backendId) {
-        backendIdRef.current = Option.some(backendId)
+      if (backendIdRef.current !== backendId) {
+        backendIdRef.current = backendId
         yield* kv.set(backendIdKey, backendId)
       }
     }).pipe(UnknownError.mapToUnknownError)

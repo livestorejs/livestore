@@ -7,7 +7,7 @@ import {
   KeyValueStore,
   Latch,
   Layer,
-  PlatformError,
+  Option,
   Queue,
   Schema,
   Stream,
@@ -47,7 +47,7 @@ import { LeaderThreadCtx } from './types.ts'
 
 export interface MakeLeaderThreadLayerParams {
   storeId: string
-  syncPayloadSchema: Schema.Top | undefined
+  syncPayloadSchema: Schema.Decoder<Schema.Json> | undefined
   syncPayloadEncoded: Schema.Json | undefined
   clientId: string
   schema: LiveStoreSchema
@@ -118,11 +118,11 @@ export const makeLeaderThreadLayer = ({
                 KeyValueStore.makeStringOnly({
                   get: (_key) =>
                     Effect.sync(() => Eventlog.getBackendIdFromDb(dbEventlog)).pipe(
+                      Effect.map(Option.getOrUndefined),
                       Effect.catchDefect((cause) =>
-                        PlatformError.BadArgument.make({
+                        new KeyValueStore.KeyValueStoreError({
                           method: 'getBackendIdFromDb',
-                          description: 'Failed to get backendId',
-                          module: 'KeyValueStore',
+                          message: 'Failed to get backendId',
                           cause,
                         }),
                       ),
@@ -130,10 +130,9 @@ export const makeLeaderThreadLayer = ({
                   set: (_key, value) =>
                     Effect.sync(() => Eventlog.updateBackendId(dbEventlog, value)).pipe(
                       Effect.catchDefect((cause) =>
-                        PlatformError.BadArgument.make({
+                        new KeyValueStore.KeyValueStoreError({
                           method: 'updateBackendId',
-                          module: 'KeyValueStore',
-                          description: 'Failed to update backendId',
+                          message: 'Failed to update backendId',
                           cause,
                         }),
                       ),

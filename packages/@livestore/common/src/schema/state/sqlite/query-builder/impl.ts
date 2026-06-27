@@ -21,7 +21,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         const [col] = params as any as [string]
         return makeQueryBuilder(tableDef, {
           ...ast,
-          resultSchemaSingle: ast.resultSchemaSingle.pipe(Schema.pluck(col)),
+          resultSchemaSingle: ast.tableDef.rowSchema.pipe(Schema.pluck(col)),
           select: { columns: [col] },
         })
       }
@@ -33,7 +33,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       return makeQueryBuilder(tableDef, {
         ...ast,
         resultSchemaSingle:
-          columns.length === 0 ? ast.resultSchemaSingle : ast.resultSchemaSingle.mapFields(Struct.pick(columns)),
+          columns.length === 0 ? ast.resultSchemaSingle : ast.tableDef.rowSchema.mapFields(Struct.pick(columns)),
         select: { columns },
       }) as any
     },
@@ -320,7 +320,7 @@ export const invalidQueryBuilder = (msg?: string) => {
   return shouldNeverHappen(`Invalid query builder${msg !== undefined ? `: ${msg}` : ''}`)
 }
 
-export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Top => {
+export const getResultSchema = (qb: QueryBuilder<any, any, any>) => {
   const queryAst = qb[QueryBuilderAstSymbol]
   switch (queryAst._tag) {
     case 'SelectQuery': {
@@ -335,7 +335,7 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Top => 
         return arraySchema.pipe(Schema.headOrElse())
       } else {
         const fallbackValue = queryAst.pickFirst.fallback()
-        return Schema.Union([arraySchema, Schema.Tuple([Schema.Literal(fallbackValue)])]).pipe(
+        return Schema.Array(Schema.Union([queryAst.resultSchemaSingle, Schema.Literal(fallbackValue)])).pipe(
           Schema.headOrElse(() => fallbackValue),
         )
       }

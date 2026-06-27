@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { ParseResult, Schema, SchemaGetter } from '@livestore/utils/effect'
+import { Schema, SchemaGetter, Struct } from '@livestore/utils/effect'
 
 import { BoundArray } from './bounded-collections.ts'
 import { PreparedBindValues } from './util.ts'
@@ -22,57 +22,41 @@ export const SlowQueryInfo = Schema.Struct({
   startTimePerfNow: Schema.Number,
 })
 
-const getSizeLimit = (value: unknown): number =>
-  typeof (value as { sizeLimit?: number }).sizeLimit === 'number'
-    ? (value as { sizeLimit: number }).sizeLimit
-    : Number.POSITIVE_INFINITY
-
-const isBoundArrayLike = (value: unknown): value is BoundArray<unknown> =>
-  value instanceof BoundArray ||
-  (value !== null && typeof value === 'object' && typeof (value as { sizeLimit?: number }).sizeLimit === 'number')
+const isBoundArrayLike = <A>(value: unknown): value is BoundArray<A> =>
+  value instanceof BoundArray
 
 const BoundArraySchemaFromSelf = <A, I, RD, RE>(
   item: Schema.Codec<A, I, RD, RE>,
-): Schema.Codec<BoundArray<A>, BoundArray<I>, RD, RE> =>
-  Schema.declare(
-    [item],
+): Schema.Codec<BoundArray<A>, BoundArray<A>> =>
+  Schema.declare<BoundArray<A>>(
+    isBoundArrayLike,
     {
-      decode: (item) => (input, parseOptions, ast) => {
-        if (isBoundArrayLike(input) === true) {
-          const elements = ParseResult.decodeUnknown(Schema.Array(item))([...input], parseOptions)
-          return ParseResult.map(elements, (as): BoundArray<A> => BoundArray.make(getSizeLimit(input), as))
-        }
-        return ParseResult.fail(new ParseResult.Type(ast, input))
-      },
-      encode: (item) => (input, parseOptions, ast) => {
-        if (isBoundArrayLike(input) === true) {
-          const items = [...input]
-          const elements = ParseResult.encodeUnknown(Schema.Array(item))(items, parseOptions)
-          return ParseResult.map(elements, (is): BoundArray<I> => BoundArray.make(getSizeLimit(input), is))
-        }
-        return ParseResult.fail(new ParseResult.Type(ast, input))
-      },
-    },
-    {
-      description: `BoundArray<${Schema.format(item)}>`,
+      identifier: 'BoundArray',
+      expected: 'BoundArray',
+      description: 'Bounded array',
       toFormatter: () => (_) => `BoundArray(${_.length})`,
-      arbitrary: () => (fc) => fc.anything() as any,
-      equivalence: () => {
+      toArbitrary: () => (fc) => {
+        const itemArbitrary = Schema.toArbitraryLazy(item)(fc)
+        return fc.integer({ min: 0, max: 100 }).chain((sizeLimit) =>
+          fc.array(itemArbitrary, { maxLength: sizeLimit }).map((items) => BoundArray.make(sizeLimit, items)),
+        )
+      },
+      toEquivalence: () => {
         const elementEquivalence = Schema.toEquivalence(item)
-        return (a: unknown, b: unknown) => {
+        return (a, b) => {
           if (a === b) {
             return true
           }
           if (isBoundArrayLike(a) === false || isBoundArrayLike(b) === false) {
             return false
           }
-          if (getSizeLimit(a) !== getSizeLimit(b) || a.length !== b.length) {
+          if (a.sizeLimit !== b.sizeLimit || a.length !== b.length) {
             return false
           }
           const itemsA = [...a]
           const itemsB = [...b]
           for (let i = 0; i < itemsA.length; i++) {
-            if (elementEquivalence(itemsA[i] as any, itemsB[i] as any) === false) {
+            if (elementEquivalence(itemsA[i]!, itemsB[i]!) === false) {
               return false
             }
           }
@@ -91,8 +75,7 @@ export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Code
       BoundArraySchemaFromSelf(Schema.toType(elSchema)),
       {
         decode: SchemaGetter.transform((_) => BoundArray.make(_.size, _.items)),
-        encode: SchemaGetter.transform((_) => ({ size: _.sizeLimit, items: [..._] }),
-        ),
+        encode: SchemaGetter.transform((_) => ({ size: _.sizeLimit, items: [..._] })),
       },
     ),
   )
@@ -106,5 +89,5 @@ export const DebugInfo = Schema.Struct({
 
 export type DebugInfo = typeof DebugInfo.Type
 
-export const MutableDebugInfo = Schema.mutable(DebugInfo)
+export const MutableDebugInfo = DebugInfo.mapFields(Struct.map(Schema.mutableKey))
 export type MutableDebugInfo = typeof MutableDebugInfo.Type

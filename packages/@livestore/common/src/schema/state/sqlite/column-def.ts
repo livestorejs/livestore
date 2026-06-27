@@ -157,7 +157,10 @@ const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.Col
   const ast = schema.ast
   // Strip nullable wrapper to get core type
   const coreAst = stripNullable(ast)
-  const coreSchema = stripNullable(ast) === ast ? schema : Schema.make(coreAst)
+  const coreSchema = (stripNullable(ast) === ast ? schema : Schema.make(coreAst)) as Schema.Codec<
+    any,
+    any
+  >
 
   // Special case: Boolean is transformed to integer in SQLite
   if (SchemaAST.isBoolean(coreAst) === true) {
@@ -173,9 +176,7 @@ const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.Col
   }
 
   if (SchemaAST.isNumber(encodedAst) === true) {
-    // Special cases for integer columns
-    const id = SchemaAST.resolveIdentifier(coreAst) ?? ''
-    if (id === 'Int' || id === 'DateFromEpochMillis') {
+    if (hasCheck(coreAst.checks, 'isInt') === true || SchemaAST.resolveIdentifier(coreAst) === 'DateFromEpochMillis') {
       return SqliteDsl.integer({ schema: coreSchema, nullable })
     }
     return SqliteDsl.real({ schema: coreSchema, nullable })
@@ -217,7 +218,7 @@ const stripNullable = (ast: SchemaAST.AST): SchemaAST.AST => {
 
 const getLiteralColumnDefinition = (
   ast: SchemaAST.AST,
-  schema: Schema.Top,
+  schema: Schema.Codec<any, any>,
   nullable: boolean,
   sourceAst: SchemaAST.AST,
 ): SqliteDsl.ColumnDefinition.Any | null => {
@@ -229,8 +230,7 @@ const getLiteralColumnDefinition = (
     case 'string':
       return SqliteDsl.text({ schema, nullable })
     case 'number': {
-      const id = SchemaAST.resolveIdentifier(sourceAst) ?? ''
-      if (id === 'Int' || id === 'DateFromEpochMillis') {
+      if (hasCheck(sourceAst.checks, 'isInt') === true || SchemaAST.resolveIdentifier(sourceAst) === 'DateFromEpochMillis') {
         return SqliteDsl.integer({ schema, nullable })
       }
 
@@ -274,7 +274,31 @@ const getLiteralValueType = (
     : null
 }
 
+/**
+ * Recursively checks for Effect built-in check metadata.
+ *
+ * Checks can be attached directly as `Filter`s or nested in `FilterGroup`s when
+ * schemas compose multiple refinements, e.g. `Schema.Int.check(...)`.
+ */
+const hasCheck = (checks: ReadonlyArray<SchemaAST.Check<unknown>> | undefined, tag: string): boolean => {
+  return (
+    checks?.some((check) => {
+      switch (check._tag) {
+        case 'Filter':
+          return check.annotations?.meta?._tag === tag
+        case 'FilterGroup':
+          return hasCheck(check.checks, tag)
+      }
+    }) === true
+  )
+}
+
 const isUint8ArraySchema = (ast: SchemaAST.AST): boolean => {
+  const typeConstructor = SchemaAST.resolveAt<{ readonly _tag: string }>('typeConstructor')(ast)
+  if (typeConstructor?._tag === 'Uint8Array') {
+    return true
+  }
+
   const identifier = SchemaAST.resolveIdentifier(ast)
   if (identifier !== undefined && identifier.includes('Uint8Array') === true) {
     return true

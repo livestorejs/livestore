@@ -511,7 +511,7 @@ const rebaseEvents = ({
  * it could make sense to "flatten" update results into a single update result which the client session
  * can process more efficiently which avoids push-threshing
  */
-const _flattenMergeResults = (_updateResults: ReadonlyArray<MergeResult>) => {}
+const _flattenMergeResults = (_updateResults: ReadonlyArray<typeof MergeResult>) => {}
 
 const validatePayload = (payload: typeof Payload.Type) =>
   Effect.gen(function* () {

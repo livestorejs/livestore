@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest'
 
-import { Schema, SchemaTransformation } from '@livestore/utils/effect'
+import { Schema, SchemaAST, SchemaTransformation } from '@livestore/utils/effect'
 
-import { withColumnType, withPrimaryKey } from './column-annotations.ts'
+import { ColumnType, PrimaryKeyId, withColumnType, withPrimaryKey } from './column-annotations.ts'
 
 describe.concurrent('annotations', () => {
   describe('withPrimaryKey', () => {
@@ -10,16 +10,8 @@ describe.concurrent('annotations', () => {
       const schema = Schema.String
       const result = withPrimaryKey(schema)
 
-      expect(result.ast).toMatchInlineSnapshot(`
-        {
-          "_tag": "StringKeyword",
-          "annotations": {
-            "Symbol(effect/annotation/Description)": "a string",
-            "Symbol(effect/annotation/Title)": "string",
-            "Symbol(livestore/state/sqlite/annotations/primary-key)": true,
-          },
-        }
-      `)
+      expect(SchemaAST.isString(result.ast)).toBe(true)
+      expect(Schema.resolveAnnotations(result)?.[PrimaryKeyId]).toBe(true)
     })
   })
 
@@ -185,33 +177,17 @@ describe.concurrent('annotations', () => {
         const schema = Schema.String
         const result = withColumnType(schema, 'text')
 
-        expect(result.ast).toMatchInlineSnapshot(`
-          {
-            "_tag": "StringKeyword",
-            "annotations": {
-              "Symbol(effect/annotation/Description)": "a string",
-              "Symbol(effect/annotation/Title)": "string",
-              "Symbol(livestore/state/sqlite/annotations/column-type)": "text",
-            },
-          }
-        `)
+        expect(SchemaAST.isString(result.ast)).toBe(true)
+        expect(Schema.resolveAnnotations(result)?.[ColumnType]).toBe('text')
       })
 
       test('should preserve existing annotations', () => {
         const schema = withPrimaryKey(Schema.String)
         const result = withColumnType(schema, 'text')
 
-        expect(result.ast).toMatchInlineSnapshot(`
-          {
-            "_tag": "StringKeyword",
-            "annotations": {
-              "Symbol(effect/annotation/Description)": "a string",
-              "Symbol(effect/annotation/Title)": "string",
-              "Symbol(livestore/state/sqlite/annotations/column-type)": "text",
-              "Symbol(livestore/state/sqlite/annotations/primary-key)": true,
-            },
-          }
-        `)
+        expect(SchemaAST.isString(result.ast)).toBe(true)
+        expect(Schema.resolveAnnotations(result)?.[ColumnType]).toBe('text')
+        expect(Schema.resolveAnnotations(result)?.[PrimaryKeyId]).toBe(true)
       })
     })
   })

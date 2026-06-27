@@ -146,7 +146,7 @@ export interface AdapterArgs {
    *
    * @default undefined
    */
-  syncPayloadSchema: Schema.Top | undefined
+  syncPayloadSchema: Schema.Decoder<Schema.Json> | undefined
   /** Encoded representation of the sync payload matching `syncPayloadSchema`. */
   syncPayloadEncoded: Schema.Json | undefined
 }

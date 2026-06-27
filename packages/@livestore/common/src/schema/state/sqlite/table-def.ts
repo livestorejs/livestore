@@ -38,19 +38,7 @@ export type TableDef<
   // https://github.com/livestorejs/livestore/issues/382
   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDefConstrained,
   TOptions extends TableOptions = TableOptions,
-  // NOTE we're not using `SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>`
-  // as we don't want the alias type for users to show up, so we're redefining it here
-  // TODO adjust this to `TSchema = Schema.TypeLiteral<` but requires some advance type-level work
-  TSchema = Schema.Codec<
-    SqliteDsl.AnyIfConstained<
-      TSqliteDef['columns'],
-      { readonly [K in keyof TSqliteDef['columns']]: TSqliteDef['columns'][K]['schema']['Type'] }
-    >,
-    SqliteDsl.AnyIfConstained<
-      TSqliteDef['columns'],
-      { readonly [K in keyof TSqliteDef['columns']]: TSqliteDef['columns'][K]['schema']['Encoded'] }
-    >
-  >,
+  TSchema extends Schema.Top = Schema.Struct<SqliteDsl.StructFieldsForColumns<TSqliteDef['columns']>>,
 > = {
   sqliteDef: TSqliteDef
   options: TOptions
@@ -213,7 +201,7 @@ export function table<
     columns = SqliteDsl.isColumnDefinition(columnOrColumns) === true ? { value: columnOrColumns } : columnOrColumns
     additionalIndexes = []
   } else if ('schema' in args) {
-    const result = schemaFieldsToColumns(Schema.getResolvedPropertySignatures(args.schema))
+    const result = schemaFieldsToColumns(getSqlitePropertySignatures(args.schema))
     columns = result.columns
 
     // We'll set tableName first, then use it for index names
@@ -277,6 +265,68 @@ export function table<
   tableDef[QueryBuilderTypeId] = query[QueryBuilderTypeId]
 
   return tableDef as any
+}
+
+const getSqlitePropertySignatures = (schema: Schema.Top): ReadonlyArray<SchemaAST.PropertySignature> => {
+  const encodedPropertySignatures = getPropertySignatures(SchemaAST.toEncoded(schema.ast))
+  const typePropertySignatures = getPropertySignatures(SchemaAST.toType(schema.ast))
+
+  return encodedPropertySignatures.map((encodedPropertySignature) => {
+    const typePropertySignature = typePropertySignatures.find(
+      (propertySignature) => propertySignature.name === encodedPropertySignature.name,
+    )
+
+    if (typePropertySignature === undefined || hasLiveStoreSqliteAnnotation(encodedPropertySignature.type) === true) {
+      return encodedPropertySignature
+    }
+
+    return new SchemaAST.PropertySignature(encodedPropertySignature.name, typePropertySignature.type)
+  })
+}
+
+const getPropertySignatures = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.PropertySignature> => {
+  if (SchemaAST.isObjects(ast) === true) return ast.propertySignatures
+
+  if (SchemaAST.isUnion(ast) === true) {
+    const members = ast.types.map(getPropertySignatures)
+    const [head, ...tail] = members
+    if (head === undefined) return []
+
+    return head.flatMap((propertySignature) => {
+      const matchingPropertySignatures: Array<SchemaAST.PropertySignature> = []
+      for (const propertySignatures of tail) {
+        const matchingPropertySignature = propertySignatures.find(
+          (memberPropertySignature) => memberPropertySignature.name === propertySignature.name,
+        )
+        if (matchingPropertySignature === undefined) {
+          return []
+        }
+        matchingPropertySignatures.push(matchingPropertySignature)
+      }
+
+      const propertySignatures = [propertySignature, ...matchingPropertySignatures]
+      const union = new SchemaAST.Union(
+        propertySignatures.map((memberPropertySignature) => memberPropertySignature.type),
+        ast.mode,
+      )
+
+      return [
+        new SchemaAST.PropertySignature(
+          propertySignature.name,
+          propertySignatures.some((memberPropertySignature) => SchemaAST.isOptional(memberPropertySignature.type))
+            ? SchemaAST.optionalKey(union)
+            : union,
+        ),
+      ]
+    })
+  }
+
+  return []
+}
+
+const hasLiveStoreSqliteAnnotation = (ast: SchemaAST.AST): boolean => {
+  const annotationKeys = [...Object.keys(ast.annotations ?? {}), ...Object.keys(ast.context?.annotations ?? {})]
+  return annotationKeys.some((key) => key.startsWith('livestore/state/sqlite/annotations/'))
 }
 
 export namespace FromTable {

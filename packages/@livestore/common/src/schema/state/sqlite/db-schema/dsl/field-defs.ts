@@ -55,7 +55,7 @@ type ColumnDefaultArg<T, TNullable extends boolean> =
   | NoDefault
 
 export type ColumnDefinitionInput = {
-  readonly schema?: Schema.Schema<unknown>
+  readonly schema?: Schema.Codec<unknown, unknown>
   readonly default?: ColumnDefaultArg<unknown, boolean>
   readonly nullable?: boolean
   readonly primaryKey?: boolean
@@ -68,7 +68,7 @@ export type NoDefault = typeof NoDefault
 export type ColDefFn<TColumnType extends FieldColumnType> = {
   (): {
     columnType: TColumnType
-    schema: Schema.Schema<DefaultEncodedForColumnType<TColumnType>>
+    schema: Schema.Codec<DefaultEncodedForColumnType<TColumnType>>
     default: Option.None<never>
     nullable: false
     primaryKey: false
@@ -103,7 +103,7 @@ const makeColDef =
   <TColumnType extends FieldColumnType>(columnType: TColumnType): ColDefFn<TColumnType> =>
   (def?: ColumnDefinitionInput) => {
     const nullable = def?.nullable ?? false
-    const schemaWithoutNull: Schema.Top = def?.schema ?? defaultSchemaForColumnType(columnType)
+    const schemaWithoutNull = def?.schema ?? defaultSchemaForColumnType(columnType)
     const schema = nullable === true ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
     const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
@@ -226,7 +226,7 @@ export const json: SpecializedColDefFn<'text', true, unknown> = makeSpecializedC
 
 export const datetime: SpecializedColDefFn<'text', false, Date> = makeSpecializedColDef('text', {
   _tag: 'baseSchema',
-  baseSchema: Schema.Date,
+  baseSchema: Schema.DateFromString,
 })
 
 export const datetimeInteger: SpecializedColDefFn<'integer', false, Date> = makeSpecializedColDef('integer', {
@@ -253,25 +253,25 @@ export type DefaultEncodedForColumnType<TColumnType extends FieldColumnType> = T
 
 export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(
   columnType: TColumnType,
-): Schema.Schema<DefaultEncodedForColumnType<TColumnType>> => {
+) => {
   type T = DefaultEncodedForColumnType<TColumnType>
 
   switch (columnType) {
     case 'text': {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
-      return Schema.String as any as Schema.Schema<T>
+      return Schema.String as Schema.Codec<T>
     }
     case 'integer': {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
-      return Schema.Number as any as Schema.Schema<T>
+      return Schema.Number as Schema.Codec<T>
     }
     case 'real': {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
-      return Schema.Number as any as Schema.Schema<T>
+      return Schema.Number as Schema.Codec<T>
     }
     case 'blob': {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
-      return Schema.Uint8Array as any as Schema.Schema<T>
+      return Schema.Uint8Array as Schema.Codec<T>
     }
     default: {
       return casesHandled(columnType)

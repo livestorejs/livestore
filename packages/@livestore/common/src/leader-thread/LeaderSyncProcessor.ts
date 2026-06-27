@@ -274,7 +274,10 @@ export const make = Effect.fnUntraced(function* ({
         // It's important that we filter after acquiring the localPushBackendPullMutex, otherwise we might filter with the old generation
         const [droppedItems, filteredItems] = ReadonlyArray.partition(
           batchItems,
-          ([eventEncoded]) => eventEncoded.seqNum.rebaseGeneration >= currentRebaseGeneration,
+          (batchItem) =>
+            batchItem[0].seqNum.rebaseGeneration >= currentRebaseGeneration
+              ? Result.succeed(batchItem)
+              : Result.fail(batchItem),
         )
 
         if (droppedItems.length > 0) {
@@ -625,7 +628,7 @@ export const make = Effect.fnUntraced(function* ({
         // Retry transient errors
         Effect.retry({
           schedule: Schedule.exponential(Duration.seconds(1)).pipe(
-            Schedule.modifyDelay((_, delay) => Duration.min(delay, Duration.seconds(30))), // Cap delay at 30s intervals.
+            Schedule.modifyDelay((_, delay) => Effect.succeed(Duration.min(delay, Duration.seconds(30)))), // Cap delay at 30s intervals.
           ),
           while: (error) => error._tag === 'IsOfflineError' || error._tag === 'UnknownError',
         }),
@@ -663,7 +666,7 @@ export const make = Effect.fnUntraced(function* ({
         },
         links:
           ctxRef.current?.span !== undefined
-            ? [{ _tag: 'SpanLink', span: ctxRef.current.span, attributes: {} }]
+            ? [{ span: ctxRef.current.span, attributes: {} }]
             : undefined,
       }),
     )
