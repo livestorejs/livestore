@@ -1,5 +1,5 @@
 import { SyncBackend, UnknownError } from '@livestore/common'
-import type { EventSequenceNumber } from '@livestore/common/schema'
+import type { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { splitArrayBySize } from '@livestore/common/sync'
 import {
   type Duration,
@@ -25,6 +25,8 @@ import { MAX_HTTP_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST } from '../../commo
 import { SyncHttpRpc } from '../../common/http-rpc-schema.ts'
 import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
+
+type PushBatchItem = LiveStoreEvent.Global.Encoded
 
 export interface HttpSyncOptions {
   /**
@@ -101,7 +103,7 @@ export const makeHttpSync =
       const pingTimeout = options.ping?.requestTimeout ?? 10_000
 
       const ping: SyncBackend.SyncBackend<SyncMetadata>['ping'] = Effect.gen(function* () {
-        yield* rpcClient.SyncHttpRpc.Ping({ storeId, payload })
+        yield* rpcClient['SyncHttpRpc.Ping']({ storeId, payload })
 
         yield* SubscriptionRef.set(isConnected, true)
       }).pipe(
@@ -136,7 +138,7 @@ export const makeHttpSync =
         )
 
       const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (cursor, options) =>
-        rpcClient.SyncHttpRpc.Pull({
+        rpcClient['SyncHttpRpc.Pull']({
           storeId,
           payload,
           cursor: mapCursor(cursor),
@@ -155,7 +157,7 @@ export const makeHttpSync =
                   Effect.gen(function* () {
                     yield* Effect.sleep(livePullInterval)
 
-                    const items = yield* rpcClient.SyncHttpRpc.Pull({ storeId, payload, cursor: currentCursor }).pipe(
+                    const items = yield* rpcClient['SyncHttpRpc.Pull']({ storeId, payload, cursor: currentCursor }).pipe(
                       Stream.runCollect,
                     )
 
@@ -201,7 +203,7 @@ export const makeHttpSync =
           const batchChunks = yield* splitArrayBySize({
             maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
             maxBytes: MAX_HTTP_REQUEST_BYTES,
-            encode: (items) => ({
+            encode: (items: ReadonlyArray<PushBatchItem>) => ({
               batch: items,
               storeId,
               payload,
@@ -210,7 +212,7 @@ export const makeHttpSync =
           })(batch).pipe(Effect.mapError((cause) => new UnknownError({ cause })))
 
           for (const batchChunk of batchChunks) {
-            yield* rpcClient.SyncHttpRpc.Push({ storeId, payload, batch: batchChunk, backendId })
+            yield* rpcClient['SyncHttpRpc.Push']({ storeId, payload, batch: batchChunk, backendId })
           }
         },
         pushSemaphore.withPermits(1),

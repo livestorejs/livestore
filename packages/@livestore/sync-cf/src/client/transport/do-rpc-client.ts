@@ -23,6 +23,8 @@ import { SyncDoRpc } from '../../common/do-rpc-schema.ts'
 import { SyncMessage } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
 
+type PushBatchItem = SyncMessage.PushRequest['batch'][number]
+
 export interface SyncBackendRpcStub extends CfTypes.DurableObjectStub, SyncBackendRpcInterface {}
 
 // TODO we probably need better scoping for the requestIdQueueMap (i.e. support multiple stores, ...)
@@ -67,7 +69,7 @@ export const makeDoRpcSync =
       const backendIdHelper = yield* SyncBackend.makeBackendIdHelper
 
       const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (cursor, options) =>
-        rpcClient.SyncDoRpc.Pull({
+        rpcClient['SyncDoRpc.Pull']({
           cursor: cursor.pipe(
             Option.map((a) => ({
               eventSequenceNumber: a.eventSequenceNumber,
@@ -118,7 +120,7 @@ export const makeDoRpcSync =
           const batchChunks = yield* splitArrayBySize({
             maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
             maxBytes: MAX_DO_RPC_REQUEST_BYTES,
-            encode: (items) => ({
+            encode: (items: ReadonlyArray<PushBatchItem>) => ({
               batch: items,
               storeId,
               backendId,
@@ -126,7 +128,7 @@ export const makeDoRpcSync =
           })(batch).pipe(Effect.mapError((cause) => new UnknownError({ cause })))
 
           for (const batchChunk of batchChunks) {
-            yield* rpcClient.SyncDoRpc.Push({ batch: batchChunk, storeId, backendId })
+            yield* rpcClient['SyncDoRpc.Push']({ batch: batchChunk, storeId, backendId })
           }
         },
         Effect.mapError((cause) =>
@@ -136,7 +138,7 @@ export const makeDoRpcSync =
         ),
       )
 
-      const ping: SyncBackend.SyncBackend<{ createdAt: string }>['ping'] = rpcClient.SyncDoRpc.Ping({
+      const ping: SyncBackend.SyncBackend<{ createdAt: string }>['ping'] = rpcClient['SyncDoRpc.Ping']({
         storeId,
         payload,
       }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('rpc-sync-client:ping'))

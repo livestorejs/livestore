@@ -1,5 +1,5 @@
 import type { CfTypes } from '@livestore/common-cf'
-import { Effect, HttpApp, Layer, RpcSerialization, RpcServer } from '@livestore/utils/effect'
+import { Effect, HttpEffect, Layer, RpcSerialization, RpcServer } from '@livestore/utils/effect'
 
 import { SyncHttpRpc } from '../../../common/http-rpc-schema.ts'
 import * as SyncMessage from '../../../common/sync-message-types.ts'
@@ -18,8 +18,8 @@ export const createHttpRpcHandler = Effect.fn('createHttpRpcHandler')(function* 
   forwardedHeaders?: Record<string, string>
 }) {
   const handlerLayer = createHttpRpcLayer(forwardedHeaders)
-  const httpApp = RpcServer.toHttpApp(SyncHttpRpc).pipe(Effect.provide(handlerLayer))
-  const webHandler = yield* httpApp.pipe(Effect.map(HttpApp.toWebHandler))
+  const httpEffect = yield* RpcServer.toHttpEffect(SyncHttpRpc).pipe(Effect.provide(handlerLayer))
+  const webHandler = HttpEffect.toWebHandler(httpEffect)
 
   const response = yield* Effect.promise(
     () => webHandler(request as TODO as Request) as TODO as Promise<CfTypes.Response>,
@@ -51,7 +51,6 @@ const createHttpRpcLayer = (forwardedHeaders: Record<string, string> | undefined
 
     'SyncHttpRpc.Ping': () => Effect.succeed(SyncMessage.Pong.make({})),
   }).pipe(
-    Layer.provideMerge(RpcServer.layerProtocolHttp({ path: '/http-rpc' })),
     Layer.provideMerge(RpcSerialization.layerJson),
   )
 }

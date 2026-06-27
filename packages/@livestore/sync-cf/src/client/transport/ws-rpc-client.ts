@@ -135,7 +135,7 @@ export const makeWsSync =
         isConnected,
         connect: ping,
         pull: (cursor, options) =>
-          rpcClient.SyncWsRpc.Pull({
+          rpcClient['SyncWsRpc.Pull']({
             storeId,
             payload,
             cursor: cursor.pipe(
@@ -179,7 +179,7 @@ export const makeWsSync =
           })(batch).pipe(Effect.mapError((cause) => new UnknownError({ cause })))
 
           for (const batchChunk of batchChunks) {
-            yield* rpcClient.SyncWsRpc.Push({
+            yield* rpcClient['SyncWsRpc.Push']({
               storeId,
               payload,
               batch: batchChunk,
