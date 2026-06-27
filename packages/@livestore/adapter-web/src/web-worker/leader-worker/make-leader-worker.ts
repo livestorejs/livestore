@@ -268,15 +268,20 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         Stream.withSpan('@livestore/adapter-web:worker:StreamEvents'),
       ),
     Export: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
+      LeaderThreadCtx.pipe(
+        Effect.flatMap((_) => Effect.sync(() => _.dbState.export())),
         Effect.withSpan('@livestore/adapter-web:worker:Export'),
       ),
     ExportEventlog: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.dbEventlog.export()).pipe(
+      LeaderThreadCtx.pipe(
+        Effect.flatMap((_) => Effect.sync(() => _.dbEventlog.export())),
         Effect.withSpan('@livestore/adapter-web:worker:ExportEventlog'),
       ),
     BootStatusStream: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
+      LeaderThreadCtx.pipe(
+        Effect.map((_) => Stream.fromQueue(_.bootStatusQueue)),
+        Stream.unwrap,
+      ),
     GetLeaderHead: Effect.fn('@livestore/adapter-web:worker:GetLeaderHead')(function* () {
       const workerCtx = yield* LeaderThreadCtx
       return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
