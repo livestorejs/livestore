@@ -85,7 +85,7 @@ export class DeferredStoreContext extends Context.Service<
 export type LiveStoreContextProps<
   TSchema extends LiveStoreSchema,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
+  TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json,
 > = {
   schema: TSchema
   /**
@@ -135,7 +135,7 @@ export type LiveStoreContextProps<
 export interface CreateStoreOptions<
   TSchema extends LiveStoreSchema,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
+  TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json,
 > extends LogConfig.LoggerOptions {
   /** The LiveStore schema defining tables, events, and materializers. */
   schema: TSchema
@@ -224,7 +224,7 @@ export interface CreateStoreOptions<
 export type CreateStoreOptionsPromise<
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
+  TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json,
 > = CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> & {
   signal?: AbortSignal
   otelOptions?: Partial<OtelOptions>
@@ -234,7 +234,7 @@ export type CreateStoreOptionsPromise<
 export const createStorePromise = async <
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
+  TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json,
 >({
   signal,
   otelOptions,
@@ -270,7 +270,7 @@ export const createStorePromise = async <
 export const createStore = <
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
+  TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json,
 >({
   schema,
   adapter,
