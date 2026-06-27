@@ -1,5 +1,5 @@
 import { LS_DEV } from '@livestore/utils'
-import { Context, Deferred, Effect, Layer, Stream, WebChannel, type Worker } from '@livestore/utils/effect'
+import { Context, Deferred, Effect, Layer, Queue, Stream, WebChannel } from '@livestore/utils/effect'
 
 import * as WebmeshSchema from '../mesh-schema.ts'
 import type { MeshNode } from '../node.ts'
@@ -38,7 +38,10 @@ export const CreateConnection = ({ from, port }: typeof WorkerSchema.CreateConne
         yield* Effect.logDebug(`@livestore/webmesh:worker: accepted edge: ${node.nodeName} <- ${from}`)
       }
 
-      emit.single({})
+      // `Stream.callback` exposes a queue-like emitter in Effect v4. Emit the single success value
+      // and then end the stream to preserve the old one-response worker command behavior.
+      yield* Queue.offer(emit, {})
+      yield* Queue.end(emit)
 
       yield* Effect.spanEvent({ connectedTo: [...node.edgeKeys] })
     }).pipe(Effect.orDie),
@@ -51,7 +54,9 @@ export const connectViaWorker = ({
 }: {
   node: MeshNode
   target: string
-  worker: Worker.SerializedWorkerPool<typeof WorkerSchema.Request.Type>
+  // Effect v4 removed the serialized worker pool type this package used to reference. Webmesh only
+  // needs this structural `execute` contract; adapter code can provide any compatible pool.
+  worker: { execute: (request: typeof WorkerSchema.Request.Type) => Stream.Stream<{}> }
 }) =>
   Effect.gen(function* () {
     const mc = new MessageChannel()

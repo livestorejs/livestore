@@ -7,6 +7,7 @@ import {
   Exit,
   Option,
   Queue,
+  References,
   Schema,
   Scope,
   Stream,
@@ -120,18 +121,18 @@ export const makeDirectChannel = ({
             Scope.provide(makeDirectChannelScope),
             // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
             Effect.forkIn(makeDirectChannelScope, { startImmediately: true, uninterruptible: 'inherit' }),
-            // Given we only call `Effect.exit` later when joining the fiber,
+            // Given we only await the exit later when observing the fiber,
             // we don't want Effect to produce a "unhandled error" log message
-            Effect.withUnhandledErrorLogLevel(Option.none()),
+            Effect.provideService(References.UnhandledLogLevel, undefined),
           )
 
-          const raceResult = yield* Effect.raceFirst(makeChannel, waitForNewEdgeFiber.pipe(Effect.disconnect))
+          const raceResult = yield* Effect.raceFirst(makeChannel, Fiber.join(waitForNewEdgeFiber))
 
           if (raceResult === 'new-edge') {
             yield* Scope.close(makeDirectChannelScope, Exit.fail('new-edge'))
             // We'll try again
           } else {
-            const channelExit = yield* raceResult.pipe(Effect.exit)
+            const channelExit = yield* Fiber.await(raceResult)
             if (channelExit._tag === 'Failure') {
               yield* Scope.close(makeDirectChannelScope, channelExit)
 

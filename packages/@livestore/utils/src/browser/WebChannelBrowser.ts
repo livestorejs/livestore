@@ -1,4 +1,4 @@
-import { Cause, Deferred, Exit, Scope } from 'effect'
+import { Cause, Deferred, Exit, Queue, Scope } from 'effect'
 
 import * as Effect from '../effect/Effect.ts'
 import * as Schema from '../effect/Schema/index.ts'
@@ -98,6 +98,15 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
         to: Schema.Literal(ids.other),
       }).annotate({ title: 'webmesh.WindowMessageSend' })
 
+      // `window.postMessage` can fire before a lazily-started stream has installed its listener.
+      // Buffer events from channel construction time so Effect v4 scheduling cannot drop them.
+      const messageQueue = yield* Effect.acquireRelease(Queue.unbounded<MessageEvent>(), Queue.shutdown)
+      const handler = (event: MessageEvent) => {
+        Queue.offerUnsafe(messageQueue, event)
+      }
+      listenWindow.addEventListener('message', handler)
+      yield* Effect.addFinalizer(() => Effect.sync(() => listenWindow.removeEventListener('message', handler)))
+
       const send = (message: MsgSend) =>
         Effect.gen(function* () {
           debugInfo.sendTotal++
@@ -110,7 +119,7 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
           sendWindow.postMessage(messageEncoded, targetOrigin, transferables)
         })
 
-      const listen = Stream.fromEventListener<MessageEvent>(listenWindow, 'message').pipe(
+      const listen = Stream.fromQueue(messageQueue).pipe(
         Stream.filter((_) => Schema.is(Schema.toEncoded(WindowMessageListen))(_.data)),
         Stream.map((_) => {
           debugInfo.listenTotal++
