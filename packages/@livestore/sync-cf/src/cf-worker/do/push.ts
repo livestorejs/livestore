@@ -17,6 +17,7 @@ import * as DoCtx from './layer.ts'
 const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
 const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
 type PullBatchItem = SyncMessage.PullResponse['batch'][number]
+type PushBatchItem = SyncMessage.PushRequest['batch'][number]
 
 export const makePush =
   ({
@@ -96,7 +97,7 @@ export const makePush =
         const responses = yield* splitArrayBySize({
           maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
           maxBytes: MAX_WS_MESSAGE_BYTES,
-          encode: (items) =>
+          encode: (items: ReadonlyArray<PushBatchItem>) =>
             encodePullResponse(
               SyncMessage.PullResponse.make({
                 batch: items.map(

@@ -23,6 +23,8 @@ import { SyncDoRpc } from '../../common/do-rpc-schema.ts'
 import { SyncMessage } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
 
+type PushBatchItem = SyncMessage.PushRequest['batch'][number]
+
 export interface SyncBackendRpcStub extends CfTypes.DurableObjectStub, SyncBackendRpcInterface {}
 
 // TODO we probably need better scoping for the requestIdQueueMap (i.e. support multiple stores, ...)
@@ -118,7 +120,7 @@ export const makeDoRpcSync =
           const batchChunks = yield* splitArrayBySize({
             maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
             maxBytes: MAX_DO_RPC_REQUEST_BYTES,
-            encode: (items) => ({
+            encode: (items: ReadonlyArray<PushBatchItem>) => ({
               batch: items,
               storeId,
               backendId,
