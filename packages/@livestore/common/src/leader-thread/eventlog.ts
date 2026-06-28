@@ -284,7 +284,7 @@ export const getSyncBackendCursorInfo = ({ remoteHead }: { remoteHead: EventSequ
     if (remoteHead === EventSequenceNumber.Client.ROOT.global) return Option.none()
 
     const EventlogQuerySchema = Schema.Struct({
-      syncMetadataJson: Schema.fromJsonString(Schema.Option(Schema.Json)),
+      syncMetadataJson: Schema.fromJsonString(Schema.toCodecJson(Schema.Option(Schema.Json))),
     }).pipe(Schema.pluck('syncMetadataJson'), Schema.Array, Schema.head)
 
     const syncMetadataOption = yield* Effect.sync(() =>

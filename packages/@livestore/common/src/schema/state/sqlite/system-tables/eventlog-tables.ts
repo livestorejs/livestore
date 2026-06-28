@@ -34,7 +34,7 @@ export const eventlogMetaTable = table({
     clientId: SqliteDsl.text({}),
     sessionId: SqliteDsl.text({}),
     schemaHash: SqliteDsl.integer({}),
-    syncMetadataJson: SqliteDsl.text({ schema: Schema.fromJsonString(Schema.Option(Schema.Json)) }),
+    syncMetadataJson: SqliteDsl.text({ schema: Schema.fromJsonString(Schema.toCodecJson(Schema.Option(Schema.Json))) }),
   },
   indexes: [
     { columns: ['seqNumGlobal'], name: 'idx_eventlog_seqNumGlobal' },
