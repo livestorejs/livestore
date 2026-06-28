@@ -5,6 +5,7 @@ import { objectToString } from '@livestore/utils'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
+  type Context,
   Effect,
   FetchHttpClient,
   HttpClient,
@@ -23,8 +24,11 @@ import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'
 
 const cloudflareHttpProviders = [CloudflareHttpProvider.d1, CloudflareHttpProvider.doSqlite]
 
+type RuntimeServices = SyncProviderImpl | HttpClient.HttpClient
+
 Vitest.describe.each(cloudflareHttpProviders)('$name HTTP response headers', { timeout: 30000 }, ({ layer, name }) => {
-  let runtime: ManagedRuntime.ManagedRuntime<SyncProviderImpl | HttpClient.HttpClient, never>
+  let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
+  let runtimeContext: Context.Context<RuntimeServices>
   let testId: string
 
   Vitest.beforeAll(async () => {
@@ -38,7 +42,7 @@ Vitest.describe.each(cloudflareHttpProviders)('$name HTTP response headers', { t
         Layer.orDie,
       ),
     )
-    await runtime.runPromise(Effect.void)
+    runtimeContext = await runtime.context()
   })
 
   Vitest.afterAll(async () => await runtime.dispose())
@@ -54,7 +58,7 @@ Vitest.describe.each(cloudflareHttpProviders)('$name HTTP response headers', { t
           },
           options,
         ),
-      ).pipe(Effect.provide(runtime)),
+      ).pipe(Effect.provide(runtimeContext)),
     )
 
   Vitest.live('HTTP responses include custom headers', (test) =>
@@ -96,7 +100,7 @@ Vitest.describe.each(cloudflareHttpProviders)('$name HTTP response headers', { t
       expect(pingResponse.headers['x-custom-header']).toBe('test-value')
       expect(pingResponse.headers['x-livestore-version']).toBe('1.0.0')
     }).pipe(
-      Effect.provide(runtime),
+      Effect.provide(runtimeContext),
       Vitest.makeWithTestCtx({
         makeLayer: (_testContext) => Layer.mergeAll(Logger.layer([Logger.consolePretty()]), KeyValueStore.layerMemory),
         forceOtel: true,
