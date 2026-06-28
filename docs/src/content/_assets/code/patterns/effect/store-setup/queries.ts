@@ -15,7 +15,7 @@ const User = Schema.Struct({
 const Product = Schema.Struct({
   id: Schema.String,
   name: Schema.String,
-  createdAt: Schema.DateTimeUtc,
+  createdAt: Schema.Date,
 })
 
 // Search term atom for dynamic queries
