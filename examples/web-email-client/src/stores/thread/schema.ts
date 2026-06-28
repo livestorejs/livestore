@@ -7,8 +7,8 @@ export const threadTables = {
       id: State.SQLite.text({ primaryKey: true }),
       subject: State.SQLite.text(),
       participants: State.SQLite.text(), // JSON array of email addresses
-      lastActivity: State.SQLite.integer({ schema: Schema.DateFromNumber }),
-      createdAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      lastActivity: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
+      createdAt: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
     },
   }),
 
@@ -20,7 +20,7 @@ export const threadTables = {
       content: State.SQLite.text(),
       sender: State.SQLite.text(), // Email address
       senderName: State.SQLite.text({ nullable: true }), // Display name
-      timestamp: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      timestamp: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
       messageType: State.SQLite.text({
         schema: Schema.Literals(['received', 'sent', 'draft']),
       }),
@@ -32,7 +32,7 @@ export const threadTables = {
     columns: {
       threadId: State.SQLite.text(),
       labelId: State.SQLite.text(),
-      appliedAt: State.SQLite.integer({ schema: Schema.DateFromNumber }),
+      appliedAt: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
     },
   }),
 }

@@ -54,7 +54,7 @@ const todosTable = State.SQLite.table({
     text: State.SQLite.text(),
     completed: State.SQLite.boolean({ default: false }),
     // Using soft delete by adding a deletedAt timestamp
-    deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
+    deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromEpochMillis }),
   },
 })
 
