@@ -54,7 +54,7 @@ export const sqliteDbFactory = ({
 }: {
   sqlite3: SQLiteAPI
 }): Effect.Effect<MakeNodeSqliteDb, never, FileSystem.FileSystem> =>
-  Effect.andThen(
+  Effect.map(
     FileSystem.FileSystem,
     (fs) => (input) =>
       Effect.gen(function* () {
