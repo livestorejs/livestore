@@ -8,6 +8,7 @@ import { events } from '@livestore/livestore/internal/testing-utils'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
+  type Context,
   Duration,
   Effect,
   FetchHttpClient,
@@ -38,6 +39,8 @@ const makeFactory = EventFactory.makeFactory(events)
 
 const providerLayers = providerKeys.map((key) => providerRegistry[key])
 
+type RuntimeServices = SyncProviderImpl | HttpClient.HttpClient
+
 const withTestCtx = ({ suffix, timeout }: { suffix?: string; timeout?: Duration.Input } = {}) =>
   Vitest.makeWithTestCtx({
     suffix,
@@ -55,7 +58,8 @@ const runFirstNonEmpty = <T, E, R>(stream: Stream.Stream<SyncBackend.PullResItem
 
 // TODO come up with a way to target specific providers individually
 Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, ({ layer, name }) => {
-  let runtime: ManagedRuntime.ManagedRuntime<SyncProviderImpl | HttpClient.HttpClient, never>
+  let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
+  let runtimeContext: Context.Context<RuntimeServices>
   let testId: string
 
   Vitest.beforeAll(async () => {
@@ -70,7 +74,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       ),
     )
     // Eagerly start the runtime
-    await runtime.runPromise(Effect.void)
+    runtimeContext = await runtime.context()
   })
 
   Vitest.afterAll(async () => await runtime.dispose())
@@ -87,7 +91,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
           },
           options,
         ),
-      ).pipe(Effect.provide(runtime)),
+      ).pipe(Effect.provide(runtimeContext)),
     )
 
   // Simple test to verify the setup works
@@ -423,7 +427,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
         const result = yield* Fiber.join(fiber)
         expect(result.batch.length).toBe(1)
-      }).pipe(Effect.provide(runtime), withTestCtx()(test)),
+      }).pipe(Effect.provide(runtimeContext), withTestCtx()(test)),
     )
   })
 
