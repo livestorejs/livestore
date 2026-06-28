@@ -9,7 +9,6 @@ import {
   Effect,
   ManagedRuntime,
   Metric,
-  type MetricState,
   Option,
   ReadonlyArray,
   Schema,
@@ -325,19 +324,17 @@ export default class MeasurementsReporter implements Reporter {
       for (const [testTitle, metricState] of Object.entries(metricStatesResult)) {
         if (metricState.count === 0) continue
 
-        const quantiles = Object.fromEntries(metricState.quantiles)
+        const getQuantile = (quantile: number) => metricState.quantiles.find(([q]) => q === quantile)?.[1]
 
         const mean = metricState.sum / metricState.count
-        const median = Option.map(quantiles[0.5] ?? Option.none(), (q) => `${formatValue(q)} ${displayUnit}`).pipe(
-          Option.getOrElse(() => 'n/a'),
-        )
-        const lowerQuartile = quantiles[0.25] ?? Option.none()
-        const upperQuartile = quantiles[0.75] ?? Option.none()
-        const iqr = Option.zipWith(
-          lowerQuartile,
-          upperQuartile,
-          (lower, upper) => `${formatValue(upper - lower)} ${displayUnit}`,
-        ).pipe(Option.getOrElse(() => 'n/a'))
+        const medianValue = getQuantile(0.5)
+        const median = medianValue === undefined ? 'n/a' : `${formatValue(medianValue)} ${displayUnit}`
+        const lowerQuartile = getQuantile(0.25)
+        const upperQuartile = getQuantile(0.75)
+        const iqr =
+          lowerQuartile === undefined || upperQuartile === undefined
+            ? 'n/a'
+            : `${formatValue(upperQuartile - lowerQuartile)} ${displayUnit}`
 
         rows.push([
           testTitle,
@@ -361,7 +358,7 @@ export default class MeasurementsReporter implements Reporter {
         (acc, [testTitle, trackedMeasurement]) => {
           acc[testTitle] = Effect.gen({ self: this }, function* () {
             const metric = this.makeMetric(trackedMeasurement)
-            yield* Effect.forEach(trackedMeasurement.measurements, (value) => metric(Effect.succeed(value)), {
+            yield* Effect.forEach(trackedMeasurement.measurements, (value) => Metric.update(metric, value), {
               concurrency: 'unbounded',
             })
             const state = yield* Metric.value(metric)
@@ -377,46 +374,43 @@ export default class MeasurementsReporter implements Reporter {
       { concurrency: 'unbounded' },
     )
 
-  private makeMetric = (trackedMeasurement: TrackedMeasurement): Metric.Metric.Summary<number> => {
+  private makeMetric = (trackedMeasurement: TrackedMeasurement): Metric.Summary<number> => {
     const snakeCase = (str: string) => str.replaceAll(/[^a-zA-Z0-9]/g, '_').toLowerCase()
     const { meta } = trackedMeasurement
 
-    let metric = Metric.summary({
-      name: snakeCase(meta.testName),
-      maxAge: '1 hour',
-      maxSize: 100,
-      error: 0,
-      quantiles: [0.25, 0.5, 0.75],
-      description: meta.testName,
-    }).pipe(
-      Metric.tagged('unit', meta.unit),
-      Metric.tagged('test.suite.title', meta.testSuiteTitle),
-      Metric.tagged('test.title', meta.testTitle),
-      Metric.tagged('test.name', meta.testName),
-      Metric.tagged('os.type', this.systemInfo.os.type),
-      Metric.tagged('os.version', this.systemInfo.os.release),
-      Metric.tagged('host.arch', this.systemInfo.os.arch),
-      Metric.tagged('host.cpu.model.name', this.systemInfo.cpus.model),
-      Metric.tagged('system.memory.limit', this.systemInfo.memory.total.toString()),
-      Metric.tagged('system.memory.usage', (this.systemInfo.memory.total - this.systemInfo.memory.free).toString()),
-    )
+    const attributes: Record<string, string> = {
+      unit: meta.unit,
+      'test.suite.title': meta.testSuiteTitle,
+      'test.title': meta.testTitle,
+      'test.name': meta.testName,
+      'os.type': this.systemInfo.os.type,
+      'os.version': this.systemInfo.os.release,
+      'host.arch': this.systemInfo.os.arch,
+      'host.cpu.model.name': this.systemInfo.cpus.model,
+      'system.memory.limit': this.systemInfo.memory.total.toString(),
+      'system.memory.usage': (this.systemInfo.memory.total - this.systemInfo.memory.free).toString(),
+    }
 
     if (
       process.env.CI !== undefined &&
       process.env.COMMIT_SHA !== undefined &&
       process.env.GITHUB_REF_NAME !== undefined
     ) {
-      metric = metric.pipe(
-        Metric.tagged('github.commit_sha', process.env.COMMIT_SHA),
-        Metric.tagged('github.ref_name', process.env.GITHUB_REF_NAME),
-      )
+      attributes['github.commit_sha'] = process.env.COMMIT_SHA
+      attributes['github.ref_name'] = process.env.GITHUB_REF_NAME
     }
 
-    return metric
+    return Metric.summary(snakeCase(meta.testName), {
+      maxAge: '1 hour',
+      maxSize: 100,
+      quantiles: [0.25, 0.5, 0.75],
+      description: meta.testName,
+      attributes,
+    })
   }
 }
 
 type TrackedMeasurementState = {
   meta: TrackedMeasurement['meta']
-  state: MetricState.MetricState.Summary
+  state: Metric.SummaryState
 }
