@@ -57,7 +57,7 @@ import { useSyncStatus } from './useSyncStatus.ts'
 export const useStore = <
   TSchema extends LiveStoreSchema,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
+  TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json,
 >(
   options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
 ): Store<TSchema, TContext> & ReactApi => {
