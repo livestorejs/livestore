@@ -524,12 +524,8 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
   Vitest.asProp(
     Vitest.live,
     'property: streams events across batches',
-    {
-      batchSize: batchSizeSampleSchema,
-      eventCount: eventCountSampleSchema,
-      batchesPerTick: batchesPerTickSampleSchema,
-    },
-    ({ batchSize, eventCount, batchesPerTick }, test) =>
+    [batchSizeSampleSchema, eventCountSampleSchema, batchesPerTickSampleSchema] as const,
+    ([batchSize, eventCount, batchesPerTick], test) =>
       withNodeFs(
         Effect.gen(function* () {
           const { dbEventlog, syncState, advanceHead, closeHeads } = yield* makeTestEnvironment
