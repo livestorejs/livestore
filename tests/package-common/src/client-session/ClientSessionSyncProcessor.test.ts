@@ -340,11 +340,16 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       // Wait for the sync backend to receive the pushed event
       yield* mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
+
       // Wait for the client session to have reached e2
-      yield* store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
-        Stream.takeUntil((_) => _.localHead.global === 2),
-        Stream.runDrain,
-      )
+      // The sync processor can catch up during createStore, before this test subscribes to future changes.
+      const currentSyncState = yield* store[StoreInternalsSymbol].syncProcessor.syncState.get
+      if (currentSyncState.localHead.global !== 2) {
+        yield* store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
+          Stream.takeUntil((_) => _.localHead.global === 2),
+          Stream.runDrain,
+        )
+      }
 
       const res = store.query(tables.todos.orderBy('text', 'asc'))
 
