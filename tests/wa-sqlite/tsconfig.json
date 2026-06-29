@@ -33,7 +33,8 @@
         }
       }
     ],
-    "noEmit": true
+    "noEmit": true,
+    "types": ["vitest/globals", "@types/node"]
   },
   "include": ["test"],
   "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
