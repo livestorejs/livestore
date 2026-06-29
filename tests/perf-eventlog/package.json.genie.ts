@@ -14,6 +14,7 @@ const runtimeDeps = catalog.compose({
     external: catalog.pick(
       '@opentelemetry/api',
       '@opentelemetry/core',
+      '@opentelemetry/exporter-trace-otlp-http',
       '@opentelemetry/resources',
       '@opentelemetry/sdk-trace-base',
       '@opentelemetry/sdk-trace-web',
