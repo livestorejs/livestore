@@ -8,6 +8,7 @@
   },
   "devDependencies": {
     "@livestore/wa-sqlite": "workspace:^",
+    "@types/node": "25.3.3",
     "vitest": "4.1.9"
   },
   "$genie": {

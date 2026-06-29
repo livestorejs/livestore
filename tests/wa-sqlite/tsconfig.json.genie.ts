@@ -4,6 +4,7 @@ export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
     noEmit: true,
+    types: ['vitest/globals', '@types/node'],
   },
   include: ['test'],
   exclude: [...packageTsconfigExclude],
