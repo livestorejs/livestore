@@ -28,6 +28,7 @@ import {
   Equal,
   Exit,
   FetchHttpClient,
+  Fiber,
   Hash,
   Layer,
   Option,
@@ -523,7 +524,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     Effect.gen(function* () {
       const upstreamQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
       const materializedEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
-      const materialized = yield* Deferred.make<void>()
 
       const lockStatus = yield* SubscriptionRef.make<'has-lock' | 'no-lock'>('has-lock')
 
@@ -543,7 +543,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         ) =>
           Effect.gen(function* () {
             materializedEvents.push(event)
-            yield* Deferred.succeed(materialized, void 0)
             return {
               writeTables: new Set<string>(),
               sessionChangeset: { _tag: 'no-op' as const },
@@ -610,8 +609,15 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       yield* Effect.scoped(
         Effect.gen(function* () {
           yield* syncProcessor.boot
+          const processed = yield* syncProcessor.syncState.changes.pipe(
+            Stream.filter((state) => state.localHead.global === 1),
+            Stream.take(1),
+            Stream.runDrain,
+            Effect.forkScoped,
+          )
+
           yield* Queue.offer(upstreamQueue, unknownEvent)
-          yield* Deferred.await(materialized)
+          yield* Fiber.join(processed)
         }),
       )
 
