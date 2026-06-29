@@ -777,7 +777,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       // Verify no shutdown happened (deferred should still be pending)
       // We use race with a small timeout to check if deferred is still pending
       const result = yield* Effect.race(
-        testContext.shutdownDeferred.pipe(
+        Deferred.await(testContext.shutdownDeferred).pipe(
           Effect.flip,
           Effect.map(() => 'shutdown' as const),
         ),
@@ -903,10 +903,10 @@ const LeaderThreadCtxLive = ({
       const shutdownDeferred = yield* Deferred.make<void, typeof Shutdown.All.Type>()
 
       if (shutdownProxy !== undefined) {
-        yield* shutdownProxy.sendQueue.pipe(
-          Queue.take,
+        yield* Queue.take(shutdownProxy.sendQueue).pipe(
           Effect.flip,
-          Effect.intoDeferred(shutdownDeferred),
+          Effect.exit,
+          Effect.flatMap((exit) => Deferred.done(shutdownDeferred, exit)),
           // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
