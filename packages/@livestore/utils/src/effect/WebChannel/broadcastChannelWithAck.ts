@@ -42,7 +42,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
       const channel = new BroadcastChannel(channelName)
       // BroadcastChannel messages are dropped unless a listener is already registered. Effect v4
       // makes stream startup ordering explicit, so buffer events from channel construction time.
-      const messageQueue = yield* Effect.acquireRelease(Queue.unbounded<MessageEvent>(), Queue.shutdown)
+      const messageQueue = yield* Effect.acquireRelease(Queue.unbounded<MessageDataEvent>(), Queue.shutdown)
       const connectionId = crypto.randomUUID()
       const schema = mapSchema(inputSchema)
 
@@ -52,7 +52,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
 
       const postMessage = (msg: typeof Message.Type) => channel.postMessage(Schema.encodeSync(Message)(msg))
 
-      const handler = (event: MessageEvent) => {
+      const handler = (event: MessageDataEvent) => {
         Queue.offerUnsafe(messageQueue, event)
       }
       channel.addEventListener('message', handler)
@@ -134,3 +134,6 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
       }
     }).pipe(Effect.withSpan(`WebChannel:broadcastChannelWithAck(${channelName})`)),
   )
+
+/** DOM and Node worker_threads expose incompatible MessageEvent globals; the channel only needs payload data. */
+type MessageDataEvent = Event & { readonly data: any }
