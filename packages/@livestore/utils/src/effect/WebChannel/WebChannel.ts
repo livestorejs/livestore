@@ -51,8 +51,8 @@ export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
       // In Effect v4, forking a consumer is not a readiness handshake. Install the MessagePort
       // listener while constructing the channel and buffer into a scoped queue so early messages
       // are not lost before `listen` is pulled.
-      const messageQueue = yield* Effect.acquireRelease(Queue.unbounded<MessageEvent>(), Queue.shutdown)
-      const handler = (event: MessageEvent) => {
+      const messageQueue = yield* Effect.acquireRelease(Queue.unbounded<MessageDataEvent>(), Queue.shutdown)
+      const handler = (event: MessageDataEvent) => {
         Queue.offerUnsafe(messageQueue, event)
       }
       port.addEventListener('message', handler)
@@ -167,8 +167,8 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
 
       // The ack channel sends protocol messages during setup. Buffer MessagePort events eagerly so
       // the initial ping/pong cannot race a lazily-started `listen` stream under Effect v4.
-      const messageQueue = yield* Effect.acquireRelease(Queue.unbounded<MessageEvent>(), Queue.shutdown)
-      const handler = (event: MessageEvent) => {
+      const messageQueue = yield* Effect.acquireRelease(Queue.unbounded<MessageDataEvent>(), Queue.shutdown)
+      const handler = (event: MessageDataEvent) => {
         Queue.offerUnsafe(messageQueue, event)
       }
       port.addEventListener('message', handler)
@@ -254,6 +254,9 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
       }
     }).pipe(Effect.withSpan(`WebChannel:messagePortChannelWithAck`)),
   )
+
+/** DOM and Node worker_threads expose incompatible MessageEvent globals; the channel only needs payload data. */
+type MessageDataEvent = Event & { readonly data: any }
 
 export type QueueChannelProxy<MsgListen, MsgSend> = {
   /** Only meant to be used externally */
