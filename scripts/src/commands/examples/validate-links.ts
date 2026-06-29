@@ -60,7 +60,7 @@ const validateEndpoint = ({
 export const validateLinksCommand = Cli.Command.make(
   'validate-links',
   {
-    exampleFilter: Cli.Flag.text('example-filter').pipe(Cli.Flag.withAlias('e'), Cli.Flag.optional),
+    exampleFilter: Cli.Flag.string('example-filter').pipe(Cli.Flag.withAlias('e'), Cli.Flag.optional),
   },
   Effect.fn(function* ({ exampleFilter }) {
     const filteredDeployments = exampleDeployments.filter((deployment) =>

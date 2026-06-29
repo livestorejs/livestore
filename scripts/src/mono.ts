@@ -63,12 +63,6 @@ const command = Cli.Command.make('mono').pipe(
 )
 
 if (import.meta.main) {
-  // 'CLI for managing the Livestore monorepo',
-  const cli = Cli.Command.run(command, {
-    name: 'mono',
-    version: '0.0.0',
-  })
-
   const layer = Layer.mergeAll(
     PlatformNode.NodeServices.layer,
     FetchHttpClient.layer,
@@ -82,7 +76,9 @@ if (import.meta.main) {
     LivestoreWorkspace.live,
   )
 
-  cli(process.argv).pipe(
+  Cli.Command.run(command, {
+    version: '0.0.0',
+  }).pipe(
     Effect.provide(layer),
     Effect.annotateLogs({ thread: 'mono' }),
     Effect.provideService(References.MinimumLogLevel, 'Debug'),

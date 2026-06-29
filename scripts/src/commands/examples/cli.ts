@@ -65,10 +65,7 @@ const examplesTestCommand = Cli.Command.make(
 const examplesRunCommand = Cli.Command.make(
   'run',
   {
-    example: Cli.Argument.choice(
-      exampleChoices.map((example) => [example, example]),
-      { name: 'example' },
-    ),
+    example: Cli.Argument.choice('example', exampleChoices),
   },
   Effect.fn(function* ({ example }) {
     const availableExamples = yield* readExampleSlugs()
