@@ -51,7 +51,7 @@ export const testMultipleMigrations = () =>
         let hasMigrated = false
         // NOTE We can't use `Queue.takeAll` since sometimes it takes a bit longer for the updates to come in
         yield* Queue.take(bootStatusQueue).pipe(
-          Effect.tap((status) => {
+          Effect.tapSync((status) => {
             if (status.stage === 'migrating') hasMigrated = true
           }),
           Effect.repeat(Schedule.identity<BootStatus>().pipe(Schedule.while(({ input }) => input.stage !== 'done'))),
