@@ -54,11 +54,11 @@ const ExpoConstraints = Schema.Record(Schema.String, Schema.String)
 
 const PatchedDependencies = Schema.Record(Schema.String, Schema.String)
 
-const DepsRecord = Schema.optional(Schema.mutable(Schema.Record(Schema.String, Schema.String)))
+const DepsRecord = Schema.optional(Schema.Record(Schema.String, Schema.String))
 
-const WorkspacePackageJson = Schema.Struct(
-  { dependencies: DepsRecord, devDependencies: DepsRecord, peerDependencies: DepsRecord },
-  Schema.Record(Schema.String, Schema.Unknown),
+const WorkspacePackageJson = Schema.StructWithRest(
+  Schema.Struct({ dependencies: DepsRecord, devDependencies: DepsRecord, peerDependencies: DepsRecord }),
+  [Schema.Record(Schema.String, Schema.Unknown)],
 )
 
 const RootPackageJson = Schema.Struct({
@@ -84,6 +84,21 @@ interface UpdateResult {
   updates: Array<typeof PackageUpdate.Type>
   success: boolean
   error?: string
+}
+
+const applyDependencyUpdates = (
+  dependencies: Readonly<Record<string, string>> | undefined,
+  updates: Readonly<Record<string, string>>,
+): Record<string, string> | undefined => {
+  if (dependencies === undefined) return undefined
+
+  const nextDependencies = { ...dependencies }
+  for (const [pkg, version] of Object.entries(updates)) {
+    if (nextDependencies[pkg] !== undefined) {
+      nextDependencies[pkg] = version
+    }
+  }
+  return nextDependencies
 }
 
 // Core Effects for dependency management
@@ -262,22 +277,16 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
               content,
             ).pipe(Effect.mapError(() => new UpdateDepsError({ message: `Failed to parse ${packageJsonPath}` })))
 
-            // Update dependencies in all sections
-            for (const [pkg, version] of Object.entries(updates)) {
-              if (packageJson.dependencies?.[pkg] !== undefined) {
-                packageJson.dependencies[pkg] = version
-              }
-              if (packageJson.devDependencies?.[pkg] !== undefined) {
-                packageJson.devDependencies[pkg] = version
-              }
-              if (packageJson.peerDependencies?.[pkg] !== undefined) {
-                packageJson.peerDependencies[pkg] = version
-              }
+            const updatedPackageJson = {
+              ...packageJson,
+              dependencies: applyDependencyUpdates(packageJson.dependencies, updates),
+              devDependencies: applyDependencyUpdates(packageJson.devDependencies, updates),
+              peerDependencies: applyDependencyUpdates(packageJson.peerDependencies, updates),
             }
 
             // Write back to file with consistent formatting
             yield* Effect.try({
-              try: () => fs.writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`),
+              try: () => fs.writeFileSync(packageJsonPath, `${JSON.stringify(updatedPackageJson, null, 2)}\n`),
               catch: () => new UpdateDepsError({ message: `Failed to write ${packageJsonPath}` }),
             })
 
@@ -300,7 +309,7 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
       }
 
       // After all files updated, run pnpm install once to update lockfile
-      if (dryRun == null && Object.keys(filteredUpdates).length > 0) {
+      if (dryRun === false && Object.keys(filteredUpdates).length > 0) {
         yield* Console.log('Running pnpm install to update lockfile...')
         yield* cmd('pnpm install --fix-lockfile').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
       }
@@ -317,7 +326,7 @@ export const updateDepsCommand = Cli.Command.make(
       Cli.Flag.withDescription('Preview changes without executing updates'),
       Cli.Flag.withDefault(false),
     ),
-    target: Cli.Flag.text('target').pipe(
+    target: Cli.Flag.string('target').pipe(
       Cli.Flag.withDescription('Update target: latest, minor, patch (default: minor)'),
       Cli.Flag.withDefault('minor'),
     ),
@@ -367,7 +376,7 @@ export const updateDepsCommand = Cli.Command.make(
     }
 
     // Step 6: Validation (if not dry run and validate enabled)
-    if (dryRun == null && validate !== undefined) {
+    if (dryRun === false && validate === true) {
       yield* Console.log('\n🔍 Running validation...')
 
       // Check Expo examples
@@ -390,14 +399,11 @@ export const updateDepsCommand = Cli.Command.make(
 )
 
 if (import.meta.main === true) {
-  const cli = Cli.Command.run(updateDepsCommand, {
-    name: 'update-deps',
-    version: '1.0.0',
-  })
-
   const layer = Layer.mergeAll(PlatformNode.NodeServices.layer, FetchHttpClient.layer, LivestoreWorkspace.live)
 
-  cli(process.argv).pipe(
+  Cli.Command.run(updateDepsCommand, {
+    version: '1.0.0',
+  }).pipe(
     Effect.annotateLogs({ thread: 'update-deps' }),
     Effect.provideService(References.MinimumLogLevel, 'Info'),
     Effect.provide(layer),

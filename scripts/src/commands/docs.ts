@@ -47,7 +47,7 @@ class DocsPhaseTimeoutError extends Schema.TaggedErrorClass<DocsPhaseTimeoutErro
   durationMs: Schema.Number,
 }) {}
 
-class DocsDeployProbeError extends Schema.TaggedError<DocsDeployProbeError>()('DocsDeployProbeError', {
+class DocsDeployProbeError extends Schema.TaggedErrorClass<DocsDeployProbeError>()('DocsDeployProbeError', {
   label: Schema.String,
   path: Schema.String,
   message: Schema.String,
@@ -55,7 +55,7 @@ class DocsDeployProbeError extends Schema.TaggedError<DocsDeployProbeError>()('D
   actualStatus: Schema.Number,
   expectedLocationPath: Schema.optional(Schema.String),
   actualLocation: Schema.optional(Schema.String),
-  cause: Schema.optional(Schema.Defect),
+  cause: Schema.optional(Schema.Defect()),
 }) {}
 
 const ProdDeployStateSchema = Schema.Struct({
@@ -248,6 +248,55 @@ const startHeartbeat = ({ phase, intervalMs = 30_000 }: { phase: string; interva
     )
   })
 
+type DocsBuildOptions = {
+  readonly apiDocs: boolean
+  readonly clean: boolean
+  readonly skipDeps: boolean
+}
+
+const runDocsBuild = Effect.fn('docs.build')(function* ({ apiDocs, clean, skipDeps }: DocsBuildOptions) {
+  if (clean === true) {
+    // Wipe Astro output plus cached diagram/snippet artefacts to avoid stale renders between builds.
+    yield* cmd(
+      'rm -rf dist .astro tsconfig.tsbuildinfo node_modules/.astro-tldraw node_modules/.astro-twoslash-code .cache/snippets',
+      { shell: true },
+    ).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
+  }
+
+  // Always clean up .netlify folder as it can cause issues with the build
+  yield* cmd('rm -rf .netlify').pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
+
+  if (skipDeps === false) {
+    yield* Effect.log('Building snippets and diagrams...')
+    yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
+      concurrency: 'unbounded',
+    })
+    yield* Effect.log('Snippets and diagrams built successfully')
+    yield* cleanupChromiumChildren()
+  }
+
+  const astroEnv = {
+    STARLIGHT_INCLUDE_API_DOCS: apiDocs === true ? '1' : undefined,
+    // Building the docs sometimes runs out of memory, so we give it more
+    NODE_OPTIONS: '--max_old_space_size=4096',
+    // Snippets/diagrams already built above (or skipped), tell Astro integrations not to auto-build.
+    // Without these flags, the integrations would rebuild during astro:build:start, duplicating work.
+    LS_SKIP_SNIPPET_AUTO_BUILD_AND_WATCH: '1',
+    LS_TLDRAW_SKIP_AUTO_BUILD: '1',
+    LS_SKIP_OG_IMAGES: process.env.LS_SKIP_OG_IMAGES ?? '1',
+    DT_PASSTHROUGH: '1',
+  } // Temporary workaround for https://github.com/livestorejs/livestore/issues/1377.
+  // Astro 6 imports @astrojs/check from Astro's virtual-store package context, so run sync + astro-check
+  // directly until the Astro/Vite package stack is upgraded.
+  yield* cmd('pnpm astro sync', { env: astroEnv }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
+  yield* cmd('pnpm exec astro-check', { env: astroEnv }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
+
+  // Local/CI prebuild uses Astro directly. The deploy step performs the
+  // Netlify build (single build overall), which handles Edge bundling.
+  yield* cmd('pnpm astro build', { env: astroEnv }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
+  yield* cleanupChromiumChildren()
+})
+
 const docsBuildCommand = Cli.Command.make(
   'build',
   {
@@ -261,50 +310,7 @@ const docsBuildCommand = Cli.Command.make(
       Cli.Flag.withDescription('Skip building snippets and diagrams'),
     ),
   },
-  Effect.fn('docs.build')(function* ({ apiDocs, clean, skipDeps }) {
-    if (clean === true) {
-      // Wipe Astro output plus cached diagram/snippet artefacts to avoid stale renders between builds.
-      yield* cmd(
-        'rm -rf dist .astro tsconfig.tsbuildinfo node_modules/.astro-tldraw node_modules/.astro-twoslash-code .cache/snippets',
-        { shell: true },
-      ).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
-    }
-
-    // Always clean up .netlify folder as it can cause issues with the build
-    yield* cmd('rm -rf .netlify').pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
-
-    if (skipDeps === false) {
-      yield* Effect.log('Building snippets and diagrams...')
-      yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
-        concurrency: 'unbounded',
-      })
-      yield* Effect.log('Snippets and diagrams built successfully')
-      yield* cleanupChromiumChildren()
-    }
-
-    const astroEnv = {
-      STARLIGHT_INCLUDE_API_DOCS: apiDocs === true ? '1' : undefined,
-      // Building the docs sometimes runs out of memory, so we give it more
-      NODE_OPTIONS: '--max_old_space_size=4096',
-      // Snippets/diagrams already built above (or skipped), tell Astro integrations not to auto-build.
-      // Without these flags, the integrations would rebuild during astro:build:start, duplicating work.
-      LS_SKIP_SNIPPET_AUTO_BUILD_AND_WATCH: '1',
-      LS_TLDRAW_SKIP_AUTO_BUILD: '1',
-      LS_SKIP_OG_IMAGES: process.env.LS_SKIP_OG_IMAGES ?? '1',
-      DT_PASSTHROUGH: '1',
-    }
-
-    // Temporary workaround for https://github.com/livestorejs/livestore/issues/1377.
-    // Astro 6 imports @astrojs/check from Astro's virtual-store package context, so run sync + astro-check
-    // directly until the Astro/Vite package stack is upgraded.
-    yield* cmd('pnpm astro sync', { env: astroEnv }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
-    yield* cmd('pnpm exec astro-check', { env: astroEnv }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
-
-    // Local/CI prebuild uses Astro directly. The deploy step performs the
-    // Netlify build (single build overall), which handles Edge bundling.
-    yield* cmd('pnpm astro build', { env: astroEnv }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
-    yield* cleanupChromiumChildren()
-  }),
+  runDocsBuild,
 )
 
 /** Persist Netlify identifiers from the upload phase so `verify` and `purge` jobs can read them. */
@@ -480,7 +486,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
     Cli.Command.make(
       'preview',
       {
-        port: Cli.Flag.text('port').pipe(Cli.Flag.optional, Cli.Flag.withDescription('Port for the preview server')),
+        port: Cli.Flag.string('port').pipe(Cli.Flag.optional, Cli.Flag.withDescription('Port for the preview server')),
         build: Cli.Flag.boolean('build').pipe(
           Cli.Flag.withDefault(false),
           Cli.Flag.withDescription('Build the docs before starting the preview server'),
@@ -488,7 +494,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       },
       Effect.fn('docs.preview')(function* ({ port: portOption, build }) {
         if (build === true) {
-          yield* docsBuildCommand.handler({ apiDocs: false, clean: false, skipDeps: false })
+          yield* runDocsBuild({ apiDocs: false, clean: false, skipDeps: false })
         }
 
         const requestedPort = portOption._tag === 'Some' ? Number.parseInt(portOption.value, 10) : undefined
@@ -534,8 +540,8 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       {
         // TODO clean up when Effect CLI boolean flag is fixed
         prod: Cli.Flag.boolean('prod').pipe(Cli.Flag.withDefault(false), Cli.Flag.optional),
-        alias: Cli.Flag.text('alias').pipe(Cli.Flag.optional),
-        site: Cli.Flag.text('site').pipe(Cli.Flag.optional),
+        alias: Cli.Flag.string('alias').pipe(Cli.Flag.optional),
+        site: Cli.Flag.string('site').pipe(Cli.Flag.optional),
         purgeCdn: Cli.Flag.boolean('purge-cdn').pipe(
           Cli.Flag.withDefault(false),
           Cli.Flag.withDescription('Purge the Netlify CDN cache after deploying'),
