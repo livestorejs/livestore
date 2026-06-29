@@ -83,7 +83,7 @@ Vitest.describe.each(cloudflareHttpProviders)('$name HTTP response headers', { t
       const req = HttpClientRequest.post(requestUrl.href).pipe(
         HttpClientRequest.setHeader('content-type', 'application/json'),
         HttpClientRequest.setHeader('x-livestore-store-id', `test-store-${name}-${test.task.name}-${testId}`),
-        HttpClientRequest.bodyUnsafeJson({
+        HttpClientRequest.bodyJsonUnsafe({
           _tag: 'Request',
           id: 'test-req-1',
           tag: 'SyncHttpRpc.Ping',
