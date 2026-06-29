@@ -47,61 +47,74 @@ export const test = base.extend<{
       return
     }
 
-    let cdpSession: CDPSession | null = null
-    let profilingActive = false
-    let currentLabel: string | undefined
+    const profilerState: {
+      cdpSession: CDPSession | null
+      profilingActive: boolean
+      currentLabel: string | undefined
+    } = {
+      cdpSession: null,
+      profilingActive: false,
+      currentLabel: undefined,
+    }
 
     const profiler: CPUProfiler = {
       start: async (label?: string) => {
-        if (profilingActive === true) {
+        if (profilerState.profilingActive === true) {
           throw new Error('CPU profiling is already active')
         }
 
-        if (cdpSession == null) {
-          cdpSession = await page.context().newCDPSession(page)
+        let session = profilerState.cdpSession
+        if (session == null) {
+          session = await page.context().newCDPSession(page)
+          profilerState.cdpSession = session
         }
 
-        await cdpSession.send('Profiler.enable')
-        await cdpSession.send('Profiler.start')
-        profilingActive = true
-        currentLabel = label
+        await session.send('Profiler.enable')
+        await session.send('Profiler.start')
+        profilerState.profilingActive = true
+        profilerState.currentLabel = label
       },
 
       stop: async (name: string) => {
-        if (profilingActive === false || cdpSession == null) {
+        const session = profilerState.cdpSession
+        if (profilerState.profilingActive === false || session == null) {
           throw new Error('CPU profiling is not active')
         }
 
-        const { profile } = await cdpSession.send('Profiler.stop')
-        profilingActive = false
+        const { profile } = await session.send('Profiler.stop')
+        profilerState.profilingActive = false
 
         // Save the profile to a file
-        const filename = currentLabel !== undefined ? `${name}-${currentLabel}.cpuprofile` : `${name}.cpuprofile`
+        const filename =
+          profilerState.currentLabel !== undefined
+            ? `${name}-${profilerState.currentLabel}.cpuprofile`
+            : `${name}.cpuprofile`
         const profilePath = testInfo.outputPath(filename)
 
         const fs = await import('node:fs/promises')
         await fs.writeFile(profilePath, JSON.stringify(profile, null, 2))
 
         console.log(`CPU profile saved: ${profilePath}`)
-        currentLabel = undefined
+        profilerState.currentLabel = undefined
       },
 
-      isActive: () => profilingActive,
+      isActive: () => profilerState.profilingActive,
     }
 
     await use(profiler)
 
     // Cleanup: stop profiling if still active
-    if (profilingActive === true && cdpSession !== undefined) {
+    const session = profilerState.cdpSession
+    if (profilerState.profilingActive === true && session != null) {
       try {
-        await cdpSession.send('Profiler.stop')
+        await session.send('Profiler.stop')
       } catch {
         // Ignore errors during cleanup
       }
     }
 
-    if (cdpSession !== undefined) {
-      await cdpSession.detach()
+    if (session != null) {
+      await session.detach()
     }
   },
 })
