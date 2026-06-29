@@ -286,20 +286,31 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         }
       })
 
+    type BatchPullStats = {
+      totalEvents: number
+      nonEmptyBatches: number
+      maxBatchSize: number
+    }
+
     const collectBatchPullStats = (syncBackend: SyncBackend.SyncBackend) =>
       syncBackend.pull(Option.none()).pipe(
-        Stream.runFold({ totalEvents: 0, nonEmptyBatches: 0, maxBatchSize: 0 }, (acc, { batch }) => ({
-          totalEvents: acc.totalEvents + batch.length,
-          nonEmptyBatches: acc.nonEmptyBatches + (batch.length > 0 ? 1 : 0),
-          maxBatchSize: Math.max(acc.maxBatchSize, batch.length),
-        })),
+        Stream.runFold(
+          (): BatchPullStats => ({ totalEvents: 0, nonEmptyBatches: 0, maxBatchSize: 0 }),
+          (acc, { batch }) => ({
+            totalEvents: acc.totalEvents + batch.length,
+            nonEmptyBatches: acc.nonEmptyBatches + (batch.length > 0 ? 1 : 0),
+            maxBatchSize: Math.max(acc.maxBatchSize, batch.length),
+          }),
+        ),
       )
 
     // Per-scenario timeout (all providers)
     const scenarioTimeout = Duration.minutes(6)
     // Vitest case timeout in ms (scenario + buffer)
     const vitestTimeoutMs = Duration.toMillis(scenarioTimeout) + Duration.toMillis(Duration.seconds(30))
-    const batchPingSchedule = Schedule.spaced(Duration.minutes(5)).pipe(Schedule.addDelay(() => Duration.minutes(1)))
+    const batchPingSchedule = Schedule.spaced(Duration.minutes(5)).pipe(
+      Schedule.addDelay(() => Effect.succeed(Duration.minutes(1))),
+    )
 
     // Additionally to the property-based tests we also have some deterministic scenarios.
     for (const { label, scenario } of deterministicBatchCases) {
