@@ -162,113 +162,134 @@ const hasTestFiles = (dirPath: string): boolean => {
 // - --testNamePattern/-t for filtering tests by name
 // - --exclude for excluding files
 // - Other standard Vitest CLI flags for more precise test control
+const runUnitTests = Effect.fn(function* ({ filter }: { filter: Option.Option<string> }) {
+  const workspaceRoot = yield* LivestoreWorkspace
+
+  if (Option.isSome(filter) === true) {
+    const target = path.isAbsolute(filter.value) === true ? filter.value : path.join(workspaceRoot, filter.value)
+    const configs = findVitestConfigs(target)
+    if (configs.length > 0) {
+      yield* Effect.forEach(
+        configs,
+        (config) => cmd(['vitest', 'run', '--config', config]).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+        { concurrency: 'unbounded' },
+      )
+    } else {
+      yield* cmd(['vitest', 'run', target]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+    }
+    return
+  }
+
+  // Packages that need to run sequentially due to CI flakiness
+  const sequentialPackages = ['packages/@livestore/webmesh', 'tests/package-common']
+
+  // Dynamically discover all packages with tests, excluding sequential ones
+  const allPackagesWithTests = discoverPackagesWithTests(workspaceRoot, sequentialPackages)
+
+  // Some tests seem to be flaky on CI when running in parallel with the other packages, so we run them separately
+  if (isGithubAction === true) {
+    process.env.CI = '1'
+
+    const vitestPathsToRunSequentially = sequentialPackages.map((pkg) => `${workspaceRoot}/${pkg}`)
+
+    // Currently getting a bunch of flaky webmesh tests on CI (https://share.cleanshot.com/Q2WWD144)
+    // Ignoring them for now but we should fix them eventually
+    for (const vitestPath of vitestPathsToRunSequentially) {
+      yield* runTestGroup(vitestPath)(
+        cmd(`vitest run ${vitestPath}`).pipe(Effect.ignore, Effect.provide(LivestoreWorkspace.toCwd())),
+      )
+    }
+
+    // Run the rest of the tests in parallel (each config as separate vitest invocation)
+    if (allPackagesWithTests.length > 0) {
+      yield* runTestGroup('Parallel tests')(
+        Effect.forEach(
+          allPackagesWithTests,
+          (target) => {
+            const args =
+              target.config !== undefined
+                ? ['vitest', 'run', '--config', target.config]
+                : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
+            return cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+          },
+          { concurrency: ciUnitTestPackageConcurrency },
+        ),
+      )
+    }
+  } else {
+    // For local development, run all in parallel (including sequential packages)
+    const sequentialTargets: TestTarget[] = sequentialPackages.map((pkg) => ({ path: pkg }))
+    yield* Effect.forEach(
+      [...sequentialTargets, ...allPackagesWithTests],
+      (target) => {
+        const args =
+          target.config !== undefined
+            ? ['vitest', 'run', '--config', target.config]
+            : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
+        const label = target.config ?? target.path
+        // TODO use this https://x.com/luxdav/status/1942532247833436656
+        return cmdText(args.join(' '), { stderr: 'pipe' }).pipe(
+          Effect.provide(LivestoreWorkspace.toCwd()),
+          Effect.tap((text) => Effect.sync(() => console.log(`Output for ${label}:\n\n${text}\n\n`))),
+        )
+      },
+      { concurrency: 'unbounded' },
+    )
+  }
+})
+
 export const testUnitCommand = Cli.Command.make(
   'unit',
   {
-    filter: Cli.Flag.text('filter').pipe(
+    filter: Cli.Flag.string('filter').pipe(
       Cli.Flag.optional,
       Cli.Flag.withDescription('Run only test suites whose path includes this substring'),
     ),
   },
-  Effect.fn(function* ({ filter }) {
-    const workspaceRoot = yield* LivestoreWorkspace
-
-    if (Option.isSome(filter) === true) {
-      const target = path.isAbsolute(filter.value) === true ? filter.value : path.join(workspaceRoot, filter.value)
-      const configs = findVitestConfigs(target)
-      if (configs.length > 0) {
-        yield* Effect.forEach(
-          configs,
-          (config) => cmd(['vitest', 'run', '--config', config]).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
-          { concurrency: 'unbounded' },
-        )
-      } else {
-        yield* cmd(['vitest', 'run', target]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-      }
-      return
-    }
-
-    // Packages that need to run sequentially due to CI flakiness
-    const sequentialPackages = ['packages/@livestore/webmesh', 'tests/package-common']
-
-    // Dynamically discover all packages with tests, excluding sequential ones
-    const allPackagesWithTests = discoverPackagesWithTests(workspaceRoot, sequentialPackages)
-
-    // Some tests seem to be flaky on CI when running in parallel with the other packages, so we run them separately
-    if (isGithubAction === true) {
-      process.env.CI = '1'
-
-      const vitestPathsToRunSequentially = sequentialPackages.map((pkg) => `${workspaceRoot}/${pkg}`)
-
-      // Currently getting a bunch of flaky webmesh tests on CI (https://share.cleanshot.com/Q2WWD144)
-      // Ignoring them for now but we should fix them eventually
-      for (const vitestPath of vitestPathsToRunSequentially) {
-        yield* runTestGroup(vitestPath)(
-          cmd(`vitest run ${vitestPath}`).pipe(Effect.ignore, Effect.provide(LivestoreWorkspace.toCwd())),
-        )
-      }
-
-      // Run the rest of the tests in parallel (each config as separate vitest invocation)
-      if (allPackagesWithTests.length > 0) {
-        yield* runTestGroup('Parallel tests')(
-          Effect.forEach(
-            allPackagesWithTests,
-            (target) => {
-              const args =
-                target.config !== undefined
-                  ? ['vitest', 'run', '--config', target.config]
-                  : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
-              return cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-            },
-            { concurrency: ciUnitTestPackageConcurrency },
-          ),
-        )
-      }
-    } else {
-      // For local development, run all in parallel (including sequential packages)
-      const sequentialTargets: TestTarget[] = sequentialPackages.map((pkg) => ({ path: pkg }))
-      yield* Effect.forEach(
-        [...sequentialTargets, ...allPackagesWithTests],
-        (target) => {
-          const args =
-            target.config !== undefined
-              ? ['vitest', 'run', '--config', target.config]
-              : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
-          const label = target.config ?? target.path
-          // TODO use this https://x.com/luxdav/status/1942532247833436656
-          return cmdText(args.join(' '), { stderr: 'pipe' }).pipe(
-            Effect.provide(LivestoreWorkspace.toCwd()),
-            Effect.tap((text) => console.log(`Output for ${label}:\n\n${text}\n\n`)),
-          )
-        },
-        { concurrency: 'unbounded' },
-      )
-    }
-  }),
+  runUnitTests,
 )
+
+const runPerfTests = Effect.fn(function* () {
+  yield* cmd('NODE_OPTIONS=--disable-warning=ExperimentalWarning pnpm playwright test', {
+    shell: true,
+    env: { FORCE_PLAYWRIGHT_VIA_CLI: '1' },
+  }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/perf')))
+})
 
 export const testPerfCommand = Cli.Command.make(
   'perf',
   {},
-  Effect.fn(function* () {
-    yield* cmd('NODE_OPTIONS=--disable-warning=ExperimentalWarning pnpm playwright test', {
-      shell: true,
-      env: { FORCE_PLAYWRIGHT_VIA_CLI: '1' },
-    }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/perf')))
-  }),
+  runPerfTests,
 )
+
+const runWaSqliteTests = Effect.fn(function* () {
+  yield* cmd('vitest run').pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/wa-sqlite')))
+})
 
 export const waSqliteTest = Cli.Command.make(
   'wa-sqlite',
   {},
-  Effect.fn(function* () {
-    yield* cmd('vitest run').pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/wa-sqlite')))
-  }),
+  runWaSqliteTests,
 )
 
 // the sync provider tests are actually part of another tests package but for now we run them from here too
 // TODO clean this up at some point
 const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+const runSyncProviderTests = Effect.fn(function* ({ provider }: { provider: Option.Option<TSyncProviderChoice> }) {
+  yield* syncProviderTestsPrepare.prepareCi
+
+  const args: string[] = ['vitest', 'run']
+  if (Option.isSome(provider) === true) {
+    const suite = providerRegistry[provider.value].name
+    // Vitest may render the provider name wrapped in quotes in the full test title.
+    // Use a forgiving pattern that matches with or without surrounding quotes.
+    const pattern = `["']?${escapeRegex(suite)}["']? sync provider`
+    args.push('--testNamePattern', pattern)
+  }
+
+  yield* cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/sync-provider')))
+})
 
 export const syncProviderTest = Cli.Command.make(
   'sync-provider',
@@ -278,21 +299,27 @@ export const syncProviderTest = Cli.Command.make(
       Cli.Flag.withDescription('Run only a specific sync provider test suite'),
     ),
   },
-  Effect.fn(function* ({ provider }: { provider: Option.Option<TSyncProviderChoice> }) {
-    yield* syncProviderTestsPrepare.prepareCi
-
-    const args: string[] = ['vitest', 'run']
-    if (Option.isSome(provider) === true) {
-      const suite = providerRegistry[provider.value].name
-      // Vitest may render the provider name wrapped in quotes in the full test title.
-      // Use a forgiving pattern that matches with or without surrounding quotes.
-      const pattern = `["']?${escapeRegex(suite)}["']? sync provider`
-      args.push('--testNamePattern', pattern)
-    }
-
-    yield* cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/sync-provider')))
-  }),
+  runSyncProviderTests,
 ).pipe(Cli.Command.withDescription('Run sync provider tests (optionally filtered by provider)'))
+
+const runIntegrationAllTests = Effect.fn('integration-tests:run-all')(function* ({
+  concurrency,
+  localDevtoolsPreview,
+}: {
+  readonly concurrency: 'sequential' | 'parallel'
+  readonly localDevtoolsPreview: boolean
+}) {
+  yield* Effect.all(
+    [
+      integrationTests.runMiscTest({ mode: 'headless', localDevtoolsPreview }),
+      integrationTests.runTodomvcTest({ mode: 'headless', localDevtoolsPreview }),
+      integrationTests.runDevtoolsTest({ mode: 'headless', localDevtoolsPreview }),
+      runSyncProviderTests({ provider: Option.none() }),
+      runWaSqliteTests(),
+    ],
+    { concurrency: concurrency === 'parallel' ? 'unbounded' : 1 },
+  )
+})
 
 const testIntegrationAllCommand = Cli.Command.make(
   'all',
@@ -300,18 +327,7 @@ const testIntegrationAllCommand = Cli.Command.make(
     concurrency: Cli.Flag.choice('concurrency', ['sequential', 'parallel']).pipe(Cli.Flag.withDefault('parallel')),
     localDevtoolsPreview: integrationTests.localDevtoolsPreviewOption,
   },
-  Effect.fn(function* ({ concurrency, localDevtoolsPreview }) {
-    yield* Effect.all(
-      [
-        integrationTests.miscTest.handler({ mode: 'headless', localDevtoolsPreview }),
-        integrationTests.todomvcTest.handler({ mode: 'headless', localDevtoolsPreview }),
-        integrationTests.devtoolsTest.handler({ mode: 'headless', localDevtoolsPreview }),
-        syncProviderTest.handler({ provider: Option.none() }),
-        waSqliteTest.handler({}),
-      ],
-      { concurrency: concurrency === 'parallel' ? 'unbounded' : 1 },
-    )
-  }, Effect.withSpan('integration-tests:run-all')),
+  runIntegrationAllTests,
 ).pipe(Cli.Command.withDescription('Run all integration tests'))
 
 export const testIntegrationCommand = Cli.Command.make('integration').pipe(
@@ -328,12 +344,12 @@ export const testCommand = Cli.Command.make(
   'test',
   {},
   Effect.fn(function* () {
-    yield* testUnitCommand.handler({ filter: Option.none() })
-    yield* testIntegrationAllCommand.handler({
+    yield* runUnitTests({ filter: Option.none() })
+    yield* runIntegrationAllTests({
       concurrency: isGithubAction === true ? 'sequential' : 'parallel',
       localDevtoolsPreview: false,
     })
-    yield* waSqliteTest.handler({})
-    yield* testPerfCommand.handler({})
+    yield* runWaSqliteTests()
+    yield* runPerfTests()
   }),
 ).pipe(Cli.Command.withSubcommands([testIntegrationCommand, testUnitCommand, testPerfCommand]))

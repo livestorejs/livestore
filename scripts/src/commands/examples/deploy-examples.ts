@@ -43,11 +43,11 @@ if (workspaceRoot == null) {
 const examplesDir = `${workspaceRoot}/examples`
 
 // Accept only the fields we care about (scripts) while tolerating extra metadata from Vite or toolchains.
-const ExamplePackageJsonSchema = Schema.Struct(
-  {
+const ExamplePackageJsonSchema = Schema.StructWithRest(
+  Schema.Struct({
     scripts: Schema.optional(Schema.Record(Schema.String, Schema.String)),
-  },
-  Schema.Record(Schema.String, Schema.Unknown),
+  }),
+  [Schema.Record(Schema.String, Schema.Unknown)],
 )
 
 const parseExamplePackageJson = Schema.decodeUnknownEffect(Schema.fromJsonString(ExamplePackageJsonSchema))
@@ -289,7 +289,7 @@ const deployExample = ({
 export const command = Cli.Command.make(
   'deploy',
   {
-    exampleFilter: Cli.Flag.text('example-filter').pipe(Cli.Flag.withAlias('e'), Cli.Flag.optional),
+    exampleFilter: Cli.Flag.string('example-filter').pipe(Cli.Flag.withAlias('e'), Cli.Flag.optional),
     prod: Cli.Flag.boolean('prod').pipe(Cli.Flag.withDefault(false)),
   },
   Effect.fn(function* ({ exampleFilter, prod }) {
@@ -396,12 +396,9 @@ export const command = Cli.Command.make(
 )
 
 if (import.meta.main === true) {
-  const cli = Cli.Command.run(command, {
-    name: 'Deploy Examples',
+  Cli.Command.run(command, {
     version: '0.0.0',
-  })
-
-  cli(process.argv).pipe(
+  }).pipe(
     Effect.provideService(References.MinimumLogLevel, 'Debug'),
     Effect.provide(Layer.mergeAll(PlatformNode.NodeServices.layer, LivestoreWorkspace.fromPath(workspaceRoot))),
     PlatformNode.NodeRuntime.runMain,
