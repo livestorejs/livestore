@@ -328,7 +328,7 @@ export const makeProxyChannel = ({
 
               yield* ackSendEffect.pipe(
                 Effect.tapCauseLogPretty,
-                // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+                // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
                 Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
               )
 
@@ -396,7 +396,7 @@ export const makeProxyChannel = ({
         const retryOnNewEdgeFiber = yield* Stream.fromPubSub(newEdgeAvailablePubSub).pipe(
           Stream.tap(() => edgeRequest),
           Stream.runDrain,
-          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
@@ -406,7 +406,7 @@ export const makeProxyChannel = ({
           Stream.tap(processProxyPacket),
           Stream.runDrain,
           Effect.tapCauseLogPretty,
-          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
@@ -465,7 +465,7 @@ export const makeProxyChannel = ({
             Stream.filter((_) => _ === false),
             Stream.tap(() => FiberHandle.run(sendFiberHandle, trySend)),
             Stream.runDrain,
-            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
             Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
