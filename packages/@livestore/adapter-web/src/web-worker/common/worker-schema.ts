@@ -10,7 +10,7 @@ import {
 } from '@livestore/common'
 import { StreamEventsOptionsFields } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
-import { Schema, Transferable } from '@livestore/utils/effect'
+import { Rpc, RpcGroup, Schema, Transferable } from '@livestore/utils/effect'
 import * as WebmeshWorker from '@livestore/webmesh/worker'
 
 export const StorageTypeOpfs = Schema.Struct({
@@ -45,164 +45,136 @@ export type StorageTypeEncoded = typeof StorageType.Encoded
 export const SyncBackendOptions = Schema.Record(Schema.String, Schema.Json)
 export type SyncBackendOptions = Record<string, Schema.Json>
 
-export class LeaderWorkerOuterInitialMessage extends Schema.TaggedRequest<LeaderWorkerOuterInitialMessage>()(
-  'InitialMessage',
-  {
-    payload: { port: Transferable.MessagePort, storeId: Schema.String, clientId: Schema.String },
-    success: Schema.Void,
-    failure: Schema.Never,
-  },
-) {}
+export class LeaderWorkerOuterInitialMessage extends Rpc.make('InitialMessage', {
+  payload: { port: Transferable.MessagePort, storeId: Schema.String, clientId: Schema.String },
+  success: Schema.Void,
+  error: Schema.Never,
+}) {}
 
-export const LeaderWorkerOuterRequest = Schema.Union([LeaderWorkerOuterInitialMessage])
+export class LeaderWorkerOuterRpcs extends RpcGroup.make(LeaderWorkerOuterInitialMessage) {}
 
 // TODO unify this code with schema from node adapter
-export class LeaderWorkerInnerInitialMessage extends Schema.TaggedRequest<LeaderWorkerInnerInitialMessage>()(
-  'InitialMessage',
-  {
-    payload: {
-      storageOptions: StorageType,
-      devtoolsEnabled: Schema.Boolean,
-      storeId: Schema.String,
-      clientId: Schema.String,
-      debugInstanceId: Schema.String,
-      syncPayloadEncoded: Schema.UndefinedOr(Schema.Json),
-    },
-    success: Schema.Void,
-    failure: UnknownError,
+export class LeaderWorkerInnerInitialMessage extends Rpc.make('InitialMessage', {
+  payload: {
+    storageOptions: StorageType,
+    devtoolsEnabled: Schema.Boolean,
+    storeId: Schema.String,
+    clientId: Schema.String,
+    debugInstanceId: Schema.String,
+    syncPayloadEncoded: Schema.UndefinedOr(Schema.Json),
   },
-) {}
+  success: Schema.Void,
+  error: UnknownError,
+}) {}
 
-export class LeaderWorkerInnerBootStatusStream extends Schema.TaggedRequest<LeaderWorkerInnerBootStatusStream>()(
-  'BootStatusStream',
-  {
-    payload: {},
-    success: BootStatus,
-    failure: Schema.Never,
+export class LeaderWorkerInnerBootStatusStream extends Rpc.make('BootStatusStream', {
+  payload: {},
+  success: BootStatus,
+  error: Schema.Never,
+  stream: true,
+}) {}
+
+export class LeaderWorkerInnerPushToLeader extends Rpc.make('PushToLeader', {
+  payload: {
+    batch: Schema.Array(Schema.toType(LiveStoreEvent.Client.Encoded)),
   },
-) {}
+  success: Schema.Void,
+  error: RejectedPushError,
+}) {}
 
-export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWorkerInnerPushToLeader>()(
-  'PushToLeader',
-  {
-    payload: {
-      batch: Schema.Array(Schema.toType(LiveStoreEvent.Client.Encoded)),
-    },
-    success: Schema.Void,
-    failure: RejectedPushError,
-  },
-) {}
-
-export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWorkerInnerPullStream>()('PullStream', {
+export class LeaderWorkerInnerPullStream extends Rpc.make('PullStream', {
   payload: {
     cursor: Schema.toType(EventSequenceNumber.Client.Composite),
   },
   success: Schema.Struct({
     payload: SyncState.PayloadUpstream,
   }),
-  failure: Schema.Never,
+  error: Schema.Never,
+  stream: true,
 }) {}
 
-export class LeaderWorkerInnerStreamEvents extends Schema.TaggedRequest<LeaderWorkerInnerStreamEvents>()(
-  'StreamEvents',
-  {
-    payload: StreamEventsOptionsFields,
-    success: LiveStoreEvent.Client.Encoded,
-    failure: Schema.Never,
-  },
-) {}
+export class LeaderWorkerInnerStreamEvents extends Rpc.make('StreamEvents', {
+  payload: StreamEventsOptionsFields,
+  success: LiveStoreEvent.Client.Encoded,
+  error: Schema.Never,
+  stream: true,
+}) {}
 
-export class LeaderWorkerInnerExport extends Schema.TaggedRequest<LeaderWorkerInnerExport>()('Export', {
+export class LeaderWorkerInnerExport extends Rpc.make('Export', {
   payload: {},
   success: Transferable.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>,
-  failure: Schema.Never,
+  error: Schema.Never,
 }) {}
 
-export class LeaderWorkerInnerExportEventlog extends Schema.TaggedRequest<LeaderWorkerInnerExportEventlog>()(
-  'ExportEventlog',
-  {
-    payload: {},
-    success: Transferable.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>,
-    failure: Schema.Never,
-  },
-) {}
+export class LeaderWorkerInnerExportEventlog extends Rpc.make('ExportEventlog', {
+  payload: {},
+  success: Transferable.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>,
+  error: Schema.Never,
+}) {}
 
-export class LeaderWorkerInnerGetRecreateSnapshot extends Schema.TaggedRequest<LeaderWorkerInnerGetRecreateSnapshot>()(
-  'GetRecreateSnapshot',
-  {
-    payload: {},
-    success: Schema.Struct({
-      snapshot: Transferable.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>,
-      migrationsReport: MigrationsReport,
-    }),
-    failure: Schema.Never,
-  },
-) {}
+export class LeaderWorkerInnerGetRecreateSnapshot extends Rpc.make('GetRecreateSnapshot', {
+  payload: {},
+  success: Schema.Struct({
+    snapshot: Transferable.Uint8Array as Schema.Codec<Uint8Array<ArrayBuffer>>,
+    migrationsReport: MigrationsReport,
+  }),
+  error: Schema.Never,
+}) {}
 
-export class LeaderWorkerInnerGetLeaderHead extends Schema.TaggedRequest<LeaderWorkerInnerGetLeaderHead>()(
-  'GetLeaderHead',
-  {
-    payload: {},
-    success: Schema.toType(EventSequenceNumber.Client.Composite),
-    failure: Schema.Never,
-  },
-) {}
+export class LeaderWorkerInnerGetLeaderHead extends Rpc.make('GetLeaderHead', {
+  payload: {},
+  success: Schema.toType(EventSequenceNumber.Client.Composite),
+  error: Schema.Never,
+}) {}
 
-export class LeaderWorkerInnerGetLeaderSyncState extends Schema.TaggedRequest<LeaderWorkerInnerGetLeaderSyncState>()(
-  'GetLeaderSyncState',
-  {
-    payload: {},
-    success: SyncState.SyncState,
-    failure: Schema.Never,
-  },
-) {}
+export class LeaderWorkerInnerGetLeaderSyncState extends Rpc.make('GetLeaderSyncState', {
+  payload: {},
+  success: SyncState.SyncState,
+  error: Schema.Never,
+}) {}
 
-export class LeaderWorkerInnerSyncStateStream extends Schema.TaggedRequest<LeaderWorkerInnerSyncStateStream>()(
-  'SyncStateStream',
-  {
-    payload: {},
-    success: SyncState.SyncState,
-    failure: Schema.Never,
-  },
-) {}
+export class LeaderWorkerInnerSyncStateStream extends Rpc.make('SyncStateStream', {
+  payload: {},
+  success: SyncState.SyncState,
+  error: Schema.Never,
+  stream: true,
+}) {}
 
-export class LeaderWorkerInnerGetNetworkStatus extends Schema.TaggedRequest<LeaderWorkerInnerGetNetworkStatus>()(
-  'GetNetworkStatus',
-  {
-    payload: {},
-    success: SyncBackend.NetworkStatus,
-    failure: Schema.Never,
-  },
-) {}
+export class LeaderWorkerInnerGetNetworkStatus extends Rpc.make('GetNetworkStatus', {
+  payload: {},
+  success: SyncBackend.NetworkStatus,
+  error: Schema.Never,
+}) {}
 
-export class LeaderWorkerInnerNetworkStatusStream extends Schema.TaggedRequest<LeaderWorkerInnerNetworkStatusStream>()(
-  'NetworkStatusStream',
-  {
-    payload: {},
-    success: SyncBackend.NetworkStatus,
-    failure: Schema.Never,
-  },
-) {}
+export class LeaderWorkerInnerNetworkStatusStream extends Rpc.make('NetworkStatusStream', {
+  payload: {},
+  success: SyncBackend.NetworkStatus,
+  error: Schema.Never,
+  stream: true,
+}) {}
 
-export class LeaderWorkerInnerShutdown extends Schema.TaggedRequest<LeaderWorkerInnerShutdown>()('Shutdown', {
+export class LeaderWorkerInnerShutdown extends Rpc.make('Shutdown', {
   payload: {},
   success: Schema.Void,
-  failure: Schema.Never,
+  error: Schema.Never,
 }) {}
 
-export class LeaderWorkerInnerExtraDevtoolsMessage extends Schema.TaggedRequest<LeaderWorkerInnerExtraDevtoolsMessage>()(
-  'ExtraDevtoolsMessage',
-  {
-    payload: {
-      message: Devtools.Leader.MessageToApp,
-    },
-    success: Schema.Void,
-    failure: Schema.Never,
+export class LeaderWorkerInnerExtraDevtoolsMessage extends Rpc.make('ExtraDevtoolsMessage', {
+  payload: {
+    message: Devtools.Leader.MessageToApp,
   },
-) {}
+  success: Schema.Void,
+  error: Schema.Never,
+}) {}
 
-export const LeaderWorkerInnerRequest = Schema.Union([
-  LeaderWorkerInnerInitialMessage,
+export class WebmeshWorkerCreateConnection extends Rpc.make('WebmeshWorker.CreateConnection', {
+  payload: WebmeshWorker.Schema.CreateConnection,
+  success: Schema.Struct({}),
+  error: Schema.Never,
+  stream: true,
+}) {}
+
+export class LeaderWorkerInnerRpcs extends RpcGroup.make(
   LeaderWorkerInnerBootStatusStream,
   LeaderWorkerInnerPushToLeader,
   LeaderWorkerInnerPullStream,
@@ -217,31 +189,27 @@ export const LeaderWorkerInnerRequest = Schema.Union([
   LeaderWorkerInnerNetworkStatusStream,
   LeaderWorkerInnerShutdown,
   LeaderWorkerInnerExtraDevtoolsMessage,
-  WebmeshWorker.Schema.CreateConnection,
-])
-export type LeaderWorkerInnerRequest = typeof LeaderWorkerInnerRequest.Type
-
-export class SharedWorkerUpdateMessagePort extends Schema.TaggedRequest<SharedWorkerUpdateMessagePort>()(
-  'UpdateMessagePort',
-  {
-    payload: {
-      port: Transferable.MessagePort,
-      // Version gate to prevent mixed LiveStore builds talking to the same SharedWorker
-      liveStoreVersion: Schema.Literal(liveStoreVersion),
-      /**
-       * Initial configuration for the leader worker. This replaces the previous
-       * two-phase SharedWorker handshake and is sent under the tab lock by the
-       * elected leader. Subsequent calls can omit changes and will simply rebind
-       * the port (join) without reinitializing the store.
-       */
-      initial: LeaderWorkerInnerInitialMessage,
-    },
-    success: Schema.Void,
-    failure: UnknownError,
-  },
+  WebmeshWorkerCreateConnection,
 ) {}
 
-export const SharedWorkerRequest = Schema.Union([
+export class SharedWorkerUpdateMessagePort extends Rpc.make('UpdateMessagePort', {
+  payload: {
+    port: Transferable.MessagePort,
+    // Version gate to prevent mixed LiveStore builds talking to the same SharedWorker
+    liveStoreVersion: Schema.Literal(liveStoreVersion),
+    /**
+     * Initial configuration for the leader worker. This replaces the previous
+     * two-phase SharedWorker handshake and is sent under the tab lock by the
+     * elected leader. Subsequent calls can omit changes and will simply rebind
+     * the port (join) without reinitializing the store.
+     */
+    initial: LeaderWorkerInnerInitialMessage.payloadSchema,
+  },
+  success: Schema.Void,
+  error: UnknownError,
+}) {}
+
+export class SharedWorkerRpcs extends RpcGroup.make(
   SharedWorkerUpdateMessagePort,
 
   // Proxied requests
@@ -260,6 +228,5 @@ export const SharedWorkerRequest = Schema.Union([
   LeaderWorkerInnerShutdown,
   LeaderWorkerInnerExtraDevtoolsMessage,
 
-  WebmeshWorker.Schema.CreateConnection,
-])
-export type SharedWorkerRequest = typeof SharedWorkerRequest.Type
+  WebmeshWorkerCreateConnection,
+) {}
