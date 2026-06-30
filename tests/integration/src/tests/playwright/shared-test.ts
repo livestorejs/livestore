@@ -5,7 +5,6 @@ import process from 'node:process'
 
 import type * as PW from '@playwright/test'
 
-import type { UnknownError } from '@livestore/common'
 import * as Playwright from '@livestore/effect-playwright'
 import { Deferred, Duration, Effect, Fiber, Layer, Logger, Schema } from '@livestore/utils/effect'
 
@@ -67,13 +66,15 @@ export const runAndGetExit = <S extends Schema.Decoder<{ readonly exit: unknown 
       type Result = Schema.Schema.Type<S>
       const deferred = yield* Deferred.make<Result['exit']>()
 
-      page.exposeFunction('onMessageReceived', (message: string) => {
-        const result = Schema.decodeUnknownOption(schema)(message)
-        // console.log('onMessageReceived', message, result)
-        if (result._tag === 'Some') {
-          Deferred.succeed(deferred, result.value.exit).pipe(Effect.runSync)
-        }
-      })
+      yield* Effect.promise(() =>
+        page.exposeFunction('onMessageReceived', (message: string) => {
+          const result = Schema.decodeUnknownOption(schema)(message)
+          // console.log('onMessageReceived', message, result)
+          if (result._tag === 'Some') {
+            Deferred.succeed(deferred, result.value.exit).pipe(Effect.runSync)
+          }
+        }),
+      )
 
       yield* Effect.promise(() =>
         page.evaluate(() => {
