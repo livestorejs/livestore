@@ -25,7 +25,7 @@ import type * as otel from '@opentelemetry/api'
 
 import { BoundArray } from '@livestore/common'
 import { deepEqual, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
-import type { Types } from '@livestore/utils/effect'
+import { Schema, type Types } from '@livestore/utils/effect'
 // import { getDurationMsFromSpan } from './otel.ts'
 
 export const NOT_REFRESHED_YET = Symbol.for('NOT_REFRESHED_YET')
@@ -635,7 +635,24 @@ const serializeAtom = (atom: Atom<any, unknown, any>, includeResult: boolean): S
       ? encodedOptionSome(
           atom.previousResult === NOT_REFRESHED_YET
             ? '"SYMBOL_NOT_REFRESHED_YET"'
-            : JSON.stringify(atom.previousResult),
+            : JSON.stringify(atom.previousResult, (key, nestedValue) => {
+                if (Schema.isSchema(nestedValue) === false) return nestedValue
+
+                // Query inputs carry schemas for result decoding, but graph snapshots use previousResult
+                // to explain reactive data flow. Omitting that field preserves the stable query shape
+                // without embedding Effect full schema object graph.
+                if (key === 'schema') return undefined
+
+                const annotations = Schema.resolveAnnotations(nestedValue)
+
+                return omitUndefineds({
+                  _tag: 'Schema',
+                  ast: nestedValue.ast._tag,
+                  identifier: annotations?.identifier,
+                  title: annotations?.title,
+                  hash: Schema.hash(nestedValue),
+                })
+              }),
         )
       : encodedOptionNone()
 
