@@ -76,7 +76,7 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
       try {
         while (streamState.cancelled === false) {
           const result = await iterator.next()
-          if (result.done === true || streamState.cancelled) break
+          if (result.done === true || streamState.cancelled === true) break
           const { value } = result
           if (value == null) continue
 

@@ -322,7 +322,7 @@ const watchDiagramsInternal = (
         const result = yield* buildDiagrams(options).pipe(Effect.result)
         const durationMs = Date.now() - startedAt
 
-        if (Result.isFailure(result)) {
+        if (Result.isFailure(result) === true) {
           const error = result.failure
           yield* Effect.logError(
             `Diagrams watch: build failed${event !== null ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,

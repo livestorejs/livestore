@@ -258,6 +258,7 @@ const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDire
   )
   const filesToDelete = pipe(
     filesWithMetadata,
+    // oxlint-disable-next-line eslint-plugin-unicorn(no-array-sort) -- EffectArray has no toSorted helper in the current Effect version; sort returns a sorted copy.
     EffectArray.sort(Order.mapInput(Order.Number, (entry: { lastModified: number }) => entry.lastModified)),
     EffectArray.drop(keep),
   )

@@ -1,4 +1,5 @@
-import { Effect, ReadonlyArray as EffectArray, Schema } from '@livestore/utils/effect'
+import type { ReadonlyArray as EffectArray } from '@livestore/utils/effect'
+import { Effect, Schema } from '@livestore/utils/effect'
 
 const textEncoder = new TextEncoder()
 

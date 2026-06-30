@@ -329,7 +329,7 @@ export const deriveEventAndMaterializer = ({
 
       const keys = Object.keys(value)
       const partialUpdateSchema = pickStructSchema(valueSchema, keys)
-      const encodedPartialUpdate = Schema.encodeSyncDebug(partialUpdateSchema)(value) as Record<string, unknown>
+      const encodedPartialUpdate = Schema.encodeSyncDebug(partialUpdateSchema)(value)
 
       for (const key in encodedPartialUpdate) {
         const encodedValueForKey = encodedPartialUpdate[key]

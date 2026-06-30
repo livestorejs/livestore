@@ -283,7 +283,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
       catch: (error) => new FileReadError({ cause: error, path: candidate }),
     }).pipe(Effect.result)
 
-    if (Result.isSuccess(readResult)) {
+    if (Result.isSuccess(readResult) === true) {
       configContent = readResult.success
       configPath = candidate
       break
