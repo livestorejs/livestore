@@ -8,7 +8,7 @@ export * as SyncMessage from './sync-message-types.ts'
 
 export const SearchParamsSchema = Schema.Struct({
   storeId: Schema.String,
-  payload: Schema.StringFromUriComponent.pipe(Schema.decodeTo(Schema.fromJsonString(Schema.Json)), Schema.UndefinedOr),
+  payload: Schema.optional(Schema.StringFromUriComponent.pipe(Schema.decodeTo(Schema.fromJsonString(Schema.Json)))),
   // NOTE `do-rpc` is handled differently
   transport: Schema.Literals(['http', 'ws']),
 })
