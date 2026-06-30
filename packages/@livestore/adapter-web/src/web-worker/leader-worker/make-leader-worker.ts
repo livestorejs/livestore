@@ -16,10 +16,8 @@ import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
 import {
-  type HttpClient,
-  type Scope,
-  type WorkerError,
   Cause,
+  Deferred,
   Effect,
   FetchHttpClient,
   identity,
@@ -27,11 +25,12 @@ import {
   OtelTracer,
   Queue,
   References,
-  Scheduler,
+  RpcServer,
+  RpcWorker,
   Schema,
+  Scope,
   Stream,
   TaskTracing,
-  WorkerRunner,
 } from '@livestore/utils/effect'
 import { BrowserWorkerRunner, Opfs, WebError } from '@livestore/utils/effect/browser'
 import * as WebmeshWorker from '@livestore/webmesh/worker'
@@ -60,7 +59,7 @@ if (isDevEnv() === true) {
 }
 
 export const makeWorker = (options: WorkerOptions) => {
-  makeWorkerEffect(options).pipe(Effect.runFork)
+  Effect.runFork(makeWorkerEffect(options))
 }
 
 export const makeWorkerEffect = (options: WorkerOptions) => {
@@ -71,23 +70,20 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         )
       : Layer.empty
 
-  const runtimeLayer = Layer.mergeAll(FetchHttpClient.layer, TracingLive)
+  const runtimeLayer = Layer.mergeAll(
+    FetchHttpClient.layer,
+    TracingLive,
+    Layer.succeed(References.MaxOpsBeforeYield, 4096),
+  )
 
   return makeWorkerRunnerOuter(options).pipe(
-    Layer.provide(BrowserWorkerRunner.layer),
-    WorkerRunner.launch,
+    Effect.provide(RpcServer.layerProtocolWorkerRunner),
+    Effect.provide(BrowserWorkerRunner.layer),
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
     Effect.provide(runtimeLayer),
     LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
-    // This v3-era custom scheduler now only swaps Effect v4's default worker fallback
-    // (`setTimeout(0)`) for `MessageChannel`; v4's `MixedScheduler` still owns batching.
-    // TODO: Reconsider whether this is still needed for the leader worker.
-    // Despite the "message channel" name, it has nothing to do with the `incomingRequestsPort` above.
-    Effect.withScheduler(Scheduler.messageChannel()),
-    // We're increasing the Effect ops limit here to allow for larger chunks of operations at a time
-    Effect.withMaxOpsBeforeYield(4096),
     Effect.provide(
       Layer.mergeAll(
         options.logger ?? Layer.empty,
@@ -97,226 +93,325 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
   )
 }
 
-const makeWorkerRunnerOuter = (
-  workerOptions: WorkerOptions,
-): Layer.Layer<never, WorkerError.WorkerError, WorkerRunner.PlatformRunner | HttpClient.HttpClient> =>
-  WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerOuterInitialMessage, {
-    // Port coming from client session and forwarded via the shared worker
-    InitialMessage: ({ port: incomingRequestsPort, storeId, clientId }) =>
-      Effect.gen(function* () {
-        yield* makeWorkerRunnerInner(workerOptions).pipe(
-          Layer.provide(BrowserWorkerRunner.layerMessagePort(incomingRequestsPort)),
-          WorkerRunner.launch,
-          Effect.scoped,
-          Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage:innerFiber'),
-          Effect.tapCauseLogPretty,
-          Effect.provide(
-            Layer.mergeAll(
-              Opfs.layer,
-              WebmeshWorker.CacheService.layer({
-                nodeName: Devtools.makeNodeName.client.leader({ storeId, clientId }),
-              }),
-            ),
-          ),
-          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
-        )
+const makeWorkerRunnerOuter = (workerOptions: WorkerOptions) =>
+  Effect.gen(function* () {
+    // Port coming from client session and forwarded via the shared worker.
+    const {
+      port: incomingRequestsPort,
+      storeId,
+      clientId,
+    } = yield* RpcWorker.initialMessage(WorkerSchema.LeaderWorkerOuterInitialMessage.payloadSchema)
 
-        return Layer.empty
-      }).pipe(Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage'), Layer.unwrap),
-  })
+    return yield* RpcServer.make(WorkerSchema.LeaderWorkerInnerRpcs).pipe(
+      Effect.provide(makeWorkerRunnerInner(workerOptions)),
+      Effect.provide(makeMessagePortRpcServerProtocol(incomingRequestsPort)),
+      Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage:innerFiber'),
+      Effect.tapCauseLogPretty,
+      Effect.provide(
+        Layer.mergeAll(
+          Opfs.layer,
+          WebmeshWorker.CacheService.layer({
+            nodeName: Devtools.makeNodeName.client.leader({ storeId, clientId }),
+          }),
+        ),
+      ),
+    )
+  }).pipe(Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage'))
+
+const makeMessagePortRpcServerProtocol = (port: MessagePort): Layer.Layer<RpcServer.Protocol> =>
+  Layer.effect(
+    RpcServer.Protocol,
+    Effect.gen(function* () {
+      const disconnects = yield* Queue.unbounded<number>()
+      const initialMessage = yield* Deferred.make<unknown>()
+      const closed = yield* Deferred.make<void>()
+      const clientIds = new Set<number>()
+
+      return RpcServer.Protocol.of({
+        disconnects,
+        send: (_clientId, response, transferables) =>
+          Effect.sync(() => port.postMessage([1, response], { transfer: (transferables ?? []) as Transferable[] })),
+        end: () => Effect.void,
+        clientIds: Effect.sync(() => clientIds),
+        initialMessage: Effect.asSome(Deferred.await(initialMessage)),
+        supportsAck: true,
+        supportsTransferables: true,
+        supportsSpanPropagation: true,
+        run: (writeRequest) =>
+          Effect.gen(function* () {
+            const context = yield* Effect.context<never>()
+            const runFork = Effect.runForkWith(context)
+            const onMessage = (event: MessageEvent) => {
+              const message = event.data as readonly [0 | 1, unknown?]
+              if (message[0] === 1) {
+                runFork(
+                  Effect.gen(function* () {
+                    yield* Queue.offer(disconnects, 0)
+                    yield* Deferred.succeed(closed, undefined)
+                  }),
+                )
+                return
+              }
+
+              const request = message[1] as { readonly _tag?: string; readonly value?: unknown }
+              clientIds.add(0)
+              if (request._tag === 'InitialMessage') {
+                runFork(Deferred.succeed(initialMessage, request.value))
+              } else {
+                runFork(writeRequest(0, request as never))
+              }
+            }
+
+            port.addEventListener('message', onMessage)
+            port.start()
+            port.postMessage([0])
+
+            return yield* Deferred.await(closed).pipe(
+              Effect.andThen(Effect.interrupt),
+              Effect.ensuring(
+                Effect.sync(() => {
+                  port.removeEventListener('message', onMessage)
+                  port.close()
+                }),
+              ),
+            )
+          }),
+      })
+    }),
+  )
 
 const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }: WorkerOptions) =>
-  WorkerRunner.layerSerialized(WorkerSchema.LeaderWorkerInnerRequest, {
-    InitialMessage: ({ storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayloadEncoded }) =>
-      Effect.gen(function* () {
-        const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
-        const makeSqliteDb = sqliteDbFactory({ sqlite3 })
-        const services = yield* Effect.context()
+  WorkerSchema.LeaderWorkerInnerRpcs.toLayer(
+    Effect.gen(function* () {
+      const leaderThreadScope = yield* Scope.make()
+      yield* Effect.addFinalizer((exit) => Scope.close(leaderThreadScope, exit))
 
-        // Check OPFS availability and determine storage mode
-        const opfsCheck = yield* checkOpfsAvailability
-        const useOpfs = opfsCheck === undefined
+      const leaderThreadContextOnce = yield* Effect.cached(
+        Effect.gen(function* () {
+          const { storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayloadEncoded } =
+            yield* RpcWorker.initialMessage(WorkerSchema.LeaderWorkerInnerInitialMessage.payloadSchema)
 
-        // Track boot warning to emit later
-        let bootWarning: BootStatus | undefined
-        if (useOpfs === false) {
-          yield* Effect.logWarning(
-            '[@livestore/adapter-web:worker] OPFS unavailable, using in-memory storage',
-            opfsCheck,
-          )
-          bootWarning = { stage: 'warning', ...opfsCheck }
-        }
+          const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
+          const makeSqliteDb = sqliteDbFactory({ sqlite3 })
+          const services = yield* Effect.context()
 
-        const opfsDirectory = useOpfs === true ? yield* sanitizeOpfsDir(storageOptions.directory, storeId) : undefined
+          // Check OPFS availability and determine storage mode
+          const opfsCheck = yield* checkOpfsAvailability
+          const useOpfs = opfsCheck === undefined
 
-        const makeOpfsDb = (kind: 'state' | 'eventlog') =>
-          Effect.acquireRelease(
-            makeSqliteDb({
-              _tag: 'opfs',
-              opfsDirectory: opfsDirectory!,
-              fileName: kind === 'state' ? getStateDbFileName(schema) : 'eventlog.db',
-              configureDb: (db) =>
-                configureConnection(db, {
-                  //  The persisted databases use the AccessHandlePoolVFS which always uses a single database connection.
-                  //  Multiple connections are not supported. This means that we can use the exclusive locking mode to
-                  //  avoid unnecessary system calls and enable the use of the WAL journal mode without the use of shared memory.
-                  // TODO bring back exclusive locking mode when `WAL` is working properly
-                  // lockingMode: 'EXCLUSIVE',
-                  foreignKeys: true,
-                }).pipe(Effect.runSyncWith(services)),
+          // Track boot warning to emit later
+          let bootWarning: BootStatus | undefined
+          if (useOpfs === false) {
+            yield* Effect.logWarning(
+              '[@livestore/adapter-web:worker] OPFS unavailable, using in-memory storage',
+              opfsCheck,
+            )
+            bootWarning = { stage: 'warning', ...opfsCheck }
+          }
+
+          const opfsDirectory = useOpfs === true ? yield* sanitizeOpfsDir(storageOptions.directory, storeId) : undefined
+
+          const makeOpfsDb = (kind: 'state' | 'eventlog') =>
+            Effect.acquireRelease(
+              makeSqliteDb({
+                _tag: 'opfs',
+                opfsDirectory: opfsDirectory!,
+                fileName: kind === 'state' ? getStateDbFileName(schema) : 'eventlog.db',
+                configureDb: (db) =>
+                  configureConnection(db, {
+                    //  The persisted databases use the AccessHandlePoolVFS which always uses a single database connection.
+                    //  Multiple connections are not supported. This means that we can use the exclusive locking mode to
+                    //  avoid unnecessary system calls and enable the use of the WAL journal mode without the use of shared memory.
+                    // TODO bring back exclusive locking mode when `WAL` is working properly
+                    // lockingMode: 'EXCLUSIVE',
+                    foreignKeys: true,
+                  }).pipe(Effect.runSyncWith(services)),
+              }),
+              (db) =>
+                Effect.try({
+                  try: () => db.close(),
+                  catch: (cause) => new Cause.UnknownError(cause),
+                }).pipe(Effect.ignore),
+            )
+
+          const makeInMemoryDb = () =>
+            Effect.acquireRelease(
+              makeSqliteDb({
+                _tag: 'in-memory',
+                configureDb: (db) => configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(services)),
+              }),
+              (db) =>
+                Effect.try({
+                  try: () => db.close(),
+                  catch: (cause) => new Cause.UnknownError(cause),
+                }).pipe(Effect.ignore),
+            )
+
+          // Use OPFS if available, otherwise fall back to in-memory
+          const [dbState, dbEventlog] =
+            useOpfs === true
+              ? yield* Effect.all([makeOpfsDb('state'), makeOpfsDb('eventlog')], { concurrency: 2 })
+              : yield* Effect.all([makeInMemoryDb(), makeInMemoryDb()], { concurrency: 2 })
+
+          // Clean up old state database files after successful database creation
+          // This prevents OPFS file pool capacity exhaustion from accumulated state db files after schema changes/migrations
+          if (dbState.metadata._tag === 'opfs') {
+            yield* cleanupOldStateDbFiles({
+              vfs: dbState.metadata.vfs,
+              currentSchema: schema,
+              opfsDirectory: dbState.metadata.persistenceInfo.opfsDirectory,
+            })
+          }
+
+          const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, dbState, dbEventlog })
+          const shutdownChannel = yield* makeShutdownChannel(storeId)
+
+          return yield* Layer.buildWithScope(
+            makeLeaderThreadLayer({
+              schema,
+              storeId,
+              clientId,
+              makeSqliteDb,
+              syncOptions,
+              dbState,
+              dbEventlog,
+              devtoolsOptions,
+              shutdownChannel,
+              syncPayloadEncoded,
+              syncPayloadSchema: syncPayloadSchema as Schema.Decoder<Schema.Json, never> | undefined,
+              ...(bootWarning !== undefined ? { bootWarning } : {}),
             }),
-            (db) =>
-              Effect.try({
-                try: () => db.close(),
-                catch: (cause) => new Cause.UnknownError(cause),
-              }).pipe(Effect.ignore),
+            leaderThreadScope,
           )
+        }).pipe(
+          Scope.provide(leaderThreadScope),
+          Effect.tapCauseLogPretty,
+          UnknownError.mapToUnknownError,
+          Effect.withPerformanceMeasure('@livestore/adapter-web:worker:InitialMessage'),
+          Effect.withSpan('@livestore/adapter-web:worker:InitialMessage'),
+          Effect.orDie,
+        ),
+      )
 
-        const makeInMemoryDb = () =>
-          Effect.acquireRelease(
-            makeSqliteDb({
-              _tag: 'in-memory',
-              configureDb: (db) =>
-                configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(services)),
-            }),
-            (db) =>
-              Effect.try({
-                try: () => db.close(),
-                catch: (cause) => new Cause.UnknownError(cause),
-              }).pipe(Effect.ignore),
-          )
-
-        // Use OPFS if available, otherwise fall back to in-memory
-        const [dbState, dbEventlog] =
-          useOpfs === true
-            ? yield* Effect.all([makeOpfsDb('state'), makeOpfsDb('eventlog')], { concurrency: 2 })
-            : yield* Effect.all([makeInMemoryDb(), makeInMemoryDb()], { concurrency: 2 })
-
-        // Clean up old state database files after successful database creation
-        // This prevents OPFS file pool capacity exhaustion from accumulated state db files after schema changes/migrations
-        if (dbState.metadata._tag === 'opfs') {
-          yield* cleanupOldStateDbFiles({
-            vfs: dbState.metadata.vfs,
-            currentSchema: schema,
-            opfsDirectory: dbState.metadata.persistenceInfo.opfsDirectory,
-          })
-        }
-
-        const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, dbState, dbEventlog })
-        const shutdownChannel = yield* makeShutdownChannel(storeId)
-
-        return makeLeaderThreadLayer({
-          schema,
-          storeId,
-          clientId,
-          makeSqliteDb,
-          syncOptions,
-          dbState,
-          dbEventlog,
-          devtoolsOptions,
-          shutdownChannel,
-          syncPayloadEncoded,
-          syncPayloadSchema,
-          ...(bootWarning !== undefined ? { bootWarning } : {}),
+      const provideLeaderThread = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+        Effect.gen(function* () {
+          const leaderThreadContext = yield* leaderThreadContextOnce
+          return yield* effect.pipe(Effect.provide(leaderThreadContext))
         })
-      }).pipe(
-        Effect.tapCauseLogPretty,
-        UnknownError.mapToUnknownError,
-        Effect.withPerformanceMeasure('@livestore/adapter-web:worker:InitialMessage'),
-        Effect.withSpan('@livestore/adapter-web:worker:InitialMessage'),
-        Effect.annotateSpans({ debugInstanceId }),
-        Layer.unwrap,
-      ),
-    GetRecreateSnapshot: Effect.fn('@livestore/adapter-web:worker:GetRecreateSnapshot')(function* () {
-      const workerCtx = yield* LeaderThreadCtx
+      const provideLeaderThreadStream = <A, E, R>(stream: Stream.Stream<A, E, R>) =>
+        Stream.unwrap(
+          Effect.gen(function* () {
+            const leaderThreadContext = yield* leaderThreadContextOnce
+            return stream.pipe(Stream.provide(leaderThreadContext))
+          }),
+        )
 
-      // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
-      // const cachedSnapshot =
-      //   result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
+      return WorkerSchema.LeaderWorkerInnerRpcs.of({
+        GetRecreateSnapshot: () =>
+          Effect.gen(function* () {
+            const workerCtx = yield* LeaderThreadCtx
 
-      // return cachedSnapshot ?? workerCtx.db.export()
+            // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
+            // const cachedSnapshot =
+            //   result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
 
-      const snapshot = workerCtx.dbState.export()
-      return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
-    }),
-    PullStream: ({ cursor }) =>
-      Effect.gen(function* () {
-        const { syncProcessor } = yield* LeaderThreadCtx // <- syncState comes from here
-        return syncProcessor.pull({ cursor })
-      }).pipe(
-        Stream.unwrap,
-        // For debugging purposes
-        // Stream.tapLogWithLabel('@livestore/adapter-web:worker:PullStream'),
-      ),
-    PushToLeader: ({ batch }) =>
-      Effect.andThen(LeaderThreadCtx, ({ syncProcessor }) =>
-        syncProcessor.push(batch.map((event) => new LiveStoreEvent.Client.EncodedWithMeta(event))),
-      ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-web:worker:PushToLeader')),
-    StreamEvents: (options) =>
-      LeaderThreadCtx.pipe(
-        Effect.map(({ dbEventlog, syncProcessor }) => {
-          const { _tag: _ignored, ...payload } = options as any
-          const streamOptions = payload as StreamEventsOptions
-          return streamEventsWithSyncState({
-            dbEventlog,
-            syncState: syncProcessor.syncState,
-            options: streamOptions,
-          })
+            // return cachedSnapshot ?? workerCtx.db.export()
+
+            const snapshot = workerCtx.dbState.export()
+            return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
+          }).pipe(provideLeaderThread),
+        PullStream: ({ cursor }) =>
+          Effect.gen(function* () {
+            const { syncProcessor } = yield* LeaderThreadCtx // <- syncState comes from here
+            return syncProcessor.pull({ cursor })
+          }).pipe(
+            provideLeaderThread,
+            Stream.unwrap,
+            // For debugging purposes
+            // Stream.tapLogWithLabel('@livestore/adapter-web:worker:PullStream'),
+          ),
+        PushToLeader: ({ batch }) =>
+          Effect.andThen(LeaderThreadCtx, ({ syncProcessor }) =>
+            syncProcessor.push(batch.map((event) => new LiveStoreEvent.Client.EncodedWithMeta(event))),
+          ).pipe(
+            provideLeaderThread,
+            Effect.uninterruptible,
+            Effect.withSpan('@livestore/adapter-web:worker:PushToLeader'),
+          ),
+        StreamEvents: (options) =>
+          LeaderThreadCtx.pipe(
+            Effect.map(({ dbEventlog, syncProcessor }) =>
+              streamEventsWithSyncState({
+                dbEventlog,
+                syncState: syncProcessor.syncState,
+                options: options as StreamEventsOptions,
+              }),
+            ),
+            provideLeaderThread,
+            Stream.unwrap,
+            Stream.withSpan('@livestore/adapter-web:worker:StreamEvents'),
+          ),
+        Export: () =>
+          LeaderThreadCtx.pipe(
+            Effect.flatMap((_) => Effect.sync(() => _.dbState.export())),
+            provideLeaderThread,
+            Effect.withSpan('@livestore/adapter-web:worker:Export'),
+          ),
+        ExportEventlog: () =>
+          LeaderThreadCtx.pipe(
+            Effect.flatMap((_) => Effect.sync(() => _.dbEventlog.export())),
+            provideLeaderThread,
+            Effect.withSpan('@livestore/adapter-web:worker:ExportEventlog'),
+          ),
+        BootStatusStream: () =>
+          LeaderThreadCtx.pipe(
+            Effect.map((_) => Stream.fromQueue(_.bootStatusQueue)),
+            provideLeaderThread,
+            Stream.unwrap,
+          ),
+        GetLeaderHead: () =>
+          Effect.gen(function* () {
+            const workerCtx = yield* LeaderThreadCtx
+            return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
+          }).pipe(provideLeaderThread),
+        GetLeaderSyncState: () =>
+          Effect.gen(function* () {
+            const workerCtx = yield* LeaderThreadCtx
+            return yield* workerCtx.syncProcessor.syncState
+          }).pipe(provideLeaderThread),
+        SyncStateStream: () =>
+          Effect.gen(function* () {
+            const workerCtx = yield* LeaderThreadCtx
+            return workerCtx.syncProcessor.syncState.changes
+          }).pipe(provideLeaderThread, Stream.unwrap),
+        GetNetworkStatus: () =>
+          Effect.gen(function* () {
+            const workerCtx = yield* LeaderThreadCtx
+            return yield* workerCtx.networkStatus
+          }).pipe(provideLeaderThread),
+        NetworkStatusStream: () =>
+          Effect.gen(function* () {
+            const workerCtx = yield* LeaderThreadCtx
+            return workerCtx.networkStatus.changes
+          }).pipe(provideLeaderThread, Stream.unwrap),
+        Shutdown: Effect.fn('@livestore/adapter-web:worker:Shutdown')(function* () {
+          yield* Effect.logDebug('[@livestore/adapter-web:worker] Shutdown')
+
+          // Buy some time for Otel to flush
+          // TODO find a cleaner way to do this
+          yield* Effect.sleep(300)
         }),
-        Stream.unwrap,
-        Stream.withSpan('@livestore/adapter-web:worker:StreamEvents'),
-      ),
-    Export: () =>
-      LeaderThreadCtx.pipe(
-        Effect.flatMap((_) => Effect.sync(() => _.dbState.export())),
-        Effect.withSpan('@livestore/adapter-web:worker:Export'),
-      ),
-    ExportEventlog: () =>
-      LeaderThreadCtx.pipe(
-        Effect.flatMap((_) => Effect.sync(() => _.dbEventlog.export())),
-        Effect.withSpan('@livestore/adapter-web:worker:ExportEventlog'),
-      ),
-    BootStatusStream: () =>
-      LeaderThreadCtx.pipe(
-        Effect.map((_) => Stream.fromQueue(_.bootStatusQueue)),
-        Stream.unwrap,
-      ),
-    GetLeaderHead: Effect.fn('@livestore/adapter-web:worker:GetLeaderHead')(function* () {
-      const workerCtx = yield* LeaderThreadCtx
-      return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
+        ExtraDevtoolsMessage: ({ message }) =>
+          Effect.andThen(LeaderThreadCtx, (_) => Queue.offer(_.extraIncomingMessagesQueue, message)).pipe(
+            provideLeaderThread,
+            Effect.asVoid,
+            Effect.withSpan('@livestore/adapter-web:worker:ExtraDevtoolsMessage'),
+          ),
+        'WebmeshWorker.CreateConnection': (payload) =>
+          WebmeshWorker.CreateConnection(payload).pipe(provideLeaderThreadStream),
+      })
     }),
-    GetLeaderSyncState: Effect.fn('@livestore/adapter-web:worker:GetLeaderSyncState')(function* () {
-      const workerCtx = yield* LeaderThreadCtx
-      return yield* workerCtx.syncProcessor.syncState
-    }),
-    SyncStateStream: () =>
-      Effect.gen(function* () {
-        const workerCtx = yield* LeaderThreadCtx
-        return workerCtx.syncProcessor.syncState.changes
-      }).pipe(Stream.unwrap),
-    GetNetworkStatus: Effect.fn('@livestore/adapter-web:worker:GetNetworkStatus')(function* () {
-      const workerCtx = yield* LeaderThreadCtx
-      return yield* workerCtx.networkStatus
-    }),
-    NetworkStatusStream: () =>
-      Effect.gen(function* () {
-        const workerCtx = yield* LeaderThreadCtx
-        return workerCtx.networkStatus.changes
-      }).pipe(Stream.unwrap),
-    Shutdown: Effect.fn('@livestore/adapter-web:worker:Shutdown')(function* () {
-      yield* Effect.logDebug('[@livestore/adapter-web:worker] Shutdown')
-
-      // Buy some time for Otel to flush
-      // TODO find a cleaner way to do this
-      yield* Effect.sleep(300)
-    }),
-    ExtraDevtoolsMessage: ({ message }) =>
-      Effect.andThen(LeaderThreadCtx, (_) => Queue.offer(_.extraIncomingMessagesQueue, message)).pipe(
-        Effect.withSpan('@livestore/adapter-web:worker:ExtraDevtoolsMessage'),
-      ),
-    'WebmeshWorker.CreateConnection': WebmeshWorker.CreateConnection,
-  })
+  )
 
 const makeDevtoolsOptions = ({
   devtoolsEnabled,

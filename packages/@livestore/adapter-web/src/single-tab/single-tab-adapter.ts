@@ -16,7 +16,6 @@
 import type { Adapter, BootWarningReason, ClientSession, LockStatus } from '@livestore/common'
 import {
   IntentionalShutdownCause,
-  isWorkerTransportError,
   makeClientSession,
   StoreInterrupted,
   sessionChangesetMetaTable,
@@ -32,11 +31,12 @@ import {
   Fiber,
   Layer,
   Queue,
+  RpcClient,
+  RpcWorker,
   Schema,
   Stream,
   Subscribable,
   SubscriptionRef,
-  Worker,
 } from '@livestore/utils/effect'
 import { BrowserWorker, Opfs, WebError } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -46,6 +46,11 @@ import {
   readPersistedStateDbFromClientSession,
   resetPersistedDataFromClientSession,
 } from '../web-worker/common/persisted-sqlite.ts'
+import {
+  type WithoutRpcClientError,
+  dieOnRpcClientError,
+  dieOnRpcClientErrorStream,
+} from '../web-worker/common/rpc-worker.ts'
 import { makeShutdownChannel } from '../web-worker/common/shutdown-channel.ts'
 import * as WorkerSchema from '../web-worker/common/worker-schema.ts'
 
@@ -198,7 +203,6 @@ export const makeSingleTabAdapter =
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
         Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
@@ -212,75 +216,79 @@ export const makeSingleTabAdapter =
       const worker = tryAsFunctionAndNew(options.worker, { name: `livestore-worker-${storeId}-${sessionId}` })
 
       // Set up communication with the dedicated worker via the outer protocol
-      const _dedicatedWorkerFiber = yield* Worker.makeSerialized<typeof WorkerSchema.LeaderWorkerOuterRequest.Type>({
-        initialMessage: () => new WorkerSchema.LeaderWorkerOuterInitialMessage({ port: mc.port1, storeId, clientId }),
-      }).pipe(
-        Effect.provide(BrowserWorker.layer(() => worker)),
+      const outerWorkerContext = yield* Layer.build(
+        RpcClient.layerProtocolWorker({ size: 1 }).pipe(
+          Layer.provide(BrowserWorker.layer(() => worker)),
+          Layer.provide(
+            RpcWorker.layerInitialMessage(
+              WorkerSchema.LeaderWorkerOuterInitialMessage.payloadSchema,
+              Effect.succeed({ port: mc.port1, storeId, clientId }),
+            ),
+          ),
+        ),
+      )
+      yield* RpcClient.make(WorkerSchema.LeaderWorkerOuterRpcs).pipe(
+        Effect.provide(outerWorkerContext),
         UnknownError.mapToUnknownError,
         Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
         Effect.withSpan('@livestore/adapter-web:single-tab:setupDedicatedWorker'),
         Effect.tapCauseLogPretty,
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       // Set up the inner worker communication via port2 (like SharedWorker would do)
       // BrowserWorker.layer accepts a MessagePort as well as a Worker
-      const innerWorkerContext = yield* Layer.build(BrowserWorker.layer(() => mc.port2 as unknown as globalThis.Worker))
-      const innerWorkerFiber = yield* Worker.makePoolSerialized<WorkerSchema.LeaderWorkerInnerRequest>({
-        size: 1,
-        concurrency: 100,
-        initialMessage: () =>
-          new WorkerSchema.LeaderWorkerInnerInitialMessage({
-            storageOptions,
-            storeId,
-            clientId,
-            // Devtools disabled in single-tab mode (requires SharedWorker)
-            devtoolsEnabled: false,
-            debugInstanceId: adapterArgs.debugInstanceId,
-            syncPayloadEncoded,
-          }),
-      }).pipe(
+      const innerWorkerContext = yield* Layer.build(
+        RpcClient.layerProtocolWorker({ size: 1, concurrency: 100 }).pipe(
+          Layer.provide(BrowserWorker.layer(() => mc.port2)),
+          Layer.provide(
+            RpcWorker.layerInitialMessage(
+              WorkerSchema.LeaderWorkerInnerInitialMessage.payloadSchema,
+              Effect.succeed({
+                storageOptions,
+                storeId,
+                clientId,
+                // Devtools disabled in single-tab mode (requires SharedWorker)
+                devtoolsEnabled: false,
+                debugInstanceId: adapterArgs.debugInstanceId,
+                syncPayloadEncoded,
+              }),
+            ),
+          ),
+        ),
+      )
+      const innerWorker = yield* RpcClient.make(WorkerSchema.LeaderWorkerInnerRpcs).pipe(
         Effect.provide(innerWorkerContext),
         Effect.tapCauseLogPretty,
-        Effect.orDie,
+        UnknownError.mapToUnknownError,
         Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
         Effect.withSpan('@livestore/adapter-web:single-tab:setupInnerWorker'),
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       // Helper to run requests against the worker
-      const runInWorker = <A, I, E, EI, R>(
-        req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
-      ): Effect.Effect<A, E, R> =>
-        Fiber.join(innerWorkerFiber).pipe(
-          Effect.flatMap((worker) => worker.executeEffect(req)),
-          Effect.catchIf(isWorkerTransportError, (e) => Effect.die(e)),
+      const runInWorker = <A, E, R>(
+        tag: string,
+        effect: Effect.Effect<A, E, R>,
+      ): Effect.Effect<A, WithoutRpcClientError<E>, R> =>
+        effect.pipe(
+          dieOnRpcClientError,
           Effect.logWarnIfTakesLongerThan({
-            label: `@livestore/adapter-web:single-tab:runInWorker:${req._tag}`,
+            label: `@livestore/adapter-web:single-tab:runInWorker:${tag}`,
             duration: 2000,
           }),
-          Effect.withSpan(`@livestore/adapter-web:single-tab:runInWorker:${req._tag}`),
+          Effect.withSpan(`@livestore/adapter-web:single-tab:runInWorker:${tag}`),
         )
 
-      const runInWorkerStream = <A, I, E, EI, R>(
-        req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
-      ): Stream.Stream<A, E, R> =>
-        Effect.gen(function* () {
-          const innerWorker = yield* Fiber.join(innerWorkerFiber)
-          return innerWorker.execute(req).pipe(
-            Stream.catchIf(
-              isWorkerTransportError,
-              (e) => Stream.die(e),
-              (e) => Stream.fail(e),
-            ),
-            Stream.withSpan(`@livestore/adapter-web:single-tab:runInWorkerStream:${req._tag}`),
-          )
-        }).pipe(Stream.unwrap)
+      const runInWorkerStream = <A, E, R>(
+        tag: string,
+        stream: Stream.Stream<A, E, R>,
+      ): Stream.Stream<A, WithoutRpcClientError<E>, R> =>
+        stream.pipe(
+          dieOnRpcClientErrorStream,
+          Stream.withSpan(`@livestore/adapter-web:single-tab:runInWorkerStream:${tag}`),
+        )
 
       // Forward boot status from worker
-      const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
+      const bootStatusFiber = yield* runInWorkerStream('BootStatusStream', innerWorker.BootStatusStream({})).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
         Effect.tapCause((cause) =>
@@ -288,21 +296,20 @@ export const makeSingleTabAdapter =
         ),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
         Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       yield* Queue.await(bootStatusQueue).pipe(
         Effect.andThen(Fiber.interrupt(bootStatusFiber)),
+        Effect.interruptible,
         Effect.tapCauseLogPretty,
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
         Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 
       // Get initial snapshot (either from fast-path or from worker)
       const initialResult =
         dataFromFile === undefined
-          ? yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()).pipe(
+          ? yield* runInWorker('GetRecreateSnapshot', innerWorker.GetRecreateSnapshot({})).pipe(
               Effect.map(({ snapshot, migrationsReport }) => ({
                 _tag: 'from-leader-worker' as const,
                 snapshot,
@@ -348,38 +355,40 @@ export const makeSingleTabAdapter =
             })
           : EventSequenceNumber.Client.ROOT
 
-      yield* Effect.addFinalizer((ex) =>
+      yield* Effect.addFinalizer((ex: Exit.Exit<unknown, unknown>) =>
         Effect.gen(function* () {
-          if (
-            Exit.isFailure(ex) === true &&
-            Exit.hasInterrupts(ex) === false &&
-            Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) === false &&
-            Schema.is(StoreInterrupted)(Cause.squash(ex.cause)) === false
-          ) {
-            yield* Effect.logError('[@livestore/adapter-web:single-tab] client-session shutdown', ex.cause)
-          } else {
-            yield* Effect.logDebug('[@livestore/adapter-web:single-tab] client-session shutdown', ex)
+          if (Exit.isFailure(ex) === true) {
+            const cause = ex.cause
+            if (
+              Exit.hasInterrupts(ex) === false &&
+              Schema.is(IntentionalShutdownCause)(Cause.squash(cause)) === false &&
+              Schema.is(StoreInterrupted)(Cause.squash(cause)) === false
+            ) {
+              yield* Effect.logError('[@livestore/adapter-web:single-tab] client-session shutdown', cause)
+              return
+            }
           }
+
+          yield* Effect.logDebug('[@livestore/adapter-web:single-tab] client-session shutdown', ex)
         }).pipe(Effect.tapCauseLogPretty, Effect.orDie),
       )
 
       const leaderThread: ClientSession['leaderThread'] = {
-        export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
+        export: runInWorker('Export', innerWorker.Export({})).pipe(
           Effect.timeoutOrDie(10_000),
           Effect.withSpan('@livestore/adapter-web:single-tab:export'),
         ),
 
         events: {
-          pull: ({ cursor }) =>
-            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerPullStream({ cursor })).pipe(Stream.orDie),
+          pull: ({ cursor }) => runInWorkerStream('PullStream', innerWorker.PullStream({ cursor })).pipe(Stream.orDie),
           push: (batch) =>
-            runInWorker(new WorkerSchema.LeaderWorkerInnerPushToLeader({ batch })).pipe(
+            runInWorker('PushToLeader', innerWorker.PushToLeader({ batch })).pipe(
               Effect.withSpan('@livestore/adapter-web:single-tab:pushToLeader', {
                 attributes: { batchSize: batch.length },
               }),
             ),
           stream: (options) =>
-            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerStreamEvents(options)).pipe(
+            runInWorkerStream('StreamEvents', innerWorker.StreamEvents(options)).pipe(
               Stream.withSpan('@livestore/adapter-web:single-tab:streamEvents'),
               Stream.orDie,
             ),
@@ -391,16 +400,16 @@ export const makeSingleTabAdapter =
           storageMode: opfsWarning === undefined ? 'persisted' : 'in-memory',
         },
 
-        getEventlogData: runInWorker(new WorkerSchema.LeaderWorkerInnerExportEventlog()).pipe(
+        getEventlogData: runInWorker('ExportEventlog', innerWorker.ExportEventlog({})).pipe(
           Effect.timeoutOrDie(10_000),
           Effect.withSpan('@livestore/adapter-web:single-tab:getEventlogData'),
         ),
 
         syncState: Subscribable.make({
-          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
+          get: runInWorker('GetLeaderSyncState', innerWorker.GetLeaderSyncState({})).pipe(
             Effect.withSpan('@livestore/adapter-web:single-tab:getLeaderSyncState'),
           ),
-          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
+          changes: runInWorkerStream('SyncStateStream', innerWorker.SyncStateStream({})).pipe(Stream.orDie),
         }),
 
         sendDevtoolsMessage: (_message) =>
@@ -408,8 +417,8 @@ export const makeSingleTabAdapter =
           Effect.void,
 
         networkStatus: Subscribable.make({
-          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()).pipe(Effect.orDie),
-          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()).pipe(Stream.orDie),
+          get: runInWorker('GetNetworkStatus', innerWorker.GetNetworkStatus({})).pipe(Effect.orDie),
+          changes: runInWorkerStream('NetworkStatusStream', innerWorker.NetworkStatusStream({})).pipe(Stream.orDie),
         }),
       }
 

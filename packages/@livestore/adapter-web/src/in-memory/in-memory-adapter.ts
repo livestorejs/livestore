@@ -25,12 +25,11 @@ import {
   type Scope,
   Effect,
   FetchHttpClient,
-  Fiber,
   Layer,
   Queue,
+  RpcClient,
   type Schema,
   SubscriptionRef,
-  Worker,
 } from '@livestore/utils/effect'
 import { BrowserWorker } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -39,8 +38,14 @@ import * as WebmeshWorker from '@livestore/webmesh/worker'
 
 import { connectWebmeshNodeClientSession } from '../web-worker/client-session/client-session-devtools.ts'
 import { loadSqlite3 } from '../web-worker/client-session/sqlite-loader.ts'
+import {
+  dieOnRpcClientError,
+  makeWebmeshWorkerProxy,
+  type WebmeshWorkerProxy,
+} from '../web-worker/common/rpc-worker.ts'
 import { makeShutdownChannel } from '../web-worker/common/shutdown-channel.ts'
 import { makeSharedWorkerNodeName } from '../web-worker/common/webmesh-node-names.ts'
+import * as WorkerSchema from '../web-worker/common/worker-schema.ts'
 
 export interface InMemoryAdapterOptions {
   importSnapshot?: Uint8Array<ArrayBuffer>
@@ -129,17 +134,13 @@ export const makeInMemoryAdapter =
             })
           : undefined
 
-      const sharedWorkerFiber =
+      const sharedWorkerClient =
         sharedWebWorker !== undefined
-          ? yield* Worker.makePoolSerialized<typeof WebmeshWorker.Schema.Request.Type>({
-              size: 1,
-              concurrency: 100,
-            }).pipe(
+          ? yield* RpcClient.make(WorkerSchema.SharedWorkerRpcs).pipe(
+              Effect.provide(RpcClient.layerProtocolWorker({ size: 1, concurrency: 100 })),
               Effect.provide(BrowserWorker.layer(() => sharedWebWorker)),
               Effect.tapCauseLogPretty,
               UnknownError.mapToUnknownError,
-              // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-              Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
             )
           : undefined
 
@@ -153,7 +154,7 @@ export const makeInMemoryAdapter =
         syncPayloadSchema,
         importSnapshot: options.importSnapshot,
         devtoolsEnabled,
-        sharedWorkerFiber,
+        sharedWorker: sharedWorkerClient === undefined ? undefined : makeWebmeshWorkerProxy(sharedWorkerClient),
       })
 
       sqliteDb.import(initialSnapshot)
@@ -174,13 +175,17 @@ export const makeInMemoryAdapter =
         origin: globalThis.location?.origin,
         connectWebmeshNode: ({ sessionInfo, webmeshNode }) =>
           Effect.gen(function* () {
-            if (sharedWorkerFiber === undefined || devtoolsEnabled === false) {
+            if (sharedWorkerClient === undefined || devtoolsEnabled === false) {
               return
             }
 
-            const sharedWorker = yield* sharedWorkerFiber.pipe(Fiber.join)
-
-            yield* connectWebmeshNodeClientSession({ webmeshNode, sessionInfo, sharedWorker, devtoolsEnabled, schema })
+            yield* connectWebmeshNodeClientSession({
+              webmeshNode,
+              sessionInfo,
+              sharedWorker: makeWebmeshWorkerProxy(sharedWorkerClient),
+              devtoolsEnabled,
+              schema,
+            })
           }),
         registerBeforeUnload: (onBeforeUnload) => {
           if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
@@ -205,7 +210,7 @@ export interface MakeLeaderThreadArgs {
   syncPayloadSchema: Schema.Top | undefined
   importSnapshot: Uint8Array<ArrayBuffer> | undefined
   devtoolsEnabled: boolean
-  sharedWorkerFiber: SharedWorkerFiber | undefined
+  sharedWorker: WebmeshWorkerProxy | undefined
 }
 
 const makeLeaderThread = ({
@@ -218,7 +223,7 @@ const makeLeaderThread = ({
   syncPayloadSchema,
   importSnapshot,
   devtoolsEnabled,
-  sharedWorkerFiber,
+  sharedWorker,
 }: MakeLeaderThreadArgs) =>
   Effect.gen(function* () {
     const services = yield* Effect.context()
@@ -226,8 +231,7 @@ const makeLeaderThread = ({
     const makeDb = (_kind: 'state' | 'eventlog') => {
       return makeSqliteDb({
         _tag: 'in-memory',
-        configureDb: (db) =>
-          configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(services)),
+        configureDb: (db) => configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(services)),
       })
     }
 
@@ -244,7 +248,7 @@ const makeLeaderThread = ({
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
       devtoolsEnabled,
-      sharedWorkerFiber,
+      sharedWorker,
       dbState,
       dbEventlog,
       storeId,
@@ -263,7 +267,7 @@ const makeLeaderThread = ({
         devtoolsOptions,
         shutdownChannel,
         syncPayloadEncoded,
-        syncPayloadSchema,
+        syncPayloadSchema: syncPayloadSchema as Schema.Decoder<Schema.Json, never> | undefined,
       }),
     )
 
@@ -302,28 +306,23 @@ const makeLeaderThread = ({
     }).pipe(Effect.provide(layer))
   })
 
-type SharedWorkerFiber = Fiber.Fiber<
-  Worker.SerializedWorkerPool<typeof WebmeshWorker.Schema.Request.Type>,
-  UnknownError
->
-
 const makeDevtoolsOptions = ({
   devtoolsEnabled,
-  sharedWorkerFiber,
+  sharedWorker,
   dbState,
   dbEventlog,
   storeId,
   clientId,
 }: {
   devtoolsEnabled: boolean
-  sharedWorkerFiber: SharedWorkerFiber | undefined
+  sharedWorker: WebmeshWorkerProxy | undefined
   dbState: LeaderSqliteDb
   dbEventlog: LeaderSqliteDb
   storeId: string
   clientId: string
 }): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
-    if (devtoolsEnabled === false || sharedWorkerFiber === undefined) {
+    if (devtoolsEnabled === false || sharedWorker === undefined) {
       return { enabled: false }
     }
 
@@ -339,8 +338,6 @@ const makeDevtoolsOptions = ({
         // @ts-expect-error TODO type this
         globalThis.__debugWebmeshNodeLeader = node
 
-        const sharedWorker = yield* sharedWorkerFiber.pipe(Fiber.join)
-
         // TODO also make this work with the browser extension
         // basic idea: instead of also connecting to the shared worker,
         // connect to the client session node above which will already connect to the shared worker + browser extension
@@ -349,11 +346,7 @@ const makeDevtoolsOptions = ({
           node,
           worker: sharedWorker,
           target: makeSharedWorkerNodeName({ storeId }),
-        }).pipe(
-          Effect.tapCauseLogPretty,
-          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
-        )
+        }).pipe(Effect.tapCauseLogPretty, dieOnRpcClientError, Effect.forkScoped({ startImmediately: true }))
 
         return { node, persistenceInfo, mode: 'direct' }
       }),
