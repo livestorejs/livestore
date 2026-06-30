@@ -396,7 +396,7 @@ describe('StoreRegistry', () => {
         yield* TestClock.adjust(unusedCacheTime)
 
         // Start a fresh load — since the first was aborted, this should be a new entry
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
         const freshLoadFiber = yield* Effect.forkChild(registry.getOrLoad(options).pipe(Effect.scoped), {
           startImmediately: true,
           uninterruptible: 'inherit',

@@ -41,7 +41,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
     sendMessage: () => Effect.void,
   }).pipe(
     Effect.tapCauseLogPretty,
-    // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+    // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
     Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
   )
 
@@ -93,7 +93,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
         yield* syncProcessor.pull({ cursor: syncState.localHead }).pipe(
           Stream.tap(({ payload }) => sendMessage(Devtools.Leader.SyncPull.make({ payload, liveStoreVersion }))),
           Stream.runDrain,
-          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
@@ -104,7 +104,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
         })
       }).pipe(
         Effect.tapCauseLogPretty,
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
         Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       ),
     ),
