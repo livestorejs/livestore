@@ -75,7 +75,7 @@ Vitest.live('keeps a straddling stream frame isolated from a concurrent unary re
       const client = yield* RpcClient.make(Rpcs)
       const streamFiber = yield* client.BigStream({ n: expectedRows.length }).pipe(
         Stream.runCollect,
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
         Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
       )
 

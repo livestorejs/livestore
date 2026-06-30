@@ -162,7 +162,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         const collectFiber = yield* stream.pipe(
           Stream.take(4),
           Stream.runCollect,
-          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
@@ -226,7 +226,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         const collectedFiber = yield* stream.pipe(
           Stream.take(2),
           Stream.runCollect,
-          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
@@ -269,7 +269,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         // Stream.take(n) here is omitted to verify that the stream finalizes when reaching until cursor
         const collectFiber = yield* stream.pipe(
           Stream.runCollect,
-          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
@@ -304,7 +304,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         const collectedFiber = yield* stream.pipe(
           Stream.take(1),
           Stream.runCollect,
-          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
@@ -347,7 +347,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         const collectedFiber = yield* stream.pipe(
           Stream.take(1),
           Stream.runCollect,
-          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
@@ -394,7 +394,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         const collectedFiber = yield* stream.pipe(
           Stream.take(1),
           Stream.runCollect,
-          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
@@ -450,7 +450,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
         const collectFiber = yield* stream.pipe(
           Stream.take(backendApproved.length),
           Stream.runCollect,
-          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
@@ -560,7 +560,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           const collectFiber = yield* stream.pipe(
             Stream.take(eventCount),
             Stream.runCollect,
-            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
             Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 

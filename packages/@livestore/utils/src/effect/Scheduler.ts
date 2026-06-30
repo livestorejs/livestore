@@ -8,8 +8,8 @@ import { Scheduler } from 'effect'
  * primitive from the default worker fallback (`setTimeout(0)`) to
  * `MessageChannel`.
  *
- * TODO: Reconsider whether this custom scheduler is still needed now that v4's
- * default scheduler handles batching directly.
+ * TODO(#1357): Reconsider whether this custom scheduler is still needed now
+ * that v4's default scheduler handles batching directly.
  */
 export const messageChannel = (): Scheduler.Scheduler =>
   new Scheduler.MixedScheduler('async', scheduleTaskWithMessageChannel)
