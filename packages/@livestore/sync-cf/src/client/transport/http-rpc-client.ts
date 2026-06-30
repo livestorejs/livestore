@@ -86,9 +86,10 @@ export const makeHttpSync =
 
       // Setup HTTP RPC Protocol
       const HttpProtocolLive = RpcClient.layerProtocolHttp({
-        url: `${options.url}?${UrlParams.toString(urlParams)}`,
+        url: options.url,
         transformClient: HttpClient.mapRequest((request) =>
           request.pipe(
+            HttpClientRequest.appendUrlParams(urlParams),
             HttpClientRequest.setHeaders({
               ...options.headers,
               // Used in CF Worker to identify the store (additionally to storeId embedded in the RPC requests)
