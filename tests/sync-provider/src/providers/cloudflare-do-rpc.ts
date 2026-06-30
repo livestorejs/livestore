@@ -4,13 +4,13 @@ import { SyncBackend, UnknownError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/common/schema'
 import { MAX_DO_RPC_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST, splitArrayBySize } from '@livestore/sync-cf/common'
 import { WranglerDevServer } from '@livestore/utils-dev/wrangler'
+import type { RpcClientError } from '@livestore/utils/effect'
 import {
   Effect,
   Layer,
   Option,
   ReadonlyArray as EffectArray,
   RpcClient,
-  RpcClientError,
   RpcSerialization,
   type Schedule,
   Socket,

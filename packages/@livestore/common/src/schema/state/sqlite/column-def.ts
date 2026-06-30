@@ -256,7 +256,7 @@ const extractLiteralValues = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.Liter
     ast.types.length > 0 &&
     ast.types.every((type) => SchemaAST.isLiteral(type)) === true
   ) {
-    return ast.types.map((type) => (type as SchemaAST.Literal).literal)
+    return ast.types.map((type) => type.literal)
   }
 
   return null

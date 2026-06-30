@@ -408,7 +408,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
             const parsedResult = Schema.decodeResult(schemaRef.current!)(rawDbResults)
 
-            if (Result.isFailure(parsedResult)) {
+            if (Result.isFailure(parsedResult) === true) {
               const parseErrorStr = SchemaIssue.makeFormatterDefault()(parsedResult.failure.issue)
               const expectedSchemaStr = String(schemaRef.current!.ast)
               const bindValuesStr = bindValues === undefined ? '' : `\nBind values: ${JSON.stringify(bindValues)}`

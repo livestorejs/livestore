@@ -278,7 +278,7 @@ export class StoreRegistry {
 
     // Check if the failure is due to async work
     const defect = Cause.findDefect(exit.cause)
-    if (Result.isFailure(defect)) {
+    if (Result.isFailure(defect) === true) {
       // Handle synchronous failure
       throw Cause.squash(exit.cause)
     }

@@ -603,11 +603,11 @@ export const make = Effect.fnUntraced(function* ({
         const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.result)
 
         const retries = iteration.attempt
-        if (retries > 0 && Result.isSuccess(pushResult)) {
+        if (retries > 0 && Result.isSuccess(pushResult) === true) {
           yield* Effect.spanEvent('backend-push-retry-success', { retries, batchSize: queueItems.length })
         }
 
-        if (Result.isFailure(pushResult)) {
+        if (Result.isFailure(pushResult) === true) {
           yield* Effect.spanEvent('backend-push-error', {
             error: pushResult.failure.toString(),
             retries,

@@ -1,4 +1,5 @@
-import { Cause, Deferred, Duration, Result, Exit, Filter, identity, Option, PubSub, Queue, Scope } from 'effect'
+import type { Duration } from 'effect'
+import { Cause, Deferred, Result, Exit, Filter, identity, Option, PubSub, Queue, Scope } from 'effect'
 
 import { shouldNeverHappen } from '../../misc.ts'
 import * as Effect from '../Effect.ts'
@@ -204,7 +205,7 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
         Stream.map((_) => Schema.decodeResult(ChannelMessage)(_.data)),
         Stream.tap((msg) =>
           Effect.gen(function* () {
-            if (Result.isSuccess(msg)) {
+            if (Result.isSuccess(msg) === true) {
               if (msg.success._tag === 'ChannelRequestAck') {
                 yield* Deferred.succeed(requestAckMap.get(msg.success.reqId)!, void 0)
               } else if (msg.success._tag === 'ChannelRequest') {
@@ -220,7 +221,7 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
         ),
         Stream.filterMap(
           Filter.fromPredicateOption((msg) =>
-            Result.isFailure(msg)
+            Result.isFailure(msg) === true
               ? Option.some(msg as Result.Result<any, any>)
               : msg.success._tag === 'ChannelRequest'
                 ? Option.some(Result.succeed(msg.success.payload) as Result.Result<any, any>)
@@ -345,7 +346,7 @@ export const toOpenChannel = <MsgListen, MsgSend>(
       options?.heartbeat !== undefined
         ? Stream.filterEffect(
             Effect.fn(function* (msg) {
-              if (Result.isSuccess(msg) && Schema.is(WebChannelHeartbeat)(msg.success) === true) {
+              if (Result.isSuccess(msg) === true && Schema.is(WebChannelHeartbeat)(msg.success) === true) {
                 if (msg.success._tag === 'WebChannel.Ping') {
                   yield* heartbeatChannel.send(WebChannelPong.make({ requestId: msg.success.requestId }))
                 } else {

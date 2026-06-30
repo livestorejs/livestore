@@ -1281,7 +1281,7 @@ const loadPreviousManifest = (
 ): Effect.Effect<TPreviousManifest | null> =>
   Effect.gen(function* () {
     const manifestExistsResult = yield* fs.exists(paths.manifestPath).pipe(Effect.result)
-    if (Result.isFailure(manifestExistsResult)) {
+    if (Result.isFailure(manifestExistsResult) === true) {
       yield* Effect.logWarning(
         `Unable to check existing snippet manifest at ${paths.manifestPath}: ${String(manifestExistsResult.failure)}`,
       )
@@ -1292,7 +1292,7 @@ const loadPreviousManifest = (
     }
 
     const manifestSourceResult = yield* fs.readFileString(paths.manifestPath).pipe(Effect.result)
-    if (Result.isFailure(manifestSourceResult)) {
+    if (Result.isFailure(manifestSourceResult) === true) {
       yield* Effect.logWarning(
         `Unable to read existing snippet manifest at ${paths.manifestPath}: ${String(manifestSourceResult.failure)}`,
       )
@@ -1304,7 +1304,7 @@ const loadPreviousManifest = (
       try: () => JSON.parse(manifestSource) as TSnippetManifest,
       catch: (cause) => new Cause.UnknownError(cause),
     }).pipe(Effect.result)
-    if (Result.isFailure(parsedResult)) {
+    if (Result.isFailure(parsedResult) === true) {
       yield* Effect.logWarning(
         `Unable to parse existing snippet manifest at ${paths.manifestPath}: ${String(parsedResult.failure)}`,
       )
@@ -1683,7 +1683,7 @@ const watchSnippetsInternal = (
         const result = yield* buildSnippetsInternal(resolved).pipe(Effect.result)
         const durationMs = Date.now() - startedAt
 
-        if (Result.isFailure(result)) {
+        if (Result.isFailure(result) === true) {
           const error = result.failure
           yield* Effect.logError(
             `Snippets watch: build failed${event !== null ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,

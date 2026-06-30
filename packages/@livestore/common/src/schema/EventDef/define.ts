@@ -112,7 +112,7 @@ export const defineEvent = <TName extends string, TType, TEncoded = TType, TDeri
 
   const makePartialEvent = (args: TType) => {
     const res = Schema.decodeResult(Schema.toType(schema))(args)
-    if (Result.isFailure(res)) {
+    if (Result.isFailure(res) === true) {
       shouldNeverHappen(`Invalid event args for event '${name}':`, res.failure.message, '\n')
     }
     return { name: name, args }

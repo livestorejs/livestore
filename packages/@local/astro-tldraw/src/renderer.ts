@@ -139,7 +139,7 @@ const renderSvgWithTheme = (
       while (true) {
         const attemptResult = yield* Effect.result(renderEffect)
 
-        if (Result.isSuccess(attemptResult)) {
+        if (Result.isSuccess(attemptResult) === true) {
           const outputPaths = attemptResult.success.map((value) =>
             typeof value === 'string' ? value : value.toString(),
           )

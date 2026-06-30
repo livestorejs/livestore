@@ -201,7 +201,7 @@ export const handleSyncRequest = <
       // This ensures required payloads are enforced by the schema.
       if (syncPayloadSchema !== undefined) {
         const decodedResult = Schema.decodeUnknownResult(syncPayloadSchema)(payload)
-        if (Result.isFailure(decodedResult)) {
+        if (Result.isFailure(decodedResult) === true) {
           const message = decodedResult.failure.toString()
           console.error('Invalid payload (decode failed)', message)
           return new Response(message, { status: 400, ...(headers !== undefined ? { headers } : {}) })
@@ -211,7 +211,7 @@ export const handleSyncRequest = <
           validatePayload(decodedResult.success, { storeId, headers: requestHeaders }),
         ).pipe(UnknownError.mapToUnknownError, Effect.result)
 
-        if (Result.isFailure(result)) {
+        if (Result.isFailure(result) === true) {
           console.error('Invalid payload (validation failed)', result.failure)
           return new Response(result.failure.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
@@ -220,7 +220,7 @@ export const handleSyncRequest = <
           validatePayload(payload as TSyncPayload, { storeId, headers: requestHeaders }),
         ).pipe(UnknownError.mapToUnknownError, Effect.result)
 
-        if (Result.isFailure(result)) {
+        if (Result.isFailure(result) === true) {
           console.error('Invalid payload (validation failed)', result.failure)
           return new Response(result.failure.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
