@@ -2,10 +2,11 @@ import { tsconfigJson } from '../../../genie/repo.ts'
 import baseTsconfig from '../tsconfig.json.genie.ts'
 
 export default tsconfigJson({
-  ...baseTsconfig,
+  ...baseTsconfig.data,
   compilerOptions: {
-    ...baseTsconfig.compilerOptions,
+    ...baseTsconfig.data.compilerOptions,
     types: ['vite/client'],
   },
   include: ['./src', './vite.config.ts', './index.html', '../src'],
+  references: baseTsconfig.data.references.map((reference) => ({ path: `../${reference.path}` })),
 })
