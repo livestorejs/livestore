@@ -83,9 +83,9 @@ export type TypeId = typeof TypeId
  *
  * See ClientSessionSyncProcessor for how the leader and session sync processors are similar/different.
  */
-export class LeaderSyncProcessor extends Context.Service<
-  LeaderSyncProcessor, Service
->()('@livestore/common/LeaderSyncProcessor') {}
+export class LeaderSyncProcessor extends Context.Service<LeaderSyncProcessor, Service>()(
+  '@livestore/common/LeaderSyncProcessor',
+) {}
 
 export interface Service {
   readonly [TypeId]: TypeId
@@ -272,12 +272,10 @@ export const make = Effect.fnUntraced(function* ({
 
         // Since the rebase generation might have changed since enqueuing, we need to filter out items with older generation
         // It's important that we filter after acquiring the localPushBackendPullMutex, otherwise we might filter with the old generation
-        const [droppedItems, filteredItems] = ReadonlyArray.partition(
-          batchItems,
-          (batchItem) =>
-            batchItem[0].seqNum.rebaseGeneration >= currentRebaseGeneration
-              ? Result.succeed(batchItem)
-              : Result.fail(batchItem),
+        const [droppedItems, filteredItems] = ReadonlyArray.partition(batchItems, (batchItem) =>
+          batchItem[0].seqNum.rebaseGeneration >= currentRebaseGeneration
+            ? Result.succeed(batchItem)
+            : Result.fail(batchItem),
         )
 
         if (droppedItems.length > 0) {
@@ -664,10 +662,7 @@ export const make = Effect.fnUntraced(function* ({
           batchSize: newEvents.length,
           batch: TRACE_VERBOSE === true ? newEvents : undefined,
         },
-        links:
-          ctxRef.current?.span !== undefined
-            ? [{ span: ctxRef.current.span, attributes: {} }]
-            : undefined,
+        links: ctxRef.current?.span !== undefined ? [{ span: ctxRef.current.span, attributes: {} }] : undefined,
       }),
     )
 
@@ -810,7 +805,9 @@ export const make = Effect.fnUntraced(function* ({
       Effect.gen(function* () {
         const queue = yield* Effect.fromNullishOr(ctxRef.current?.services).pipe(
           Effect.orDieDebugger,
-          Effect.flatMap((services) => connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(services))),
+          Effect.flatMap((services) =>
+            connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(services)),
+          ),
         )
         return Stream.fromQueue(queue)
       }).pipe(Stream.unwrap),
@@ -1131,22 +1128,26 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
   })
 
 const snapshotTxQueue = <A>(queue: TxQueue.TxQueue<A>): Effect.Effect<ReadonlyArray<A>> =>
-  Effect.tx(Effect.gen(function* () {
-    const items = yield* TxQueue.clear(queue)
-    yield* TxQueue.offerAll(queue, items)
-    return items
-  }))
+  Effect.tx(
+    Effect.gen(function* () {
+      const items = yield* TxQueue.clear(queue)
+      yield* TxQueue.offerAll(queue, items)
+      return items
+    }),
+  )
 
 const takePrefixUntil = <A>(
   queue: TxQueue.TxQueue<A>,
   predicate: (value: A) => boolean,
 ): Effect.Effect<ReadonlyArray<A>> =>
-  Effect.tx(Effect.gen(function* () {
-    const items = yield* TxQueue.clear(queue)
-    const [prefix, rest] = ReadonlyArray.splitWhere(items, predicate)
-    yield* TxQueue.offerAll(queue, rest)
-    return prefix
-  }))
+  Effect.tx(
+    Effect.gen(function* () {
+      const items = yield* TxQueue.clear(queue)
+      const [prefix, rest] = ReadonlyArray.splitWhere(items, predicate)
+      yield* TxQueue.offerAll(queue, rest)
+      return prefix
+    }),
+  )
 
 /** Serialize value to JSON string for trace attributes */
 const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)

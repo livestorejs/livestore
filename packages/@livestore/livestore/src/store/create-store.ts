@@ -64,9 +64,9 @@ declare global {
  * const { store } = yield* AppStore.Tag
  * ```
  */
-export class LiveStoreContextRunning extends Context.Service<
-  LiveStoreContextRunning, LiveStoreContextRunning_
->()('@livestore/livestore/effect/LiveStoreContextRunning') {
+export class LiveStoreContextRunning extends Context.Service<LiveStoreContextRunning, LiveStoreContextRunning_>()(
+  '@livestore/livestore/effect/LiveStoreContextRunning',
+) {
   static fromDeferred = Effect.gen(function* () {
     const deferred = yield* DeferredStoreContext
     const ctx = yield* Deferred.await(deferred)
@@ -136,7 +136,8 @@ export interface CreateStoreOptions<
   TSchema extends LiveStoreSchema,
   TContext = {},
   TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json,
-> extends LogConfig.LoggerOptions {
+>
+  extends LogConfig.LoggerOptions {
   /** The LiveStore schema defining tables, events, and materializers. */
   schema: TSchema
   /** Adapter used for data storage and synchronization. */
@@ -310,7 +311,9 @@ export const createStore = <
 
       yield* Queue.take(bootStatusQueue).pipe(
         Effect.tapSync((status) => onBootStatus?.(status)),
-        Effect.tap((status) => (status.stage === 'done' ? Queue.shutdown(bootStatusQueue).pipe(Effect.asVoid) : Effect.void)),
+        Effect.tap((status) =>
+          status.stage === 'done' ? Queue.shutdown(bootStatusQueue).pipe(Effect.asVoid) : Effect.void,
+        ),
         Effect.forever,
         Effect.tapCauseLogPretty,
         // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.

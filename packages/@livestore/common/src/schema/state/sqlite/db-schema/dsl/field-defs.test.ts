@@ -9,7 +9,9 @@ describe('FieldDefs', () => {
     expect(columnDefSnapshot(F.text())).toMatchSnapshot()
     expect(columnDefSnapshot(F.text({}))).toMatchSnapshot()
     expect(columnDefSnapshot(F.text({ default: null, nullable: true }))).toMatchSnapshot()
-    expect(columnDefSnapshot(F.text({ schema: Schema.Literal('foo'), nullable: true, default: 'foo' }))).toMatchSnapshot()
+    expect(
+      columnDefSnapshot(F.text({ schema: Schema.Literal('foo'), nullable: true, default: 'foo' })),
+    ).toMatchSnapshot()
     expect(
       columnDefSnapshot(F.text({ schema: Schema.Union([Schema.Literal('foo')]), nullable: true, default: 'foo' })),
     ).toMatchSnapshot()

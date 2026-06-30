@@ -324,9 +324,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         isClientOnlyEvent,
         isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
       }).pipe(
-        Effect.filterMapOrElse(
-          Filter.tagged<typeof SyncState.MergeResult.Type>()('advance'),
-          () => Effect.die(new Error('Expected advance from local-push merge')),
+        Effect.filterMapOrElse(Filter.tagged<typeof SyncState.MergeResult.Type>()('advance'), () =>
+          Effect.die(new Error('Expected advance from local-push merge')),
         ),
       )
 
@@ -379,11 +378,13 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 })
 
 const snapshotTxQueue = <A>(queue: TxQueue.TxQueue<A>): Effect.Effect<ReadonlyArray<A>> =>
-  Effect.tx(Effect.gen(function* () {
-    const items = yield* TxQueue.clear(queue)
-    yield* TxQueue.offerAll(queue, items)
-    return items
-  }))
+  Effect.tx(
+    Effect.gen(function* () {
+      const items = yield* TxQueue.clear(queue)
+      yield* TxQueue.offerAll(queue, items)
+      return items
+    }),
+  )
 
 export interface ClientSessionSyncProcessor {
   boot: Effect.Effect<void, never, Scope.Scope>

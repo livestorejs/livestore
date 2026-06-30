@@ -50,7 +50,5 @@ const createHttpRpcLayer = (forwardedHeaders: Record<string, string> | undefined
       }),
 
     'SyncHttpRpc.Ping': () => Effect.succeed(SyncMessage.Pong.make({})),
-  }).pipe(
-    Layer.provideMerge(RpcSerialization.layerJson),
-  )
+  }).pipe(Layer.provideMerge(RpcSerialization.layerJson))
 }

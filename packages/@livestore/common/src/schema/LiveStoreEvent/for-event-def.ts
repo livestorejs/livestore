@@ -6,19 +6,19 @@ import type * as EventSequenceNumber from '../EventSequenceNumber/mod.ts'
 /** Event without sequence numbers, with decoded (native TypeScript) args. Used as input to `store.commit()`. */
 export type InputDecoded<TEventDef extends EventDef.Any> = {
   name: TEventDef['name']
-  args: (TEventDef['schema'])["Type"]
+  args: TEventDef['schema']['Type']
 }
 
 /** Event without sequence numbers, with encoded (serialized) args. Used as input to `store.commit()`. */
 export type InputEncoded<TEventDef extends EventDef.Any> = {
   name: TEventDef['name']
-  args: (TEventDef['schema'])['Encoded']
+  args: TEventDef['schema']['Encoded']
 }
 
 /** Full event with composite sequence numbers and decoded args. Includes clientId/sessionId for sync. */
 export type Decoded<TEventDef extends EventDef.Any> = {
   name: TEventDef['name']
-  args: (TEventDef['schema'])['Type']
+  args: TEventDef['schema']['Type']
   seqNum: EventSequenceNumber.Client.Composite
   parentSeqNum: EventSequenceNumber.Client.Composite
   clientId: string
@@ -28,7 +28,7 @@ export type Decoded<TEventDef extends EventDef.Any> = {
 /** Full event with composite sequence numbers and encoded args. Includes clientId/sessionId for sync. */
 export type Encoded<TEventDef extends EventDef.Any> = {
   name: TEventDef['name']
-  args: (TEventDef['schema'])['Encoded']
+  args: TEventDef['schema']['Encoded']
   seqNum: EventSequenceNumber.Client.Composite
   parentSeqNum: EventSequenceNumber.Client.Composite
   clientId: string
@@ -40,7 +40,7 @@ export type ForRecord<TEventDefRecord extends EventDefRecord> = Schema.Codec<
   {
     [K in keyof TEventDefRecord]: {
       name: K
-      args: (TEventDefRecord[K]['schema'])['Type']
+      args: TEventDefRecord[K]['schema']['Type']
       seqNum: EventSequenceNumber.Client.Composite
       parentSeqNum: EventSequenceNumber.Client.Composite
       clientId: string
@@ -50,7 +50,7 @@ export type ForRecord<TEventDefRecord extends EventDefRecord> = Schema.Codec<
   {
     [K in keyof TEventDefRecord]: {
       name: K
-      args: (TEventDefRecord[K]['schema'])['Encoded']
+      args: TEventDefRecord[K]['schema']['Encoded']
       seqNum: EventSequenceNumber.Client.Composite
       parentSeqNum: EventSequenceNumber.Client.Composite
       clientId: string

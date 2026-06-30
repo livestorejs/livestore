@@ -237,9 +237,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
       // return shouldNeverHappen('UPDATE query requires at least one column to set.')
     }
 
-    const encodedValues = Schema.encodeSync(ast.tableDef.rowSchema.mapFields(Struct.map(Schema.optional)))(
-      ast.values,
-    )
+    const encodedValues = Schema.encodeSync(ast.tableDef.rowSchema.mapFields(Struct.map(Schema.optional)))(ast.values)
 
     // Ensure bind values are added in the same order as columns
     setColumns.forEach((col) => {

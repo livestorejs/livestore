@@ -1,6 +1,7 @@
 import util from 'node:util'
 
 import { Redactable } from 'effect'
+
 import { Cause, Inspectable, Logger, type LogLevel, References, ReadonlyArray } from '@livestore/utils/effect'
 
 const withColor = (text: string, ...colors: ReadonlyArray<string>) => {
