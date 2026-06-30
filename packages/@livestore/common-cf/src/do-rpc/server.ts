@@ -101,7 +101,7 @@ export const toDurableObjectHandler =
             }),
             rpc,
           })
-          const effectOrStream = Rpc.isWrapper(handlerResult) ? handlerResult.value : handlerResult
+          const effectOrStream = Rpc.isWrapper(handlerResult) === true ? handlerResult.value : handlerResult
 
           let value: any
           if (Effect.isEffect(effectOrStream) === true) {
@@ -215,7 +215,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
       }),
       rpc,
     })
-    const effectOrStream = Rpc.isWrapper(handlerResult) ? handlerResult.value : handlerResult
+    const effectOrStream = Rpc.isWrapper(handlerResult) === true ? handlerResult.value : handlerResult
 
     // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch; orDie converts the error to a defect handled by the downstream catchCause
     const stream: Stream.Stream<any, any> =
@@ -223,12 +223,13 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
 
     // Get the stream schemas for proper chunk-level encoding
     // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.Handler doesn't expose successSchema publicly; see https://github.com/Effect-TS/effect/issues/6064
-    const streamSchemas = RpcSchema.isStreamSchema(rpc.successSchema)
-      ? Option.some({
-          success: rpc.successSchema.success,
-          error: rpc.successSchema.error,
-        })
-      : Option.none()
+    const streamSchemas =
+      RpcSchema.isStreamSchema(rpc.successSchema) === true
+        ? Option.some({
+            success: rpc.successSchema.success,
+            error: rpc.successSchema.error,
+          })
+        : Option.none()
     const arrayEncoder =
       Option.isSome(streamSchemas) === true
         ? Schema.encodeUnknownEffect(Schema.toCodecJson(Schema.Array(streamSchemas.value.success)))

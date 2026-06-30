@@ -635,11 +635,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
             // Delegate buffering and pending-consumer wakeups to Effect's queue implementation.
             const exit = await runPromiseExit(Queue.take(ensureQueue()))
-            if (Exit.isSuccess(exit)) {
+            if (Exit.isSuccess(exit) === true) {
               return { done: false, value: exit.value }
             }
 
-            if (isClosed() === true || isQueueDone(exit.cause)) {
+            if (isClosed() === true || isQueueDone(exit.cause) === true) {
               return done()
             }
 
@@ -745,7 +745,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       )
 
       const decodeResult = Schema.decodeResult(schema)(rawRes)
-      if (Result.isSuccess(decodeResult)) {
+      if (Result.isSuccess(decodeResult) === true) {
         return decodeResult.success
       } else {
         return shouldNeverHappen(

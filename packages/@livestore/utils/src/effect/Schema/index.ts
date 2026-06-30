@@ -133,7 +133,7 @@ export const decodeSyncDebug: <A, I>(
   options?: SchemaAST.ParseOptions,
 ) => (i: I, overrideOptions?: SchemaAST.ParseOptions) => A = (schema, options) => (input, overrideOptions) => {
   const res = Schema.decodeResult(schema, options)(input, overrideOptions)
-  if (Result.isFailure(res)) {
+  if (Result.isFailure(res) === true) {
     return shouldNeverHappen(`decodeSyncDebug failed:`, res.failure)
   } else {
     return res.success
@@ -145,7 +145,7 @@ export const encodeSyncDebug: <A, I>(
   options?: SchemaAST.ParseOptions,
 ) => (a: A, overrideOptions?: SchemaAST.ParseOptions) => I = (schema, options) => (input, overrideOptions) => {
   const res = Schema.encodeResult(schema, options)(input, overrideOptions)
-  if (Result.isFailure(res)) {
+  if (Result.isFailure(res) === true) {
     return shouldNeverHappen(`encodeSyncDebug failed:`, res.failure)
   } else {
     return res.success

@@ -1,7 +1,8 @@
 import * as otel from '@opentelemetry/api'
 
 import { makeNoopTracer } from '@livestore/utils'
-import { Effect, identity, Layer, OtelTracer, Tracer } from '@livestore/utils/effect'
+import type { Tracer } from '@livestore/utils/effect'
+import { Effect, identity, Layer, OtelTracer } from '@livestore/utils/effect'
 
 export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend(() => {
   const OtelTracerLive = Layer.succeed(OtelTracer.OtelTracer, makeNoopTracer())

@@ -497,7 +497,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         .pipe(Effect.result, Effect.timeout(Duration.seconds(5)))
 
       expect(Result.isFailure(pushResult)).toBe(true)
-      if (Result.isSuccess(pushResult)) {
+      if (Result.isSuccess(pushResult) === true) {
         return
       }
 

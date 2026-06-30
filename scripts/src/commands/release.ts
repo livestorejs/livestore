@@ -305,7 +305,7 @@ const listSnapshotPackages = (cwd: string) =>
         Effect.result,
       )
 
-      if (Result.isFailure(pkgResult)) {
+      if (Result.isFailure(pkgResult) === true) {
         const error = pkgResult.failure
         const message = toErrorMessage(error)
         yield* Effect.logWarning(

@@ -1,5 +1,6 @@
 import { type Nullable, shouldNeverHappen } from '@livestore/utils'
-import { Schema, SchemaAST, type Types } from '@livestore/utils/effect'
+import type { Schema } from '@livestore/utils/effect'
+import { SchemaAST, type Types } from '@livestore/utils/effect'
 
 import { getColumnDefForSchema, schemaFieldsToColumns } from './column-def.ts'
 import { SqliteDsl } from './db-schema/mod.ts'
@@ -310,7 +311,8 @@ const getPropertySignatures = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.Prop
       return [
         new SchemaAST.PropertySignature(
           propertySignature.name,
-          propertySignatures.some((memberPropertySignature) => SchemaAST.isOptional(memberPropertySignature.type))
+          propertySignatures.some((memberPropertySignature) => SchemaAST.isOptional(memberPropertySignature.type)) ===
+            true
             ? SchemaAST.optionalKey(union)
             : union,
         ),

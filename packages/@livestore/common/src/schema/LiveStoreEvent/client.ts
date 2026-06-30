@@ -219,8 +219,8 @@ const canonicalizeArgs = (args: unknown): unknown => (args === undefined ? args 
 export const makeSchema = <TSchema extends LiveStoreSchema>(
   schema: TSchema,
 ): ForEventDef.ForRecord<TSchema['_EventDefMapType']> =>
-  Schema.Union([
-    ...[...schema.eventsDefsMap.values()].map((def) =>
+  Schema.Union(
+    [...schema.eventsDefsMap.values()].map((def) =>
       Schema.Struct({
         name: Schema.Literal(def.name),
         args: def.schema,
@@ -230,7 +230,7 @@ export const makeSchema = <TSchema extends LiveStoreSchema>(
         sessionId: Schema.String,
       }),
     ),
-  ]).annotate({ title: 'LiveStoreEvent.Client' }) as any
+  ).annotate({ title: 'LiveStoreEvent.Client' }) as any
 
 /** Memoized `makeSchema` - caches the generated schema by reference. */
 export const makeSchemaMemo = memoizeByRef(makeSchema)

@@ -126,7 +126,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
       const packageJsonContent = yield* fs.readFileString(packageJsonPath)
       const decoded = yield* parseExamplePackageJson(packageJsonContent).pipe(Effect.result)
 
-      if (Result.isFailure(decoded)) {
+      if (Result.isFailure(decoded) === true) {
         if (skipMissing === true) {
           yield* Effect.logWarning(`Skipping ${example}: unable to decode package.json`)
           continue

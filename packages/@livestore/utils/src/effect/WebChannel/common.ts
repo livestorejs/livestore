@@ -65,7 +65,7 @@ export const listenToDebugPing =
     stream.pipe(
       Stream.filterEffect(
         Effect.fn(function* (msg) {
-          if (Result.isSuccess(msg) && Schema.is(DebugPingMessage)(msg.success) === true) {
+          if (Result.isSuccess(msg) === true && Schema.is(DebugPingMessage)(msg.success) === true) {
             yield* Effect.logDebug(`WebChannel:ping [${channelName}] ${msg.success.message}`, msg.success.payload)
             return false
           }
