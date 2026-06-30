@@ -169,7 +169,7 @@ export namespace LiveQueryDef {
  * ```
  */
 export const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<any> => {
-  if (!Predicate.isTagged(value, 'def') && !Predicate.isTagged(value, 'signal-def')) {
+  if (Predicate.isTagged(value, 'def') === false && Predicate.isTagged(value, 'signal-def') === false) {
     return false
   }
 

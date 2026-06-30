@@ -2377,6 +2377,9 @@ importers:
       '@opentelemetry/core':
         specifier: 2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/exporter-trace-otlp-http':
+        specifier: 0.208.0
+        version: 0.208.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/resources':
         specifier: 2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
@@ -2520,6 +2523,9 @@ importers:
       '@livestore/wa-sqlite':
         specifier: workspace:^
         version: link:../../packages/@livestore/wa-sqlite
+      '@types/node':
+        specifier: 25.3.3
+        version: 25.3.3
       vitest:
         specifier: 4.1.9
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(jsdom@26.1.0)(vite@7.3.6(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))

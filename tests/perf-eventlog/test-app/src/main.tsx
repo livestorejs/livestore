@@ -50,4 +50,10 @@ const LiveStoreRoot = () => {
   )
 }
 
-createRoot(document.getElementById('root')).render(<LiveStoreRoot />)
+const rootElement = document.getElementById('root')
+
+if (rootElement == null) {
+  throw new Error('Missing root element')
+}
+
+createRoot(rootElement).render(<LiveStoreRoot />)

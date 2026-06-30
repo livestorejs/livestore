@@ -85,24 +85,26 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
     /** Used to detect if the materializer is side effecting (during dev) */
     materializerHashLeader: Schema.Option(Schema.Number),
     materializerHashSession: Schema.Option(Schema.Number),
-  }).mapFields(Struct.map(Schema.mutableKey)).pipe(
-    Schema.withDecodingDefaultType(
-      Effect.succeed({
-        sessionChangeset: { _tag: 'unset' as const },
-        syncMetadata: Option.none(),
-        materializerHashLeader: Option.none(),
-        materializerHashSession: Option.none(),
-      }),
+  })
+    .mapFields(Struct.map(Schema.mutableKey))
+    .pipe(
+      Schema.withDecodingDefaultType(
+        Effect.succeed({
+          sessionChangeset: { _tag: 'unset' as const },
+          syncMetadata: Option.none(),
+          materializerHashLeader: Option.none(),
+          materializerHashSession: Option.none(),
+        }),
+      ),
+      Schema.withConstructorDefault(
+        Effect.succeed({
+          sessionChangeset: { _tag: 'unset' as const },
+          syncMetadata: Option.none(),
+          materializerHashLeader: Option.none(),
+          materializerHashSession: Option.none(),
+        }),
+      ),
     ),
-    Schema.withConstructorDefault(
-      Effect.succeed({
-        sessionChangeset: { _tag: 'unset' as const },
-        syncMetadata: Option.none(),
-        materializerHashLeader: Option.none(),
-        materializerHashSession: Option.none(),
-      }),
-    ),
-  ),
 }) {
   toJSON = (): any => {
     // Only used for logging/debugging
@@ -217,8 +219,8 @@ const canonicalizeArgs = (args: unknown): unknown => (args === undefined ? args 
 export const makeSchema = <TSchema extends LiveStoreSchema>(
   schema: TSchema,
 ): ForEventDef.ForRecord<TSchema['_EventDefMapType']> =>
-  Schema.Union([
-    ...[...schema.eventsDefsMap.values()].map((def) =>
+  Schema.Union(
+    [...schema.eventsDefsMap.values()].map((def) =>
       Schema.Struct({
         name: Schema.Literal(def.name),
         args: def.schema,
@@ -228,7 +230,7 @@ export const makeSchema = <TSchema extends LiveStoreSchema>(
         sessionId: Schema.String,
       }),
     ),
-  ]).annotate({ title: 'LiveStoreEvent.Client' }) as any
+  ).annotate({ title: 'LiveStoreEvent.Client' }) as any
 
 /** Memoized `makeSchema` - caches the generated schema by reference. */
 export const makeSchemaMemo = memoizeByRef(makeSchema)

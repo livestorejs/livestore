@@ -1,6 +1,7 @@
 import type { UnknownError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
-import { Effect, Result, Schema } from '@livestore/utils/effect'
+import type { Effect } from '@livestore/utils/effect'
+import { Result, Schema } from '@livestore/utils/effect'
 
 import type { SearchParams } from '../common/mod.ts'
 import { SearchParamsSchema, SyncMessage } from '../common/mod.ts'
@@ -147,7 +148,7 @@ export const matchSyncRequest = (request: CfTypes.Request): SearchParams | undef
   const url = new URL(request.url)
   const paramsResult = Schema.decodeUnknownResult(SearchParamsFromUrlSearchParams)(url.searchParams)
 
-  if (Result.isFailure(paramsResult)) {
+  if (Result.isFailure(paramsResult) === true) {
     return undefined
   }
 

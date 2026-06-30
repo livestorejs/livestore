@@ -24,6 +24,12 @@ type DisplayEvent = {
   json: string
 }
 
+type EventSeqNum = {
+  global?: unknown
+  client?: unknown
+  rebaseGeneration?: unknown
+}
+
 type EventsListProps = {
   batchSize: number
   /** When set, the stream stops after reaching this global sequence number */
@@ -32,12 +38,23 @@ type EventsListProps = {
 
 const sanitizeBatchSize = (value: number) => Math.max(1, Math.floor(value) || 1)
 
+const isStreamCancelled = (streamState: { cancelled: boolean }) => streamState.cancelled
+
 const stringify = (value: unknown) => {
   try {
     return JSON.stringify(value, null, 2)
   } catch (error) {
     return typeof value === 'string' ? value : String(error)
   }
+}
+
+const getSeqNum = (value: unknown): EventSeqNum | undefined => {
+  if (typeof value !== 'object' || value === null || 'seqNum' in value === false) {
+    return undefined
+  }
+
+  const seqNum = (value as { seqNum?: unknown }).seqNum
+  return typeof seqNum === 'object' && seqNum !== null ? seqNum : undefined
 }
 
 export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
@@ -48,7 +65,7 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
   const preferredBatchSize = sanitizeBatchSize(batchSize)
 
   React.useEffect(() => {
-    let cancelled = false
+    const streamState: { cancelled: boolean } = { cancelled: false }
     lastSeqRef.current = 0
     const iterator = store
       .events({
@@ -59,14 +76,16 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
 
     const run = async () => {
       try {
-        while (cancelled === false) {
-          const { value, done } = await iterator.next()
-          if (done === true || cancelled === true) break
+        while (streamState.cancelled === false) {
+          const result = await iterator.next()
+          if (result.done === true || isStreamCancelled(streamState) === true) break
+          const { value } = result
           if (value == null) continue
 
-          const seqNumGlobal = typeof value.seqNum?.global === 'number' ? value.seqNum.global : null
-          const seqNumClient = typeof value.seqNum?.client === 'number' ? value.seqNum.client : null
-          const seqNumRebase = typeof value.seqNum?.rebaseGeneration === 'number' ? value.seqNum.rebaseGeneration : null
+          const seqNum = getSeqNum(value)
+          const seqNumGlobal = typeof seqNum?.global === 'number' ? seqNum.global : null
+          const seqNumClient = typeof seqNum?.client === 'number' ? seqNum.client : null
+          const seqNumRebase = typeof seqNum?.rebaseGeneration === 'number' ? seqNum.rebaseGeneration : null
           const nextDisplayCount = seqNumGlobal ?? lastSeqRef.current + 1
           lastSeqRef.current = nextDisplayCount
 
@@ -89,7 +108,7 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
     void run()
 
     return () => {
-      cancelled = true
+      streamState.cancelled = true
       void iterator.return?.()
     }
   }, [preferredBatchSize, until, store])

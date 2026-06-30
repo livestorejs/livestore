@@ -1,5 +1,6 @@
 import { type Nullable, shouldNeverHappen } from '@livestore/utils'
-import { Schema, SchemaAST, type Types } from '@livestore/utils/effect'
+import type { Schema } from '@livestore/utils/effect'
+import { SchemaAST, type Types } from '@livestore/utils/effect'
 
 import { getColumnDefForSchema, schemaFieldsToColumns } from './column-def.ts'
 import { SqliteDsl } from './db-schema/mod.ts'
@@ -159,10 +160,7 @@ export function table<
 ): TableDef<SqliteTableDefForSchemaInput<TName, TSchema['Type'], TSchema['Encoded'], TSchema>>
 
 // Overload 3: With schema and no name (uses schema annotations)
-export function table<
-  TSchema extends Schema.Top,
-  const TOptionsInput extends TableOptionsInput = TableOptionsInput,
->(
+export function table<TSchema extends Schema.Top, const TOptionsInput extends TableOptionsInput = TableOptionsInput>(
   args: {
     schema: TSchema
   } & Partial<TOptionsInput>,
@@ -313,7 +311,8 @@ const getPropertySignatures = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.Prop
       return [
         new SchemaAST.PropertySignature(
           propertySignature.name,
-          propertySignatures.some((memberPropertySignature) => SchemaAST.isOptional(memberPropertySignature.type))
+          propertySignatures.some((memberPropertySignature) => SchemaAST.isOptional(memberPropertySignature.type)) ===
+            true
             ? SchemaAST.optionalKey(union)
             : union,
         ),
@@ -345,7 +344,7 @@ export namespace FromTable {
   }
 
   export type RowEncodeNonNullable<TTableDef extends TableDefBase> = {
-    [K in keyof TTableDef['sqliteDef']['columns']]: (TTableDef['sqliteDef']['columns'][K]['schema'])['Encoded']
+    [K in keyof TTableDef['sqliteDef']['columns']]: TTableDef['sqliteDef']['columns'][K]['schema']['Encoded']
   }
 
   export type RowEncoded<TTableDef extends TableDefBase> = Types.Simplify<
@@ -354,7 +353,7 @@ export namespace FromTable {
   >
 
   export type RowDecodedAll<TTableDef extends TableDefBase> = {
-    [K in keyof TTableDef['sqliteDef']['columns']]: (TTableDef['sqliteDef']['columns'][K]['schema'])['Type']
+    [K in keyof TTableDef['sqliteDef']['columns']]: TTableDef['sqliteDef']['columns'][K]['schema']['Type']
   }
 }
 
@@ -366,7 +365,7 @@ export namespace FromColumns {
   >
 
   export type RowDecodedAll<TColumns extends SqliteDsl.Columns> = {
-    [K in keyof TColumns]: (TColumns[K]['schema'])['Type']
+    [K in keyof TColumns]: TColumns[K]['schema']['Type']
   }
 
   export type RowEncoded<TColumns extends SqliteDsl.Columns> = Types.Simplify<
@@ -375,7 +374,7 @@ export namespace FromColumns {
   >
 
   export type RowEncodeNonNullable<TColumns extends SqliteDsl.Columns> = {
-    [K in keyof TColumns]: (TColumns[K]['schema'])['Encoded']
+    [K in keyof TColumns]: TColumns[K]['schema']['Encoded']
   }
 
   export type NullableColumnNames<TColumns extends SqliteDsl.Columns> = keyof {

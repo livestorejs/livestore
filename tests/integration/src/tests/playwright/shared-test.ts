@@ -5,7 +5,6 @@ import process from 'node:process'
 
 import type * as PW from '@playwright/test'
 
-import type { UnknownError } from '@livestore/common'
 import * as Playwright from '@livestore/effect-playwright'
 import { Deferred, Duration, Effect, Fiber, Layer, Logger, Schema } from '@livestore/utils/effect'
 
@@ -39,14 +38,14 @@ const PWLive = Effect.gen(function* () {
   return Playwright.browserContextLayer({ persistentContextPath })
 }).pipe(Layer.unwrap)
 
-export const runAndGetExit = <Tag extends string, A>({
+export const runAndGetExit = <S extends Schema.Decoder<{ readonly exit: unknown }>>({
   importPath,
   exportName,
   schema,
 }: {
   importPath: string
   exportName: string
-  schema: Schema.TaggedStruct<Tag, { exit: Schema.Exit<Schema.Schema<A>, typeof UnknownError, ReturnType<typeof Schema.Defect>> }>
+  schema: S
 }) =>
   Effect.gen(function* () {
     const { browserContext } = yield* Playwright.BrowserContext
@@ -64,15 +63,18 @@ export const runAndGetExit = <Tag extends string, A>({
     )
 
     return yield* Effect.gen(function* () {
-      const deferred = yield* Deferred.make<(typeof schema.Type)['exit']>()
+      type Result = Schema.Schema.Type<S>
+      const deferred = yield* Deferred.make<Result['exit']>()
 
-      page.exposeFunction('onMessageReceived', (message: string) => {
-        const result = Schema.decodeUnknownOption(schema)(message)
-        // console.log('onMessageReceived', message, result)
-        if (result._tag === 'Some') {
-          Deferred.succeed(deferred, result.value.exit).pipe(Effect.runSync)
-        }
-      })
+      yield* Effect.promise(() =>
+        page.exposeFunction('onMessageReceived', (message: string) => {
+          const result = Schema.decodeUnknownOption(schema)(message)
+          // console.log('onMessageReceived', message, result)
+          if (result._tag === 'Some') {
+            Deferred.succeed(deferred, result.value.exit).pipe(Effect.runSync)
+          }
+        }),
+      )
 
       yield* Effect.promise(() =>
         page.evaluate(() => {
@@ -83,5 +85,5 @@ export const runAndGetExit = <Tag extends string, A>({
       )
 
       return yield* Deferred.await(deferred).pipe(Effect.timeout(runAndGetExitTimeoutMs))
-    }).pipe(Effect.raceFirst(Fiber.joinAll([pageConsoleFiber]) as Effect.Effect<never, Playwright.SiteError>))
+    }).pipe(Effect.raceFirst(Fiber.joinAll([pageConsoleFiber]).pipe(Effect.andThen(Effect.never))))
   })

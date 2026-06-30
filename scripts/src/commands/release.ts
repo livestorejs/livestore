@@ -305,7 +305,7 @@ const listSnapshotPackages = (cwd: string) =>
         Effect.result,
       )
 
-      if (Result.isFailure(pkgResult)) {
+      if (Result.isFailure(pkgResult) === true) {
         const error = pkgResult.failure
         const message = toErrorMessage(error)
         yield* Effect.logWarning(
@@ -521,9 +521,9 @@ const publishReleasePackages = ({
 export const releasePlanCommand = Cli.Command.make(
   'plan',
   {
-    releaseVersion: Cli.Flag.text('release-version'),
-    npmTag: Cli.Flag.text('npm-tag').pipe(Cli.Flag.withDefault('latest')),
-    cwd: Cli.Flag.text('cwd').pipe(
+    releaseVersion: Cli.Flag.string('release-version'),
+    npmTag: Cli.Flag.string('npm-tag').pipe(Cli.Flag.withDefault('latest')),
+    cwd: Cli.Flag.string('cwd').pipe(
       Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
@@ -539,19 +539,19 @@ export const releasePlanCommand = Cli.Command.make(
 export const releaseStableCommand = Cli.Command.make(
   'stable',
   {
-    plan: Cli.Flag.text('plan').pipe(Cli.Flag.withDefault('release/release-plan.json')),
+    plan: Cli.Flag.string('plan').pipe(Cli.Flag.withDefault('release/release-plan.json')),
     dryRun: Cli.Flag.boolean('dry-run').pipe(Cli.Flag.withDefault(false)),
     allowExisting: Cli.Flag.boolean('allow-existing').pipe(Cli.Flag.withDefault(false)),
     yes: Cli.Flag.boolean('yes').pipe(
       Cli.Flag.withDefault(false),
       Cli.Flag.withDescription('Skip interactive confirmation prompt'),
     ),
-    cwd: Cli.Flag.text('cwd').pipe(
+    cwd: Cli.Flag.string('cwd').pipe(
       Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
     ),
-    tscBin: Cli.Flag.text('tsc-bin').pipe(Cli.Flag.optional),
+    tscBin: Cli.Flag.string('tsc-bin').pipe(Cli.Flag.optional),
   },
   Effect.fn(function* ({ plan: planPath, dryRun, allowExisting, yes, cwd, tscBin: tscBinOption }) {
     const plan = yield* readReleasePlan(cwd, planPath)
@@ -597,19 +597,19 @@ export const releaseStableCommand = Cli.Command.make(
 export const releaseSnapshotCommand = Cli.Command.make(
   'snapshot',
   {
-    gitShaOption: Cli.Flag.text('git-sha').pipe(Cli.Flag.optional),
+    gitShaOption: Cli.Flag.string('git-sha').pipe(Cli.Flag.optional),
     dryRun: Cli.Flag.boolean('dry-run').pipe(Cli.Flag.withDefault(false)),
     yes: Cli.Flag.boolean('yes').pipe(
       Cli.Flag.withDefault(false),
       Cli.Flag.withDescription('Skip interactive confirmation prompt'),
     ),
-    cwd: Cli.Flag.text('cwd').pipe(
+    cwd: Cli.Flag.string('cwd').pipe(
       Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
     ),
-    versionOption: Cli.Flag.text('version').pipe(Cli.Flag.optional),
-    tscBin: Cli.Flag.text('tsc-bin').pipe(Cli.Flag.optional),
+    versionOption: Cli.Flag.string('version').pipe(Cli.Flag.optional),
+    tscBin: Cli.Flag.string('tsc-bin').pipe(Cli.Flag.optional),
   },
   Effect.fn(function* ({ gitShaOption, dryRun, yes, cwd, versionOption, tscBin: tscBinOption }) {
     const gitSha =
@@ -661,8 +661,8 @@ export const releaseSnapshotCommand = Cli.Command.make(
 export const releaseNotesExtractCommand = Cli.Command.make(
   'extract-release-notes',
   {
-    plan: Cli.Flag.text('plan').pipe(Cli.Flag.withDefault('release/release-plan.json')),
-    cwd: Cli.Flag.text('cwd').pipe(
+    plan: Cli.Flag.string('plan').pipe(Cli.Flag.withDefault('release/release-plan.json')),
+    cwd: Cli.Flag.string('cwd').pipe(
       Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),

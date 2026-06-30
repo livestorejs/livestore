@@ -115,23 +115,20 @@ export const makeWebSocketEdge = ({
 
       yield* Stream.never.pipe(
         Stream.pipeThroughChannel(Socket.toChannel(socket)),
-        Stream.catchTag(
-          'SocketError',
-          (error) => {
-            // In the case of the socket being closed, close the WebChannel
-            // which can be observed from the outside.
-            if (error.reason._tag === 'SocketCloseError') {
-              return Stream.fromEffectDrain(
-                Effect.gen(function* () {
-                  yield* Deferred.succeed(closedDeferred, undefined)
-                  yield* isConnectedLatch.close
-                }),
-              )
-            }
+        Stream.catchTag('SocketError', (error) => {
+          // In the case of the socket being closed, close the WebChannel
+          // which can be observed from the outside.
+          if (error.reason._tag === 'SocketCloseError') {
+            return Stream.fromEffectDrain(
+              Effect.gen(function* () {
+                yield* Deferred.succeed(closedDeferred, undefined)
+                yield* isConnectedLatch.close
+              }),
+            )
+          }
 
-            return Stream.fail(error)
-          },
-        ),
+          return Stream.fail(error)
+        }),
         Stream.retry(retryOpenErrorSchedule),
         Stream.tap(
           Effect.fn(function* (bytes) {

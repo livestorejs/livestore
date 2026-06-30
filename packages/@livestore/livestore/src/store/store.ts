@@ -635,11 +635,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
             // Delegate buffering and pending-consumer wakeups to Effect's queue implementation.
             const exit = await runPromiseExit(Queue.take(ensureQueue()))
-            if (Exit.isSuccess(exit)) {
+            if (Exit.isSuccess(exit) === true) {
               return { done: false, value: exit.value }
             }
 
-            if (isClosed() === true || isQueueDone(exit.cause)) {
+            if (isClosed() === true || isQueueDone(exit.cause) === true) {
               return done()
             }
 
@@ -666,10 +666,16 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         yield* Effect.acquireRelease(
           Effect.sync(() =>
-            this.subscribe(query, (result) => { Queue.offerUnsafe(emit, result) }, {
-              ...options,
-              otelContext,
-            }),
+            this.subscribe(
+              query,
+              (result) => {
+                Queue.offerUnsafe(emit, result)
+              },
+              {
+                ...options,
+                otelContext,
+              },
+            ),
           ),
           (unsub) => Effect.sync(() => unsub()),
         )
@@ -739,7 +745,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       )
 
       const decodeResult = Schema.decodeResult(schema)(rawRes)
-      if (Result.isSuccess(decodeResult)) {
+      if (Result.isSuccess(decodeResult) === true) {
         return decodeResult.success
       } else {
         return shouldNeverHappen(
@@ -936,7 +942,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       }),
       Effect.tapCause(Effect.logError),
       // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-      Effect.catchCause((cause) => Effect.forkChild(this.shutdown(cause), { startImmediately: true, uninterruptible: 'inherit' })),
+      Effect.catchCause((cause) =>
+        Effect.forkChild(this.shutdown(cause), { startImmediately: true, uninterruptible: 'inherit' }),
+      ),
       Effect.runSyncWith(this[StoreInternalsSymbol].effectContext.services),
     )
   }
@@ -1261,7 +1269,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   private runEffectFork = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) =>
     effect.pipe(
       // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-      Effect.forkIn(this[StoreInternalsSymbol].effectContext.lifetimeScope, { startImmediately: true, uninterruptible: 'inherit' }),
+      Effect.forkIn(this[StoreInternalsSymbol].effectContext.lifetimeScope, {
+        startImmediately: true,
+        uninterruptible: 'inherit',
+      }),
       Effect.tapCauseLogPretty,
       Effect.runForkWith(this[StoreInternalsSymbol].effectContext.services),
     )

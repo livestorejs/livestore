@@ -86,9 +86,10 @@ export const makeHttpSync =
 
       // Setup HTTP RPC Protocol
       const HttpProtocolLive = RpcClient.layerProtocolHttp({
-        url: `${options.url}?${UrlParams.toString(urlParams)}`,
+        url: options.url,
         transformClient: HttpClient.mapRequest((request) =>
           request.pipe(
+            HttpClientRequest.appendUrlParams(urlParams),
             HttpClientRequest.setHeaders({
               ...options.headers,
               // Used in CF Worker to identify the store (additionally to storeId embedded in the RPC requests)
@@ -157,9 +158,11 @@ export const makeHttpSync =
                   Effect.gen(function* () {
                     yield* Effect.sleep(livePullInterval)
 
-                    const items = yield* rpcClient['SyncHttpRpc.Pull']({ storeId, payload, cursor: currentCursor }).pipe(
-                      Stream.runCollect,
-                    )
+                    const items = yield* rpcClient['SyncHttpRpc.Pull']({
+                      storeId,
+                      payload,
+                      cursor: currentCursor,
+                    }).pipe(Stream.runCollect)
 
                     const nextCursor = EffectArray.last(items).pipe(
                       Option.flatMap((item) => Option.fromNullishOr(item.batch.at(-1)?.eventEncoded.seqNum)),

@@ -1,11 +1,6 @@
 import { UnknownError } from '@livestore/common'
 import { type CfTypes, toDurableObjectHandler } from '@livestore/common-cf'
-import {
-  Effect,
-  Headers,
-  Option,
-  Stream,
-} from '@livestore/utils/effect'
+import { Effect, Headers, Option, Stream } from '@livestore/utils/effect'
 
 import { SyncDoRpc } from '../../../common/do-rpc-schema.ts'
 import * as DoCtx from '../layer.ts'

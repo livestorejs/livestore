@@ -9,11 +9,11 @@ import { docsSidebar, type TSidebarItem } from '@local/docs/sidebar'
 export const exportMarkdownCommand = Cli.Command.make(
   'export-markdown',
   {
-    out: Cli.Flag.text('out').pipe(
+    out: Cli.Flag.string('out').pipe(
       Cli.Flag.optional,
       Cli.Flag.withDescription('Destination directory for the exported markdown tree'),
     ),
-    workspaceRoot: Cli.Flag.text('workspace-root').pipe(
+    workspaceRoot: Cli.Flag.string('workspace-root').pipe(
       Cli.Flag.optional,
       Cli.Flag.withDescription('Workspace root (defaults to WORKSPACE_ROOT)'),
     ),

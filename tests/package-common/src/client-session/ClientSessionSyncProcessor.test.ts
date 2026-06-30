@@ -16,17 +16,20 @@ import { makeClientSessionSyncProcessor, type SyncBackend } from '@livestore/com
 import { EventFactory } from '@livestore/common/testing'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, StoreInternalsSymbol } from '@livestore/livestore'
-import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
+  Cache,
   type OtelTracer,
   Cause,
   Context,
   Deferred,
   Effect,
+  Equal,
   Exit,
   FetchHttpClient,
+  Fiber,
+  Hash,
   Layer,
   Option,
   Queue,
@@ -42,7 +45,7 @@ import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
 
 import { events, schema, tables } from '../leader-thread/fixture.ts'
-import { makeTestAdapter } from '../test-adapter.ts'
+import { makeTestAdapter, type TestingOverrides } from '../test-adapter.ts'
 
 // TODO fix type level - derived events are missing and thus infers to `never` currently
 const eventSchema = LiveStoreEvent.Input.makeSchema(schema) as TODO as Schema.Codec<LiveStoreEvent.Input.Encoded>
@@ -271,36 +274,55 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       yield* mockSyncBackend.advance(eventFactory.todoCreated.next({ id: `backend_0`, text: 't2', completed: false }))
 
-      const makeLeaderThread = yield* Effect.cachedFunction(
-        Effect.fn(function* (makeSqliteDb: MakeNodeSqliteDb) {
-          const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
+      type MakeLeaderThread = NonNullable<TestingOverrides['makeLeaderThread']>
+      type MakeLeaderThreadArg = Parameters<MakeLeaderThread>[0]
 
-          yield* Eventlog.initEventlogDb(dbEventlog)
+      class LeaderThreadCacheKey {
+        constructor(readonly makeSqliteDb: MakeLeaderThreadArg) {}
 
-          yield* Eventlog.insertIntoEventlog(
-            LiveStoreEvent.Client.EncodedWithMeta.make({
-              ...encode(events.todoCreated({ id: `client_0`, text: 't1', completed: false })),
-              clientId: 'client',
-              seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
-              parentSeqNum: EventSequenceNumber.Client.ROOT,
-              sessionId: 'client-session1',
-            }),
-            dbEventlog,
-            Schema.hash(events.todoCreated.schema),
-            'client',
-            'client-session1',
-          )
+        [Equal.symbol](that: Equal.Equal): boolean {
+          return that instanceof LeaderThreadCacheKey
+        }
 
-          const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
+        [Hash.symbol](): number {
+          return 0
+        }
+      }
 
-          const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
-          const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
-          yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
+      const leaderThreadCache = yield* Cache.make({
+        capacity: Number.POSITIVE_INFINITY,
+        lookup: ({ makeSqliteDb }: LeaderThreadCacheKey) =>
+          Effect.gen(function* () {
+            const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
 
-          return { dbEventlog, dbState }
-        }, Effect.orDie),
-        () => true, // always cache
-      )
+            yield* Eventlog.initEventlogDb(dbEventlog)
+
+            yield* Eventlog.insertIntoEventlog(
+              LiveStoreEvent.Client.EncodedWithMeta.make({
+                ...encode(events.todoCreated({ id: `client_0`, text: 't1', completed: false })),
+                clientId: 'client',
+                seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
+                parentSeqNum: EventSequenceNumber.Client.ROOT,
+                sessionId: 'client-session1',
+              }),
+              dbEventlog,
+              Schema.hash(events.todoCreated.schema),
+              'client',
+              'client-session1',
+            )
+
+            const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
+
+            const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
+            const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
+            yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
+
+            return { dbEventlog, dbState }
+          }).pipe(Effect.orDie),
+      })
+
+      const makeLeaderThread: MakeLeaderThread = (makeSqliteDb) =>
+        Cache.get(leaderThreadCache, new LeaderThreadCacheKey(makeSqliteDb))
 
       const adapter = makeTestAdapter({
         sync: {
@@ -319,11 +341,16 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       // Wait for the sync backend to receive the pushed event
       yield* mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
+
       // Wait for the client session to have reached e2
-      yield* store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
-        Stream.takeUntil((_) => _.localHead.global === 2),
-        Stream.runDrain,
-      )
+      // The sync processor can catch up during createStore, before this test subscribes to future changes.
+      const currentSyncState = yield* store[StoreInternalsSymbol].syncProcessor.syncState.get
+      if (currentSyncState.localHead.global !== 2) {
+        yield* store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
+          Stream.takeUntil((_) => _.localHead.global === 2),
+          Stream.runDrain,
+        )
+      }
 
       const res = store.query(tables.todos.orderBy('text', 'asc'))
 
@@ -497,7 +524,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     Effect.gen(function* () {
       const upstreamQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
       const materializedEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
-      const materialized = yield* Deferred.make<void>()
 
       const lockStatus = yield* SubscriptionRef.make<'has-lock' | 'no-lock'>('has-lock')
 
@@ -517,7 +543,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         ) =>
           Effect.gen(function* () {
             materializedEvents.push(event)
-            yield* Deferred.succeed(materialized, void 0)
             return {
               writeTables: new Set<string>(),
               sessionChangeset: { _tag: 'no-op' as const },
@@ -584,8 +609,15 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       yield* Effect.scoped(
         Effect.gen(function* () {
           yield* syncProcessor.boot
+          const processed = yield* syncProcessor.syncState.changes.pipe(
+            Stream.filter((state) => state.localHead.global === 1),
+            Stream.take(1),
+            Stream.runDrain,
+            Effect.forkScoped,
+          )
+
           yield* Queue.offer(upstreamQueue, unknownEvent)
-          yield* Deferred.await(materialized)
+          yield* Fiber.join(processed)
         }),
       )
 

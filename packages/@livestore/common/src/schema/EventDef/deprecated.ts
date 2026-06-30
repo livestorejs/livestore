@@ -55,8 +55,10 @@ export const DeprecatedId = 'livestore/schema/annotations/deprecated'
  * })
  * ```
  */
-export const deprecated = (reason: string) =>
-  <T extends Schema.Top>(schema: T): T["Rebuild"] => schema.annotate({ [DeprecatedId]: reason })
+export const deprecated =
+  (reason: string) =>
+  <T extends Schema.Top>(schema: T): T['Rebuild'] =>
+    schema.annotate({ [DeprecatedId]: reason })
 
 /**
  * Checks if a schema has a deprecation annotation.
@@ -73,8 +75,7 @@ export const getDeprecatedReason = (schema: Schema.Top): Option.Option<string> =
  * @param schema - The schema to check
  * @returns true if the schema is deprecated
  */
-export const isDeprecated = (schema: Schema.Top): boolean =>
-  Option.isSome(getDeprecatedReason(schema))
+export const isDeprecated = (schema: Schema.Top): boolean => Option.isSome(getDeprecatedReason(schema))
 
 /**
  * Finds deprecated fields with values in the given event arguments.

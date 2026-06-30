@@ -163,10 +163,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       }
     >()
 
-    const channelRequestsQueue = yield* Effect.acquireRelease(
-      Queue.unbounded<ListenForChannelResult>(),
-      Queue.shutdown,
-    )
+    const channelRequestsQueue = yield* Effect.acquireRelease(Queue.unbounded<ListenForChannelResult>(), Queue.shutdown)
 
     type RequestId = string
     const topologyRequestsMap = new Map<RequestId, Map<MeshNodeName, Set<MeshNodeName>>>()

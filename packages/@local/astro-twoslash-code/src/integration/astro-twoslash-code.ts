@@ -34,7 +34,8 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
     }
 
     return buildSnippets(resolvedBuildOptions).pipe(
-      Effect.runPromiseWith(PlatformNode.NodeFileSystem.layer),
+      Effect.provide(PlatformNode.NodeFileSystem.layer),
+      Effect.runPromise,
     )
   }
 

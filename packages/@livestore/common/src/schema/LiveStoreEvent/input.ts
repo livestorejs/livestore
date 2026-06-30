@@ -33,13 +33,13 @@ export type ForRecord<TEventDefRecord extends EventDefRecord> = Schema.Codec<
   {
     [K in keyof TEventDefRecord]: {
       name: K
-      args: (TEventDefRecord[K]['schema'])['Type']
+      args: TEventDefRecord[K]['schema']['Type']
     }
   }[keyof TEventDefRecord],
   {
     [K in keyof TEventDefRecord]: {
       name: K
-      args: (TEventDefRecord[K]['schema'])['Encoded']
+      args: TEventDefRecord[K]['schema']['Encoded']
     }
   }[keyof TEventDefRecord]
 >
@@ -53,11 +53,11 @@ export type ForRecord<TEventDefRecord extends EventDefRecord> = Schema.Codec<
  * ```
  */
 export const makeSchema = <TSchema extends LiveStoreSchema>(schema: TSchema): ForRecord<TSchema['_EventDefMapType']> =>
-  Schema.Union([
-    ...[...schema.eventsDefsMap.values()].map((def) =>
+  Schema.Union(
+    [...schema.eventsDefsMap.values()].map((def) =>
       Schema.Struct({
         name: Schema.Literal(def.name),
         args: def.schema,
       }),
     ),
-  ]).annotate({ title: 'LiveStoreEvent.Input' }) as any
+  ).annotate({ title: 'LiveStoreEvent.Input' }) as any

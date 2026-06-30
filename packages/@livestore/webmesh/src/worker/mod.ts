@@ -12,9 +12,9 @@ declare global {
   var __debugWebmeshNode: any
 }
 
-export class CacheService extends Context.Service<
-  CacheService, { node: MeshNode }
->()('@livestore/webmesh:worker:CacheService') {
+export class CacheService extends Context.Service<CacheService, { node: MeshNode }>()(
+  '@livestore/webmesh:worker:CacheService',
+) {
   static layer = ({ nodeName }: { nodeName: string }) =>
     Effect.gen(function* () {
       const node = yield* makeMeshNode(nodeName)

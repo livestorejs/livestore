@@ -44,10 +44,9 @@ test(
         schema: Bridge.ResultStoreBootError,
       })
 
-      // The TestError class is serialized with name: 'TestError', so we need to match that
-      const expectedError = new Error('Boom!')
+      // The TestError class is serialized with name: 'TestError', so we need to match that.
+      const expectedError = new Error('Boom!', { cause: { name: 'TestError', message: 'Boom!' } })
       expectedError.name = 'TestError'
-      ;(expectedError as any).cause = { name: 'TestError', message: 'Boom!' }
 
       expect(exit).toStrictEqual(Exit.fail(UnknownError.make({ cause: expectedError })))
     }),

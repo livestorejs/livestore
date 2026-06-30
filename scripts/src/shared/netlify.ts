@@ -161,11 +161,11 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
     const { stdout: rawOutput, stderr: rawStderr } = yield* Effect.scoped(
       Effect.gen(function* () {
         const proc = yield* Effect.acquireRelease(
-          ChildProcess.make(deployCmd, ...deployRest).pipe(
-            ChildProcess.stdout('pipe'),
-            ChildProcess.stderr('pipe'),
-            ChildProcess.workingDirectory(gitRoot),
-            ChildProcess.env({
+          ChildProcess.make(deployCmd, deployRest, {
+            cwd: gitRoot,
+            stdout: 'pipe',
+            stderr: 'pipe',
+            env: {
               CI: '1',
               // The astro adapter only engages with NODE_ENV=production, and the
               // agent-policy wrapper blocks pnpm/astro inside Netlify's spawned
@@ -175,9 +175,9 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
               DT_PASSTHROUGH: '1',
               // The `[build] command`'s astro build reads this to include typedoc.
               STARLIGHT_INCLUDE_API_DOCS: apiDocs === true ? '1' : undefined,
-            }),
-            ChildProcess.start,
-          ),
+            },
+            extendEnv: true,
+          }),
           (p) =>
             p.isRunning.pipe(
               Effect.flatMap((running) =>
@@ -188,15 +188,21 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
         )
 
         const stdoutFiber = yield* proc.stdout.pipe(
-          Stream.decodeText('utf8'),
-          Stream.runFold('', (acc, chunk) => acc + chunk),
+          Stream.decodeText({ encoding: 'utf8' }),
+          Stream.runFold(
+            () => '',
+            (acc, chunk) => acc + chunk,
+          ),
           // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
         const stderrFiber = yield* proc.stderr.pipe(
-          Stream.decodeText('utf8'),
-          Stream.runFold('', (acc, chunk) => acc + chunk),
+          Stream.decodeText({ encoding: 'utf8' }),
+          Stream.runFold(
+            () => '',
+            (acc, chunk) => acc + chunk,
+          ),
           // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
         )
@@ -277,7 +283,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
       catch: (error) => new FileReadError({ cause: error, path: candidate }),
     }).pipe(Effect.result)
 
-    if (Result.isSuccess(readResult)) {
+    if (Result.isSuccess(readResult) === true) {
       configContent = readResult.success
       configPath = candidate
       break

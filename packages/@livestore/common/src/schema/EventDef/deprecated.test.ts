@@ -60,11 +60,7 @@ describe('logDeprecationWarnings', () => {
 
   const run = (effect: Effect.Effect<void>) =>
     Effect.runSync(
-      effect.pipe(
-        Effect.provide(
-          Logger.layer([Logger.make(({ message }) => logs.push(message as unknown[]))]),
-        ),
-      ),
+      effect.pipe(Effect.provide(Logger.layer([Logger.make(({ message }) => logs.push(message as unknown[]))]))),
     )
 
   test('logs event deprecation warning', () => {

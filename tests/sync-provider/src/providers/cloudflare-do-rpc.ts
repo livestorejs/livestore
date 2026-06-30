@@ -1,9 +1,10 @@
 import path from 'node:path'
 
 import { SyncBackend, UnknownError } from '@livestore/common'
+import type { LiveStoreEvent } from '@livestore/common/schema'
 import { MAX_DO_RPC_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST, splitArrayBySize } from '@livestore/sync-cf/common'
-import { omit } from '@livestore/utils'
 import { WranglerDevServer } from '@livestore/utils-dev/wrangler'
+import type { RpcClientError } from '@livestore/utils/effect'
 import {
   Effect,
   Layer,
@@ -14,6 +15,7 @@ import {
   type Schedule,
   Socket,
   Stream,
+  Struct,
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
@@ -24,6 +26,9 @@ import { DoRpcProxyRpcs } from './cloudflare/do-rpc-proxy-schema.ts'
 export const name = 'Cloudflare Durable Object RPC'
 
 export const prepare = Effect.void
+
+type DoRpcProxyClient = RpcClient.FromGroup<typeof DoRpcProxyRpcs, RpcClientError.RpcClientError>
+type PushBatchItem = LiveStoreEvent.Global.Encoded
 
 const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): SyncProviderLayer =>
   Layer.effect(
@@ -111,10 +116,10 @@ const makeProxyDoRpcSync = ({
     // instead of using `Effect.provide(ProtocolLive)` which would close the layer scope too early
     const ctx = yield* Layer.build(ProtocolLive)
 
-    const client = yield* RpcClient.make(DoRpcProxyRpcs).pipe(Effect.provide(ctx))
+    const client: DoRpcProxyClient = yield* RpcClient.make(DoRpcProxyRpcs).pipe(Effect.provide(ctx))
 
     const isConnected = yield* SubscriptionRef.fromStream(
-      client.IsConnected({ clientId, storeId, payload }).pipe(Stream.catchTag('RpcClientError', (e) => Effect.die(e))),
+      client.IsConnected({ clientId, storeId, payload }).pipe(Stream.catchTag('RpcClientError', (e) => Stream.die(e))),
       false,
     )
 
@@ -142,7 +147,7 @@ const makeProxyDoRpcSync = ({
           })
           .pipe(
             Stream.tap((msg) => backendIdHelper.lazySet(msg.backendId).pipe(Effect.orDie)),
-            Stream.map((res) => omit(res, ['backendId'])),
+            Stream.map((res) => Struct.omit(res, ['backendId'])),
             Stream.catchTag('RpcClientError', (e) => Stream.die(e)),
           ),
       push: (batch) =>
@@ -158,7 +163,7 @@ const makeProxyDoRpcSync = ({
           const chunkedBatches = yield* splitArrayBySize({
             maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
             maxBytes: MAX_DO_RPC_REQUEST_BYTES,
-            encode: (items) => ({
+            encode: (items: ReadonlyArray<PushBatchItem>) => ({
               clientId,
               storeId,
               payload,

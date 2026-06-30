@@ -158,9 +158,7 @@ export const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T
   }, {} as any)
 }
 
-const partialStructSchema = (
-  schema: Schema.Codec<any, any>,
-): Schema.Codec<any, any> =>
+const partialStructSchema = (schema: Schema.Codec<any, any>): Schema.Codec<any, any> =>
   (schema as unknown as Schema.Struct<Schema.Struct.Fields>).mapFields(
     Struct.map(Schema.optional),
   ) as unknown as Schema.Codec<any, any>
@@ -324,16 +322,14 @@ export const deriveEventAndMaterializer = ({
     } else {
       const valueColJsonSchema = Schema.fromJsonString(partialStructSchema(valueSchema)) as Schema.Codec<any, string>
 
-      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(
-        mergeDefaultValues(defaultValue, value),
-      )
+      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(mergeDefaultValues(defaultValue, value))
 
       let jsonSetSql = 'value'
       const setBindValues: unknown[] = []
 
       const keys = Object.keys(value)
       const partialUpdateSchema = pickStructSchema(valueSchema, keys)
-      const encodedPartialUpdate = Schema.encodeSyncDebug(partialUpdateSchema)(value) as Record<string, unknown>
+      const encodedPartialUpdate = Schema.encodeSyncDebug(partialUpdateSchema)(value)
 
       for (const key in encodedPartialUpdate) {
         const encodedValueForKey = encodedPartialUpdate[key]

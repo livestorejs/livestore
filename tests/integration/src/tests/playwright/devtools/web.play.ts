@@ -37,16 +37,14 @@ const makeTabPair = (
 
     const isUnused = (p: PW.Page) => !usedPages.has(p)
 
-    const newPage = Effect.tryPromise(() => browserContext.newPage()).pipe(
-      Effect.acquireRelease(
-        Effect.fn('close-page')(function* (page, exit) {
-          const reason =
-            exit._tag === 'Failure' ? exit.cause.toString() : `Closing ${url}#${tabName} due to ${exit._tag}`
+    const newPage = Effect.acquireRelease(
+      Effect.tryPromise(() => browserContext.newPage()),
+      Effect.fn('close-page')(function* (page, exit) {
+        const reason = exit._tag === 'Failure' ? exit.cause.toString() : `Closing ${url}#${tabName} due to ${exit._tag}`
 
-          yield* Effect.log(reason)
-          yield* Effect.tryPromise(() => page.close({ reason }))
-        }, Effect.orDie),
-      ),
+        yield* Effect.log(reason)
+        yield* Effect.tryPromise(() => page.close({ reason }))
+      }, Effect.orDie),
     )
 
     // Chrome opens with `about:blank` page, so we can use that for the first call
@@ -105,11 +103,13 @@ const makeTabPair = (
         Effect.andThen(Schema.decodeUnknownEffect(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))),
       )
 
-      yield* Effect.linkSpanCurrent(
-        Tracer.externalSpan({
-          traceId: rootSpanContext.traceId,
-          spanId: rootSpanContext.spanId,
-        }),
+      yield* Effect.void.pipe(
+        Effect.linkSpans(
+          Tracer.externalSpan({
+            traceId: rootSpanContext.traceId,
+            spanId: rootSpanContext.spanId,
+          }),
+        ),
       )
     }
 
@@ -192,7 +192,7 @@ const runTest =
 
             await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
 
-            const tab1ChannelId = await tab1.page.evaluate<string>(
+            const tab1ChannelId: string = await tab1.page.evaluate(
               `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
             )
             await tab1.devtools.locator(`a:text("${tab1ChannelId}")`).describe('devtools-tab-1:click').click()
@@ -272,10 +272,10 @@ const runTest =
 
               await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
 
-              const tab1ChannelId = await tab1.page.evaluate<string>(
+              const tab1ChannelId: string = await tab1.page.evaluate(
                 `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
               )
-              const tab2ChannelId = await tab2.page.evaluate<string>(
+              const tab2ChannelId: string = await tab2.page.evaluate(
                 `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
               )
 
@@ -424,7 +424,7 @@ test(
           // Click on the session in devtools to connect
           await tab1.devtools.locator(`a:text("${tabName}:${tabName}")`).describe('devtools:click-session').click()
 
-          const devtoolsVersion = await tab1.devtools.evaluate<string>(() => {
+          const devtoolsVersion: string = await tab1.devtools.evaluate(() => {
             return (window as any).__LIVESTORE_DEVTOOLS_VERSION__ ?? 'unknown'
           })
 

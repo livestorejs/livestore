@@ -26,20 +26,24 @@ type PluckSchema<Fields extends Schema.Struct.Fields, K extends keyof Fields> = 
   Schema.Struct<Pick<Fields, K>>['EncodingServices']
 >
 
-export const pluck = <const K extends PropertyKey>(key: K) => <Fields extends { readonly [P in K]: Schema.Top }>(
-  schema: Schema.Struct<Fields>,
-): PluckSchema<Fields, K & keyof Fields> => {
-  const field = schema.fields[key] as Fields[K & keyof Fields]
+export const pluck =
+  <const K extends PropertyKey>(key: K) =>
+  <Fields extends { readonly [P in K]: Schema.Top }>(
+    schema: Schema.Struct<Fields>,
+  ): PluckSchema<Fields, K & keyof Fields> => {
+    const field = schema.fields[key] as Fields[K & keyof Fields]
 
-  return schema.mapFields(Struct.pick([key])).pipe(
-    Schema.decodeTo(Schema.toType(field), {
-      decode: SchemaGetter.transform((whole: any) => whole[key]),
-      encode: SchemaGetter.transform((value) => ({ [key]: value }) as any),
-    }),
-  ) as unknown as PluckSchema<Fields, K & keyof Fields>
-}
+    return schema.mapFields(Struct.pick([key])).pipe(
+      Schema.decodeTo(Schema.toType(field), {
+        decode: SchemaGetter.transform((whole: any) => whole[key]),
+        encode: SchemaGetter.transform((value) => ({ [key]: value }) as any),
+      }),
+    ) as unknown as PluckSchema<Fields, K & keyof Fields>
+  }
 
-export const head = <S extends Schema.Top>(array: Schema.$Array<S>): Schema.decodeTo<Schema.Option<Schema.toType<S>>, Schema.$Array<S>> =>
+export const head = <S extends Schema.Top>(
+  array: Schema.$Array<S>,
+): Schema.decodeTo<Schema.Option<Schema.toType<S>>, Schema.$Array<S>> =>
   array.pipe(
     Schema.decodeTo(
       Schema.Option(Schema.toType(array.value)),
@@ -106,9 +110,7 @@ export const hash = (schema: Schema.Top) => {
   }
 }
 
-export const getResolvedPropertySignatures = (
-  schema: Schema.Top,
-): ReadonlyArray<SchemaAST.PropertySignature> => {
+export const getResolvedPropertySignatures = (schema: Schema.Top): ReadonlyArray<SchemaAST.PropertySignature> => {
   const resolvedAst = SchemaAST.toType(schema.ast)
   return SchemaAST.isObjects(resolvedAst) === true ? resolvedAst.propertySignatures : []
 }
@@ -131,7 +133,7 @@ export const decodeSyncDebug: <A, I>(
   options?: SchemaAST.ParseOptions,
 ) => (i: I, overrideOptions?: SchemaAST.ParseOptions) => A = (schema, options) => (input, overrideOptions) => {
   const res = Schema.decodeResult(schema, options)(input, overrideOptions)
-  if (Result.isFailure(res)) {
+  if (Result.isFailure(res) === true) {
     return shouldNeverHappen(`decodeSyncDebug failed:`, res.failure)
   } else {
     return res.success
@@ -143,7 +145,7 @@ export const encodeSyncDebug: <A, I>(
   options?: SchemaAST.ParseOptions,
 ) => (a: A, overrideOptions?: SchemaAST.ParseOptions) => I = (schema, options) => (input, overrideOptions) => {
   const res = Schema.encodeResult(schema, options)(input, overrideOptions)
-  if (Result.isFailure(res)) {
+  if (Result.isFailure(res) === true) {
     return shouldNeverHappen(`encodeSyncDebug failed:`, res.failure)
   } else {
     return res.success

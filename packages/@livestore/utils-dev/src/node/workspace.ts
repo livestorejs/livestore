@@ -6,9 +6,9 @@ import { Context, Effect, Layer } from '@livestore/utils/effect'
 export type WorkspaceInfo = string
 
 /** Current working directory. */
-export class CurrentWorkingDirectory extends Context.Service<
-  CurrentWorkingDirectory, WorkspaceInfo
->()('CurrentWorkingDirectory') {
+export class CurrentWorkingDirectory extends Context.Service<CurrentWorkingDirectory, WorkspaceInfo>()(
+  'CurrentWorkingDirectory',
+) {
   /** Layer that captures the process cwd once. */
   static live = Layer.effect(
     CurrentWorkingDirectory,

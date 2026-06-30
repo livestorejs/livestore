@@ -187,12 +187,11 @@ export const setupDurableObjectWebSocketRpc = ({
       const ctx = {
         scope,
         onMessage: (message: string | ArrayBuffer) =>
-          Queue.offer(incomingQueue, message as Uint8Array | string)
-            .pipe(
-              Effect.asVoid,
-              Effect.withSpan('ws-rpc-server/onMessage', { root: true }),
-              Effect.runPromiseWith(services),
-            ),
+          Queue.offer(incomingQueue, message as Uint8Array | string).pipe(
+            Effect.asVoid,
+            Effect.withSpan('ws-rpc-server/onMessage', { root: true }),
+            Effect.runPromiseWith(services),
+          ),
       }
 
       serverCtxMap.set(ws, ctx)
