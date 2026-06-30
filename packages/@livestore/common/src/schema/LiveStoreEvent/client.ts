@@ -85,24 +85,26 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
     /** Used to detect if the materializer is side effecting (during dev) */
     materializerHashLeader: Schema.Option(Schema.Number),
     materializerHashSession: Schema.Option(Schema.Number),
-  }).mapFields(Struct.map(Schema.mutableKey)).pipe(
-    Schema.withDecodingDefaultType(
-      Effect.succeed({
-        sessionChangeset: { _tag: 'unset' as const },
-        syncMetadata: Option.none(),
-        materializerHashLeader: Option.none(),
-        materializerHashSession: Option.none(),
-      }),
+  })
+    .mapFields(Struct.map(Schema.mutableKey))
+    .pipe(
+      Schema.withDecodingDefaultType(
+        Effect.succeed({
+          sessionChangeset: { _tag: 'unset' as const },
+          syncMetadata: Option.none(),
+          materializerHashLeader: Option.none(),
+          materializerHashSession: Option.none(),
+        }),
+      ),
+      Schema.withConstructorDefault(
+        Effect.succeed({
+          sessionChangeset: { _tag: 'unset' as const },
+          syncMetadata: Option.none(),
+          materializerHashLeader: Option.none(),
+          materializerHashSession: Option.none(),
+        }),
+      ),
     ),
-    Schema.withConstructorDefault(
-      Effect.succeed({
-        sessionChangeset: { _tag: 'unset' as const },
-        syncMetadata: Option.none(),
-        materializerHashLeader: Option.none(),
-        materializerHashSession: Option.none(),
-      }),
-    ),
-  ),
 }) {
   toJSON = (): any => {
     // Only used for logging/debugging

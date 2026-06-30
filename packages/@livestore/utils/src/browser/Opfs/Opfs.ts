@@ -239,11 +239,7 @@ export const layer = Layer.succeed(
             WebError.NotFoundError,
           ]),
       }),
-    getDirectoryHandle: (
-      parent: FileSystemDirectoryHandle,
-      name: string,
-      options?: FileSystemGetDirectoryOptions,
-    ) =>
+    getDirectoryHandle: (parent: FileSystemDirectoryHandle, name: string, options?: FileSystemGetDirectoryOptions) =>
       Effect.tryPromise({
         try: () => parent.getDirectoryHandle(name, options),
         catch: (u) =>
@@ -339,7 +335,11 @@ export const layer = Layer.succeed(
             yield* Effect.tryPromise({
               try: () => stream.write(data),
               catch: (u) =>
-                WebError.classifyWebError(u, [WebError.NotAllowedError, WebError.QuotaExceededError, WebError.TypeError]),
+                WebError.classifyWebError(u, [
+                  WebError.NotAllowedError,
+                  WebError.QuotaExceededError,
+                  WebError.TypeError,
+                ]),
             })
           }),
         (stream) =>
@@ -393,7 +393,8 @@ export const layer = Layer.succeed(
     ) =>
       Effect.try({
         try: () => handle.read(buffer, options),
-        catch: (u) => WebError.classifyWebError(u, [WebError.RangeError, WebError.InvalidStateError, WebError.TypeError]),
+        catch: (u) =>
+          WebError.classifyWebError(u, [WebError.RangeError, WebError.InvalidStateError, WebError.TypeError]),
       }),
     syncWrite: (
       handle: FileSystemSyncAccessHandle,
@@ -431,24 +432,27 @@ const unknownError = (message: string) => new WebError.UnknownError({ descriptio
 /**
  * A no-op Opfs service that can be used for testing.
  */
-export const layerNoop = Layer.succeed(Opfs,Opfs.of({
-  getRootDirectoryHandle: Effect.fail(unknownError('OPFS is not supported in this environment')),
-  getFileHandle: () => Effect.fail(notFoundError),
-  getDirectoryHandle: () => Effect.fail(notFoundError),
-  removeEntry: () => Effect.fail(notFoundError),
-  values: () => Stream.fail(notFoundError),
-  resolve: () => Effect.succeed(Option.none()),
-  getFile: () => Effect.fail(notFoundError),
-  writeFile: () => Effect.fail(notFoundError),
-  appendToFile: () => Effect.fail(notFoundError),
-  truncateFile: () => Effect.fail(notFoundError),
-  createSyncAccessHandle: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
-  syncRead: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
-  syncWrite: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
-  syncTruncate: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
-  syncGetSize: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
-  syncFlush: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
-}))
+export const layerNoop = Layer.succeed(
+  Opfs,
+  Opfs.of({
+    getRootDirectoryHandle: Effect.fail(unknownError('OPFS is not supported in this environment')),
+    getFileHandle: () => Effect.fail(notFoundError),
+    getDirectoryHandle: () => Effect.fail(notFoundError),
+    removeEntry: () => Effect.fail(notFoundError),
+    values: () => Stream.fail(notFoundError),
+    resolve: () => Effect.succeed(Option.none()),
+    getFile: () => Effect.fail(notFoundError),
+    writeFile: () => Effect.fail(notFoundError),
+    appendToFile: () => Effect.fail(notFoundError),
+    truncateFile: () => Effect.fail(notFoundError),
+    createSyncAccessHandle: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
+    syncRead: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
+    syncWrite: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
+    syncTruncate: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
+    syncGetSize: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
+    syncFlush: () => Effect.fail(unknownError('OPFS is not supported in this environment')),
+  }),
+)
 
 /**
  * Error raised when OPFS operations fail.

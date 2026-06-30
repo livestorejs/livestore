@@ -162,7 +162,9 @@ export const toDurableObjectHandler =
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- msgPack parser.encode returns unknown; cast to expected wire format
       const encoded = parser.encode(responses) as Uint8Array<ArrayBuffer>
       return encoded
-    }).pipe(Effect.provide(options.layer), Effect.scoped, Effect.orDie) as Effect.Effect<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream>
+    }).pipe(Effect.provide(options.layer), Effect.scoped, Effect.orDie) as Effect.Effect<
+      Uint8Array<ArrayBuffer> | CfTypes.ReadableStream
+    >
 
 /** Out-of-band RPC stream response emission back to the caller DO */
 export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(function* ({
@@ -217,20 +219,20 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
 
     // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch; orDie converts the error to a defect handled by the downstream catchCause
     const stream: Stream.Stream<any, any> =
-      Effect.isEffect(effectOrStream) === true ? yield* Effect.orDie(effectOrStream)
-        : effectOrStream
+      Effect.isEffect(effectOrStream) === true ? yield* Effect.orDie(effectOrStream) : effectOrStream
 
     // Get the stream schemas for proper chunk-level encoding
     // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.Handler doesn't expose successSchema publicly; see https://github.com/Effect-TS/effect/issues/6064
     const streamSchemas = RpcSchema.isStreamSchema(rpc.successSchema)
       ? Option.some({
-        success: rpc.successSchema.success,
-        error: rpc.successSchema.error,
-      })
+          success: rpc.successSchema.success,
+          error: rpc.successSchema.error,
+        })
       : Option.none()
-    const arrayEncoder = Option.isSome(streamSchemas) === true
-      ? Schema.encodeUnknownEffect(Schema.toCodecJson(Schema.Array(streamSchemas.value.success)))
-      : Schema.encodeUnknownEffect(Schema.toCodecJson(Schema.Array(Schema.Any)))
+    const arrayEncoder =
+      Option.isSome(streamSchemas) === true
+        ? Schema.encodeUnknownEffect(Schema.toCodecJson(Schema.Array(streamSchemas.value.success)))
+        : Schema.encodeUnknownEffect(Schema.toCodecJson(Schema.Array(Schema.Any)))
 
     // Convert stream to ReadableStream
     const readableStream = new ReadableStream({
@@ -297,7 +299,13 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
         )
 
         // Run the stream processing
-        runStream.pipe(Effect.provide(layer), Effect.scoped, Effect.tapCauseLogPretty, _ => _ as Effect.Effect<void>, Effect.runPromise)
+        runStream.pipe(
+          Effect.provide(layer),
+          Effect.scoped,
+          Effect.tapCauseLogPretty,
+          (_) => _ as Effect.Effect<void>,
+          Effect.runPromise,
+        )
       },
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridging standard Web API ReadableStream to Cloudflare Worker ReadableStream type
     }) as any as CfTypes.ReadableStream

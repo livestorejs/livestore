@@ -195,7 +195,10 @@ describe('StoreRegistry', () => {
     it.effect('does not dispose when unusedCacheTime is Infinity', () =>
       Effect.gen(function* () {
         const services = yield* Effect.context<Scope.Scope | OtelTracer.OtelTracer>()
-        const registry = new StoreRegistry({ context: services, defaultOptions: { unusedCacheTime: Number.POSITIVE_INFINITY } })
+        const registry = new StoreRegistry({
+          context: services,
+          defaultOptions: { unusedCacheTime: Number.POSITIVE_INFINITY },
+        })
         const options = testStoreOptions()
 
         const store = yield* registry.getOrLoad(options).pipe(Effect.scoped)

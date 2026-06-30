@@ -39,7 +39,8 @@ export interface Subscribable<A, E = never, R = never> extends Readable<A, E, R>
  * @since 2.0.0
  * @category refinements
  */
-export const isSubscribable = (u: unknown): u is Subscribable<unknown, unknown, unknown> => Predicate.hasProperty(u, TypeId)
+export const isSubscribable = (u: unknown): u is Subscribable<unknown, unknown, unknown> =>
+  Predicate.hasProperty(u, TypeId)
 
 const Proto: Omit<Subscribable<unknown, unknown, unknown>, 'get' | 'changes'> = Object.assign(
   Effectable.Prototype<Subscribable<unknown, unknown, unknown>>({

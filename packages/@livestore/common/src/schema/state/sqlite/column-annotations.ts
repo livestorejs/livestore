@@ -31,8 +31,7 @@ Here are the knobs you can turn per-column when you CREATE TABLE (or ALTER TABLE
 /**
  * Adds a primary key annotation to a schema.
  */
-export const withPrimaryKey = <T extends Schema.Top>(schema: T) =>
-  applyAnnotations(schema, { [PrimaryKeyId]: true })
+export const withPrimaryKey = <T extends Schema.Top>(schema: T) => applyAnnotations(schema, { [PrimaryKeyId]: true })
 
 /**
  * Adds a column type annotation to a schema.
@@ -64,15 +63,14 @@ export const withDefault: {
   // TODO make type safe
   <T extends Schema.Top>(schema: T, value: unknown): T
   (value: unknown): <T extends Schema.Top>(schema: T) => T
-} = Function.dual(2, <T extends Schema.Top>(schema: T, value: unknown) => applyAnnotations(schema, { [Default]: value }))
+} = Function.dual(2, <T extends Schema.Top>(schema: T, value: unknown) =>
+  applyAnnotations(schema, { [Default]: value }),
+)
 
 /**
  * Validates that a schema is compatible with the specified SQLite column type
  */
-const validateSchemaColumnTypeCompatibility = (
-  _schema: Schema.Top,
-  _columnType: SqliteDsl.FieldColumnType,
-): void => {
+const validateSchemaColumnTypeCompatibility = (_schema: Schema.Top, _columnType: SqliteDsl.FieldColumnType): void => {
   // TODO actually implement this
 }
 
@@ -80,9 +78,7 @@ const applyAnnotations = <T extends Schema.Top>(schema: T, overrides: Record<str
   const identifier = SchemaAST.resolveIdentifier(schema.ast)
   const shouldPreserveIdentifier = identifier !== undefined && !('identifier' in overrides)
   const annotations: Record<string, unknown> =
-    shouldPreserveIdentifier === true
-      ? { ...overrides, identifier }
-      : overrides
+    shouldPreserveIdentifier === true ? { ...overrides, identifier } : overrides
 
   return schema.annotate(annotations) as T
 }

@@ -121,10 +121,7 @@ export type StoreLayerProps<
   TSchema extends LiveStoreSchema,
   TContext = {},
   TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json,
-> = Omit<
-  LiveStoreContextProps<TSchema, TContext, TSyncPayloadSchema>,
-  'storeId' | 'schema'
->
+> = Omit<LiveStoreContextProps<TSchema, TContext, TSyncPayloadSchema>, 'storeId' | 'schema'>
 
 /**
  * Type for a Store.Tag class. This is the return type of `Store.Tag(schema, storeId)`.
@@ -258,10 +255,9 @@ const makeStoreTag = <TSchema extends LiveStoreSchema, TStoreId extends string>(
     static readonly schema: TSchema = schema
     static readonly storeId: TStoreId = storeId
 
-    static layer<
-      TContext = {},
-      TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json,
-    >(props: StoreLayerProps<TSchema, TContext, TSyncPayloadSchema>) {
+    static layer<TContext = {}, TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json>(
+      props: StoreLayerProps<TSchema, TContext, TSyncPayloadSchema>,
+    ) {
       return pipe(
         Effect.gen(function* () {
           const store = yield* createStore({

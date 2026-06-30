@@ -157,10 +157,7 @@ const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.Col
   const ast = schema.ast
   // Strip nullable wrapper to get core type
   const coreAst = stripNullable(ast)
-  const coreSchema = (stripNullable(ast) === ast ? schema : Schema.make(coreAst)) as Schema.Codec<
-    any,
-    any
-  >
+  const coreSchema = (stripNullable(ast) === ast ? schema : Schema.make(coreAst)) as Schema.Codec<any, any>
 
   // Special case: Boolean is transformed to integer in SQLite
   if (SchemaAST.isBoolean(coreAst) === true) {
@@ -230,7 +227,10 @@ const getLiteralColumnDefinition = (
     case 'string':
       return SqliteDsl.text({ schema, nullable })
     case 'number': {
-      if (hasCheck(sourceAst.checks, 'isInt') === true || SchemaAST.resolveIdentifier(sourceAst) === 'DateFromEpochMillis') {
+      if (
+        hasCheck(sourceAst.checks, 'isInt') === true ||
+        SchemaAST.resolveIdentifier(sourceAst) === 'DateFromEpochMillis'
+      ) {
         return SqliteDsl.integer({ schema, nullable })
       }
 

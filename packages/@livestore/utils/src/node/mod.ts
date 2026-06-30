@@ -43,9 +43,7 @@ export const getFreePort: Effect.Effect<number, UnknownError> = Effect.callback<
 export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend(() => {
   const OtelTracerLive = Layer.succeed(OtelTracer.OtelTracer, makeNoopTracer())
 
-  const TracingLive = OtelTracer.layerWithoutOtelTracer.pipe(
-    Layer.provideMerge(OtelTracerLive),
-  )
+  const TracingLive = OtelTracer.layerWithoutOtelTracer.pipe(Layer.provideMerge(OtelTracerLive))
 
   return TracingLive
 })

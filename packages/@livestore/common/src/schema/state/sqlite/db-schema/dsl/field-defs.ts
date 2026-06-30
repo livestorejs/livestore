@@ -251,9 +251,7 @@ export type DefaultEncodedForColumnType<TColumnType extends FieldColumnType> = T
         ? Uint8Array<ArrayBuffer>
         : never
 
-export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(
-  columnType: TColumnType,
-) => {
+export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(columnType: TColumnType) => {
   type T = DefaultEncodedForColumnType<TColumnType>
 
   switch (columnType) {

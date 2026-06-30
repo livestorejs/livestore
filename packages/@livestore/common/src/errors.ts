@@ -32,8 +32,7 @@ export class UnknownError extends Schema.TaggedErrorClass<UnknownError>('~@lives
     )
 }
 
-const materializerHashMismatchNote =
-  'Please make sure your event materializer is a pure function without side effects.'
+const materializerHashMismatchNote = 'Please make sure your event materializer is a pure function without side effects.'
 
 export class MaterializerHashMismatchError extends Schema.TaggedErrorClass<MaterializerHashMismatchError>(
   '~@livestore/common/MaterializerHashMismatchError',

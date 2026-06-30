@@ -6,18 +6,14 @@ import { Effect, identity, Layer, OtelTracer, Tracer } from '@livestore/utils/ef
 export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend(() => {
   const OtelTracerLive = Layer.succeed(OtelTracer.OtelTracer, makeNoopTracer())
 
-  const TracingLive = OtelTracer.layerWithoutOtelTracer.pipe(
-    Layer.provideMerge(OtelTracerLive),
-  )
+  const TracingLive = OtelTracer.layerWithoutOtelTracer.pipe(Layer.provideMerge(OtelTracerLive))
 
   return TracingLive
 })
 
 export const provideOtel =
   ({ otelTracer, parentSpanContext }: { otelTracer?: otel.Tracer; parentSpanContext?: otel.Context }) =>
-  <A, E, R>(
-    effect: Effect.Effect<A, E, R>,
-  ): Effect.Effect<A, E, Exclude<R, OtelTracer.OtelTracer | Tracer.Tracer>> => {
+  <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, Exclude<R, OtelTracer.OtelTracer | Tracer.Tracer>> => {
     const OtelTracerLive = Layer.succeed(OtelTracer.OtelTracer, otelTracer ?? makeNoopTracer())
 
     const TracingLive = OtelTracer.layerWithoutOtelTracer.pipe(
