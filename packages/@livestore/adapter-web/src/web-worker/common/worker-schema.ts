@@ -175,7 +175,6 @@ export class WebmeshWorkerCreateConnection extends Rpc.make('WebmeshWorker.Creat
 }) {}
 
 export class LeaderWorkerInnerRpcs extends RpcGroup.make(
-  LeaderWorkerInnerInitialMessage,
   LeaderWorkerInnerBootStatusStream,
   LeaderWorkerInnerPushToLeader,
   LeaderWorkerInnerPullStream,

@@ -1,5 +1,5 @@
 import type { LogConfig } from '@livestore/common'
-import { Devtools, isWorkerTransportError, liveStoreVersion, UnknownError } from '@livestore/common'
+import { Devtools, liveStoreVersion, UnknownError } from '@livestore/common'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
 import {
   Deferred,
@@ -8,20 +8,21 @@ import {
   FetchHttpClient,
   identity,
   Layer,
-  Predicate,
   Ref,
   References,
+  RpcClient,
+  RpcServer,
+  RpcWorker,
   Schema,
   Scope,
   Stream,
   SubscriptionRef,
   TaskTracing,
-  Worker,
-  WorkerRunner,
 } from '@livestore/utils/effect'
 import { BrowserWorker, BrowserWorkerRunner } from '@livestore/utils/effect/browser'
 import * as WebmeshWorker from '@livestore/webmesh/worker'
 
+import { dieOnRpcClientError, dieOnRpcClientErrorStream, makeWebmeshWorkerProxy } from '../common/rpc-worker.ts'
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
 import { makeSharedWorkerNodeName } from '../common/webmesh-node-names.ts'
 import * as WorkerSchema from '../common/worker-schema.ts'
@@ -49,51 +50,43 @@ if (isDevEnv() === true) {
   }
 }
 
-// @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `SerializedRunner.Handlers` uses `any` in the R channel, propagating as `unknown` in `HandlersContext`
 const makeWorkerRunner = Effect.gen(function* () {
-  const leaderWorkerContextSubRef = yield* SubscriptionRef.make<
-    | {
-        worker: Worker.SerializedWorkerPool<WorkerSchema.LeaderWorkerInnerRequest>
-        scope: Scope.Closeable
-      }
-    | undefined
-  >(undefined)
+  type LeaderWorkerContext = {
+    client: RpcClient.FromGroup<typeof WorkerSchema.LeaderWorkerInnerRpcs>
+    scope: Scope.Closeable
+  }
 
-  const waitForWorker = SubscriptionRef.waitUntil(leaderWorkerContextSubRef, (c) => Predicate.isNotUndefined(c)).pipe(
-    Effect.map((_) => _.worker),
-  )
+  const leaderWorkerContextSubRef = yield* SubscriptionRef.make<LeaderWorkerContext | undefined>(undefined)
 
-  const forwardRequest = <A, I, E, EI, R>(
-    req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
+  const isLeaderWorkerContext = (context: LeaderWorkerContext | undefined): context is LeaderWorkerContext =>
+    context !== undefined
+
+  const waitForWorker = SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isLeaderWorkerContext)
+
+  const forwardRequest = <A, E, R>(
+    tag: string,
+    f: (client: RpcClient.FromGroup<typeof WorkerSchema.LeaderWorkerInnerRpcs>) => Effect.Effect<A, E, R>,
   ): Effect.Effect<A, E, R> =>
     // Forward the request to the active worker and convert transport errors to defects.
     waitForWorker.pipe(
-      // Effect.logBefore(`forwardRequest: ${req._tag}`),
-      Effect.andThen((worker) => worker.executeEffect(req)),
-      Effect.catchIf(isWorkerTransportError, (e) => Effect.die(e)),
-      // Effect.tap((_) => Effect.log(`forwardRequest: ${req._tag}`, _)),
-      // Effect.tapError((cause) => Effect.logError(`forwardRequest err: ${req._tag}`, cause)),
+      Effect.flatMap(({ client }) => f(client)),
+      dieOnRpcClientError,
       Effect.interruptible,
       Effect.logWarnIfTakesLongerThan({
-        label: `@livestore/adapter-web:shared-worker:forwardRequest:${req._tag}`,
+        label: `@livestore/adapter-web:shared-worker:forwardRequest:${tag}`,
         duration: 500,
       }),
       Effect.tapCauseLogPretty,
     )
 
-  const forwardRequestStream = <A, I, E, EI, R>(
-    req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
+  const forwardRequestStream = <A, E, R>(
+    tag: string,
+    f: (client: RpcClient.FromGroup<typeof WorkerSchema.LeaderWorkerInnerRpcs>) => Stream.Stream<A, E, R>,
   ): Stream.Stream<A, E, R> =>
     Effect.gen(function* () {
-      yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
-      const { worker, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isLeaderWorkerContext)
-      const stream = worker.execute(req).pipe(
-        Stream.catchIf(
-          isWorkerTransportError,
-          (e) => Stream.die(e),
-          (e) => Stream.fail(e),
-        ),
-      )
+      yield* Effect.logDebug(`forwardRequestStream: ${tag}`)
+      const { client, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isLeaderWorkerContext)
+      const stream = f(client).pipe(dieOnRpcClientErrorStream)
       // It seems the request stream is not automatically interrupted when the scope shuts down
       // so we need to manually interrupt it when the scope shuts down
       const shutdownDeferred = yield* Deferred.make<void>()
@@ -110,7 +103,7 @@ const makeWorkerRunner = Effect.gen(function* () {
       Effect.interruptible,
       Effect.tapCauseLogPretty,
       Stream.unwrap,
-      Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
+      Stream.ensuring(Effect.logDebug(`shutting down stream for ${tag}`)),
     )
 
   const resetCurrentWorkerCtx = Effect.gen(function* () {
@@ -150,8 +143,7 @@ const makeWorkerRunner = Effect.gen(function* () {
   const invariantsRef = yield* Ref.make<Invariants | undefined>(undefined)
   const sameInvariants = Schema.toEquivalence(InvariantsSchema)
 
-  // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `SerializedRunner.Handlers` uses `any` in the R channel
-  return WorkerRunner.layerSerialized(WorkerSchema.SharedWorkerRequest, {
+  return WorkerSchema.SharedWorkerRpcs.of({
     // Whenever the client session leader changes (and thus creates a new leader thread), the new client session leader
     // sends a new MessagePort to the shared worker which proxies messages to the new leader thread.
     UpdateMessagePort: ({ port, initial, liveStoreVersion: clientLiveStoreVersion }) =>
@@ -190,18 +182,22 @@ const makeWorkerRunner = Effect.gen(function* () {
             Stream.tap(() => reset),
             Stream.runDrain,
             Effect.tapCauseLogPretty,
-            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
             Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
           )
 
-          const workerLayer = yield* Layer.build(BrowserWorker.layer(() => port))
-
-          const worker = yield* Worker.makePoolSerialized<WorkerSchema.LeaderWorkerInnerRequest>({
-            size: 1,
-            concurrency: 100,
-            initialMessage: () => initial,
-          }).pipe(
-            Effect.provide(workerLayer),
+          const clientContext = yield* Layer.build(
+            RpcClient.layerProtocolWorker({ size: 1, concurrency: 100 }).pipe(
+              Layer.provide(BrowserWorker.layer(() => port)),
+              Layer.provide(
+                RpcWorker.layerInitialMessage(
+                  WorkerSchema.LeaderWorkerInnerInitialMessage.payloadSchema,
+                  Effect.succeed(initial),
+                ),
+              ),
+            ),
+          )
+          const client = yield* RpcClient.make(WorkerSchema.LeaderWorkerInnerRpcs).pipe(
+            Effect.provide(clientContext),
             Effect.withSpan('@livestore/adapter-web:shared-worker:makeWorkerProxyFromPort'),
           )
 
@@ -211,44 +207,42 @@ const makeWorkerRunner = Effect.gen(function* () {
 
           yield* WebmeshWorker.connectViaWorker({
             node,
-            worker,
+            worker: makeWebmeshWorkerProxy(client),
             target: Devtools.makeNodeName.client.leader({ storeId, clientId }),
-          }).pipe(
-            Effect.tapCauseLogPretty,
-            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-            Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
-          )
+          }).pipe(Effect.tapCauseLogPretty, dieOnRpcClientError, Effect.forkScoped({ startImmediately: true }))
 
-          yield* SubscriptionRef.set(leaderWorkerContextSubRef, { worker, scope })
-        }).pipe(
-          Effect.tapCauseLogPretty,
-          Scope.provide(scope),
-          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-          Effect.forkIn(scope, { startImmediately: true, uninterruptible: 'inherit' }),
-        )
+          yield* SubscriptionRef.set(leaderWorkerContextSubRef, {
+            client: client as RpcClient.FromGroup<typeof WorkerSchema.LeaderWorkerInnerRpcs>,
+            scope,
+          })
+        }).pipe(Effect.tapCauseLogPretty, Scope.provide(scope), Effect.forkIn(scope, { startImmediately: true }))
       }).pipe(Effect.withSpan('@livestore/adapter-web:shared-worker:updateMessagePort'), Effect.tapCauseLogPretty),
 
     // Proxied requests
-    BootStatusStream: forwardRequestStream,
-    PushToLeader: forwardRequest,
-    PullStream: forwardRequestStream,
-    StreamEvents: forwardRequestStream,
-    Export: forwardRequest,
-    GetRecreateSnapshot: forwardRequest,
-    ExportEventlog: forwardRequest,
-    Setup: forwardRequest,
-    GetLeaderSyncState: forwardRequest,
-    SyncStateStream: forwardRequestStream,
-    GetLeaderHead: forwardRequest,
-    GetNetworkStatus: forwardRequest,
-    NetworkStatusStream: forwardRequestStream,
-    Shutdown: forwardRequest,
-    ExtraDevtoolsMessage: forwardRequest,
+    BootStatusStream: (payload) =>
+      forwardRequestStream('BootStatusStream', (client) => client.BootStatusStream(payload)),
+    PushToLeader: (payload) => forwardRequest('PushToLeader', (client) => client.PushToLeader(payload)),
+    PullStream: (payload) => forwardRequestStream('PullStream', (client) => client.PullStream(payload)),
+    StreamEvents: (payload) => forwardRequestStream('StreamEvents', (client) => client.StreamEvents(payload)),
+    Export: (payload) => forwardRequest('Export', (client) => client.Export(payload)),
+    GetRecreateSnapshot: (payload) =>
+      forwardRequest('GetRecreateSnapshot', (client) => client.GetRecreateSnapshot(payload)),
+    ExportEventlog: (payload) => forwardRequest('ExportEventlog', (client) => client.ExportEventlog(payload)),
+    GetLeaderSyncState: (payload) =>
+      forwardRequest('GetLeaderSyncState', (client) => client.GetLeaderSyncState(payload)),
+    SyncStateStream: (payload) => forwardRequestStream('SyncStateStream', (client) => client.SyncStateStream(payload)),
+    GetLeaderHead: (payload) => forwardRequest('GetLeaderHead', (client) => client.GetLeaderHead(payload)),
+    GetNetworkStatus: (payload) => forwardRequest('GetNetworkStatus', (client) => client.GetNetworkStatus(payload)),
+    NetworkStatusStream: (payload) =>
+      forwardRequestStream('NetworkStatusStream', (client) => client.NetworkStatusStream(payload)),
+    Shutdown: (payload) => forwardRequest('Shutdown', (client) => client.Shutdown(payload)),
+    ExtraDevtoolsMessage: (payload) =>
+      forwardRequest('ExtraDevtoolsMessage', (client) => client.ExtraDevtoolsMessage(payload)),
 
     // Accept devtools connections (from leader and client sessions)
     'WebmeshWorker.CreateConnection': WebmeshWorker.CreateConnection,
   })
-}).pipe(Layer.unwrap)
+})
 
 export const makeWorker = (options?: LogConfig.LoggerOptions): void => {
   const runtimeLayer = Layer.mergeAll(
@@ -256,19 +250,16 @@ export const makeWorker = (options?: LogConfig.LoggerOptions): void => {
     WebmeshWorker.CacheService.layer({ nodeName: makeSharedWorkerNodeName({ storeId }) }),
   )
 
-  // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- propagated from `makeWorkerRunner`
-  makeWorkerRunner.pipe(
+  RpcServer.layer(WorkerSchema.SharedWorkerRpcs).pipe(
+    Layer.provide(WorkerSchema.SharedWorkerRpcs.toLayer(makeWorkerRunner)),
+    Layer.provide(RpcServer.layerProtocolWorkerRunner),
     Layer.provide(BrowserWorkerRunner.layer),
-    // WorkerRunner.launch,
     Layer.launch,
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
     Effect.provide(runtimeLayer),
     LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
-    // TODO remove type-cast (currently needed to silence a tsc bug)
-    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- TSC bug workaround; the cast uses `any` as an intermediate
-    (_) => _ as any as Effect.Effect<void>,
     Effect.provide(
       Layer.mergeAll(
         options?.logger ?? Layer.empty,
