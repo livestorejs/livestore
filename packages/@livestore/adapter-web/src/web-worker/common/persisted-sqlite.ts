@@ -6,7 +6,16 @@ import {
   type WebDatabaseMetadataOpfs,
 } from '@livestore/sqlite-wasm/browser'
 import { isDevEnv } from '@livestore/utils'
-import { Effect, Option, Order, pipe, ReadonlyArray as EffectArray, Schedule, Schema, Stream } from '@livestore/utils/effect'
+import {
+  Effect,
+  Option,
+  Order,
+  pipe,
+  ReadonlyArray as EffectArray,
+  Schedule,
+  Schema,
+  Stream,
+} from '@livestore/utils/effect'
 import { Opfs, type WebError } from '@livestore/utils/effect/browser'
 
 import type * as WorkerSchema from './worker-schema.ts'
@@ -18,8 +27,14 @@ export class PersistedSqliteError extends Schema.TaggedErrorClass<PersistedSqlit
   cause: Schema.optional(Schema.Defect()),
 }) {}
 
-export const readPersistedStateDbFromClientSession = Effect.fn('@livestore/adapter-web:readPersistedStateDbFromClientSession')(
-  function* ({ storageOptions, storeId, schema }: {
+export const readPersistedStateDbFromClientSession = Effect.fn(
+  '@livestore/adapter-web:readPersistedStateDbFromClientSession',
+)(
+  function* ({
+    storageOptions,
+    storeId,
+    schema,
+  }: {
     storageOptions: WorkerSchema.StorageType
     storeId: string
     schema: LiveStoreSchema
@@ -41,7 +56,7 @@ export const readPersistedStateDbFromClientSession = Effect.fn('@livestore/adapt
             const file = yield* opfs.getFile(fileHandle)
             const fileName = yield* Effect.promise(() => decodeAccessHandlePoolFilename(file))
             return { file, fileName }
-        }),
+          }),
         { concurrency: 'unbounded' },
       ),
       Stream.filter(({ fileName }) => fileName === stateDbFileName),

@@ -116,9 +116,7 @@ export default {
                 // observed behaviour: `log3` is also never logged
                 Effect.tapCause((cause) => Effect.log('log3', cause)),
               ),
-          }).pipe(
-            Layer.provideMerge(RpcSerialization.layerJson),
-          )
+          }).pipe(Layer.provideMerge(RpcSerialization.layerJson))
 
           // Create the HTTP RPC effect
           const httpEffect = yield* RpcServer.toHttpEffect(TestRpcs).pipe(Effect.provide(handlersLayer))

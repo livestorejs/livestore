@@ -157,9 +157,11 @@ export const makeHttpSync =
                   Effect.gen(function* () {
                     yield* Effect.sleep(livePullInterval)
 
-                    const items = yield* rpcClient['SyncHttpRpc.Pull']({ storeId, payload, cursor: currentCursor }).pipe(
-                      Stream.runCollect,
-                    )
+                    const items = yield* rpcClient['SyncHttpRpc.Pull']({
+                      storeId,
+                      payload,
+                      cursor: currentCursor,
+                    }).pipe(Stream.runCollect)
 
                     const nextCursor = EffectArray.last(items).pipe(
                       Option.flatMap((item) => Option.fromNullishOr(item.batch.at(-1)?.eventEncoded.seqNum)),

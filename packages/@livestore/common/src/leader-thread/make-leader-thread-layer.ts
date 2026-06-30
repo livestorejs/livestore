@@ -119,22 +119,24 @@ export const makeLeaderThreadLayer = ({
                   get: (_key) =>
                     Effect.sync(() => Eventlog.getBackendIdFromDb(dbEventlog)).pipe(
                       Effect.map(Option.getOrUndefined),
-                      Effect.catchDefect((cause) =>
-                        new KeyValueStore.KeyValueStoreError({
-                          method: 'getBackendIdFromDb',
-                          message: 'Failed to get backendId',
-                          cause,
-                        }),
+                      Effect.catchDefect(
+                        (cause) =>
+                          new KeyValueStore.KeyValueStoreError({
+                            method: 'getBackendIdFromDb',
+                            message: 'Failed to get backendId',
+                            cause,
+                          }),
                       ),
                     ),
                   set: (_key, value) =>
                     Effect.sync(() => Eventlog.updateBackendId(dbEventlog, value)).pipe(
-                      Effect.catchDefect((cause) =>
-                        new KeyValueStore.KeyValueStoreError({
-                          method: 'updateBackendId',
-                          message: 'Failed to update backendId',
-                          cause,
-                        }),
+                      Effect.catchDefect(
+                        (cause) =>
+                          new KeyValueStore.KeyValueStoreError({
+                            method: 'updateBackendId',
+                            message: 'Failed to update backendId',
+                            cause,
+                          }),
                       ),
                     ),
                   clear: Effect.die(new Error(`Not implemented. Should never be used.`)),

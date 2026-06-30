@@ -40,8 +40,7 @@ const makeTabPair = (
     const newPage = Effect.acquireRelease(
       Effect.tryPromise(() => browserContext.newPage()),
       Effect.fn('close-page')(function* (page, exit) {
-        const reason =
-          exit._tag === 'Failure' ? exit.cause.toString() : `Closing ${url}#${tabName} due to ${exit._tag}`
+        const reason = exit._tag === 'Failure' ? exit.cause.toString() : `Closing ${url}#${tabName} due to ${exit._tag}`
 
         yield* Effect.log(reason)
         yield* Effect.tryPromise(() => page.close({ reason }))

@@ -100,9 +100,7 @@ export const makeWsSync =
           Schedule.modifyDelay((_, delay) => Effect.succeed(Duration.min(delay, Duration.seconds(30)))),
           Schedule.jittered,
         ),
-        pingSchedule: Schedule.recurs(1).pipe(
-          Schedule.andThen(Schedule.fixed(pingInterval)),
-        ),
+        pingSchedule: Schedule.recurs(1).pipe(Schedule.andThen(Schedule.fixed(pingInterval))),
         url: wsUrl,
       }).pipe(
         Layer.provide(Socket.layerWebSocket(wsUrl)),

@@ -1,5 +1,18 @@
 import * as OtelTracer from '@effect/opentelemetry/Tracer'
-import { Cause, Console, type Context, Deferred, Duration, Effect, Function, Fiber, pipe, Predicate, Scope, type Stream } from 'effect'
+import {
+  Cause,
+  Console,
+  type Context,
+  Deferred,
+  Duration,
+  Effect,
+  Function,
+  Fiber,
+  pipe,
+  Predicate,
+  Scope,
+  type Stream,
+} from 'effect'
 
 import { isDevEnv, objectToString } from '../misc.ts'
 

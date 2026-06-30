@@ -1,17 +1,6 @@
 export * from 'effect/unstable/rpc/RpcClient'
 
-import {
-  Cause,
-  Deferred,
-  Effect,
-  Function,
-  Latch,
-  Layer,
-  References,
-  Result,
-  Schedule,
-  type Scope,
-} from 'effect'
+import { Cause, Deferred, Effect, Function, Latch, Layer, References, Result, Schedule, type Scope } from 'effect'
 import { RpcClient, RpcClientError, RpcSerialization } from 'effect/unstable/rpc'
 import { Protocol } from 'effect/unstable/rpc/RpcClient'
 import { constPing, type FromServerEncoded } from 'effect/unstable/rpc/RpcMessage'
@@ -200,9 +189,7 @@ export type SocketPinger = Effect.Success<ReturnType<typeof makePinger>>
 
 const makePinger = Effect.fnUntraced(function* <A, E, R>(
   writePing: Effect.Effect<A, E, R>,
-  pingSchedule: Schedule.Schedule<unknown> = Schedule.spaced(10000).pipe(
-    Schedule.addDelay(() => Effect.succeed(5000)),
-  ),
+  pingSchedule: Schedule.Schedule<unknown> = Schedule.spaced(10000).pipe(Schedule.addDelay(() => Effect.succeed(5000))),
 ) {
   // CHANGED: add manual ping deferreds
   const manualPingDeferreds = new Set<Deferred.Deferred<void>>()

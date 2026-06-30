@@ -85,9 +85,8 @@ export const makeDoRpcSync =
                   if (res._tag === 'None')
                     return shouldNeverHappen('There should at least be a no-more page info response')
 
-                  const queue = yield* Effect.acquireRelease(
-                    Queue.unbounded<SyncMessage.PullResponse>(),
-                    (queue) => Queue.shutdown(queue).pipe(Effect.asVoid),
+                  const queue = yield* Effect.acquireRelease(Queue.unbounded<SyncMessage.PullResponse>(), (queue) =>
+                    Queue.shutdown(queue).pipe(Effect.asVoid),
                   )
 
                   requestIdQueueMap.set(res.value.rpcRequestId, queue)

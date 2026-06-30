@@ -13,9 +13,9 @@ const makeTestEvent = ({
   payload,
   isClientOnly,
 }: {
-  seqNum: EventSequenceNumber.Client.CompositeInput,
-  parentSeqNum: EventSequenceNumber.Client.CompositeInput,
-  payload: string,
+  seqNum: EventSequenceNumber.Client.CompositeInput
+  parentSeqNum: EventSequenceNumber.Client.CompositeInput
+  payload: string
   isClientOnly: boolean
 }) =>
   new LiveStoreEvent.Client.EncodedWithMeta({
@@ -86,9 +86,9 @@ const rebaseTestEvent = ({
   parentSeqNum,
   rebaseGeneration,
 }: {
-  event: LiveStoreEvent.Client.EncodedWithMeta,
-  parentSeqNum: EventSequenceNumber.Client.Composite,
-  rebaseGeneration: number,
+  event: LiveStoreEvent.Client.EncodedWithMeta
+  parentSeqNum: EventSequenceNumber.Client.Composite
+  rebaseGeneration: number
 }) => event.rebase({ parentSeqNum, isClientOnly: isClientOnlyEvent(event), rebaseGeneration })
 
 Vitest.describe('syncstate', () => {

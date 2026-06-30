@@ -256,21 +256,13 @@ const runPerfTests = Effect.fn(function* () {
   }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/perf')))
 })
 
-export const testPerfCommand = Cli.Command.make(
-  'perf',
-  {},
-  runPerfTests,
-)
+export const testPerfCommand = Cli.Command.make('perf', {}, runPerfTests)
 
 const runWaSqliteTests = Effect.fn(function* () {
   yield* cmd('vitest run').pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/wa-sqlite')))
 })
 
-export const waSqliteTest = Cli.Command.make(
-  'wa-sqlite',
-  {},
-  runWaSqliteTests,
-)
+export const waSqliteTest = Cli.Command.make('wa-sqlite', {}, runWaSqliteTests)
 
 // the sync provider tests are actually part of another tests package but for now we run them from here too
 // TODO clean this up at some point

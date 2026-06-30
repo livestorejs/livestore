@@ -33,13 +33,13 @@ export type ForRecord<TEventDefRecord extends EventDefRecord> = Schema.Codec<
   {
     [K in keyof TEventDefRecord]: {
       name: K
-      args: (TEventDefRecord[K]['schema'])['Type']
+      args: TEventDefRecord[K]['schema']['Type']
     }
   }[keyof TEventDefRecord],
   {
     [K in keyof TEventDefRecord]: {
       name: K
-      args: (TEventDefRecord[K]['schema'])['Encoded']
+      args: TEventDefRecord[K]['schema']['Encoded']
     }
   }[keyof TEventDefRecord]
 >

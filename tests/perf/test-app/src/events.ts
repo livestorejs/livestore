@@ -2,7 +2,9 @@ import { Events, Schema } from '@livestore/livestore'
 
 export const thousandItemsCreated = Events.synced({
   name: 'v1.ThousandItemsCreated',
-  schema: Schema.Array(Schema.Struct({ id: Schema.Number, label: Schema.String })).check(Schema.isLengthBetween(1000, 1000)),
+  schema: Schema.Array(Schema.Struct({ id: Schema.Number, label: Schema.String })).check(
+    Schema.isLengthBetween(1000, 1000),
+  ),
 })
 
 export const tenThousandItemsCreated = Events.synced({
@@ -14,7 +16,9 @@ export const tenThousandItemsCreated = Events.synced({
 
 export const thousandItemsAppended = Events.synced({
   name: 'v1.ThousandItemsAppended',
-  schema: Schema.Array(Schema.Struct({ id: Schema.Number, label: Schema.String })).check(Schema.isLengthBetween(1000, 1000)),
+  schema: Schema.Array(Schema.Struct({ id: Schema.Number, label: Schema.String })).check(
+    Schema.isLengthBetween(1000, 1000),
+  ),
 })
 
 export const everyTenthItemUpdated = Events.synced({

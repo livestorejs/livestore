@@ -2,15 +2,7 @@ import path from 'node:path'
 
 import { UnknownError } from '@livestore/common'
 import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
-import {
-  Effect,
-  FetchHttpClient,
-  Layer,
-  Logger,
-  OtelTracer,
-  References,
-  Schema,
-} from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, Logger, OtelTracer, References, Schema } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 
