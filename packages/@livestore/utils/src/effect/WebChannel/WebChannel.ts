@@ -365,7 +365,7 @@ export const toOpenChannel = <MsgListen, MsgSend>(
         : identity,
       Stream.tapArray((array) => Queue.offerAll(queue, array)),
       Stream.runDrain,
-      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
       Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
     )
 
@@ -385,7 +385,7 @@ export const toOpenChannel = <MsgListen, MsgSend>(
         }
       }).pipe(
         Effect.withSpan(`WebChannel:heartbeat`),
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
         Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
     }

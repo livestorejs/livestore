@@ -151,7 +151,7 @@ export const makeLeaderThreadLayer = ({
       // We're already connecting to the sync backend concurrently
       yield* syncBackend.connect.pipe(
         Effect.tapCauseLogPretty,
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
         Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
     }
@@ -330,7 +330,7 @@ const makeInitialBlockingSyncContext = ({
     if (blockingDeferred !== undefined && initialSyncOptions._tag === 'Blocking') {
       yield* Deferred.succeed(blockingDeferred, void 0).pipe(
         Effect.delay(initialSyncOptions.timeout),
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
         Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
     }
@@ -398,7 +398,7 @@ const bootLeaderThread = ({
 
     yield* bootDevtools(devtoolsOptions).pipe(
       Effect.tapCauseLogPretty,
-      // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+      // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
       Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
     )
 
@@ -441,7 +441,7 @@ export const makeNetworkStatusSubscribable = ({
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
         Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
     }
@@ -452,7 +452,7 @@ export const makeNetworkStatusSubscribable = ({
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
         Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
     }

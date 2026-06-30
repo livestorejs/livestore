@@ -29,7 +29,7 @@ Vitest.describe('makeNetworkStatusSubscribable', () => {
         networkStatus.changes.pipe(Stream.filter(predicate), Stream.runFirstUnsafe)
 
       const onlineFiber = yield* waitFor((status) => status.isConnected).pipe(
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
         Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
       yield* mockBackend.connect
@@ -38,7 +38,7 @@ Vitest.describe('makeNetworkStatusSubscribable', () => {
       Vitest.expect(online.timestampMs).toBeGreaterThanOrEqual(initial.timestampMs)
 
       const latchedFiber = yield* waitFor((status) => status.devtools.latchClosed).pipe(
-        // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+        // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
         Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
       )
       yield* SubscriptionRef.set(latchStateRef, { latchClosed: true })

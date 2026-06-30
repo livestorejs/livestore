@@ -5,6 +5,7 @@ export default defineConfig({
     name: '@livestore/sqlite-wasm',
     root: import.meta.dirname,
     include: ['src/**/*.test.ts'],
+    // TODO(#1358): Migrate this removed Vitest 4 config shape.
     poolOptions: {
       workers: {
         wrangler: {

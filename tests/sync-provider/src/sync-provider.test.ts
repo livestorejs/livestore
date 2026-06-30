@@ -164,7 +164,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         // Start live pull and wait for the first non-empty batch in a fiber
         const fiber = yield* syncBackend.pull(Option.none(), { live: true }).pipe(
           runFirstNonEmpty,
-          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 
@@ -421,7 +421,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
         const fiber = yield* syncBackend.pull(Option.none(), { live: true }).pipe(
           runFirstNonEmpty,
-          // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
           Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
         )
 

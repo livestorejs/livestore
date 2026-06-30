@@ -142,7 +142,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         yield* mockSyncBackend
           .advance(eventFactory.todoCreated.next({ id: `backend_${i}`, text: '', completed: false }))
           .pipe(
-            // TODO: These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
+            // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
             Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
           )
       }
