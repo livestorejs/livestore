@@ -38,6 +38,8 @@ type EventsListProps = {
 
 const sanitizeBatchSize = (value: number) => Math.max(1, Math.floor(value) || 1)
 
+const isStreamCancelled = (streamState: { cancelled: boolean }) => streamState.cancelled
+
 const stringify = (value: unknown) => {
   try {
     return JSON.stringify(value, null, 2)
@@ -76,7 +78,7 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
       try {
         while (streamState.cancelled === false) {
           const result = await iterator.next()
-          if (result.done === true || streamState.cancelled === true) break
+          if (result.done === true || isStreamCancelled(streamState) === true) break
           const { value } = result
           if (value == null) continue
 
