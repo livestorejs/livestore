@@ -16,7 +16,7 @@ import {
   RcMap,
   References,
   type Schema,
-  type Scope,
+  Scope,
 } from '@livestore/utils/effect'
 
 import { type CreateStoreOptions, createStore } from './create-store.ts'
@@ -49,7 +49,7 @@ export const DEFAULT_UNUSED_CACHE_TIME = typeof window === 'undefined' ? Number.
 export interface RegistryStoreOptions<
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
+  TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json,
 > extends CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> {
   /**
    * OpenTelemetry configuration for tracing store operations.
@@ -186,7 +186,7 @@ export class StoreRegistry {
     if (config.context !== undefined) {
       this.#context = config.context
     } else {
-      const ownedRuntime = ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy))
+      const ownedRuntime = ManagedRuntime.make(Layer.mergeAll(Layer.effect(Scope.Scope, Effect.scope), OtelLiveDummy))
       this.#context = ownedRuntime.contextEffect.pipe(Effect.runSync)
       this.#disposeOwnedRuntime = () => ownedRuntime.dispose()
     }
@@ -237,7 +237,7 @@ export class StoreRegistry {
   getOrLoad = <
     TSchema extends LiveStoreSchema,
     TContext = {},
-    TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
+    TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json,
   >(
     options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): Effect.Effect<Store<TSchema, TContext>, UnknownError, Scope.Scope> =>
@@ -268,7 +268,7 @@ export class StoreRegistry {
   getOrLoadPromise = <
     TSchema extends LiveStoreSchema,
     TContext = {},
-    TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
+    TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json,
   >(
     options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): Store<TSchema, TContext> | Promise<Store<TSchema, TContext>> => {
@@ -295,7 +295,7 @@ export class StoreRegistry {
     if (cached !== undefined) return cached as Promise<Store<TSchema, TContext>>
 
     // Create and cache the promise
-    const fiber = defect.value.fiber as Fiber.Fiber<Store<TSchema, TContext>>
+    const fiber = defect.success.fiber as Fiber.Fiber<Store<TSchema, TContext>>
     const promise = Fiber.join(fiber)
       .pipe(Effect.runPromiseWith(this.#context))
       .finally(() => this.#loadingPromises.delete(storeId))
@@ -320,7 +320,7 @@ export class StoreRegistry {
   retain = <
     TSchema extends LiveStoreSchema,
     TContext = {},
-    TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
+    TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json,
   >(
     options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): (() => void) => {
@@ -353,7 +353,7 @@ export class StoreRegistry {
   preload = async <
     TSchema extends LiveStoreSchema,
     TContext = {},
-    TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
+    TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json,
   >(
     options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): Promise<void> => {
@@ -423,7 +423,7 @@ export class StoreRegistry {
 export const storeOptions = <
   TSchema extends LiveStoreSchema,
   TContext = {},
-  TSyncPayloadSchema extends Schema.Top = typeof Schema.Json,
+  TSyncPayloadSchema extends Schema.Codec<Schema.Json, Schema.Json> = typeof Schema.Json,
 >(
   options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
 ): RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema> => options

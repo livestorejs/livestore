@@ -33,6 +33,7 @@ import {
   Inspectable,
   Option,
   OtelTracer,
+  Queue,
   Result,
   Schema,
   Stream,
@@ -570,7 +571,88 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   ): AsyncIterable<TResult> => {
     this.checkShutdown('subscribe')
 
-    return Stream.toAsyncIterable(this.subscribeStream(query, options))
+    // This used to delegate to `Stream.toAsyncIterable(this.subscribeStream(...))`.
+    // With Effect v4, the callback-backed stream producer is forked during stream startup, so a caller could request
+    // `next()`, commit an update, and race the actual subscription registration. Register directly here so the first
+    // pending `next()` observes post-subscription updates. In the future, this should be refactored back toward a shared
+    // stream/async-iterable bridge if Effect exposes a primitive with that synchronous registration guarantee.
+    return {
+      [Symbol.asyncIterator]: () => {
+        const services = this[StoreInternalsSymbol].effectContext.services
+        const runSync = Effect.runSyncWith(services)
+        const runPromiseExit = Effect.runPromiseExitWith(services)
+        let queue: Queue.Queue<TResult, Cause.Done> | undefined
+        let isDone = false
+        let unsubscribe: Unsubscribe | undefined
+
+        const done = (): IteratorResult<TResult> => ({ done: true, value: undefined })
+        const isClosed = () => isDone
+        const isQueueDone = (cause: Cause.Cause<Cause.Done>) => {
+          const error = Cause.findError(cause)
+          return Result.isSuccess(error) && Cause.isDone(error.success)
+        }
+
+        const ensureQueue = () => {
+          // Lazily allocate the queue so creating an async iterator without consuming it has no subscription-side work.
+          queue ??= Queue.unbounded<TResult, Cause.Done>().pipe(runSync)
+          return queue
+        }
+
+        const emit = (value: TResult) => {
+          if (isDone === true) return
+
+          Queue.offerUnsafe(ensureQueue(), value)
+        }
+
+        const ensureSubscribed = () => {
+          // Subscribe from the first `next()` call so callers that request a value before
+          // committing updates don't race the asynchronous Stream-to-iterator startup path.
+          unsubscribe ??= this.subscribeWithCallback(query, emit, options)
+        }
+
+        const close = (): IteratorResult<TResult> => {
+          if (isDone === false) {
+            isDone = true
+            unsubscribe?.()
+            unsubscribe = undefined
+
+            if (queue !== undefined) {
+              // Wake any pending `next()` call and prevent later callback emissions from being buffered.
+              Queue.shutdown(queue).pipe(runSync)
+            }
+          }
+
+          return done()
+        }
+
+        return {
+          next: async () => {
+            if (isDone === true) {
+              return done()
+            }
+
+            ensureSubscribed()
+
+            // Delegate buffering and pending-consumer wakeups to Effect's queue implementation.
+            const exit = await runPromiseExit(Queue.take(ensureQueue()))
+            if (Exit.isSuccess(exit)) {
+              return { done: false, value: exit.value }
+            }
+
+            if (isClosed() === true || isQueueDone(exit.cause)) {
+              return done()
+            }
+
+            throw Cause.squash(exit.cause)
+          },
+          return: () => Promise.resolve(close()),
+          throw: (cause) => {
+            close()
+            return Promise.reject(cause)
+          },
+        }
+      },
+    }
   }
 
   subscribeStream = <TResult>(query: Queryable<TResult>, options?: SubscribeOptions<TResult>): Stream.Stream<TResult> =>
@@ -584,7 +666,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         yield* Effect.acquireRelease(
           Effect.sync(() =>
-            this.subscribe(query, (result) => emit.single(result), {
+            this.subscribe(query, (result) => { Queue.offerUnsafe(emit, result) }, {
               ...options,
               otelContext,
             }),
@@ -933,7 +1015,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     }
 
     return clientSession.leaderThread.events.stream(baseOptions).pipe(
-      Stream.mapEffect(Schema.decodeEffect(eventSchema)),
+      Stream.mapEffect((event) => Schema.decodeEffect(eventSchema)(event)),
       Stream.catchTag('SchemaError', (cause) => Stream.fail(UnknownError.make({ cause }))),
       Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
     )
