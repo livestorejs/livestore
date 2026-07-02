@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto'
 import process from 'node:process'
 
-import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Config, Effect, Schema } from '@livestore/utils/effect'
 
-import { type CloudflareDomain, type CloudflareExample, cloudflareExamplesBySlug } from './cloudflare-manifest.ts'
+import { type CloudflareExample, cloudflareExamplesBySlug } from './cloudflare-manifest.ts'
 
 /**
  * Tagged error used across Cloudflare deployment utilities so callers can
@@ -248,90 +248,3 @@ export const deployCloudflareWorker = ({
     }),
   )
 }
-
-type VercelDnsRecord = {
-  readonly id: string
-  readonly name: string
-  readonly type: string
-  readonly value: string
-}
-
-const parseVercelDnsRecords = (output: string): readonly VercelDnsRecord[] =>
-  output
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith('rec_'))
-    .flatMap((line) => {
-      const [id, name, type, ...rest] = line.split(/\s+/)
-      if (id === undefined || name === undefined || type === undefined || rest.length === 0) {
-        return []
-      }
-
-      return [
-        {
-          id,
-          name,
-          type,
-          value: rest.join(' '),
-        } satisfies VercelDnsRecord,
-      ]
-    })
-
-const normalizeDnsValue = (value: string) => value.replace(/\.$/, '')
-
-export const ensureVercelCnameRecord = ({ domain, name, target }: CloudflareDomain & { target: string }) =>
-  Effect.gen(function* () {
-    const dnsList = yield* cmdText(['bunx', 'vercel', 'dns', 'ls', domain]).pipe(
-      Effect.provide(LivestoreWorkspace.toCwd()),
-      Effect.mapError(
-        (cause) =>
-          new CloudflareError({
-            reason: 'dns',
-            message: `Failed to list DNS records for ${domain}`,
-            cause,
-          }),
-      ),
-    )
-
-    const records = parseVercelDnsRecords(dnsList)
-    const targetValue = normalizeDnsValue(target)
-
-    const matchingRecords = records.filter((record) => record.name === name && record.type.toUpperCase() === 'CNAME')
-
-    const staleRecords = matchingRecords.filter((record) => normalizeDnsValue(record.value) !== targetValue)
-
-    for (const staleRecord of staleRecords) {
-      yield* cmd(`printf 'y\\n' | bunx vercel dns rm ${staleRecord.id}`, {
-        shell: true,
-      }).pipe(
-        Effect.provide(LivestoreWorkspace.toCwd()),
-        Effect.mapError(
-          (cause) =>
-            new CloudflareError({
-              reason: 'dns',
-              message: `Failed to remove stale DNS record ${staleRecord.id} (${staleRecord.name}).`,
-              cause,
-            }),
-        ),
-      )
-    }
-
-    const existingTargetRecords = matchingRecords.filter(
-      (record) =>
-        normalizeDnsValue(record.value) === targetValue && !staleRecords.some((stale) => stale.id === record.id),
-    )
-
-    if (existingTargetRecords.length === 0) {
-      yield* cmd(['bunx', 'vercel', 'dns', 'add', domain, name, 'CNAME', target], {}).pipe(
-        Effect.provide(LivestoreWorkspace.toCwd()),
-        Effect.mapError(
-          (cause) =>
-            new CloudflareError({
-              reason: 'dns',
-              message: `Failed to add DNS record for ${name}.${domain}.`,
-              cause,
-            }),
-        ),
-      )
-    }
-  })

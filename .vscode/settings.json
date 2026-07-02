@@ -8,7 +8,6 @@
     // "**/node_modules/**/dist": false,
     // "**/{examples,packages}/**/dist": true,
     "**/.git": true,
-    "**/.vercel": true,
     "**/.netlify": true,
     "**/playwright-report": true,
     "**/.direnv": true,
@@ -18,7 +17,6 @@
   "search.exclude": {
     "**/.expo": true,
     "**/build": true,
-    "**/.vercel": true,
     "**/.direnv": true,
     "**/.wrangler": true,
     "**/dist": true,
