@@ -312,7 +312,6 @@ in
   ++ [
     effectUtilsPackages.genie
     effectUtils.packages.${pkgs.system}.megarepo
-    pkgs.caddy
     pkgs.jq
     pkgs.unzip
     pkgs.deno
@@ -478,9 +477,6 @@ in
     sp="$(git rev-parse --show-superproject-working-tree 2>/dev/null)";
     export WORKSPACE_ROOT="$PWD"
     export MONOREPO_ROOT="''${MONOREPO_ROOT:-''${sp:-$WORKSPACE_ROOT}}"
-
-    export DEV_SSL_KEY="$WORKSPACE_ROOT/certs/key.pem"
-    export DEV_SSL_CERT="$WORKSPACE_ROOT/certs/cert.pem"
 
     # OTEL_EXPORTER_OTLP_ENDPOINT is set by the otel module's env; fall back for non-otel setups
     export OTEL_EXPORTER_OTLP_ENDPOINT="''${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
