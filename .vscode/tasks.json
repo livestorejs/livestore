@@ -232,7 +232,7 @@
     // ============================================================
     {
       "label": "examples:todomvc",
-      "dependsOn": ["ts:clean:watch", "infra:proxy"],
+      "dependsOn": ["ts:clean:watch"],
       "type": "shell",
       "command": "direnv exec . mono examples run web-todomvc",
       "isBackground": true,
@@ -247,7 +247,7 @@
     },
     {
       "label": "examples:linearlite",
-      "dependsOn": ["ts:clean:watch", "infra:proxy"],
+      "dependsOn": ["ts:clean:watch"],
       "type": "shell",
       "command": "direnv exec . mono examples run web-linearlite",
       "isBackground": true,
@@ -260,39 +260,6 @@
         "clear": false
       }
     },
-    // ============================================================
-    // infrastructure
-    // ============================================================
-    {
-      "label": "infra:proxy",
-      "type": "shell",
-      "command": "direnv exec . fkill --silent :443 && caddy run",
-      "problemMatcher": {
-        "owner": "caddy",
-        "pattern": {
-          "regexp": "^\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3} ERROR\\s+(.*)$",
-          "severity": 1,
-          "message": 2
-        },
-        "background": {
-          "activeOnStart": true,
-          "beginsPattern": "^.*Caddyfile.*$",
-          "endsPattern": "^.*serving initial configuration.*$"
-        }
-      },
-      "isBackground": true,
-      "options": {
-        "cwd": "${workspaceFolder}/.infra"
-      },
-      "presentation": {
-        "focus": false,
-        "panel": "shared",
-        "group": "infra",
-        "showReuseMessage": false,
-        "clear": false
-      }
-    },
-
     // ============================================================
     // misc
     // ============================================================
