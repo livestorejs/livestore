@@ -36,7 +36,6 @@ repos/
 /certs
 
 .wrangler
-.vercel
 .netlify
 
 # Created by the Netlify CLI when it bundles Deno edge functions during deploy
