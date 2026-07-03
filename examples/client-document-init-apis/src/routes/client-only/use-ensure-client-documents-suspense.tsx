@@ -14,7 +14,7 @@ export const Route = createFileRoute('/client-only/use-ensure-client-documents-s
 function UseEnsureClientDocumentsSuspensePage() {
   const { storeOptions } = Route.useRouteContext()
   const store = useStore(storeOptions)
-  const ensureResults = useEnsureClientDocumentsSuspense(store, [
+  useEnsureClientDocumentsSuspense(store, [
     {
       table: tables.threadListUi,
       id: documentId,
@@ -24,10 +24,10 @@ function UseEnsureClientDocumentsSuspensePage() {
   ])
 
   return (
-    <DemoFrame title="useEnsureClientDocumentsSuspense" ensureResult={ensureResults}>
-      <div className="card">
+    <DemoFrame title="useEnsureClientDocumentsSuspense">
+      <section className="pattern-note">
         <p>The shared example-local hook suspends before the child thread list reads the client document.</p>
-      </div>
+      </section>
       <ThreadList store={store} documentId={documentId} mailboxId="inbox" />
     </DemoFrame>
   )

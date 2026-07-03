@@ -3,7 +3,6 @@ import { queryDb, Schema } from '@livestore/livestore'
 import type { ReactApi } from '@livestore/react'
 import React from 'react'
 
-import type { EnsureClientDocumentResult } from '../ensure-client-document.ts'
 import { schema, tables } from '../schema.ts'
 
 export type DemoStore = Store<typeof schema> & ReactApi
@@ -71,27 +70,17 @@ export const ThreadList = ({ store, documentId, mailboxId }: { store: DemoStore;
   )
 }
 
-export const RenderCounter = ({ label }: { label: string }) => {
-  const countRef = React.useRef(0)
-  countRef.current += 1
-  return <span className="badge">{label} renders: {countRef.current}</span>
-}
-
 export const DemoFrame = ({
   title,
   children,
-  ensureResult,
 }: {
   title: string
   children: React.ReactNode
-  ensureResult?: EnsureClientDocumentResult | readonly EnsureClientDocumentResult[] | undefined
 }) => (
   <div>
-    <div className="card">
+    <header className="page-header">
       <h1>{title}</h1>
-      <RenderCounter label="route" />
-      {ensureResult !== undefined ? <pre>{JSON.stringify(ensureResult, null, 2)}</pre> : null}
-    </div>
+    </header>
     {children}
   </div>
 )

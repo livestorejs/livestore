@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import React from 'react'
 
 import { DemoFrame, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
-import { ensureClientDocuments, type EnsureClientDocumentResult } from '../../ensure-client-document.ts'
+import { ensureClientDocuments } from '../../ensure-client-document.ts'
 import { tables } from '../../schema.ts'
 
 export const Route = createFileRoute('/client-only/component-ensure-if-ready/$mailboxId')({
@@ -15,18 +15,18 @@ function ComponentEnsureIfReadyPage() {
   const { mailboxId } = Route.useParams()
   const store = useStore(storeOptions)
   const documentId = `component-if-ready:${mailboxId}`
-  const ensureResult = useEnsureThreadListUiDocument({ store, mailboxId, documentId })
+  const isDocumentReady = useEnsureThreadListUiDocument({ store, mailboxId, documentId })
 
-  if (ensureResult === undefined) return null
+  if (isDocumentReady === false) return null
 
   return (
-    <DemoFrame title="Component ensure with readiness guard" ensureResult={ensureResult}>
-      <div className="card">
+    <DemoFrame title="Component ensure with readiness guard">
+      <section className="pattern-note">
         <p>
           The component returns <code>null</code> until the hook has ensured the client document, then falls through to
           the thread list.
         </p>
-      </div>
+      </section>
       <ThreadList store={store} documentId={documentId} mailboxId={mailboxId} />
     </DemoFrame>
   )
@@ -40,13 +40,13 @@ function useEnsureThreadListUiDocument({
   readonly store: DemoStore
   readonly mailboxId: string
   readonly documentId: string
-}): EnsureClientDocumentResult | undefined {
-  const [ensureResult, setEnsureResult] = React.useState<EnsureClientDocumentResult>()
+}): boolean {
+  const [isReady, setIsReady] = React.useState(false)
   const [ensureError, setEnsureError] = React.useState<unknown>()
 
   React.useEffect(() => {
     let cancelled = false
-    setEnsureResult(undefined)
+    setIsReady(false)
     setEnsureError(undefined)
 
     ensureClientDocuments(store, [
@@ -75,7 +75,7 @@ function useEnsureThreadListUiDocument({
           return
         }
 
-        setEnsureResult(result)
+        setIsReady(true)
       },
       (error: unknown) => {
         if (cancelled === false) setEnsureError(error)
@@ -88,5 +88,5 @@ function useEnsureThreadListUiDocument({
   }, [documentId, mailboxId, store])
 
   if (ensureError !== undefined) throw ensureError
-  return ensureResult
+  return isReady
 }

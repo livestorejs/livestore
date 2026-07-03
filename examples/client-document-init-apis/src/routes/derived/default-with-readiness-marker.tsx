@@ -92,7 +92,7 @@ function DerivedDefaultPage() {
   if (derivedEnsureResult.sourceReady === false) {
     return (
       <DemoFrame title="Derived default waits for sourceReady">
-        <div className="card">
+        <section className="pattern-note">
           <p>
             The source mailbox is not ready yet, so <code>ensureDerivedClientDocumentsExist</code> does not create the
             client document. This avoids persisting a guessed default from incomplete synced data.
@@ -101,20 +101,20 @@ function DerivedDefaultPage() {
             Simulate source data becoming ready
           </button>
           <pre>{JSON.stringify({ sourceIsReady, sourceReadyRecord, sourceThreads }, null, 2)}</pre>
-        </div>
+        </section>
       </DemoFrame>
     )
   }
 
   return (
-    <DemoFrame title="Derived default waits for sourceReady" ensureResult={derivedEnsureResult.results}>
-      <div className="card">
+    <DemoFrame title="Derived default waits for sourceReady">
+      <section className="pattern-note">
         <p>
           The <code>sourceReady</code> record exists, so <code>ensureDerivedClientDocumentsExist</code> delegates to
           <code> ensureClientDocuments</code> and derives the default from local source rows.
         </p>
         <pre>{JSON.stringify(sourceReadyRecord, null, 2)}</pre>
-      </div>
+      </section>
       <ThreadList store={store} documentId={documentId} mailboxId={mailboxId} />
     </DemoFrame>
   )

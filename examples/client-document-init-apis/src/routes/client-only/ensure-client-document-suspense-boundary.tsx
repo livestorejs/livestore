@@ -30,9 +30,9 @@ function EnsureClientDocumentSuspenseBoundaryPage() {
       ]}
     >
       <DemoFrame title="<EnsureClientDocumentSuspenseBoundary>">
-        <div className="card">
+        <section className="pattern-note">
           <p>Children do not render until the Suspense boundary has ensured the client document.</p>
-        </div>
+        </section>
         <ThreadList store={store} documentId={documentId} mailboxId="inbox" />
       </DemoFrame>
     </EnsureClientDocumentSuspenseBoundary>

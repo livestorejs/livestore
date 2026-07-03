@@ -6,15 +6,19 @@ export const Route = createFileRoute('/')({
 
 function IndexRoute() {
   return (
-    <div className="card">
-      <h1>Explicit client-document initialization APIs</h1>
-      <p>
-        This app compares boot, Suspense boundary, Suspense hook, route loader, component guard, and
-        derived-readiness patterns.
-      </p>
-      <p>
-        Start with <Link to="/client-only/boot-ensure">boot ensure</Link> or open the sections from the sidebar.
-      </p>
+    <div>
+      <header className="page-header">
+        <h1>Explicit client-document initialization APIs</h1>
+      </header>
+      <section className="pattern-note">
+        <p>
+          This app compares boot, Suspense boundary, Suspense hook, route loader, component guard, and
+          derived-readiness patterns.
+        </p>
+        <p>
+          Start with <Link to="/client-only/boot-ensure">boot ensure</Link> or open the sections from the sidebar.
+        </p>
+      </section>
     </div>
   )
 }

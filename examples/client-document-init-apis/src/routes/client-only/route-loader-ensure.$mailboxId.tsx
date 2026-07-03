@@ -9,12 +9,12 @@ export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxI
   pendingComponent: () => <div className="card">Ensuring mailbox UI document…</div>,
   loader: async ({ context, params, preload }) => {
     // Avoid committing initialization events during TanStack Router link preloads.
-    if (preload) return { ensureResult: undefined }
+    if (preload) return {}
 
     const store = await Promise.resolve(context.storeRegistry.getOrLoadPromise(context.storeOptions))
     const documentId = `loader:${params.mailboxId}`
 
-    const [ensureResult] = await ensureClientDocuments(store, [
+    await ensureClientDocuments(store, [
       {
         table: tables.threadListUi,
         id: documentId,
@@ -34,7 +34,7 @@ export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxI
       },
     ])
 
-    return { ensureResult, documentId }
+    return { documentId }
   },
   component: RouteLoaderEnsurePage,
 })
@@ -42,14 +42,14 @@ export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxI
 function RouteLoaderEnsurePage() {
   const { storeOptions } = Route.useRouteContext()
   const { mailboxId } = Route.useParams()
-  const { ensureResult, documentId = `loader:${mailboxId}` } = Route.useLoaderData()
+  const { documentId = `loader:${mailboxId}` } = Route.useLoaderData()
   const store = useStore(storeOptions)
 
   return (
-    <DemoFrame title="TanStack Router loader ensure" ensureResult={ensureResult}>
-      <div className="card">
+    <DemoFrame title="TanStack Router loader ensure">
+      <section className="pattern-note">
         <p>The route loader awaited the example-local <code>ensureClientDocuments(store, specs)</code> before this component rendered.</p>
-      </div>
+      </section>
       <ThreadList store={store} documentId={documentId} mailboxId={mailboxId} />
     </DemoFrame>
   )

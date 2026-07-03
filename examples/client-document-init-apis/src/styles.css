@@ -52,6 +52,30 @@ main {
   padding: 28px;
 }
 
+.page-header {
+  margin: 0 0 18px;
+}
+
+.page-header h1 {
+  font-size: 32px;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.pattern-note {
+  color: #334155;
+  margin: 0 0 18px;
+  max-width: 760px;
+}
+
+.pattern-note p {
+  margin: 0 0 10px;
+}
+
+.pattern-note p:last-child {
+  margin-bottom: 0;
+}
+
 .card {
   background: white;
   border: 1px solid #d8dee9;
