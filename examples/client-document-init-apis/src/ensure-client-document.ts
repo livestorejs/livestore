@@ -34,6 +34,14 @@ export interface EnsureClientDocumentSpec<TTable extends State.SQLite.ClientDocu
   readonly label?: string
 }
 
+/** Client-document initialization spec for APIs that deliberately do not support async defaults. */
+export type EnsureClientDocumentSyncSpec<TTable extends State.SQLite.ClientDocumentTableDef.Any> = Omit<
+  EnsureClientDocumentSpec<TTable>,
+  'default'
+> & {
+  readonly default?: TTable['Value'] | ((ctx: EnsureClientDocumentDefaultContext<TTable>) => TTable['Value'])
+}
+
 /** Context passed to a function default while ensuring a missing client document. */
 export interface EnsureClientDocumentDefaultContext<TTable extends State.SQLite.ClientDocumentTableDef.Any> {
   readonly store: Store<any, any>
@@ -76,6 +84,21 @@ export const ensureClientDocuments = async (
   specs: readonly EnsureClientDocumentSpec<any>[],
 ): Promise<readonly EnsureClientDocumentResult[]> => {
   return ensureClientDocumentsSyncOrPromise(store, specs)
+}
+
+/** Ensures client documents whose defaults are known to be synchronous. */
+export const ensureClientDocumentsSync = (
+  store: Store<any, any>,
+  specs: readonly EnsureClientDocumentSyncSpec<any>[],
+): readonly EnsureClientDocumentResult[] => {
+  return withTraceSpan(
+    'client_document.ensure.batch',
+    { 'client_document.ensure.count': specs.length },
+    (batchSpan) => {
+      const results = specs.map((spec) => ensureClientDocumentSync(store, spec))
+      return finishEnsureBatch(batchSpan, results)
+    },
+  )
 }
 
 /**
@@ -177,6 +200,41 @@ const finishEnsureBatch = (
   return results
 }
 
+const ensureClientDocumentSync = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
+  store: Store<any, any>,
+  spec: EnsureClientDocumentSyncSpec<TTable>,
+): EnsureClientDocumentResult<TTable['Value']> => {
+  return withTraceSpan(
+    'client_document.ensure',
+    {
+      'client_document.table': spec.table.sqliteDef.name,
+      'client_document.id.requested': String(spec.id ?? '<default-id>'),
+      'client_document.label': spec.label,
+      'client_document.default.kind': typeof spec.default === 'function' ? 'function' : 'value',
+    },
+    (span) => {
+      const tableName = spec.table.sqliteDef.name
+
+      if (State.SQLite.tableIsClientDocumentTable(spec.table) === false) {
+        throw new Error(`Cannot ensure non-client-document table "${tableName}"`)
+      }
+
+      const id = resolveClientDocumentId(store, spec.table, spec.id)
+      span.setAttribute('client_document.id', id)
+      const existingRow = selectClientDocumentRow(store, spec.table, id, activeOtelContext())
+
+      if (existingRow !== undefined) {
+        span.setAttribute('client_document.exists_before_ensure', true)
+        span.setAttribute('client_document.created', false)
+        return { tableName, id, created: false, value: existingRow.value }
+      }
+
+      span.setAttribute('client_document.exists_before_ensure', false)
+      return createMissingClientDocument(store, spec, id, resolveDefaultValueSync(store, spec, id), span)
+    },
+  )
+}
+
 const ensureClientDocumentSyncOrPromise = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
   store: Store<any, any>,
   spec: EnsureClientDocumentSpec<TTable>,
@@ -266,6 +324,19 @@ const resolveClientDocumentId = (
   }
 
   return idOrDefault === SessionIdSymbol ? store.sessionId : idOrDefault
+}
+
+const resolveDefaultValueSync = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
+  store: Store<any, any>,
+  spec: EnsureClientDocumentSyncSpec<TTable>,
+  id: string,
+): TTable['Value'] => {
+  if (typeof spec.default === 'function') {
+    const defaultFn = spec.default as (ctx: EnsureClientDocumentDefaultContext<TTable>) => TTable['Value']
+    return defaultFn({ store, table: spec.table, id })
+  }
+
+  return spec.default ?? spec.table.default.value
 }
 
 const resolveDefaultValueSyncOrPromise = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
