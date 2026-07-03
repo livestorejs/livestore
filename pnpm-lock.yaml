@@ -478,6 +478,55 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
 
+  examples/client-document-init-apis:
+    dependencies:
+      '@livestore/adapter-web':
+        specifier: 0.4.0
+        version: link:../../packages/@livestore/adapter-web
+      '@livestore/livestore':
+        specifier: 0.4.0
+        version: link:../../packages/@livestore/livestore
+      '@livestore/peer-deps':
+        specifier: 0.4.0
+        version: link:../../packages/@livestore/peer-deps
+      '@livestore/react':
+        specifier: 0.4.0
+        version: link:../../packages/@livestore/react
+      '@livestore/wa-sqlite':
+        specifier: 0.4.0
+        version: link:../../packages/@livestore/wa-sqlite
+      '@tanstack/react-router':
+        specifier: 1.145.7
+        version: 1.145.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      react:
+        specifier: 19.2.3
+        version: 19.2.3
+      react-dom:
+        specifier: 19.2.3
+        version: 19.2.3(react@19.2.3)
+    devDependencies:
+      '@livestore/devtools-vite':
+        specifier: 0.4.0-dev.25
+        version: 0.4.0-dev.25(ae875652ead85782b76ebea0f703f433)
+      '@tanstack/router-plugin':
+        specifier: 1.145.10
+        version: 1.145.10(@tanstack/react-router@1.145.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(vite@7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))(webpack@5.107.1(lightningcss@1.32.0))
+      '@types/react':
+        specifier: 19.2.7
+        version: 19.2.7
+      '@types/react-dom':
+        specifier: 19.2.3
+        version: 19.2.3(@types/react@19.2.7)
+      '@vitejs/plugin-react':
+        specifier: 5.1.2
+        version: 5.1.2(vite@7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vite:
+        specifier: 7.3.1
+        version: 7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
+
   examples/cloudflare-todomvc:
     dependencies:
       '@cloudflare/workers-types':
@@ -14467,6 +14516,7 @@ packages:
   tsconfck@3.1.6:
     resolution: {integrity: sha512-ks6Vjr/jEw0P1gmOVwutM3B7fWxoWBL2KRDb1JfqGVawBmO5UsvmWOQFGHBPl5yxYz4eERr19E6L7NMv+Fej4w==}
     engines: {node: ^18 || >=20}
+    deprecated: unmaintained
     hasBin: true
     peerDependencies:
       typescript: ^5.0.0
