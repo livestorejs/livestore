@@ -20,12 +20,7 @@ function ComponentEnsureIfReadyPage() {
   if (ensureResult === undefined) return null
 
   return (
-    <DemoFrame
-      store={store}
-      title="Component ensure with readiness guard"
-      documentId={documentId}
-      ensureResult={ensureResult}
-    >
+    <DemoFrame title="Component ensure with readiness guard" ensureResult={ensureResult}>
       <div className="card">
         <p>
           The component returns <code>null</code> until the hook has ensured the client document, then falls through to

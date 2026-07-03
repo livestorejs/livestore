@@ -24,12 +24,7 @@ function UseEnsureClientDocumentsSuspensePage() {
   ])
 
   return (
-    <DemoFrame
-      store={store}
-      title="useEnsureClientDocumentsSuspense"
-      documentId={documentId}
-      ensureResult={ensureResults}
-    >
+    <DemoFrame title="useEnsureClientDocumentsSuspense" ensureResult={ensureResults}>
       <div className="card">
         <p>The shared example-local hook suspends before the child thread list reads the client document.</p>
       </div>

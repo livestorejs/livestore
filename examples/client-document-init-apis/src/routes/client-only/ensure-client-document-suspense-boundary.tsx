@@ -29,7 +29,7 @@ function EnsureClientDocumentSuspenseBoundaryPage() {
         },
       ]}
     >
-      <DemoFrame store={store} title="<EnsureClientDocumentSuspenseBoundary>" documentId={documentId}>
+      <DemoFrame title="<EnsureClientDocumentSuspenseBoundary>">
         <div className="card">
           <p>Children do not render until the Suspense boundary has ensured the client document.</p>
         </div>

@@ -46,7 +46,7 @@ function RouteLoaderEnsurePage() {
   const store = useStore(storeOptions)
 
   return (
-    <DemoFrame store={store} title="TanStack Router loader ensure" documentId={documentId} ensureResult={ensureResult}>
+    <DemoFrame title="TanStack Router loader ensure" ensureResult={ensureResult}>
       <div className="card">
         <p>The route loader awaited the example-local <code>ensureClientDocuments(store, specs)</code> before this component rendered.</p>
       </div>

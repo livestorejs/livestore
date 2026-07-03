@@ -14,7 +14,7 @@ function BootEnsurePage() {
   const store = useStore(storeOptions)
 
   return (
-    <DemoFrame store={store} title="Boot ensure" documentId={documentId}>
+    <DemoFrame title="Boot ensure">
       <div className="card">
         <p>
           The store boot hook in <code>src/store.ts</code> ensures <code>boot:inbox</code> before this route renders.

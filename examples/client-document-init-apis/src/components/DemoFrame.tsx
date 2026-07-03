@@ -5,8 +5,6 @@ import React from 'react'
 
 import type { EnsureClientDocumentResult } from '../ensure-client-document.ts'
 import { schema, tables } from '../schema.ts'
-import { ClientDocumentPanel } from './ClientDocumentPanel.tsx'
-import { EventLogPanel } from './EventLogPanel.tsx'
 
 export type DemoStore = Store<typeof schema> & ReactApi
 
@@ -80,15 +78,11 @@ export const RenderCounter = ({ label }: { label: string }) => {
 }
 
 export const DemoFrame = ({
-  store,
   title,
-  documentId,
   children,
   ensureResult,
 }: {
-  store: DemoStore
   title: string
-  documentId: string
   children: React.ReactNode
   ensureResult?: EnsureClientDocumentResult | readonly EnsureClientDocumentResult[] | undefined
 }) => (
@@ -98,12 +92,6 @@ export const DemoFrame = ({
       <RenderCounter label="route" />
       {ensureResult !== undefined ? <pre>{JSON.stringify(ensureResult, null, 2)}</pre> : null}
     </div>
-    <div className="grid">
-      <div>{children}</div>
-      <aside>
-        <ClientDocumentPanel store={store} documentId={documentId} />
-        <EventLogPanel store={store} />
-      </aside>
-    </div>
+    {children}
   </div>
 )

@@ -91,7 +91,7 @@ function DerivedDefaultPage() {
 
   if (derivedEnsureResult.sourceReady === false) {
     return (
-      <DemoFrame store={store} title="Derived default waits for sourceReady" documentId={documentId}>
+      <DemoFrame title="Derived default waits for sourceReady">
         <div className="card">
           <p>
             The source mailbox is not ready yet, so <code>ensureDerivedClientDocumentsExist</code> does not create the
@@ -107,12 +107,7 @@ function DerivedDefaultPage() {
   }
 
   return (
-    <DemoFrame
-      store={store}
-      title="Derived default waits for sourceReady"
-      documentId={documentId}
-      ensureResult={derivedEnsureResult.results}
-    >
+    <DemoFrame title="Derived default waits for sourceReady" ensureResult={derivedEnsureResult.results}>
       <div className="card">
         <p>
           The <code>sourceReady</code> record exists, so <code>ensureDerivedClientDocumentsExist</code> delegates to

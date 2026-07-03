@@ -61,12 +61,6 @@ main {
   padding: 18px;
 }
 
-.grid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: minmax(0, 1fr) 360px;
-}
-
 .thread-list {
   border-collapse: collapse;
   width: 100%;
