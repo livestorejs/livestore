@@ -1,17 +1,17 @@
 import type { Store } from '@livestore/livestore'
 
+import { withTraceSpan } from '../../otel.ts'
 import {
   ensureClientDocumentSync,
-  type EnsureClientDocumentResult,
+  type EnsureClientDocumentSyncResult,
   type EnsureClientDocumentSyncSpec,
-} from './ensure-client-document.ts'
-import { withTraceSpan } from './otel.ts'
+} from './ensure-client-document-sync.ts'
 
 /** Example-local sync hook for ensuring one client document before descendants read it. */
-export function useEnsureClientDocument(
+export function useEnsureClientDocumentSync(
   store: Store<any, any>,
   document: EnsureClientDocumentSyncSpec<any>,
-): EnsureClientDocumentResult {
+): EnsureClientDocumentSyncResult {
   return withTraceSpan(
     'client_document.sync_hook.ensure',
     {

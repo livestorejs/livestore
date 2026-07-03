@@ -1,21 +1,21 @@
 import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 
+import { useEnsureClientDocumentSync } from '../../client-document/sync/use-ensure-client-document-sync.ts'
 import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 import { tables } from '../../schema.ts'
-import { useEnsureClientDocument } from '../../use-ensure-client-document.ts'
 
 const documentId = 'sync-hook:inbox'
 
-export const Route = createFileRoute('/client-only/use-ensure-client-document')({
-  component: UseEnsureClientDocumentPage,
+export const Route = createFileRoute('/client-only/use-ensure-client-document-sync')({
+  component: UseEnsureClientDocumentSyncPage,
 })
 
-function UseEnsureClientDocumentPage() {
+function UseEnsureClientDocumentSyncPage() {
   const { storeOptions } = Route.useRouteContext()
   const store = useStore(storeOptions)
 
-  useEnsureClientDocument(store, {
+  useEnsureClientDocumentSync(store, {
     table: tables.threadListUi,
     id: documentId,
     default: { selectedThreadId: null, sortBy: 'receivedAt', sortDirection: 'desc' },
@@ -23,7 +23,7 @@ function UseEnsureClientDocumentPage() {
   })
 
   return (
-    <DemoFrame title="useEnsureClientDocument">
+    <DemoFrame title="useEnsureClientDocumentSync">
       <section className="pattern-note">
         <p>The sync hook ensures the client document during render, then descendants can read it immediately.</p>
       </section>

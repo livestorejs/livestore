@@ -1,12 +1,11 @@
-import type { Store } from '@livestore/livestore'
-import React from 'react'
+import { State, type Store } from '@livestore/livestore'
 
+import { withTraceSpan } from '../../otel.ts'
 import {
-  ensureDerivedClientDocumentExistsSyncOrPromise,
-  type EnsureClientDocumentSpec,
-  type EnsureDerivedClientDocumentExistsResult,
-} from './ensure-client-document.ts'
-import { withTraceSpan } from './otel.ts'
+  ensureDerivedClientDocumentAsync,
+  type EnsureDerivedClientDocumentAsyncOptions,
+  type EnsureDerivedClientDocumentAsyncResult,
+} from './ensure-derived-client-document-async.ts'
 
 type Resource<T> =
   | { readonly status: 'pending'; readonly promise: PromiseLike<T> }
@@ -15,11 +14,11 @@ type Resource<T> =
 
 const suspenseCache = new WeakMap<Store<any, any>, Map<string, Resource<unknown>>>()
 
-/** Example-local Suspense hook for one derived default gated by app-level source readiness. */
-export function useEnsureDerivedClientDocumentSuspense(
+/** Example-local Suspense hook for one async derived default gated by app-level source readiness. */
+export function useEnsureDerivedClientDocumentAsyncSuspense<TTable extends State.SQLite.ClientDocumentTableDef.Any>(
   store: Store<any, any>,
-  options: { readonly sourceReady: boolean; readonly document: EnsureClientDocumentSpec<any> },
-): EnsureDerivedClientDocumentExistsResult {
+  options: EnsureDerivedClientDocumentAsyncOptions<TTable>,
+): EnsureDerivedClientDocumentAsyncResult<TTable['Value']> {
   // Don't suspend before source data is ready. In this example the source key is
   // created by component state; suspending before the first commit would discard
   // that state and generate a new key on every retry.
@@ -28,12 +27,10 @@ export function useEnsureDerivedClientDocumentSuspense(
   }
 
   const key = `derived:${getDocumentKey(options.document)}`
-  const resource = getSuspenseResource(store, key, () => ensureDerivedClientDocumentExistsSyncOrPromise(store, options))
-
-  return readResource(resource)
+  return readResource(getSuspenseResource(store, key, () => ensureDerivedClientDocumentAsync(store, options)))
 }
 
-function getSuspenseResource<T>(store: Store<any, any>, key: string, makeValue: () => T | PromiseLike<T>): Resource<T> {
+function getSuspenseResource<T>(store: Store<any, any>, key: string, makePromise: () => PromiseLike<T>): Resource<T> {
   let storeCache = suspenseCache.get(store)
   if (storeCache === undefined) {
     storeCache = new Map()
@@ -54,22 +51,14 @@ function getSuspenseResource<T>(store: Store<any, any>, key: string, makeValue: 
     return cached
   }
 
-  const valueOrPromise = withTraceSpan(
-    'client_document.suspense.ensure',
+  const promise = withTraceSpan(
+    'client_document.suspense.ensure.async',
     { 'client_document.suspense.key': key, 'client_document.suspense.cache_hit': false },
     (span) => {
-      const value = makeValue()
-      span.setAttribute('client_document.suspense.result', isPromiseLike(value) ? 'promise' : 'sync')
-      return value
+      span.setAttribute('client_document.suspense.result', 'promise')
+      return makePromise()
     },
   )
-  if (isPromiseLike(valueOrPromise) === false) {
-    const resource: Resource<T> = { status: 'fulfilled', value: valueOrPromise as T }
-    storeCache.set(key, resource as Resource<unknown>)
-    return resource
-  }
-
-  const promise = valueOrPromise as PromiseLike<T>
   const resource: Resource<T> = { status: 'pending', promise }
   storeCache.set(key, resource as Resource<unknown>)
   promise.then(
@@ -91,7 +80,9 @@ function readResource<T>(resource: Resource<T>): T {
   }
 }
 
-function getDocumentKey(document: EnsureClientDocumentSpec<any>): string {
+function getDocumentKey<TTable extends State.SQLite.ClientDocumentTableDef.Any>(
+  document: EnsureDerivedClientDocumentAsyncOptions<TTable>['document'],
+): string {
   const defaultKey = typeof document.default === 'function' ? 'fn' : JSON.stringify(document.default)
   return [
     document.table.sqliteDef.name,
@@ -99,8 +90,4 @@ function getDocumentKey(document: EnsureClientDocumentSpec<any>): string {
     document.label ?? '',
     defaultKey,
   ].join(':')
-}
-
-function isPromiseLike<T>(value: T): value is T & PromiseLike<Awaited<T>> {
-  return typeof value === 'object' && value !== null && 'then' in value
 }

@@ -4,7 +4,7 @@ import { type RegistryStoreOptions, type Store, StoreRegistry, storeOptions } fr
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 import LiveStoreWorker from './livestore.worker.ts?worker'
-import { ensureClientDocument } from './ensure-client-document.ts'
+import { ensureClientDocumentAsync } from './client-document/async/ensure-client-document-async.ts'
 import { appSessionContext, clientDocumentTracer, withTraceSpan } from './otel.ts'
 import { events, schema, tables } from './schema.ts'
 
@@ -58,7 +58,7 @@ export const clientDocumentInitStoreOptions = storeOptions({
   boot: async (store) => {
     await withTraceSpan('app.store.boot', undefined, async () => {
       await seedStore(store)
-      await ensureClientDocument(store, {
+      await ensureClientDocumentAsync(store, {
         table: tables.threadListUi,
         id: 'boot:inbox',
         default: { selectedThreadId: null, sortBy: 'receivedAt', sortDirection: 'desc' },

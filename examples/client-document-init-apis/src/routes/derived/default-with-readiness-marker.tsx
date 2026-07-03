@@ -3,9 +3,11 @@ import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import React from 'react'
 
-import { DemoFrame, ExampleSuspenseBoundary, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
+import {
+  useEnsureDerivedClientDocumentAsyncSuspense,
+} from '../../client-document/async/use-ensure-derived-client-document-async-suspense.ts'
+import { DemoFrame, ExampleSuspenseBoundary, ThreadList } from '../../components/DemoFrame.tsx'
 import { events, tables } from '../../schema.ts'
-import { useEnsureDerivedClientDocumentSuspense } from '../../use-ensure-derived-client-document-suspense.ts'
 
 /**
  * App-level record that means the source data for `key` is now safe to read.
@@ -63,13 +65,13 @@ function DerivedDefaultContent() {
   const sourceReadyRecord: SourceReadyRecord | undefined = sourceReadyRecords[0]
   const sourceIsReady = sourceReadyRecord !== undefined
   const sourceThreads = store.useQuery(mailboxThreads$(mailboxId))
-  const derivedEnsureResult = useEnsureDerivedClientDocumentSuspense(store, {
+  const derivedEnsureResult = useEnsureDerivedClientDocumentAsyncSuspense(store, {
     sourceReady: sourceIsReady,
     document: {
       table: tables.threadListUi,
       id: documentId,
-      default: (ctx: { store: DemoStore }) => {
-        const rows = ctx.store.query({
+      default: ({ store }) => {
+        const rows = store.query({
           query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
           bindValues: [mailboxId],
         }) as readonly { id: string }[]
@@ -100,7 +102,7 @@ function DerivedDefaultContent() {
       <DemoFrame title="Derived default waits for sourceReady">
         <section className="pattern-note">
           <p>
-            The source mailbox is not ready yet, so <code>ensureDerivedClientDocumentExists</code> does not create the
+            The source mailbox is not ready yet, so <code>ensureDerivedClientDocumentAsync</code> does not create the
             client document. This avoids persisting a guessed default from incomplete synced data.
           </p>
           <button type="button" onClick={simulateSourceReady}>
@@ -116,8 +118,8 @@ function DerivedDefaultContent() {
     <DemoFrame title="Derived default waits for sourceReady">
       <section className="pattern-note">
         <p>
-          The <code>sourceReady</code> record exists, so <code>ensureDerivedClientDocumentExists</code> delegates to
-          <code> ensureClientDocument</code> and derives the default from local source rows.
+          The <code>sourceReady</code> record exists, so <code>ensureDerivedClientDocumentAsync</code> delegates to
+          <code> ensureClientDocumentAsync</code> and derives the default from local source rows.
         </p>
         <pre>{JSON.stringify(sourceReadyRecord, null, 2)}</pre>
       </section>

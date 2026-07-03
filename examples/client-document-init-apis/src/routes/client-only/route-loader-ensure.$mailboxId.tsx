@@ -1,8 +1,8 @@
 import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 
-import { DemoFrame, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
-import { ensureClientDocument } from '../../ensure-client-document.ts'
+import { ensureClientDocumentAsync } from '../../client-document/async/ensure-client-document-async.ts'
+import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 import { withTraceSpan } from '../../otel.ts'
 import { tables } from '../../schema.ts'
 
@@ -24,10 +24,10 @@ export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxI
         const documentId = `loader:${params.mailboxId}`
         span.setAttribute('client_document.id', documentId)
 
-        await ensureClientDocument(store, {
+        await ensureClientDocumentAsync(store, {
           table: tables.threadListUi,
           id: documentId,
-          default: ({ store }: { readonly store: DemoStore }) => {
+          default: ({ store }) => {
             const rows = store.query({
               query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
               bindValues: [params.mailboxId],
@@ -63,7 +63,7 @@ function RouteLoaderEnsureContent() {
     <DemoFrame title="TanStack Router loader ensure">
       <section className="pattern-note">
         <p>
-          The route loader awaited the example-local <code>ensureClientDocument(store, spec)</code> before this
+          The route loader awaited the example-local <code>ensureClientDocumentAsync(store, spec)</code> before this
           component rendered.
         </p>
       </section>
