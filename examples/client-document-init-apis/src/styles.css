@@ -76,6 +76,11 @@ main {
   margin-bottom: 0;
 }
 
+.loading-note {
+  color: #475569;
+  margin: 0 0 18px;
+}
+
 .card {
   background: white;
   border: 1px solid #d8dee9;

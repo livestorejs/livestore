@@ -2,7 +2,7 @@ import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import React from 'react'
 
-import { DemoFrame, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
+import { DemoFrame, ExampleSuspenseBoundary, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
 import type { EnsureClientDocumentSpec } from '../../ensure-client-document.ts'
 import { tables } from '../../schema.ts'
 import { useEnsureClientDocumentsSuspense } from '../../use-ensure-client-documents-suspense.ts'
@@ -14,6 +14,14 @@ export const Route = createFileRoute('/client-only/ensure-client-document-suspen
 })
 
 function EnsureClientDocumentSuspenseBoundaryPage() {
+  return (
+    <ExampleSuspenseBoundary>
+      <EnsureClientDocumentSuspenseBoundaryContent />
+    </ExampleSuspenseBoundary>
+  )
+}
+
+function EnsureClientDocumentSuspenseBoundaryContent() {
   const { storeOptions } = Route.useRouteContext()
   const store = useStore(storeOptions)
 

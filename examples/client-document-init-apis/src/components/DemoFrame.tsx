@@ -1,11 +1,16 @@
+import React from 'react'
+
 import type { Store } from '@livestore/livestore'
 import { queryDb, Schema } from '@livestore/livestore'
 import type { ReactApi } from '@livestore/react'
-import React from 'react'
 
 import { schema, tables } from '../schema.ts'
 
 export type DemoStore = Store<typeof schema> & ReactApi
+
+export const ExampleSuspenseBoundary = ({ children }: { readonly children: React.ReactNode }) => (
+  <React.Suspense fallback={null}>{children}</React.Suspense>
+)
 
 export const firstThreadForMailbox$ = (mailboxId: string) =>
   queryDb(
@@ -27,7 +32,15 @@ const threadsForMailbox$ = (mailboxId: string, direction: 'asc' | 'desc') =>
     { deps: `${mailboxId}:${direction}`, label: `threads:${mailboxId}:${direction}` },
   )
 
-export const ThreadList = ({ store, documentId, mailboxId }: { store: DemoStore; documentId: string; mailboxId: string }) => {
+export const ThreadList = ({
+  store,
+  documentId,
+  mailboxId,
+}: {
+  store: DemoStore
+  documentId: string
+  mailboxId: string
+}) => {
   const [uiState, setUiState] = store.useClientDocument(tables.threadListUi, documentId)
   const threads = store.useQuery(threadsForMailbox$(mailboxId, uiState.sortDirection))
 
@@ -70,13 +83,7 @@ export const ThreadList = ({ store, documentId, mailboxId }: { store: DemoStore;
   )
 }
 
-export const DemoFrame = ({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) => (
+export const DemoFrame = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div>
     <header className="page-header">
       <h1>{title}</h1>

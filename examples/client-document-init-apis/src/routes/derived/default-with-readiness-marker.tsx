@@ -3,7 +3,7 @@ import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import React from 'react'
 
-import { DemoFrame, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
+import { DemoFrame, ExampleSuspenseBoundary, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
 import { events, tables } from '../../schema.ts'
 import { useEnsureDerivedClientDocumentsSuspense } from '../../use-ensure-client-documents-suspense.ts'
 
@@ -46,6 +46,14 @@ export const Route = createFileRoute('/derived/default-with-readiness-marker')({
 })
 
 function DerivedDefaultPage() {
+  return (
+    <ExampleSuspenseBoundary>
+      <DerivedDefaultContent />
+    </ExampleSuspenseBoundary>
+  )
+}
+
+function DerivedDefaultContent() {
   const { storeOptions } = Route.useRouteContext()
   const store = useStore(storeOptions)
   const [demoKey] = React.useState(() => `mailbox:delayed:${crypto.randomUUID()}`)

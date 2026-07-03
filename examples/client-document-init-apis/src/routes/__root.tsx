@@ -1,5 +1,4 @@
 import { StoreRegistryProvider } from '@livestore/react'
-import { Suspense } from 'react'
 import { createRootRouteWithContext, Link, Outlet } from '@tanstack/react-router'
 
 import type { ClientDocumentInitRouterContext } from '../router.tsx'
@@ -36,9 +35,7 @@ function RootRoute() {
           </p>
         </nav>
         <main>
-          <Suspense fallback={<div className="card">Preparing client documents…</div>}>
-            <Outlet />
-          </Suspense>
+          <Outlet />
         </main>
       </div>
     </StoreRegistryProvider>

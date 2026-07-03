@@ -2,7 +2,7 @@ import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import React from 'react'
 
-import { DemoFrame, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
+import { DemoFrame, ExampleSuspenseBoundary, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
 import { ensureClientDocuments } from '../../ensure-client-document.ts'
 import { tables } from '../../schema.ts'
 
@@ -11,6 +11,14 @@ export const Route = createFileRoute('/client-only/component-ensure-if-ready/$ma
 })
 
 function ComponentEnsureIfReadyPage() {
+  return (
+    <ExampleSuspenseBoundary>
+      <ComponentEnsureIfReadyContent />
+    </ExampleSuspenseBoundary>
+  )
+}
+
+function ComponentEnsureIfReadyContent() {
   const { storeOptions } = Route.useRouteContext()
   const { mailboxId } = Route.useParams()
   const store = useStore(storeOptions)

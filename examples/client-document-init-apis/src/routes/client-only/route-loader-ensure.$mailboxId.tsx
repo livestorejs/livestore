@@ -1,7 +1,7 @@
 import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 
-import { DemoFrame, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
+import { DemoFrame, ExampleSuspenseBoundary, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
 import { ensureClientDocuments } from '../../ensure-client-document.ts'
 import { tables } from '../../schema.ts'
 
@@ -40,6 +40,14 @@ export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxI
 })
 
 function RouteLoaderEnsurePage() {
+  return (
+    <ExampleSuspenseBoundary>
+      <RouteLoaderEnsureContent />
+    </ExampleSuspenseBoundary>
+  )
+}
+
+function RouteLoaderEnsureContent() {
   const { storeOptions } = Route.useRouteContext()
   const { mailboxId } = Route.useParams()
   const { documentId = `loader:${mailboxId}` } = Route.useLoaderData()
