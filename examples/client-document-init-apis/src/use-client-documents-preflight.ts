@@ -80,6 +80,6 @@ function readResource<T>(resource: Resource<T>): T {
 function getDocumentsKey(documents: readonly EnsureClientDocumentSpec<any>[]): string {
   return documents.map((document) => {
     const defaultKey = typeof document.default === 'function' ? 'fn' : JSON.stringify(document.default)
-    return `${document.table.sqliteDef.name}:${document.id ?? '<default-id>'}:${document.label ?? ''}:${defaultKey}`
+    return `${document.table.sqliteDef.name}:${String(document.id ?? '<default-id>')}:${document.label ?? ''}:${defaultKey}`
   }).join('|')
 }

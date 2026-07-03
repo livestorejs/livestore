@@ -73,12 +73,13 @@ export const ensureClientDocuments = async (
   const results: EnsureClientDocumentResult[] = []
 
   for (const spec of specs) {
+    const tableName = spec.table.sqliteDef.name
+
     if (State.SQLite.tableIsClientDocumentTable(spec.table) === false) {
-      throw new Error(`Cannot ensure non-client-document table "${spec.table.sqliteDef.name}"`)
+      throw new Error(`Cannot ensure non-client-document table "${tableName}"`)
     }
 
     const id = resolveClientDocumentId(store, spec.table, spec.id)
-    const tableName = spec.table.sqliteDef.name
     const existingRow = selectClientDocumentRow(store, spec.table, id)
 
     if (existingRow !== undefined) {

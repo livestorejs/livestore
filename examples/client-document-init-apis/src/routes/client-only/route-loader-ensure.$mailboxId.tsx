@@ -1,7 +1,7 @@
 import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 
-import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
+import { DemoFrame, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
 import { ensureClientDocuments } from '../../ensure-client-document.ts'
 import { tables } from '../../schema.ts'
 
@@ -18,7 +18,7 @@ export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxI
       {
         table: tables.threadListUi,
         id: documentId,
-        default: ({ store }) => {
+        default: ({ store }: { readonly store: DemoStore }) => {
           const rows = store.query({
             query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
             bindValues: [params.mailboxId],
