@@ -3,28 +3,33 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 import { tables } from '../../schema.ts'
-import { useClientDocumentsPreflight } from '../../use-client-documents-preflight.ts'
+import { useEnsureClientDocumentsSuspense } from '../../use-ensure-client-documents-suspense.ts'
 
-const documentId = 'hook-preflight:inbox'
+const documentId = 'suspense-hook:inbox'
 
-export const Route = createFileRoute('/client-only/use-client-documents-preflight')({
-  component: HookPreflightPage,
+export const Route = createFileRoute('/client-only/use-ensure-client-documents-suspense')({
+  component: UseEnsureClientDocumentsSuspensePage,
 })
 
-function HookPreflightPage() {
+function UseEnsureClientDocumentsSuspensePage() {
   const { storeOptions } = Route.useRouteContext()
   const store = useStore(storeOptions)
-  const ensureResults = useClientDocumentsPreflight(store, [
+  const ensureResults = useEnsureClientDocumentsSuspense(store, [
     {
       table: tables.threadListUi,
       id: documentId,
       default: { selectedThreadId: null, sortBy: 'receivedAt', sortDirection: 'desc' },
-      label: 'hook-preflight:thread-list-ui',
+      label: 'suspense-hook:thread-list-ui',
     },
   ])
 
   return (
-    <DemoFrame store={store} title="useClientDocumentsPreflight" documentId={documentId} ensureResult={ensureResults}>
+    <DemoFrame
+      store={store}
+      title="useEnsureClientDocumentsSuspense"
+      documentId={documentId}
+      ensureResult={ensureResults}
+    >
       <div className="card">
         <p>The shared example-local hook suspends before the child thread list reads the client document.</p>
       </div>

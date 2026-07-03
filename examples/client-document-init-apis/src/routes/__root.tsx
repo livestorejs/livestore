@@ -20,8 +20,8 @@ function RootRoute() {
 
           <h3>Client-only</h3>
           <Link to="/client-only/boot-ensure">Boot ensure</Link>
-          <Link to="/client-only/client-document-preflight">Component preflight</Link>
-          <Link to="/client-only/use-client-documents-preflight">Hook preflight</Link>
+          <Link to="/client-only/ensure-client-document-suspense-boundary">Suspense boundary</Link>
+          <Link to="/client-only/use-ensure-client-documents-suspense">Suspense hook</Link>
           <Link to="/client-only/route-loader-ensure/$mailboxId" params={{ mailboxId: 'inbox' }} preload={false}>
             Loader ensure
           </Link>

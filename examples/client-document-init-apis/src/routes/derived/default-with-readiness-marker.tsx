@@ -5,7 +5,7 @@ import React from 'react'
 
 import { DemoFrame, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
 import { events, tables } from '../../schema.ts'
-import { useDerivedClientDocumentsPreflight } from '../../use-client-documents-preflight.ts'
+import { useEnsureDerivedClientDocumentsSuspense } from '../../use-ensure-client-documents-suspense.ts'
 
 /**
  * App-level record that means the source data for `key` is now safe to read.
@@ -55,7 +55,7 @@ function DerivedDefaultPage() {
   const sourceReadyRecord: SourceReadyRecord | undefined = sourceReadyRecords[0]
   const sourceIsReady = sourceReadyRecord !== undefined
   const sourceThreads = store.useQuery(mailboxThreads$(mailboxId))
-  const derivedEnsureResult = useDerivedClientDocumentsPreflight(store, {
+  const derivedEnsureResult = useEnsureDerivedClientDocumentsSuspense(store, {
     sourceReady: sourceIsReady,
     documents: [
       {

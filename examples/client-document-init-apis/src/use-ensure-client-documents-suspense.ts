@@ -14,21 +14,21 @@ type Resource<T> =
   | { readonly status: 'fulfilled'; readonly value: T }
   | { readonly status: 'rejected'; readonly error: unknown }
 
-const preflightCache = new WeakMap<Store<any, any>, Map<string, Resource<unknown>>>()
+const suspenseCache = new WeakMap<Store<any, any>, Map<string, Resource<unknown>>>()
 
 /** Example-local Suspense hook for ensuring client documents before descendants render. */
-export function useClientDocumentsPreflight(
+export function useEnsureClientDocumentsSuspense(
   store: Store<any, any>,
   documents: readonly EnsureClientDocumentSpec<any>[],
 ): readonly EnsureClientDocumentResult[] {
   const key = React.useMemo(() => `static:${getDocumentsKey(documents)}`, [documents])
-  const resource = getPreflightResource(store, key, () => ensureClientDocuments(store, documents))
+  const resource = getSuspenseResource(store, key, () => ensureClientDocuments(store, documents))
 
   return readResource(resource)
 }
 
 /** Example-local Suspense hook for derived defaults gated by app-level source readiness. */
-export function useDerivedClientDocumentsPreflight(
+export function useEnsureDerivedClientDocumentsSuspense(
   store: Store<any, any>,
   options: { readonly sourceReady: boolean; readonly documents: readonly EnsureClientDocumentSpec<any>[] },
 ): EnsureDerivedClientDocumentsExistResult {
@@ -40,16 +40,16 @@ export function useDerivedClientDocumentsPreflight(
   }
 
   const key = `derived:${getDocumentsKey(options.documents)}`
-  const resource = getPreflightResource(store, key, () => ensureDerivedClientDocumentsExist(store, options))
+  const resource = getSuspenseResource(store, key, () => ensureDerivedClientDocumentsExist(store, options))
 
   return readResource(resource)
 }
 
-function getPreflightResource<T>(store: Store<any, any>, key: string, makePromise: () => Promise<T>): Resource<T> {
-  let storeCache = preflightCache.get(store)
+function getSuspenseResource<T>(store: Store<any, any>, key: string, makePromise: () => Promise<T>): Resource<T> {
+  let storeCache = suspenseCache.get(store)
   if (storeCache === undefined) {
     storeCache = new Map()
-    preflightCache.set(store, storeCache)
+    suspenseCache.set(store, storeCache)
   }
 
   const cached = storeCache.get(key) as Resource<T> | undefined

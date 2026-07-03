@@ -89,7 +89,7 @@ export const ensureClientDocuments = async (
 
     const defaultValue = await resolveDefaultValue(store, spec, id)
 
-    // If an async default yielded, another preflight could have created the row.
+    // If an async default yielded, another Suspense ensure could have created the row.
     const rowAfterDefault = selectClientDocumentRow(store, spec.table, id)
     if (rowAfterDefault !== undefined) {
       results.push({ tableName, id, created: false, value: rowAfterDefault.value })
