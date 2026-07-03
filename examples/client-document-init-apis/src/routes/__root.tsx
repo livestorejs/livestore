@@ -18,7 +18,7 @@ function RootRoute() {
           <Link to="/">Overview</Link>
 
           <h3>Client-only</h3>
-          <Link to="/client-only/boot-ensure">Boot ensure</Link>
+          <Link to="/client-only/suspense-store-boot">Suspense Store Boot</Link>
           <Link to="/client-only/ensure-client-document-suspense-boundary">Suspense boundary</Link>
           <Link to="/client-only/use-ensure-client-documents-suspense">Suspense hook</Link>
           <Link to="/client-only/route-loader-ensure/$mailboxId" params={{ mailboxId: 'inbox' }} preload={false}>

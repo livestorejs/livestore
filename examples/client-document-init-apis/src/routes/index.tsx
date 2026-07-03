@@ -16,7 +16,8 @@ function IndexRoute() {
           derived-readiness patterns.
         </p>
         <p>
-          Start with <Link to="/client-only/boot-ensure">boot ensure</Link> or open the sections from the sidebar.
+          Start with <Link to="/client-only/suspense-store-boot">Suspense Store Boot</Link> or open the
+          sections from the sidebar.
         </p>
       </section>
     </div>

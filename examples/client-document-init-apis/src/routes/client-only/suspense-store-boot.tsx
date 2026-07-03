@@ -5,7 +5,7 @@ import { DemoFrame, ExampleSuspenseBoundary, ThreadList } from '../../components
 
 const documentId = 'boot:inbox'
 
-export const Route = createFileRoute('/client-only/boot-ensure')({
+export const Route = createFileRoute('/client-only/suspense-store-boot')({
   component: BootEnsurePage,
 })
 
@@ -22,7 +22,7 @@ function BootEnsureContent() {
   const store = useStore(storeOptions)
 
   return (
-    <DemoFrame title="Boot ensure">
+    <DemoFrame title="Suspense Store Boot">
       <section className="pattern-note">
         <p>
           The store boot hook in <code>src/store.ts</code> ensures <code>boot:inbox</code> during async store loading.
