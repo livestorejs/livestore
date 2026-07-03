@@ -15,6 +15,7 @@ import { Route as ClientOnlyUseEnsureClientDocumentsSuspenseRouteImport } from '
 import { Route as ClientOnlyEnsureClientDocumentSuspenseBoundaryRouteImport } from './routes/client-only/ensure-client-document-suspense-boundary'
 import { Route as ClientOnlyBootEnsureRouteImport } from './routes/client-only/boot-ensure'
 import { Route as ClientOnlyRouteLoaderEnsureMailboxIdRouteImport } from './routes/client-only/route-loader-ensure.$mailboxId'
+import { Route as ClientOnlyComponentEnsureIfReadyMailboxIdRouteImport } from './routes/client-only/component-ensure-if-ready.$mailboxId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -50,6 +51,12 @@ const ClientOnlyRouteLoaderEnsureMailboxIdRoute =
     path: '/client-only/route-loader-ensure/$mailboxId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ClientOnlyComponentEnsureIfReadyMailboxIdRoute =
+  ClientOnlyComponentEnsureIfReadyMailboxIdRouteImport.update({
+    id: '/client-only/component-ensure-if-ready/$mailboxId',
+    path: '/client-only/component-ensure-if-ready/$mailboxId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/client-only/ensure-client-document-suspense-boundary': typeof ClientOnlyEnsureClientDocumentSuspenseBoundaryRoute
   '/client-only/use-ensure-client-documents-suspense': typeof ClientOnlyUseEnsureClientDocumentsSuspenseRoute
   '/derived/default-with-readiness-marker': typeof DerivedDefaultWithReadinessMarkerRoute
+  '/client-only/component-ensure-if-ready/$mailboxId': typeof ClientOnlyComponentEnsureIfReadyMailboxIdRoute
   '/client-only/route-loader-ensure/$mailboxId': typeof ClientOnlyRouteLoaderEnsureMailboxIdRoute
 }
 export interface FileRoutesByTo {
@@ -65,6 +73,7 @@ export interface FileRoutesByTo {
   '/client-only/ensure-client-document-suspense-boundary': typeof ClientOnlyEnsureClientDocumentSuspenseBoundaryRoute
   '/client-only/use-ensure-client-documents-suspense': typeof ClientOnlyUseEnsureClientDocumentsSuspenseRoute
   '/derived/default-with-readiness-marker': typeof DerivedDefaultWithReadinessMarkerRoute
+  '/client-only/component-ensure-if-ready/$mailboxId': typeof ClientOnlyComponentEnsureIfReadyMailboxIdRoute
   '/client-only/route-loader-ensure/$mailboxId': typeof ClientOnlyRouteLoaderEnsureMailboxIdRoute
 }
 export interface FileRoutesById {
@@ -74,6 +83,7 @@ export interface FileRoutesById {
   '/client-only/ensure-client-document-suspense-boundary': typeof ClientOnlyEnsureClientDocumentSuspenseBoundaryRoute
   '/client-only/use-ensure-client-documents-suspense': typeof ClientOnlyUseEnsureClientDocumentsSuspenseRoute
   '/derived/default-with-readiness-marker': typeof DerivedDefaultWithReadinessMarkerRoute
+  '/client-only/component-ensure-if-ready/$mailboxId': typeof ClientOnlyComponentEnsureIfReadyMailboxIdRoute
   '/client-only/route-loader-ensure/$mailboxId': typeof ClientOnlyRouteLoaderEnsureMailboxIdRoute
 }
 export interface FileRouteTypes {
@@ -84,6 +94,7 @@ export interface FileRouteTypes {
     | '/client-only/ensure-client-document-suspense-boundary'
     | '/client-only/use-ensure-client-documents-suspense'
     | '/derived/default-with-readiness-marker'
+    | '/client-only/component-ensure-if-ready/$mailboxId'
     | '/client-only/route-loader-ensure/$mailboxId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -92,6 +103,7 @@ export interface FileRouteTypes {
     | '/client-only/ensure-client-document-suspense-boundary'
     | '/client-only/use-ensure-client-documents-suspense'
     | '/derived/default-with-readiness-marker'
+    | '/client-only/component-ensure-if-ready/$mailboxId'
     | '/client-only/route-loader-ensure/$mailboxId'
   id:
     | '__root__'
@@ -100,6 +112,7 @@ export interface FileRouteTypes {
     | '/client-only/ensure-client-document-suspense-boundary'
     | '/client-only/use-ensure-client-documents-suspense'
     | '/derived/default-with-readiness-marker'
+    | '/client-only/component-ensure-if-ready/$mailboxId'
     | '/client-only/route-loader-ensure/$mailboxId'
   fileRoutesById: FileRoutesById
 }
@@ -109,6 +122,7 @@ export interface RootRouteChildren {
   ClientOnlyEnsureClientDocumentSuspenseBoundaryRoute: typeof ClientOnlyEnsureClientDocumentSuspenseBoundaryRoute
   ClientOnlyUseEnsureClientDocumentsSuspenseRoute: typeof ClientOnlyUseEnsureClientDocumentsSuspenseRoute
   DerivedDefaultWithReadinessMarkerRoute: typeof DerivedDefaultWithReadinessMarkerRoute
+  ClientOnlyComponentEnsureIfReadyMailboxIdRoute: typeof ClientOnlyComponentEnsureIfReadyMailboxIdRoute
   ClientOnlyRouteLoaderEnsureMailboxIdRoute: typeof ClientOnlyRouteLoaderEnsureMailboxIdRoute
 }
 
@@ -156,6 +170,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientOnlyRouteLoaderEnsureMailboxIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/client-only/component-ensure-if-ready/$mailboxId': {
+      id: '/client-only/component-ensure-if-ready/$mailboxId'
+      path: '/client-only/component-ensure-if-ready/$mailboxId'
+      fullPath: '/client-only/component-ensure-if-ready/$mailboxId'
+      preLoaderRoute: typeof ClientOnlyComponentEnsureIfReadyMailboxIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -168,6 +189,8 @@ const rootRouteChildren: RootRouteChildren = {
     ClientOnlyUseEnsureClientDocumentsSuspenseRoute,
   DerivedDefaultWithReadinessMarkerRoute:
     DerivedDefaultWithReadinessMarkerRoute,
+  ClientOnlyComponentEnsureIfReadyMailboxIdRoute:
+    ClientOnlyComponentEnsureIfReadyMailboxIdRoute,
   ClientOnlyRouteLoaderEnsureMailboxIdRoute:
     ClientOnlyRouteLoaderEnsureMailboxIdRoute,
 }

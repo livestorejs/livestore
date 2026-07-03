@@ -25,6 +25,9 @@ function RootRoute() {
           <Link to="/client-only/route-loader-ensure/$mailboxId" params={{ mailboxId: 'inbox' }} preload={false}>
             Loader ensure
           </Link>
+          <Link to="/client-only/component-ensure-if-ready/$mailboxId" params={{ mailboxId: 'inbox' }}>
+            Component readiness guard
+          </Link>
 
           <h3>Derived</h3>
           <Link to="/derived/default-with-readiness-marker">Readiness marker</Link>

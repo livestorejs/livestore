@@ -14,4 +14,5 @@ The app groups the routes by whether defaults are client-only or derived from so
 - `client-only/ensure-client-document-suspense-boundary`
 - `client-only/use-ensure-client-documents-suspense`
 - `client-only/route-loader-ensure/inbox`
+- `client-only/component-ensure-if-ready/inbox`
 - `derived/default-with-readiness-marker`
