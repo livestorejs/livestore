@@ -5,7 +5,6 @@ import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 import LiveStoreWorker from './livestore.worker.ts?worker'
 import { ensureClientDocumentAsync } from './client-document/async/ensure-client-document-async.ts'
-import { appSessionContext, clientDocumentTracer, withTraceSpan } from './otel.ts'
 import { events, schema, tables } from './schema.ts'
 
 const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
@@ -30,21 +29,17 @@ const seedThreads = [
 ] as const
 
 const seedStore = async (store: Store<typeof schema>) => {
-  await withTraceSpan('app.store.seed', undefined, async (span) => {
-    const existing = store.query({ query: `SELECT COUNT(*) AS count FROM threads`, bindValues: [] }) as readonly {
-      count: number
-    }[]
-    const existingThreadCount = existing[0]?.count ?? 0
-    span.setAttribute('app.seed.existingThreadCount', existingThreadCount)
-    if (existingThreadCount > 0) return
+  const existing = store.query({ query: `SELECT COUNT(*) AS count FROM threads`, bindValues: [] }) as readonly {
+    count: number
+  }[]
+  const existingThreadCount = existing[0]?.count ?? 0
+  if (existingThreadCount > 0) return
 
-    store.commit(
-      { label: 'app.seedStore' },
-      ...seedThreads.map((thread) => events.threadSynced(thread)),
-      events.sourceReady({ key: 'mailbox:inbox', revision: 1 }),
-    )
-    span.setAttribute('app.seed.createdThreadCount', seedThreads.length)
-  })
+  store.commit(
+    { label: 'app.seedStore' },
+    ...seedThreads.map((thread) => events.threadSynced(thread)),
+    events.sourceReady({ key: 'mailbox:inbox', revision: 1 }),
+  )
 }
 
 export const storeRegistry = new StoreRegistry({ defaultOptions: { batchUpdates } })
@@ -54,16 +49,13 @@ export const clientDocumentInitStoreOptions = storeOptions({
   schema,
   adapter,
   batchUpdates,
-  otelOptions: { tracer: clientDocumentTracer, rootSpanContext: appSessionContext },
   boot: async (store) => {
-    await withTraceSpan('app.store.boot', undefined, async () => {
-      await seedStore(store)
-      await ensureClientDocumentAsync(store, {
-        table: tables.threadListUi,
-        id: 'boot:inbox',
-        default: { selectedThreadId: null, sortBy: 'receivedAt', sortDirection: 'desc' },
-        label: 'boot:thread-list-ui',
-      })
+    await seedStore(store)
+    await ensureClientDocumentAsync(store, {
+      table: tables.threadListUi,
+      id: 'boot:inbox',
+      default: { selectedThreadId: null, sortBy: 'receivedAt', sortDirection: 'desc' },
+      label: 'boot:thread-list-ui',
     })
   },
 })

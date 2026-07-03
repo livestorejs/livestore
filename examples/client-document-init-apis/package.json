@@ -9,17 +9,9 @@
     "@livestore/peer-deps": "0.4.0",
     "@livestore/react": "0.4.0",
     "@livestore/wa-sqlite": "0.4.0",
-    "@opentelemetry/api": "1.9.0",
-    "@opentelemetry/context-zone": "2.2.0",
-    "@opentelemetry/exporter-trace-otlp-http": "0.208.0",
-    "@opentelemetry/resources": "2.2.0",
-    "@opentelemetry/sdk-trace-base": "2.2.0",
-    "@opentelemetry/sdk-trace-web": "2.2.0",
-    "@opentelemetry/semantic-conventions": "1.41.1",
     "@tanstack/react-router": "1.145.7",
     "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "zone.js": "0.15.1"
+    "react-dom": "19.2.3"
   },
   "devDependencies": {
     "@livestore/devtools-vite": "0.4.0-dev.25",

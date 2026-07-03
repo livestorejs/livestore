@@ -1,8 +1,7 @@
 import { StoreRegistryProvider, useStore } from '@livestore/react'
 import { createRootRouteWithContext, Link, Outlet } from '@tanstack/react-router'
-import React, { type ComponentProps } from 'react'
+import React from 'react'
 
-import { startNavigationTrace } from '../otel.ts'
 import type { ClientDocumentInitRouterContext } from '../router.tsx'
 
 export const Route = createRootRouteWithContext<ClientDocumentInitRouterContext>()({
@@ -30,17 +29,17 @@ function RootRouteAfterStoreBoot() {
     <div className="app-shell">
       <nav className="nav">
         <h2>Client document init</h2>
-        <TracedLink to="/">Overview</TracedLink>
+        <Link to="/">Overview</Link>
 
         <h3>Client-only</h3>
-        <TracedLink to="/client-only/store-boot">Store boot</TracedLink>
-        <TracedLink to="/client-only/use-ensure-client-document-sync">Sync hook</TracedLink>
-        <TracedLink to="/client-only/route-loader-ensure/$mailboxId" params={{ mailboxId: 'inbox' }} preload={false}>
+        <Link to="/client-only/store-boot">Store boot</Link>
+        <Link to="/client-only/use-ensure-client-document-sync">Sync hook</Link>
+        <Link to="/client-only/route-loader-ensure/$mailboxId" params={{ mailboxId: 'inbox' }} preload={false}>
           Loader ensure
-        </TracedLink>
+        </Link>
 
         <h3>Derived</h3>
-        <TracedLink to="/derived/default-with-readiness-marker">Readiness marker</TracedLink>
+        <Link to="/derived/default-with-readiness-marker">Readiness marker</Link>
         <p>
           Add <code>?reset</code> to the URL to reset persisted state.
         </p>
@@ -49,21 +48,5 @@ function RootRouteAfterStoreBoot() {
         <Outlet />
       </main>
     </div>
-  )
-}
-
-function TracedLink(props: ComponentProps<typeof Link>) {
-  return (
-    <Link
-      {...props}
-      onClick={(event) => {
-        props.onClick?.(event)
-        if (event.defaultPrevented) return
-
-        startNavigationTrace({
-          'navigation.to': String(props.to),
-        })
-      }}
-    />
   )
 }

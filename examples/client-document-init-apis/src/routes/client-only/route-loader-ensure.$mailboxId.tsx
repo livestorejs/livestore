@@ -3,48 +3,36 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { ensureClientDocumentAsync } from '../../client-document/async/ensure-client-document-async.ts'
 import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
-import { withTraceSpan } from '../../otel.ts'
 import { tables } from '../../schema.ts'
 
 export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxId')({
   pendingComponent: () => <div className="card">Ensuring mailbox UI document…</div>,
   loader: async ({ context, params, preload }) => {
-    return withTraceSpan(
-      'route.loader.ensure',
-      {
-        'route.id': '/client-only/route-loader-ensure/$mailboxId',
-        'mailbox.id': params.mailboxId,
-        'route.preload': preload,
+    // Avoid committing initialization events during TanStack Router link preloads.
+    if (preload) return {}
+
+    const store = await Promise.resolve(context.storeRegistry.getOrLoadPromise(context.storeOptions))
+    const documentId = `loader:${params.mailboxId}`
+
+    await ensureClientDocumentAsync(store, {
+      table: tables.threadListUi,
+      id: documentId,
+      default: ({ store }) => {
+        const rows = store.query({
+          query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
+          bindValues: [params.mailboxId],
+        }) as readonly { id: string }[]
+
+        return {
+          selectedThreadId: rows[0]?.id ?? null,
+          sortBy: 'receivedAt',
+          sortDirection: 'desc',
+        } as const
       },
-      async (span) => {
-        // Avoid committing initialization events during TanStack Router link preloads.
-        if (preload) return {}
+      label: `route-loader:${params.mailboxId}:thread-list-ui`,
+    })
 
-        const store = await Promise.resolve(context.storeRegistry.getOrLoadPromise(context.storeOptions))
-        const documentId = `loader:${params.mailboxId}`
-        span.setAttribute('client_document.id', documentId)
-
-        await ensureClientDocumentAsync(store, {
-          table: tables.threadListUi,
-          id: documentId,
-          default: ({ store }) => {
-            const rows = store.query({
-              query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
-              bindValues: [params.mailboxId],
-            }) as readonly { id: string }[]
-
-            return {
-              selectedThreadId: rows[0]?.id ?? null,
-              sortBy: 'receivedAt',
-              sortDirection: 'desc',
-            } as const
-          },
-          label: `route-loader:${params.mailboxId}:thread-list-ui`,
-        })
-
-        return { documentId }
-      },
-    )
+    return { documentId }
   },
   component: RouteLoaderEnsurePage,
 })

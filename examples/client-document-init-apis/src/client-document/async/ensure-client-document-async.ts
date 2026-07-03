@@ -1,13 +1,11 @@
 import { State, type Store } from '@livestore/livestore'
 
-import { withTraceSpan } from '../../otel.ts'
 import {
   assertClientDocumentTable,
   createMissingClientDocument,
   type ClientDocumentDefaultContext,
   type ClientDocumentEnsureResult,
   type ClientDocumentId,
-  ensureTraceAttributes,
   resolveClientDocumentId,
   selectActiveClientDocumentRow,
 } from '../shared.ts'
@@ -31,28 +29,18 @@ export const ensureClientDocumentAsync = async <TTable extends State.SQLite.Clie
   store: Store<any, any>,
   spec: EnsureClientDocumentAsyncSpec<TTable>,
 ): Promise<EnsureClientDocumentAsyncResult<TTable['Value']>> => {
-  return withTraceSpan(
-    'client_document.ensure.async',
-    ensureTraceAttributes(spec, typeof spec.default === 'function' ? 'function' : 'value'),
-    async (span) => {
-      const tableName = spec.table.sqliteDef.name
+  const tableName = spec.table.sqliteDef.name
 
-      assertClientDocumentTable(spec.table)
+  assertClientDocumentTable(spec.table)
 
-      const id = resolveClientDocumentId(store, spec.table, spec.id)
-      span.setAttribute('client_document.id', id)
-      const existingRow = selectActiveClientDocumentRow(store, spec.table, id)
+  const id = resolveClientDocumentId(store, spec.table, spec.id)
+  const existingRow = selectActiveClientDocumentRow(store, spec.table, id)
 
-      if (existingRow !== undefined) {
-        span.setAttribute('client_document.exists_before_ensure', true)
-        span.setAttribute('client_document.created', false)
-        return { tableName, id, created: false, value: existingRow.value }
-      }
+  if (existingRow !== undefined) {
+    return { tableName, id, created: false, value: existingRow.value }
+  }
 
-      span.setAttribute('client_document.exists_before_ensure', false)
-      return createMissingClientDocument(store, spec, id, await resolveDefaultValueAsync(store, spec, id), span)
-    },
-  )
+  return createMissingClientDocument(store, spec, id, await resolveDefaultValueAsync(store, spec, id))
 }
 
 const resolveDefaultValueAsync = async <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
