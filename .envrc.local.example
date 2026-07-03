@@ -13,3 +13,9 @@ export MXBAI_VECTOR_STORE_ID=""
 # Optional: Enable trace logging for debugging
 # export LS_TRACE_VERBOSE="1"
 # export VITE_LS_TRACE_VERBOSE="1"
+
+# Optional: Send browser traces from Vite examples to an OTLP/HTTP endpoint
+# export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="/otlp/v1/traces"
+# export AXIOM_OTEL_EXPORTER_OTLP_ENDPOINT="https://AXIOM_DOMAIN/v1/traces"
+# export AXIOM_TOKEN="<token-without-Bearer-prefix>"
+# export AXIOM_DATASET="<dataset>"

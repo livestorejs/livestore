@@ -47,7 +47,7 @@ export const Route = createFileRoute('/derived/default-with-readiness-marker')({
 
 function DerivedDefaultPage() {
   return (
-    <ExampleSuspenseBoundary>
+    <ExampleSuspenseBoundary name="derived-default-with-readiness-marker">
       <DerivedDefaultContent />
     </ExampleSuspenseBoundary>
   )

@@ -13,7 +13,7 @@ export const Route = createFileRoute('/client-only/use-ensure-client-documents-s
 
 function UseEnsureClientDocumentsSuspensePage() {
   return (
-    <ExampleSuspenseBoundary>
+    <ExampleSuspenseBoundary name="use-ensure-client-documents-suspense">
       <UseEnsureClientDocumentsSuspenseContent />
     </ExampleSuspenseBoundary>
   )

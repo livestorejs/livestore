@@ -1,50 +1,58 @@
 import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 
-import { DemoFrame, ExampleSuspenseBoundary, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
+import { DemoFrame, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
 import { ensureClientDocuments } from '../../ensure-client-document.ts'
+import { withTraceSpan } from '../../otel.ts'
 import { tables } from '../../schema.ts'
 
 export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxId')({
   pendingComponent: () => <div className="card">Ensuring mailbox UI document…</div>,
   loader: async ({ context, params, preload }) => {
-    // Avoid committing initialization events during TanStack Router link preloads.
-    if (preload) return {}
-
-    const store = await Promise.resolve(context.storeRegistry.getOrLoadPromise(context.storeOptions))
-    const documentId = `loader:${params.mailboxId}`
-
-    await ensureClientDocuments(store, [
+    return withTraceSpan(
+      'route.loader.ensure',
       {
-        table: tables.threadListUi,
-        id: documentId,
-        default: ({ store }: { readonly store: DemoStore }) => {
-          const rows = store.query({
-            query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
-            bindValues: [params.mailboxId],
-          }) as readonly { id: string }[]
-
-          return {
-            selectedThreadId: rows[0]?.id ?? null,
-            sortBy: 'receivedAt',
-            sortDirection: 'desc',
-          } as const
-        },
-        label: `route-loader:${params.mailboxId}:thread-list-ui`,
+        'route.id': '/client-only/route-loader-ensure/$mailboxId',
+        'mailbox.id': params.mailboxId,
+        'route.preload': preload,
       },
-    ])
+      async (span) => {
+        // Avoid committing initialization events during TanStack Router link preloads.
+        if (preload) return {}
 
-    return { documentId }
+        const store = await Promise.resolve(context.storeRegistry.getOrLoadPromise(context.storeOptions))
+        const documentId = `loader:${params.mailboxId}`
+        span.setAttribute('client_document.id', documentId)
+
+        await ensureClientDocuments(store, [
+          {
+            table: tables.threadListUi,
+            id: documentId,
+            default: ({ store }: { readonly store: DemoStore }) => {
+              const rows = store.query({
+                query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
+                bindValues: [params.mailboxId],
+              }) as readonly { id: string }[]
+
+              return {
+                selectedThreadId: rows[0]?.id ?? null,
+                sortBy: 'receivedAt',
+                sortDirection: 'desc',
+              } as const
+            },
+            label: `route-loader:${params.mailboxId}:thread-list-ui`,
+          },
+        ])
+
+        return { documentId }
+      },
+    )
   },
   component: RouteLoaderEnsurePage,
 })
 
 function RouteLoaderEnsurePage() {
-  return (
-    <ExampleSuspenseBoundary>
-      <RouteLoaderEnsureContent />
-    </ExampleSuspenseBoundary>
-  )
+  return <RouteLoaderEnsureContent />
 }
 
 function RouteLoaderEnsureContent() {
@@ -56,7 +64,10 @@ function RouteLoaderEnsureContent() {
   return (
     <DemoFrame title="TanStack Router loader ensure">
       <section className="pattern-note">
-        <p>The route loader awaited the example-local <code>ensureClientDocuments(store, specs)</code> before this component rendered.</p>
+        <p>
+          The route loader awaited the example-local <code>ensureClientDocuments(store, specs)</code> before this
+          component rendered.
+        </p>
       </section>
       <ThreadList store={store} documentId={documentId} mailboxId={mailboxId} />
     </DemoFrame>

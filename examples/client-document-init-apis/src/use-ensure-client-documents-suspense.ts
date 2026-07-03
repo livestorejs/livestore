@@ -8,6 +8,7 @@ import {
   type EnsureClientDocumentSpec,
   type EnsureDerivedClientDocumentsExistResult,
 } from './ensure-client-document.ts'
+import { withTraceSpan } from './otel.ts'
 
 type Resource<T> =
   | { readonly status: 'pending'; readonly promise: Promise<T> }
@@ -53,9 +54,20 @@ function getSuspenseResource<T>(store: Store<any, any>, key: string, makePromise
   }
 
   const cached = storeCache.get(key) as Resource<T> | undefined
-  if (cached !== undefined) return cached
+  if (cached !== undefined) {
+    withTraceSpan(
+      'client_document.suspense.cache',
+      { 'client_document.suspense.key': key, 'client_document.suspense.cache_hit': true, 'client_document.suspense.status': cached.status },
+      () => undefined,
+    )
+    return cached
+  }
 
-  const promise = makePromise()
+  const promise = withTraceSpan(
+    'client_document.suspense.ensure',
+    { 'client_document.suspense.key': key, 'client_document.suspense.cache_hit': false },
+    makePromise,
+  )
   const resource: Resource<T> = { status: 'pending', promise }
   storeCache.set(key, resource as Resource<unknown>)
   promise.then(

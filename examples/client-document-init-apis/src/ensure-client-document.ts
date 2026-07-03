@@ -7,6 +7,9 @@ import {
   type Store,
   StoreInternalsSymbol,
 } from '@livestore/livestore'
+import type { Context } from '@opentelemetry/api'
+
+import { activeOtelContext, currentSpanLink, withTraceSpan } from './otel.ts'
 
 /**
  * Example-local explicit client-document initialization spec.
@@ -70,43 +73,76 @@ export const ensureClientDocuments = async (
   store: Store<any, any>,
   specs: readonly EnsureClientDocumentSpec<any>[],
 ): Promise<readonly EnsureClientDocumentResult[]> => {
-  const results: EnsureClientDocumentResult[] = []
+  return withTraceSpan(
+    'client_document.ensure.batch',
+    { 'client_document.ensure.count': specs.length },
+    async (batchSpan) => {
+      const results: EnsureClientDocumentResult[] = []
 
-  for (const spec of specs) {
-    const tableName = spec.table.sqliteDef.name
+      for (const spec of specs) {
+        const result = await withTraceSpan(
+          'client_document.ensure',
+          {
+            'client_document.table': spec.table.sqliteDef.name,
+            'client_document.id.requested': String(spec.id ?? '<default-id>'),
+            'client_document.label': spec.label,
+            'client_document.default.kind': typeof spec.default === 'function' ? 'function' : 'value',
+          },
+          async (span) => {
+            const tableName = spec.table.sqliteDef.name
 
-    if (State.SQLite.tableIsClientDocumentTable(spec.table) === false) {
-      throw new Error(`Cannot ensure non-client-document table "${tableName}"`)
-    }
+            if (State.SQLite.tableIsClientDocumentTable(spec.table) === false) {
+              throw new Error(`Cannot ensure non-client-document table "${tableName}"`)
+            }
 
-    const id = resolveClientDocumentId(store, spec.table, spec.id)
-    const existingRow = selectClientDocumentRow(store, spec.table, id)
+            const id = resolveClientDocumentId(store, spec.table, spec.id)
+            span.setAttribute('client_document.id', id)
+            const existingRow = selectClientDocumentRow(store, spec.table, id, activeOtelContext())
 
-    if (existingRow !== undefined) {
-      results.push({ tableName, id, created: false, value: existingRow.value })
-      continue
-    }
+            if (existingRow !== undefined) {
+              span.setAttribute('client_document.exists_before_ensure', true)
+              span.setAttribute('client_document.created', false)
+              return { tableName, id, created: false, value: existingRow.value }
+            }
 
-    const defaultValue = await resolveDefaultValue(store, spec, id)
+            span.setAttribute('client_document.exists_before_ensure', false)
+            const defaultValue = await resolveDefaultValue(store, spec, id)
 
-    // If an async default yielded, another Suspense ensure could have created the row.
-    const rowAfterDefault = selectClientDocumentRow(store, spec.table, id)
-    if (rowAfterDefault !== undefined) {
-      results.push({ tableName, id, created: false, value: rowAfterDefault.value })
-      continue
-    }
+            // If an async default yielded, another Suspense ensure could have created the row.
+            const rowAfterDefault = selectClientDocumentRow(store, spec.table, id, activeOtelContext())
+            if (rowAfterDefault !== undefined) {
+              span.setAttribute('client_document.created', false)
+              span.setAttribute('client_document.created_during_default', true)
+              return { tableName, id, created: false, value: rowAfterDefault.value }
+            }
 
-    store.commit({ label: spec.label ?? `${tableName}.ensure:${id}` }, spec.table.set(defaultValue, id))
+            const spanLink = currentSpanLink()
+            store.commit(
+              {
+                label: spec.label ?? `${tableName}.ensure:${id}`,
+                otelContext: activeOtelContext(),
+                spanLinks: spanLink === undefined ? undefined : [spanLink],
+              },
+              spec.table.set(defaultValue, id),
+            )
 
-    const createdRow = selectClientDocumentRow(store, spec.table, id)
-    if (createdRow === undefined) {
-      throw new Error(`Failed to ensure client document "${tableName}" with id "${id}"`)
-    }
+            const createdRow = selectClientDocumentRow(store, spec.table, id, activeOtelContext())
+            if (createdRow === undefined) {
+              throw new Error(`Failed to ensure client document "${tableName}" with id "${id}"`)
+            }
 
-    results.push({ tableName, id, created: true, value: createdRow.value })
-  }
+            span.setAttribute('client_document.created', true)
+            return { tableName, id, created: true, value: createdRow.value }
+          },
+        )
 
-  return results
+        results.push(result)
+      }
+
+      batchSpan.setAttribute('client_document.ensure.created_count', results.filter((result) => result.created).length)
+      return results
+    },
+  )
 }
 
 /**
@@ -120,11 +156,20 @@ export const ensureDerivedClientDocumentsExist = async (
   store: Store<any, any>,
   options: EnsureDerivedClientDocumentsExistOptions,
 ): Promise<EnsureDerivedClientDocumentsExistResult> => {
-  if (options.sourceReady === false) {
-    return { sourceReady: false, results: [] }
-  }
+  return withTraceSpan(
+    'client_document.ensure_derived',
+    {
+      'client_document.derived.source_ready': options.sourceReady,
+      'client_document.ensure.count': options.documents.length,
+    },
+    async () => {
+      if (options.sourceReady === false) {
+        return { sourceReady: false, results: [] }
+      }
 
-  return { sourceReady: true, results: await ensureClientDocuments(store, options.documents) }
+      return { sourceReady: true, results: await ensureClientDocuments(store, options.documents) }
+    },
+  )
 }
 
 const resolveClientDocumentId = (
@@ -159,11 +204,12 @@ const selectClientDocumentRow = <TTable extends State.SQLite.ClientDocumentTable
   store: Store<any, any>,
   table: TTable,
   id: string,
+  otelContext: Context,
 ): ClientDocumentRow<TTable['Value']> | undefined => {
   const rows = store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
     `SELECT * FROM '${table.sqliteDef.name}' WHERE id = ?`,
     [id] as unknown as PreparedBindValues,
-    { queriedTables: new Set([table.sqliteDef.name]) },
+    { queriedTables: new Set([table.sqliteDef.name]), otelContext },
   )
 
   const rowSchema = table.rowSchema as Schema.Schema<ClientDocumentRow<TTable['Value']>, unknown, never>

@@ -11,7 +11,7 @@ export const Route = createFileRoute('/client-only/suspense-store-boot')({
 
 function BootEnsurePage() {
   return (
-    <ExampleSuspenseBoundary>
+    <ExampleSuspenseBoundary name="suspense-store-boot">
       <BootEnsureContent />
     </ExampleSuspenseBoundary>
   )

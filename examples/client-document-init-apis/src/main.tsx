@@ -1,3 +1,4 @@
+import './otel.ts'
 import './styles.css'
 
 import { RouterProvider } from '@tanstack/react-router'

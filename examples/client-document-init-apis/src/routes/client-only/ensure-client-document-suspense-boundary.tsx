@@ -15,7 +15,7 @@ export const Route = createFileRoute('/client-only/ensure-client-document-suspen
 
 function EnsureClientDocumentSuspenseBoundaryPage() {
   return (
-    <ExampleSuspenseBoundary>
+    <ExampleSuspenseBoundary name="ensure-client-document-suspense-boundary">
       <EnsureClientDocumentSuspenseBoundaryContent />
     </ExampleSuspenseBoundary>
   )

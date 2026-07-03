@@ -2,8 +2,9 @@ import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import React from 'react'
 
-import { DemoFrame, ExampleSuspenseBoundary, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
+import { DemoFrame, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
 import { ensureClientDocuments } from '../../ensure-client-document.ts'
+import { withTraceSpan } from '../../otel.ts'
 import { tables } from '../../schema.ts'
 
 export const Route = createFileRoute('/client-only/component-ensure-if-ready/$mailboxId')({
@@ -11,11 +12,7 @@ export const Route = createFileRoute('/client-only/component-ensure-if-ready/$ma
 })
 
 function ComponentEnsureIfReadyPage() {
-  return (
-    <ExampleSuspenseBoundary>
-      <ComponentEnsureIfReadyContent />
-    </ExampleSuspenseBoundary>
-  )
+  return <ComponentEnsureIfReadyContent />
 }
 
 function ComponentEnsureIfReadyContent() {
@@ -57,25 +54,30 @@ function useEnsureThreadListUiDocument({
     setIsReady(false)
     setEnsureError(undefined)
 
-    ensureClientDocuments(store, [
-      {
-        table: tables.threadListUi,
-        id: documentId,
-        default: ({ store }: { readonly store: DemoStore }) => {
-          const rows = store.query({
-            query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
-            bindValues: [mailboxId],
-          }) as readonly { id: string }[]
+    withTraceSpan(
+      'component.readiness_guard.ensure',
+      { 'mailbox.id': mailboxId, 'client_document.id': documentId },
+      () =>
+        ensureClientDocuments(store, [
+          {
+            table: tables.threadListUi,
+            id: documentId,
+            default: ({ store }: { readonly store: DemoStore }) => {
+              const rows = store.query({
+                query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
+                bindValues: [mailboxId],
+              }) as readonly { id: string }[]
 
-          return {
-            selectedThreadId: rows[0]?.id ?? null,
-            sortBy: 'receivedAt',
-            sortDirection: 'desc',
-          } as const
-        },
-        label: `component-if-ready:${mailboxId}:thread-list-ui`,
-      },
-    ]).then(
+              return {
+                selectedThreadId: rows[0]?.id ?? null,
+                sortBy: 'receivedAt',
+                sortDirection: 'desc',
+              } as const
+            },
+            label: `component-if-ready:${mailboxId}:thread-list-ui`,
+          },
+        ]),
+    ).then(
       ([result]) => {
         if (cancelled) return
         if (result === undefined) {

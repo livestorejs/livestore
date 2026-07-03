@@ -4,12 +4,21 @@ import type { Store } from '@livestore/livestore'
 import { queryDb, Schema } from '@livestore/livestore'
 import type { ReactApi } from '@livestore/react'
 
+import { startTraceSpan, withTraceSpan } from '../otel.ts'
 import { schema, tables } from '../schema.ts'
 
 export type DemoStore = Store<typeof schema> & ReactApi
 
-export const ExampleSuspenseBoundary = ({ children }: { readonly children: React.ReactNode }) => (
-  <React.Suspense fallback={null}>{children}</React.Suspense>
+export const ExampleSuspenseBoundary = ({
+  children,
+  name = 'example',
+}: {
+  readonly children: React.ReactNode
+  readonly name?: string
+}) => (
+  <React.Suspense fallback={<SuspenseFallbackSpan name={name} />}>
+    {children}
+  </React.Suspense>
 )
 
 export const firstThreadForMailbox$ = (mailboxId: string) =>
@@ -43,6 +52,20 @@ export const ThreadList = ({
 }) => {
   const [uiState, setUiState] = store.useClientDocument(tables.threadListUi, documentId)
   const threads = store.useQuery(threadsForMailbox$(mailboxId, uiState.sortDirection))
+
+  React.useEffect(() => {
+    withTraceSpan(
+      'react.thread_list.ready',
+      {
+        'client_document.id': documentId,
+        'mailbox.id': mailboxId,
+        'thread_list.thread_count': threads.length,
+        'thread_list.sort_direction': uiState.sortDirection,
+        'thread_list.selected_thread_id': uiState.selectedThreadId ?? '<none>',
+      },
+      () => undefined,
+    )
+  }, [documentId, mailboxId, threads.length, uiState.selectedThreadId, uiState.sortDirection])
 
   return (
     <div className="card">
@@ -83,11 +106,27 @@ export const ThreadList = ({
   )
 }
 
-export const DemoFrame = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div>
-    <header className="page-header">
-      <h1>{title}</h1>
-    </header>
-    {children}
-  </div>
-)
+export const DemoFrame = ({ title, children }: { title: string; children: React.ReactNode }) => {
+  React.useEffect(() => {
+    const span = startTraceSpan('react.page.mounted', { 'route.title': title })
+    return () => span.end()
+  }, [title])
+
+  return (
+    <div>
+      <header className="page-header">
+        <h1>{title}</h1>
+      </header>
+      {children}
+    </div>
+  )
+}
+
+function SuspenseFallbackSpan({ name }: { readonly name: string }) {
+  React.useEffect(() => {
+    const span = startTraceSpan('react.suspense.fallback.visible', { 'react.suspense.boundary': name })
+    return () => span.end()
+  }, [name])
+
+  return null
+}

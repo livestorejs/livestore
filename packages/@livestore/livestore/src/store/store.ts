@@ -790,6 +790,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
 
+    const commitParentSpanContext =
+      options?.otelContext === undefined ? undefined : otel.trace.getSpanContext(options.otelContext)
+
     Effect.gen(this, function* () {
       const commitsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.commitsSpanContext)
       commitsSpan?.addEvent('commit')
@@ -837,7 +840,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       })
     }).pipe(
       Effect.withSpan('LiveStore:commit', {
-        root: true,
+        ...(commitParentSpanContext === undefined
+          ? { root: true }
+          : { parent: OtelTracer.makeExternalSpan(commitParentSpanContext) }),
         attributes: {
           'livestore.eventsCount': events.length,
           'livestore.eventTags': events.map((_) => _.name),
