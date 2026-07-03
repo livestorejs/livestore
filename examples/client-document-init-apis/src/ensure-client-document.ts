@@ -7,7 +7,7 @@ import {
   type Store,
   StoreInternalsSymbol,
 } from '@livestore/livestore'
-import type { Context } from '@opentelemetry/api'
+import type { Context, Span } from '@opentelemetry/api'
 
 import { activeOtelContext, currentSpanLink, withTraceSpan } from './otel.ts'
 
@@ -68,79 +68,44 @@ type ClientDocumentRow<TValue> = {
   readonly value: TValue
 }
 
+type SyncOrPromise<T> = T | PromiseLike<T>
+
 /** Example-local explicit ensure helper for one or more client documents. */
 export const ensureClientDocuments = async (
   store: Store<any, any>,
   specs: readonly EnsureClientDocumentSpec<any>[],
 ): Promise<readonly EnsureClientDocumentResult[]> => {
+  return ensureClientDocumentsSyncOrPromise(store, specs)
+}
+
+/**
+ * Ensures client documents without forcing an async boundary when all defaults
+ * are synchronously available.
+ */
+export const ensureClientDocumentsSyncOrPromise = (
+  store: Store<any, any>,
+  specs: readonly EnsureClientDocumentSpec<any>[],
+): SyncOrPromise<readonly EnsureClientDocumentResult[]> => {
   return withTraceSpan(
     'client_document.ensure.batch',
     { 'client_document.ensure.count': specs.length },
-    async (batchSpan) => {
+    (batchSpan) => {
       const results: EnsureClientDocumentResult[] = []
 
-      for (const spec of specs) {
-        const result = await withTraceSpan(
-          'client_document.ensure',
-          {
-            'client_document.table': spec.table.sqliteDef.name,
-            'client_document.id.requested': String(spec.id ?? '<default-id>'),
-            'client_document.label': spec.label,
-            'client_document.default.kind': typeof spec.default === 'function' ? 'function' : 'value',
-          },
-          async (span) => {
-            const tableName = spec.table.sqliteDef.name
+      for (let index = 0; index < specs.length; index++) {
+        const spec = specs[index]
+        if (spec === undefined) continue
 
-            if (State.SQLite.tableIsClientDocumentTable(spec.table) === false) {
-              throw new Error(`Cannot ensure non-client-document table "${tableName}"`)
-            }
-
-            const id = resolveClientDocumentId(store, spec.table, spec.id)
-            span.setAttribute('client_document.id', id)
-            const existingRow = selectClientDocumentRow(store, spec.table, id, activeOtelContext())
-
-            if (existingRow !== undefined) {
-              span.setAttribute('client_document.exists_before_ensure', true)
-              span.setAttribute('client_document.created', false)
-              return { tableName, id, created: false, value: existingRow.value }
-            }
-
-            span.setAttribute('client_document.exists_before_ensure', false)
-            const defaultValue = await resolveDefaultValue(store, spec, id)
-
-            // If an async default yielded, another Suspense ensure could have created the row.
-            const rowAfterDefault = selectClientDocumentRow(store, spec.table, id, activeOtelContext())
-            if (rowAfterDefault !== undefined) {
-              span.setAttribute('client_document.created', false)
-              span.setAttribute('client_document.created_during_default', true)
-              return { tableName, id, created: false, value: rowAfterDefault.value }
-            }
-
-            const spanLink = currentSpanLink()
-            store.commit(
-              {
-                label: spec.label ?? `${tableName}.ensure:${id}`,
-                otelContext: activeOtelContext(),
-                spanLinks: spanLink === undefined ? undefined : [spanLink],
-              },
-              spec.table.set(defaultValue, id),
-            )
-
-            const createdRow = selectClientDocumentRow(store, spec.table, id, activeOtelContext())
-            if (createdRow === undefined) {
-              throw new Error(`Failed to ensure client document "${tableName}" with id "${id}"`)
-            }
-
-            span.setAttribute('client_document.created', true)
-            return { tableName, id, created: true, value: createdRow.value }
-          },
-        )
-
+        const result = ensureClientDocumentSyncOrPromise(store, spec)
+        if (isPromiseLike(result)) {
+          return result.then((resolvedResult) =>
+            ensureRemainingClientDocuments(store, specs, index + 1, [...results, resolvedResult], batchSpan),
+          )
+        }
         results.push(result)
       }
 
-      batchSpan.setAttribute('client_document.ensure.created_count', results.filter((result) => result.created).length)
-      return results
+      return finishEnsureBatch(batchSpan, results)
     },
   )
 }
@@ -156,20 +121,138 @@ export const ensureDerivedClientDocumentsExist = async (
   store: Store<any, any>,
   options: EnsureDerivedClientDocumentsExistOptions,
 ): Promise<EnsureDerivedClientDocumentsExistResult> => {
+  return ensureDerivedClientDocumentsExistSyncOrPromise(store, options)
+}
+
+/** Sync-or-Promise variant used by Suspense callers to avoid needless fallback throttling. */
+export const ensureDerivedClientDocumentsExistSyncOrPromise = (
+  store: Store<any, any>,
+  options: EnsureDerivedClientDocumentsExistOptions,
+): SyncOrPromise<EnsureDerivedClientDocumentsExistResult> => {
   return withTraceSpan(
     'client_document.ensure_derived',
     {
       'client_document.derived.source_ready': options.sourceReady,
       'client_document.ensure.count': options.documents.length,
     },
-    async () => {
+    () => {
       if (options.sourceReady === false) {
         return { sourceReady: false, results: [] }
       }
 
-      return { sourceReady: true, results: await ensureClientDocuments(store, options.documents) }
+      const results = ensureClientDocumentsSyncOrPromise(store, options.documents)
+      if (isPromiseLike(results)) {
+        return results.then((resolvedResults) => ({ sourceReady: true, results: resolvedResults }))
+      }
+
+      return { sourceReady: true, results }
     },
   )
+}
+
+const ensureRemainingClientDocuments = async (
+  store: Store<any, any>,
+  specs: readonly EnsureClientDocumentSpec<any>[],
+  startIndex: number,
+  results: readonly EnsureClientDocumentResult[],
+  batchSpan: Span,
+): Promise<readonly EnsureClientDocumentResult[]> => {
+  const nextResults = [...results]
+
+  for (let index = startIndex; index < specs.length; index++) {
+    const spec = specs[index]
+    if (spec === undefined) continue
+
+    nextResults.push(await ensureClientDocumentSyncOrPromise(store, spec))
+  }
+
+  return finishEnsureBatch(batchSpan, nextResults)
+}
+
+const finishEnsureBatch = (
+  batchSpan: Span,
+  results: readonly EnsureClientDocumentResult[],
+): readonly EnsureClientDocumentResult[] => {
+  batchSpan.setAttribute('client_document.ensure.created_count', results.filter((result) => result.created).length)
+  return results
+}
+
+const ensureClientDocumentSyncOrPromise = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
+  store: Store<any, any>,
+  spec: EnsureClientDocumentSpec<TTable>,
+): SyncOrPromise<EnsureClientDocumentResult<TTable['Value']>> => {
+  return withTraceSpan(
+    'client_document.ensure',
+    {
+      'client_document.table': spec.table.sqliteDef.name,
+      'client_document.id.requested': String(spec.id ?? '<default-id>'),
+      'client_document.label': spec.label,
+      'client_document.default.kind': typeof spec.default === 'function' ? 'function' : 'value',
+    },
+    (span) => {
+      const tableName = spec.table.sqliteDef.name
+
+      if (State.SQLite.tableIsClientDocumentTable(spec.table) === false) {
+        throw new Error(`Cannot ensure non-client-document table "${tableName}"`)
+      }
+
+      const id = resolveClientDocumentId(store, spec.table, spec.id)
+      span.setAttribute('client_document.id', id)
+      const existingRow = selectClientDocumentRow(store, spec.table, id, activeOtelContext())
+
+      if (existingRow !== undefined) {
+        span.setAttribute('client_document.exists_before_ensure', true)
+        span.setAttribute('client_document.created', false)
+        return { tableName, id, created: false, value: existingRow.value }
+      }
+
+      span.setAttribute('client_document.exists_before_ensure', false)
+      const defaultValue = resolveDefaultValueSyncOrPromise(store, spec, id)
+      if (isPromiseLike(defaultValue)) {
+        const defaultPromise = defaultValue as PromiseLike<TTable['Value']>
+        return defaultPromise.then((resolvedDefaultValue) =>
+          createMissingClientDocument(store, spec, id, resolvedDefaultValue, span),
+        )
+      }
+
+      return createMissingClientDocument(store, spec, id, defaultValue, span)
+    },
+  )
+}
+
+const createMissingClientDocument = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
+  store: Store<any, any>,
+  spec: EnsureClientDocumentSpec<TTable>,
+  id: string,
+  defaultValue: TTable['Value'],
+  span: Span,
+): EnsureClientDocumentResult<TTable['Value']> => {
+  const tableName = spec.table.sqliteDef.name
+
+  // If an async default yielded, another Suspense ensure could have created the row.
+  const rowAfterDefault = selectClientDocumentRow(store, spec.table, id, activeOtelContext())
+  if (rowAfterDefault !== undefined) {
+    span.setAttribute('client_document.created', false)
+    span.setAttribute('client_document.created_during_default', true)
+    return { tableName, id, created: false, value: rowAfterDefault.value }
+  }
+
+  const spanLink = currentSpanLink()
+  const commitOptions = {
+    label: spec.label ?? `${tableName}.ensure:${id}`,
+    otelContext: activeOtelContext(),
+    ...(spanLink === undefined ? {} : { spanLinks: [spanLink] }),
+  }
+
+  store.commit(commitOptions, spec.table.set(defaultValue, id))
+
+  const createdRow = selectClientDocumentRow(store, spec.table, id, activeOtelContext())
+  if (createdRow === undefined) {
+    throw new Error(`Failed to ensure client document "${tableName}" with id "${id}"`)
+  }
+
+  span.setAttribute('client_document.created', true)
+  return { tableName, id, created: true, value: createdRow.value }
 }
 
 const resolveClientDocumentId = (
@@ -185,11 +268,11 @@ const resolveClientDocumentId = (
   return idOrDefault === SessionIdSymbol ? store.sessionId : idOrDefault
 }
 
-const resolveDefaultValue = async <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
+const resolveDefaultValueSyncOrPromise = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
   store: Store<any, any>,
   spec: EnsureClientDocumentSpec<TTable>,
   id: string,
-): Promise<TTable['Value']> => {
+): SyncOrPromise<TTable['Value']> => {
   if (typeof spec.default === 'function') {
     const defaultFn = spec.default as (
       ctx: EnsureClientDocumentDefaultContext<TTable>,
@@ -198,6 +281,10 @@ const resolveDefaultValue = async <TTable extends State.SQLite.ClientDocumentTab
   }
 
   return spec.default ?? spec.table.default.value
+}
+
+const isPromiseLike = <T>(value: T): value is T & PromiseLike<Awaited<T>> => {
+  return typeof value === 'object' && value !== null && 'then' in value
 }
 
 const selectClientDocumentRow = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(

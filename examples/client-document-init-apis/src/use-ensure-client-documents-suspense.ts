@@ -2,8 +2,8 @@ import type { Store } from '@livestore/livestore'
 import React from 'react'
 
 import {
-  ensureClientDocuments,
-  ensureDerivedClientDocumentsExist,
+  ensureClientDocumentsSyncOrPromise,
+  ensureDerivedClientDocumentsExistSyncOrPromise,
   type EnsureClientDocumentResult,
   type EnsureClientDocumentSpec,
   type EnsureDerivedClientDocumentsExistResult,
@@ -11,7 +11,7 @@ import {
 import { withTraceSpan } from './otel.ts'
 
 type Resource<T> =
-  | { readonly status: 'pending'; readonly promise: Promise<T> }
+  | { readonly status: 'pending'; readonly promise: PromiseLike<T> }
   | { readonly status: 'fulfilled'; readonly value: T }
   | { readonly status: 'rejected'; readonly error: unknown }
 
@@ -23,7 +23,7 @@ export function useEnsureClientDocumentsSuspense(
   documents: readonly EnsureClientDocumentSpec<any>[],
 ): readonly EnsureClientDocumentResult[] {
   const key = React.useMemo(() => `static:${getDocumentsKey(documents)}`, [documents])
-  const resource = getSuspenseResource(store, key, () => ensureClientDocuments(store, documents))
+  const resource = getSuspenseResource(store, key, () => ensureClientDocumentsSyncOrPromise(store, documents))
 
   return readResource(resource)
 }
@@ -41,12 +41,14 @@ export function useEnsureDerivedClientDocumentsSuspense(
   }
 
   const key = `derived:${getDocumentsKey(options.documents)}`
-  const resource = getSuspenseResource(store, key, () => ensureDerivedClientDocumentsExist(store, options))
+  const resource = getSuspenseResource(store, key, () =>
+    ensureDerivedClientDocumentsExistSyncOrPromise(store, options),
+  )
 
   return readResource(resource)
 }
 
-function getSuspenseResource<T>(store: Store<any, any>, key: string, makePromise: () => Promise<T>): Resource<T> {
+function getSuspenseResource<T>(store: Store<any, any>, key: string, makeValue: () => T | PromiseLike<T>): Resource<T> {
   let storeCache = suspenseCache.get(store)
   if (storeCache === undefined) {
     storeCache = new Map()
@@ -57,17 +59,32 @@ function getSuspenseResource<T>(store: Store<any, any>, key: string, makePromise
   if (cached !== undefined) {
     withTraceSpan(
       'client_document.suspense.cache',
-      { 'client_document.suspense.key': key, 'client_document.suspense.cache_hit': true, 'client_document.suspense.status': cached.status },
+      {
+        'client_document.suspense.key': key,
+        'client_document.suspense.cache_hit': true,
+        'client_document.suspense.status': cached.status,
+      },
       () => undefined,
     )
     return cached
   }
 
-  const promise = withTraceSpan(
+  const valueOrPromise = withTraceSpan(
     'client_document.suspense.ensure',
     { 'client_document.suspense.key': key, 'client_document.suspense.cache_hit': false },
-    makePromise,
+    (span) => {
+      const value = makeValue()
+      span.setAttribute('client_document.suspense.result', isPromiseLike(value) ? 'promise' : 'sync')
+      return value
+    },
   )
+  if (isPromiseLike(valueOrPromise) === false) {
+    const resource: Resource<T> = { status: 'fulfilled', value: valueOrPromise as T }
+    storeCache.set(key, resource as Resource<unknown>)
+    return resource
+  }
+
+  const promise = valueOrPromise as PromiseLike<T>
   const resource: Resource<T> = { status: 'pending', promise }
   storeCache.set(key, resource as Resource<unknown>)
   promise.then(
@@ -94,4 +111,8 @@ function getDocumentsKey(documents: readonly EnsureClientDocumentSpec<any>[]): s
     const defaultKey = typeof document.default === 'function' ? 'fn' : JSON.stringify(document.default)
     return `${document.table.sqliteDef.name}:${String(document.id ?? '<default-id>')}:${document.label ?? ''}:${defaultKey}`
   }).join('|')
+}
+
+function isPromiseLike<T>(value: T): value is T & PromiseLike<Awaited<T>> {
+  return typeof value === 'object' && value !== null && 'then' in value
 }
