@@ -5,7 +5,7 @@ import React from 'react'
 
 import { DemoFrame, type DemoStore, ThreadList } from '../components/DemoFrame.tsx'
 import { events, tables } from '../schema.ts'
-import { useClientDocumentsPreflight } from '../use-client-documents-preflight.ts'
+import { useDerivedClientDocumentsPreflight } from '../use-client-documents-preflight.ts'
 
 /**
  * App-level record that means the source data for `key` is now safe to read.
@@ -55,6 +55,27 @@ function DerivedDefaultPage() {
   const sourceReadyRecord: SourceReadyRecord | undefined = sourceReadyRecords[0]
   const sourceIsReady = sourceReadyRecord !== undefined
   const sourceThreads = store.useQuery(mailboxThreads$(mailboxId))
+  const derivedEnsureResult = useDerivedClientDocumentsPreflight(store, {
+    sourceReady: sourceIsReady,
+    documents: [
+      {
+        table: tables.threadListUi,
+        id: documentId,
+        default: (ctx: { store: DemoStore }) => {
+          const rows = ctx.store.query({
+            query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
+            bindValues: [mailboxId],
+          }) as readonly { id: string }[]
+
+          return { selectedThreadId: rows[0]?.id ?? null, sortBy: 'receivedAt', sortDirection: 'desc' } as const
+        },
+        label:
+          sourceReadyRecord === undefined
+            ? `derived-waiting:${demoKey}`
+            : `derived-ready:${sourceReadyRecord.key}:${sourceReadyRecord.revision}`,
+      },
+    ],
+  })
 
   const simulateSourceReady = React.useCallback(() => {
     store.commit(
@@ -68,12 +89,12 @@ function DerivedDefaultPage() {
     )
   }, [demoKey, mailboxId, store])
 
-  if (sourceIsReady === false) {
+  if (derivedEnsureResult.sourceReady === false) {
     return (
       <DemoFrame store={store} title="Derived default waits for sourceReady" documentId={documentId}>
         <div className="card">
           <p>
-            The source mailbox is not ready yet, so this page renders a stable placeholder and does not create the
+            The source mailbox is not ready yet, so <code>ensureDerivedClientDocumentsExist</code> does not create the
             client document. This avoids persisting a guessed default from incomplete synced data.
           </p>
           <button type="button" onClick={simulateSourceReady}>
@@ -86,52 +107,16 @@ function DerivedDefaultPage() {
   }
 
   return (
-    <DerivedReady
-      store={store}
-      documentId={documentId}
-      mailboxId={mailboxId}
-      sourceReadyRecord={sourceReadyRecord}
-    />
-  )
-}
-
-function DerivedReady({
-  store,
-  documentId,
-  mailboxId,
-  sourceReadyRecord,
-}: {
-  store: DemoStore
-  documentId: string
-  mailboxId: string
-  sourceReadyRecord: SourceReadyRecord
-}) {
-  const ensureResults = useClientDocumentsPreflight(store, [
-    {
-      table: tables.threadListUi,
-      id: documentId,
-      default: (ctx: { store: DemoStore }) => {
-        const rows = ctx.store.query({
-          query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
-          bindValues: [mailboxId],
-        }) as readonly { id: string }[]
-
-        return { selectedThreadId: rows[0]?.id ?? null, sortBy: 'receivedAt', sortDirection: 'desc' } as const
-      },
-      label: `derived-ready:${sourceReadyRecord.key}:${sourceReadyRecord.revision}`,
-    },
-  ])
-
-  return (
     <DemoFrame
       store={store}
       title="Derived default waits for sourceReady"
       documentId={documentId}
-      ensureResult={ensureResults}
+      ensureResult={derivedEnsureResult.results}
     >
       <div className="card">
         <p>
-          The <code>sourceReady</code> record exists, so the default can now be derived from local source rows.
+          The <code>sourceReady</code> record exists, so <code>ensureDerivedClientDocumentsExist</code> delegates to
+          <code> ensureClientDocuments</code> and derives the default from local source rows.
         </p>
         <pre>{JSON.stringify(sourceReadyRecord, null, 2)}</pre>
       </div>

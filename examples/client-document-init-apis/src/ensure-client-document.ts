@@ -46,6 +46,20 @@ export interface EnsureClientDocumentResult<TValue = unknown> {
   readonly value: TValue
 }
 
+/** Options for ensuring client documents whose defaults depend on source data. */
+export interface EnsureDerivedClientDocumentsExistOptions {
+  /** Whether app-level source data is ready enough to derive defaults from. */
+  readonly sourceReady: boolean
+
+  /** Client documents to create once source data is ready. */
+  readonly documents: readonly EnsureClientDocumentSpec<any>[]
+}
+
+/** Result for derived client-document initialization. */
+export type EnsureDerivedClientDocumentsExistResult =
+  | { readonly sourceReady: false; readonly results: readonly [] }
+  | { readonly sourceReady: true; readonly results: readonly EnsureClientDocumentResult[] }
+
 type ClientDocumentRow<TValue> = {
   readonly id: string
   readonly value: TValue
@@ -92,6 +106,24 @@ export const ensureClientDocuments = async (
   }
 
   return results
+}
+
+/**
+ * Example-local helper for derived defaults.
+ *
+ * LiveStore can't know whether app/domain source rows are complete enough to derive
+ * from, so callers provide `sourceReady`. When false, this deliberately does not
+ * create the client document. When true, it delegates to `ensureClientDocuments`.
+ */
+export const ensureDerivedClientDocumentsExist = async (
+  store: Store<any, any>,
+  options: EnsureDerivedClientDocumentsExistOptions,
+): Promise<EnsureDerivedClientDocumentsExistResult> => {
+  if (options.sourceReady === false) {
+    return { sourceReady: false, results: [] }
+  }
+
+  return { sourceReady: true, results: await ensureClientDocuments(store, options.documents) }
 }
 
 const resolveClientDocumentId = (
