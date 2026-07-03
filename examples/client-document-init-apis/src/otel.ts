@@ -41,6 +41,7 @@ declare global {
 
 const globalState = globalThis as typeof globalThis & {
   __clientDocumentOtelState?: ClientDocumentOtelState
+  __clientDocumentNavigationSpan?: Span
 }
 
 export const clientDocumentOtel = globalState.__clientDocumentOtelState ?? setupBrowserTracing()
@@ -73,6 +74,20 @@ export const currentSpanLink = (): Link | undefined => {
 
 export const startTraceSpan = (name: string, attributes?: Attributes): Span => {
   return clientDocumentTracer.startSpan(name, attributes === undefined ? undefined : { attributes }, getParentContext())
+}
+
+export const startNavigationTrace = (attributes?: Attributes): void => {
+  globalState.__clientDocumentNavigationSpan?.end()
+  globalState.__clientDocumentNavigationSpan = startTraceSpan('app.navigation.click_to_page_mount', attributes)
+}
+
+export const endNavigationTrace = (attributes?: Attributes): void => {
+  const span = globalState.__clientDocumentNavigationSpan
+  if (span === undefined) return
+
+  if (attributes !== undefined) span.setAttributes(attributes)
+  span.end()
+  globalState.__clientDocumentNavigationSpan = undefined
 }
 
 export const withTraceSpan = <T>(

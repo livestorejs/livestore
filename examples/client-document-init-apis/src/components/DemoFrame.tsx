@@ -4,7 +4,7 @@ import type { Store } from '@livestore/livestore'
 import { queryDb, Schema } from '@livestore/livestore'
 import type { ReactApi } from '@livestore/react'
 
-import { startTraceSpan, withTraceSpan } from '../otel.ts'
+import { endNavigationTrace, startTraceSpan, withTraceSpan } from '../otel.ts'
 import { schema, tables } from '../schema.ts'
 
 export type DemoStore = Store<typeof schema> & ReactApi
@@ -108,6 +108,7 @@ export const ThreadList = ({
 
 export const DemoFrame = ({ title, children }: { title: string; children: React.ReactNode }) => {
   React.useEffect(() => {
+    endNavigationTrace({ 'route.title': title })
     const span = startTraceSpan('react.page.mounted', { 'route.title': title })
     return () => span.end()
   }, [title])
