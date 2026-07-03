@@ -1,13 +1,13 @@
 import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 
-import { DemoFrame, ThreadList } from '../components/DemoFrame.tsx'
-import { tables } from '../schema.ts'
-import { useClientDocumentsPreflight } from '../use-client-documents-preflight.ts'
+import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
+import { tables } from '../../schema.ts'
+import { useClientDocumentsPreflight } from '../../use-client-documents-preflight.ts'
 
 const documentId = 'hook-preflight:inbox'
 
-export const Route = createFileRoute('/03-use-client-documents-preflight')({
+export const Route = createFileRoute('/client-only/use-client-documents-preflight')({
   component: HookPreflightPage,
 })
 

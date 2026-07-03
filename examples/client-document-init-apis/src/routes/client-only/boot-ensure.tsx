@@ -1,11 +1,11 @@
 import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 
-import { DemoFrame, ThreadList } from '../components/DemoFrame.tsx'
+import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 
 const documentId = 'boot:inbox'
 
-export const Route = createFileRoute('/01-boot-ensure')({
+export const Route = createFileRoute('/client-only/boot-ensure')({
   component: BootEnsurePage,
 })
 

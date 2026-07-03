@@ -12,7 +12,7 @@ function IndexRoute() {
         This app compares boot, Suspense preflight, hook preflight, route loader, and derived-readiness patterns.
       </p>
       <p>
-        Start with <Link to="/01-boot-ensure">boot ensure</Link> or open the routes from the sidebar.
+        Start with <Link to="/client-only/boot-ensure">boot ensure</Link> or open the sections from the sidebar.
       </p>
     </div>
   )

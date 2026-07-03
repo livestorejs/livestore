@@ -3,9 +3,9 @@ import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import React from 'react'
 
-import { DemoFrame, type DemoStore, ThreadList } from '../components/DemoFrame.tsx'
-import { events, tables } from '../schema.ts'
-import { useDerivedClientDocumentsPreflight } from '../use-client-documents-preflight.ts'
+import { DemoFrame, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
+import { events, tables } from '../../schema.ts'
+import { useDerivedClientDocumentsPreflight } from '../../use-client-documents-preflight.ts'
 
 /**
  * App-level record that means the source data for `key` is now safe to read.
@@ -41,7 +41,7 @@ const mailboxThreads$ = (mailboxId: string) =>
     { deps: mailboxId, label: `mailboxThreads:${mailboxId}` },
   )
 
-export const Route = createFileRoute('/05-derived-default-with-readiness-marker')({
+export const Route = createFileRoute('/derived/default-with-readiness-marker')({
   component: DerivedDefaultPage,
 })
 

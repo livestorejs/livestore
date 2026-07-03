@@ -1,11 +1,11 @@
 import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 
-import { DemoFrame, ThreadList } from '../components/DemoFrame.tsx'
-import { ensureClientDocuments } from '../ensure-client-document.ts'
-import { tables } from '../schema.ts'
+import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
+import { ensureClientDocuments } from '../../ensure-client-document.ts'
+import { tables } from '../../schema.ts'
 
-export const Route = createFileRoute('/04-route-loader-ensure/$mailboxId')({
+export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxId')({
   pendingComponent: () => <div className="card">Ensuring mailbox UI document…</div>,
   loader: async ({ context, params, preload }) => {
     // Avoid committing initialization events during TanStack Router link preloads.

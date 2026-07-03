@@ -18,16 +18,16 @@ function RootRoute() {
           <h2>Client document init</h2>
           <Link to="/">Overview</Link>
 
-          <h3>ensureClientDocuments</h3>
-          <Link to="/01-boot-ensure">01 Boot ensure</Link>
-          <Link to="/04-route-loader-ensure/$mailboxId" params={{ mailboxId: 'inbox' }} preload={false}>
-            04 Loader ensure
+          <h3>Client-only</h3>
+          <Link to="/client-only/boot-ensure">Boot ensure</Link>
+          <Link to="/client-only/client-document-preflight">Component preflight</Link>
+          <Link to="/client-only/use-client-documents-preflight">Hook preflight</Link>
+          <Link to="/client-only/route-loader-ensure/$mailboxId" params={{ mailboxId: 'inbox' }} preload={false}>
+            Loader ensure
           </Link>
 
-          <h3>React preflight wrappers</h3>
-          <Link to="/02-client-document-preflight">02 Component preflight</Link>
-          <Link to="/03-use-client-documents-preflight">03 Hook preflight</Link>
-          <Link to="/05-derived-default-with-readiness-marker">05 Derived readiness</Link>
+          <h3>Derived</h3>
+          <Link to="/derived/default-with-readiness-marker">Readiness marker</Link>
           <p>
             Add <code>?reset</code> to the URL to reset persisted state.
           </p>

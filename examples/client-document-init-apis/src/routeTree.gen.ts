@@ -9,139 +9,111 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as R05DerivedDefaultWithReadinessMarkerRouteImport } from './routes/05-derived-default-with-readiness-marker'
-import { Route as R03UseClientDocumentsPreflightRouteImport } from './routes/03-use-client-documents-preflight'
-import { Route as R02ClientDocumentPreflightRouteImport } from './routes/02-client-document-preflight'
-import { Route as R01BootEnsureRouteImport } from './routes/01-boot-ensure'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as R04RouteLoaderEnsureMailboxIdRouteImport } from './routes/04-route-loader-ensure.$mailboxId'
+import { Route as DerivedDefaultWithReadinessMarkerRouteImport } from './routes/derived/default-with-readiness-marker'
+import { Route as ClientOnlyUseClientDocumentsPreflightRouteImport } from './routes/client-only/use-client-documents-preflight'
+import { Route as ClientOnlyClientDocumentPreflightRouteImport } from './routes/client-only/client-document-preflight'
+import { Route as ClientOnlyBootEnsureRouteImport } from './routes/client-only/boot-ensure'
+import { Route as ClientOnlyRouteLoaderEnsureMailboxIdRouteImport } from './routes/client-only/route-loader-ensure.$mailboxId'
 
-const R05DerivedDefaultWithReadinessMarkerRoute =
-  R05DerivedDefaultWithReadinessMarkerRouteImport.update({
-    id: '/05-derived-default-with-readiness-marker',
-    path: '/05-derived-default-with-readiness-marker',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const R03UseClientDocumentsPreflightRoute =
-  R03UseClientDocumentsPreflightRouteImport.update({
-    id: '/03-use-client-documents-preflight',
-    path: '/03-use-client-documents-preflight',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const R02ClientDocumentPreflightRoute =
-  R02ClientDocumentPreflightRouteImport.update({
-    id: '/02-client-document-preflight',
-    path: '/02-client-document-preflight',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const R01BootEnsureRoute = R01BootEnsureRouteImport.update({
-  id: '/01-boot-ensure',
-  path: '/01-boot-ensure',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const R04RouteLoaderEnsureMailboxIdRoute =
-  R04RouteLoaderEnsureMailboxIdRouteImport.update({
-    id: '/04-route-loader-ensure/$mailboxId',
-    path: '/04-route-loader-ensure/$mailboxId',
+const DerivedDefaultWithReadinessMarkerRoute =
+  DerivedDefaultWithReadinessMarkerRouteImport.update({
+    id: '/derived/default-with-readiness-marker',
+    path: '/derived/default-with-readiness-marker',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ClientOnlyUseClientDocumentsPreflightRoute =
+  ClientOnlyUseClientDocumentsPreflightRouteImport.update({
+    id: '/client-only/use-client-documents-preflight',
+    path: '/client-only/use-client-documents-preflight',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ClientOnlyClientDocumentPreflightRoute =
+  ClientOnlyClientDocumentPreflightRouteImport.update({
+    id: '/client-only/client-document-preflight',
+    path: '/client-only/client-document-preflight',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ClientOnlyBootEnsureRoute = ClientOnlyBootEnsureRouteImport.update({
+  id: '/client-only/boot-ensure',
+  path: '/client-only/boot-ensure',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientOnlyRouteLoaderEnsureMailboxIdRoute =
+  ClientOnlyRouteLoaderEnsureMailboxIdRouteImport.update({
+    id: '/client-only/route-loader-ensure/$mailboxId',
+    path: '/client-only/route-loader-ensure/$mailboxId',
     getParentRoute: () => rootRouteImport,
   } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/01-boot-ensure': typeof R01BootEnsureRoute
-  '/02-client-document-preflight': typeof R02ClientDocumentPreflightRoute
-  '/03-use-client-documents-preflight': typeof R03UseClientDocumentsPreflightRoute
-  '/05-derived-default-with-readiness-marker': typeof R05DerivedDefaultWithReadinessMarkerRoute
-  '/04-route-loader-ensure/$mailboxId': typeof R04RouteLoaderEnsureMailboxIdRoute
+  '/client-only/boot-ensure': typeof ClientOnlyBootEnsureRoute
+  '/client-only/client-document-preflight': typeof ClientOnlyClientDocumentPreflightRoute
+  '/client-only/use-client-documents-preflight': typeof ClientOnlyUseClientDocumentsPreflightRoute
+  '/derived/default-with-readiness-marker': typeof DerivedDefaultWithReadinessMarkerRoute
+  '/client-only/route-loader-ensure/$mailboxId': typeof ClientOnlyRouteLoaderEnsureMailboxIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/01-boot-ensure': typeof R01BootEnsureRoute
-  '/02-client-document-preflight': typeof R02ClientDocumentPreflightRoute
-  '/03-use-client-documents-preflight': typeof R03UseClientDocumentsPreflightRoute
-  '/05-derived-default-with-readiness-marker': typeof R05DerivedDefaultWithReadinessMarkerRoute
-  '/04-route-loader-ensure/$mailboxId': typeof R04RouteLoaderEnsureMailboxIdRoute
+  '/client-only/boot-ensure': typeof ClientOnlyBootEnsureRoute
+  '/client-only/client-document-preflight': typeof ClientOnlyClientDocumentPreflightRoute
+  '/client-only/use-client-documents-preflight': typeof ClientOnlyUseClientDocumentsPreflightRoute
+  '/derived/default-with-readiness-marker': typeof DerivedDefaultWithReadinessMarkerRoute
+  '/client-only/route-loader-ensure/$mailboxId': typeof ClientOnlyRouteLoaderEnsureMailboxIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/01-boot-ensure': typeof R01BootEnsureRoute
-  '/02-client-document-preflight': typeof R02ClientDocumentPreflightRoute
-  '/03-use-client-documents-preflight': typeof R03UseClientDocumentsPreflightRoute
-  '/05-derived-default-with-readiness-marker': typeof R05DerivedDefaultWithReadinessMarkerRoute
-  '/04-route-loader-ensure/$mailboxId': typeof R04RouteLoaderEnsureMailboxIdRoute
+  '/client-only/boot-ensure': typeof ClientOnlyBootEnsureRoute
+  '/client-only/client-document-preflight': typeof ClientOnlyClientDocumentPreflightRoute
+  '/client-only/use-client-documents-preflight': typeof ClientOnlyUseClientDocumentsPreflightRoute
+  '/derived/default-with-readiness-marker': typeof DerivedDefaultWithReadinessMarkerRoute
+  '/client-only/route-loader-ensure/$mailboxId': typeof ClientOnlyRouteLoaderEnsureMailboxIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/01-boot-ensure'
-    | '/02-client-document-preflight'
-    | '/03-use-client-documents-preflight'
-    | '/05-derived-default-with-readiness-marker'
-    | '/04-route-loader-ensure/$mailboxId'
+    | '/client-only/boot-ensure'
+    | '/client-only/client-document-preflight'
+    | '/client-only/use-client-documents-preflight'
+    | '/derived/default-with-readiness-marker'
+    | '/client-only/route-loader-ensure/$mailboxId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/01-boot-ensure'
-    | '/02-client-document-preflight'
-    | '/03-use-client-documents-preflight'
-    | '/05-derived-default-with-readiness-marker'
-    | '/04-route-loader-ensure/$mailboxId'
+    | '/client-only/boot-ensure'
+    | '/client-only/client-document-preflight'
+    | '/client-only/use-client-documents-preflight'
+    | '/derived/default-with-readiness-marker'
+    | '/client-only/route-loader-ensure/$mailboxId'
   id:
     | '__root__'
     | '/'
-    | '/01-boot-ensure'
-    | '/02-client-document-preflight'
-    | '/03-use-client-documents-preflight'
-    | '/05-derived-default-with-readiness-marker'
-    | '/04-route-loader-ensure/$mailboxId'
+    | '/client-only/boot-ensure'
+    | '/client-only/client-document-preflight'
+    | '/client-only/use-client-documents-preflight'
+    | '/derived/default-with-readiness-marker'
+    | '/client-only/route-loader-ensure/$mailboxId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  R01BootEnsureRoute: typeof R01BootEnsureRoute
-  R02ClientDocumentPreflightRoute: typeof R02ClientDocumentPreflightRoute
-  R03UseClientDocumentsPreflightRoute: typeof R03UseClientDocumentsPreflightRoute
-  R05DerivedDefaultWithReadinessMarkerRoute: typeof R05DerivedDefaultWithReadinessMarkerRoute
-  R04RouteLoaderEnsureMailboxIdRoute: typeof R04RouteLoaderEnsureMailboxIdRoute
+  ClientOnlyBootEnsureRoute: typeof ClientOnlyBootEnsureRoute
+  ClientOnlyClientDocumentPreflightRoute: typeof ClientOnlyClientDocumentPreflightRoute
+  ClientOnlyUseClientDocumentsPreflightRoute: typeof ClientOnlyUseClientDocumentsPreflightRoute
+  DerivedDefaultWithReadinessMarkerRoute: typeof DerivedDefaultWithReadinessMarkerRoute
+  ClientOnlyRouteLoaderEnsureMailboxIdRoute: typeof ClientOnlyRouteLoaderEnsureMailboxIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/05-derived-default-with-readiness-marker': {
-      id: '/05-derived-default-with-readiness-marker'
-      path: '/05-derived-default-with-readiness-marker'
-      fullPath: '/05-derived-default-with-readiness-marker'
-      preLoaderRoute: typeof R05DerivedDefaultWithReadinessMarkerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/03-use-client-documents-preflight': {
-      id: '/03-use-client-documents-preflight'
-      path: '/03-use-client-documents-preflight'
-      fullPath: '/03-use-client-documents-preflight'
-      preLoaderRoute: typeof R03UseClientDocumentsPreflightRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/02-client-document-preflight': {
-      id: '/02-client-document-preflight'
-      path: '/02-client-document-preflight'
-      fullPath: '/02-client-document-preflight'
-      preLoaderRoute: typeof R02ClientDocumentPreflightRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/01-boot-ensure': {
-      id: '/01-boot-ensure'
-      path: '/01-boot-ensure'
-      fullPath: '/01-boot-ensure'
-      preLoaderRoute: typeof R01BootEnsureRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -149,11 +121,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/04-route-loader-ensure/$mailboxId': {
-      id: '/04-route-loader-ensure/$mailboxId'
-      path: '/04-route-loader-ensure/$mailboxId'
-      fullPath: '/04-route-loader-ensure/$mailboxId'
-      preLoaderRoute: typeof R04RouteLoaderEnsureMailboxIdRouteImport
+    '/derived/default-with-readiness-marker': {
+      id: '/derived/default-with-readiness-marker'
+      path: '/derived/default-with-readiness-marker'
+      fullPath: '/derived/default-with-readiness-marker'
+      preLoaderRoute: typeof DerivedDefaultWithReadinessMarkerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client-only/use-client-documents-preflight': {
+      id: '/client-only/use-client-documents-preflight'
+      path: '/client-only/use-client-documents-preflight'
+      fullPath: '/client-only/use-client-documents-preflight'
+      preLoaderRoute: typeof ClientOnlyUseClientDocumentsPreflightRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client-only/client-document-preflight': {
+      id: '/client-only/client-document-preflight'
+      path: '/client-only/client-document-preflight'
+      fullPath: '/client-only/client-document-preflight'
+      preLoaderRoute: typeof ClientOnlyClientDocumentPreflightRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client-only/boot-ensure': {
+      id: '/client-only/boot-ensure'
+      path: '/client-only/boot-ensure'
+      fullPath: '/client-only/boot-ensure'
+      preLoaderRoute: typeof ClientOnlyBootEnsureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client-only/route-loader-ensure/$mailboxId': {
+      id: '/client-only/route-loader-ensure/$mailboxId'
+      path: '/client-only/route-loader-ensure/$mailboxId'
+      fullPath: '/client-only/route-loader-ensure/$mailboxId'
+      preLoaderRoute: typeof ClientOnlyRouteLoaderEnsureMailboxIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -161,12 +161,15 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  R01BootEnsureRoute: R01BootEnsureRoute,
-  R02ClientDocumentPreflightRoute: R02ClientDocumentPreflightRoute,
-  R03UseClientDocumentsPreflightRoute: R03UseClientDocumentsPreflightRoute,
-  R05DerivedDefaultWithReadinessMarkerRoute:
-    R05DerivedDefaultWithReadinessMarkerRoute,
-  R04RouteLoaderEnsureMailboxIdRoute: R04RouteLoaderEnsureMailboxIdRoute,
+  ClientOnlyBootEnsureRoute: ClientOnlyBootEnsureRoute,
+  ClientOnlyClientDocumentPreflightRoute:
+    ClientOnlyClientDocumentPreflightRoute,
+  ClientOnlyUseClientDocumentsPreflightRoute:
+    ClientOnlyUseClientDocumentsPreflightRoute,
+  DerivedDefaultWithReadinessMarkerRoute:
+    DerivedDefaultWithReadinessMarkerRoute,
+  ClientOnlyRouteLoaderEnsureMailboxIdRoute:
+    ClientOnlyRouteLoaderEnsureMailboxIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

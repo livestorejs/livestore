@@ -8,10 +8,10 @@ Run it with:
 pnpm --filter livestore-example-client-document-init-apis dev
 ```
 
-The app includes one route per initialization pattern:
+The app groups the routes by whether defaults are client-only or derived from source data:
 
-1. boot ensure
-2. `<ClientDocumentPreflight>`
-3. `useClientDocumentsPreflight`
-4. TanStack Router loader ensure
-5. derived defaults with readiness marker
+- `client-only/boot-ensure`
+- `client-only/client-document-preflight`
+- `client-only/use-client-documents-preflight`
+- `client-only/route-loader-ensure/inbox`
+- `derived/default-with-readiness-marker`
