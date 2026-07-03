@@ -12,12 +12,11 @@ function IndexRoute() {
       </header>
       <section className="pattern-note">
         <p>
-          This app compares boot, Suspense boundary, Suspense hook, route loader, component guard, and
-          derived-readiness patterns.
+          This app compares store boot, sync hook, route loader, and derived-readiness patterns for explicit
+          client-document initialization.
         </p>
         <p>
-          Start with <Link to="/client-only/suspense-store-boot">Suspense Store Boot</Link> or open the
-          sections from the sidebar.
+          Start with <Link to="/client-only/store-boot">Store boot</Link> or open the sections from the sidebar.
         </p>
       </section>
     </div>

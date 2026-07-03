@@ -33,15 +33,10 @@ function RootRouteAfterStoreBoot() {
         <TracedLink to="/">Overview</TracedLink>
 
         <h3>Client-only</h3>
-        <TracedLink to="/client-only/suspense-store-boot">Suspense Store Boot</TracedLink>
-        <TracedLink to="/client-only/ensure-client-document-suspense-boundary">Suspense boundary</TracedLink>
-        <TracedLink to="/client-only/use-ensure-client-documents-suspense">Suspense hook</TracedLink>
+        <TracedLink to="/client-only/store-boot">Store boot</TracedLink>
         <TracedLink to="/client-only/use-ensure-client-documents">Sync hook</TracedLink>
         <TracedLink to="/client-only/route-loader-ensure/$mailboxId" params={{ mailboxId: 'inbox' }} preload={false}>
           Loader ensure
-        </TracedLink>
-        <TracedLink to="/client-only/component-ensure-if-ready/$mailboxId" params={{ mailboxId: 'inbox' }}>
-          Component readiness guard
         </TracedLink>
 
         <h3>Derived</h3>

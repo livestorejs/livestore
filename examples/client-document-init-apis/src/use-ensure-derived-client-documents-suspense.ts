@@ -2,9 +2,7 @@ import type { Store } from '@livestore/livestore'
 import React from 'react'
 
 import {
-  ensureClientDocumentsSyncOrPromise,
   ensureDerivedClientDocumentsExistSyncOrPromise,
-  type EnsureClientDocumentResult,
   type EnsureClientDocumentSpec,
   type EnsureDerivedClientDocumentsExistResult,
 } from './ensure-client-document.ts'
@@ -16,17 +14,6 @@ type Resource<T> =
   | { readonly status: 'rejected'; readonly error: unknown }
 
 const suspenseCache = new WeakMap<Store<any, any>, Map<string, Resource<unknown>>>()
-
-/** Example-local Suspense hook for ensuring client documents before descendants render. */
-export function useEnsureClientDocumentsSuspense(
-  store: Store<any, any>,
-  documents: readonly EnsureClientDocumentSpec<any>[],
-): readonly EnsureClientDocumentResult[] {
-  const key = React.useMemo(() => `static:${getDocumentsKey(documents)}`, [documents])
-  const resource = getSuspenseResource(store, key, () => ensureClientDocumentsSyncOrPromise(store, documents))
-
-  return readResource(resource)
-}
 
 /** Example-local Suspense hook for derived defaults gated by app-level source readiness. */
 export function useEnsureDerivedClientDocumentsSuspense(

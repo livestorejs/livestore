@@ -5,7 +5,7 @@ import React from 'react'
 
 import { DemoFrame, ExampleSuspenseBoundary, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
 import { events, tables } from '../../schema.ts'
-import { useEnsureDerivedClientDocumentsSuspense } from '../../use-ensure-client-documents-suspense.ts'
+import { useEnsureDerivedClientDocumentsSuspense } from '../../use-ensure-derived-client-documents-suspense.ts'
 
 /**
  * App-level record that means the source data for `key` is now safe to read.
