@@ -59,19 +59,17 @@ function DerivedDefaultContent() {
   const sourceReadyRecord: SourceReadyRecord | undefined = sourceReadyRecords[0]
   const sourceIsReady = sourceReadyRecord !== undefined
   const sourceThreads = store.useQuery(mailboxThreads$(mailboxId))
+  const defaultThreadListUi = {
+    selectedThreadId: sourceThreads[0]?.id ?? null,
+    sortBy: 'receivedAt',
+    sortDirection: 'desc',
+  } as const
   const ensureResult = useEnsureClientDocumentSync(
     store,
     {
       table: tables.threadListUi,
       id: documentId,
-      default: ({ store }) => {
-        const rows = store.query({
-          query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
-          bindValues: [mailboxId],
-        }) as readonly { id: string }[]
-
-        return { selectedThreadId: rows[0]?.id ?? null, sortBy: 'receivedAt', sortDirection: 'desc' } as const
-      },
+      default: defaultThreadListUi,
       label:
         sourceReadyRecord === undefined
           ? `derived-waiting:${demoKey}`

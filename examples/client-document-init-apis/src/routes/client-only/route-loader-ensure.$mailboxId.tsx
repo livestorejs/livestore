@@ -13,22 +13,20 @@ export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxI
 
     const store = await Promise.resolve(context.storeRegistry.getOrLoadPromise(context.storeOptions))
     const documentId = `loader:${params.mailboxId}`
+    const rows = store.query({
+      query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
+      bindValues: [params.mailboxId],
+    }) as readonly { id: string }[]
+    const defaultThreadListUi = {
+      selectedThreadId: rows[0]?.id ?? null,
+      sortBy: 'receivedAt',
+      sortDirection: 'desc',
+    } as const
 
     await ensureClientDocumentAsync(store, {
       table: tables.threadListUi,
       id: documentId,
-      default: ({ store }) => {
-        const rows = store.query({
-          query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
-          bindValues: [params.mailboxId],
-        }) as readonly { id: string }[]
-
-        return {
-          selectedThreadId: rows[0]?.id ?? null,
-          sortBy: 'receivedAt',
-          sortDirection: 'desc',
-        } as const
-      },
+      default: defaultThreadListUi,
       label: `route-loader:${params.mailboxId}:thread-list-ui`,
     })
 

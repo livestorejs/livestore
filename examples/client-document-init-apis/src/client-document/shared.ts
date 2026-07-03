@@ -10,12 +10,6 @@ import {
 
 export type ClientDocumentId = string | SessionIdSymbolType
 
-export interface ClientDocumentDefaultContext<TTable extends State.SQLite.ClientDocumentTableDef.Any> {
-  readonly store: Store<any, any>
-  readonly table: TTable
-  readonly id: string
-}
-
 export interface ClientDocumentEnsureResult<TValue = unknown> {
   readonly tableName: string
   readonly id: string
@@ -69,7 +63,7 @@ export const createMissingClientDocument = <TTable extends State.SQLite.ClientDo
 ): ClientDocumentEnsureResult<TTable['Value']> => {
   const tableName = spec.table.sqliteDef.name
 
-  // Async defaults can yield, giving another ensure call a chance to create the row first.
+  // The caller may derive the default before this call, so re-check immediately before committing.
   const rowAfterDefault = selectActiveClientDocumentRow(store, spec.table, id)
   if (rowAfterDefault !== undefined) {
     return { tableName, id, created: false, value: rowAfterDefault.value }
