@@ -3,10 +3,8 @@ import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import React from 'react'
 
-import {
-  useEnsureDerivedClientDocumentAsyncSuspense,
-} from '../../client-document/async/use-ensure-derived-client-document-async-suspense.ts'
-import { DemoFrame, ExampleSuspenseBoundary, ThreadList } from '../../components/DemoFrame.tsx'
+import { useEnsureClientDocumentSync } from '../../client-document/sync/use-ensure-client-document-sync.ts'
+import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 import { events, tables } from '../../schema.ts'
 
 /**
@@ -48,11 +46,7 @@ export const Route = createFileRoute('/derived/default-with-readiness-marker')({
 })
 
 function DerivedDefaultPage() {
-  return (
-    <ExampleSuspenseBoundary name="derived-default-with-readiness-marker">
-      <DerivedDefaultContent />
-    </ExampleSuspenseBoundary>
-  )
+  return <DerivedDefaultContent />
 }
 
 function DerivedDefaultContent() {
@@ -65,9 +59,9 @@ function DerivedDefaultContent() {
   const sourceReadyRecord: SourceReadyRecord | undefined = sourceReadyRecords[0]
   const sourceIsReady = sourceReadyRecord !== undefined
   const sourceThreads = store.useQuery(mailboxThreads$(mailboxId))
-  const derivedEnsureResult = useEnsureDerivedClientDocumentAsyncSuspense(store, {
-    sourceReady: sourceIsReady,
-    document: {
+  const ensureResult = useEnsureClientDocumentSync(
+    store,
+    {
       table: tables.threadListUi,
       id: documentId,
       default: ({ store }) => {
@@ -83,7 +77,8 @@ function DerivedDefaultContent() {
           ? `derived-waiting:${demoKey}`
           : `derived-ready:${sourceReadyRecord.key}:${sourceReadyRecord.revision}`,
     },
-  })
+    { enabled: sourceIsReady },
+  )
 
   const simulateSourceReady = React.useCallback(() => {
     store.commit(
@@ -97,13 +92,13 @@ function DerivedDefaultContent() {
     )
   }, [demoKey, mailboxId, store])
 
-  if (derivedEnsureResult.sourceReady === false) {
+  if (ensureResult.status === 'skipped') {
     return (
       <DemoFrame title="Derived default waits for sourceReady">
         <section className="pattern-note">
           <p>
-            The source mailbox is not ready yet, so <code>ensureDerivedClientDocumentAsync</code> does not create the
-            client document. This avoids persisting a guessed default from incomplete synced data.
+            The source mailbox is not ready yet, so <code>useEnsureClientDocumentSync</code> is disabled and does not
+            create the client document. This avoids persisting a guessed default from incomplete synced data.
           </p>
           <button type="button" onClick={simulateSourceReady}>
             Simulate source data becoming ready
@@ -118,8 +113,8 @@ function DerivedDefaultContent() {
     <DemoFrame title="Derived default waits for sourceReady">
       <section className="pattern-note">
         <p>
-          The <code>sourceReady</code> record exists, so <code>ensureDerivedClientDocumentAsync</code> delegates to
-          <code> ensureClientDocumentAsync</code> and derives the default from local source rows.
+          The <code>sourceReady</code> record exists, so <code>useEnsureClientDocumentSync</code> runs and derives the
+          default from local source rows.
         </p>
         <pre>{JSON.stringify(sourceReadyRecord, null, 2)}</pre>
       </section>
