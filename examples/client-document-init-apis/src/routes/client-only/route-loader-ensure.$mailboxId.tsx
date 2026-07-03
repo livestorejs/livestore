@@ -2,7 +2,7 @@ import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 
 import { DemoFrame, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
-import { ensureClientDocuments } from '../../ensure-client-document.ts'
+import { ensureClientDocument } from '../../ensure-client-document.ts'
 import { withTraceSpan } from '../../otel.ts'
 import { tables } from '../../schema.ts'
 
@@ -24,25 +24,23 @@ export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxI
         const documentId = `loader:${params.mailboxId}`
         span.setAttribute('client_document.id', documentId)
 
-        await ensureClientDocuments(store, [
-          {
-            table: tables.threadListUi,
-            id: documentId,
-            default: ({ store }: { readonly store: DemoStore }) => {
-              const rows = store.query({
-                query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
-                bindValues: [params.mailboxId],
-              }) as readonly { id: string }[]
+        await ensureClientDocument(store, {
+          table: tables.threadListUi,
+          id: documentId,
+          default: ({ store }: { readonly store: DemoStore }) => {
+            const rows = store.query({
+              query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
+              bindValues: [params.mailboxId],
+            }) as readonly { id: string }[]
 
-              return {
-                selectedThreadId: rows[0]?.id ?? null,
-                sortBy: 'receivedAt',
-                sortDirection: 'desc',
-              } as const
-            },
-            label: `route-loader:${params.mailboxId}:thread-list-ui`,
+            return {
+              selectedThreadId: rows[0]?.id ?? null,
+              sortBy: 'receivedAt',
+              sortDirection: 'desc',
+            } as const
           },
-        ])
+          label: `route-loader:${params.mailboxId}:thread-list-ui`,
+        })
 
         return { documentId }
       },
@@ -65,7 +63,7 @@ function RouteLoaderEnsureContent() {
     <DemoFrame title="TanStack Router loader ensure">
       <section className="pattern-note">
         <p>
-          The route loader awaited the example-local <code>ensureClientDocuments(store, specs)</code> before this
+          The route loader awaited the example-local <code>ensureClientDocument(store, spec)</code> before this
           component rendered.
         </p>
       </section>

@@ -34,7 +34,7 @@ function RootRouteAfterStoreBoot() {
 
         <h3>Client-only</h3>
         <TracedLink to="/client-only/store-boot">Store boot</TracedLink>
-        <TracedLink to="/client-only/use-ensure-client-documents">Sync hook</TracedLink>
+        <TracedLink to="/client-only/use-ensure-client-document">Sync hook</TracedLink>
         <TracedLink to="/client-only/route-loader-ensure/$mailboxId" params={{ mailboxId: 'inbox' }} preload={false}>
           Loader ensure
         </TracedLink>

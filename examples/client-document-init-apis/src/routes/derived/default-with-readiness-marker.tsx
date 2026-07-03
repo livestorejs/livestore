@@ -5,7 +5,7 @@ import React from 'react'
 
 import { DemoFrame, ExampleSuspenseBoundary, type DemoStore, ThreadList } from '../../components/DemoFrame.tsx'
 import { events, tables } from '../../schema.ts'
-import { useEnsureDerivedClientDocumentsSuspense } from '../../use-ensure-derived-client-documents-suspense.ts'
+import { useEnsureDerivedClientDocumentSuspense } from '../../use-ensure-derived-client-document-suspense.ts'
 
 /**
  * App-level record that means the source data for `key` is now safe to read.
@@ -63,26 +63,24 @@ function DerivedDefaultContent() {
   const sourceReadyRecord: SourceReadyRecord | undefined = sourceReadyRecords[0]
   const sourceIsReady = sourceReadyRecord !== undefined
   const sourceThreads = store.useQuery(mailboxThreads$(mailboxId))
-  const derivedEnsureResult = useEnsureDerivedClientDocumentsSuspense(store, {
+  const derivedEnsureResult = useEnsureDerivedClientDocumentSuspense(store, {
     sourceReady: sourceIsReady,
-    documents: [
-      {
-        table: tables.threadListUi,
-        id: documentId,
-        default: (ctx: { store: DemoStore }) => {
-          const rows = ctx.store.query({
-            query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
-            bindValues: [mailboxId],
-          }) as readonly { id: string }[]
+    document: {
+      table: tables.threadListUi,
+      id: documentId,
+      default: (ctx: { store: DemoStore }) => {
+        const rows = ctx.store.query({
+          query: `SELECT * FROM threads WHERE mailboxId = ? ORDER BY receivedAt DESC LIMIT 1`,
+          bindValues: [mailboxId],
+        }) as readonly { id: string }[]
 
-          return { selectedThreadId: rows[0]?.id ?? null, sortBy: 'receivedAt', sortDirection: 'desc' } as const
-        },
-        label:
-          sourceReadyRecord === undefined
-            ? `derived-waiting:${demoKey}`
-            : `derived-ready:${sourceReadyRecord.key}:${sourceReadyRecord.revision}`,
+        return { selectedThreadId: rows[0]?.id ?? null, sortBy: 'receivedAt', sortDirection: 'desc' } as const
       },
-    ],
+      label:
+        sourceReadyRecord === undefined
+          ? `derived-waiting:${demoKey}`
+          : `derived-ready:${sourceReadyRecord.key}:${sourceReadyRecord.revision}`,
+    },
   })
 
   const simulateSourceReady = React.useCallback(() => {
@@ -102,7 +100,7 @@ function DerivedDefaultContent() {
       <DemoFrame title="Derived default waits for sourceReady">
         <section className="pattern-note">
           <p>
-            The source mailbox is not ready yet, so <code>ensureDerivedClientDocumentsExist</code> does not create the
+            The source mailbox is not ready yet, so <code>ensureDerivedClientDocumentExists</code> does not create the
             client document. This avoids persisting a guessed default from incomplete synced data.
           </p>
           <button type="button" onClick={simulateSourceReady}>
@@ -118,8 +116,8 @@ function DerivedDefaultContent() {
     <DemoFrame title="Derived default waits for sourceReady">
       <section className="pattern-note">
         <p>
-          The <code>sourceReady</code> record exists, so <code>ensureDerivedClientDocumentsExist</code> delegates to
-          <code> ensureClientDocuments</code> and derives the default from local source rows.
+          The <code>sourceReady</code> record exists, so <code>ensureDerivedClientDocumentExists</code> delegates to
+          <code> ensureClientDocument</code> and derives the default from local source rows.
         </p>
         <pre>{JSON.stringify(sourceReadyRecord, null, 2)}</pre>
       </section>

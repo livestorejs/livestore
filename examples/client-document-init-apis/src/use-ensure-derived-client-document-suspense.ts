@@ -2,9 +2,9 @@ import type { Store } from '@livestore/livestore'
 import React from 'react'
 
 import {
-  ensureDerivedClientDocumentsExistSyncOrPromise,
+  ensureDerivedClientDocumentExistsSyncOrPromise,
   type EnsureClientDocumentSpec,
-  type EnsureDerivedClientDocumentsExistResult,
+  type EnsureDerivedClientDocumentExistsResult,
 } from './ensure-client-document.ts'
 import { withTraceSpan } from './otel.ts'
 
@@ -15,22 +15,20 @@ type Resource<T> =
 
 const suspenseCache = new WeakMap<Store<any, any>, Map<string, Resource<unknown>>>()
 
-/** Example-local Suspense hook for derived defaults gated by app-level source readiness. */
-export function useEnsureDerivedClientDocumentsSuspense(
+/** Example-local Suspense hook for one derived default gated by app-level source readiness. */
+export function useEnsureDerivedClientDocumentSuspense(
   store: Store<any, any>,
-  options: { readonly sourceReady: boolean; readonly documents: readonly EnsureClientDocumentSpec<any>[] },
-): EnsureDerivedClientDocumentsExistResult {
+  options: { readonly sourceReady: boolean; readonly document: EnsureClientDocumentSpec<any> },
+): EnsureDerivedClientDocumentExistsResult {
   // Don't suspend before source data is ready. In this example the source key is
   // created by component state; suspending before the first commit would discard
   // that state and generate a new key on every retry.
   if (options.sourceReady === false) {
-    return { sourceReady: false, results: [] }
+    return { sourceReady: false }
   }
 
-  const key = `derived:${getDocumentsKey(options.documents)}`
-  const resource = getSuspenseResource(store, key, () =>
-    ensureDerivedClientDocumentsExistSyncOrPromise(store, options),
-  )
+  const key = `derived:${getDocumentKey(options.document)}`
+  const resource = getSuspenseResource(store, key, () => ensureDerivedClientDocumentExistsSyncOrPromise(store, options))
 
   return readResource(resource)
 }
@@ -93,11 +91,14 @@ function readResource<T>(resource: Resource<T>): T {
   }
 }
 
-function getDocumentsKey(documents: readonly EnsureClientDocumentSpec<any>[]): string {
-  return documents.map((document) => {
-    const defaultKey = typeof document.default === 'function' ? 'fn' : JSON.stringify(document.default)
-    return `${document.table.sqliteDef.name}:${String(document.id ?? '<default-id>')}:${document.label ?? ''}:${defaultKey}`
-  }).join('|')
+function getDocumentKey(document: EnsureClientDocumentSpec<any>): string {
+  const defaultKey = typeof document.default === 'function' ? 'fn' : JSON.stringify(document.default)
+  return [
+    document.table.sqliteDef.name,
+    String(document.id ?? '<default-id>'),
+    document.label ?? '',
+    defaultKey,
+  ].join(':')
 }
 
 function isPromiseLike<T>(value: T): value is T & PromiseLike<Awaited<T>> {

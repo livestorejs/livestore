@@ -57,19 +57,19 @@ export interface EnsureClientDocumentResult<TValue = unknown> {
   readonly value: TValue
 }
 
-/** Options for ensuring client documents whose defaults depend on source data. */
-export interface EnsureDerivedClientDocumentsExistOptions {
+/** Options for ensuring a client document whose default depends on source data. */
+export interface EnsureDerivedClientDocumentExistsOptions {
   /** Whether app-level source data is ready enough to derive defaults from. */
   readonly sourceReady: boolean
 
-  /** Client documents to create once source data is ready. */
-  readonly documents: readonly EnsureClientDocumentSpec<any>[]
+  /** Client document to create once source data is ready. */
+  readonly document: EnsureClientDocumentSpec<any>
 }
 
 /** Result for derived client-document initialization. */
-export type EnsureDerivedClientDocumentsExistResult =
-  | { readonly sourceReady: false; readonly results: readonly [] }
-  | { readonly sourceReady: true; readonly results: readonly EnsureClientDocumentResult[] }
+export type EnsureDerivedClientDocumentExistsResult =
+  | { readonly sourceReady: false }
+  | { readonly sourceReady: true; readonly result: EnsureClientDocumentResult }
 
 type ClientDocumentRow<TValue> = {
   readonly id: string
@@ -78,129 +78,16 @@ type ClientDocumentRow<TValue> = {
 
 type SyncOrPromise<T> = T | PromiseLike<T>
 
-/** Example-local explicit ensure helper for one or more client documents. */
-export const ensureClientDocuments = async (
+/** Example-local explicit ensure helper for one client document. */
+export const ensureClientDocument = async (
   store: Store<any, any>,
-  specs: readonly EnsureClientDocumentSpec<any>[],
-): Promise<readonly EnsureClientDocumentResult[]> => {
-  return ensureClientDocumentsSyncOrPromise(store, specs)
+  spec: EnsureClientDocumentSpec<any>,
+): Promise<EnsureClientDocumentResult> => {
+  return ensureClientDocumentSyncOrPromise(store, spec)
 }
 
-/** Ensures client documents whose defaults are known to be synchronous. */
-export const ensureClientDocumentsSync = (
-  store: Store<any, any>,
-  specs: readonly EnsureClientDocumentSyncSpec<any>[],
-): readonly EnsureClientDocumentResult[] => {
-  return withTraceSpan(
-    'client_document.ensure.batch',
-    { 'client_document.ensure.count': specs.length },
-    (batchSpan) => {
-      const results = specs.map((spec) => ensureClientDocumentSync(store, spec))
-      return finishEnsureBatch(batchSpan, results)
-    },
-  )
-}
-
-/**
- * Ensures client documents without forcing an async boundary when all defaults
- * are synchronously available.
- */
-export const ensureClientDocumentsSyncOrPromise = (
-  store: Store<any, any>,
-  specs: readonly EnsureClientDocumentSpec<any>[],
-): SyncOrPromise<readonly EnsureClientDocumentResult[]> => {
-  return withTraceSpan(
-    'client_document.ensure.batch',
-    { 'client_document.ensure.count': specs.length },
-    (batchSpan) => {
-      const results: EnsureClientDocumentResult[] = []
-
-      for (let index = 0; index < specs.length; index++) {
-        const spec = specs[index]
-        if (spec === undefined) continue
-
-        const result = ensureClientDocumentSyncOrPromise(store, spec)
-        if (isPromiseLike(result)) {
-          return result.then((resolvedResult) =>
-            ensureRemainingClientDocuments(store, specs, index + 1, [...results, resolvedResult], batchSpan),
-          )
-        }
-        results.push(result)
-      }
-
-      return finishEnsureBatch(batchSpan, results)
-    },
-  )
-}
-
-/**
- * Example-local helper for derived defaults.
- *
- * LiveStore can't know whether app/domain source rows are complete enough to derive
- * from, so callers provide `sourceReady`. When false, this deliberately does not
- * create the client document. When true, it delegates to `ensureClientDocuments`.
- */
-export const ensureDerivedClientDocumentsExist = async (
-  store: Store<any, any>,
-  options: EnsureDerivedClientDocumentsExistOptions,
-): Promise<EnsureDerivedClientDocumentsExistResult> => {
-  return ensureDerivedClientDocumentsExistSyncOrPromise(store, options)
-}
-
-/** Sync-or-Promise variant used by Suspense callers to avoid needless fallback throttling. */
-export const ensureDerivedClientDocumentsExistSyncOrPromise = (
-  store: Store<any, any>,
-  options: EnsureDerivedClientDocumentsExistOptions,
-): SyncOrPromise<EnsureDerivedClientDocumentsExistResult> => {
-  return withTraceSpan(
-    'client_document.ensure_derived',
-    {
-      'client_document.derived.source_ready': options.sourceReady,
-      'client_document.ensure.count': options.documents.length,
-    },
-    () => {
-      if (options.sourceReady === false) {
-        return { sourceReady: false, results: [] }
-      }
-
-      const results = ensureClientDocumentsSyncOrPromise(store, options.documents)
-      if (isPromiseLike(results)) {
-        return results.then((resolvedResults) => ({ sourceReady: true, results: resolvedResults }))
-      }
-
-      return { sourceReady: true, results }
-    },
-  )
-}
-
-const ensureRemainingClientDocuments = async (
-  store: Store<any, any>,
-  specs: readonly EnsureClientDocumentSpec<any>[],
-  startIndex: number,
-  results: readonly EnsureClientDocumentResult[],
-  batchSpan: Span,
-): Promise<readonly EnsureClientDocumentResult[]> => {
-  const nextResults = [...results]
-
-  for (let index = startIndex; index < specs.length; index++) {
-    const spec = specs[index]
-    if (spec === undefined) continue
-
-    nextResults.push(await ensureClientDocumentSyncOrPromise(store, spec))
-  }
-
-  return finishEnsureBatch(batchSpan, nextResults)
-}
-
-const finishEnsureBatch = (
-  batchSpan: Span,
-  results: readonly EnsureClientDocumentResult[],
-): readonly EnsureClientDocumentResult[] => {
-  batchSpan.setAttribute('client_document.ensure.created_count', results.filter((result) => result.created).length)
-  return results
-}
-
-const ensureClientDocumentSync = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
+/** Ensures a client document whose default is known to be synchronous. */
+export const ensureClientDocumentSync = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
   store: Store<any, any>,
   spec: EnsureClientDocumentSyncSpec<TTable>,
 ): EnsureClientDocumentResult<TTable['Value']> => {
@@ -235,7 +122,11 @@ const ensureClientDocumentSync = <TTable extends State.SQLite.ClientDocumentTabl
   )
 }
 
-const ensureClientDocumentSyncOrPromise = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
+/**
+ * Ensures a client document without forcing an async boundary when its default
+ * is synchronously available.
+ */
+export const ensureClientDocumentSyncOrPromise = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
   store: Store<any, any>,
   spec: EnsureClientDocumentSpec<TTable>,
 ): SyncOrPromise<EnsureClientDocumentResult<TTable['Value']>> => {
@@ -274,6 +165,43 @@ const ensureClientDocumentSyncOrPromise = <TTable extends State.SQLite.ClientDoc
       }
 
       return createMissingClientDocument(store, spec, id, defaultValue, span)
+    },
+  )
+}
+
+/**
+ * Example-local helper for derived defaults.
+ *
+ * LiveStore can't know whether app/domain source rows are complete enough to derive
+ * from, so callers provide `sourceReady`. When false, this deliberately does not
+ * create the client document. When true, it delegates to `ensureClientDocument`.
+ */
+export const ensureDerivedClientDocumentExists = async (
+  store: Store<any, any>,
+  options: EnsureDerivedClientDocumentExistsOptions,
+): Promise<EnsureDerivedClientDocumentExistsResult> => {
+  return ensureDerivedClientDocumentExistsSyncOrPromise(store, options)
+}
+
+/** Sync-or-Promise variant used by Suspense callers to avoid needless fallback throttling. */
+export const ensureDerivedClientDocumentExistsSyncOrPromise = (
+  store: Store<any, any>,
+  options: EnsureDerivedClientDocumentExistsOptions,
+): SyncOrPromise<EnsureDerivedClientDocumentExistsResult> => {
+  return withTraceSpan(
+    'client_document.ensure_derived',
+    { 'client_document.derived.source_ready': options.sourceReady },
+    () => {
+      if (options.sourceReady === false) {
+        return { sourceReady: false }
+      }
+
+      const result = ensureClientDocumentSyncOrPromise(store, options.document)
+      if (isPromiseLike(result)) {
+        return result.then((resolvedResult) => ({ sourceReady: true, result: resolvedResult }))
+      }
+
+      return { sourceReady: true, result }
     },
   )
 }
