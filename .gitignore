@@ -38,7 +38,6 @@ repos/
 /certs
 
 .wrangler
-.vercel
 .netlify
 
 # Created by the Netlify CLI when it bundles Deno edge functions during deploy
@@ -52,9 +51,6 @@ _tmp*
 .output
 
 scripts/.completions
-
-# locally downloaded S2 CLI
-.infra/s2/
 
 .devenv*
 .pre-commit-config.yaml
