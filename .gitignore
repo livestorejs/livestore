@@ -15,8 +15,6 @@ playwright-report
 *.pid
 
 .envrc.*
-.env.local
-**/.env.local
 
 tmp*
 dist
