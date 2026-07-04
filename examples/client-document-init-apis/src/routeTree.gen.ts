@@ -11,7 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DerivedDefaultWithReadinessMarkerRouteImport } from './routes/derived/default-with-readiness-marker'
-import { Route as ClientOnlyUseEnsureClientDocumentSyncRouteImport } from './routes/client-only/use-ensure-client-document-sync'
+import { Route as ClientOnlyUseEnsureClientDocumentRouteImport } from './routes/client-only/use-ensure-client-document'
 import { Route as ClientOnlyStoreBootRouteImport } from './routes/client-only/store-boot'
 import { Route as ClientOnlyRouteLoaderEnsureMailboxIdRouteImport } from './routes/client-only/route-loader-ensure.$mailboxId'
 
@@ -26,10 +26,10 @@ const DerivedDefaultWithReadinessMarkerRoute =
     path: '/derived/default-with-readiness-marker',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ClientOnlyUseEnsureClientDocumentSyncRoute =
-  ClientOnlyUseEnsureClientDocumentSyncRouteImport.update({
-    id: '/client-only/use-ensure-client-document-sync',
-    path: '/client-only/use-ensure-client-document-sync',
+const ClientOnlyUseEnsureClientDocumentRoute =
+  ClientOnlyUseEnsureClientDocumentRouteImport.update({
+    id: '/client-only/use-ensure-client-document',
+    path: '/client-only/use-ensure-client-document',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ClientOnlyStoreBootRoute = ClientOnlyStoreBootRouteImport.update({
@@ -47,14 +47,14 @@ const ClientOnlyRouteLoaderEnsureMailboxIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/client-only/store-boot': typeof ClientOnlyStoreBootRoute
-  '/client-only/use-ensure-client-document-sync': typeof ClientOnlyUseEnsureClientDocumentSyncRoute
+  '/client-only/use-ensure-client-document': typeof ClientOnlyUseEnsureClientDocumentRoute
   '/derived/default-with-readiness-marker': typeof DerivedDefaultWithReadinessMarkerRoute
   '/client-only/route-loader-ensure/$mailboxId': typeof ClientOnlyRouteLoaderEnsureMailboxIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/client-only/store-boot': typeof ClientOnlyStoreBootRoute
-  '/client-only/use-ensure-client-document-sync': typeof ClientOnlyUseEnsureClientDocumentSyncRoute
+  '/client-only/use-ensure-client-document': typeof ClientOnlyUseEnsureClientDocumentRoute
   '/derived/default-with-readiness-marker': typeof DerivedDefaultWithReadinessMarkerRoute
   '/client-only/route-loader-ensure/$mailboxId': typeof ClientOnlyRouteLoaderEnsureMailboxIdRoute
 }
@@ -62,7 +62,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/client-only/store-boot': typeof ClientOnlyStoreBootRoute
-  '/client-only/use-ensure-client-document-sync': typeof ClientOnlyUseEnsureClientDocumentSyncRoute
+  '/client-only/use-ensure-client-document': typeof ClientOnlyUseEnsureClientDocumentRoute
   '/derived/default-with-readiness-marker': typeof DerivedDefaultWithReadinessMarkerRoute
   '/client-only/route-loader-ensure/$mailboxId': typeof ClientOnlyRouteLoaderEnsureMailboxIdRoute
 }
@@ -71,21 +71,21 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/client-only/store-boot'
-    | '/client-only/use-ensure-client-document-sync'
+    | '/client-only/use-ensure-client-document'
     | '/derived/default-with-readiness-marker'
     | '/client-only/route-loader-ensure/$mailboxId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/client-only/store-boot'
-    | '/client-only/use-ensure-client-document-sync'
+    | '/client-only/use-ensure-client-document'
     | '/derived/default-with-readiness-marker'
     | '/client-only/route-loader-ensure/$mailboxId'
   id:
     | '__root__'
     | '/'
     | '/client-only/store-boot'
-    | '/client-only/use-ensure-client-document-sync'
+    | '/client-only/use-ensure-client-document'
     | '/derived/default-with-readiness-marker'
     | '/client-only/route-loader-ensure/$mailboxId'
   fileRoutesById: FileRoutesById
@@ -93,7 +93,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ClientOnlyStoreBootRoute: typeof ClientOnlyStoreBootRoute
-  ClientOnlyUseEnsureClientDocumentSyncRoute: typeof ClientOnlyUseEnsureClientDocumentSyncRoute
+  ClientOnlyUseEnsureClientDocumentRoute: typeof ClientOnlyUseEnsureClientDocumentRoute
   DerivedDefaultWithReadinessMarkerRoute: typeof DerivedDefaultWithReadinessMarkerRoute
   ClientOnlyRouteLoaderEnsureMailboxIdRoute: typeof ClientOnlyRouteLoaderEnsureMailboxIdRoute
 }
@@ -114,11 +114,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DerivedDefaultWithReadinessMarkerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/client-only/use-ensure-client-document-sync': {
-      id: '/client-only/use-ensure-client-document-sync'
-      path: '/client-only/use-ensure-client-document-sync'
-      fullPath: '/client-only/use-ensure-client-document-sync'
-      preLoaderRoute: typeof ClientOnlyUseEnsureClientDocumentSyncRouteImport
+    '/client-only/use-ensure-client-document': {
+      id: '/client-only/use-ensure-client-document'
+      path: '/client-only/use-ensure-client-document'
+      fullPath: '/client-only/use-ensure-client-document'
+      preLoaderRoute: typeof ClientOnlyUseEnsureClientDocumentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/client-only/store-boot': {
@@ -141,8 +141,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ClientOnlyStoreBootRoute: ClientOnlyStoreBootRoute,
-  ClientOnlyUseEnsureClientDocumentSyncRoute:
-    ClientOnlyUseEnsureClientDocumentSyncRoute,
+  ClientOnlyUseEnsureClientDocumentRoute:
+    ClientOnlyUseEnsureClientDocumentRoute,
   DerivedDefaultWithReadinessMarkerRoute:
     DerivedDefaultWithReadinessMarkerRoute,
   ClientOnlyRouteLoaderEnsureMailboxIdRoute:

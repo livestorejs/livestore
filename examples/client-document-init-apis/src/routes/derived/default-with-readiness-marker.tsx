@@ -3,7 +3,7 @@ import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import React from 'react'
 
-import { useEnsureClientDocumentSync } from '../../client-document/sync/use-ensure-client-document-sync.ts'
+import { useEnsureClientDocument } from '../../client-document/use-ensure-client-document.ts'
 import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 import { events, tables } from '../../schema.ts'
 
@@ -64,7 +64,7 @@ function DerivedDefaultContent() {
     sortBy: 'receivedAt',
     sortDirection: 'desc',
   } as const
-  const ensureResult = useEnsureClientDocumentSync(
+  const ensureResult = useEnsureClientDocument(
     store,
     {
       table: tables.threadListUi,
@@ -95,7 +95,7 @@ function DerivedDefaultContent() {
       <DemoFrame title="Derived default waits for sourceReady">
         <section className="pattern-note">
           <p>
-            The source mailbox is not ready yet, so <code>useEnsureClientDocumentSync</code> is disabled and does not
+            The source mailbox is not ready yet, so <code>useEnsureClientDocument</code> is disabled and does not
             create the client document. This avoids persisting a guessed default from incomplete synced data.
           </p>
           <button type="button" onClick={simulateSourceReady}>
@@ -111,7 +111,7 @@ function DerivedDefaultContent() {
     <DemoFrame title="Derived default waits for sourceReady">
       <section className="pattern-note">
         <p>
-          The <code>sourceReady</code> record exists, so <code>useEnsureClientDocumentSync</code> runs and derives the
+          The <code>sourceReady</code> record exists, so <code>useEnsureClientDocument</code> runs and derives the
           default from local source rows.
         </p>
         <pre>{JSON.stringify(sourceReadyRecord, null, 2)}</pre>

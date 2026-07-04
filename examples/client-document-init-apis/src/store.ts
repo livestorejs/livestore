@@ -4,7 +4,7 @@ import { type RegistryStoreOptions, type Store, StoreRegistry, storeOptions } fr
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 import LiveStoreWorker from './livestore.worker.ts?worker'
-import { ensureClientDocumentAsync } from './client-document/async/ensure-client-document-async.ts'
+import { ensureClientDocument } from './client-document/ensure-client-document.ts'
 import { events, schema, tables } from './schema.ts'
 
 const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
@@ -28,7 +28,7 @@ const seedThreads = [
   { id: 'support-001', mailboxId: 'support', subject: 'Support queue ready', receivedAt: 1_700_000_600 },
 ] as const
 
-const seedStore = async (store: Store<typeof schema>) => {
+const seedStore = (store: Store<typeof schema>) => {
   const existing = store.query({ query: `SELECT COUNT(*) AS count FROM threads`, bindValues: [] }) as readonly {
     count: number
   }[]
@@ -49,9 +49,9 @@ export const clientDocumentInitStoreOptions = storeOptions({
   schema,
   adapter,
   batchUpdates,
-  boot: async (store) => {
-    await seedStore(store)
-    await ensureClientDocumentAsync(store, {
+  boot: (store) => {
+    seedStore(store)
+    ensureClientDocument(store, {
       table: tables.threadListUi,
       id: 'boot:inbox',
       default: { selectedThreadId: null, sortBy: 'receivedAt', sortDirection: 'desc' },

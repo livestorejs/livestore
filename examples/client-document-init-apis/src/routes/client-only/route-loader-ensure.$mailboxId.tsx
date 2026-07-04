@@ -1,7 +1,7 @@
 import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 
-import { ensureClientDocumentAsync } from '../../client-document/async/ensure-client-document-async.ts'
+import { ensureClientDocument } from '../../client-document/ensure-client-document.ts'
 import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 import { tables } from '../../schema.ts'
 
@@ -23,7 +23,7 @@ export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxI
       sortDirection: 'desc',
     } as const
 
-    await ensureClientDocumentAsync(store, {
+    ensureClientDocument(store, {
       table: tables.threadListUi,
       id: documentId,
       default: defaultThreadListUi,
@@ -49,8 +49,8 @@ function RouteLoaderEnsureContent() {
     <DemoFrame title="TanStack Router loader ensure">
       <section className="pattern-note">
         <p>
-          The route loader awaited the example-local <code>ensureClientDocumentAsync(store, spec)</code> before this
-          component rendered.
+          The route loader loads the store, then synchronously ensures the client document before this component
+          renders.
         </p>
       </section>
       <ThreadList store={store} documentId={documentId} mailboxId={mailboxId} />

@@ -8,18 +8,37 @@ import {
   StoreInternalsSymbol,
 } from '@livestore/livestore'
 
-export type ClientDocumentId = string | SessionIdSymbolType
+export interface EnsureClientDocumentSpec<TTable extends State.SQLite.ClientDocumentTableDef.Any> {
+  readonly table: TTable
+  readonly id?: string | SessionIdSymbolType
+  readonly default?: TTable['Value']
+  readonly label?: string
+}
 
-export interface ClientDocumentEnsureResult<TValue = unknown> {
+export interface EnsureClientDocumentResult<TValue = unknown> {
   readonly tableName: string
   readonly id: string
   readonly created: boolean
   readonly value: TValue
 }
 
-export interface ClientDocumentCommitSpec<TTable extends State.SQLite.ClientDocumentTableDef.Any> {
-  readonly table: TTable
-  readonly label?: string
+/** Ensures one client document before descendants read it. */
+export const ensureClientDocument = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
+  store: Store<any, any>,
+  spec: EnsureClientDocumentSpec<TTable>,
+): EnsureClientDocumentResult<TTable['Value']> => {
+  const tableName = spec.table.sqliteDef.name
+
+  assertClientDocumentTable(spec.table)
+
+  const id = resolveClientDocumentId(store, spec.table, spec.id)
+  const existingRow = selectActiveClientDocumentRow(store, spec.table, id)
+
+  if (existingRow !== undefined) {
+    return { tableName, id, created: false, value: existingRow.value }
+  }
+
+  return createMissingClientDocument(store, spec, id, spec.default ?? spec.table.default.value)
 }
 
 type ClientDocumentRow<TValue> = {
@@ -27,17 +46,17 @@ type ClientDocumentRow<TValue> = {
   readonly value: TValue
 }
 
-export const assertClientDocumentTable = (table: State.SQLite.ClientDocumentTableDef.Any): void => {
+const assertClientDocumentTable = (table: State.SQLite.ClientDocumentTableDef.Any): void => {
   const tableName = table.sqliteDef.name
   if (State.SQLite.tableIsClientDocumentTable(table) === false) {
     throw new Error(`Cannot ensure non-client-document table "${tableName}"`)
   }
 }
 
-export const resolveClientDocumentId = (
+const resolveClientDocumentId = (
   store: Store<any, any>,
   table: State.SQLite.ClientDocumentTableDef.Any,
-  id: ClientDocumentId | undefined,
+  id: string | SessionIdSymbolType | undefined,
 ): string => {
   const idOrDefault = id ?? table.default.id
   if (idOrDefault === undefined) {
@@ -47,20 +66,12 @@ export const resolveClientDocumentId = (
   return idOrDefault === SessionIdSymbol ? store.sessionId : idOrDefault
 }
 
-export const selectActiveClientDocumentRow = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
+const createMissingClientDocument = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
   store: Store<any, any>,
-  table: TTable,
-  id: string,
-): ClientDocumentRow<TTable['Value']> | undefined => {
-  return selectClientDocumentRow(store, table, id)
-}
-
-export const createMissingClientDocument = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
-  store: Store<any, any>,
-  spec: ClientDocumentCommitSpec<TTable>,
+  spec: EnsureClientDocumentSpec<TTable>,
   id: string,
   defaultValue: TTable['Value'],
-): ClientDocumentEnsureResult<TTable['Value']> => {
+): EnsureClientDocumentResult<TTable['Value']> => {
   const tableName = spec.table.sqliteDef.name
 
   // The caller may derive the default before this call, so re-check immediately before committing.
@@ -79,7 +90,7 @@ export const createMissingClientDocument = <TTable extends State.SQLite.ClientDo
   return { tableName, id, created: true, value: createdRow.value }
 }
 
-const selectClientDocumentRow = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
+const selectActiveClientDocumentRow = <TTable extends State.SQLite.ClientDocumentTableDef.Any>(
   store: Store<any, any>,
   table: TTable,
   id: string,

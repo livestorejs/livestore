@@ -12,7 +12,7 @@ function IndexRoute() {
       </header>
       <section className="pattern-note">
         <p>
-          This app compares store boot, sync hook, route loader, and derived-readiness patterns for explicit
+          This app compares store boot, render hook, route loader, and derived-readiness patterns for explicit
           client-document initialization.
         </p>
         <p>
