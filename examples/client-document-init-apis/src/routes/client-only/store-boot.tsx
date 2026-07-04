@@ -1,5 +1,6 @@
-import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
+
+import { useStore } from '@livestore/react'
 
 import { ClientOnlyDataSummary, DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 
@@ -14,12 +15,15 @@ function StoreBootPage() {
   const { storeOptions } = Route.useRouteContext()
   const store = useStore(storeOptions)
 
+  /**
+   * Check the examples/client-document-init-apis/src/store.ts  boot function for the example
+   */
   return (
     <DemoFrame title="Store boot ensure">
       <section className="pattern-note">
         <p>
-          The store boot hook in <code>src/store.ts</code> ensures <code>boot:inbox</code> while the store loads, so
-          the thread list can read the client document immediately.
+          The store boot hook in <code>src/store.ts</code> ensures <code>boot:inbox</code> while the store loads, so the
+          thread list can read the client document immediately.
         </p>
         <ClientOnlyDataSummary pattern="store boot" documentId={documentId} mailboxId={mailboxId} />
       </section>

@@ -1,5 +1,6 @@
-import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
+
+import { useStore } from '@livestore/react'
 
 import { useEnsureClientDocument } from '../../client-document/use-ensure-client-document.ts'
 import { ClientOnlyDataSummary, DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
@@ -19,7 +20,7 @@ function UseEnsureClientDocumentPage() {
   useEnsureClientDocument(store, {
     table: tables.threadListUi,
     id: documentId,
-    default: { selectedThreadId: 'support-001', sortBy: 'receivedAt', sortDirection: 'desc' },
+    default: { selectedThreadId: 'support-004', sortBy: 'receivedAt', sortDirection: 'desc' },
     label: 'hook:thread-list-ui',
   })
 

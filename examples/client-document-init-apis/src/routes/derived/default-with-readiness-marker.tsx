@@ -79,12 +79,32 @@ function DerivedDefaultContent() {
   )
 
   const simulateSourceReady = React.useCallback(() => {
+    const receivedAt = Date.now()
+
     store.commit(
       events.threadSynced({
         id: `${mailboxId}:001`,
         mailboxId,
-        subject: 'Arrived after source became ready',
-        receivedAt: Date.now(),
+        subject: 'Source row arrived first',
+        receivedAt,
+      }),
+      events.threadSynced({
+        id: `${mailboxId}:002`,
+        mailboxId,
+        subject: 'Derived default can now inspect rows',
+        receivedAt: receivedAt + 1,
+      }),
+      events.threadSynced({
+        id: `${mailboxId}:003`,
+        mailboxId,
+        subject: 'Additional synced mailbox context',
+        receivedAt: receivedAt + 2,
+      }),
+      events.threadSynced({
+        id: `${mailboxId}:004`,
+        mailboxId,
+        subject: 'Newest row selected by default',
+        receivedAt: receivedAt + 3,
       }),
       events.sourceReady({ key: demoKey, revision: 1 }),
     )

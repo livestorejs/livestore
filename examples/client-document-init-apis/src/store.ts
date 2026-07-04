@@ -25,20 +25,33 @@ const adapter = makePersistedAdapter({
 const seedThreads = [
   { id: 'inbox-001', mailboxId: 'inbox', subject: 'Welcome to explicit initialization', receivedAt: 1_700_000_300 },
   { id: 'inbox-002', mailboxId: 'inbox', subject: 'A later inbox thread', receivedAt: 1_700_000_900 },
+  { id: 'inbox-003', mailboxId: 'inbox', subject: 'Product update digest', receivedAt: 1_700_001_200 },
+  { id: 'inbox-004', mailboxId: 'inbox', subject: 'Weekend planning notes', receivedAt: 1_700_001_500 },
+  { id: 'inbox-005', mailboxId: 'inbox', subject: 'Follow-up from the team', receivedAt: 1_700_001_800 },
   { id: 'support-001', mailboxId: 'support', subject: 'Support queue ready', receivedAt: 1_700_000_600 },
+  { id: 'support-002', mailboxId: 'support', subject: 'Billing question triaged', receivedAt: 1_700_001_000 },
+  { id: 'support-003', mailboxId: 'support', subject: 'Login issue reproduced', receivedAt: 1_700_001_400 },
+  { id: 'support-004', mailboxId: 'support', subject: 'Escalation resolved', receivedAt: 1_700_001_700 },
 ] as const
 
 const seedStore = (store: Store<typeof schema>) => {
-  const existing = store.query({ query: `SELECT COUNT(*) AS count FROM threads`, bindValues: [] }) as readonly {
-    count: number
-  }[]
-  const existingThreadCount = existing[0]?.count ?? 0
-  if (existingThreadCount > 0) return
+  const existingThreads = store.query({ query: `SELECT id FROM threads`, bindValues: [] }) as readonly { id: string }[]
+  const existingThreadIds = new Set(existingThreads.map((thread) => thread.id))
+  const missingThreads = seedThreads.filter((thread) => existingThreadIds.has(thread.id) === false)
+
+  const existingSourceReady = store.query({
+    query: `SELECT key FROM sourceReady WHERE key = ?`,
+    bindValues: ['mailbox:inbox'],
+  }) as readonly { key: string }[]
+  const sourceReadyEvent =
+    existingSourceReady.length === 0 ? [events.sourceReady({ key: 'mailbox:inbox', revision: 1 })] : []
+
+  if (missingThreads.length === 0 && sourceReadyEvent.length === 0) return
 
   store.commit(
     { label: 'app.seedStore' },
-    ...seedThreads.map((thread) => events.threadSynced(thread)),
-    events.sourceReady({ key: 'mailbox:inbox', revision: 1 }),
+    ...missingThreads.map((thread) => events.threadSynced(thread)),
+    ...sourceReadyEvent,
   )
 }
 
