@@ -2,10 +2,11 @@ import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 
 import { useEnsureClientDocument } from '../../client-document/use-ensure-client-document.ts'
-import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
+import { ClientOnlyDataSummary, DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 import { tables } from '../../schema.ts'
 
-const documentId = 'hook:inbox'
+const documentId = 'hook:support'
+const mailboxId = 'support'
 
 export const Route = createFileRoute('/client-only/use-ensure-client-document')({
   component: UseEnsureClientDocumentPage,
@@ -18,7 +19,7 @@ function UseEnsureClientDocumentPage() {
   useEnsureClientDocument(store, {
     table: tables.threadListUi,
     id: documentId,
-    default: { selectedThreadId: null, sortBy: 'receivedAt', sortDirection: 'desc' },
+    default: { selectedThreadId: 'support-001', sortBy: 'receivedAt', sortDirection: 'desc' },
     label: 'hook:thread-list-ui',
   })
 
@@ -26,8 +27,9 @@ function UseEnsureClientDocumentPage() {
     <DemoFrame title="useEnsureClientDocument">
       <section className="pattern-note">
         <p>The hook ensures the client document during render, then descendants can read it immediately.</p>
+        <ClientOnlyDataSummary pattern="render hook" documentId={documentId} mailboxId={mailboxId} />
       </section>
-      <ThreadList store={store} documentId={documentId} mailboxId="inbox" />
+      <ThreadList store={store} documentId={documentId} mailboxId={mailboxId} />
     </DemoFrame>
   )
 }

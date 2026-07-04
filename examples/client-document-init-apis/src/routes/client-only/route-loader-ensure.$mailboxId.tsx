@@ -2,7 +2,7 @@ import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 
 import { ensureClientDocument } from '../../client-document/ensure-client-document.ts'
-import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
+import { ClientOnlyDataSummary, DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 import { tables } from '../../schema.ts'
 
 export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxId')({
@@ -52,6 +52,7 @@ function RouteLoaderEnsureContent() {
           The route loader loads the store, then synchronously ensures the client document before this component
           renders.
         </p>
+        <ClientOnlyDataSummary pattern="route loader" documentId={documentId} mailboxId={mailboxId} />
       </section>
       <ThreadList store={store} documentId={documentId} mailboxId={mailboxId} />
     </DemoFrame>

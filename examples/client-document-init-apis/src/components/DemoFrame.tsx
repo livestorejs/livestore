@@ -79,6 +79,21 @@ export const ThreadList = ({
   )
 }
 
+export const ClientOnlyDataSummary = ({
+  documentId,
+  mailboxId,
+  pattern,
+}: {
+  documentId: string
+  mailboxId: string
+  pattern: string
+}) => (
+  <p>
+    Example data: <span className="badge">{pattern}</span> document <span className="badge">{documentId}</span>{' '}
+    mailbox <span className="badge">{mailboxId}</span>
+  </p>
+)
+
 export const DemoFrame = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div>
     <header className="page-header">
