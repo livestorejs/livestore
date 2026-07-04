@@ -79,32 +79,33 @@ function DerivedDefaultContent() {
   )
 
   const simulateSourceReady = React.useCallback(() => {
-    const receivedAt = Date.now()
+    const dayMs = 24 * 60 * 60 * 1000
+    const newestReceivedAt = Date.now()
 
     store.commit(
       events.threadSynced({
         id: `${mailboxId}:001`,
         mailboxId,
         subject: 'Source row arrived first',
-        receivedAt,
+        receivedAt: newestReceivedAt - 3 * dayMs,
       }),
       events.threadSynced({
         id: `${mailboxId}:002`,
         mailboxId,
         subject: 'Derived default can now inspect rows',
-        receivedAt: receivedAt + 1,
+        receivedAt: newestReceivedAt - 2 * dayMs,
       }),
       events.threadSynced({
         id: `${mailboxId}:003`,
         mailboxId,
         subject: 'Additional synced mailbox context',
-        receivedAt: receivedAt + 2,
+        receivedAt: newestReceivedAt - dayMs,
       }),
       events.threadSynced({
         id: `${mailboxId}:004`,
         mailboxId,
         subject: 'Newest row selected by default',
-        receivedAt: receivedAt + 3,
+        receivedAt: newestReceivedAt,
       }),
       events.sourceReady({ key: demoKey, revision: 1 }),
     )

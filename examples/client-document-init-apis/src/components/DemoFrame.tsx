@@ -28,6 +28,17 @@ const threadsForMailbox$ = (mailboxId: string, direction: 'asc' | 'desc') =>
     { deps: `${mailboxId}:${direction}`, label: `threads:${mailboxId}:${direction}` },
   )
 
+const receivedAtFormatter = new Intl.DateTimeFormat('en-US', {
+  month: '2-digit',
+  day: '2-digit',
+  year: 'numeric',
+})
+
+const formatReceivedAt = (receivedAt: number) => {
+  const timestampMs = receivedAt < 10_000_000_000 ? receivedAt * 1000 : receivedAt
+  return receivedAtFormatter.format(new Date(timestampMs))
+}
+
 export const ThreadList = ({
   store,
   documentId,
@@ -64,7 +75,7 @@ export const ThreadList = ({
         <tbody>
           {threads.map((thread) => (
             <tr key={thread.id}>
-              <td>{thread.receivedAt}</td>
+              <td>{formatReceivedAt(thread.receivedAt)}</td>
               <td>{thread.subject}</td>
               <td>
                 <button type="button" onClick={() => setUiState({ selectedThreadId: thread.id })}>

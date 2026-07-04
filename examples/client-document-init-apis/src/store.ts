@@ -22,16 +22,28 @@ const adapter = makePersistedAdapter({
   resetPersistence,
 })
 
+const receivedAt = (year: number, month: number, day: number) => Date.UTC(year, month - 1, day, 12)
+
 const seedThreads = [
-  { id: 'inbox-001', mailboxId: 'inbox', subject: 'Welcome to explicit initialization', receivedAt: 1_700_000_300 },
-  { id: 'inbox-002', mailboxId: 'inbox', subject: 'A later inbox thread', receivedAt: 1_700_000_900 },
-  { id: 'inbox-003', mailboxId: 'inbox', subject: 'Product update digest', receivedAt: 1_700_001_200 },
-  { id: 'inbox-004', mailboxId: 'inbox', subject: 'Weekend planning notes', receivedAt: 1_700_001_500 },
-  { id: 'inbox-005', mailboxId: 'inbox', subject: 'Follow-up from the team', receivedAt: 1_700_001_800 },
-  { id: 'support-001', mailboxId: 'support', subject: 'Support queue ready', receivedAt: 1_700_000_600 },
-  { id: 'support-002', mailboxId: 'support', subject: 'Billing question triaged', receivedAt: 1_700_001_000 },
-  { id: 'support-003', mailboxId: 'support', subject: 'Login issue reproduced', receivedAt: 1_700_001_400 },
-  { id: 'support-004', mailboxId: 'support', subject: 'Escalation resolved', receivedAt: 1_700_001_700 },
+  {
+    id: 'inbox-001',
+    mailboxId: 'inbox',
+    subject: 'Welcome to explicit initialization',
+    receivedAt: receivedAt(2023, 11, 10),
+  },
+  { id: 'inbox-002', mailboxId: 'inbox', subject: 'A later inbox thread', receivedAt: receivedAt(2023, 11, 11) },
+  { id: 'inbox-003', mailboxId: 'inbox', subject: 'Product update digest', receivedAt: receivedAt(2023, 11, 12) },
+  { id: 'inbox-004', mailboxId: 'inbox', subject: 'Weekend planning notes', receivedAt: receivedAt(2023, 11, 13) },
+  { id: 'inbox-005', mailboxId: 'inbox', subject: 'Follow-up from the team', receivedAt: receivedAt(2023, 11, 14) },
+  { id: 'support-001', mailboxId: 'support', subject: 'Support queue ready', receivedAt: receivedAt(2023, 12, 4) },
+  {
+    id: 'support-002',
+    mailboxId: 'support',
+    subject: 'Billing question triaged',
+    receivedAt: receivedAt(2023, 12, 5),
+  },
+  { id: 'support-003', mailboxId: 'support', subject: 'Login issue reproduced', receivedAt: receivedAt(2023, 12, 6) },
+  { id: 'support-004', mailboxId: 'support', subject: 'Escalation resolved', receivedAt: receivedAt(2023, 12, 7) },
 ] as const
 
 const seedStore = (store: Store<typeof schema>) => {
