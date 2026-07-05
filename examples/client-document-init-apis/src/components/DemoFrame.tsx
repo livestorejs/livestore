@@ -2,11 +2,12 @@ import React from 'react'
 
 import type { Store } from '@livestore/livestore'
 import { queryDb, Schema } from '@livestore/livestore'
-import type { ReactApi } from '@livestore/react'
+import type { useQuery } from '@livestore/react'
 
 import { schema, tables } from '../schema.ts'
 
-export type DemoStore = Store<typeof schema> & ReactApi
+export type DemoStore = Store<typeof schema> & { useQuery: typeof useQuery }
+type ThreadListUi = typeof tables.threadListUi.Value
 
 export const firstThreadForMailbox$ = (mailboxId: string) =>
   queryDb(
@@ -28,6 +29,13 @@ const threadsForMailbox$ = (mailboxId: string, direction: 'asc' | 'desc') =>
     { deps: `${mailboxId}:${direction}`, label: `threads:${mailboxId}:${direction}` },
   )
 
+const threadListUi$ = (documentId: string) =>
+  // Fail loudly if a pattern renders before its explicit ensure step; this read must never create the default row.
+  queryDb(tables.threadListUi.select('value').where({ id: documentId }).first({ behaviour: 'error' }), {
+    deps: documentId,
+    label: `threadListUi:${documentId}`,
+  })
+
 const receivedAtFormatter = new Intl.DateTimeFormat('en-US', {
   month: '2-digit',
   day: '2-digit',
@@ -48,7 +56,13 @@ export const ThreadList = ({
   documentId: string
   mailboxId: string
 }) => {
-  const [uiState, setUiState] = store.useClientDocument(tables.threadListUi, documentId)
+  const uiState = store.useQuery(threadListUi$(documentId))
+  const setUiState = React.useCallback(
+    (patch: Partial<ThreadListUi>) => {
+      store.commit(tables.threadListUi.set(patch, documentId))
+    },
+    [documentId, store],
+  )
   const threads = store.useQuery(threadsForMailbox$(mailboxId, uiState.sortDirection))
 
   return (
