@@ -92,17 +92,21 @@ export const ThreadList = ({
           </tr>
         </thead>
         <tbody>
-          {threads.map((thread) => (
-            <tr key={thread.id}>
-              <td>{formatReceivedAt(thread.receivedAt)}</td>
-              <td>{thread.subject}</td>
-              <td>
-                <button type="button" onClick={() => selectThread(thread.id)}>
-                  Select
-                </button>
-              </td>
-            </tr>
-          ))}
+          {threads.map((thread) => {
+            const isSelected = uiState.selectedThreadId === thread.id
+
+            return (
+              <tr key={thread.id} aria-selected={isSelected} className={isSelected ? 'selected-thread' : undefined}>
+                <td>{formatReceivedAt(thread.receivedAt)}</td>
+                <td>{thread.subject}</td>
+                <td>
+                  <button type="button" onClick={() => selectThread(thread.id)}>
+                    Select
+                  </button>
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

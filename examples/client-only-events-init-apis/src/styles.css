@@ -102,6 +102,16 @@ main {
   text-align: left;
 }
 
+.thread-list tr.selected-thread {
+  background: #ecfdf5;
+}
+
+.thread-list tr.selected-thread td {
+  border-bottom-color: #a7f3d0;
+  color: #064e3b;
+  font-weight: 700;
+}
+
 .badge {
   background: #e0f2fe;
   border-radius: 999px;
