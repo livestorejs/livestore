@@ -70,14 +70,12 @@ export const clientOnlyEventsStoreOptions = storeOptions({
     seedStore(store)
     // This ensure runs here to power the /client-only/store-boot example.
     ensureClientOnlyRow({
-      tableName: tables.threadListUi.sqliteDef.name,
+      store,
+      table: tables.threadListUi,
       id: 'boot:inbox',
-      default: { selectedThreadId: null, sortBy: 'receivedAt', sortDirection: 'desc' } as const,
+      defaultValue: { selectedThreadId: null, sortBy: 'receivedAt', sortDirection: 'desc' } as const,
       label: 'boot:thread-list-ui',
-      read: (id) => store.query(tables.threadListUi.where({ id }).first({ behaviour: 'undefined' })),
-      commitEnsure: ({ id, default: defaultValue, label }) => {
-        store.commit({ label }, events.threadListUiEnsured({ id, ...defaultValue }))
-      },
+      event: ({ id, defaultValue }) => events.threadListUiEnsured({ id, ...defaultValue }),
     })
   },
 })

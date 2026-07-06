@@ -43,14 +43,12 @@ function DerivedDefaultContent() {
   } as const
   const ensureResult = useEnsureClientOnlyRow(
     {
-      tableName: tables.threadListUi.sqliteDef.name,
+      store,
+      table: tables.threadListUi,
       id: rowId,
-      default: defaultThreadListUi,
+      defaultValue: defaultThreadListUi,
       label: sourceRowsAreReady === false ? `derived-waiting:${demoKey}` : `derived-ready:${demoKey}`,
-      read: (id) => store.query(tables.threadListUi.where({ id }).first({ behaviour: 'undefined' })),
-      commitEnsure: ({ id, default: defaultValue, label }) => {
-        store.commit({ label }, events.threadListUiEnsured({ id, ...defaultValue }))
-      },
+      event: ({ id, defaultValue }) => events.threadListUiEnsured({ id, ...defaultValue }),
     },
     { enabled: sourceRowsAreReady },
   )

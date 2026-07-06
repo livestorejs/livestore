@@ -16,18 +16,16 @@ export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxI
     const rowId = `loader:${params.mailboxId}`
 
     ensureClientOnlyRow({
-      tableName: tables.threadListUi.sqliteDef.name,
+      store,
+      table: tables.threadListUi,
       id: rowId,
-      default: {
+      defaultValue: {
         selectedThreadId: null,
         sortBy: 'receivedAt',
         sortDirection: 'desc',
       } as const,
       label: `route-loader:${params.mailboxId}:thread-list-ui`,
-      read: (id) => store.query(tables.threadListUi.where({ id }).first({ behaviour: 'undefined' })),
-      commitEnsure: ({ id, default: defaultValue, label }) => {
-        store.commit({ label }, events.threadListUiEnsured({ id, ...defaultValue }))
-      },
+      event: ({ id, defaultValue }) => events.threadListUiEnsured({ id, ...defaultValue }),
     })
 
     return { rowId }

@@ -19,14 +19,12 @@ function RenderEnsurePage() {
 
   useEnsureClientOnlyRow(
     {
-      tableName: tables.threadListUi.sqliteDef.name,
+      store,
+      table: tables.threadListUi,
       id: rowId,
-      default: { selectedThreadId: 'support-004', sortBy: 'receivedAt', sortDirection: 'desc' } as const,
+      defaultValue: { selectedThreadId: 'support-004', sortBy: 'receivedAt', sortDirection: 'desc' } as const,
       label: 'hook:thread-list-ui',
-      read: (id) => store.query(tables.threadListUi.where({ id }).first({ behaviour: 'undefined' })),
-      commitEnsure: ({ id, default: defaultValue, label }) => {
-        store.commit({ label }, events.threadListUiEnsured({ id, ...defaultValue }))
-      },
+      event: ({ id, defaultValue }) => events.threadListUiEnsured({ id, ...defaultValue }),
     },
   )
 
