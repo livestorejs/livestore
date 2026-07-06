@@ -15,7 +15,7 @@
     "@cloudflare/workers-types": "4.20251118.0",
     "@livestore/devtools-vite": "0.4.0-dev.25",
     "@playwright/test": "1.59.1",
-    "typescript": "5.9.3",
+    "typescript": "6.0.3",
     "vite": "7.3.1",
     "wrangler": "4.42.2"
   },

@@ -6,7 +6,6 @@ import { baseTsconfigCompilerOptions, packageTsconfigExclude, tsconfigJson } fro
  * Key design decisions:
  * - `noEmit: true` - Scripts are run directly with bun/tsx, not compiled
  * - `declaration: false` - Prevents TS2742 errors from cross-workspace type resolution
- * - `composite: false` - Scripts doesn't participate in project references build
  *
  * Why declaration: false?
  * Scripts imports from @local packages (docs tools, test utils) which are in its
@@ -19,13 +18,11 @@ export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
     module: 'NodeNext',
-    moduleResolution: 'NodeNext',
     resolveJsonModule: true,
     // CLI tool - doesn't emit, doesn't need portable declarations
     noEmit: true,
     declaration: false,
     declarationMap: false,
-    composite: false,
   },
   include: ['./src', './standalone'],
   exclude: [...packageTsconfigExclude],

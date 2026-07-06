@@ -9,7 +9,7 @@ export default tsconfigJson({
     rootDir: './src',
     resolveJsonModule: true,
     tsBuildInfoFile: './dist/.tsbuildinfo',
-    types: ['vitest/globals', '@types/node'],
+    types: ['vitest/globals', 'node'],
   },
   include: ['./src'],
   exclude: [...packageTsconfigExclude],

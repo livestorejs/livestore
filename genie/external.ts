@@ -130,7 +130,7 @@ export const livestoreOnlyCatalog = {
   '@sveltejs/vite-plugin-svelte': '6.2.1',
   astro: '6.4.6',
   '@astrojs/starlight': '0.40.0',
-  typedoc: '0.28.11',
+  typedoc: '0.28.19',
   expo: '54.0.12',
   'expo-application': '7.0.7',
   'expo-sqlite': '16.0.8',

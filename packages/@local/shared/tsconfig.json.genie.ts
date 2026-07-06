@@ -10,6 +10,7 @@ export default tsconfigJson({
     ...baseTsconfigCompilerOptions,
     ...packageTsconfigCompilerOptions,
     rootDir: '.',
+    types: ['node'],
   },
   include: ['./src'],
   exclude: [...packageTsconfigExclude],

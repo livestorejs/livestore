@@ -5,7 +5,6 @@ export default tsconfigJson({
   compilerOptions: {
     ...sharedCompilerOptions,
     module: 'ESNext',
-    moduleResolution: 'Bundler',
     rootDir: './',
     jsx: 'react-jsx',
     types: ['node'],

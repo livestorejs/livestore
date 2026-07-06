@@ -19,11 +19,11 @@ import {
   baseOxlintCategories,
   baseOxlintIgnorePatterns,
   baseOxlintPlugins,
-  baseTsconfigCompilerOptions,
+  baseTsconfigCompilerOptions as effectUtilsBaseTsconfigCompilerOptions,
   commonPnpmPolicySettings,
   defineCatalog,
   defineRepoContext,
-  domLib,
+  domLib as effectUtilsDomLib,
   githubRuleset,
   githubWorkflow,
   megarepoJson,
@@ -48,7 +48,7 @@ import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from '#mr/effect-utils/geni
 import { livestoreOnlyCatalog, livestoreWorkspaceCatalog } from './external.ts'
 import { livestoreCurrentPackageNames, type LivestorePackageName } from './repo-topology.ts'
 
-export { baseTsconfigCompilerOptions, domLib, reactJsx }
+export { baseTsconfigCompilerOptions, reactJsx }
 export {
   baseOxfmtIgnorePatterns,
   baseOxfmtOptions,
@@ -75,6 +75,23 @@ export type {
   WorkspacePackage,
   WorkspacePackageLike,
 }
+
+// TODO: Remove this once effect-utils carries the TS 6 DOM lib cleanup upstream:
+// https://github.com/overengineeringstudio/effect-utils/issues/892
+// TypeScript 6 folds DOM iterable and async-iterable declarations into DOM.
+export const domLib = effectUtilsDomLib.filter((lib) => lib !== 'DOM.Iterable' && lib !== 'DOM.AsyncIterable')
+
+// Strip inherited options that now match defaults so generated
+// tsconfigs only carry LiveStore-specific intent.
+const {
+  allowJs: _allowJs,
+  esModuleInterop: _esModuleInterop,
+  allowSyntheticDefaultImports: _allowSyntheticDefaultImports,
+  forceConsistentCasingInFileNames: _forceConsistentCasingInFileNames,
+  moduleResolution: _moduleResolution,
+  strict: _strict,
+  ...baseTsconfigCompilerOptions
+} = effectUtilsBaseTsconfigCompilerOptions
 
 /**
  * Package tsconfig compiler options for livestore.
@@ -103,9 +120,19 @@ const releaseVersion = repo.readJson<{
   readonly version: string
 }>('release/version.json')
 
-/** Composed catalog - effect-utils base + livestore-specific + workspace packages */
+/** TODO: Remove once effect-utils upgrades its TypeScript catalog pin: https://github.com/overengineeringstudio/effect-utils/issues/892 */
+const livestoreCatalogOverrides = {
+  typescript: '6.0.3',
+} as const
+
+const livestoreBaseCatalog = defineCatalog({
+  ...effectUtilsCatalog,
+  ...livestoreCatalogOverrides,
+})
+
+/** Composed catalog - effect-utils base + LiveStore overrides + livestore-specific + workspace packages */
 export const catalog = defineCatalog({
-  extends: effectUtilsCatalog,
+  extends: livestoreBaseCatalog,
   packages: {
     ...livestoreWorkspaceCatalog,
     ...livestoreOnlyCatalog,
