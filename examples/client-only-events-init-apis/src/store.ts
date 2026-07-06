@@ -4,7 +4,7 @@ import { type RegistryStoreOptions, type Store, StoreRegistry, storeOptions } fr
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 import LiveStoreWorker from './livestore.worker.ts?worker'
-import { ensureThreadListUi } from './client-only-row/ensure-thread-list-ui.ts'
+import { ensureThreadListUi } from './thread-list-ui/ensure-thread-list-ui.ts'
 import { events, schema } from './schema.ts'
 
 const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null

@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { useStore } from '@livestore/react'
 
-import { useEnsureThreadListUi } from '../../client-only-row/use-ensure-thread-list-ui.ts'
+import { useEnsureThreadListUi } from '../../thread-list-ui/ensure-thread-list-ui.ts'
 import { ClientOnlyDataSummary, DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 
 const rowId = 'hook:support'

@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { useStore } from '@livestore/react'
 
-import { ensureThreadListUi } from '../../client-only-row/ensure-thread-list-ui.ts'
+import { ensureThreadListUi } from '../../thread-list-ui/ensure-thread-list-ui.ts'
 import { ClientOnlyDataSummary, DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 
 export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxId')({
