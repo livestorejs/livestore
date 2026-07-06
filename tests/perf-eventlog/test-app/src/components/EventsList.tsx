@@ -49,7 +49,7 @@ const stringify = (value: unknown) => {
 }
 
 const getSeqNum = (value: unknown): EventSeqNum | undefined => {
-  if (typeof value !== 'object' || value === null || ('seqNum' in value) === false) {
+  if (typeof value !== 'object' || value === null || 'seqNum' in value === false) {
     return undefined
   }
 
