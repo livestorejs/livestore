@@ -12,7 +12,7 @@ const mxbai = new Mixedbread({
 
 const slugger = new Slugger()
 
-type SearchMetadata = {
+interface SearchMetadata {
   title?: string
   description?: string
   path?: string
@@ -72,7 +72,7 @@ export const GET: APIRoute = async ({ url }) => {
     })
   }
 
-  const query = url.searchParams.get('query')
+  const query = url.searchParams.get('query')!
 
   if (query === null || query === '') {
     return new Response(JSON.stringify({ error: 'Query parameter is required' }), {
@@ -96,9 +96,9 @@ export const GET: APIRoute = async ({ url }) => {
 
     response.data.forEach((item, index) => {
       const metadata = {
-        ...(item.metadata as SearchMetadata | undefined),
-        ...(item.generated_metadata as SearchMetadata | undefined),
-      }
+        ...item.metadata,
+        ...item.generated_metadata,
+      } as SearchMetadata
 
       const url = filePathToHref(metadata?.file_path || '')
       const title = metadata?.title || 'Untitled'

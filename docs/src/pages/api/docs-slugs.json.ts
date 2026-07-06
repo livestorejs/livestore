@@ -10,11 +10,16 @@ import { getCollection } from 'astro:content'
 
 export const prerender = false
 
-const toSlug = (id: string): string =>
-  id
+const toSlug = (id: string, slug: string | undefined): string => {
+  if (typeof slug === 'string' && slug.trim() !== '') {
+    return slug.replace(/^\//, '')
+  }
+
+  return id
     .replace(/^docs\//, '')
     .replace(/\.(md|mdx)$/i, '')
     .replace(/\/index$/i, '')
+}
 
 export const GET = async () => {
   if (import.meta.env.DEV === false) {
@@ -22,7 +27,7 @@ export const GET = async () => {
   }
 
   const docs = await getCollection('docs')
-  const slugs = docs.map((doc) => toSlug(doc.id)).filter((slug) => slug !== '')
+  const slugs = docs.map((doc) => toSlug(doc.id, doc.slug)).filter((slug) => slug !== '')
 
   return new Response(JSON.stringify({ slugs }), {
     headers: {
