@@ -716,11 +716,7 @@ export const make = Effect.fnUntraced(function* ({
           return yield* Effect.failCause(cause).pipe(Effect.orDie)
         })
 
-      yield* backgroundApplyLocalPushes.pipe(
-        Effect.catchCause(maybeShutdownOnError),
-        // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
-      )
+      yield* backgroundApplyLocalPushes.pipe(Effect.catchCause(maybeShutdownOnError), Effect.forkScoped)
 
       const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
       const backendPushingEffect = backgroundBackendPushing.pipe(
@@ -755,8 +751,7 @@ export const make = Effect.fnUntraced(function* ({
         // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
         // This might be a bug in Effect. Only seems to happen in the browser.
         Effect.provideService(References.UnhandledLogLevel, undefined),
-        // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+        Effect.forkScoped,
       )
 
       return { initialLeaderHead: initialSyncState.localHead }

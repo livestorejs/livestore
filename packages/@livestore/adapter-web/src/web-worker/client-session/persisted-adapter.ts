@@ -377,14 +377,10 @@ export const makePersistedAdapter =
           }),
           Effect.interruptible,
           Effect.tapCauseLogPretty,
-          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+          Effect.forkScoped,
         )
       } else {
-        yield* runLocked.pipe(
-          Effect.interruptible,
-          Effect.tapCauseLogPretty,
-          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
-        )
+        yield* runLocked.pipe(Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
       }
 
       const runInWorker = <A, E, R>(
@@ -425,14 +421,14 @@ export const makePersistedAdapter =
         ),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
-        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+        Effect.forkScoped,
       )
 
       yield* Queue.await(bootStatusQueue).pipe(
         Effect.andThen(Fiber.interrupt(bootStatusFiber)),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
-        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+        Effect.forkScoped,
       )
 
       // TODO maybe bring back transfering the initially created in-memory db snapshot instead of

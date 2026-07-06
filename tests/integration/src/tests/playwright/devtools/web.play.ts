@@ -81,10 +81,7 @@ const makeTabPair = (
       page,
       name: `${tabName}-page`,
       shouldEvaluateArgs: false,
-    }).pipe(
-      // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
-    )
+    }).pipe(Effect.forkScoped)
 
     usedPages.add(page)
     yield* Effect.addFinalizer(() => Effect.sync(() => usedPages.delete(page)))
@@ -119,10 +116,7 @@ const makeTabPair = (
       page: devtools,
       name: `${tabName}-devtools`,
       shouldEvaluateArgs: false,
-    }).pipe(
-      // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
-    )
+    }).pipe(Effect.forkScoped)
 
     const devtoolsRoute =
       options?.devtoolsRoute === 'direct-session'

@@ -182,7 +182,7 @@ const makeWorkerRunner = Effect.gen(function* () {
             Stream.tap(() => reset),
             Stream.runDrain,
             Effect.tapCauseLogPretty,
-            Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+            Effect.forkScoped,
           )
 
           const clientContext = yield* Layer.build(
@@ -209,13 +209,13 @@ const makeWorkerRunner = Effect.gen(function* () {
             node,
             worker: makeWebmeshWorkerProxy(client),
             target: Devtools.makeNodeName.client.leader({ storeId, clientId }),
-          }).pipe(Effect.tapCauseLogPretty, dieOnRpcClientError, Effect.forkScoped({ startImmediately: true }))
+          }).pipe(Effect.tapCauseLogPretty, dieOnRpcClientError, Effect.forkScoped)
 
           yield* SubscriptionRef.set(leaderWorkerContextSubRef, {
             client: client as RpcClient.FromGroup<typeof WorkerSchema.LeaderWorkerInnerRpcs>,
             scope,
           })
-        }).pipe(Effect.tapCauseLogPretty, Scope.provide(scope), Effect.forkIn(scope, { startImmediately: true }))
+        }).pipe(Effect.tapCauseLogPretty, Scope.provide(scope), Effect.forkIn(scope))
       }).pipe(Effect.withSpan('@livestore/adapter-web:shared-worker:updateMessagePort'), Effect.tapCauseLogPretty),
 
     // Proxied requests

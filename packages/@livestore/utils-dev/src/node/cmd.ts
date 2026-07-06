@@ -263,15 +263,13 @@ const runWithLogging = ({
       const stdoutFiber = yield* runningProcess.stdout.pipe(
         Stream.decodeText({ encoding: 'utf8' }),
         Stream.runForEach((chunk) => stdoutHandler.onChunk(chunk)),
-        // Start immediately so output draining is installed before waiting on the process.
-        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+        Effect.forkScoped,
       )
 
       const stderrFiber = yield* runningProcess.stderr.pipe(
         Stream.decodeText({ encoding: 'utf8' }),
         Stream.runForEach((chunk) => stderrHandler.onChunk(chunk)),
-        // Start immediately so output draining is installed before waiting on the process.
-        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+        Effect.forkScoped,
       )
 
       // Dump any buffered data and finish both stream fibers before we return.

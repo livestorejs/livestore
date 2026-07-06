@@ -74,7 +74,7 @@ export const connectWebmeshNodeClientSession = Effect.fn(function* ({
     yield* Devtools.SessionInfo.provideSessionInfo({
       webChannel: yield* DevtoolsWeb.makeSessionInfoBroadcastChannel,
       sessionInfo,
-    }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }))
+    }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
     yield* Effect.gen(function* () {
       const clientSessionStaticChannel = yield* DevtoolsWeb.makeStaticClientSessionChannel.clientSession
@@ -102,7 +102,7 @@ export const connectWebmeshNodeClientSession = Effect.fn(function* ({
     }).pipe(
       Effect.withSpan('@livestore/adapter-web:client-session:devtools:browser-extension'),
       Effect.tapCauseLogPretty,
-      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+      Effect.forkScoped,
     )
 
     yield* WebmeshWorker.connectViaWorker({

@@ -417,10 +417,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       for (let i = 0; i < 5; i++) {
         yield* testContext.mockSyncBackend
           .advance(backendFactory.todoCreated.next({ id: `backend_${i}`, text: '', completed: false }))
-          .pipe(
-            // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-            Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
-          )
+          .pipe(Effect.forkChild)
       }
 
       for (let i = 0; i < 5; i++) {
@@ -907,8 +904,7 @@ const LeaderThreadCtxLive = ({
           Effect.flip,
           Effect.exit,
           Effect.flatMap((exit) => Deferred.done(shutdownDeferred, exit)),
-          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+          Effect.forkScoped,
         )
       }
 

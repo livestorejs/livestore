@@ -68,9 +68,7 @@ describe('watchSnippets', () => {
         onRebuild: (info) => Queue.offer(rebuildEvents, info),
       })
 
-      // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-
-      yield* Effect.forkScoped(watchEffect, { startImmediately: true, uninterruptible: 'inherit' })
+      yield* Effect.forkScoped(watchEffect)
 
       const initial = yield* Queue.take(rebuildEvents)
       expect(initial.reason).toBe('initial')

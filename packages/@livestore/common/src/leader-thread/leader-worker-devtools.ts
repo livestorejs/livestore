@@ -39,11 +39,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
   yield* listenToDevtools({
     incomingMessages: Stream.fromQueue(extraIncomingMessagesQueue),
     sendMessage: () => Effect.void,
-  }).pipe(
-    Effect.tapCauseLogPretty,
-    // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-    Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
-  )
+  }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
   const bootResult = yield* options.boot.pipe(
     Effect.map(Option.some),
@@ -93,8 +89,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
         yield* syncProcessor.pull({ cursor: syncState.localHead }).pipe(
           Stream.tap(({ payload }) => sendMessage(Devtools.Leader.SyncPull.make({ payload, liveStoreVersion }))),
           Stream.runDrain,
-          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-          Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+          Effect.forkScoped,
         )
 
         yield* listenToDevtools({
@@ -102,11 +97,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
           sendMessage,
           persistenceInfo,
         })
-      }).pipe(
-        Effect.tapCauseLogPretty,
-        // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
-      ),
+      }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped),
     ),
     Stream.runDrain,
   )

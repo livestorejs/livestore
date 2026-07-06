@@ -63,13 +63,14 @@ export const requestSessionInfoSubscription = ({
   staleTimeout?: Duration.Input
 }): Effect.Effect<Subscribable.Subscribable<HashSet.HashSet<SessionInfo>>, Schema.SchemaError, Scope.Scope> =>
   Effect.gen(function* () {
-    yield* webChannel.send(RequestSessions.make({})).pipe(
-      Effect.repeat(Schedule.spaced(pollInterval)),
-      Effect.interruptible,
-      Effect.tapCauseLogPretty,
-      // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
-    )
+    yield* webChannel
+      .send(RequestSessions.make({}))
+      .pipe(
+        Effect.repeat(Schedule.spaced(pollInterval)),
+        Effect.interruptible,
+        Effect.tapCauseLogPretty,
+        Effect.forkScoped,
+      )
 
     const timeoutFiberMap = yield* FiberMap.make<SessionInfo>()
 
@@ -95,8 +96,7 @@ export const requestSessionInfoSubscription = ({
       ),
       Stream.runDrain,
       Effect.tapCauseLogPretty,
-      // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+      Effect.forkScoped,
     )
 
     return Subscribable.make({

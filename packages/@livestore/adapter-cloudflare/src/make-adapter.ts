@@ -155,7 +155,7 @@ export const makeAdapter =
             //     node: webmeshNode,
             //     url: `ws://${devtoolsOptions.host}:${devtoolsOptions.port}`,
             //     openTimeout: 500,
-            //   }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }))
+            //   }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
           }
         }),
         leaderThread,

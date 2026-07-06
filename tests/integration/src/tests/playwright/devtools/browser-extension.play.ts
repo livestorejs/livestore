@@ -52,7 +52,7 @@ const makeTabPair = (
     const newPage = Effect.gen(function* () {
       // const pageEventFiber = yield* Effect.callback((cb) => {
       //   browserContext.on('page', () => cb(Effect.void))
-      // }).pipe(Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }))
+      // }).pipe(Effect.forkChild)
 
       const page = yield* Effect.tryPromise(() => browserContext.newPage())
       // yield* Fiber.await(pageEventFiber)
@@ -86,10 +86,7 @@ const makeTabPair = (
       page,
       name: `${tabName}-page`,
       shouldEvaluateArgs: false,
-    }).pipe(
-      // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-      Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
-    )
+    }).pipe(Effect.forkChild)
 
     usedPages.add(page)
 
@@ -105,10 +102,7 @@ const makeTabPair = (
       page: devtools,
       name: `${tabName}-devtools`,
       shouldEvaluateArgs: false,
-    }).pipe(
-      // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-      Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
-    )
+    }).pipe(Effect.forkChild)
 
     usedPages.add(devtools)
 
