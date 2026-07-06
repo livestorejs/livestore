@@ -4,9 +4,6 @@ export const sharedCompilerOptions = {
   allowImportingTsExtensions: true,
   rewriteRelativeImportExtensions: true,
   resolveJsonModule: true,
-  esModuleInterop: true,
-  allowJs: false,
-  strict: true,
   noUncheckedIndexedAccess: true,
   exactOptionalPropertyTypes: true,
   noImplicitReturns: true,
@@ -15,5 +12,4 @@ export const sharedCompilerOptions = {
   isolatedModules: true,
   verbatimModuleSyntax: true,
   skipLibCheck: true,
-  forceConsistentCasingInFileNames: true,
 } as const

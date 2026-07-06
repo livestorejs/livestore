@@ -5,7 +5,6 @@ export default tsconfigJson({
   compilerOptions: {
     ...sharedCompilerOptions,
     module: 'NodeNext',
-    moduleResolution: 'NodeNext',
     declaration: true,
     declarationMap: true,
     sourceMap: true,

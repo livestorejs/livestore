@@ -5,17 +5,13 @@
     "target": "ESNext",
     "lib": ["ES2024"],
     "module": "ESNext",
-    "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "resolveJsonModule": true,
-    "esModuleInterop": true,
-    "allowJs": false,
     "declaration": false,
     "declarationMap": false,
     "sourceMap": true,
     "outDir": "./dist",
-    "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noImplicitReturns": true,
@@ -24,7 +20,6 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
     "plugins": [
       {
         "name": "@effect/language-service",
@@ -39,7 +34,6 @@
       }
     ],
     "rootDir": "./src",
-    "composite": false,
     "jsx": "preserve",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },

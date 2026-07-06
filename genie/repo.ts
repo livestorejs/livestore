@@ -19,7 +19,7 @@ import {
   baseOxlintCategories,
   baseOxlintIgnorePatterns,
   baseOxlintPlugins,
-  baseTsconfigCompilerOptions,
+  baseTsconfigCompilerOptions as effectUtilsBaseTsconfigCompilerOptions,
   commonPnpmPolicySettings,
   defineCatalog,
   defineRepoContext,
@@ -80,6 +80,18 @@ export type {
 // https://github.com/overengineeringstudio/effect-utils/issues/892
 // TypeScript 6 folds DOM iterable and async-iterable declarations into DOM.
 export const domLib = effectUtilsDomLib.filter((lib) => lib !== 'DOM.Iterable' && lib !== 'DOM.AsyncIterable')
+
+// Strip inherited options that now match defaults so generated
+// tsconfigs only carry LiveStore-specific intent.
+const {
+  allowJs: _allowJs,
+  esModuleInterop: _esModuleInterop,
+  allowSyntheticDefaultImports: _allowSyntheticDefaultImports,
+  forceConsistentCasingInFileNames: _forceConsistentCasingInFileNames,
+  moduleResolution: _moduleResolution,
+  strict: _strict,
+  ...baseTsconfigCompilerOptions
+} = effectUtilsBaseTsconfigCompilerOptions
 
 /**
  * Package tsconfig compiler options for livestore.
