@@ -76,6 +76,7 @@ export const clientOnlyEventsStoreOptions = storeOptions({
   batchUpdates,
   boot: (store) => {
     seedStore(store)
+    // This ensure runs here to power the /client-only/store-boot example.
     ensureClientOnlyRow({
       tableName: tables.threadListUi.sqliteDef.name,
       id: 'boot:inbox',
