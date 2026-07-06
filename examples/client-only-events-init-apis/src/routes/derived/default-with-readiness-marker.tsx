@@ -8,12 +8,15 @@ import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 import { events, tables } from '../../schema.ts'
 
 /**
- * App-level record that means the source data for `key` is now safe to read.
+ * App-level persisted marker that means the source data for `key` is now safe to read.
  *
  * Without this record, an empty source query is ambiguous: the backend may have
  * no rows, or sync may simply not have delivered the rows yet.
+ *
+ * This route uses the marker to demonstrate `useEnsureClientOnlyRow`'s `enabled`
+ * option: skip the ensure step until the source rows are ready.
  */
-interface SourceReadyRecord {
+interface SourceDataReadyRecord {
   /** Domain key for the source data that is ready. */
   readonly key: string
 
@@ -21,14 +24,14 @@ interface SourceReadyRecord {
   readonly revision: number
 }
 
-const sourceReadyRecord$ = (key: string) =>
+const sourceDataReadyRecord$ = (key: string) =>
   queryDb(
     {
-      query: `SELECT * FROM sourceReady WHERE key = ?`,
+      query: `SELECT * FROM sourceDataReady WHERE key = ?`,
       bindValues: [key],
-      schema: Schema.Array(tables.sourceReady.rowSchema),
+      schema: Schema.Array(tables.sourceDataReady.rowSchema),
     },
-    { deps: key, label: `sourceReady:${key}` },
+    { deps: key, label: `sourceDataReady:${key}` },
   )
 
 const mailboxThreads$ = (mailboxId: string) =>
@@ -55,9 +58,9 @@ function DerivedDefaultContent() {
   const [demoKey] = React.useState(() => `mailbox:delayed:${crypto.randomUUID()}`)
   const mailboxId = demoKey
   const rowId = `derived:${demoKey}`
-  const sourceReadyRecords = store.useQuery(sourceReadyRecord$(demoKey))
-  const sourceReadyRecord: SourceReadyRecord | undefined = sourceReadyRecords[0]
-  const sourceIsReady = sourceReadyRecord !== undefined
+  const sourceDataReadyRecords = store.useQuery(sourceDataReadyRecord$(demoKey))
+  const sourceDataReadyRecord: SourceDataReadyRecord | undefined = sourceDataReadyRecords[0]
+  const sourceDataIsReady = sourceDataReadyRecord !== undefined
   const sourceThreads = store.useQuery(mailboxThreads$(mailboxId))
   const defaultThreadListUi = {
     selectedThreadId: sourceThreads[0]?.id ?? null,
@@ -70,18 +73,18 @@ function DerivedDefaultContent() {
       id: rowId,
       default: defaultThreadListUi,
       label:
-        sourceReadyRecord === undefined
+        sourceDataReadyRecord === undefined
           ? `derived-waiting:${demoKey}`
-          : `derived-ready:${sourceReadyRecord.key}:${sourceReadyRecord.revision}`,
+          : `derived-ready:${sourceDataReadyRecord.key}:${sourceDataReadyRecord.revision}`,
       read: (id) => store.query(tables.threadListUi.where({ id }).first({ behaviour: 'undefined' })),
       commitEnsure: ({ id, default: defaultValue, label }) => {
         store.commit({ label }, events.threadListUiEnsured({ id, ...defaultValue }))
       },
     },
-    { enabled: sourceIsReady },
+    { enabled: sourceDataIsReady },
   )
 
-  const simulateSourceReady = React.useCallback(() => {
+  const simulateSourceDataReady = React.useCallback(() => {
     const dayMs = 24 * 60 * 60 * 1000
     const newestReceivedAt = Date.now()
 
@@ -110,35 +113,36 @@ function DerivedDefaultContent() {
         subject: 'Newest row selected by default',
         receivedAt: newestReceivedAt,
       }),
-      events.sourceReady({ key: demoKey, revision: 1 }),
+      events.sourceDataReady({ key: demoKey, revision: 1 }),
     )
   }, [demoKey, mailboxId, store])
 
   if (ensureResult.status === 'skipped') {
     return (
-      <DemoFrame title="Derived default waits for sourceReady">
+      <DemoFrame title="Derived default waits for source data readiness">
         <section className="pattern-note">
           <p>
-            The source mailbox is not ready yet, so <code>useEnsureClientOnlyRow</code> is disabled and does not
+            The persisted <code>sourceDataReady</code> marker does not exist yet, so{' '}
+            <code>useEnsureClientOnlyRow</code> is disabled through its <code>enabled</code> option and does not
             commit the client-only ensure event. This avoids persisting a guessed default from incomplete synced data.
           </p>
-          <button type="button" onClick={simulateSourceReady}>
+          <button type="button" onClick={simulateSourceDataReady}>
             Simulate source data becoming ready
           </button>
-          <pre>{JSON.stringify({ sourceIsReady, sourceReadyRecord, sourceThreads }, null, 2)}</pre>
+          <pre>{JSON.stringify({ sourceDataIsReady, sourceDataReadyRecord, sourceThreads }, null, 2)}</pre>
         </section>
       </DemoFrame>
     )
   }
 
   return (
-    <DemoFrame title="Derived default waits for sourceReady">
+    <DemoFrame title="Derived default waits for source data readiness">
       <section className="pattern-note">
         <p>
-          The <code>sourceReady</code> record exists, so <code>useEnsureClientOnlyRow</code> runs and derives the
-          default from local source rows.
+          The persisted <code>sourceDataReady</code> marker exists, so the <code>enabled</code> option allows{' '}
+          <code>useEnsureClientOnlyRow</code> to run and derive the default from complete local source rows.
         </p>
-        <pre>{JSON.stringify(sourceReadyRecord, null, 2)}</pre>
+        <pre>{JSON.stringify(sourceDataReadyRecord, null, 2)}</pre>
       </section>
       <ThreadList store={store} rowId={rowId} mailboxId={mailboxId} />
     </DemoFrame>

@@ -51,19 +51,19 @@ const seedStore = (store: Store<typeof schema>) => {
   const existingThreadIds = new Set(existingThreads.map((thread) => thread.id))
   const missingThreads = seedThreads.filter((thread) => existingThreadIds.has(thread.id) === false)
 
-  const existingSourceReady = store.query({
-    query: `SELECT key FROM sourceReady WHERE key = ?`,
+  const existingSourceDataReady = store.query({
+    query: `SELECT key FROM sourceDataReady WHERE key = ?`,
     bindValues: ['mailbox:inbox'],
   }) as readonly { key: string }[]
-  const sourceReadyEvent =
-    existingSourceReady.length === 0 ? [events.sourceReady({ key: 'mailbox:inbox', revision: 1 })] : []
+  const sourceDataReadyEvent =
+    existingSourceDataReady.length === 0 ? [events.sourceDataReady({ key: 'mailbox:inbox', revision: 1 })] : []
 
-  if (missingThreads.length === 0 && sourceReadyEvent.length === 0) return
+  if (missingThreads.length === 0 && sourceDataReadyEvent.length === 0) return
 
   store.commit(
     { label: 'app.seedStore' },
     ...missingThreads.map((thread) => events.threadSynced(thread)),
-    ...sourceReadyEvent,
+    ...sourceDataReadyEvent,
   )
 }
 
