@@ -23,7 +23,7 @@ import {
   commonPnpmPolicySettings,
   defineCatalog,
   defineRepoContext,
-  domLib,
+  domLib as effectUtilsDomLib,
   githubRuleset,
   githubWorkflow,
   megarepoJson,
@@ -48,7 +48,7 @@ import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from '#mr/effect-utils/geni
 import { livestoreOnlyCatalog, livestoreWorkspaceCatalog } from './external.ts'
 import { livestoreCurrentPackageNames, type LivestorePackageName } from './repo-topology.ts'
 
-export { baseTsconfigCompilerOptions, domLib, reactJsx }
+export { baseTsconfigCompilerOptions, reactJsx }
 export {
   baseOxfmtIgnorePatterns,
   baseOxfmtOptions,
@@ -75,6 +75,11 @@ export type {
   WorkspacePackage,
   WorkspacePackageLike,
 }
+
+// TODO: Remove this once effect-utils carries the TS 6 DOM lib cleanup upstream:
+// https://github.com/overengineeringstudio/effect-utils/issues/892
+// TypeScript 6 folds DOM iterable and async-iterable declarations into DOM.
+export const domLib = effectUtilsDomLib.filter((lib) => lib !== 'DOM.Iterable' && lib !== 'DOM.AsyncIterable')
 
 /**
  * Package tsconfig compiler options for livestore.
