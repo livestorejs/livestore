@@ -1,0 +1,33 @@
+{
+  "name": "livestore-example-client-only-events-init-apis",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@livestore/adapter-web": "0.4.0",
+    "@livestore/livestore": "0.4.0",
+    "@livestore/peer-deps": "0.4.0",
+    "@livestore/react": "0.4.0",
+    "@livestore/wa-sqlite": "0.4.0",
+    "@tanstack/react-router": "1.145.7",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "devDependencies": {
+    "@livestore/devtools-vite": "0.4.0-dev.25",
+    "@tanstack/router-plugin": "1.145.10",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.2",
+    "typescript": "5.9.3",
+    "vite": "7.3.1"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --force",
+    "preview": "vite preview"
+  }
+}
