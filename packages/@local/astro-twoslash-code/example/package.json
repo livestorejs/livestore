@@ -43,7 +43,7 @@
     "@types/node": "25.3.3",
     "effect": "3.21.2",
     "tailwindcss": "4.1.18",
-    "typescript": "5.9.3"
+    "typescript": "6.0.3"
   },
   "$genie": {
     "source": "package.json.genie.ts",

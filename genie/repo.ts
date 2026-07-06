@@ -103,9 +103,19 @@ const releaseVersion = repo.readJson<{
   readonly version: string
 }>('release/version.json')
 
-/** Composed catalog - effect-utils base + livestore-specific + workspace packages */
+/** TODO: Remove once effect-utils upgrades its TypeScript catalog pin: https://github.com/overengineeringstudio/effect-utils/issues/892 */
+const livestoreCatalogOverrides = {
+  typescript: '6.0.3',
+} as const
+
+const livestoreBaseCatalog = defineCatalog({
+  ...effectUtilsCatalog,
+  ...livestoreCatalogOverrides,
+})
+
+/** Composed catalog - effect-utils base + LiveStore overrides + livestore-specific + workspace packages */
 export const catalog = defineCatalog({
-  extends: effectUtilsCatalog,
+  extends: livestoreBaseCatalog,
   packages: {
     ...livestoreWorkspaceCatalog,
     ...livestoreOnlyCatalog,
