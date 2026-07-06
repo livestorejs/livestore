@@ -3,7 +3,7 @@ import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import React from 'react'
 
-import { useEnsureThreadListUi } from '../../thread-list-ui/ensure-thread-list-ui.ts'
+import { useEnsureClientOnlyRow } from '../../ensure-client-row/use-ensure-client-only-row.ts'
 import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 import { events, tables } from '../../schema.ts'
 
@@ -64,15 +64,19 @@ function DerivedDefaultContent() {
     sortBy: 'receivedAt',
     sortDirection: 'desc',
   } as const
-  const ensureResult = useEnsureThreadListUi(
-    store,
+  const ensureResult = useEnsureClientOnlyRow(
     {
+      tableName: tables.threadListUi.sqliteDef.name,
       id: rowId,
       default: defaultThreadListUi,
       label:
         sourceReadyRecord === undefined
           ? `derived-waiting:${demoKey}`
           : `derived-ready:${sourceReadyRecord.key}:${sourceReadyRecord.revision}`,
+      read: (id) => store.query(tables.threadListUi.where({ id }).first({ behaviour: 'undefined' })),
+      commitEnsure: ({ id, default: defaultValue, label }) => {
+        store.commit({ label }, events.threadListUiEnsured({ id, ...defaultValue }))
+      },
     },
     { enabled: sourceIsReady },
   )
@@ -115,7 +119,7 @@ function DerivedDefaultContent() {
       <DemoFrame title="Derived default waits for sourceReady">
         <section className="pattern-note">
           <p>
-            The source mailbox is not ready yet, so <code>useEnsureThreadListUi</code> is disabled and does not
+            The source mailbox is not ready yet, so <code>useEnsureClientOnlyRow</code> is disabled and does not
             commit the client-only ensure event. This avoids persisting a guessed default from incomplete synced data.
           </p>
           <button type="button" onClick={simulateSourceReady}>
@@ -131,7 +135,7 @@ function DerivedDefaultContent() {
     <DemoFrame title="Derived default waits for sourceReady">
       <section className="pattern-note">
         <p>
-          The <code>sourceReady</code> record exists, so <code>useEnsureThreadListUi</code> runs and derives the
+          The <code>sourceReady</code> record exists, so <code>useEnsureClientOnlyRow</code> runs and derives the
           default from local source rows.
         </p>
         <pre>{JSON.stringify(sourceReadyRecord, null, 2)}</pre>

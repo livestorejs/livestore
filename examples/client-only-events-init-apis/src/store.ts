@@ -3,9 +3,9 @@ import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedwo
 import { type RegistryStoreOptions, type Store, StoreRegistry, storeOptions } from '@livestore/livestore'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
+import { ensureClientOnlyRow } from './ensure-client-row/ensure-client-only-row.ts'
 import LiveStoreWorker from './livestore.worker.ts?worker'
-import { ensureThreadListUi } from './thread-list-ui/ensure-thread-list-ui.ts'
-import { events, schema } from './schema.ts'
+import { events, schema, tables } from './schema.ts'
 
 const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
 
@@ -76,10 +76,15 @@ export const clientOnlyEventsStoreOptions = storeOptions({
   batchUpdates,
   boot: (store) => {
     seedStore(store)
-    ensureThreadListUi(store, {
+    ensureClientOnlyRow({
+      tableName: tables.threadListUi.sqliteDef.name,
       id: 'boot:inbox',
-      default: { selectedThreadId: null, sortBy: 'receivedAt', sortDirection: 'desc' },
+      default: { selectedThreadId: null, sortBy: 'receivedAt', sortDirection: 'desc' } as const,
       label: 'boot:thread-list-ui',
+      read: (id) => store.query(tables.threadListUi.where({ id }).first({ behaviour: 'undefined' })),
+      commitEnsure: ({ id, default: defaultValue, label }) => {
+        store.commit({ label }, events.threadListUiEnsured({ id, ...defaultValue }))
+      },
     })
   },
 })

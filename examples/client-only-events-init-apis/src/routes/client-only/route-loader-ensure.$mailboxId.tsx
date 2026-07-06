@@ -2,8 +2,9 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { useStore } from '@livestore/react'
 
-import { ensureThreadListUi } from '../../thread-list-ui/ensure-thread-list-ui.ts'
+import { ensureClientOnlyRow } from '../../ensure-client-row/ensure-client-only-row.ts'
 import { ClientOnlyDataSummary, DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
+import { events, tables } from '../../schema.ts'
 
 export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxId')({
   pendingComponent: () => <div className="card">Ensuring mailbox UI row...</div>,
@@ -14,14 +15,19 @@ export const Route = createFileRoute('/client-only/route-loader-ensure/$mailboxI
     const store = await Promise.resolve(context.storeRegistry.getOrLoadPromise(context.storeOptions))
     const rowId = `loader:${params.mailboxId}`
 
-    ensureThreadListUi(store, {
+    ensureClientOnlyRow({
+      tableName: tables.threadListUi.sqliteDef.name,
       id: rowId,
       default: {
         selectedThreadId: null,
         sortBy: 'receivedAt',
         sortDirection: 'desc',
-      },
+      } as const,
       label: `route-loader:${params.mailboxId}:thread-list-ui`,
+      read: (id) => store.query(tables.threadListUi.where({ id }).first({ behaviour: 'undefined' })),
+      commitEnsure: ({ id, default: defaultValue, label }) => {
+        store.commit({ label }, events.threadListUiEnsured({ id, ...defaultValue }))
+      },
     })
 
     return { rowId }
