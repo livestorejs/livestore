@@ -3,20 +3,18 @@ import { catalog, livestorePackageDefaults, packageJson, workspaceMember } from 
 const runtimeDeps = catalog.compose({
   workspace: workspaceMember('packages/@livestore/wa-sqlite'),
   devDependencies: {
-    external: {
-      ...catalog.pick(
-        '@types/jasmine',
-        '@web/dev-server',
-        '@web/test-runner',
-        '@web/test-runner-core',
-        'comlink',
-        'jasmine-core',
-        'monaco-editor',
-        'typedoc',
-        'typescript',
-        'web-test-runner-jasmine',
-      ),
-    },
+    external: catalog.pick(
+      '@types/jasmine',
+      '@web/dev-server',
+      '@web/test-runner',
+      '@web/test-runner-core',
+      'comlink',
+      'jasmine-core',
+      'monaco-editor',
+      'typedoc',
+      'typescript',
+      'web-test-runner-jasmine',
+    ),
   },
 })
 
