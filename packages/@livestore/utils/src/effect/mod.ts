@@ -93,6 +93,7 @@ export {
   Runtime,
   Scope,
   ScopedRef,
+  Scheduler,
   SchemaIssue,
   SchemaAST,
   SchemaGetter,
@@ -117,7 +118,6 @@ export * as Logger from './Logger.ts'
 export * as OtelTracer from './OtelTracer.ts'
 export * as RpcClient from './RpcClient.ts'
 export * as Schedule from './Schedule.ts'
-export * as Scheduler from './Scheduler.ts'
 export * as Schema from './Schema/index.ts'
 export * as Stream from './Stream.ts'
 export * as Subscribable from './Subscribable.ts'
