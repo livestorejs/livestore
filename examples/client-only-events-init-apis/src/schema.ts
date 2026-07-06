@@ -13,23 +13,6 @@ export const tables = {
       receivedAt: State.SQLite.integer({ nullable: false }),
     },
   }),
-  /**
-   * App-defined, persisted readiness marker.
-   *
-   * This is not LiveStore-specific infrastructure and does not store source data.
-   * It records that source rows for a key are complete enough to derive durable
-   * client-only UI defaults from them, including after a page refresh.
-   *
-   * This example uses it to demonstrate the `enabled` API on
-   * `useEnsureClientOnlyRow`: the hook stays disabled until this marker exists.
-   */
-  sourceDataReady: State.SQLite.table({
-    name: 'sourceDataReady',
-    columns: {
-      key: State.SQLite.text({ primaryKey: true }),
-      revision: State.SQLite.integer({ nullable: false }),
-    },
-  }),
   threadListUi: State.SQLite.table({
     name: 'threadListUi',
     columns: {
@@ -50,10 +33,6 @@ export const events = {
       subject: Schema.String,
       receivedAt: Schema.Number,
     }),
-  }),
-  sourceDataReady: Events.synced({
-    name: 'v1.SourceDataReady',
-    schema: Schema.Struct({ key: Schema.String, revision: Schema.Number }),
   }),
   threadListUiEnsured: Events.clientOnly({
     name: 'v1.ThreadListUiEnsured',
@@ -83,8 +62,6 @@ export const events = {
 const materializers = State.SQLite.materializers(events, {
   'v1.ThreadSynced': ({ id, mailboxId, subject, receivedAt }) =>
     tables.threads.insert({ id, mailboxId, subject, receivedAt }).onConflict('id', 'replace'),
-  'v1.SourceDataReady': ({ key, revision }) =>
-    tables.sourceDataReady.insert({ key, revision }).onConflict('key', 'replace'),
   'v1.ThreadListUiEnsured': ({ id, selectedThreadId, sortBy, sortDirection }) =>
     tables.threadListUi.insert({ id, selectedThreadId, sortBy, sortDirection }).onConflict('id', 'ignore'),
   'v1.ThreadListSortDirectionChanged': ({ id, sortDirection }) =>
