@@ -4,7 +4,6 @@
     "checkJs": true,
     "target": "ESNext",
     "module": "ESNext",
-    "moduleResolution": "Bundler",
     "lib": ["DOM", "ESNext", "WebWorker"]
   },
   "typeAcquisition": {

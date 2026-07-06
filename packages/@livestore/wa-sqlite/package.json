@@ -46,8 +46,8 @@
     "comlink": "4.4.1",
     "jasmine-core": "4.5.0",
     "monaco-editor": "0.34.1",
-    "typedoc": "0.28.11",
-    "typescript": "5.9.3",
+    "typedoc": "0.28.19",
+    "typescript": "6.0.3",
     "web-test-runner-jasmine": "0.0.6"
   },
   "dependenciesMeta": {

@@ -3,7 +3,7 @@ import { baseTsconfigCompilerOptions, domLib, reactJsx, tsconfigJson } from '../
 /**
  * Docs code snippets tsconfig.
  * Used for TypeScript snippets embedded in documentation.
- * Non-composite (noEmit) since these are just for type checking/editor support.
+ * Uses noEmit since these are just for type checking/editor support.
  * Includes DOM lib since snippets may use browser APIs.
  */
 export default tsconfigJson({
@@ -14,7 +14,6 @@ export default tsconfigJson({
     ...reactJsx,
     types: ['vite/client', 'node', '@cloudflare/workers-types', '@types/react', '@types/react-dom'],
     noEmit: true,
-    composite: false,
     declaration: false,
     declarationMap: false,
   },

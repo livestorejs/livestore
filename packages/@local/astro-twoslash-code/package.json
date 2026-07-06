@@ -19,7 +19,7 @@
     "expressive-code-twoslash": "0.5.3",
     "hast": "1.0.0",
     "hast-util-to-html": "9.0.4",
-    "typescript": "5.9.3"
+    "typescript": "6.0.3"
   },
   "devDependencies": {
     "@astrojs/starlight": "0.40.0",

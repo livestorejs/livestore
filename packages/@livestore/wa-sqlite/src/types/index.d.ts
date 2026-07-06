@@ -66,7 +66,7 @@ interface SQLiteVFS {
   xWrite(fileId: number, pData: number, iAmt: number, iOffsetLo: number, iOffsetHi: number): number | Promise<number>
 
   /** @see https://sqlite.org/c3ref/io_methods.html */
-  xTruncate(fileId: number, iSizeLo: number, iSizeHi): number | Promise<number>
+  xTruncate(fileId: number, iSizeLo: number, iSizeHi: number): number | Promise<number>
 
   /** @see https://sqlite.org/c3ref/io_methods.html */
   xSync(fileId: number, flags: number): number | Promise<number>
@@ -311,7 +311,7 @@ interface SQLiteAPI {
    * @param db database pointer
    * @returns number of rows modified
    */
-  changes(db): number
+  changes(db: number): number
 
   /**
    * https://www.sqlite.org/c3ref/deserialize.html
@@ -387,7 +387,7 @@ interface SQLiteAPI {
    * @param db database pointer
    * @returns `SQLITE_OK` (throws exception on error)
    */
-  close(db): Promise<number>
+  close(db: number): Promise<number>
 
   /**
    * Call the appropriate `column_*` function based on the column type
@@ -640,7 +640,12 @@ interface SQLiteAPI {
    * @param handler
    * @param userData
    */
-  progress_handler(db: number, nProgressOps: number, handler: (userData: any) => number | Promise<number>, userData)
+  progress_handler(
+    db: number,
+    nProgressOps: number,
+    handler: (userData: unknown) => number | Promise<number>,
+    userData: unknown,
+  ): void
 
   /**
    * Reset a prepared statement object

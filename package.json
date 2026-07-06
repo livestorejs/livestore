@@ -38,7 +38,8 @@
     "changeset:version": "changeset version"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.31.0"
+    "@changesets/cli": "^2.31.0",
+    "typescript": "6.0.3"
   },
   "packageManager": "pnpm@11.3.0",
   "$genie": {

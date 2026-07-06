@@ -10,6 +10,8 @@ export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
     ...packageTsconfigCompilerOptions,
+    lib: ['ES2024', 'DOM'],
+    types: ['node'],
   },
   include: ['./src'],
   exclude: [...packageTsconfigExclude],

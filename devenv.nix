@@ -299,6 +299,35 @@ in
     ./nix/devenv-modules/tasks/local/github-rulesets.nix
   ];
 
+  # Keep Nix-provided `tsc` aligned with the workspace TypeScript catalog override so
+  # devenv tasks validate against the same compiler as package-local tooling. Remove
+  # this once the inherited nixpkgs `pkgs.typescript` provides TypeScript 6.0.3 or newer.
+  overlays = [
+    (_final: prev: {
+      typescript = prev.typescript.overrideAttrs (
+        _finalAttrs: _oldAttrs:
+        let
+          typescriptSrc = prev.fetchFromGitHub {
+            owner = "microsoft";
+            repo = "TypeScript";
+            rev = "v6.0.3";
+            hash = "sha256-RvM+fGO94ItdQxgXUcCdkpX039pytnMri100wGjNhhc=";
+          };
+        in
+        {
+          version = "6.0.3";
+          src = typescriptSrc;
+          npmDeps = prev.fetchNpmDeps {
+            name = "typescript-6.0.3-npm-deps";
+            src = typescriptSrc;
+            hash = "sha256-nnBXImViLpuPPNYwBxe3T+hpoiuA/7qpIMVcXJmjklg=";
+          };
+          npmDepsHash = "sha256-nnBXImViLpuPPNYwBxe3T+hpoiuA/7qpIMVcXJmjklg=";
+        }
+      );
+    })
+  ];
+
   packages = [
     (effectUtils.lib.mkPnpm { inherit pkgs; })
     pkgs.bun

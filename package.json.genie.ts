@@ -118,6 +118,7 @@ const rootWorkspaceExtraFields = {
   },
   devDependencies: {
     '@changesets/cli': '^2.31.0',
+    'typescript': '6.0.3',
   },
 } as const
 
