@@ -1,4 +1,4 @@
-export interface EnsureClientOnlyRowSpec<TRow, TDefault> {
+export interface EnsureClientOnlyRowOptions<TRow, TDefault> {
   /** SQLite table name used for labels and errors. */
   readonly tableName: string
   /** Stable row id chosen by the caller for this initialization path. */
@@ -33,21 +33,21 @@ export interface EnsureClientOnlyRowResult<TRow> {
  * schema remains visible at the app boundary.
  */
 export const ensureClientOnlyRow = <TRow, TDefault>(
-  spec: EnsureClientOnlyRowSpec<TRow, TDefault>,
+  options: EnsureClientOnlyRowOptions<TRow, TDefault>,
 ): EnsureClientOnlyRowResult<TRow> => {
-  const existingRow = spec.read(spec.id)
+  const existingRow = options.read(options.id)
 
   if (existingRow !== undefined) {
-    return { tableName: spec.tableName, id: spec.id, created: false, value: existingRow }
+    return { tableName: options.tableName, id: options.id, created: false, value: existingRow }
   }
 
-  const label = spec.label ?? `${spec.tableName}.ensure:${spec.id}`
-  spec.commitEnsure({ id: spec.id, default: spec.default, label })
+  const label = options.label ?? `${options.tableName}.ensure:${options.id}`
+  options.commitEnsure({ id: options.id, default: options.default, label })
 
-  const createdRow = spec.read(spec.id)
+  const createdRow = options.read(options.id)
   if (createdRow === undefined) {
-    throw new Error(`Failed to ensure client-only row "${spec.tableName}" with id "${spec.id}"`)
+    throw new Error(`Failed to ensure client-only row "${options.tableName}" with id "${options.id}"`)
   }
 
-  return { tableName: spec.tableName, id: spec.id, created: true, value: createdRow }
+  return { tableName: options.tableName, id: options.id, created: true, value: createdRow }
 }

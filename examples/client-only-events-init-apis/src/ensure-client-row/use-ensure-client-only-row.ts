@@ -1,7 +1,7 @@
 import {
   ensureClientOnlyRow,
+  type EnsureClientOnlyRowOptions,
   type EnsureClientOnlyRowResult,
-  type EnsureClientOnlyRowSpec,
 } from './ensure-client-only-row.ts'
 
 export interface UseEnsureClientOnlyRowOptions {
@@ -15,11 +15,11 @@ export type UseEnsureClientOnlyRowResult<TRow> =
 /**
  * Runs an explicit ensure operation during render when enabled.
  *
- * The spec keeps the passive read and explicit client-only ensure event visible
+ * The options keep the passive read and explicit client-only ensure event visible
  * at the callsite instead of hiding them behind a React-specific wrapper.
  */
 export function useEnsureClientOnlyRow<TRow, TDefault>(
-  spec: EnsureClientOnlyRowSpec<TRow, TDefault>,
+  ensureOptions: EnsureClientOnlyRowOptions<TRow, TDefault>,
   options: UseEnsureClientOnlyRowOptions = {},
 ): UseEnsureClientOnlyRowResult<TRow> {
   const enabled = options.enabled ?? true
@@ -28,5 +28,5 @@ export function useEnsureClientOnlyRow<TRow, TDefault>(
     return { status: 'skipped' }
   }
 
-  return { status: 'ensured', result: ensureClientOnlyRow(spec) }
+  return { status: 'ensured', result: ensureClientOnlyRow(ensureOptions) }
 }
