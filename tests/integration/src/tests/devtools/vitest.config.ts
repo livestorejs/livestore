@@ -1,5 +1,9 @@
-import { defineConfig } from 'vitest/config'
+import { defineProject } from 'vitest/config'
 
-export default defineConfig({
-  test: { server: { deps: { inline: ['@effect/vitest'] } } },
+export default defineProject({
+  test: {
+    root: import.meta.dirname,
+    include: ['*.test.ts'],
+    server: { deps: { inline: ['@effect/vitest'] } },
+  },
 })
