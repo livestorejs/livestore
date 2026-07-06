@@ -3,7 +3,7 @@ import { useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import React from 'react'
 
-import { useEnsureClientDocument } from '../../client-document/use-ensure-client-document.ts'
+import { useEnsureThreadListUi } from '../../client-only-row/use-ensure-thread-list-ui.ts'
 import { DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 import { events, tables } from '../../schema.ts'
 
@@ -54,7 +54,7 @@ function DerivedDefaultContent() {
   const store = useStore(storeOptions)
   const [demoKey] = React.useState(() => `mailbox:delayed:${crypto.randomUUID()}`)
   const mailboxId = demoKey
-  const documentId = `derived:${demoKey}`
+  const rowId = `derived:${demoKey}`
   const sourceReadyRecords = store.useQuery(sourceReadyRecord$(demoKey))
   const sourceReadyRecord: SourceReadyRecord | undefined = sourceReadyRecords[0]
   const sourceIsReady = sourceReadyRecord !== undefined
@@ -64,11 +64,10 @@ function DerivedDefaultContent() {
     sortBy: 'receivedAt',
     sortDirection: 'desc',
   } as const
-  const ensureResult = useEnsureClientDocument(
+  const ensureResult = useEnsureThreadListUi(
     store,
     {
-      table: tables.threadListUi,
-      id: documentId,
+      id: rowId,
       default: defaultThreadListUi,
       label:
         sourceReadyRecord === undefined
@@ -116,8 +115,8 @@ function DerivedDefaultContent() {
       <DemoFrame title="Derived default waits for sourceReady">
         <section className="pattern-note">
           <p>
-            The source mailbox is not ready yet, so <code>useEnsureClientDocument</code> is disabled and does not
-            create the client document. This avoids persisting a guessed default from incomplete synced data.
+            The source mailbox is not ready yet, so <code>useEnsureThreadListUi</code> is disabled and does not
+            commit the client-only ensure event. This avoids persisting a guessed default from incomplete synced data.
           </p>
           <button type="button" onClick={simulateSourceReady}>
             Simulate source data becoming ready
@@ -132,12 +131,12 @@ function DerivedDefaultContent() {
     <DemoFrame title="Derived default waits for sourceReady">
       <section className="pattern-note">
         <p>
-          The <code>sourceReady</code> record exists, so <code>useEnsureClientDocument</code> runs and derives the
+          The <code>sourceReady</code> record exists, so <code>useEnsureThreadListUi</code> runs and derives the
           default from local source rows.
         </p>
         <pre>{JSON.stringify(sourceReadyRecord, null, 2)}</pre>
       </section>
-      <ThreadList store={store} documentId={documentId} mailboxId={mailboxId} />
+      <ThreadList store={store} rowId={rowId} mailboxId={mailboxId} />
     </DemoFrame>
   )
 }

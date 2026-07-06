@@ -4,8 +4,8 @@ import { type RegistryStoreOptions, type Store, StoreRegistry, storeOptions } fr
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 import LiveStoreWorker from './livestore.worker.ts?worker'
-import { ensureClientDocument } from './client-document/ensure-client-document.ts'
-import { events, schema, tables } from './schema.ts'
+import { ensureThreadListUi } from './client-only-row/ensure-thread-list-ui.ts'
+import { events, schema } from './schema.ts'
 
 const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
 
@@ -69,15 +69,14 @@ const seedStore = (store: Store<typeof schema>) => {
 
 export const storeRegistry = new StoreRegistry({ defaultOptions: { batchUpdates } })
 
-export const clientDocumentInitStoreOptions = storeOptions({
-  storeId: 'client-document-init-apis',
+export const clientOnlyEventsStoreOptions = storeOptions({
+  storeId: 'client-only-events-init-apis',
   schema,
   adapter,
   batchUpdates,
   boot: (store) => {
     seedStore(store)
-    ensureClientDocument(store, {
-      table: tables.threadListUi,
+    ensureThreadListUi(store, {
       id: 'boot:inbox',
       default: { selectedThreadId: null, sortBy: 'receivedAt', sortDirection: 'desc' },
       label: 'boot:thread-list-ui',
@@ -85,5 +84,5 @@ export const clientDocumentInitStoreOptions = storeOptions({
   },
 })
 
-export type ClientDocumentInitStoreOptions = typeof clientDocumentInitStoreOptions
-export type ClientDocumentInitRegistryStoreOptions = RegistryStoreOptions<typeof schema>
+export type ClientOnlyEventsStoreOptions = typeof clientOnlyEventsStoreOptions
+export type ClientOnlyEventsRegistryStoreOptions = RegistryStoreOptions<typeof schema>

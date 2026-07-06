@@ -1,5 +1,5 @@
 {
-  "name": "livestore-example-client-document-init-apis",
+  "name": "livestore-example-client-only-events-init-apis",
   "version": "0.0.0",
   "type": "module",
   "private": true,

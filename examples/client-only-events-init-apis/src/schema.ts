@@ -20,14 +20,14 @@ export const tables = {
       revision: State.SQLite.integer({ nullable: false }),
     },
   }),
-  threadListUi: State.SQLite.clientDocument({
+  threadListUi: State.SQLite.table({
     name: 'threadListUi',
-    schema: Schema.Struct({
-      selectedThreadId: Schema.NullOr(Schema.String),
-      sortBy: Schema.Literal('receivedAt'),
-      sortDirection: SortDirection,
-    }),
-    default: { value: { selectedThreadId: null, sortBy: 'receivedAt', sortDirection: 'asc' } },
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      selectedThreadId: State.SQLite.text({ nullable: true }),
+      sortBy: State.SQLite.text({ schema: Schema.Literal('receivedAt') }),
+      sortDirection: State.SQLite.text({ schema: SortDirection }),
+    },
   }),
 }
 
@@ -45,13 +45,41 @@ export const events = {
     name: 'v1.SourceReady',
     schema: Schema.Struct({ key: Schema.String, revision: Schema.Number }),
   }),
-  threadListUiSet: tables.threadListUi.set,
+  threadListUiEnsured: Events.clientOnly({
+    name: 'v1.ThreadListUiEnsured',
+    schema: Schema.Struct({
+      id: Schema.String,
+      selectedThreadId: Schema.NullOr(Schema.String),
+      sortBy: Schema.Literal('receivedAt'),
+      sortDirection: SortDirection,
+    }),
+  }),
+  threadListSortDirectionChanged: Events.clientOnly({
+    name: 'v1.ThreadListSortDirectionChanged',
+    schema: Schema.Struct({
+      id: Schema.String,
+      sortDirection: SortDirection,
+    }),
+  }),
+  threadListThreadSelected: Events.clientOnly({
+    name: 'v1.ThreadListThreadSelected',
+    schema: Schema.Struct({
+      id: Schema.String,
+      selectedThreadId: Schema.NullOr(Schema.String),
+    }),
+  }),
 }
 
 const materializers = State.SQLite.materializers(events, {
   'v1.ThreadSynced': ({ id, mailboxId, subject, receivedAt }) =>
     tables.threads.insert({ id, mailboxId, subject, receivedAt }).onConflict('id', 'replace'),
   'v1.SourceReady': ({ key, revision }) => tables.sourceReady.insert({ key, revision }).onConflict('key', 'replace'),
+  'v1.ThreadListUiEnsured': ({ id, selectedThreadId, sortBy, sortDirection }) =>
+    tables.threadListUi.insert({ id, selectedThreadId, sortBy, sortDirection }).onConflict('id', 'ignore'),
+  'v1.ThreadListSortDirectionChanged': ({ id, sortDirection }) =>
+    tables.threadListUi.update({ sortDirection }).where({ id }),
+  'v1.ThreadListThreadSelected': ({ id, selectedThreadId }) =>
+    tables.threadListUi.update({ selectedThreadId }).where({ id }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

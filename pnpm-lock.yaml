@@ -478,7 +478,7 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
 
-  examples/client-document-init-apis:
+  examples/client-only-events-init-apis:
     dependencies:
       '@livestore/adapter-web':
         specifier: 0.4.0

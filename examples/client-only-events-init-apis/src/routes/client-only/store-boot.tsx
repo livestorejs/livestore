@@ -4,7 +4,7 @@ import { useStore } from '@livestore/react'
 
 import { ClientOnlyDataSummary, DemoFrame, ThreadList } from '../../components/DemoFrame.tsx'
 
-const documentId = 'boot:inbox'
+const rowId = 'boot:inbox'
 const mailboxId = 'inbox'
 
 export const Route = createFileRoute('/client-only/store-boot')({
@@ -16,18 +16,18 @@ function StoreBootPage() {
   const store = useStore(storeOptions)
 
   /**
-   * Check the examples/client-document-init-apis/src/store.ts  boot function for the example
+   * Check the src/store.ts boot function for the example.
    */
   return (
     <DemoFrame title="Store boot ensure">
       <section className="pattern-note">
         <p>
-          The store boot hook in <code>src/store.ts</code> ensures <code>boot:inbox</code> while the store loads, so the
-          thread list can read the client document immediately.
+          The store boot hook in <code>src/store.ts</code> commits an explicit ensure event while the store loads, so
+          the thread list can read the client-only row immediately.
         </p>
-        <ClientOnlyDataSummary pattern="store boot" documentId={documentId} mailboxId={mailboxId} />
+        <ClientOnlyDataSummary pattern="store boot" rowId={rowId} mailboxId={mailboxId} />
       </section>
-      <ThreadList store={store} documentId={documentId} mailboxId={mailboxId} />
+      <ThreadList store={store} rowId={rowId} mailboxId={mailboxId} />
     </DemoFrame>
   )
 }

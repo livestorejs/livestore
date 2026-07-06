@@ -4,10 +4,9 @@ import type { Store } from '@livestore/livestore'
 import { queryDb, Schema } from '@livestore/livestore'
 import type { useQuery } from '@livestore/react'
 
-import { schema, tables } from '../schema.ts'
+import { events, schema, tables, type SortDirection } from '../schema.ts'
 
 export type DemoStore = Store<typeof schema> & { useQuery: typeof useQuery }
-type ThreadListUi = typeof tables.threadListUi.Value
 
 export const firstThreadForMailbox$ = (mailboxId: string) =>
   queryDb(
@@ -29,11 +28,11 @@ const threadsForMailbox$ = (mailboxId: string, direction: 'asc' | 'desc') =>
     { deps: `${mailboxId}:${direction}`, label: `threads:${mailboxId}:${direction}` },
   )
 
-const threadListUi$ = (documentId: string) =>
-  // Fail loudly if a pattern renders before its explicit ensure step; this read must never create the default row.
-  queryDb(tables.threadListUi.select('value').where({ id: documentId }).first({ behaviour: 'error' }), {
-    deps: documentId,
-    label: `threadListUi:${documentId}`,
+const threadListUi$ = (rowId: string) =>
+  // Fail loudly if a pattern renders before its explicit ensure step; this read must never create the row.
+  queryDb(tables.threadListUi.where({ id: rowId }).first({ behaviour: 'error' }), {
+    deps: rowId,
+    label: `threadListUi:${rowId}`,
   })
 
 const receivedAtFormatter = new Intl.DateTimeFormat('en-US', {
@@ -49,19 +48,25 @@ const formatReceivedAt = (receivedAt: number) => {
 
 export const ThreadList = ({
   store,
-  documentId,
+  rowId,
   mailboxId,
 }: {
   store: DemoStore
-  documentId: string
+  rowId: string
   mailboxId: string
 }) => {
-  const uiState = store.useQuery(threadListUi$(documentId))
-  const setUiState = React.useCallback(
-    (patch: Partial<ThreadListUi>) => {
-      store.commit(tables.threadListUi.set(patch, documentId))
+  const uiState = store.useQuery(threadListUi$(rowId))
+  const setSortDirection = React.useCallback(
+    (sortDirection: SortDirection) => {
+      store.commit(events.threadListSortDirectionChanged({ id: rowId, sortDirection }))
     },
-    [documentId, store],
+    [rowId, store],
+  )
+  const selectThread = React.useCallback(
+    (selectedThreadId: string) => {
+      store.commit(events.threadListThreadSelected({ id: rowId, selectedThreadId }))
+    },
+    [rowId, store],
   )
   const threads = store.useQuery(threadsForMailbox$(mailboxId, uiState.sortDirection))
 
@@ -72,10 +77,10 @@ export const ThreadList = ({
         UI state: <span className="badge">{uiState.sortDirection}</span> selected:{' '}
         <span className="badge">{uiState.selectedThreadId ?? 'none'}</span>
       </p>
-      <button type="button" onClick={() => setUiState({ sortDirection: 'asc' })}>
+      <button type="button" onClick={() => setSortDirection('asc')}>
         Sort asc
       </button>
-      <button type="button" onClick={() => setUiState({ sortDirection: 'desc' })}>
+      <button type="button" onClick={() => setSortDirection('desc')}>
         Sort desc
       </button>
       <table className="thread-list">
@@ -92,7 +97,7 @@ export const ThreadList = ({
               <td>{formatReceivedAt(thread.receivedAt)}</td>
               <td>{thread.subject}</td>
               <td>
-                <button type="button" onClick={() => setUiState({ selectedThreadId: thread.id })}>
+                <button type="button" onClick={() => selectThread(thread.id)}>
                   Select
                 </button>
               </td>
@@ -105,17 +110,17 @@ export const ThreadList = ({
 }
 
 export const ClientOnlyDataSummary = ({
-  documentId,
+  rowId,
   mailboxId,
   pattern,
 }: {
-  documentId: string
+  rowId: string
   mailboxId: string
   pattern: string
 }) => (
   <p>
-    Example data: <span className="badge">{pattern}</span> document <span className="badge">{documentId}</span>{' '}
-    mailbox <span className="badge">{mailboxId}</span>
+    Example data: <span className="badge">{pattern}</span> row <span className="badge">{rowId}</span> mailbox{' '}
+    <span className="badge">{mailboxId}</span>
   </p>
 )
 

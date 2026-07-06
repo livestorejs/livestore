@@ -1,16 +1,16 @@
-# Client document initialization APIs
+# Client-only event initialization APIs
 
-Visual comparison app for explicit LiveStore client-document initialization patterns.
+Visual comparison app for explicit LiveStore client-only event initialization patterns.
 
 Run it with:
 
 ```bash
-pnpm --filter livestore-example-client-document-init-apis dev
+pnpm --filter livestore-example-client-only-events-init-apis dev
 ```
 
 The app groups the routes by whether defaults are client-only or derived from source data:
 
 - `client-only/store-boot`
-- `client-only/use-ensure-client-document`
+- `client-only/render-ensure`
 - `client-only/route-loader-ensure/inbox`
 - `derived/default-with-readiness-marker`
