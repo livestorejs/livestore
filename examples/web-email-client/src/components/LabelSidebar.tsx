@@ -42,9 +42,9 @@ export const LabelSidebar: React.FC = () => {
   const labelColorStyles = useMemo(
     () =>
       new Map(
-        labels
-          .filter((label) => label.color !== null)
-          .map((label) => [label.id, { backgroundColor: label.color }] as const),
+        labels.flatMap((label) =>
+          label.color === null ? [] : ([[label.id, { backgroundColor: label.color }]] as const),
+        ),
       ),
     [labels],
   )

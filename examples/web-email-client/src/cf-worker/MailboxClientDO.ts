@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers'
 
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
-import { nanoid } from '@livestore/livestore'
+import { nanoid, type Store } from '@livestore/livestore'
 import type * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 
@@ -10,7 +10,7 @@ import { seedMailbox } from '../stores/mailbox/seed.ts'
 import type { Env } from './shared.ts'
 
 export class MailboxClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
-  private store!: Awaited<ReturnType<typeof createStoreDoPromise>>
+  private store!: Store<typeof mailboxSchema>
   private hasStore = false
 
   async initialize({ storeId }: { storeId: string }) {
