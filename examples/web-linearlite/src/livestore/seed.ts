@@ -1,4 +1,3 @@
-import type { Store } from '@livestore/livestore'
 import { generateKeyBetween } from 'fractional-indexing'
 
 import { priorityOptions } from '../data/priority-options.ts'
@@ -7,8 +6,9 @@ import type { Priority } from '../types/priority.ts'
 import type { Status } from '../types/status.ts'
 import { highestIssueId$, highestKanbanOrder$ } from './queries.ts'
 import { events } from './schema/index.ts'
+import type { useAppStore } from './store.ts'
 
-export const seed = (store: Store, count: number) => {
+export const seed = (store: ReturnType<typeof useAppStore>, count: number) => {
   try {
     if (count <= 0) return
     const highestId = store.query(highestIssueId$)
