@@ -26,10 +26,10 @@ const tsCommand = Cli.Command.make(
   },
   Effect.fn(function* ({ watch, clean, noCheck }) {
     if (clean === true) {
-      yield* cmd('tsc --build tsconfig.dev.json --clean').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+      yield* cmd('tsc --build tsconfig.json --clean').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
     }
 
-    const flags = ['--build', 'tsconfig.dev.json', noCheck && '--noCheck', watch && '--watch'].filter(Boolean).join(' ')
+    const flags = ['--build', 'tsconfig.json', noCheck && '--noCheck', watch && '--watch'].filter(Boolean).join(' ')
 
     yield* cmd(`tsc ${flags}`).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
   }),

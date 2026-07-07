@@ -209,7 +209,7 @@ in
     # Shared task modules from effect-utils
     taskModules.genie
     (taskModules.megarepo { syncAll = !ci; })
-    (taskModules.ts { tsconfigFile = "tsconfig.dev.json"; })
+    (taskModules.ts { tsconfigFile = "tsconfig.json"; })
     (taskModules.check {
       hasTests = false;
       hasNixCheck = false;
@@ -279,10 +279,10 @@ in
       # TODO(oep-1n3.10): Keep wa-sqlite unmanaged by Genie for now.
       # Effect-utils now supports exclusions for the coverage check.
       genieCoverageExcludes = [ "packages/@livestore/wa-sqlite/" ];
-      tsconfig = "tsconfig.dev.json";
+      tsconfig = "tsconfig.json";
     })
     (taskModules.ts-effect-lsp {
-      tsconfigFile = "tsconfig.dev.json";
+      tsconfigFile = "tsconfig.json";
     })
     (taskModules.pnpm { packages = pnpmPackages; })
     # Setup task (auto-runs in enterShell)

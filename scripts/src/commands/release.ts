@@ -442,7 +442,7 @@ const publishReleasePackages = ({
     yield* rewriteSnapshotInternalDependencyRanges({ cwd, snapshotPackages: packages, snapshotVersion: version })
 
     /** Rebuild TypeScript so dist/ picks up the release version from package.json (emit-only, type checking is separate). */
-    yield* cmd(`DT_PASSTHROUGH=1 ${tscBin} --build tsconfig.dev.json --noCheck`, { shell: true }).pipe(
+    yield* cmd(`DT_PASSTHROUGH=1 ${tscBin} --build tsconfig.json --noCheck`, { shell: true }).pipe(
       Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
 
