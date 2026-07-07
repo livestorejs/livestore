@@ -6,7 +6,7 @@
     "skipLibCheck": true,
 
     /* Bundler mode */
-    "types": ["vite/client", "@cloudflare/workers-types", "wicg-file-system-access"],
+    "types": ["vite/client", "@cloudflare/workers-types"],
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "verbatimModuleSyntax": true,
