@@ -11,9 +11,6 @@
       "path": "./examples/web-todomvc"
     },
     {
-      "path": "./examples/web-todomvc-redwood"
-    },
-    {
       "path": "./examples/web-todomvc-sync-cf"
     }
   ]
