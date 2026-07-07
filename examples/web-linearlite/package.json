@@ -35,7 +35,7 @@
     "react-dom": "19.2.3",
     "react-icons": "5.5.0",
     "react-markdown": "10.1.0",
-    "react-virtualized-auto-sizer": "1.0.26",
+    "react-virtualized-auto-sizer": "2.0.3",
     "react-window": "1.8.11"
   },
   "devDependencies": {

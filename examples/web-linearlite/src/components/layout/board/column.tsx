@@ -12,7 +12,7 @@ import {
   useDragAndDrop,
   Virtualizer,
 } from 'react-aria-components'
-import AutoSizer from 'react-virtualized-auto-sizer'
+import { AutoSizer } from 'react-virtualized-auto-sizer'
 
 import type { StatusDetails } from '../../../data/status-options.ts'
 import { filterState$, useDebouncedScrollState, useFilterState } from '../../../livestore/queries.ts'
@@ -159,8 +159,8 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
         <NewIssueButton status={status} />
       </div>
       <div className="grow">
-        <AutoSizer>
-          {({ width, height }: { width: number; height: number }) => (
+        <AutoSizer
+          renderProp={({ width = 0, height = 0 }) => (
             <Virtualizer layout={layout}>
               <ColumnGridList
                 width={width}
@@ -172,7 +172,7 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
               />
             </Virtualizer>
           )}
-        </AutoSizer>
+        />
       </div>
     </div>
   )
