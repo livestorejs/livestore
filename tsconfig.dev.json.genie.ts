@@ -2,7 +2,7 @@ import { tsconfigJson } from './genie/repo.ts'
 
 /**
  * Root tsconfig for development builds.
- * References all packages, tests, docs, and scripts for composite builds.
+ * References all packages, examples, tests, docs, and scripts for composite builds.
  */
 export default tsconfigJson({
   compilerOptions: {},
@@ -12,6 +12,13 @@ export default tsconfigJson({
     // { path: './docs' },
     { path: './docs/src/content/_assets/code' },
     { path: './scripts' },
+    { path: './examples/cloudflare-todomvc' },
+    { path: './examples/tutorial-starter' },
+    { path: './examples/web-email-client' },
+    { path: './examples/web-linearlite' },
+    { path: './examples/web-todomvc-script' },
+    { path: './examples/web-todomvc' },
+    { path: './examples/web-todomvc-sync-cf' },
     { path: './packages/@local/astro-tldraw' },
     { path: './packages/@local/astro-twoslash-code' },
     { path: './tests/integration' },
