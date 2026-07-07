@@ -28,7 +28,7 @@ const composition = catalog.compose({
       testsSyncProviderPkg,
     ],
     external: {
-      ...effectDevDeps('@types/node', 'vitest'),
+      ...effectDevDeps('@types/node', 'typescript', 'vitest'),
       '@types/bun': '1.3.10',
       '@types/semver': '^7.7.0',
       madge: '^8.0.0',
