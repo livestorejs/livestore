@@ -8,10 +8,10 @@ import { type Theme, themeOptions } from '../../../data/theme-options.ts'
 import { useFrontendState } from '../../../livestore/queries.ts'
 import { Shortcut } from '../../common/shortcut.tsx'
 
-const shortcutKeysByThemeId = Object.fromEntries(themeOptions.map(({ id, shortcut }) => [id, [shortcut]])) as Record<
-  Theme,
-  readonly string[]
->
+const shortcutKeysByThemeId = themeOptions.reduce<Record<Theme, readonly string[]>>(
+  (shortcutKeys, { id, shortcut }) => ({ ...shortcutKeys, [id]: [shortcut] }),
+  { dark: [], light: [], system: [] },
+)
 
 export const ThemeButton = () => {
   const [theme, setTheme] = React.useState<Theme | undefined>(undefined)
