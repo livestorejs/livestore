@@ -11,9 +11,6 @@
       "path": "./examples/web-todomvc"
     },
     {
-      "path": "./examples/web-todomvc-react-router"
-    },
-    {
       "path": "./examples/web-todomvc-sync-cf"
     }
   ]
