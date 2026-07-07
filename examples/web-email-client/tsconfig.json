@@ -21,5 +21,12 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src/**/*", "vite.config.ts"]
+  "include": ["src/**/*", "vite.config.ts"],
+  "references": [
+    { "path": "../../packages/@livestore/adapter-cloudflare" },
+    { "path": "../../packages/@livestore/adapter-web" },
+    { "path": "../../packages/@livestore/livestore" },
+    { "path": "../../packages/@livestore/react" },
+    { "path": "../../packages/@livestore/sync-cf" }
+  ]
 }
