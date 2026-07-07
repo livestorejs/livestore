@@ -12,6 +12,7 @@
     "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "disableSourceOfProjectReferenceRedirect": true,
     "noEmit": true,
 
     /* Linting */

@@ -2,8 +2,7 @@ import { DurableObject } from 'cloudflare:workers'
 import type { AlarmInvocationInfo } from '@cloudflare/workers-types'
 
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
-import { nanoid } from '@livestore/livestore'
-import type { CfTypes } from '@livestore/sync-cf/cf-worker'
+import { nanoid, type Store } from '@livestore/livestore'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 
 import { schema, tables } from './livestore/schema.ts'
@@ -12,12 +11,11 @@ import { storeIdFromRequest } from './shared.ts'
 
 export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
   private storeId: string | undefined
-  private cachedStore!: Awaited<ReturnType<typeof createStoreDoPromise>>
+  private cachedStore!: Store<typeof schema>
   private hasCachedStore = false
   private storeSubscription: (() => void) | undefined
 
   async fetch(request: Request): Promise<Response> {
-    // @ts-expect-error TODO remove casts once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
     this.storeId = storeIdFromRequest(request)
 
     const store = await this.getStore()
@@ -43,7 +41,7 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
       clientId: 'client-do',
       sessionId: nanoid(),
       durableObject: {
-        state: this.ctx as CfTypes.DurableObjectState,
+        ctx: this.ctx,
         env: this.env,
         bindingName: 'CLIENT_DO',
       },
