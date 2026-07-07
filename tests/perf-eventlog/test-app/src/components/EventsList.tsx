@@ -30,6 +30,12 @@ type EventsListProps = {
   until: number | undefined
 }
 
+type DisplaySeqNum = {
+  global: number
+  client: number
+  rebaseGeneration: number
+}
+
 const sanitizeBatchSize = (value: number) => Math.max(1, Math.floor(value) || 1)
 
 const stringify = (value: unknown) => {
@@ -38,6 +44,21 @@ const stringify = (value: unknown) => {
   } catch (error) {
     return typeof value === 'string' ? value : String(error)
   }
+}
+
+const isRecord = (value: unknown): value is Record<PropertyKey, unknown> => typeof value === 'object' && value !== null
+
+const getDisplaySeqNum = (value: unknown): DisplaySeqNum | undefined => {
+  if (isRecord(value) === false || isRecord(value.seqNum) === false) {
+    return undefined
+  }
+
+  const { global, client, rebaseGeneration } = value.seqNum
+  if (typeof global !== 'number' || typeof client !== 'number' || typeof rebaseGeneration !== 'number') {
+    return undefined
+  }
+
+  return { global, client, rebaseGeneration }
 }
 
 export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
@@ -50,29 +71,23 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
   React.useEffect(() => {
     let cancelled = false
     lastSeqRef.current = 0
-    const iterator = store
-      .events({
-        batchSize: preferredBatchSize,
-        ...(until !== undefined && { until: EventSequenceNumber.Client.fromString(`e${until}`) }),
-      })
-      [Symbol.asyncIterator]()
+    const eventStream = store.events({
+      batchSize: preferredBatchSize,
+      ...(until !== undefined && { until: EventSequenceNumber.Client.fromString(`e${until}`) }),
+    })
 
     const run = async () => {
       try {
-        while (cancelled === false) {
-          const { value, done } = await iterator.next()
-          if (done === true || cancelled === true) break
-          if (value == null) continue
+        for await (const value of eventStream) {
+          if (cancelled === true) break
 
-          const seqNumGlobal = typeof value.seqNum?.global === 'number' ? value.seqNum.global : null
-          const seqNumClient = typeof value.seqNum?.client === 'number' ? value.seqNum.client : null
-          const seqNumRebase = typeof value.seqNum?.rebaseGeneration === 'number' ? value.seqNum.rebaseGeneration : null
-          const nextDisplayCount = seqNumGlobal ?? lastSeqRef.current + 1
+          const seqNum = getDisplaySeqNum(value)
+          const nextDisplayCount = seqNum?.global ?? lastSeqRef.current + 1
           lastSeqRef.current = nextDisplayCount
 
           const id =
-            seqNumGlobal !== null
-              ? `seq-${seqNumGlobal}-${seqNumClient ?? 'client'}-${seqNumRebase ?? 'rebase'}`
+            seqNum !== undefined
+              ? `seq-${seqNum.global}-${seqNum.client}-${seqNum.rebaseGeneration}`
               : `local-${nextDisplayCount}`
           const json = stringify(value)
 
@@ -81,8 +96,6 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
         }
       } catch (error) {
         console.error('Error consuming LiveStore events stream', error)
-      } finally {
-        await iterator.return?.()
       }
     }
 
@@ -90,7 +103,6 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
 
     return () => {
       cancelled = true
-      void iterator.return?.()
     }
   }, [preferredBatchSize, until, store])
 
