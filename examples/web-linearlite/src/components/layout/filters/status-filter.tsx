@@ -12,6 +12,7 @@ export const StatusFilter = () => {
   const [filterState, setFilterState] = useFilterState()
   const handleClear = useCallback(() => setFilterState({ status: null }), [setFilterState])
   if (!filterState.status) return null
+  const selectedStatus = filterState.status.length === 1 ? filterState.status[0] : undefined
 
   return (
     <div className="text-xs text-neutral-500 dark:text-neutral-400 ml-2 border border-neutral-300 dark:border-neutral-600 rounded-md flex h-6 overflow-hidden shrink-0 whitespace-nowrap">
@@ -29,12 +30,12 @@ export const StatusFilter = () => {
               />
             </div>
           ))}
-          {filterState.status.length === 1 ? (
-            <span className="font-medium text-neutral-600 dark:text-neutral-200">
-              {statusOptions[filterState.status[0]]!.name}
-            </span>
-          ) : (
+          {selectedStatus === undefined ? (
             <span>{filterState.status.length} statuses</span>
+          ) : (
+            <span className="font-medium text-neutral-600 dark:text-neutral-200">
+              {statusOptions[selectedStatus]!.name}
+            </span>
           )}
         </Button>
       </FilterMenu>

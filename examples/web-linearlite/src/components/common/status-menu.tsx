@@ -77,7 +77,7 @@ export const StatusMenu = ({
               <Icon name={icon} className={`size-3.5 ${style}`} />
               <span>{name}</span>
               {statusOption === status && <CheckIcon className="size-4 absolute right-9" />}
-              <Shortcut keys={shortcutKeysByStatusName[name]} className="absolute right-3" />
+              <Shortcut keys={shortcutKeysByStatusName[name] ?? []} className="absolute right-3" />
             </MenuItem>
           ))}
         </Menu>

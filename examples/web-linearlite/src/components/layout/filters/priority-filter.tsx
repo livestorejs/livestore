@@ -4,7 +4,6 @@ import { Button } from 'react-aria-components'
 
 import { priorityOptions } from '../../../data/priority-options.ts'
 import { useFilterState } from '../../../livestore/queries.ts'
-import type { Priority } from '../../../types/priority.ts'
 import { Icon } from '../../icons/index.tsx'
 import { FilterMenu } from './filter-menu.tsx'
 
@@ -12,6 +11,7 @@ export const PriorityFilter = () => {
   const [filterState, setFilterState] = useFilterState()
   const handleClear = useCallback(() => setFilterState({ priority: null }), [setFilterState])
   if (!filterState.priority) return null
+  const selectedPriority = filterState.priority.length === 1 ? filterState.priority[0] : undefined
 
   return (
     <div className="text-xs text-neutral-500 ml-2 border border-neutral-300 dark:border-neutral-600 dark:text-neutral-400 rounded-md flex h-6 overflow-hidden shrink-0 whitespace-nowrap">
@@ -21,18 +21,18 @@ export const PriorityFilter = () => {
       </div>
       <FilterMenu type="priority">
         <Button className="px-2 flex items-center h-full hover:bg-neutral-50 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800 gap-1.5">
-          {filterState.priority.length === 1 ? (
+          {selectedPriority === undefined ? (
+            <span>{filterState.priority.length} priorities</span>
+          ) : (
             <>
               <Icon
-                name={priorityOptions[filterState.priority[0]]!.icon}
-                className={`h-3.5 ${priorityOptions[filterState.priority[0]]!.style}`}
+                name={priorityOptions[selectedPriority]!.icon}
+                className={`h-3.5 ${priorityOptions[selectedPriority]!.style}`}
               />
               <span className="font-medium text-neutral-600 dark:text-neutral-200">
-                {priorityOptions[filterState.priority[0]]!.name}
+                {priorityOptions[selectedPriority]!.name}
               </span>
             </>
-          ) : (
-            <span>{filterState.priority.length} priorities</span>
           )}
         </Button>
       </FilterMenu>
