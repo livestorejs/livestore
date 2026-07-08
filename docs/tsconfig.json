@@ -34,6 +34,7 @@
       }
     ],
     "rootDir": "./src",
+    "moduleResolution": "Bundler",
     "jsx": "preserve",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },

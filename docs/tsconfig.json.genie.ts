@@ -14,6 +14,7 @@ export default tsconfigJson({
     declaration: false,
     declarationMap: false,
     module: 'ESNext',
+    moduleResolution: 'Bundler',
     target: 'ESNext',
     jsx: 'preserve',
     tsBuildInfoFile: './dist/.tsbuildinfo',
