@@ -1,0 +1,39 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.json.genie.ts
+{
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024"],
+    "module": "ESNext",
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "resolveJsonModule": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "outDir": "dist",
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "plugins": [],
+    "moduleDetection": "force",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "include": [
+    "./vitest.config.ts",
+    "./packages/*/*/vitest.config.ts",
+    "./scripts/vitest.config.ts",
+    "./tests/*/playwright.config.ts",
+    "./tests/*/vitest.config.ts",
+    "./tests/integration/src/tests/devtools/fixtures/*/vite.config.ts"
+  ],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm"]
+}
