@@ -39,7 +39,9 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
           })(args),
         turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
         turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
-        providerSpecific: {},
+        // Expose the dev-server port so tests can hit worker routes directly (e.g. the hibernation
+        // instance-id probes in `do-rpc-hibernation.test.ts`).
+        providerSpecific: { port: server.port, url: server.url },
       }
     }),
   ).pipe(

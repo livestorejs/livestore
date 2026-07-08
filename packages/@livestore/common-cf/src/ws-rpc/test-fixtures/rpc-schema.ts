@@ -45,5 +45,14 @@ export class TestRpcs extends RpcGroup.make(
     success: Schema.Number,
     stream: true,
   }),
+  Rpc.make('Live', {
+    payload: Schema.Struct({}),
+    success: Schema.Number,
+    stream: true,
+  }),
+  Rpc.make('GetLongTimerCount', {
+    payload: Schema.Struct({}),
+    success: Schema.Struct({ count: Schema.Number }),
+  }),
 ) {}
 export type TestRpcsI = RpcGroup.Rpcs<typeof TestRpcs>

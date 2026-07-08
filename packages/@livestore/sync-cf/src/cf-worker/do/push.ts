@@ -1,7 +1,7 @@
 import { BackendIdMismatchError, ServerAheadError, SyncBackend, UnknownError } from '@livestore/common'
 import { type CfTypes, emitStreamResponse } from '@livestore/common-cf'
 import { splitChunkBySize } from '@livestore/common/sync'
-import { Chunk, Effect, Option, type RpcMessage, Schema } from '@livestore/utils/effect'
+import { Chunk, Duration, Effect, Option, type RpcMessage, Schema } from '@livestore/utils/effect'
 
 import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SyncMessage } from '../../common/mod.ts'
@@ -17,6 +17,9 @@ import { DoCtx } from './layer.ts'
 const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
 const jsonStringify = Schema.encodeSync(Schema.parseJson())
 type PullBatchItem = SyncMessage.PullResponse['batch'][number]
+
+/** Bounds each reverse-RPC so a hung client can't pin this DO resident and defeat hibernation. */
+const RPC_SUBSCRIBER_CALL_TIMEOUT = Duration.seconds(5)
 
 export const makePush =
   ({
@@ -159,20 +162,46 @@ export const makePush =
           yield* Effect.logDebug(`Broadcasted to ${connectedClients.length} WebSocket clients`)
         }
 
-        // RPC broadcasting would require reconstructing client stubs from clientIds
-        if (rpcSubscriptions.size > 0) {
-          for (const subscription of rpcSubscriptions.values()) {
+        // A subscriber's own `true` verdict is the ONLY reap signal — the producer can't detect a dead client
+        // (a reverse-RPC resurrects a hibernated one), so an RPC error/timeout is transient (keep the row).
+        // `Effect.disconnect` lets the per-call timeout abandon a slow client without making the
+        // uninterruptible loop interruptible.
+        const subscriptions = rpcSubscriptions.all()
+        if (subscriptions.length > 0) {
+          for (const subscription of subscriptions) {
+            let unsubscribe = false
+
             for (const { encoded } of responses) {
-              yield* emitStreamResponse({
+              const exit = yield* emitStreamResponse({
                 callerContext: subscription.callerContext,
                 env,
                 requestId: subscription.requestId,
                 values: [encoded],
-              }).pipe(Effect.tapCauseLogPretty, Effect.exit)
+              }).pipe(
+                Effect.disconnect,
+                Effect.timeout(RPC_SUBSCRIBER_CALL_TIMEOUT),
+                Effect.tapCauseLogPretty,
+                Effect.exit,
+              )
+
+              if (exit._tag === 'Failure') break // Transient — keep the subscription, retry next push.
+
+              if (exit.value === true) {
+                unsubscribe = true
+                break
+              }
+            }
+
+            // Match on `generation` so a newer same-DO re-subscribe isn't clobbered.
+            if (unsubscribe === true) {
+              rpcSubscriptions.remove(subscription.callerContext.durableObjectId, subscription.generation)
+              yield* Effect.logDebug(
+                `Reaped DO-RPC subscription ${subscription.callerContext.durableObjectId} (client reported store gone)`,
+              )
             }
           }
 
-          yield* Effect.logDebug(`Broadcasted to ${rpcSubscriptions.size} RPC clients`)
+          yield* Effect.logDebug(`Broadcasted to ${subscriptions.length} RPC clients`)
         }
       }).pipe(
         Effect.tapCauseLogPretty,

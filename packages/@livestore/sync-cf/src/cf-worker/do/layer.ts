@@ -6,8 +6,16 @@ import { Effect, Predicate } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
 import type { Env, MakeDurableObjectClassOptions, RpcSubscription } from '../shared.ts'
-import { contextTable, eventlogTable } from './sqlite.ts'
+import { contextTable, eventlogTable, rpcSubscriptionTable } from './sqlite.ts'
 import { makeStorage } from './sync-storage.ts'
+
+/** SQLite-backed DO-RPC live-pull subscription registry. */
+export interface RpcSubscriptions {
+  readonly set: (subscription: Omit<RpcSubscription, 'generation'>) => void
+  readonly all: () => ReadonlyArray<RpcSubscription>
+  /** Match on `generation` so a newer re-subscribe isn't clobbered. */
+  readonly remove: (durableObjectId: string, generation: number) => void
+}
 
 const CacheSymbol = Symbol('Cache')
 
@@ -73,6 +81,12 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
         const colSpec = State.SQLite.makeColumnSpec(contextTable.sqliteDef.ast)
         doSelf.ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS "${contextTable.sqliteDef.name}" (${colSpec}) strict`)
       }
+      {
+        const colSpec = State.SQLite.makeColumnSpec(rpcSubscriptionTable.sqliteDef.ast)
+        doSelf.ctx.storage.sql.exec(
+          `CREATE TABLE IF NOT EXISTS "${rpcSubscriptionTable.sqliteDef.name}" (${colSpec}) strict`,
+        )
+      }
 
       const storageRow = doSelf.ctx.storage.sql
         .exec(`SELECT * FROM "${contextTable.sqliteDef.name}" WHERE storeId = ?`, storeId)
@@ -100,7 +114,7 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
         doSelf[CacheSymbol].currentHeadRef = { current: currentHead }
       }
 
-      const rpcSubscriptions = new Map<string, RpcSubscription>()
+      const rpcSubscriptions = makeRpcSubscriptions(doSelf.ctx)
 
       const storageCache = {
         storeId,
@@ -127,3 +141,48 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
     Effect.withSpan('@livestore/sync-cf:durable-object:makeDoCtx'),
   ),
 }) {}
+
+const makeRpcSubscriptions = (ctx: CfTypes.DurableObjectState): RpcSubscriptions => {
+  const table = rpcSubscriptionTable.sqliteDef.name
+
+  // Monotonic compare-and-delete token (NOT a timestamp); seeded from the persisted max to stay increasing
+  // across hibernation, so same-turn re-subscribes get distinct tokens and a stale reap can't clobber.
+  const seed = ctx.storage.sql
+    .exec(`SELECT MAX(generation) AS maxGeneration FROM "${table}"`)
+    .toArray()[0] as unknown as { maxGeneration: number | null } | undefined
+  let lastGeneration = seed?.maxGeneration ?? 0
+  const nextGeneration = () => (lastGeneration += 1)
+
+  return {
+    set: (subscription) =>
+      ctx.storage.sql.exec(
+        `INSERT OR REPLACE INTO "${table}" (durableObjectId, bindingName, requestId, storeId, payload, generation) VALUES (?, ?, ?, ?, ?, ?)`,
+        subscription.callerContext.durableObjectId,
+        subscription.callerContext.bindingName,
+        subscription.requestId,
+        subscription.storeId,
+        subscription.payload === undefined ? null : JSON.stringify(subscription.payload),
+        nextGeneration(),
+      ),
+    all: () => {
+      const rows = ctx.storage.sql.exec(`SELECT * FROM "${table}"`).toArray() as Array<
+        typeof rpcSubscriptionTable.rowSchema.Type
+      >
+      return rows.map(
+        (row): RpcSubscription => ({
+          storeId: row.storeId,
+          requestId: row.requestId,
+          generation: row.generation,
+          callerContext: { bindingName: row.bindingName, durableObjectId: row.durableObjectId },
+          ...(row.payload !== null ? { payload: JSON.parse(row.payload) } : {}),
+        }),
+      )
+    },
+    remove: (durableObjectId, generation) =>
+      ctx.storage.sql.exec(
+        `DELETE FROM "${table}" WHERE durableObjectId = ? AND generation = ?`,
+        durableObjectId,
+        generation,
+      ),
+  }
+}

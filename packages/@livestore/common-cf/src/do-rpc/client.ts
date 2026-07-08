@@ -1,4 +1,5 @@
 import {
+  type Context,
   Effect,
   Fiber,
   FiberMap,
@@ -66,7 +67,7 @@ export const layerProtocolDurableObject = (args: MakeDoRpcProtocolArgs): Layer.L
 const makeProtocolDurableObject = ({
   callRpc,
 }: MakeDoRpcProtocolArgs): Effect.Effect<RpcClient.Protocol['Type'], never, Scope.Scope> =>
-  RpcClient.Protocol.make(
+  makeProtocol(
     Effect.fnUntraced(function* (writeResponse) {
       // Not using an actual `FiberMap` here because it seems to shutdown to early
       // const fiberMap = new Map<string, Fiber.RuntimeFiber<void, never>>()
@@ -137,3 +138,46 @@ const makeProtocolDurableObject = ({
       }
     }),
   )
+
+/**
+ * Like `@effect/rpc`'s `RpcClient.Protocol.make` (`withRun`), but parks on the timer-less {@link holdForever}
+ * instead of `Effect.never` — whose `setInterval` keepalive would stop a DO-resident client from ever
+ * hibernating (the client analogue of the sync-server `makeSocketProtocol` fix, #1328 ③).
+ */
+const makeProtocol = <EX, RX>(
+  f: (
+    write: (data: RpcMessage.FromServerEncoded) => Effect.Effect<void>,
+  ) => Effect.Effect<Omit<RpcClient.Protocol['Type'], 'run'>, EX, RX>,
+): Effect.Effect<RpcClient.Protocol['Type'], EX, RX> =>
+  Effect.suspend(() => {
+    const semaphore = Effect.unsafeMakeSemaphore(1)
+    let buffer: Array<[data: RpcMessage.FromServerEncoded, context: Context.Context<never>]> = []
+    let write = (data: RpcMessage.FromServerEncoded): Effect.Effect<void> =>
+      Effect.contextWith((context) => {
+        buffer.push([data, context])
+      })
+
+    return f((data) => write(data)).pipe(
+      Effect.map((protocol) => ({
+        ...protocol,
+        run: (realWrite: (data: RpcMessage.FromServerEncoded) => Effect.Effect<void>) =>
+          semaphore.withPermits(1)(
+            Effect.gen(function* () {
+              const prev = write
+              write = realWrite
+              for (const [data, context] of buffer) {
+                yield* Effect.provide(write(data), context)
+              }
+              buffer = []
+              return yield* Effect.onExit(holdForever, () => {
+                write = prev
+                return Effect.void
+              })
+            }),
+          ),
+      })),
+    )
+  })
+
+/** Never-resolving, interruptible park with no `setInterval` (unlike `Effect.never`), so a DO-resident client can hibernate. See #1328. */
+const holdForever = Effect.async<never>(() => {})

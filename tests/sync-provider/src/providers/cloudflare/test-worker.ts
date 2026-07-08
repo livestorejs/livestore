@@ -3,7 +3,11 @@
 import { DurableObject } from 'cloudflare:workers'
 
 import type { SyncBackend } from '@livestore/common'
-import { type ClientDoWithRpcCallback, setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
+import {
+  type ClientDoWithRpcCallback,
+  setupDurableObjectWebSocketRpc,
+  type SyncUpdateRpcResult,
+} from '@livestore/common-cf'
 import type { CfDeclare } from '@livestore/common-cf/declare'
 import {
   type CfTypes,
@@ -30,9 +34,22 @@ declare class Request extends CfDeclare.Request {}
 declare class Response extends CfDeclare.Response {}
 declare class WebSocketPair extends CfDeclare.WebSocketPair {}
 
+interface InstanceIdProbe {
+  getInstanceId(): string
+}
+
+interface SyncDoProbe extends InstanceIdProbe {
+  getRpcSubscriptionCount(): number
+}
+
+interface ClientDoProbe extends InstanceIdProbe {
+  closeStore(): void
+  openStore(): void
+}
+
 export interface Env {
-  SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface>
-  TEST_CLIENT_DO: CfTypes.DurableObjectNamespace
+  SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface & SyncDoProbe>
+  TEST_CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback & ClientDoProbe>
   /** Eventlog database */
   DB: CfTypes.D1Database
 }
@@ -50,7 +67,27 @@ export class SyncBackendDO extends makeDurableObject({
       'X-LiveStore-Version': '1.0.0',
     },
   },
-}) {}
+}) {
+  instanceId = crypto.randomUUID()
+
+  getInstanceId(): string {
+    return this.instanceId
+  }
+
+  getRpcSubscriptionCount(): number {
+    // `makeDurableObject`'s public type erases `ctx`; the runtime base provides it (test-only narrowing).
+    const { sql } = (this as unknown as { ctx: CfTypes.DurableObjectState }).ctx.storage
+    const tables = sql
+      .exec(`SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'rpc_subscription_%'`)
+      .toArray() as unknown as ReadonlyArray<{ name: string }>
+    let count = 0
+    for (const { name } of tables) {
+      const row = sql.exec(`SELECT COUNT(*) AS c FROM "${name}"`).toArray()[0] as unknown as { c: number } | undefined
+      count += Number(row?.c ?? 0)
+    }
+    return count
+  }
+}
 
 const DurableObjectBase = DurableObject as any as new (
   state: CfTypes.DurableObjectState,
@@ -61,6 +98,21 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
   __DURABLE_OBJECT_BRAND = 'ClientDO' as never
   env: Env
   ctx: CfTypes.DurableObjectState
+  instanceId = crypto.randomUUID()
+  /** Store-liveness flag — analog of the real adapter's `cachedStore === undefined`. */
+  storeClosed = false
+
+  getInstanceId(): string {
+    return this.instanceId
+  }
+
+  closeStore(): void {
+    this.storeClosed = true
+  }
+
+  openStore(): void {
+    this.storeClosed = false
+  }
 
   constructor(state: CfTypes.DurableObjectState, env: Env) {
     super(state, env)
@@ -163,8 +215,10 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
     })
   }
 
-  async syncUpdateRpc(payload: RpcMessage.ResponseChunkEncoded) {
-    await handleSyncUpdateRpc(payload)
+  async syncUpdateRpc(payload: RpcMessage.ResponseChunkEncoded): Promise<SyncUpdateRpcResult> {
+    // Store-liveness gate: reap once the store is gone (`storeClosed` is this harness's `cachedStore` analog).
+    if (this.storeClosed === true) return true
+    return handleSyncUpdateRpc(payload)
   }
 }
 
@@ -189,6 +243,35 @@ export default {
       const durableObject = env.TEST_CLIENT_DO.get(id)
 
       return durableObject.fetch(request)
+    }
+
+    // Probes for `do-rpc-hibernation.test.ts`: per-instance id (eviction), subscription count (reap),
+    // store-liveness toggle (drives the reap gate). Reading the client id also keeps it warm.
+    if (url.pathname.endsWith('/instance/sync') === true) {
+      const storeId = url.searchParams.get('storeId') ?? 'default'
+      const instanceId = await env.SYNC_BACKEND_DO.get(env.SYNC_BACKEND_DO.idFromName(storeId)).getInstanceId()
+      return new Response(JSON.stringify({ instanceId }), { headers: { 'content-type': 'application/json' } })
+    }
+
+    if (url.pathname.endsWith('/instance/client') === true) {
+      const instanceId = await env.TEST_CLIENT_DO.get(env.TEST_CLIENT_DO.idFromName('test-client-do')).getInstanceId()
+      return new Response(JSON.stringify({ instanceId }), { headers: { 'content-type': 'application/json' } })
+    }
+
+    if (url.pathname.endsWith('/rpc-subscriptions/count') === true) {
+      const storeId = url.searchParams.get('storeId') ?? 'default'
+      const count = await env.SYNC_BACKEND_DO.get(env.SYNC_BACKEND_DO.idFromName(storeId)).getRpcSubscriptionCount()
+      return new Response(JSON.stringify({ count }), { headers: { 'content-type': 'application/json' } })
+    }
+
+    if (url.pathname.endsWith('/do-rpc/close') === true) {
+      await env.TEST_CLIENT_DO.get(env.TEST_CLIENT_DO.idFromName('test-client-do')).closeStore()
+      return new Response(JSON.stringify({ closed: true }), { headers: { 'content-type': 'application/json' } })
+    }
+
+    if (url.pathname.endsWith('/do-rpc/open') === true) {
+      await env.TEST_CLIENT_DO.get(env.TEST_CLIENT_DO.idFromName('test-client-do')).openStore()
+      return new Response(JSON.stringify({ closed: false }), { headers: { 'content-type': 'application/json' } })
     }
 
     return new Response('Invalid path', { status: 400 })

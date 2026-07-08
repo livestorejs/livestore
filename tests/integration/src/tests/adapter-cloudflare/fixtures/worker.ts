@@ -17,6 +17,27 @@ import { shouldNeverHappen } from '@livestore/utils'
 
 import { events, schema, tables } from '../schema.ts'
 
+/** Counts pending long-period `setInterval` timers — the exact CF DO hibernation disqualifier `Effect.never` registers. */
+let liveLongTimers = 0
+{
+  const LONG_MS = 1_000_000 // the Effect.never timer is 2_147_483_647
+  const realSetInterval = globalThis.setInterval
+  const realClearInterval = globalThis.clearInterval
+  const ids = new Set<ReturnType<typeof setInterval>>()
+  globalThis.setInterval = ((cb: any, ms?: number, ...args: any[]) => {
+    const id = realSetInterval(cb, ms as any, ...args)
+    if ((ms ?? 0) > LONG_MS) {
+      ids.add(id)
+      liveLongTimers = ids.size
+    }
+    return id
+  }) as typeof globalThis.setInterval
+  globalThis.clearInterval = ((id?: any) => {
+    if (id !== undefined && ids.delete(id) === true) liveLongTimers = ids.size
+    realClearInterval(id)
+  }) as typeof globalThis.clearInterval
+}
+
 /**
  * Bridge Cloudflare's worker `Response` constructor back to the worker type in this mixed DOM/worker TS program.
  */
@@ -94,6 +115,8 @@ const wrapSqlForTracking = (sql: CfTypes.SqlStorage) => {
 
 export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCallback {
   __DURABLE_OBJECT_BRAND = 'TestStoreDo' as never
+  /** Per-instance uuid (not persisted): a stable value across an idle gap == the DO never evicted. */
+  readonly instanceId = crypto.randomUUID()
   private cachedStore: Store<typeof schema> | undefined
   private cachedStoreId: string | undefined
   /** Captures the VFS counts immediately before/after a reset so tests can assert the deletion actually happened. */
@@ -108,11 +131,46 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
       return makeCfResponse('storeId is required', { status: 400 })
     }
 
+    if (url.pathname === '/store/instance' && request.method === 'GET') {
+      // Pure read — does NOT boot the store. Returns the per-instance uuid (eviction probe) and the
+      // current count of pending long-period timers in this isolate (the hibernation disqualifier).
+      // Calling this before vs after booting the store gives the store's steady-state park count.
+      return makeCfResponse(JSON.stringify({ instanceId: this.instanceId, longTimers: liveLongTimers }), {
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
+    if (url.pathname === '/store/eventlog' && request.method === 'GET') {
+      // Pure read of the native `eventlog` table (no store boot — booting would trigger a catch-up pull
+      // that masks whether live delivery happened). `instanceId` doubles as the eviction probe.
+      return makeCfResponse(
+        JSON.stringify({
+          instanceId: this.instanceId,
+          eventlogCount: this.countEventlogRows().count,
+        }),
+        { headers: { 'content-type': 'application/json' } },
+      )
+    }
+
+    if (url.pathname === '/store/boot' && request.method === 'POST') {
+      // Boots the Store as a pure-reader live-pull subscriber WITHOUT committing anything, so an external
+      // writer can own the eventlog sequence cleanly. `?livePull=true` establishes the reverse-RPC
+      // subscription on the SyncBackendDO (the path that breaks across client-host hibernation).
+      const livePull = url.searchParams.get('livePull') === 'true'
+      await this.ensureStore({ storeId, resetPersistence: false, livePull })
+
+      return makeCfResponse(JSON.stringify({ instanceId: this.instanceId }), {
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
     if (url.pathname === '/store/todos') {
       if (request.method === 'POST') {
         const payload = await request.json<{ id?: string; title: string }>()
         const id = payload.id ?? crypto.randomUUID()
-        const store = await this.ensureStore({ storeId, resetPersistence: false })
+        // `?livePull=true` mirrors the app's reactive DO-RPC client (reverse-RPC subscription).
+        const livePull = url.searchParams.get('livePull') === 'true'
+        const store = await this.ensureStore({ storeId, resetPersistence: false, livePull })
 
         store.commit(events.todoCreated({ id, title: payload.title }))
 
@@ -204,7 +262,9 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
   }
 
   async syncUpdateRpc(payload: unknown) {
-    await handleSyncUpdateRpc(payload)
+    // Store gone (hibernated): ask the sync DO to drop this subscription; it recovers on next use.
+    if (this.cachedStore === undefined) return true
+    return handleSyncUpdateRpc(payload)
   }
 
   private ensureSqlTracking() {
@@ -224,9 +284,11 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
   private async ensureStore({
     storeId,
     resetPersistence,
+    livePull = false,
   }: {
     storeId: string
     resetPersistence: boolean
+    livePull?: boolean
   }): Promise<Store<typeof schema>> {
     this.ensureSqlTracking()
 
@@ -248,6 +310,7 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
           durableObject: { ctx: this.ctx, env: this.env, bindingName: 'TEST_STORE_DO' },
           syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
           resetPersistence,
+          livePull,
         })
 
       let snapshotDuringReset: ResetPersistenceSnapshot | undefined
