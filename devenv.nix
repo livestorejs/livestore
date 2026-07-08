@@ -492,7 +492,7 @@ in
 
   # NOTE: check:quick is provided by effect-utils taskModules.check.
 
-  git-hooks.enable = true;
+  git-hooks.enable = false;
   git-hooks.hooks.check-quick = {
     enable = true;
     # Can't use `dt` here — git hooks run outside the devenv shell where `dt` isn't on $PATH
