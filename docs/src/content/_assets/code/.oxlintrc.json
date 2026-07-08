@@ -1,6 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
   "plugins": ["import", "typescript", "unicorn", "oxc", "react", "react", "react-perf"],
+  "jsPlugins": ["../../../../../scripts/oxlint-plugin/overeng/mod.ts"],
   "ignorePatterns": [
     "**/node_modules/**",
     "**/.pnpm/**",

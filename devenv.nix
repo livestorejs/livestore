@@ -17,16 +17,6 @@ let
   taskModules = effectUtils.devenvModules.tasks;
   ci = builtins.getEnv "CI" != "";
 
-  # Custom oxlint with NAPI bindings + @overeng/oxc-config JS plugin
-  oxlintNpm = effectUtils.lib.mkOxlintNpm {
-    inherit pkgs;
-    bun = pkgs.bun;
-    src = inputs.effect-utils;
-  };
-  oxlintWithPlugins = effectUtils.lib.mkOxlintWithPlugins {
-    inherit pkgs oxlintNpm;
-  };
-
   # Packages managed by pnpm (shared between pnpm and clean modules)
   pnpmPackages = [
     # packages/@livestore
@@ -134,8 +124,6 @@ in
     (effectUtils.lib.mkPnpm { inherit pkgs; })
     pkgs.nodejs_24
     pkgs.typescript
-    pkgs.tsgolint
-    oxlintWithPlugins
     pkgs.oxfmt
     # CLIs from effect-utils (Nix-built packages)
   ]
