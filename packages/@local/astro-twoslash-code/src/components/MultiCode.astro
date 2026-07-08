@@ -205,6 +205,12 @@ if (shouldRenderClientScript === true) {
                 )}
                 <div class="ls-multi-code__html" set:html={file.html} />
               </>
+            ) : file.isPreRendered === false ? (
+              <pre class="ls-multi-code__raw"><code
+                class={`language-${file.language}`}
+                data-language={file.language}
+                set:html={file.sourceHtml}
+              ></code></pre>
             ) : (
               <div
                 class="ls-multi-code__error"
@@ -399,6 +405,37 @@ if (shouldRenderClientScript === true) {
 
   .ls-multi-code__html {
     position: relative;
+  }
+
+  .ls-multi-code__raw {
+    margin: 0 !important;
+    overflow-x: auto;
+    background: var(--ec-codeBg, #1e1e1e);
+    color: var(--ec-codeFg, #e1e4e8);
+    border-radius: 0 0 calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px))
+      calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px));
+    padding: var(--ec-codePadBlk, 1rem) var(--ec-codePadInl, 1rem);
+    tab-size: var(--ec-tmTabSize, 2);
+  }
+
+  .ls-multi-code__raw code {
+    display: block;
+    min-width: max-content;
+    color: inherit;
+    font-family: var(
+      --ec-codeFontFml,
+      ui-monospace,
+      SFMono-Regular,
+      Menlo,
+      Monaco,
+      Consolas,
+      "Liberation Mono",
+      "Courier New",
+      monospace
+    );
+    font-size: var(--ec-codeFontSize, 0.875rem);
+    line-height: var(--ec-codeLineHt, 1.65);
+    white-space: pre;
   }
 
   .ls-multi-code__html :global(.expressive-code) {

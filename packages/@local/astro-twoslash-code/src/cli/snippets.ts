@@ -59,7 +59,7 @@ import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
  *   - Each snippet bundle yields a JSON artefact stored under
  *     `{projectRoot}/.cache/snippets/<main-file>.json`.  The payload lists:
  *       * `files`: hashed source files with their relative (on-disk) paths.
- *       * `rendered`: per-file HTML/diagnostics keyed by the original relative filename.
+ *       * `rendered`: entry-file HTML/diagnostics keyed by the original relative filename.
  *   - The manifest (`.cache/snippets/manifest.json`) aggregates bundle hashes and the renderer
  *     assets (base styles, theme styles, JS modules).  Astro consumes this manifest to inline
  *     static assets without re-running Twoslash.
@@ -88,7 +88,8 @@ import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
  *
  * Workflow overview:
  *   1. Crawl doc sources for `?snippet` imports and resolve each entry file.
- *   2. Build a multi-file bundle per entry, render it through Expressive Code/Twoslash, and capture HTML + styles.
+ *   2. Build a multi-file bundle per entry, render the entry file through Expressive Code/Twoslash, and capture
+ *      HTML + styles. Support files stay available as raw-source tabs without paying the Twoslash render cost.
  *   3. Emit per-snippet artefacts and a manifest (including global styles/modules) into the cache directory.
  *
  * The pre-rendered output is consumed by Astro at build time so code examples render instantly without running
@@ -142,6 +143,7 @@ type TExpressiveRenderer = {
 const SNIPPET_IMPORT_REGEX = /['"]([^'"\n]+\?snippet[^'"]*)['"]/g
 const SUPPORTED_SOURCE_EXTENSIONS = new Set(['.astro', '.md', '.mdx', '.ts', '.mts', '.tsx', '.js', '.mjs', '.jsx'])
 const EXCLUDED_DIRECTORIES = new Set(['node_modules', '.git', '.cache', 'dist', '.astro', '.netlify', 'logs'])
+const SNIPPET_RENDER_MODE = 'twoslash-entry-file'
 
 export class SnippetBuildError extends Schema.TaggedErrorClass<SnippetBuildError>()('SnippetBuildError', {
   message: Schema.String,
@@ -1509,7 +1511,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
               filename: file.filename,
               hash: file.hash,
             })),
-            meta: 'twoslash',
+            meta: SNIPPET_RENDER_MODE,
           }),
         )
 
@@ -1531,15 +1533,11 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
         yield* Effect.log(`Rendering snippet bundle for ${entry.entryPath}`)
 
         const renderedSnippets: Record<string, TRenderedSnippet> = {}
-        for (const filename of bundle.fileOrder) {
-          const rendered = yield* renderSnippet(renderer, bundle, filename)
-          if (rendered.html === null && rendered.diagnostics.length > 0) {
-            yield* Effect.logWarning(
-              `Twoslash pre-rendering skipped for ${entry.entryPath}: ${rendered.diagnostics[0]}`,
-            )
-          }
-          renderedSnippets[filename] = rendered
+        const rendered = yield* renderSnippet(renderer, bundle, bundle.mainFileRelativePath)
+        if (rendered.html === null && rendered.diagnostics.length > 0) {
+          yield* Effect.logWarning(`Twoslash pre-rendering skipped for ${entry.entryPath}: ${rendered.diagnostics[0]}`)
         }
+        renderedSnippets[bundle.mainFileRelativePath] = rendered
 
         const artifact: TSnippetArtifact = {
           version: 1,

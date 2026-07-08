@@ -57,9 +57,11 @@ export type MultiCodeTab = {
   baseName: string
   language: string
   html: string | null
+  sourceHtml: string
   styles: string[]
   meta: string
   isMain: boolean
+  isPreRendered: boolean
   diagnostics: string[]
 }
 
@@ -73,6 +75,14 @@ export type PreparedMultiCode = {
 }
 
 const normalizeFilename = (name: string): string => name.replace(/^[./]+/, '').replace(/\\/g, '/')
+
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 
 const guessLanguage = (filename: string, fallback?: string): string => {
   const extension = filename.split('.').pop()?.toLowerCase()
@@ -233,6 +243,7 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
     const baseName = parts.length > 0 ? parts[parts.length - 1] || file.filename : file.filename
 
     const isMain = file.filename === preferredMain
+    const isPreRendered = renderedMap.has(file.filename)
     const rendered = renderedMap.get(file.filename)
     const language = rendered?.language ?? guessLanguage(file.filename, fallbackLang)
     const meta = rendered?.meta ?? activeMeta
@@ -251,9 +262,11 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
       baseName,
       language,
       html,
+      sourceHtml: escapeHtml(file.content),
       styles,
       meta,
       isMain,
+      isPreRendered,
       diagnostics,
     }
   })

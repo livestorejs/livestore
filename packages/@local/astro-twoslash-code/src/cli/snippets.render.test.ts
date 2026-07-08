@@ -362,6 +362,14 @@ describe('buildSnippets cache reuse', () => {
     const firstRunCount = await runBuild()
     expect(firstRunCount).toBeGreaterThan(0)
 
+    const artifactPath = path.join(cacheRoot, 'main.ts.json')
+    const artifact = JSON.parse(fs.readFileSync(artifactPath, 'utf-8')) as {
+      files: Record<string, unknown>
+      rendered: Record<string, unknown>
+    }
+    expect(Object.keys(artifact.files).toSorted()).toEqual(['main.ts', 'utils.ts'])
+    expect(Object.keys(artifact.rendered)).toEqual(['main.ts'])
+
     const secondRunCount = await runBuild()
     expect(secondRunCount).toBe(0)
   })
