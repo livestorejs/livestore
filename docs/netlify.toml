@@ -9,12 +9,6 @@
 # below and bundles BOTH the serverless SSR function and the edge function — no
 # manual `--dir`/`--functions` flags. See `scripts/src/shared/netlify.ts`.
 
-[images]
-# Allow image transformations from gitbucket.schickling.dev
-# This is needed for example screenshots to display properly in production
-# The domain is double-escaped as required by Netlify's regex configuration
-remote_images = ["https://gitbucket\\.schickling\\.dev/.*"]
-
 # Build & publish
 #
 # The command runs from the git root (Netlify resolves it relative to the repo

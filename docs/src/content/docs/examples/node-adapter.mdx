@@ -18,7 +18,7 @@ Examples using `@livestore/adapter-node` for Node.js server-side applications.
   return (
     <Card title={example.title} key={example.title}>
     {example.image ? (
-      <Image src={example.image.url} width={example.image.width} height={example.image.height} alt={`${example.title} application interface`} />
+      <Image src={example.image} alt={`${example.title} application interface`} />
     ) : (
       <div style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); height: 200px; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 14px; border-radius: 8px;">
         Screenshot coming soon

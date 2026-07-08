@@ -1,11 +1,22 @@
+import type { ImageMetadata } from 'astro'
+
 import { getExampleDeployment } from '@local/shared'
 
+import cfChatImage from '../assets/examples/cf-chat.png'
+import linearliteReactImage from '../assets/examples/linearlite-react.png'
+import todomvcCloudflareSyncImage from '../assets/examples/todomvc-cloudflare-sync.png'
+import todomvcCustomElementsImage from '../assets/examples/todomvc-custom-elements.png'
+import todomvcReactImage from '../assets/examples/todomvc-react.png'
+import todomvcSolidImage from '../assets/examples/todomvc-solid.png'
 import { getBranchName, IS_MAIN_BRANCH } from './data.ts'
 
-// Hosted assets - To upload new assets:
+// Example screenshots are committed to docs/src/assets/examples so docs builds
+// do not depend on fetching remote images during Astro optimization.
+//
+// To upload new source assets:
 // 1. Get auth token: TOKEN=$(curl -s -X POST https://gitbucket.schickling.dev/api/auth | jq -r '.token')
 // 2. Upload file: curl -X POST https://gitbucket.schickling.dev/api/upload -H "Authorization: Bearer $TOKEN" -F "file=@image.png" -F "tags=example,screenshot,docs"
-// 3. Use the returned hash in the URL with file extension: https://gitbucket.schickling.dev/api/get/{hash}.png
+// 3. Download the returned asset into docs/src/assets/examples and import it below.
 
 // Screenshot expectations: All example screenshots should be 1000w x 700h pixels
 // This ensures consistent display in the documentation CardGrid layout
@@ -16,11 +27,7 @@ export interface Example {
   adapters: ('web' | 'node' | 'expo' | 'cloudflare')[]
   syncProvider?: 'cloudflare' | 'electric' | 's2'
   technologies: string[]
-  image?: {
-    url: string
-    width: number
-    height: number
-  }
+  image?: ImageMetadata
   demoUrl?: string
   devDemoUrl?: string
   sourceUrl: string
@@ -53,11 +60,7 @@ export const examples: Example[] = [
       'Classic TodoMVC implementation with React, showcasing local-first data persistence and real-time synchronization.',
     adapters: ['web'],
     technologies: ['React', 'TypeScript', 'LiveStore'],
-    image: {
-      url: 'https://gitbucket.schickling.dev/api/get/b86f8e3a89e967dc2091575a18d6f5f1b28623916a064f0b806a81da62fc6c66.png',
-      width: 1000,
-      height: 700,
-    },
+    image: todomvcReactImage,
     demoUrl: webTodomvcDeployment.endpoints.prod.url,
     devDemoUrl: webTodomvcDeployment.endpoints.dev.url,
     sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc`,
@@ -69,11 +72,7 @@ export const examples: Example[] = [
       'Issue tracking application inspired by Linear, demonstrating complex data relationships and collaborative editing.',
     adapters: ['web'],
     technologies: ['React', 'TypeScript', 'LiveStore'],
-    image: {
-      url: 'https://gitbucket.schickling.dev/api/get/0937342202cf657f34f48e9de9084211b88f0f41040ff786dd11f4e61f9f91f0.png',
-      width: 1000,
-      height: 700,
-    },
+    image: linearliteReactImage,
     demoUrl: webLinearliteDeployment.endpoints.prod.url,
     devDemoUrl: webLinearliteDeployment.endpoints.dev.url,
     sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-linearlite`,
@@ -86,11 +85,7 @@ export const examples: Example[] = [
     adapters: ['web'],
     syncProvider: 'cloudflare',
     technologies: ['React', 'Cloudflare Workers', 'Durable Objects', 'LiveStore'],
-    image: {
-      url: 'https://gitbucket.schickling.dev/api/get/7c3314ad88b842aa6454f8b8c28ddc91984badb86316dc27afa86a58fbfabc1d.png',
-      width: 1000,
-      height: 700,
-    },
+    image: todomvcCloudflareSyncImage,
     demoUrl: webTodomvcSyncCfDeployment.endpoints.prod.url,
     devDemoUrl: webTodomvcSyncCfDeployment.endpoints.dev.url,
     sourceUrl: `https://github.com/livestorejs/livestore/tree/${branch}/examples/web-todomvc-sync-cf`,
@@ -101,11 +96,7 @@ export const examples: Example[] = [
     description: "TodoMVC implementation using SolidJS, demonstrating LiveStore's framework-agnostic approach.",
     adapters: ['web'],
     technologies: ['SolidJS', 'TypeScript', 'LiveStore'],
-    image: {
-      url: 'https://gitbucket.schickling.dev/api/get/c134001882fb15fc7d5c991fab87c49d7df9e51e24caacae200c17eca4d2c00a.png',
-      width: 1000,
-      height: 700,
-    },
+    image: todomvcSolidImage,
     sourceUrl: `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples/web-todomvc-solid`,
     status: 'available',
   },
@@ -123,11 +114,7 @@ export const examples: Example[] = [
       'Web Components implementation using TypeScript and React, demonstrating custom element patterns with LiveStore.',
     adapters: ['web'],
     technologies: ['Web Components', 'TypeScript', 'React', 'LiveStore'],
-    image: {
-      url: 'https://gitbucket.schickling.dev/api/get/cbd68aec51fbd042c20faa10994fd4d8e9b29de79602e9752c885aa565bfc3a0.png',
-      width: 1000,
-      height: 700,
-    },
+    image: todomvcCustomElementsImage,
     sourceUrl: `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples/web-todomvc-custom-elements`,
     status: 'available',
   },
@@ -165,11 +152,7 @@ export const examples: Example[] = [
     adapters: ['web', 'cloudflare'], // Uses both adapters
     syncProvider: 'cloudflare',
     technologies: ['React', 'Cloudflare Workers', 'Durable Objects', 'WebSockets', 'LiveStore'],
-    image: {
-      url: 'https://gitbucket.schickling.dev/api/get/fc916aa7aa9532bbb97f1447889c6c53515079322d26bedd2e2c4ab6accd00d0.png',
-      width: 1000,
-      height: 700,
-    },
+    image: cfChatImage,
     sourceUrl: `https://github.com/livestorejs/livestore-contrib/tree/${contribBranch}/examples/cf-chat`,
     status: 'available',
   },
