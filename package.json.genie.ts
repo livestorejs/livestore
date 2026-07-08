@@ -1,7 +1,7 @@
 import docsPkg from './docs/package.json.genie.ts'
 import docsCodeSnippetsPkg from './docs/src/content/_assets/code/package.json.genie.ts'
 import { memberPathsForProjection, type LivestorePackageProjection } from './genie/repo-topology.ts'
-import { packageJson } from './genie/repo.ts'
+import { catalog, packageJson } from './genie/repo.ts'
 import adapterCloudflarePkg from './packages/@livestore/adapter-cloudflare/package.json.genie.ts'
 import adapterWebPkg from './packages/@livestore/adapter-web/package.json.genie.ts'
 import commonPkg from './packages/@livestore/common/package.json.genie.ts'
@@ -118,7 +118,7 @@ const rootWorkspaceExtraFields = {
   },
   devDependencies: {
     '@changesets/cli': '^2.31.0',
-    'typescript': '6.0.3',
+    ...catalog.pick('@types/node', 'typescript', 'vitest'),
   },
 } as const
 

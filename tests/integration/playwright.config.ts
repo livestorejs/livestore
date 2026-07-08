@@ -3,7 +3,8 @@ import process from 'node:process'
 import type { PlaywrightTestConfig } from '@playwright/test'
 import { devices } from '@playwright/test'
 
-import { envTruish } from '@livestore/utils'
+const envTruish = (env: string | undefined) =>
+  env !== undefined && env.toLowerCase() !== 'false' && env.toLowerCase() !== '0'
 
 /**
  * Ensure Playwright tests are run via the mono CLI (or VS Code extension) to guarantee proper environment setup.
