@@ -10,6 +10,31 @@ export WORKSPACE_ROOT="$workspace_root"
 export MONOREPO_ROOT="${MONOREPO_ROOT:-$workspace_root}"
 export PATH="$workspace_root/scripts/bin:$workspace_root/scripts/node_modules/.bin:$PATH"
 
+ensure_github_rulesets_dependencies() {
+  if [[ -d "$workspace_root/scripts/node_modules/@livestore/utils-dev" ]]; then
+    return 0
+  fi
+
+  local store_dir="${npm_config_store_dir:-${PNPM_CONFIG_STORE_DIR:-${PNPM_STORE_DIR:-}}}"
+  local store_args=()
+  if [[ -n "$store_dir" ]]; then
+    export PNPM_STORE_DIR="$store_dir"
+    export PNPM_CONFIG_STORE_DIR="$store_dir"
+    export npm_config_store_dir="$store_dir"
+    store_args=(--config.store-dir="$store_dir")
+  fi
+
+  echo "[package-task] Installing workspace dependencies required by github:rulesets:check..."
+  pnpm install \
+    --frozen-lockfile \
+    --ignore-scripts \
+    --config.confirmModulesPurge=false \
+    --config.side-effects-cache=false \
+    --config.package-import-method=clone-or-copy \
+    --pm-on-fail=ignore \
+    "${store_args[@]}"
+}
+
 run_task() {
   bash scripts/bin/package-task "$@"
 }
@@ -488,6 +513,7 @@ case "$task" in
     node scripts/src/commands/changesets.ts verify-baseline-changelog "$@"
     ;;
   github:rulesets:check)
+    ensure_github_rulesets_dependencies
     mono github rulesets check "$@"
     ;;
   *)
