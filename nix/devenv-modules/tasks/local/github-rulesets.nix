@@ -31,7 +31,11 @@
           rules: [
             .rules[]
             | if .type == "pull_request" then
-                .parameters |= (del(.allowed_merge_methods) | del(.required_reviewers))
+                .parameters |= (
+                  del(.allowed_merge_methods)
+                  | del(.dismissal_restriction | select(.enabled == false and (.allowed_actors // []) == []))
+                  | del(.required_reviewers)
+                )
               else
                 .
               end

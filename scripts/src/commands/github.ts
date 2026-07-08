@@ -155,6 +155,7 @@ const isBypassActorsDiff = (diff: string) => diff.startsWith('$.bypass_actors')
 
 const isGitHubExpandedDefaultDiff = (diff: string) =>
   diff === '$.rules.0.parameters.allowed_merge_methods: desired null, live ["merge","squash","rebase"]' ||
+  diff === '$.rules.0.parameters.dismissal_restriction: desired null, live {"allowed_actors":[],"enabled":false}' ||
   diff === '$.rules.0.parameters.required_reviewers: desired null, live []'
 
 const collectDiffs = (
