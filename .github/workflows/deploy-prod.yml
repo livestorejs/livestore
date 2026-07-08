@@ -440,14 +440,7 @@ jobs:
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
-        run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
-          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
-            exit 1
-          fi
-          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
-          echo "Pinned devenv rev: $DEVENV_REV"
+        run: scripts/bin/environment export-devenv-rev
         shell: bash
       - name: Isolate pnpm state
         shell: bash
@@ -464,61 +457,7 @@ jobs:
             ${{ runner.temp }}/pnpm-store/${{ github.job }}
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
-        run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
-          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
-            exit 1
-          fi
-
-          resolve_devenv() {
-            nix build \
-              --accept-flake-config \
-              --option extra-substituters https://devenv.cachix.org \
-              --option extra-trusted-public-keys devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= \
-              --no-link \
-              --print-out-paths \
-              "github:cachix/devenv/$DEVENV_REV#devenv"
-          }
-
-          # Temporary: capture diagnostics dir for #272 root-cause analysis.
-          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
-          mkdir -p "$DIAG_ROOT"
-          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
-
-          {
-            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            echo "runner_name=${RUNNER_NAME:-unknown}"
-            echo "runner_os=${RUNNER_OS:-unknown}"
-            echo "runner_arch=${RUNNER_ARCH:-unknown}"
-            echo "github_job=${GITHUB_JOB:-unknown}"
-            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            nix --version || true
-          } > "$DIAG_ROOT/environment.txt" 2>&1
-
-          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
-            echo "::error::resolve_devenv failed. Last 30 lines of log:"
-            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
-            exit 1
-          fi
-          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-
-          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing targeted path..."
-            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
-            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
-              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
-              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
-              exit 1
-            fi
-            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-          fi
-
-          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
-          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
+        run: scripts/bin/environment resolve-devenv
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -1068,14 +1007,7 @@ jobs:
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
-        run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
-          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
-            exit 1
-          fi
-          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
-          echo "Pinned devenv rev: $DEVENV_REV"
+        run: scripts/bin/environment export-devenv-rev
         shell: bash
       - name: Isolate pnpm state
         shell: bash
@@ -1092,61 +1024,7 @@ jobs:
             ${{ runner.temp }}/pnpm-store/${{ github.job }}
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
-        run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
-          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
-            exit 1
-          fi
-
-          resolve_devenv() {
-            nix build \
-              --accept-flake-config \
-              --option extra-substituters https://devenv.cachix.org \
-              --option extra-trusted-public-keys devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= \
-              --no-link \
-              --print-out-paths \
-              "github:cachix/devenv/$DEVENV_REV#devenv"
-          }
-
-          # Temporary: capture diagnostics dir for #272 root-cause analysis.
-          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
-          mkdir -p "$DIAG_ROOT"
-          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
-
-          {
-            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            echo "runner_name=${RUNNER_NAME:-unknown}"
-            echo "runner_os=${RUNNER_OS:-unknown}"
-            echo "runner_arch=${RUNNER_ARCH:-unknown}"
-            echo "github_job=${GITHUB_JOB:-unknown}"
-            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            nix --version || true
-          } > "$DIAG_ROOT/environment.txt" 2>&1
-
-          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
-            echo "::error::resolve_devenv failed. Last 30 lines of log:"
-            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
-            exit 1
-          fi
-          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-
-          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing targeted path..."
-            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
-            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
-              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
-              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
-              exit 1
-            fi
-            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-          fi
-
-          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
-          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
+        run: scripts/bin/environment resolve-devenv
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -1342,14 +1220,7 @@ jobs:
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
-        run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
-          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
-            exit 1
-          fi
-          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
-          echo "Pinned devenv rev: $DEVENV_REV"
+        run: scripts/bin/environment export-devenv-rev
         shell: bash
       - name: Isolate pnpm state
         shell: bash
@@ -1366,61 +1237,7 @@ jobs:
             ${{ runner.temp }}/pnpm-store/${{ github.job }}
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
-        run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
-          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
-            exit 1
-          fi
-
-          resolve_devenv() {
-            nix build \
-              --accept-flake-config \
-              --option extra-substituters https://devenv.cachix.org \
-              --option extra-trusted-public-keys devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= \
-              --no-link \
-              --print-out-paths \
-              "github:cachix/devenv/$DEVENV_REV#devenv"
-          }
-
-          # Temporary: capture diagnostics dir for #272 root-cause analysis.
-          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
-          mkdir -p "$DIAG_ROOT"
-          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
-
-          {
-            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            echo "runner_name=${RUNNER_NAME:-unknown}"
-            echo "runner_os=${RUNNER_OS:-unknown}"
-            echo "runner_arch=${RUNNER_ARCH:-unknown}"
-            echo "github_job=${GITHUB_JOB:-unknown}"
-            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            nix --version || true
-          } > "$DIAG_ROOT/environment.txt" 2>&1
-
-          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
-            echo "::error::resolve_devenv failed. Last 30 lines of log:"
-            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
-            exit 1
-          fi
-          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-
-          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing targeted path..."
-            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
-            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
-              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
-              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
-              exit 1
-            fi
-            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-          fi
-
-          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
-          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
+        run: scripts/bin/environment resolve-devenv
         shell: bash
       - name: Sync production docs search
         run: |
