@@ -86,7 +86,10 @@ export default packageJson(
     },
     scripts: {
       astro: 'astro',
-      build: 'astro check && astro build',
+      // Temporary workaround for https://github.com/livestorejs/livestore/issues/1377.
+      // Astro 6 resolves @astrojs/check from Astro's virtual-store location instead of the docs project.
+      check: 'astro sync && astro-check',
+      build: 'pnpm check && astro build',
       dev: 'astro dev',
       'dev:docs:sync':
         'mxbai store sync "livestore-docs-dev" "./src/content/**/*.mdx" "./src/content/**/*.md"  --yes --strategy fast',

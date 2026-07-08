@@ -279,20 +279,27 @@ const docsBuildCommand = Cli.Command.make(
       yield* cleanupChromiumChildren()
     }
 
+    const astroEnv = {
+      STARLIGHT_INCLUDE_API_DOCS: apiDocs === true ? '1' : undefined,
+      // Building the docs sometimes runs out of memory, so we give it more
+      NODE_OPTIONS: '--max_old_space_size=4096',
+      // Snippets/diagrams already built above (or skipped), tell Astro integrations not to auto-build.
+      // Without these flags, the integrations would rebuild during astro:build:start, duplicating work.
+      LS_SKIP_SNIPPET_AUTO_BUILD_AND_WATCH: '1',
+      LS_TLDRAW_SKIP_AUTO_BUILD: '1',
+      LS_SKIP_OG_IMAGES: process.env.LS_SKIP_OG_IMAGES ?? '1',
+      DT_PASSTHROUGH: '1',
+    }
+
+    // Temporary workaround for https://github.com/livestorejs/livestore/issues/1377.
+    // Astro 6 imports @astrojs/check from Astro's virtual-store package context, so run sync + astro-check
+    // directly until the Astro/Vite package stack is upgraded.
+    yield* cmd('pnpm astro sync', { env: astroEnv }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
+    yield* cmd('pnpm exec astro-check', { env: astroEnv }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
+
     // Local/CI prebuild uses Astro directly. The deploy step performs the
     // Netlify build (single build overall), which handles Edge bundling.
-    yield* cmd('pnpm astro build', {
-      env: {
-        STARLIGHT_INCLUDE_API_DOCS: apiDocs === true ? '1' : undefined,
-        // Building the docs sometimes runs out of memory, so we give it more
-        NODE_OPTIONS: '--max_old_space_size=4096',
-        // Snippets/diagrams already built above (or skipped), tell Astro integrations not to auto-build.
-        // Without these flags, the integrations would rebuild during astro:build:start, duplicating work.
-        LS_SKIP_SNIPPET_AUTO_BUILD_AND_WATCH: '1',
-        LS_TLDRAW_SKIP_AUTO_BUILD: '1',
-        LS_SKIP_OG_IMAGES: process.env.LS_SKIP_OG_IMAGES ?? '1',
-      },
-    }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
+    yield* cmd('pnpm astro build', { env: astroEnv }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
     yield* cleanupChromiumChildren()
   }),
 )

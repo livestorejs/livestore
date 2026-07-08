@@ -9,7 +9,8 @@
   },
   "scripts": {
     "astro": "astro",
-    "build": "astro check && astro build",
+    "check": "astro sync && astro-check",
+    "build": "pnpm check && astro build",
     "dev": "astro dev",
     "dev:docs:sync": "mxbai store sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\"  --yes --strategy fast",
     "prod:docs:sync": "mxbai store sync \"livestore-docs\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\" --yes --strategy fast",
