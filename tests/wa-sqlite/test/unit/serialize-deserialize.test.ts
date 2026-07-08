@@ -187,7 +187,7 @@ describe('serialize/deserialize', () => {
     // Check if database exists, if not skip the test
     if (!existsSync(largeDatabasePath)) {
       console.log('⚠ Large test database not found, skipping test')
-      console.log('  Run: bun ./test/setup/database-setup.ts to generate the database')
+      console.log('  Run: node ./test/setup/database-setup.ts to generate the database')
       return
     }
 

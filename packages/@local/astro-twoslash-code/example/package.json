@@ -7,8 +7,8 @@
     "build": "astro build",
     "dev": "astro dev",
     "preview": "astro preview",
-    "snippets:build": "bun run scripts/build-snippets.ts",
-    "test": "bun run snippets:build && bun run playwright test"
+    "snippets:build": "node scripts/build-snippets.ts",
+    "test": "pnpm run snippets:build && pnpm exec playwright test"
   },
   "dependencies": {
     "@astrojs/starlight": "0.40.0",

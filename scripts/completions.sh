@@ -33,7 +33,7 @@ maybe_generate_completions() {
 
   # Only regenerate when missing or stale to avoid doing work on every shell entry.
   if [ ! -f "$out" ] || [ "$src" -nt "$out" ]; then
-    bun "$src" --completions="$shell" >"$out"
+    node "$src" --completions="$shell" >"$out"
   fi
 }
 

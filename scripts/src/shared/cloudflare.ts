@@ -213,7 +213,8 @@ export const deployCloudflareWorker = ({
 
   return cmd(
     [
-      'bunx',
+      'pnpm',
+      'exec',
       'wrangler',
       'deploy',
       dryRun === true ? '--dry-run' : undefined,

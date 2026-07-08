@@ -28,8 +28,6 @@ let
   };
 
   # Packages managed by pnpm (shared between pnpm and clean modules)
-  # NOTE: Using pnpm temporarily due to bun bugs. Plan to switch back once fixed.
-  # See: effect-utils/context/workarounds/bun-issues.md
   pnpmPackages = [
     # packages/@livestore
     "packages/@livestore/adapter-cloudflare"
@@ -134,7 +132,6 @@ in
 
   packages = [
     (effectUtils.lib.mkPnpm { inherit pkgs; })
-    pkgs.bun
     pkgs.nodejs_24
     pkgs.typescript
     pkgs.tsgolint

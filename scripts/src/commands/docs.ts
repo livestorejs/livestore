@@ -504,7 +504,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         }
 
         const previewScript = `${docsPath}/scripts/preview-server.ts`
-        // Netlify Dev requires a target application server; we launch the Bun
+        // Netlify Dev requires a target application server; we launch a small
         // preview server so the edge runtime can proxy to `dist/` just like it
         // does in production.
         const netlifyArgs: string[] = [
@@ -513,7 +513,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           '--context',
           'production',
           '--command',
-          `bun ${previewScript} --host=127.0.0.1 --port ${previewTargetPort}`,
+          `node ${previewScript} --host=127.0.0.1 --port ${previewTargetPort}`,
           '--target-port',
           String(previewTargetPort),
           '--no-open',
@@ -523,7 +523,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           netlifyArgs.push('--port', String(requestedPort))
         }
 
-        yield* cmd(['bunx', ...netlifyArgs], {
+        yield* cmd(['pnpm', 'dlx', ...netlifyArgs], {
           logDir: `${docsPath}/logs`,
           env: {
             NODE_ENV: 'production',

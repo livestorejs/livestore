@@ -15,8 +15,8 @@ The script uses the directory name inside `/examples` as the `<slug>` (for examp
 - Run `direnv allow` so the workspace environment variables are loaded (including `WORKSPACE_ROOT`).
 - Authenticate with Cloudflare:
   ```bash
-  direnv exec . bunx wrangler login
-  direnv exec . bunx wrangler whoami            # should list the LiveStore account
+  direnv exec . pnpm --filter @livestore/utils-dev exec wrangler login
+  direnv exec . pnpm --filter @livestore/utils-dev exec wrangler whoami            # should list the LiveStore account
   ```
 - (Optional) A Cloudflare API token (`CLOUDFLARE_API_TOKEN`) allows headless deploys in CI, but interactive work only requires `wrangler login`.
 - Verify that the target Worker does not already exist or can be replaced. `mono examples deploy` emits the Workers.dev URL so you can sanity-check the new build.
@@ -45,5 +45,5 @@ The deploy command builds examples in parallel (three at a time) and retries Wor
 
 ## Troubleshooting
 
-- `wrangler deploy` fails with `Not logged in`: re-run `direnv exec . bunx wrangler login`.
+- `wrangler deploy` fails with `Not logged in`: re-run `direnv exec . pnpm --filter @livestore/utils-dev exec wrangler login`.
 - Preview Worker unavailable: the worker is deployed at `https://<worker-name>.livestore.workers.dev`. Check `wrangler deployments list --name <worker-name>` for status.

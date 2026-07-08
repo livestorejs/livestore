@@ -96,9 +96,9 @@ type ArtifactManifestV2 = {
 export type ArtifactManifest = ArtifactManifestV1 | ArtifactManifestV2
 
 const usage = `Usage:
-  bun scripts/src/commands/devtools-artifact.ts verify (--manifest <file> | --metadata <url-or-file> --tarball <url-or-file>)
-  bun scripts/src/commands/devtools-artifact.ts certify --manifest <file> --version <version> --out <file> [--evidence <text>]
-  bun scripts/src/commands/devtools-artifact.ts repack --manifest <file> --version <version> [--certification <file>|--allow-uncertified] [--dry-run|--publish]
+  node scripts/src/commands/devtools-artifact.ts verify (--manifest <file> | --metadata <url-or-file> --tarball <url-or-file>)
+  node scripts/src/commands/devtools-artifact.ts certify --manifest <file> --version <version> --out <file> [--evidence <text>]
+  node scripts/src/commands/devtools-artifact.ts repack --manifest <file> --version <version> [--certification <file>|--allow-uncertified] [--dry-run|--publish]
 
 Options:
   --manifest <file>        Checked-in public artifact manifest.

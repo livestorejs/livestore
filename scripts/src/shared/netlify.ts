@@ -92,8 +92,8 @@ const NETLIFY_API_URL = 'https://api.netlify.com/api/v1/purge'
  *   (`docs/dist`).
  * - `NODE_ENV=production`: the astro adapter only engages in production.
  * - `DT_PASSTHROUGH=1`: `pnpm`/`astro` are blocked by the agent-policy wrapper
- *   inside Netlify's spawned subprocess; the `[build] command` uses `bunx astro`
- *   and this flag lets it through.
+ *   inside Netlify's spawned subprocess; the `[build] command` uses
+ *   `pnpm exec astro` and this flag lets it through.
  * - Edge bundling needs Deno on PATH / in `~/.config/netlify/deno-cli/deno`.
  */
 export const deployToNetlify = Effect.fn('netlify.deploy')(
@@ -113,12 +113,12 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
     apiDocs?: boolean
   }) {
     // Option A runs the full `@netlify/build` pipeline from the git root. The
-    // `[build] command` (`cd docs && bunx astro build`) and the git-root-relative
+    // `[build] command` (`cd docs && pnpm exec astro build`) and the git-root-relative
     // `publish = "docs/dist"` + `edge_functions = "docs/netlify/edge-functions"`
     // are all resolved relative to the repo root, so the deploy must run there.
     const gitRoot = yield* LivestoreWorkspace
     // Run the status check from the git root too (Option A deploys from there).
-    const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { stderr: 'pipe' }).pipe(
+    const netlifyStatus = yield* cmdText(['pnpm', 'dlx', 'netlify-cli', 'status'], { stderr: 'pipe' }).pipe(
       Effect.provide(CurrentWorkingDirectory.fromPath(gitRoot)),
     )
 
@@ -142,8 +142,9 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
     // `docs/netlify.toml` and bundles both the SSR serverless function and the
     // edge function. `--filter @local/docs` disambiguates the monorepo build
     // (otherwise the CLI errors with "multiple build commands").
-    const deployCmd = 'bunx'
+    const deployCmd = 'pnpm'
     const deployRest = [
+      'dlx',
       'netlify-cli',
       'deploy',
       '--build',
@@ -301,7 +302,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
 
   if (configContent == null || configPath == null) {
     return yield* new NetlifyError({
-      message: `Netlify auth token not found. Checked: ${configCandidates.join(', ')}. Run 'bunx netlify-cli login' or set NETLIFY_AUTH_TOKEN.`,
+      message: `Netlify auth token not found. Checked: ${configCandidates.join(', ')}. Run 'pnpm dlx netlify-cli login' or set NETLIFY_AUTH_TOKEN.`,
       reason: 'auth',
     })
   }
@@ -326,7 +327,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
 
   if (resolvedToken == null) {
     return yield* new NetlifyError({
-      message: `Netlify auth token not found in ${configPath}. Run 'bunx netlify-cli login' or set NETLIFY_AUTH_TOKEN.`,
+      message: `Netlify auth token not found in ${configPath}. Run 'pnpm dlx netlify-cli login' or set NETLIFY_AUTH_TOKEN.`,
       reason: 'auth',
     })
   }

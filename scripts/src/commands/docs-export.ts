@@ -457,7 +457,7 @@ const assertSnippetManifest = (docsRoot: string) =>
       }
     }
     return yield* new SnippetManifestMissing({
-      message: 'Snippet manifest not found. Run "bun ./scripts/src/mono.ts docs snippets build" first.',
+      message: 'Snippet manifest not found. Run "node ./scripts/src/mono.ts docs snippets build" first.',
       checked: candidates,
     })
   })

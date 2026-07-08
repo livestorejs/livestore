@@ -25,7 +25,7 @@ devtools_artifact_verify() {
     fi
   fi
 
-  bun scripts/src/commands/devtools-artifact.ts verify "${artifact_args[@]}"
+  node scripts/src/commands/devtools-artifact.ts verify "${artifact_args[@]}"
 }
 
 devtools_artifact_repack() {
@@ -47,7 +47,7 @@ devtools_artifact_repack() {
     artifact_args+=(--allow-uncertified)
   fi
 
-  bun scripts/src/commands/devtools-artifact.ts repack \
+  node scripts/src/commands/devtools-artifact.ts repack \
     "${artifact_args[@]}" \
     --version "$LIVESTORE_RELEASE_VERSION" \
     --out-dir "${LIVESTORE_DEVTOOLS_OUT_DIR:-$(mktemp -d)}" \
@@ -112,7 +112,7 @@ devtools_artifact_certify_liveness() {
 
   for package_link in "${package_links[@]}"; do
     local package_version
-    package_version="$(bun -e "console.log(require('./$package_link/package.json').version)")"
+    package_version="$(node -e "console.log(require('./$package_link/package.json').version)")"
     if [[ "$package_version" != "$LIVESTORE_RELEASE_VERSION" ]]; then
       echo "Expected $package_link to contain exact DevTools artifact version $LIVESTORE_RELEASE_VERSION, found $package_version" >&2
       exit 1
@@ -137,7 +137,7 @@ devtools_artifact_certify_liveness() {
   if [[ -n "${GITHUB_SERVER_URL:-}" && -n "${GITHUB_REPOSITORY:-}" && -n "${GITHUB_RUN_ID:-}" ]]; then
     evidence="$evidence in $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
   fi
-  bun scripts/src/commands/devtools-artifact.ts certify \
+  node scripts/src/commands/devtools-artifact.ts certify \
     --manifest "${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}" \
     --version "$LIVESTORE_RELEASE_VERSION" \
     --out "$certification_path" \
@@ -312,7 +312,7 @@ case "$task" in
     fi
 
     if [[ -n "${NETLIFY_AUTH_TOKEN:-}" ]]; then
-      bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias "$suite-$(git rev-parse --short HEAD)" "$@"
+      pnpm dlx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias "$suite-$(git rev-parse --short HEAD)" "$@"
     else
       echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
     fi
@@ -341,7 +341,7 @@ case "$task" in
     (
       while true; do
         echo "[docs-prod-heartbeat] $(date -u +%Y-%m-%dT%H:%M:%SZ) netlify build+deploy in progress"
-        pgrep -af 'astro|chromium|chrome_crashpad_handler|netlify|node|bun|mono' || true
+        pgrep -af 'astro|chromium|chrome_crashpad_handler|netlify|node|mono' || true
         sleep 60
       done
     ) > tmp/ci-docs-prod/01-build-deploy-heartbeat.log 2>&1 &
@@ -467,25 +467,25 @@ case "$task" in
     devtools_artifact_repack --publish "$@"
     ;;
   release:changeset:check-pr)
-    bun scripts/src/commands/changesets.ts check-pr --base "${CHANGESET_BASE_REF:-origin/main}" "$@"
+    node scripts/src/commands/changesets.ts check-pr --base "${CHANGESET_BASE_REF:-origin/main}" "$@"
     ;;
   release:changeset:check-bodies)
-    bun scripts/src/commands/changesets.ts check-bodies "$@"
+    node scripts/src/commands/changesets.ts check-bodies "$@"
     ;;
   release:changeset:status)
     DT_PASSTHROUGH=1 pnpm exec changeset status --since "${CHANGESET_BASE_REF:-origin/main}" "$@"
     ;;
   release:changeset:version)
     DT_PASSTHROUGH=1 pnpm exec changeset version "$@"
-    bun scripts/src/commands/changesets.ts restore-prerelease-changesets
-    bun scripts/src/commands/changesets.ts sync-version-source
-    bun scripts/src/commands/changesets.ts sync-standalone-consumers
+    node scripts/src/commands/changesets.ts restore-prerelease-changesets
+    node scripts/src/commands/changesets.ts sync-version-source
+    node scripts/src/commands/changesets.ts sync-standalone-consumers
     DT_PASSTHROUGH=1 pnpm install --lockfile-only --no-frozen-lockfile
-    bun scripts/src/commands/changesets.ts assert-fixed-versions
-    bun scripts/src/commands/changesets.ts write-release-plan --npm-tag "${LIVESTORE_NPM_TAG:-latest}"
+    node scripts/src/commands/changesets.ts assert-fixed-versions
+    node scripts/src/commands/changesets.ts write-release-plan --npm-tag "${LIVESTORE_NPM_TAG:-latest}"
     ;;
   release:changeset:verify-baseline)
-    bun scripts/src/commands/changesets.ts verify-baseline-changelog "$@"
+    node scripts/src/commands/changesets.ts verify-baseline-changelog "$@"
     ;;
   github:rulesets:check)
     mono github rulesets check "$@"

@@ -5,14 +5,14 @@ import path from 'node:path'
 import semver from 'semver'
 
 const usage = `Usage:
-  bun scripts/src/commands/changesets.ts check-pr [--base <ref>]
-  bun scripts/src/commands/changesets.ts check-bodies
-  bun scripts/src/commands/changesets.ts restore-prerelease-changesets
-  bun scripts/src/commands/changesets.ts sync-version-source
-  bun scripts/src/commands/changesets.ts sync-standalone-consumers
-  bun scripts/src/commands/changesets.ts write-release-plan [--npm-tag <tag>]
-  bun scripts/src/commands/changesets.ts assert-fixed-versions
-  bun scripts/src/commands/changesets.ts verify-baseline-changelog
+  node scripts/src/commands/changesets.ts check-pr [--base <ref>]
+  node scripts/src/commands/changesets.ts check-bodies
+  node scripts/src/commands/changesets.ts restore-prerelease-changesets
+  node scripts/src/commands/changesets.ts sync-version-source
+  node scripts/src/commands/changesets.ts sync-standalone-consumers
+  node scripts/src/commands/changesets.ts write-release-plan [--npm-tag <tag>]
+  node scripts/src/commands/changesets.ts assert-fixed-versions
+  node scripts/src/commands/changesets.ts verify-baseline-changelog
 `
 
 const parseArgs = (argv: ReadonlyArray<string>) => {
