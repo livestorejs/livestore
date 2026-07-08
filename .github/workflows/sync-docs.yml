@@ -23,6 +23,7 @@ concurrency:
 
 jobs:
   sync:
+    if: ${{ github.repository == 'livestorejs/livestore' }}
     runs-on: ubuntu-latest
 
     steps:

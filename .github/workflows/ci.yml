@@ -3861,7 +3861,7 @@ jobs:
           run_nix_gc_race_retry 'devenv tasks run examples:test --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:test --mode before'
       - id: deploy-examples
         name: Deploy examples to Cloudflare
-        if: github.event.pull_request.head.repo.fork != true
+        if: ${{ success() && github.repository == 'livestorejs/livestore' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}
         run: |
           mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_FILE")"
           __nix_gc_retry_helper=$(mktemp)
@@ -3989,6 +3989,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
       - name: Validate hosted example links
+        if: ${{ success() && steps.deploy-examples.outcome == 'success' }}
         run: |
           __nix_gc_retry_helper=$(mktemp)
           cat > "$__nix_gc_retry_helper" <<'EOF'
@@ -4713,7 +4714,7 @@ jobs:
           retention-days: 14
       - id: deploy-docs
         name: Deploy docs
-        if: ${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}
+        if: ${{ success() && github.repository == 'livestorejs/livestore' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}
         run: |
           mkdir -p "$(dirname "$WORKFLOW_REPORT_OUTPUT_FILE")"
           __nix_gc_retry_helper=$(mktemp)
