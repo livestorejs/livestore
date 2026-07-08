@@ -27,7 +27,9 @@ export const GET = async () => {
   }
 
   const docs = await getCollection('docs')
-  const slugs = docs.map((doc) => toSlug(doc.id, doc.slug)).filter((slug) => slug !== '')
+  const slugs = docs
+    .map((doc) => toSlug(doc.id, 'slug' in doc && typeof doc.slug === 'string' ? doc.slug : undefined))
+    .filter((slug) => slug !== '')
 
   return new Response(JSON.stringify({ slugs }), {
     headers: {

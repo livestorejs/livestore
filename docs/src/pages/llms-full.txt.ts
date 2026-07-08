@@ -16,7 +16,7 @@ export const GET: APIRoute = async ({ site }) => {
       const content = await transformMultiCodeDocument({
         id: doc.id,
         collection: doc.collection,
-        body: doc.body,
+        body: doc.body ?? '',
       })
       return { doc, body: stripLeadingImports(content).trim() }
     }),

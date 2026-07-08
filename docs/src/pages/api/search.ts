@@ -96,8 +96,10 @@ export const GET: APIRoute = async ({ url }) => {
 
     response.data.forEach((item, index) => {
       const metadata = {
-        ...item.metadata,
-        ...item.generated_metadata,
+        ...(typeof item.metadata === 'object' && item.metadata !== null ? item.metadata : {}),
+        ...(typeof item.generated_metadata === 'object' && item.generated_metadata !== null
+          ? item.generated_metadata
+          : {}),
       } as SearchMetadata
 
       const url = filePathToHref(metadata?.file_path || '')
