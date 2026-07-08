@@ -89,7 +89,8 @@ Peer dependencies must use **explicit version ranges** instead of catalog refere
 
 ### Enforcement
 
-The Genie configuration system enforces peer dependency conventions through package.json generation.
+Peer dependency conventions are enforced during review and dependency update
+validation. Keep peer ranges explicit in each affected `package.json`.
 
 ## Expected Warnings
 

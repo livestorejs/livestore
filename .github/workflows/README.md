@@ -1,9 +1,5 @@
 # GitHub Workflows
 
-Most workflow YAML files in this directory are generated from sibling
-`.genie.ts` files. Edit the `.genie.ts` source and run `genie`; do not edit the
-generated YAML directly. `sync-docs.yml` is currently handwritten.
-
 ## `ci.yml`
 
 Primary validation workflow for pull requests, `main` pushes, and manual

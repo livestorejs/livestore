@@ -1,5 +1,3 @@
-// Generated file - DO NOT EDIT
-// Source: tsconfig.json.genie.ts
 {
   "compilerOptions": {
     "target": "ES2024",
@@ -39,7 +37,7 @@
     "types": ["vitest/globals", "node"]
   },
   "include": ["./src"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm"],
   "references": [
     {
       "path": "../../packages/@livestore/adapter-web"

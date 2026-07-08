@@ -40,23 +40,5 @@
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "effect": "4.0.0-beta.83"
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/adapter-web",
-      "packages/@livestore/common",
-      "packages/@livestore/common-cf",
-      "packages/@livestore/framework-toolkit",
-      "packages/@livestore/livestore",
-      "packages/@livestore/react",
-      "packages/@livestore/sqlite-wasm",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/wa-sqlite",
-      "packages/@livestore/webmesh",
-      "tests/perf"
-    ]
   }
 }

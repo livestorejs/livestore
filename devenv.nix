@@ -60,6 +60,16 @@ let
     "scripts"
   ];
 
+  lintPaths = [
+    "packages"
+    "tests"
+    "scripts"
+    "docs"
+    ".github"
+  ];
+
+  lintPathsArg = lib.concatStringsSep " " lintPaths;
+
   devtoolsArtifactRepackExec = publishFlag: ''
     set -euo pipefail
     cd "$DEVENV_ROOT"
@@ -207,7 +217,6 @@ in
     # Playwright browser drivers and environment setup
     inputs.playwright.devenvModules.default
     # Shared task modules from effect-utils
-    taskModules.genie
     (taskModules.megarepo { syncAll = !ci; })
     (taskModules.ts { tsconfigFile = "tsconfig.dev.json"; })
     (taskModules.check {
@@ -218,71 +227,10 @@ in
       packages = pnpmPackages;
       extraDirs = [ ".astro" ];
     })
-    # Lint tasks are dt-native via lint-oxc plus local aggregate wrappers.
-    (taskModules.lint-oxc {
-      lintPaths = [
-        "packages"
-        "tests"
-        "scripts"
-        "docs"
-        ".github"
-      ];
-      execIfModifiedPatterns = [
-        # packages/@livestore
-        "packages/@livestore/*/src/**/*.ts"
-        "packages/@livestore/*/src/**/*.tsx"
-        "packages/@livestore/*/src/**/*.js"
-        "packages/@livestore/*/src/**/*.jsx"
-        "packages/@livestore/*/*.ts"
-        "packages/@livestore/*/*.js"
-        "packages/@livestore/*/bin/*.ts"
-        "packages/@livestore/*/examples/*/*.ts"
-        "packages/@livestore/*/examples/*/*.tsx"
-        "packages/@livestore/*/examples/*/src/**/*.ts"
-        "packages/@livestore/*/examples/*/src/**/*.tsx"
-        # packages/@local
-        "packages/@local/*/src/**/*.ts"
-        "packages/@local/*/src/**/*.tsx"
-        "packages/@local/*/*.ts"
-        "packages/@local/*/*.js"
-        # tests
-        "tests/**/*.ts"
-        "tests/**/*.tsx"
-        # scripts
-        "scripts/**/*.ts"
-        "scripts/**/*.js"
-        # docs
-        "docs/src/**/*.ts"
-        "docs/src/**/*.tsx"
-        # linter configs
-        ".oxfmtrc.json"
-        ".oxlintrc.json"
-      ];
-      geniePatterns = [
-        ".github/workflows/*.genie.ts"
-        ".oxfmtrc.json.genie.ts"
-        ".oxlintrc.json.genie.ts"
-        "scripts/*.genie.ts"
-        "docs/*.genie.ts"
-        "docs/src/**/*.genie.ts"
-        "tests/**/*.genie.ts"
-        "packages/@livestore/*/*.genie.ts"
-        "packages/@local/*/*.genie.ts"
-        "packages/@local/*/**/*.genie.ts"
-      ];
-      genieCoverageDirs = [
-        "packages"
-        "tests"
-        "docs"
-        "scripts"
-      ];
-      # TODO(oep-1n3.10): Keep wa-sqlite unmanaged by Genie for now.
-      # Effect-utils now supports exclusions for the coverage check.
-      genieCoverageExcludes = [ "packages/@livestore/wa-sqlite/" ];
-      tsconfig = "tsconfig.dev.json";
-    })
+    # Lint tasks are local so this repo can run without generated-file checks.
     (taskModules.ts-effect-lsp {
       tsconfigFile = "tsconfig.dev.json";
+      after = [ "pnpm:install" ];
     })
     (taskModules.pnpm { packages = pnpmPackages; })
     # Setup task (auto-runs in enterShell)
@@ -290,7 +238,6 @@ in
       requiredTasks = [ ];
       optionalTasks = [
         "pnpm:install"
-        "genie:run"
         "ts:build"
       ];
     })
@@ -333,13 +280,13 @@ in
     pkgs.bun
     pkgs.nodejs_24
     pkgs.typescript
+    pkgs.tsgolint
     oxlintWithPlugins
     pkgs.oxfmt
     # CLIs from effect-utils (Nix-built packages)
   ]
   ++ [ effectUtilsPackages.effect-tsgo ]
   ++ [
-    effectUtilsPackages.genie
     effectUtils.packages.${pkgs.system}.megarepo
     pkgs.jq
     pkgs.unzip
@@ -367,12 +314,80 @@ in
 
   cachix.pull = [ "livestore" ];
 
-  # TODO(upstream): Remove once https://github.com/cachix/devenv/pull/2423 lands.
-  # devenv-tasks' glob crate traverses into node_modules for exec_if_modified patterns,
-  # hashing ~243k files instead of ~800 source files (~10 min overhead per task).
-  # Since oxfmt/oxlint finish in <2s, always running them is faster than broken caching.
-  tasks."lint:check:format".execIfModified = lib.mkForce [ ];
-  tasks."lint:check:oxlint".execIfModified = lib.mkForce [ ];
+  tasks."lint:check:format" = {
+    description = "Check code formatting with oxfmt";
+    exec = "oxfmt --check ${lintPathsArg}";
+    # TODO(upstream): Restore execIfModified once https://github.com/cachix/devenv/pull/2423 lands.
+    # devenv-tasks currently traverses into node_modules while hashing glob inputs.
+    execIfModified = [ ];
+  };
+
+  tasks."lint:check:oxlint" = {
+    description = "Run oxlint linter";
+    exec = "oxlint --import-plugin --deny-warnings --type-aware --tsconfig tsconfig.dev.json ${lintPathsArg}";
+    # TODO(upstream): Restore execIfModified once https://github.com/cachix/devenv/pull/2423 lands.
+    # devenv-tasks currently traverses into node_modules while hashing glob inputs.
+    execIfModified = [ ];
+    after = [ "pnpm:install" ];
+  };
+
+  tasks."lint:check:lockfile" = {
+    description = "Verify pnpm-lock.yaml matches package.json specifiers";
+    after = [ "pnpm:install" ];
+    exec = ''
+      set -euo pipefail
+      store_dir="''${npm_config_store_dir:-''${PNPM_CONFIG_STORE_DIR:-''${PNPM_STORE_DIR:-$PWD/.devenv/pnpm-store}}}"
+      export PNPM_STORE_DIR="$store_dir"
+      export PNPM_CONFIG_STORE_DIR="$store_dir"
+      export npm_config_store_dir="$store_dir"
+      pnpm install \
+        --frozen-lockfile \
+        --ignore-scripts \
+        --config.confirmModulesPurge=false \
+        --config.side-effects-cache=false \
+        --config.verify-store-integrity=true \
+        --config.strict-store-pkg-content-check=true \
+        --config.package-import-method=clone-or-copy \
+        --pm-on-fail=ignore \
+        --config.store-dir="$store_dir"
+    '';
+  };
+
+  tasks."lint:check" = {
+    description = "Run all lint checks";
+    after = [
+      "lint:check:format"
+      "lint:check:oxlint"
+      "lint:check:lockfile"
+    ];
+  };
+
+  tasks."lint:fix:format" = {
+    description = "Fix code formatting with oxfmt";
+    exec = "oxfmt ${lintPathsArg}";
+  };
+
+  tasks."lint:fix:oxlint" = {
+    description = "Fix lint issues with oxlint";
+    exec = "oxlint --import-plugin --deny-warnings --fix --type-aware --tsconfig tsconfig.dev.json ${lintPathsArg}";
+  };
+
+  tasks."lint:fix" = {
+    description = "Fix all lint issues";
+    after = [
+      "lint:fix:format"
+      "lint:fix:oxlint"
+    ];
+  };
+
+  tasks."pnpm:update".after = lib.mkForce [ ];
+
+  tasks."ts:check".after = lib.mkForce [ "pnpm:install" ];
+  tasks."ts:check:strict".after = lib.mkForce [ "pnpm:install" ];
+  tasks."ts:build".after = lib.mkForce [ "pnpm:install" ];
+  tasks."ts:build-watch".after = lib.mkForce [ "pnpm:install" ];
+  tasks."ts:emit".after = lib.mkForce [ "pnpm:install" ];
+  tasks."ts:effect-lsp".after = lib.mkForce [ "pnpm:install" ];
 
   tasks."release:devtools-artifact:verify" = {
     description = "Verify a public LiveStore DevTools artifact handoff";
@@ -465,13 +480,9 @@ in
       set -euo pipefail
       cd "$DEVENV_ROOT"
 
-      # Changesets edits generated package manifests before Genie re-materializes
-      # them from release/version.json.
-      git ls-files '*package.json' | xargs chmod u+w
       DT_PASSTHROUGH=1 pnpm exec changeset version
       bun scripts/src/commands/changesets.ts restore-prerelease-changesets
       bun scripts/src/commands/changesets.ts sync-version-source
-      DT_PASSTHROUGH=1 genie
       bun scripts/src/commands/changesets.ts sync-standalone-consumers
       DT_PASSTHROUGH=1 pnpm install --lockfile-only --no-frozen-lockfile
       bun scripts/src/commands/changesets.ts assert-fixed-versions

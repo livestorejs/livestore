@@ -11,14 +11,14 @@ Builds on [vision.md](./vision.md). Implementation details live in
   `livestorejs/livestore-contrib` live under the `livestorejs` GitHub
   organization and publish packages under the `@livestore` npm scope.
 - **A02 Shared tooling source:** `overengineeringstudio/effect-utils` supplies
-  canonical devenv modules, genie helpers, CI workflow builders, label/repo
+  canonical devenv modules, CI workflow builders, label/repo
   settings helpers, oxlint/oxfmt policy, and pnpm policy.
 - **A03 Megarepo materialization:** `mr fetch --apply` materializes member
-  repositories under `repos/` as filesystem symlinks that Bun, pnpm, genie,
+  repositories under `repos/` as filesystem symlinks that Bun, pnpm,
   Astro/Starlight, and TypeDoc can read through.
-- **A04 Genie resolver scope:** `#mr/<member>/...` imports resolve against the
-  file's own megarepo root. Cross-repo genie composition therefore uses
-  relative imports through materialized `repos/` symlinks.
+- **A04 Megarepo resolver scope:** `#mr/<member>/...` imports resolve against
+  the file's own megarepo root. Cross-repo composition therefore uses relative
+  imports through materialized `repos/` symlinks.
 - **A05 Single docs site:** `docs.livestore.dev` is the canonical
   documentation entry point for every published `@livestore/*` package.
 
@@ -93,11 +93,11 @@ Builds on [vision.md](./vision.md). Implementation details live in
 
 - **R16 Same devenv stack:** Contrib imports the same effect-utils devenv
   modules as core.
-- **R17 Shared genie helpers, local ownership manifests:** Contrib's generated
-  workspace, package, TypeScript, lint/format, CI, labels, and repo settings
-  files are composed from core/effect-utils helpers rather than handwritten
-  copies. Final contrib package and example membership is owned by contrib, not
-  by core's package topology.
+- **R17 Shared helpers, local ownership manifests:** Contrib's workspace,
+  package, TypeScript, lint/format, CI, labels, and repo settings files are
+  composed from core/effect-utils helpers rather than handwritten copies. Final
+  contrib package and example membership is owned by contrib, not by core's
+  package topology.
 - **R18 Contrib-specific CI identifiers:** Contrib CI uses contrib-scoped cache,
   Cachix, and pnpm state identifiers even when it reuses core's setup atoms.
 - **R19 Same lint and format policy:** Contrib derives oxlint and oxfmt

@@ -35,14 +35,5 @@
     "effect": "4.0.0-beta.83",
     "tailwindcss": "4.1.18",
     "typescript": "6.0.3"
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/utils",
-      "packages/@local/astro-twoslash-code",
-      "packages/@local/astro-twoslash-code/example"
-    ]
   }
 }

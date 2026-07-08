@@ -1,6 +1,3 @@
-# Generated file - DO NOT EDIT
-# Source: ci.yml.genie.ts
-
 name: ci
 
 run-name: "${{ github.event.pull_request.title || format('Push to {0}', github.ref_name) }} (${{ github.event.pull_request.head.sha || github.sha }})"

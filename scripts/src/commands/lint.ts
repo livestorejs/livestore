@@ -38,10 +38,7 @@ const checkMdFilesNoImports = Effect.gen(function* () {
   }
 }).pipe(Effect.withSpan('checkMdFilesNoImports'))
 
-/**
- * Exclude patterns for oxfmt (genie-generated read-only files).
- * Note: Generated .jsonc files and package.json/tsconfig.json are in .oxfmtrc.json ignorePatterns.
- */
+/** Exclude patterns for oxfmt. Generated JSONC files are in .oxfmtrc.json ignorePatterns. */
 const oxfmtExcludePatterns = ['!.github/workflows/*.yml']
 
 /** Run oxfmt format check (uses .oxfmtrc.json) */

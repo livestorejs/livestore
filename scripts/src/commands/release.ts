@@ -17,6 +17,7 @@ type TDependencyField = 'dependencies' | 'devDependencies' | 'peerDependencies' 
 type TMutablePackageJson = {
   name?: string
   private?: boolean
+  version?: string
   dependencies?: Record<string, string>
   devDependencies?: Record<string, string>
   peerDependencies?: Record<string, string>
@@ -210,7 +211,7 @@ const pinSnapshotDependencySpec = ({
 }
 
 /**
- * Rewrites internal dependency ranges after Genie generation so the published
+ * Rewrites internal dependency ranges after release-version patching so the published
  * snapshot graph is self-contained and installable outside the monorepo.
  */
 export const rewriteSnapshotInternalDependencyRanges = ({
@@ -367,15 +368,60 @@ const formatReleaseSummaryMarkdown = ({
     emptyMessage: '_No packages matched the release filter._',
   })
 
-const restoreGeneratedReleaseFiles = (cwd: string) =>
+const patchReleasePackageVersions = ({
+  cwd,
+  packages,
+  version,
+  originalPackageJsonByPath,
+}: {
+  cwd: string
+  packages: ReadonlyArray<string>
+  version: string
+  originalPackageJsonByPath: Map<string, string>
+}) =>
   Effect.gen(function* () {
-    /** Restore original dev versions (read-only) and verify files are in sync. */
-    yield* cmd('DT_PASSTHROUGH=1 genie', { shell: true }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-    yield* cmd('DT_PASSTHROUGH=1 genie --check', { shell: true }).pipe(
-      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
-    )
+    const fsEffect = yield* FileSystem.FileSystem
+
+    for (const pkg of packages) {
+      const packageJsonPath = packageJsonPathFromPackageName(cwd, pkg)
+      const originalPackageJson = yield* fsEffect.readFileString(packageJsonPath)
+      if (originalPackageJsonByPath.has(packageJsonPath) === false) {
+        originalPackageJsonByPath.set(packageJsonPath, originalPackageJson)
+      }
+
+      const packageJson = yield* Effect.try({
+        try: () => JSON.parse(originalPackageJson) as TMutablePackageJson,
+        catch: (cause) => new PackageJsonParseError({ message: `Failed to parse ${packageJsonPath}`, cause }),
+      })
+
+      if (packageJson.name !== pkg) {
+        return yield* Effect.fail(
+          new Error(
+            `Release topology/package.json mismatch for ${packageJsonPath}: expected ${pkg}, found ${packageJson.name}`,
+          ),
+        )
+      }
+
+      packageJson.version = version
+      yield* fsEffect.writeFileString(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
+    }
   }).pipe(
-    Effect.catch((error) => Effect.logWarning(`Failed to restore generated release files: ${toErrorMessage(error)}`)),
+    Effect.catchAll((error) =>
+      Effect.logWarning(`Failed to patch release package versions: ${toErrorMessage(error)}`).pipe(
+        Effect.zipRight(Effect.fail(error)),
+      ),
+    ),
+  )
+
+const restorePatchedReleaseFiles = (originalPackageJsonByPath: ReadonlyMap<string, string>) =>
+  Effect.gen(function* () {
+    const fsEffect = yield* FileSystem.FileSystem
+
+    for (const [packageJsonPath, contents] of originalPackageJsonByPath) {
+      yield* fsEffect.writeFileString(packageJsonPath, contents)
+    }
+  }).pipe(
+    Effect.catch((error) => Effect.logWarning(`Failed to restore release package manifests after publishing: ${toErrorMessage(error)}`)),
   )
 
 const packPackageForPublish = ({ cwd, pkg, version }: { cwd: string; pkg: string; version: string }) =>
@@ -424,18 +470,13 @@ const publishReleasePackages = ({
   dryRun: boolean
   allowExisting: boolean
   tscBin: string
-}) =>
-  Effect.gen(function* () {
+}) => {
+  const originalPackageJsonByPath = new Map<string, string>()
+
+  return Effect.gen(function* () {
     const isCI = process.env.CI === 'true' || process.env.CI === '1'
 
-    /**
-     * Regenerate all genie-managed files with the release version (writable for pnpm publish).
-     * TODO: Replace CLI invocations with genie SDK once skipValidation is available
-     * (https://github.com/overengineeringstudio/effect-utils/issues/196)
-     */
-    yield* cmd(`DT_PASSTHROUGH=1 LIVESTORE_RELEASE_VERSION=${version} genie --writeable`, { shell: true }).pipe(
-      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
-    )
+    yield* patchReleasePackageVersions({ cwd, packages, version, originalPackageJsonByPath })
 
     yield* rewriteSnapshotInternalDependencyRanges({ cwd, snapshotPackages: packages, snapshotVersion: version })
 
@@ -516,7 +557,8 @@ const publishReleasePackages = ({
         yield* Effect.log(`Verified ${pkg}@${version}`)
       }
     }
-  }).pipe(Effect.ensuring(restoreGeneratedReleaseFiles(cwd)))
+  }).pipe(Effect.ensuring(restorePatchedReleaseFiles(originalPackageJsonByPath)))
+}
 
 export const releasePlanCommand = Cli.Command.make(
   'plan',

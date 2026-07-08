@@ -2,8 +2,7 @@ import { Effect, FileSystem } from '@livestore/utils/effect'
 
 /**
  * Marker prefix recognized by effect-utils' workflow-reporting collector.
- * Keep in sync with `workflowReportRecordLineMarker` in
- * `@overeng/genie/runtime/workflow-reporting/mod.ts`.
+ * Keep in sync with the collector's `workflowReportRecordLineMarker`.
  */
 export const workflowReportRecordLineMarker = 'WORKFLOW_REPORT_V1: '
 

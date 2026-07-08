@@ -51,27 +51,5 @@
     "vite": "7.3.1",
     "vitest": "4.1.9",
     "wrangler": "4.42.2"
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/adapter-cloudflare",
-      "packages/@livestore/adapter-web",
-      "packages/@livestore/common",
-      "packages/@livestore/common-cf",
-      "packages/@livestore/effect-playwright",
-      "packages/@livestore/framework-toolkit",
-      "packages/@livestore/livestore",
-      "packages/@livestore/react",
-      "packages/@livestore/sqlite-wasm",
-      "packages/@livestore/sync-cf",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/wa-sqlite",
-      "packages/@livestore/webmesh",
-      "packages/@local/shared",
-      "tests/integration"
-    ]
   }
 }

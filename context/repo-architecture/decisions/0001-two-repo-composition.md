@@ -42,9 +42,9 @@ exact versions during publish.
 Lockstep releases cost extra publish events, but remove ambiguity from the
 package graph.
 
-## Relative Genie Imports
+## Relative Shared Helper Imports
 
-Contrib imports core genie helpers through `../repos/livestore/...`, not
+Contrib imports core shared helpers through `../repos/livestore/...`, not
 `#mr/livestore/...`.
 
 `#mr` specifiers resolve against the file's own megarepo root. Relative imports

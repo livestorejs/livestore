@@ -1,6 +1,3 @@
-# Generated file - DO NOT EDIT
-# Source: release.yml.genie.ts
-
 name: Release
 
 on:
@@ -24,10 +21,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/release.yml
-      - .github/workflows/release.yml.genie.ts
       - .github/workflows/deploy-prod.yml
-      - .github/workflows/deploy-prod.yml.genie.ts
-      - genie/repo.ts
       - nix/devenv-modules/tasks/local/mono-wrappers.nix
       - release/release-plan.json
       - release/release-notes.md

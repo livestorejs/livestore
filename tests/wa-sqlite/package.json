@@ -10,13 +10,5 @@
     "@livestore/wa-sqlite": "workspace:^",
     "@types/node": "25.3.3",
     "vitest": "4.1.9"
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/wa-sqlite",
-      "tests/wa-sqlite"
-    ]
   }
 }

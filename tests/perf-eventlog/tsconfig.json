@@ -1,5 +1,3 @@
-// Generated file - DO NOT EDIT
-// Source: tsconfig.json.genie.ts
 {
   "compilerOptions": {
     "target": "ES2024",
@@ -37,7 +35,7 @@
     "jsx": "react-jsx"
   },
   "include": ["./test-app", "./src", "./tests"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm"],
   "references": [
     {
       "path": "../../packages/@livestore/adapter-web"

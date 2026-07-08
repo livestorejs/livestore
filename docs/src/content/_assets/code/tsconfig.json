@@ -1,9 +1,10 @@
-// Generated file - DO NOT EDIT
-// Source: tsconfig.json.genie.ts
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": ["ES2024", "DOM"],
+    "lib": [
+      "ES2024",
+      "DOM"
+    ],
     "module": "NodeNext",
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
@@ -35,14 +36,23 @@
     ],
     "rootDir": "./",
     "jsx": "react-jsx",
-    "types": ["vite/client", "node", "@cloudflare/workers-types", "@types/react", "@types/react-dom"],
+    "types": [
+      "vite/client",
+      "node",
+      "@cloudflare/workers-types",
+      "@types/react",
+      "@types/react-dom"
+    ],
     "noEmit": true
   },
-  "include": ["./**/*.ts", "./**/*.tsx", "./**/*.d.ts"],
+  "include": [
+    "./**/*.ts",
+    "./**/*.tsx",
+    "./**/*.d.ts"
+  ],
   "exclude": [
     "./node_modules",
     "./dist",
-    "**/*.genie.ts",
     "./getting-started/expo/**",
     "./getting-started/node/**",
     "./reference/framework-integrations/solid/**",

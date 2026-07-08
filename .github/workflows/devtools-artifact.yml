@@ -1,6 +1,3 @@
-# Generated file - DO NOT EDIT
-# Source: devtools-artifact.yml.genie.ts
-
 name: DevTools artifact manifest
 
 on:
@@ -8,8 +5,6 @@ on:
     paths:
       [
         .github/workflows/devtools-artifact.yml,
-        .github/workflows/devtools-artifact.yml.genie.ts,
-        genie/repo.ts,
         release/devtools-artifact.json,
         scripts/src/commands/devtools-artifact.ts,
       ]

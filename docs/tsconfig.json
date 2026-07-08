@@ -1,9 +1,9 @@
-// Generated file - DO NOT EDIT
-// Source: tsconfig.json.genie.ts
 {
   "compilerOptions": {
     "target": "ESNext",
-    "lib": ["ES2024"],
+    "lib": [
+      "ES2024"
+    ],
     "module": "ESNext",
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
@@ -38,8 +38,15 @@
     "jsx": "preserve",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts", "src/content/_assets/code/**/*"],
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/dist",
+    "**/node_modules/.pnpm",
+    "src/content/_assets/code/**/*"
+  ],
   "references": [
     {
       "path": "../packages/@livestore/common"

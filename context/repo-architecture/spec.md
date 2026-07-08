@@ -54,31 +54,31 @@ core's unpinned contrib reference. This satisfies R07-R09.
 
 ## Package Ownership
 
-| Package               | Owner   | Reason                                                    |
-| --------------------- | ------- | --------------------------------------------------------- |
-| `livestore`           | core    | Engine root                                               |
-| `common`              | core    | Engine internals                                          |
-| `common-cf`           | core    | Cloudflare engine internals                               |
-| `utils`               | core    | Shared utility surface                                    |
-| `utils-dev`           | core    | Shared test infrastructure                                |
-| `peer-deps`           | core    | Catalog management                                        |
-| `react`               | core    | Primary framework integration                             |
-| `adapter-web`         | core    | Primary browser adapter                                   |
-| `adapter-cloudflare`  | core    | Primary production adapter                                |
-| `sync-cf`             | core    | Primary sync provider                                     |
-| `sqlite-wasm`         | core    | SQLite browser surface                                    |
-| `wa-sqlite`           | core    | Vendored SQLite                                           |
-| `webmesh`             | core    | Cross-worker mesh primitive                               |
-| `framework-toolkit`   | core    | Shared primitive imported by React and contrib frameworks |
-| `svelte`              | contrib | Framework integration                                     |
-| `solid`               | contrib | Framework integration                                     |
-| `adapter-node`        | contrib | Node platform adapter                                     |
-| `adapter-expo`        | contrib | Expo platform adapter                                     |
-| `devtools-expo`       | contrib | Expo devtools surface                                     |
-| `sync-electric`       | contrib | Additional sync provider                                  |
-| `sync-s2`             | contrib | Additional sync provider                                  |
-| `graphql`             | contrib | Optional integration                                      |
-| `cli`                 | contrib | Scaffolding and MCP server                                |
+| Package              | Owner   | Reason                                                    |
+| -------------------- | ------- | --------------------------------------------------------- |
+| `livestore`          | core    | Engine root                                               |
+| `common`             | core    | Engine internals                                          |
+| `common-cf`          | core    | Cloudflare engine internals                               |
+| `utils`              | core    | Shared utility surface                                    |
+| `utils-dev`          | core    | Shared test infrastructure                                |
+| `peer-deps`          | core    | Catalog management                                        |
+| `react`              | core    | Primary framework integration                             |
+| `adapter-web`        | core    | Primary browser adapter                                   |
+| `adapter-cloudflare` | core    | Primary production adapter                                |
+| `sync-cf`            | core    | Primary sync provider                                     |
+| `sqlite-wasm`        | core    | SQLite browser surface                                    |
+| `wa-sqlite`          | core    | Vendored SQLite                                           |
+| `webmesh`            | core    | Cross-worker mesh primitive                               |
+| `framework-toolkit`  | core    | Shared primitive imported by React and contrib frameworks |
+| `svelte`             | contrib | Framework integration                                     |
+| `solid`              | contrib | Framework integration                                     |
+| `adapter-node`       | contrib | Node platform adapter                                     |
+| `adapter-expo`       | contrib | Expo platform adapter                                     |
+| `devtools-expo`      | contrib | Expo devtools surface                                     |
+| `sync-electric`      | contrib | Additional sync provider                                  |
+| `sync-s2`            | contrib | Additional sync provider                                  |
+| `graphql`            | contrib | Optional integration                                      |
+| `cli`                | contrib | Scaffolding and MCP server                                |
 
 `@livestore/effect-playwright` is not part of either repository's final
 LiveStore package set; it belongs in `overengineeringstudio/effect-utils`.
@@ -168,20 +168,20 @@ contrib owns its package and example membership locally. Core exports core
 package metadata and reusable generator helpers; it does not carry the final
 contrib package manifest.
 
-| Surface           | Source of truth                                                  |
-| ----------------- | ---------------------------------------------------------------- |
-| devenv            | effect-utils modules, imported by contrib                        |
+| Surface           | Source of truth                                                       |
+| ----------------- | --------------------------------------------------------------------- |
+| devenv            | effect-utils modules, imported by contrib                             |
 | pnpm workspace    | contrib-local package/example manifest plus core/effect-utils helpers |
-| package manifests | contrib-local package manifest plus core/effect-utils helpers     |
-| tsconfig          | contrib-local workspace shape plus core/effect-utils helpers      |
-| oxlint/oxfmt      | effect-utils base config plus contrib-local ignores              |
-| labels/settings   | effect-utils catalog plus contrib-local labels                   |
-| CI workflow       | effect-utils workflow builders plus core re-exported setup atoms |
+| package manifests | contrib-local package manifest plus core/effect-utils helpers         |
+| tsconfig          | contrib-local workspace shape plus core/effect-utils helpers          |
+| oxlint/oxfmt      | effect-utils base config plus contrib-local ignores                   |
+| labels/settings   | effect-utils catalog plus contrib-local labels                        |
+| CI workflow       | effect-utils workflow builders plus core re-exported setup atoms      |
 
-Contrib's `genie/repo.ts` imports core helpers by relative path:
+Contrib imports core helpers by relative path:
 
 ```ts
-export * from '../repos/livestore/genie/repo.ts'
+export * from '../repos/livestore/path/to/shared-helper.ts'
 ```
 
 It does not import `#mr/livestore/...`; that resolver form is scoped to the

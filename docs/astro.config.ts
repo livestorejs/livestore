@@ -365,7 +365,7 @@ export default defineConfig({
                 typeDoc: {
                   excludeExternals: true,
                   externalPattern: ['**/@effect/**', '**/effect/**'],
-                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // The package tsconfigs include the @effect/language-service plugin which
                   // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
                   // and returns no reflections. skipErrorChecking bypasses this check.
                   skipErrorChecking: true,
@@ -378,7 +378,7 @@ export default defineConfig({
                 typeDoc: {
                   excludeExternals: true,
                   externalPattern: ['**/@effect/**', '**/effect/**'],
-                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // The package tsconfigs include the @effect/language-service plugin which
                   // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
                   // and returns no reflections. skipErrorChecking bypasses this check.
                   skipErrorChecking: true,
@@ -391,7 +391,7 @@ export default defineConfig({
                 typeDoc: {
                   excludeExternals: true,
                   externalPattern: ['**/@effect/**', '**/effect/**'],
-                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // The package tsconfigs include the @effect/language-service plugin which
                   // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
                   // and returns no reflections. skipErrorChecking bypasses this check.
                   skipErrorChecking: true,
@@ -407,7 +407,7 @@ export default defineConfig({
                 typeDoc: {
                   excludeExternals: true,
                   externalPattern: ['**/@effect/**', '**/effect/**'],
-                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // The package tsconfigs include the @effect/language-service plugin which
                   // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
                   // and returns no reflections. skipErrorChecking bypasses this check.
                   skipErrorChecking: true,

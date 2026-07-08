@@ -8,12 +8,5 @@
   },
   "devDependencies": {
     "@types/node": "25.3.3"
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@local/shared"
-    ]
   }
 }

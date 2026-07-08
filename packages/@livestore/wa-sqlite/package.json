@@ -57,12 +57,5 @@
     "web-test-runner-jasmine@0.0.6": {
       "unplugged": true
     }
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/wa-sqlite"
-    ]
   }
 }

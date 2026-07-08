@@ -82,8 +82,8 @@ The preferred flow is:
 1. Ensure pending changesets and `CHANGELOG.md` agree on the intended release
    contents.
 2. Run the `Release` workflow manually from `main` with the intended npm tag.
-   The workflow consumes changesets, syncs `release/version.json`, regenerates
-   Genie-managed manifests, refreshes the lockfile, and opens or updates the
+   The workflow consumes changesets, syncs `release/version.json`, updates
+   package manifests, refreshes the lockfile, and opens or updates the
    release-plan PR.
 3. Review the release-plan PR and wait for CI to pass.
 4. Merge the release-plan PR into `main`.
@@ -100,7 +100,7 @@ version, then restores pending `.changeset/*.md` files before opening the PR.
 This keeps prereleases as publish rehearsals and reserves release-intent
 consumption for the supervised stable `latest` release.
 
-After Genie regenerates the fixed public package versions, the release PR
+After Changesets updates the fixed public package versions, the release PR
 generator also syncs standalone examples and other non-workspace consumers to
 the exact release version. This keeps `pnpm install --lockfile-only` validating
 the same package graph that the release will publish.
@@ -186,11 +186,11 @@ plus serverless + edge bundling) and the upload in one bounded step. The build
 still spawns Chromium for mermaid, so the `timeout(1)` wrapper around this one
 phase remains the orphan-Chromium backstop.
 
-| Phase          | Task                                  | Purpose                                                                          |
-| -------------- | ------------------------------------- | -------------------------------------------------------------------------------- |
+| Phase          | Task                                  | Purpose                                                                                             |
+| -------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `build-deploy` | `docs:deploy:prod:phase:build-deploy` | `mono docs deploy --prod --step=upload` (runs `netlify deploy --build`), writes `deploy-state.json` |
-| `verify`       | `docs:deploy:prod:phase:verify`       | `mono docs deploy --prod --step=verify`, posts job summary                       |
-| `purge`        | `docs:deploy:prod:phase:purge`        | `mono docs deploy --prod --step=purge`, purges Netlify CDN                       |
+| `verify`       | `docs:deploy:prod:phase:verify`       | `mono docs deploy --prod --step=verify`, posts job summary                                          |
+| `purge`        | `docs:deploy:prod:phase:purge`        | `mono docs deploy --prod --step=purge`, purges Netlify CDN                                          |
 
 The `build-deploy` phase writes Netlify identifiers to `tmp/ci-docs-prod/deploy-state.json`
 so `verify` and `purge` can run as independent processes (and independent Actions
@@ -200,8 +200,8 @@ debugging.
 
 The deploy handler emits OpenTelemetry spans (`docs.deploy.upload`,
 `docs.deploy.verify.markdown-negotiation`, `netlify.deploy`, `netlify.purge-cdn`)
-under the shared `OTEL_EXPORTER_OTLP_ENDPOINT` already wired in `genie/repo.ts`'s
-`otelSetupStep`.
+under the shared `OTEL_EXPORTER_OTLP_ENDPOINT` already wired in the release
+workflow setup.
 
 ### Operator recovery: re-running a single deploy target
 
@@ -339,15 +339,15 @@ artifact as `@livestore/devtools-vite@<livestore-version>`.
   artifact metadata.
 - Treat `release/release-plan.json` as reviewable release intent, not a scratch
   file.
-- Treat `release/version.json` as the Genie source of truth for the checked-in
-  package version. Snapshot and dry-run publishes may still override the version
-  with `LIVESTORE_RELEASE_VERSION`.
+- Treat `release/version.json` as the source of truth for the checked-in package
+  version. Snapshot and dry-run publishes may still override the version with
+  `LIVESTORE_RELEASE_VERSION`.
 - Keep checked-in release-plan PRs installable before publish. The stable
   `@livestore/devtools-vite` artifact is injected by the dry-run/publish tasks
   via `LIVESTORE_RELEASE_VERSION`; it is not required to exist before the PR is
   validated.
-- Regenerate generated workflow files through Genie; do not edit generated
-  `.github/workflows/*.yml` files directly.
+- Edit `.github/workflows/*.yml` files directly and keep their path filters in
+  sync with release-sensitive files.
 - Do not publish patch, minor, or major releases while testing this Changesets
   integration. Use snapshots and non-`latest` prerelease tags until the final
   supervised release.

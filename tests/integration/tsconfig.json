@@ -1,5 +1,3 @@
-// Generated file - DO NOT EDIT
-// Source: tsconfig.json.genie.ts
 {
   "compilerOptions": {
     "target": "ES2024",
@@ -40,7 +38,7 @@
     "types": ["@cloudflare/workers-types", "@types/react", "@types/react-dom"]
   },
   "include": ["./src", "./scripts"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts", "./src/tests/devtools/fixtures"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "./src/tests/devtools/fixtures"],
   "references": [
     {
       "path": "../../packages/@local/shared"
