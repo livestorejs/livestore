@@ -116,7 +116,6 @@ The live root workspace disables injected workspace package snapshots:
 ```yaml
 injectWorkspacePackages: false
 enableGlobalVirtualStore: true
-storeDir: .devenv/pnpm-store-pure-v1
 ```
 
 Generated package-closure projections may still use injected snapshots for

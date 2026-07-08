@@ -167,10 +167,14 @@ case "$task" in
     oxlint --import-plugin --deny-warnings --type-aware --tsconfig tsconfig.dev.json packages tests scripts docs .github "$@"
     ;;
   lint:check:lockfile)
-    store_dir="${npm_config_store_dir:-${PNPM_CONFIG_STORE_DIR:-${PNPM_STORE_DIR:-$PWD/.devenv/pnpm-store}}}"
-    export PNPM_STORE_DIR="$store_dir"
-    export PNPM_CONFIG_STORE_DIR="$store_dir"
-    export npm_config_store_dir="$store_dir"
+    store_dir="${npm_config_store_dir:-${PNPM_CONFIG_STORE_DIR:-${PNPM_STORE_DIR:-}}}"
+    store_args=()
+    if [[ -n "$store_dir" ]]; then
+      export PNPM_STORE_DIR="$store_dir"
+      export PNPM_CONFIG_STORE_DIR="$store_dir"
+      export npm_config_store_dir="$store_dir"
+      store_args=(--config.store-dir="$store_dir")
+    fi
     pnpm install \
       --frozen-lockfile \
       --ignore-scripts \
@@ -180,7 +184,7 @@ case "$task" in
       --config.strict-store-pkg-content-check=true \
       --config.package-import-method=clone-or-copy \
       --pm-on-fail=ignore \
-      --config.store-dir="$store_dir" \
+      "${store_args[@]}" \
       "$@"
     ;;
   lint:check)
