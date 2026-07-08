@@ -131,7 +131,6 @@ in
     effectUtils.packages.${pkgs.system}.megarepo
     pkgs.jq
     pkgs.unzip
-    pkgs.deno
   ]
   ++ lib.optionals (!pkgs.stdenv.isDarwin) [
     pkgs.stdenv.cc.cc.lib

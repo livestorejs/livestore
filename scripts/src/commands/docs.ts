@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { delimiter } from 'node:path'
 
 import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
@@ -24,6 +25,7 @@ import { exportMarkdownCommand } from './docs-export.ts'
 const workspaceRoot =
   process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run inside 'devenv shell'`)
 const docsPath = `${workspaceRoot}/docs`
+const docsNodeBin = `${docsPath}/node_modules/.bin`
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
 /**
@@ -527,6 +529,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           logDir: `${docsPath}/logs`,
           env: {
             NODE_ENV: 'production',
+            PATH: prependPath(docsNodeBin),
           },
         }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
       }),
@@ -953,5 +956,10 @@ const runPurgePhase = Effect.fn('docs.deploy.purge')(function* () {
     ),
   )
 })
+
+const prependPath = (entry: string): string => {
+  const currentPath = process.env.PATH
+  return currentPath === undefined || currentPath === '' ? entry : `${entry}${delimiter}${currentPath}`
+}
 
 export { DocsPhaseTimeoutError }

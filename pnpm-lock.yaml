@@ -249,6 +249,9 @@ importers:
       '@types/react-dom':
         specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
+      deno:
+        specifier: 2.9.2
+        version: 2.9.2
       vitest:
         specifier: 4.1.9
         version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(jsdom@26.1.0)(vite@7.3.6(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))
@@ -3280,6 +3283,38 @@ packages:
 
   '@dabh/diagnostics@2.0.8':
     resolution: {integrity: sha512-R4MSXTVnuMzGD7bzHdW2ZhhdPC/igELENcq5IjEverBvq5hn1SXCWcsi6eSsdWP0/Ur+SItRRjAktmdoX/8R/Q==}
+
+  '@deno/darwin-arm64@2.9.2':
+    resolution: {integrity: sha512-UJswiF56uU1Slb0BSXpCloTFBpq226HP9ev9omhAPXmKmRMsDbQVGiflXr0M17tNf2T26/zzTOAzyJqs1hmjKQ==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@deno/darwin-x64@2.9.2':
+    resolution: {integrity: sha512-fro8jjKASMY4yt8Guxp32QyRITm1cKfnEJCxjOZdGt3JVGuZG2TbHKa1YsT06k8ibIXWkOcZJ0rNVvQvNRybNw==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@deno/linux-arm64-glibc@2.9.2':
+    resolution: {integrity: sha512-auZ8yqm+ALQgHAlcQDAB6LNgIeDszUoXZsjrZZ4f4oIl/ZQpWPjeVaVBRqZuRYQcItspapG565wkW7khpG2NHg==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@deno/linux-x64-glibc@2.9.2':
+    resolution: {integrity: sha512-bOmdYLSydi5E4m6V7/9OHVFnvmwbrPAYXunuMoZO3Tik7NOhwyv551HIbBmliADwXlj7/Na9B3elmA3+AZ7X9w==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@deno/win32-arm64@2.9.2':
+    resolution: {integrity: sha512-qshNCBNy17HvXSX1jRS4+ek188x1LR88WPQ/LTuFruS1RCpjAcBaNeE7zHpJyWqzwZYcDZV8UGupEfxTVytTbw==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@deno/win32-x64@2.9.2':
+    resolution: {integrity: sha512-pkyCD46XwP410oDyVPsMpwhIC3/+DDmghNgeWlTal0LsM+RJpArNULL6QSHyL3WDxticwGJ7N4lFEwnAfMgqWg==}
+    cpu: [x64]
+    os: [win32]
 
   '@dependents/detective-less@5.0.3':
     resolution: {integrity: sha512-v6oD9Ukp+N7V4n6p5I/+mM5fIohSfkrDSGlFm5w/pYmchvbk+sMIHsLxrFJ5Lnujewj1BzWL0K84d88lwZAMQA==}
@@ -9004,6 +9039,10 @@ packages:
 
   delegates@1.0.0:
     resolution: {integrity: sha512-bd2L678uiWATM6m5Z1VzNCErI3jiGzt6HGY8OVICs40JQq/HALfbyNJmp0UDakEY4pMMaN0Ly5om/B1VI/+xfQ==}
+
+  deno@2.9.2:
+    resolution: {integrity: sha512-9+QTuIC400Zg/iVJ0OkwqbafMbhAFXaJjLaGGe9/dSk535yzBSorQPKCnz9Jnu3V1Erb3enRQzHKzRAKPOVrmw==}
+    hasBin: true
 
   denque@2.1.0:
     resolution: {integrity: sha512-HVQE3AAb/pxF8fQAoiqpvg9i3evqug3hoiwakOyZAwJm+6vZehbkYXZ0l4JxS+I3QxM97v5aaRNhj8v5oBhekw==}
@@ -15707,6 +15746,24 @@ snapshots:
       '@so-ric/colorspace': 1.1.6
       enabled: 2.0.0
       kuler: 2.0.0
+
+  '@deno/darwin-arm64@2.9.2':
+    optional: true
+
+  '@deno/darwin-x64@2.9.2':
+    optional: true
+
+  '@deno/linux-arm64-glibc@2.9.2':
+    optional: true
+
+  '@deno/linux-x64-glibc@2.9.2':
+    optional: true
+
+  '@deno/win32-arm64@2.9.2':
+    optional: true
+
+  '@deno/win32-x64@2.9.2':
+    optional: true
 
   '@dependents/detective-less@5.0.3':
     dependencies:
@@ -23857,6 +23914,15 @@ snapshots:
       robust-predicates: 3.0.3
 
   delegates@1.0.0: {}
+
+  deno@2.9.2:
+    optionalDependencies:
+      '@deno/darwin-arm64': 2.9.2
+      '@deno/darwin-x64': 2.9.2
+      '@deno/linux-arm64-glibc': 2.9.2
+      '@deno/linux-x64-glibc': 2.9.2
+      '@deno/win32-arm64': 2.9.2
+      '@deno/win32-x64': 2.9.2
 
   denque@2.1.0: {}
 

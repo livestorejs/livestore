@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import os from 'node:os'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 
 import { CurrentWorkingDirectory, LivestoreWorkspace, cmdText } from '@livestore/utils-dev/node'
 import {
@@ -94,7 +94,8 @@ const NETLIFY_API_URL = 'https://api.netlify.com/api/v1/purge'
  * - `DT_PASSTHROUGH=1`: `pnpm`/`astro` are blocked by the agent-policy wrapper
  *   inside Netlify's spawned subprocess; the `[build] command` uses
  *   `pnpm exec astro` and this flag lets it through.
- * - Edge bundling needs Deno on PATH / in `~/.config/netlify/deno-cli/deno`.
+ * - Edge bundling needs Deno on PATH. The docs workspace owns the pnpm-installed
+ *   `deno` package, so deploy prepends `docs/node_modules/.bin`.
  */
 export const deployToNetlify = Effect.fn('netlify.deploy')(
   function* ({
@@ -117,6 +118,7 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
     // `publish = "docs/dist"` + `edge_functions = "docs/netlify/edge-functions"`
     // are all resolved relative to the repo root, so the deploy must run there.
     const gitRoot = yield* LivestoreWorkspace
+    const docsNodeBin = join(gitRoot, 'docs', 'node_modules', '.bin')
     // Run the status check from the git root too (Option A deploys from there).
     const netlifyStatus = yield* cmdText(['pnpm', 'dlx', 'netlify-cli', 'status'], { stderr: 'pipe' }).pipe(
       Effect.provide(CurrentWorkingDirectory.fromPath(gitRoot)),
@@ -174,6 +176,7 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
               NODE_ENV: 'production',
               NETLIFY_SITE_ID: resolvedSiteArg,
               DT_PASSTHROUGH: '1',
+              PATH: prependPath(docsNodeBin),
               // The `[build] command`'s astro build reads this to include typedoc.
               STARLIGHT_INCLUDE_API_DOCS: apiDocs === true ? '1' : undefined,
             },
@@ -433,6 +436,11 @@ const resolveOsConfigDirectory = (homeDirectory: string): string => {
   }
 
   return join(homeDirectory, '.config', 'netlify')
+}
+
+const prependPath = (entry: string): string => {
+  const currentPath = process.env.PATH
+  return currentPath === undefined || currentPath === '' ? entry : `${entry}${delimiter}${currentPath}`
 }
 
 const isFileMissingError = (error: FileReadError): boolean => {
