@@ -60,150 +60,7 @@ let
     "scripts"
   ];
 
-  lintPaths = [
-    "packages"
-    "tests"
-    "scripts"
-    "docs"
-    ".github"
-  ];
-
-  lintPathsArg = lib.concatStringsSep " " lintPaths;
-
-  devtoolsArtifactRepackExec = publishFlag: ''
-    set -euo pipefail
-    cd "$DEVENV_ROOT"
-
-    : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
-    artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
-    if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" || -n "''${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
-      echo "release:devtools-artifact repack requires LIVESTORE_DEVTOOLS_MANIFEST so release-candidate certification can bind to the selected artifact." >&2
-      echo "Use release:devtools-artifact:verify for direct metadata/tarball integrity checks." >&2
-      exit 1
-    fi
-    certification_path="''${LIVESTORE_DEVTOOLS_CERTIFICATION:-release/devtools-artifact.certification.json}"
-    if [[ -f "$certification_path" ]]; then
-      artifact_args+=(--certification "$certification_path")
-    fi
-    if [[ "''${LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK:-}" = "1" ]]; then
-      artifact_args+=(--allow-uncertified)
-    fi
-
-    bun scripts/src/commands/devtools-artifact.ts repack \
-      "''${artifact_args[@]}" \
-      --version "$LIVESTORE_RELEASE_VERSION" \
-      --out-dir "''${LIVESTORE_DEVTOOLS_OUT_DIR:-$(mktemp -d)}" \
-      ${publishFlag}
-  '';
-
-  devtoolsArtifactCertifyLivenessExec = ''
-    set -euo pipefail
-    cd "$DEVENV_ROOT"
-
-    : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
-
-    out_dir="''${LIVESTORE_DEVTOOLS_OUT_DIR:-$(mktemp -d)}"
-    mkdir -p "$out_dir"
-    export LIVESTORE_DEVTOOLS_OUT_DIR="$out_dir"
-
-    export LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK=1
-    ${devtoolsArtifactRepackExec "--dry-run"}
-    unset LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK
-
-    repacked_tarball="$out_dir/livestore-devtools-vite-$LIVESTORE_RELEASE_VERSION.tgz"
-    if [ ! -f "$repacked_tarball" ]; then
-      echo "Expected repacked DevTools tarball not found: $repacked_tarball" >&2
-      exit 1
-    fi
-
-    playwright_bin="tests/integration/node_modules/.bin/playwright"
-    if [ ! -x "$playwright_bin" ]; then
-      echo "Expected Playwright binary not found: $playwright_bin" >&2
-      echo "Run release:devtools-artifact:certify-liveness instead of the no-install variant when dependencies are not installed yet." >&2
-      exit 1
-    fi
-
-    backup_dir="$(mktemp -d)"
-    package_links=(
-      "tests/integration/node_modules/@livestore/devtools-vite"
-    )
-
-    for index in "''${!package_links[@]}"; do
-      package_link="''${package_links[$index]}"
-      if [ ! -e "$package_link" ]; then
-        echo "Expected installed @livestore/devtools-vite package link not found: $package_link" >&2
-        exit 1
-      fi
-      cp -a "$package_link" "$backup_dir/devtools-vite-$index"
-    done
-
-    restore_node_modules() {
-      for index in "''${!package_links[@]}"; do
-        package_link="''${package_links[$index]}"
-        rm -rf "$package_link"
-        cp -a "$backup_dir/devtools-vite-$index" "$package_link"
-      done
-      rm -rf "$backup_dir"
-    }
-    trap restore_node_modules EXIT
-
-    unpack_dir="$(mktemp -d)"
-    tar -xzf "$repacked_tarball" -C "$unpack_dir"
-    for package_link in "''${package_links[@]}"; do
-      rm -rf "$package_link"
-      cp -a "$unpack_dir/package" "$package_link"
-    done
-    rm -rf "$unpack_dir"
-
-    for package_link in "''${package_links[@]}"; do
-      package_version="$(bun -e "console.log(require('./$package_link/package.json').version)")"
-      if [ "$package_version" != "$LIVESTORE_RELEASE_VERSION" ]; then
-        echo "Expected $package_link to contain exact DevTools artifact version $LIVESTORE_RELEASE_VERSION, found $package_version" >&2
-        exit 1
-      fi
-    done
-
-    (
-      cd tests/integration
-      CI=true \
-        FORCE_PLAYWRIGHT_VIA_CLI=1 \
-        PLAYWRIGHT_SUITE=devtools \
-        PLAYWRIGHT_HEADLESS="''${PLAYWRIGHT_HEADLESS:-1}" \
-        LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
-        DT_PASSTHROUGH=1 \
-        ./node_modules/.bin/playwright test \
-          src/tests/playwright/devtools/web.play.ts \
-          --reporter=line
-    )
-
-    certification_path="''${LIVESTORE_DEVTOOLS_CERTIFICATION:-release/devtools-artifact.certification.json}"
-    evidence="DevTools exact-artifact liveness passed for $LIVESTORE_RELEASE_VERSION"
-    if [[ -n "''${GITHUB_SERVER_URL:-}" && -n "''${GITHUB_REPOSITORY:-}" && -n "''${GITHUB_RUN_ID:-}" ]]; then
-      evidence="$evidence in $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-    fi
-    bun scripts/src/commands/devtools-artifact.ts certify \
-      --manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}" \
-      --version "$LIVESTORE_RELEASE_VERSION" \
-      --out "$certification_path" \
-      --evidence "$evidence"
-    if [[ -n "''${GITHUB_ENV:-}" ]]; then
-      echo "LIVESTORE_DEVTOOLS_CERTIFICATION=$certification_path" >> "$GITHUB_ENV"
-    fi
-  '';
-
-  devtoolsArtifactRepackTask =
-    {
-      description,
-      publishFlag,
-      withInstall ? true,
-    }:
-    {
-      inherit description;
-      exec = devtoolsArtifactRepackExec publishFlag;
-    }
-    // lib.optionalAttrs withInstall {
-      after = [ "pnpm:install" ];
-    };
+  pnpmRun = task: "pnpm run ${lib.escapeShellArg task}";
 in
 {
   imports = [
@@ -316,7 +173,7 @@ in
 
   tasks."lint:check:format" = {
     description = "Check code formatting with oxfmt";
-    exec = "oxfmt --check ${lintPathsArg}";
+    exec = pnpmRun "lint:check:format";
     # TODO(upstream): Restore execIfModified once https://github.com/cachix/devenv/pull/2423 lands.
     # devenv-tasks currently traverses into node_modules while hashing glob inputs.
     execIfModified = [ ];
@@ -324,7 +181,7 @@ in
 
   tasks."lint:check:oxlint" = {
     description = "Run oxlint linter";
-    exec = "oxlint --import-plugin --deny-warnings --type-aware --tsconfig tsconfig.dev.json ${lintPathsArg}";
+    exec = pnpmRun "lint:check:oxlint";
     # TODO(upstream): Restore execIfModified once https://github.com/cachix/devenv/pull/2423 lands.
     # devenv-tasks currently traverses into node_modules while hashing glob inputs.
     execIfModified = [ ];
@@ -334,171 +191,109 @@ in
   tasks."lint:check:lockfile" = {
     description = "Verify pnpm-lock.yaml matches package.json specifiers";
     after = [ "pnpm:install" ];
-    exec = ''
-      set -euo pipefail
-      store_dir="''${npm_config_store_dir:-''${PNPM_CONFIG_STORE_DIR:-''${PNPM_STORE_DIR:-$PWD/.devenv/pnpm-store}}}"
-      export PNPM_STORE_DIR="$store_dir"
-      export PNPM_CONFIG_STORE_DIR="$store_dir"
-      export npm_config_store_dir="$store_dir"
-      pnpm install \
-        --frozen-lockfile \
-        --ignore-scripts \
-        --config.confirmModulesPurge=false \
-        --config.side-effects-cache=false \
-        --config.verify-store-integrity=true \
-        --config.strict-store-pkg-content-check=true \
-        --config.package-import-method=clone-or-copy \
-        --pm-on-fail=ignore \
-        --config.store-dir="$store_dir"
-    '';
+    exec = pnpmRun "lint:check:lockfile";
   };
 
   tasks."lint:check" = {
     description = "Run all lint checks";
-    after = [
-      "lint:check:format"
-      "lint:check:oxlint"
-      "lint:check:lockfile"
-    ];
+    exec = pnpmRun "lint:check";
+    after = [ "pnpm:install" ];
   };
 
   tasks."lint:fix:format" = {
     description = "Fix code formatting with oxfmt";
-    exec = "oxfmt ${lintPathsArg}";
+    exec = pnpmRun "lint:fix:format";
   };
 
   tasks."lint:fix:oxlint" = {
     description = "Fix lint issues with oxlint";
-    exec = "oxlint --import-plugin --deny-warnings --fix --type-aware --tsconfig tsconfig.dev.json ${lintPathsArg}";
+    exec = pnpmRun "lint:fix:oxlint";
   };
 
   tasks."lint:fix" = {
     description = "Fix all lint issues";
-    after = [
-      "lint:fix:format"
-      "lint:fix:oxlint"
-    ];
+    exec = pnpmRun "lint:fix";
   };
 
   tasks."pnpm:update".after = lib.mkForce [ ];
 
+  tasks."ts:check".exec = lib.mkForce (pnpmRun "ts:check");
   tasks."ts:check".after = lib.mkForce [ "pnpm:install" ];
+  tasks."ts:check:strict".exec = lib.mkForce (pnpmRun "ts:check:strict");
   tasks."ts:check:strict".after = lib.mkForce [ "pnpm:install" ];
+  tasks."ts:build".exec = lib.mkForce (pnpmRun "ts:build");
   tasks."ts:build".after = lib.mkForce [ "pnpm:install" ];
+  tasks."ts:build-watch".exec = lib.mkForce (pnpmRun "ts:build-watch");
   tasks."ts:build-watch".after = lib.mkForce [ "pnpm:install" ];
+  tasks."ts:clean".exec = lib.mkForce (pnpmRun "ts:clean");
+  tasks."ts:emit".exec = lib.mkForce (pnpmRun "ts:emit");
   tasks."ts:emit".after = lib.mkForce [ "pnpm:install" ];
   tasks."ts:effect-lsp".after = lib.mkForce [ "pnpm:install" ];
 
   tasks."release:devtools-artifact:verify" = {
     description = "Verify a public LiveStore DevTools artifact handoff";
-    exec = ''
-      set -euo pipefail
-      cd "$DEVENV_ROOT"
-
-      artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
-      if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" || -n "''${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
-        : "''${LIVESTORE_DEVTOOLS_METADATA:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
-        : "''${LIVESTORE_DEVTOOLS_TARBALL:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
-        artifact_args=(--metadata "$LIVESTORE_DEVTOOLS_METADATA" --tarball "$LIVESTORE_DEVTOOLS_TARBALL")
-        if [[ -n "''${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
-          artifact_args+=(--chrome-zip "$LIVESTORE_DEVTOOLS_CHROME_ZIP")
-        fi
-      fi
-
-      bun scripts/src/commands/devtools-artifact.ts verify "''${artifact_args[@]}"
-    '';
+    exec = pnpmRun "release:devtools-artifact:verify";
     after = [ "pnpm:install" ];
   };
 
-  tasks."release:devtools-artifact:repack-dryrun" = devtoolsArtifactRepackTask {
+  tasks."release:devtools-artifact:repack-dryrun" = {
     description = "Verify and repack a public LiveStore DevTools artifact for a LiveStore release version";
-    publishFlag = "--dry-run";
+    exec = pnpmRun "release:devtools-artifact:repack-dryrun";
+    after = [ "pnpm:install" ];
   };
 
-  tasks."release:devtools-artifact:repack-dryrun:no-install" = devtoolsArtifactRepackTask {
+  tasks."release:devtools-artifact:repack-dryrun:no-install" = {
     description = "Verify and repack a public LiveStore DevTools artifact after release setup has already run";
-    publishFlag = "--dry-run";
-    withInstall = false;
+    exec = pnpmRun "release:devtools-artifact:repack-dryrun:no-install";
   };
 
   tasks."release:devtools-artifact:certify-liveness" = {
     description = "Repack the public DevTools artifact and run the strict Playwright liveness certification";
-    exec = devtoolsArtifactCertifyLivenessExec;
+    exec = pnpmRun "release:devtools-artifact:certify-liveness";
     after = [ "pnpm:install" ];
   };
 
   tasks."release:devtools-artifact:certify-liveness:no-install" = {
     description = "Run the strict DevTools artifact liveness certification after release setup has already run";
-    exec = devtoolsArtifactCertifyLivenessExec;
+    exec = pnpmRun "release:devtools-artifact:certify-liveness:no-install";
   };
 
-  tasks."release:devtools-artifact:publish" = devtoolsArtifactRepackTask {
+  tasks."release:devtools-artifact:publish" = {
     description = "Verify, repack, and publish a public LiveStore DevTools artifact for a LiveStore release version";
-    publishFlag = "--publish";
+    exec = pnpmRun "release:devtools-artifact:publish";
+    after = [ "pnpm:install" ];
   };
 
-  tasks."release:devtools-artifact:publish:no-install" = devtoolsArtifactRepackTask {
+  tasks."release:devtools-artifact:publish:no-install" = {
     description = "Verify, repack, and publish a public LiveStore DevTools artifact after release setup has already run";
-    publishFlag = "--publish";
-    withInstall = false;
+    exec = pnpmRun "release:devtools-artifact:publish:no-install";
   };
 
   tasks."release:changeset:check-pr" = {
     description = "Require PR-level changeset intent when public LiveStore package files change";
-    exec = ''
-      set -euo pipefail
-      cd "$DEVENV_ROOT"
-
-      bun scripts/src/commands/changesets.ts check-pr --base "''${CHANGESET_BASE_REF:-origin/main}"
-    '';
+    exec = pnpmRun "release:changeset:check-pr";
   };
 
   tasks."release:changeset:check-bodies" = {
     description = "Reject malformed changesets (empty frontmatter and empty body)";
-    exec = ''
-      set -euo pipefail
-      cd "$DEVENV_ROOT"
-
-      bun scripts/src/commands/changesets.ts check-bodies
-    '';
+    exec = pnpmRun "release:changeset:check-bodies";
   };
 
   tasks."release:changeset:status" = {
     description = "Show pending Changesets release status";
-    exec = ''
-      set -euo pipefail
-      cd "$DEVENV_ROOT"
-
-      DT_PASSTHROUGH=1 pnpm exec changeset status --since "''${CHANGESET_BASE_REF:-origin/main}"
-    '';
+    exec = pnpmRun "release:changeset:status";
     after = [ "pnpm:install" ];
   };
 
   tasks."release:changeset:version" = {
     description = "Prepare a Changesets release plan, regenerate manifests, and preserve prerelease intent when needed";
-    exec = ''
-      set -euo pipefail
-      cd "$DEVENV_ROOT"
-
-      DT_PASSTHROUGH=1 pnpm exec changeset version
-      bun scripts/src/commands/changesets.ts restore-prerelease-changesets
-      bun scripts/src/commands/changesets.ts sync-version-source
-      bun scripts/src/commands/changesets.ts sync-standalone-consumers
-      DT_PASSTHROUGH=1 pnpm install --lockfile-only --no-frozen-lockfile
-      bun scripts/src/commands/changesets.ts assert-fixed-versions
-      bun scripts/src/commands/changesets.ts write-release-plan --npm-tag "''${LIVESTORE_NPM_TAG:-latest}"
-    '';
+    exec = pnpmRun "release:changeset:version";
     after = [ "pnpm:install" ];
   };
 
   tasks."release:changeset:verify-baseline" = {
     description = "Verify the baseline changeset losslessly mirrors the handcrafted 0.4.0 changelog section";
-    exec = ''
-      set -euo pipefail
-      cd "$DEVENV_ROOT"
-
-      bun scripts/src/commands/changesets.ts verify-baseline-changelog
-    '';
+    exec = pnpmRun "release:changeset:verify-baseline";
   };
 
   # NOTE: check:quick is provided by effect-utils taskModules.check.

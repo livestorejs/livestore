@@ -137,18 +137,21 @@ through. If you use direnv, the repo's `.envrc` sources a git-ignored
 
 ### Common commands
 
-Inside `devenv shell`, the `dt` CLI is a thin wrapper around
-`devenv tasks run` that adds status-check caching and OTEL
-instrumentation. From outside the shell, use
-`devenv shell dt <task>` or `devenv tasks run <task>` directly.
+Repo-owned task command bodies live behind root package scripts. Use
+`pnpm run <task>` when you only need the command entrypoint. Inside
+`devenv shell`, the `dt` CLI remains a thin wrapper around
+`devenv tasks run` that adds setup dependencies, status-check caching, and OTEL
+instrumentation before delegating to those package scripts. From outside the
+shell, use `devenv shell dt <task>` or `devenv tasks run <task>` directly.
 Most-used tasks:
 
-- `dt ts:build` / `dt ts:build-watch` — build TypeScript across the monorepo
-- `dt ts:check` — run the TypeScript build/check
-- `dt lint:full` / `dt lint:full:fix` — run (and auto-fix) lint + format
-- `dt test:unit` / `dt test:perf` / `dt test:integration:*` — run test suites
-- `dt docs:dev` / `dt docs:build` / `dt docs:deploy` — docs workflows
-- `dt examples:install` / `dt examples:test` / `dt examples:deploy` —
+- `pnpm run ts:build` / `dt ts:build` — build TypeScript across the monorepo
+- `pnpm run ts:check` / `dt ts:check` — run the TypeScript build/check
+- `pnpm run lint:full` / `dt lint:full` — run lint + format
+- `pnpm run lint:full:fix` / `dt lint:full:fix` — auto-fix lint + format
+- `pnpm run test:unit` / `dt test:unit` — run unit tests
+- `pnpm run docs:dev` / `dt docs:dev` — start the docs workflow
+- `pnpm run examples:test` / `dt examples:test` —
   example workflows
 
 Release workflows are documented in

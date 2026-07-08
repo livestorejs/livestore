@@ -10,16 +10,16 @@ This repository uses [`devenv`](https://devenv.sh) for development environment m
 
 - For dependency management see ./contributor-docs/dependency-management.md
 
-### `mono` CLI
+### Package scripts and `mono` CLI
 
-Use the `mono` CLI for common workflows:
+Use root package scripts for task entrypoints; `dt` wraps the same task names with devenv setup/status behavior:
 
-- `dt lint:full` / `dt lint:full:fix` to run the linting checks
-- `mono test <unit|integration|perf>` to run the tests
+- `pnpm run lint:full` / `pnpm run lint:full:fix` or `dt lint:full` / `dt lint:full:fix` to run the linting checks
+- `pnpm run test:unit` / `pnpm run test:perf` or `mono test <unit|integration|perf>` to run the tests
   - Some tests can take a while to run.
-- `mono ts [--watch] [--clean]` to build the TypeScript code
-- `mono docs <dev|build|deploy>` for docs workflows
-- `mono examples <run|deploy|test>` for example workflows
+- `pnpm run ts:build` / `pnpm run ts:build-watch` or `mono ts [--watch] [--clean]` to build the TypeScript code
+- `pnpm run docs:<dev|build|deploy>` or `mono docs <dev|build|deploy>` for docs workflows
+- `pnpm run examples:<deploy|test>` or `mono examples <run|deploy|test>` for example workflows
 - ... and more
 
 ## Testing
@@ -44,7 +44,7 @@ Use GitHub issues or an issue checklist for non-trivial work.
 ## Git
 
 - The default branch of this repository is `main`.
-- Before committing, run `dt lint:full:fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
+- Before committing, run `pnpm run lint:full:fix` or `dt lint:full:fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
 
 ### Branch Naming Conventions
 
@@ -54,9 +54,9 @@ Use GitHub issues or an issue checklist for non-trivial work.
 
 ### Development Workflow
 
-- Run the full test suite before pushing: `dt test:run`
-- Ensure TypeScript compilation passes: `dt ts:check`
-- Use `dt lint:full:fix` to automatically fix formatting issues
+- Run the relevant test suite before pushing: `pnpm run test:unit` plus any affected `pnpm run test:integration:*` or `pnpm run test:perf` task
+- Ensure TypeScript compilation passes: `pnpm run ts:check` or `dt ts:check`
+- Use `pnpm run lint:full:fix` or `dt lint:full:fix` to automatically fix formatting issues
 
 ### Issues
 

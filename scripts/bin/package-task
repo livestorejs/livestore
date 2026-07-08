@@ -1,0 +1,493 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+task="${1:?Usage: package-task <task-name> [args...]}"
+shift || true
+
+workspace_root="${WORKSPACE_ROOT:-$(git rev-parse --show-toplevel)}"
+cd "$workspace_root"
+export WORKSPACE_ROOT="$workspace_root"
+export MONOREPO_ROOT="${MONOREPO_ROOT:-$workspace_root}"
+export PATH="$workspace_root/scripts/bin:$workspace_root/scripts/node_modules/.bin:$PATH"
+
+run_task() {
+  bash scripts/bin/package-task "$@"
+}
+
+devtools_artifact_verify() {
+  artifact_args=(--manifest "${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
+  if [[ -n "${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "${LIVESTORE_DEVTOOLS_TARBALL:-}" || -n "${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
+    : "${LIVESTORE_DEVTOOLS_METADATA:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
+    : "${LIVESTORE_DEVTOOLS_TARBALL:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
+    artifact_args=(--metadata "$LIVESTORE_DEVTOOLS_METADATA" --tarball "$LIVESTORE_DEVTOOLS_TARBALL")
+    if [[ -n "${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
+      artifact_args+=(--chrome-zip "$LIVESTORE_DEVTOOLS_CHROME_ZIP")
+    fi
+  fi
+
+  bun scripts/src/commands/devtools-artifact.ts verify "${artifact_args[@]}"
+}
+
+devtools_artifact_repack() {
+  local publish_flag="${1:?Missing repack publish flag}"
+
+  : "${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
+  artifact_args=(--manifest "${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
+  if [[ -n "${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "${LIVESTORE_DEVTOOLS_TARBALL:-}" || -n "${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
+    echo "release:devtools-artifact repack requires LIVESTORE_DEVTOOLS_MANIFEST so release-candidate certification can bind to the selected artifact." >&2
+    echo "Use release:devtools-artifact:verify for direct metadata/tarball integrity checks." >&2
+    exit 1
+  fi
+
+  local certification_path="${LIVESTORE_DEVTOOLS_CERTIFICATION:-release/devtools-artifact.certification.json}"
+  if [[ -f "$certification_path" ]]; then
+    artifact_args+=(--certification "$certification_path")
+  fi
+  if [[ "${LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK:-}" = "1" ]]; then
+    artifact_args+=(--allow-uncertified)
+  fi
+
+  bun scripts/src/commands/devtools-artifact.ts repack \
+    "${artifact_args[@]}" \
+    --version "$LIVESTORE_RELEASE_VERSION" \
+    --out-dir "${LIVESTORE_DEVTOOLS_OUT_DIR:-$(mktemp -d)}" \
+    "$publish_flag"
+}
+
+devtools_artifact_certify_liveness() {
+  : "${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
+
+  local out_dir="${LIVESTORE_DEVTOOLS_OUT_DIR:-$(mktemp -d)}"
+  mkdir -p "$out_dir"
+  export LIVESTORE_DEVTOOLS_OUT_DIR="$out_dir"
+
+  export LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK=1
+  devtools_artifact_repack --dry-run
+  unset LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK
+
+  local repacked_tarball="$out_dir/livestore-devtools-vite-$LIVESTORE_RELEASE_VERSION.tgz"
+  if [[ ! -f "$repacked_tarball" ]]; then
+    echo "Expected repacked DevTools tarball not found: $repacked_tarball" >&2
+    exit 1
+  fi
+
+  local playwright_bin="tests/integration/node_modules/.bin/playwright"
+  if [[ ! -x "$playwright_bin" ]]; then
+    echo "Expected Playwright binary not found: $playwright_bin" >&2
+    echo "Run release:devtools-artifact:certify-liveness instead of the no-install variant when dependencies are not installed yet." >&2
+    exit 1
+  fi
+
+  local backup_dir
+  backup_dir="$(mktemp -d)"
+  package_links=("tests/integration/node_modules/@livestore/devtools-vite")
+
+  for index in "${!package_links[@]}"; do
+    local package_link="${package_links[$index]}"
+    if [[ ! -e "$package_link" ]]; then
+      echo "Expected installed @livestore/devtools-vite package link not found: $package_link" >&2
+      exit 1
+    fi
+    cp -a "$package_link" "$backup_dir/devtools-vite-$index"
+  done
+
+  restore_node_modules() {
+    for index in "${!package_links[@]}"; do
+      local package_link="${package_links[$index]}"
+      rm -rf "$package_link"
+      cp -a "$backup_dir/devtools-vite-$index" "$package_link"
+    done
+    rm -rf "$backup_dir"
+  }
+  trap restore_node_modules EXIT
+
+  local unpack_dir
+  unpack_dir="$(mktemp -d)"
+  tar -xzf "$repacked_tarball" -C "$unpack_dir"
+  for package_link in "${package_links[@]}"; do
+    rm -rf "$package_link"
+    cp -a "$unpack_dir/package" "$package_link"
+  done
+  rm -rf "$unpack_dir"
+
+  for package_link in "${package_links[@]}"; do
+    local package_version
+    package_version="$(bun -e "console.log(require('./$package_link/package.json').version)")"
+    if [[ "$package_version" != "$LIVESTORE_RELEASE_VERSION" ]]; then
+      echo "Expected $package_link to contain exact DevTools artifact version $LIVESTORE_RELEASE_VERSION, found $package_version" >&2
+      exit 1
+    fi
+  done
+
+  (
+    cd tests/integration
+    CI=true \
+      FORCE_PLAYWRIGHT_VIA_CLI=1 \
+      PLAYWRIGHT_SUITE=devtools \
+      PLAYWRIGHT_HEADLESS="${PLAYWRIGHT_HEADLESS:-1}" \
+      LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
+      DT_PASSTHROUGH=1 \
+      ./node_modules/.bin/playwright test \
+        src/tests/playwright/devtools/web.play.ts \
+        --reporter=line
+  )
+
+  local certification_path="${LIVESTORE_DEVTOOLS_CERTIFICATION:-release/devtools-artifact.certification.json}"
+  local evidence="DevTools exact-artifact liveness passed for $LIVESTORE_RELEASE_VERSION"
+  if [[ -n "${GITHUB_SERVER_URL:-}" && -n "${GITHUB_REPOSITORY:-}" && -n "${GITHUB_RUN_ID:-}" ]]; then
+    evidence="$evidence in $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+  fi
+  bun scripts/src/commands/devtools-artifact.ts certify \
+    --manifest "${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}" \
+    --version "$LIVESTORE_RELEASE_VERSION" \
+    --out "$certification_path" \
+    --evidence "$evidence"
+  if [[ -n "${GITHUB_ENV:-}" ]]; then
+    echo "LIVESTORE_DEVTOOLS_CERTIFICATION=$certification_path" >> "$GITHUB_ENV"
+  fi
+}
+
+case "$task" in
+  ts:build | ts:check | ts:check:strict)
+    mono ts "$@"
+    ;;
+  ts:build-watch)
+    mono ts --watch "$@"
+    ;;
+  ts:clean)
+    mono ts --clean "$@"
+    ;;
+  ts:emit)
+    mono ts --no-check "$@"
+    ;;
+  lint:check:format)
+    oxfmt --check packages tests scripts docs .github "$@"
+    ;;
+  lint:check:oxlint)
+    oxlint --import-plugin --deny-warnings --type-aware --tsconfig tsconfig.dev.json packages tests scripts docs .github "$@"
+    ;;
+  lint:check:lockfile)
+    store_dir="${npm_config_store_dir:-${PNPM_CONFIG_STORE_DIR:-${PNPM_STORE_DIR:-$PWD/.devenv/pnpm-store}}}"
+    export PNPM_STORE_DIR="$store_dir"
+    export PNPM_CONFIG_STORE_DIR="$store_dir"
+    export npm_config_store_dir="$store_dir"
+    pnpm install \
+      --frozen-lockfile \
+      --ignore-scripts \
+      --config.confirmModulesPurge=false \
+      --config.side-effects-cache=false \
+      --config.verify-store-integrity=true \
+      --config.strict-store-pkg-content-check=true \
+      --config.package-import-method=clone-or-copy \
+      --pm-on-fail=ignore \
+      --config.store-dir="$store_dir" \
+      "$@"
+    ;;
+  lint:check)
+    run_task lint:check:format
+    run_task lint:check:oxlint
+    run_task lint:check:lockfile
+    ;;
+  lint:fix:format)
+    oxfmt packages tests scripts docs .github "$@"
+    ;;
+  lint:fix:oxlint)
+    oxlint --import-plugin --deny-warnings --fix --type-aware --tsconfig tsconfig.dev.json packages tests scripts docs .github "$@"
+    ;;
+  lint:fix)
+    run_task lint:fix:format
+    run_task lint:fix:oxlint
+    ;;
+  lint:check:madge)
+    ./scripts/node_modules/.bin/madge --circular --no-spinner examples/*/src packages/*/*/src "$@"
+    ;;
+  lint:check:md-imports)
+    matches="$(grep -rl '^import ' docs/src/content/docs --include='*.md' 2>/dev/null || true)"
+    violations="$(printf '%s\n' "$matches" | grep -v '^docs/src/content/docs/api/' || true)"
+
+    if [[ -n "$violations" ]]; then
+      echo "Error: Found .md files with import statements. These must be renamed to .mdx:"
+      printf '%s\n' "$violations" | while IFS= read -r path; do
+        [[ -n "$path" ]] && echo "  - $path"
+      done
+      exit 1
+    fi
+    ;;
+  lint:full)
+    run_task lint:check
+    run_task lint:check:madge
+    run_task lint:check:md-imports
+    ;;
+  lint:full:with-megarepo-check)
+    run_task lint:full
+    devenv tasks run mr:check --mode before --no-tui
+    ;;
+  lint:full:fix)
+    run_task lint:fix
+    run_task lint:check:madge
+    run_task lint:check:md-imports
+    ;;
+  test:unit)
+    mono test unit "$@"
+    ;;
+  test:perf)
+    mono test perf "$@"
+    ;;
+  test:integration:misc)
+    mono test integration misc "$@"
+    ;;
+  test:integration:todomvc)
+    mono test integration todomvc "$@"
+    ;;
+  test:integration:devtools)
+    mono test integration devtools "$@"
+    ;;
+  test:integration:wa-sqlite)
+    mono test integration wa-sqlite "$@"
+    ;;
+  test:integration:sync-provider)
+    mono test integration sync-provider "$@"
+    ;;
+  test:integration:sync-provider:mock)
+    mono test integration sync-provider --provider mock "$@"
+    ;;
+  test:integration:sync-provider:cf-http-d1)
+    mono test integration sync-provider --provider cf-http-d1 "$@"
+    ;;
+  test:integration:sync-provider:cf-http-do)
+    mono test integration sync-provider --provider cf-http-do "$@"
+    ;;
+  test:integration:sync-provider:cf-ws-d1)
+    mono test integration sync-provider --provider cf-ws-d1 "$@"
+    ;;
+  test:integration:sync-provider:cf-ws-do)
+    mono test integration sync-provider --provider cf-ws-do "$@"
+    ;;
+  test:integration:sync-provider:cf-do-rpc-d1)
+    mono test integration sync-provider --provider cf-do-rpc-d1 "$@"
+    ;;
+  test:integration:sync-provider:cf-do-rpc-do)
+    mono test integration sync-provider --provider cf-do-rpc-do "$@"
+    ;;
+  test:integration:sync-provider:matrix)
+    provider="${TEST_SYNC_PROVIDER:-}"
+    if [[ -z "$provider" ]]; then
+      echo "Error: TEST_SYNC_PROVIDER is required"
+      exit 1
+    fi
+
+    if [[ "$provider" == cf-* ]]; then
+      if mono test integration sync-provider --provider "$provider" "$@"; then
+        exit 0
+      fi
+      echo "::warning::Cloudflare sync-provider tests for $provider failed (flaky; see https://github.com/livestorejs/livestore/issues/625 and upstream https://github.com/cloudflare/workers-sdk/issues/11122)"
+      exit 0
+    fi
+
+    mono test integration sync-provider --provider "$provider" "$@"
+    ;;
+  test:integration:playwright:suite)
+    suite="${PLAYWRIGHT_SUITE:-}"
+    if [[ -z "$suite" ]]; then
+      echo "Error: PLAYWRIGHT_SUITE is required"
+      exit 1
+    fi
+
+    if [[ "$suite" = "devtools" ]]; then
+      mono test integration devtools "$@" || echo "::warning::Script failed but continuing"
+      exit 0
+    fi
+
+    mono test integration "$suite" "$@"
+    ;;
+  test:integration:playwright:upload-trace)
+    suite="${PLAYWRIGHT_SUITE:-}"
+    if [[ -z "$suite" ]]; then
+      echo "Error: PLAYWRIGHT_SUITE is required"
+      exit 1
+    fi
+
+    if [[ -n "${NETLIFY_AUTH_TOKEN:-}" ]]; then
+      bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias "$suite-$(git rev-parse --short HEAD)" "$@"
+    else
+      echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
+    fi
+    ;;
+  test:integration:wa-sqlite:build)
+    (cd packages/@livestore/wa-sqlite && nix run .#build "$@")
+    ;;
+  docs:dev)
+    mono docs dev "$@"
+    ;;
+  docs:build)
+    mono docs build "$@"
+    ;;
+  docs:build:api)
+    mono docs build --api-docs "$@"
+    ;;
+  docs:deploy)
+    mono docs deploy "$@"
+    ;;
+  docs:deploy:prod)
+    mono docs deploy --prod --build --purge-cdn "$@"
+    ;;
+  docs:deploy:prod:phase:build-deploy)
+    mkdir -p tmp/ci-docs-prod
+    export LIVESTORE_DOCS_SITE_URL="https://docs.livestore.dev"
+    (
+      while true; do
+        echo "[docs-prod-heartbeat] $(date -u +%Y-%m-%dT%H:%M:%SZ) netlify build+deploy in progress"
+        pgrep -af 'astro|chromium|chrome_crashpad_handler|netlify|node|bun|mono' || true
+        sleep 60
+      done
+    ) > tmp/ci-docs-prod/01-build-deploy-heartbeat.log 2>&1 &
+    HEARTBEAT_PID=$!
+    cleanup() {
+      kill "$HEARTBEAT_PID" 2>/dev/null || true
+    }
+    trap cleanup EXIT
+    timeout --signal=TERM --kill-after=2m 25m mono docs deploy --prod --step=upload "$@" 2>&1 | tee tmp/ci-docs-prod/01-build-deploy.log
+    ;;
+  docs:deploy:prod:phase:verify)
+    mkdir -p tmp/ci-docs-prod
+    timeout --signal=TERM --kill-after=1m 10m mono docs deploy --prod --step=verify "$@" 2>&1 | tee tmp/ci-docs-prod/05-verify.log
+    ;;
+  docs:deploy:prod:phase:purge)
+    mkdir -p tmp/ci-docs-prod
+    timeout --signal=TERM --kill-after=1m 10m mono docs deploy --prod --step=purge "$@" 2>&1 | tee tmp/ci-docs-prod/06-purge.log
+    ;;
+  docs:search:sync:prod)
+    : "${MXBAI_API_KEY:?Missing MXBAI_API_KEY secret}"
+    : "${MXBAI_VECTOR_STORE_ID:?Missing MXBAI_VECTOR_STORE_ID secret}"
+    timeout --signal=TERM --kill-after=1m 10m \
+      pnpm --dir docs exec mxbai store sync "$MXBAI_VECTOR_STORE_ID" \
+        "./src/content/**/*.mdx" \
+        "./src/content/**/*.md" \
+        --yes --strategy fast "$@"
+    ;;
+  docs:deploy:prod:diagnostics)
+    mkdir -p tmp/ci-docs-prod
+    date -u +%Y-%m-%dT%H:%M:%SZ | tee tmp/ci-docs-prod/failure-timestamp.log
+    ps -eo pid,ppid,etime,pcpu,pmem,comm,args > tmp/ci-docs-prod/ps-full.log || true
+    pgrep -af 'astro|chromium|chrome_crashpad_handler|netlify|node|mono|dt' > tmp/ci-docs-prod/pgrep-procs.log || true
+    if [[ -f tmp/ci-docs-prod/deploy-state.json ]]; then
+      echo "--- deploy-state.json ---"
+      cat tmp/ci-docs-prod/deploy-state.json
+    fi
+    ;;
+  docs:build:phase:snippets)
+    mkdir -p tmp/ci-docs
+    timeout --signal=TERM --kill-after=2m 20m mono docs snippets build "$@" 2>&1 | tee tmp/ci-docs/01-snippets.log
+    ;;
+  docs:build:phase:diagrams)
+    mkdir -p tmp/ci-docs
+    timeout --signal=TERM --kill-after=2m 20m mono docs diagrams build "$@" 2>&1 | tee tmp/ci-docs/02-diagrams.log
+    ;;
+  docs:build:phase:astro)
+    mkdir -p tmp/ci-docs
+    (
+      while true; do
+        echo "[docs-heartbeat] $(date -u +%Y-%m-%dT%H:%M:%SZ) astro build still running"
+        pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono' || true
+        sleep 60
+      done
+    ) > tmp/ci-docs/03-heartbeat.log 2>&1 &
+    HEARTBEAT_PID=$!
+    cleanup() {
+      kill "$HEARTBEAT_PID" 2>/dev/null || true
+    }
+    trap cleanup EXIT
+    timeout --signal=TERM --kill-after=2m 20m mono docs build --api-docs --skip-deps "$@" 2>&1 | tee tmp/ci-docs/03-astro-build.log
+    ;;
+  docs:build:diagnostics)
+    mkdir -p tmp/ci-docs
+    date -u +%Y-%m-%dT%H:%M:%SZ | tee tmp/ci-docs/failure-timestamp.log
+    ps -eo pid,ppid,etime,pcpu,pmem,comm,args > tmp/ci-docs/ps-full.log || true
+    pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono|dt' > tmp/ci-docs/pgrep-build-procs.log || true
+    ;;
+  examples:test)
+    mono examples test "$@"
+    ;;
+  examples:deploy)
+    mono examples deploy "$@"
+    ;;
+  examples:deploy:prod)
+    mono examples deploy --prod "$@"
+    ;;
+  examples:validate-links)
+    mono examples validate-links "$@"
+    ;;
+  examples:install)
+    export npm_config_manage_package_manager_versions=false
+    pnpm install --frozen-lockfile --dir examples "$@"
+    ;;
+  examples:build:src)
+    export npm_config_manage_package_manager_versions=false
+    pnpm --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build "$@"
+    ;;
+  release:snapshot)
+    mono release snapshot "$@"
+    ;;
+  release:snapshot:git-sha)
+    if [[ -z "${GIT_SHA:-}" ]]; then
+      echo "Error: GIT_SHA is required"
+      exit 1
+    fi
+    mono release snapshot --git-sha="$GIT_SHA" --yes "$@"
+    ;;
+  release:plan)
+    : "${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
+    mono release plan \
+      --release-version "$LIVESTORE_RELEASE_VERSION" \
+      --npm-tag "${LIVESTORE_NPM_TAG:-latest}" "$@"
+    ;;
+  release:notes:extract)
+    mono release extract-release-notes "$@"
+    ;;
+  release:stable:dryrun)
+    mono release stable --dry-run --yes "$@"
+    ;;
+  release:stable:publish)
+    mono release stable --yes --allow-existing "$@"
+    ;;
+  release:devtools-artifact:verify)
+    devtools_artifact_verify "$@"
+    ;;
+  release:devtools-artifact:repack-dryrun | release:devtools-artifact:repack-dryrun:no-install)
+    devtools_artifact_repack --dry-run "$@"
+    ;;
+  release:devtools-artifact:certify-liveness | release:devtools-artifact:certify-liveness:no-install)
+    devtools_artifact_certify_liveness "$@"
+    ;;
+  release:devtools-artifact:publish | release:devtools-artifact:publish:no-install)
+    devtools_artifact_repack --publish "$@"
+    ;;
+  release:changeset:check-pr)
+    bun scripts/src/commands/changesets.ts check-pr --base "${CHANGESET_BASE_REF:-origin/main}" "$@"
+    ;;
+  release:changeset:check-bodies)
+    bun scripts/src/commands/changesets.ts check-bodies "$@"
+    ;;
+  release:changeset:status)
+    DT_PASSTHROUGH=1 pnpm exec changeset status --since "${CHANGESET_BASE_REF:-origin/main}" "$@"
+    ;;
+  release:changeset:version)
+    DT_PASSTHROUGH=1 pnpm exec changeset version "$@"
+    bun scripts/src/commands/changesets.ts restore-prerelease-changesets
+    bun scripts/src/commands/changesets.ts sync-version-source
+    bun scripts/src/commands/changesets.ts sync-standalone-consumers
+    DT_PASSTHROUGH=1 pnpm install --lockfile-only --no-frozen-lockfile
+    bun scripts/src/commands/changesets.ts assert-fixed-versions
+    bun scripts/src/commands/changesets.ts write-release-plan --npm-tag "${LIVESTORE_NPM_TAG:-latest}"
+    ;;
+  release:changeset:verify-baseline)
+    bun scripts/src/commands/changesets.ts verify-baseline-changelog "$@"
+    ;;
+  github:rulesets:check)
+    mono github rulesets check "$@"
+    ;;
+  *)
+    echo "Unknown package task: $task" >&2
+    exit 1
+    ;;
+esac
