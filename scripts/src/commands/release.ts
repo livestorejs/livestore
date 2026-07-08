@@ -567,7 +567,8 @@ export const releasePlanCommand = Cli.Command.make(
     npmTag: Cli.Flag.string('npm-tag').pipe(Cli.Flag.withDefault('latest')),
     cwd: Cli.Flag.string('cwd').pipe(
       Cli.Flag.withDefault(
-        process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
+        process.env.WORKSPACE_ROOT ??
+          shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run inside 'devenv shell'`),
       ),
     ),
   },
@@ -590,7 +591,8 @@ export const releaseStableCommand = Cli.Command.make(
     ),
     cwd: Cli.Flag.string('cwd').pipe(
       Cli.Flag.withDefault(
-        process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
+        process.env.WORKSPACE_ROOT ??
+          shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run inside 'devenv shell'`),
       ),
     ),
     tscBin: Cli.Flag.string('tsc-bin').pipe(Cli.Flag.optional),
@@ -647,7 +649,8 @@ export const releaseSnapshotCommand = Cli.Command.make(
     ),
     cwd: Cli.Flag.string('cwd').pipe(
       Cli.Flag.withDefault(
-        process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
+        process.env.WORKSPACE_ROOT ??
+          shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run inside 'devenv shell'`),
       ),
     ),
     versionOption: Cli.Flag.string('version').pipe(Cli.Flag.optional),
@@ -706,7 +709,8 @@ export const releaseNotesExtractCommand = Cli.Command.make(
     plan: Cli.Flag.string('plan').pipe(Cli.Flag.withDefault('release/release-plan.json')),
     cwd: Cli.Flag.string('cwd').pipe(
       Cli.Flag.withDefault(
-        process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
+        process.env.WORKSPACE_ROOT ??
+          shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run inside 'devenv shell'`),
       ),
     ),
   },

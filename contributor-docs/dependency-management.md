@@ -6,10 +6,10 @@ Update all NPM dependencies across the entire monorepo using the automated TypeS
 
 ```bash
 # 1. Dry run to preview changes
-direnv exec . mono update-deps --dry-run
+devenv shell mono update-deps --dry-run
 
 # 2. Execute updates (Expo constraints applied globally for consistency)
-direnv exec . mono update-deps
+devenv shell mono update-deps
 
 # 3. Review changes
 git diff package.json packages/*/package.json examples/*/package.json pnpm-workspace.yaml pnpm-lock.yaml
@@ -26,8 +26,8 @@ git diff package.json packages/*/package.json examples/*/package.json pnpm-works
 --validate        # Run validation after updates (default: true)
 
 # Examples:
-direnv exec . mono update-deps --target patch --dry-run
-direnv exec . mono update-deps --validate false
+devenv shell mono update-deps --target patch --dry-run
+devenv shell mono update-deps --validate false
 ```
 
 ## Version Constants Update
@@ -111,9 +111,9 @@ After dependency updates, verify these meta-items:
 
 ## Troubleshooting
 
-**"Command not found" errors:** Use `direnv exec .` prefix for all commands
+**"Command not found" errors:** Run commands inside `devenv shell`, or prefix one-off commands with `devenv shell`
 
-**Script execution issues:** Ensure TypeScript builds pass: `direnv exec . mono ts`
+**Script execution issues:** Ensure TypeScript builds pass: `devenv shell mono ts`
 
 **Expo compatibility:** Check [Expo SDK docs](https://docs.expo.dev/versions/latest/) before updating React
 

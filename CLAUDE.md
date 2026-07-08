@@ -81,7 +81,7 @@ Checklist:
 
 ### Environment Variables
 
-- Keep sensitive environment variables in `.envrc.local` and never commit them to the repository.
+- Keep sensitive environment variables in your local shell or an untracked env file and never commit them to the repository.
 
 ## Documentation / Examples
 

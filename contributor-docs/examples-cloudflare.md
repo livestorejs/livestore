@@ -12,11 +12,11 @@ The script uses the directory name inside `/examples` as the `<slug>` (for examp
 
 ## Prerequisites
 
-- Run `direnv allow` so the workspace environment variables are loaded (including `WORKSPACE_ROOT`).
+- Run commands through `devenv shell` so the workspace environment variables are loaded (including `WORKSPACE_ROOT`).
 - Authenticate with Cloudflare:
   ```bash
-  direnv exec . pnpm --filter @livestore/utils-dev exec wrangler login
-  direnv exec . pnpm --filter @livestore/utils-dev exec wrangler whoami            # should list the LiveStore account
+  devenv shell pnpm --filter @livestore/utils-dev exec wrangler login
+  devenv shell pnpm --filter @livestore/utils-dev exec wrangler whoami            # should list the LiveStore account
   ```
 - (Optional) A Cloudflare API token (`CLOUDFLARE_API_TOKEN`) allows headless deploys in CI, but interactive work only requires `wrangler login`.
 - Verify that the target Worker does not already exist or can be replaced. `mono examples deploy` emits the Workers.dev URL so you can sanity-check the new build.
@@ -24,10 +24,10 @@ The script uses the directory name inside `/examples` as the `<slug>` (for examp
 ## Running Deployments
 
 ```bash
-direnv exec . mono examples deploy              # build + deploy all configured examples
-direnv exec . mono examples deploy --example-filter web-
-direnv exec . mono examples deploy --prod       # stable release versions only
-direnv exec . mono examples validate-links      # verify published prod/dev demo URLs
+devenv shell mono examples deploy              # build + deploy all configured examples
+devenv shell mono examples deploy --example-filter web-
+devenv shell mono examples deploy --prod       # stable release versions only
+devenv shell mono examples validate-links      # verify published prod/dev demo URLs
 ```
 
 The deploy command builds examples in parallel (three at a time) and retries Worker uploads twice. Preview Workers are accessible exclusively via their Workers.dev host names. The validation command checks the repo-owned public deployment metadata in `packages/@local/shared/src/example-deployments.ts` without following redirects, so intentional route redirects such as LinearLite remain visible.
@@ -38,12 +38,12 @@ The deploy command builds examples in parallel (three at a time) and retries Wor
 2. Ensure the example’s `package.json` has `@cloudflare/vite-plugin` and `wrangler` in `devDependencies`, plus a `wrangler.toml` with `[assets]` pointing at the built client output.
 3. Add `[env.prod]`, `[env.preview]`, and `[env.dev]` sections in `wrangler.toml`; duplicate any bindings (Durable Objects, D1, queues, secrets, etc.) inside each environment block because Wrangler does not inherit them automatically.
 4. Provision Cloudflare resources if needed (Durable Objects, D1, secrets) via `wrangler`. Update the manifest with any required metadata.
-5. Run `direnv exec . mono examples deploy --example-filter <slug>` locally to verify the Worker deploys.
+5. Run `devenv shell mono examples deploy --example-filter <slug>` locally to verify the Worker deploys.
 6. Add the public prod/dev URL contract to `packages/@local/shared/src/example-deployments.ts` when the example should be linked from docs.
 7. Update `docs/src/data/examples.ts` to consume the shared deployment entry instead of hard-coding URLs.
-8. Run `direnv exec . mono examples validate-links --example-filter <slug>` to verify the public demo endpoints.
+8. Run `devenv shell mono examples validate-links --example-filter <slug>` to verify the public demo endpoints.
 
 ## Troubleshooting
 
-- `wrangler deploy` fails with `Not logged in`: re-run `direnv exec . pnpm --filter @livestore/utils-dev exec wrangler login`.
+- `wrangler deploy` fails with `Not logged in`: re-run `devenv shell pnpm --filter @livestore/utils-dev exec wrangler login`.
 - Preview Worker unavailable: the worker is deployed at `https://<worker-name>.livestore.workers.dev`. Check `wrangler deployments list --name <worker-name>` for status.

@@ -12,19 +12,7 @@
 # Fish: Installed globally to ~/.config/fish/completions (works automatically)
 #
 # Zsh: Generated in project-local $WORKSPACE_ROOT/scripts/.completions/zsh/site-functions
-#      Requires one-time setup in ~/.zshrc (AFTER the direnv hook):
-#
-#        # Reload zsh completions when LIVESTORE_ZSH_COMPLETIONS is set by direnv
-#        typeset -gA _direnv_completions_loaded
-#        _direnv_completions_hook() {
-#          [[ -z "$LIVESTORE_ZSH_COMPLETIONS" ]] && return
-#          [[ -n "${_direnv_completions_loaded[$LIVESTORE_ZSH_COMPLETIONS]}" ]] && return
-#          _direnv_completions_loaded[$LIVESTORE_ZSH_COMPLETIONS]=1
-#          autoload -Uz compinit && compinit
-#        }
-#        autoload -Uz add-zsh-hook && add-zsh-hook precmd _direnv_completions_hook
-#
-# See also: https://github.com/direnv/direnv/issues/443
+#      and loaded by devenv.nix enterShell via FPATH.
 
 maybe_generate_completions() {
   local src="$1"
@@ -37,7 +25,7 @@ maybe_generate_completions() {
   fi
 }
 
-# Fish completions (global install - no project-local support in fish+direnv)
+# Fish completions (global install)
 if command -v fish >/dev/null 2>&1; then
   mkdir -p "$HOME/.config/fish/completions"
 

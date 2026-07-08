@@ -22,7 +22,7 @@ import { emitWorkflowReportRecord, nowIsoUtc } from '../shared/workflow-report.t
 import { exportMarkdownCommand } from './docs-export.ts'
 
 const workspaceRoot =
-  process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
+  process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run inside 'devenv shell'`)
 const docsPath = `${workspaceRoot}/docs`
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 

@@ -27,7 +27,7 @@ export const exportMarkdownCommand = Cli.Command.make(
       workspaceRootOption._tag === 'Some'
         ? workspaceRootOption.value
         : (process.env.WORKSPACE_ROOT ??
-          shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`))
+          shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run inside 'devenv shell'`))
     const docsRoot = path.join(workspaceRoot, 'docs')
     const contentRoot = path.join(docsRoot, 'src', 'content', 'docs')
     const outputDir =
