@@ -124,7 +124,6 @@ in
     (effectUtils.lib.mkPnpm { inherit pkgs; })
     pkgs.nodejs_24
     pkgs.typescript
-    pkgs.oxfmt
     # CLIs from effect-utils (Nix-built packages)
   ]
   ++ [ effectUtilsPackages.effect-tsgo ]

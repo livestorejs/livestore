@@ -70,10 +70,10 @@ cd livestore
 devenv shell
 ```
 
-Entering the shell builds the Nix environment, puts the full toolchain
-(Node.js, Bun, pnpm, `dt`, `mono`, oxlint, oxfmt, etc.) on `$PATH`, and
-runs the project `setup` task (which installs pnpm deps and builds
-TypeScript).
+Entering the shell builds the Nix environment, puts the base toolchain
+(Node.js, Bun, pnpm, `dt`, `mono`, etc.) on `$PATH`, and runs the project
+`setup` task (which installs pnpm deps, including package-managed lint and
+format tools, and builds TypeScript).
 
 ## Working with devenv
 

@@ -33,6 +33,7 @@
     "@types/semver": "^7.7.0",
     "effect": "4.0.0-beta.83",
     "madge": "^8.0.0",
+    "oxfmt": "0.57.0",
     "oxlint": "1.39.0",
     "oxlint-tsgolint": "0.18.0",
     "semver": "^7.7.3",
