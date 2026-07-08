@@ -17,7 +17,6 @@ export {
   createOptimisticEventSchema,
   tableIsClientDocumentTable,
 } from './client-document-def.ts'
-export * from './column-annotations.ts'
 export * from './column-spec.ts'
 export * from './table-def.ts'
 
