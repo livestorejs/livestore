@@ -7,10 +7,10 @@ import { test } from '../fixtures.ts'
 test.describe('Streaming latency', () => {
   test('stream 1.000 events', async ({ page }, _testInfo) => {
     await test.step('prepare', async () => {
-      await page.goto('/')
-      await page.getByTestId('reset-harness').click()
-      await expect(page.getByTestId('app')).toBeVisible()
+      await resetHarness(page)
       await page.getByTestId('seed-1k').click()
+      await expect(page.getByText('Todo count: 1,000')).toBeVisible({ timeout: 60_000 })
+      await expect(page.getByText('Upstream head: 1000')).toBeVisible({ timeout: 60_000 })
       await expect(page.getByTestId('syncstate')).toHaveText('Synced', { timeout: 60000 })
       await page.requestGC()
     })
@@ -119,10 +119,15 @@ const loadSnapshots = async (page: Page, count: number) => {
   })
 }
 
-const prepareSnapshots = async (page: Page, eventCount: number) => {
-  await page.goto('/')
-  await page.getByTestId('reset-harness').click()
+const resetHarness = async (page: Page) => {
+  await page.goto('/?reset')
   await expect(page.getByTestId('app')).toBeVisible()
+  await expect(page.getByText('Todo count: 0')).toBeVisible()
+  await expect(page.getByText('Upstream head: 0')).toBeVisible()
+}
+
+const prepareSnapshots = async (page: Page, eventCount: number) => {
+  await resetHarness(page)
 
   await loadSnapshots(page, eventCount)
   await page.reload()
