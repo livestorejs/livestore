@@ -106,7 +106,7 @@ After dependency updates, verify these meta-items:
 
 - [ ] `pnpm --filter docs-code-snippets exec expo install --check` passes for all Expo examples
 - [ ] Version constants updated appropriately
-- [ ] TypeScript build passes: `mono ts`
+- [ ] TypeScript build passes: `pnpm run ts:build`
 - [ ] Linting passes: `pnpm run lint:full` (run `pnpm run lint:full:fix` if needed)
 
 ## Troubleshooting

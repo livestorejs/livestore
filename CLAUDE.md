@@ -17,7 +17,7 @@ Use root package scripts for task entrypoints:
 - `pnpm run lint:full` / `pnpm run lint:full:fix` to run the linting checks
 - `pnpm run test:unit` / `pnpm run test:perf` or `mono test <unit|integration|perf>` to run the tests
   - Some tests can take a while to run.
-- `pnpm run ts:build` / `pnpm run ts:build-watch` or `mono ts [--watch] [--clean]` to build the TypeScript code
+- `pnpm run ts:build` / `pnpm run ts:build-watch` to build the TypeScript code
 - `pnpm run docs:<dev|build|deploy>` or `mono docs <dev|build|deploy>` for docs workflows
 - `pnpm run examples:<deploy|test>` or `mono examples <run|deploy|test>` for example workflows
 - ... and more
@@ -55,7 +55,7 @@ Use GitHub issues or an issue checklist for non-trivial work.
 ### Development Workflow
 
 - Run the relevant test suite before pushing: `pnpm run test:unit` plus any affected `pnpm run test:integration:*` or `pnpm run test:perf` task
-- Ensure TypeScript compilation passes: `pnpm run ts:check`
+- Ensure TypeScript compilation passes: `pnpm run ts:build`
 - Use `pnpm run lint:full:fix` to automatically fix formatting issues
 
 ### Issues

@@ -78,7 +78,6 @@ Repo-owned task command bodies live behind root package scripts. Use
 `pnpm run <task>` for the command entrypoint. Most-used tasks:
 
 - `pnpm run ts:build` — build TypeScript across the monorepo
-- `pnpm run ts:check` — run the TypeScript build/check
 - `pnpm run lint:full` — run lint + format
 - `pnpm run lint:full:fix` — auto-fix lint + format
 - `pnpm run test:unit` — run unit tests
@@ -93,7 +92,7 @@ Release workflows are documented in
 Run the following manually for a tighter feedback loop before committing:
 
 - `pnpm run lint:full:fix` — auto-fix lint + format issues
-- `pnpm run ts:check` — ensure TypeScript passes
+- `pnpm run ts:build` — ensure TypeScript passes
 - `pnpm run test:unit` (and relevant `pnpm run test:integration:*` suites) — run tests
 
 ## Examples

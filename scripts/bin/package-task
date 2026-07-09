@@ -82,7 +82,7 @@ run_task() {
 }
 
 run_setup_strict() {
-  run_task ts:build
+  tsc --build tsconfig.dev.json
 }
 
 devtools_artifact_verify() {
@@ -218,18 +218,6 @@ devtools_artifact_certify_liveness() {
 }
 
 case "$task" in
-  ts:build | ts:check | ts:check:strict)
-    mono ts "$@"
-    ;;
-  ts:build-watch)
-    mono ts --watch "$@"
-    ;;
-  ts:clean)
-    mono ts --clean "$@"
-    ;;
-  ts:emit)
-    mono ts --no-check "$@"
-    ;;
   lint:check:format)
     oxfmt --check packages tests scripts docs .github "$@"
     ;;

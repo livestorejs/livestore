@@ -11,30 +11,6 @@ import { releaseCommand } from './commands/release.ts'
 import { testCommand } from './commands/test-commands.ts'
 import { updateDepsCommand } from './commands/update-deps.ts'
 
-const tsCommand = Cli.Command.make(
-  'ts',
-  {
-    watch: Cli.Flag.boolean('watch').pipe(Cli.Flag.withDefault(false)),
-    clean: Cli.Flag.boolean('clean').pipe(
-      Cli.Flag.withDefault(false),
-      Cli.Flag.withDescription('Clean build artifacts before compilation'),
-    ),
-    noCheck: Cli.Flag.boolean('no-check').pipe(
-      Cli.Flag.withDefault(false),
-      Cli.Flag.withDescription('Disable full type checking (only critical parse and emit errors will be reported)'),
-    ),
-  },
-  Effect.fn(function* ({ watch, clean, noCheck }) {
-    if (clean === true) {
-      yield* cmd('tsc --build tsconfig.dev.json --clean').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-    }
-
-    const flags = ['--build', 'tsconfig.dev.json', noCheck && '--noCheck', watch && '--watch'].filter(Boolean).join(' ')
-
-    yield* cmd(`tsc ${flags}`).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-  }),
-)
-
 const circularCommand = Cli.Command.make(
   'circular',
   {},
@@ -51,7 +27,6 @@ const command = Cli.Command.make('mono').pipe(
     lintCommand,
     githubCommand,
     testCommand,
-    tsCommand,
     circularCommand,
     docsCommand,
     releaseCommand,
