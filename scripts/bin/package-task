@@ -292,14 +292,6 @@ case "$task" in
     run_task lint:check:madge
     run_task lint:check:md-imports
     ;;
-  lint:full:with-megarepo-check)
-    run_task lint:full
-    if [[ -x "$workspace_root/repos/effect-utils/packages/@overeng/megarepo/bin/megarepo" ]]; then
-      "$workspace_root/repos/effect-utils/packages/@overeng/megarepo/bin/megarepo" check
-    else
-      echo "Skipping megarepo consistency check: repos/effect-utils megarepo CLI is not available" >&2
-    fi
-    ;;
   lint:full:fix)
     run_task lint:fix
     run_task lint:check:madge
@@ -566,7 +558,7 @@ case "$task" in
     node scripts/src/commands/changesets.ts verify-baseline-changelog "$@"
     ;;
   source-policy)
-    node scripts/src/commands/source-policy.ts "$@"
+    node scripts/src/commands/source-policy.ts
     ;;
   github:rulesets:check)
     ensure_github_rulesets_dependencies

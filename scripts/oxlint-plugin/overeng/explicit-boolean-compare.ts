@@ -33,7 +33,6 @@
  * while (running) {}
  * const result = enabled ? 'yes' : 'no'
  *
- * See: https://github.com/overengineeringstudio/effect-utils/issues/219
  */
 
 const COMPARISON_OPERATORS = new Set(['===', '!==', '==', '!=', '<', '>', '<=', '>=', 'instanceof', 'in'])

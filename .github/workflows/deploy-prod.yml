@@ -32,10 +32,6 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-pnpm
       - name: Check first-party default refs
-        env:
-          FIRST_PARTY_OWNERS_JSON: '["overengineeringstudio"]'
-          DEFAULT_REF: main
-          VERIFY_REACHABLE: '1'
         run: pnpm run source-policy
   deploy-docs:
     if: ${{ inputs.target == 'docs' || inputs.target == 'all' }}

@@ -10,6 +10,5 @@ point `.oxlintrc.json#jsPlugins` at the published artifact.
 
 Source snapshot:
 
-- Repository: `overengineeringstudio/effect-utils`
 - Commit: `4f04a80a2c1f8440511283c52fb40ba65fd961a6`
 - Package path: `packages/@overeng/oxc-config/src`

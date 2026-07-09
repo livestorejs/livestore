@@ -28,10 +28,6 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-pnpm
       - name: Check first-party default refs
-        env:
-          FIRST_PARTY_OWNERS_JSON: '["overengineeringstudio"]'
-          DEFAULT_REF: main
-          VERIFY_REACHABLE: '1'
         run: pnpm run source-policy
   lint:
     runs-on: ubuntu-24.04
@@ -42,7 +38,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-pnpm
       - name: Run lint checks
-        run: pnpm run lint:full:with-megarepo-check
+        run: pnpm run lint:full
   changeset-check:
     runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'

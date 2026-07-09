@@ -65,7 +65,6 @@
     "lint:fix:oxlint": "bash scripts/bin/package-task lint:fix:oxlint",
     "lint:full": "bash scripts/bin/package-task lint:full",
     "lint:full:fix": "bash scripts/bin/package-task lint:full:fix",
-    "lint:full:with-megarepo-check": "bash scripts/bin/package-task lint:full:with-megarepo-check",
     "release:changeset:check-bodies": "bash scripts/bin/package-task release:changeset:check-bodies",
     "release:changeset:check-pr": "bash scripts/bin/package-task release:changeset:check-pr",
     "release:changeset:status": "bash scripts/bin/package-task release:changeset:status",

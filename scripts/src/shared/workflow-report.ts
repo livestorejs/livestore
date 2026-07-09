@@ -1,7 +1,7 @@
 import { Effect, FileSystem } from '@livestore/utils/effect'
 
 /**
- * Marker prefix recognized by effect-utils' workflow-reporting collector.
+ * Marker prefix recognized by the workflow-reporting collector.
  * Keep in sync with the collector's `workflowReportRecordLineMarker`.
  */
 export const workflowReportRecordLineMarker = 'WORKFLOW_REPORT_V1: '
@@ -32,9 +32,8 @@ export interface WorkflowReportRecord {
  * — when `WORKFLOW_REPORT_OUTPUT_FILE` is set — append the same marker line to
  * that file so the workflow step can upload it as an artifact.
  *
- * This mirrors the effect-utils Netlify deploy pattern: emit canonical records
- * from the CLI so the collector job can aggregate them without re-parsing
- * CLI-specific log formats.
+ * Emit canonical records from the CLI so the collector job can aggregate them
+ * without re-parsing CLI-specific log formats.
  */
 export const emitWorkflowReportRecord = (record: WorkflowReportRecord) =>
   Effect.gen(function* () {

@@ -7,8 +7,8 @@
  * Only relative paths (`./`, `../`) and Node.js builtins (`node:*`) are permitted.
  * Bare specifiers like `fs` (without `node:` prefix) are treated as external.
  *
- * Use this rule via overrides to enforce dependency-free modules, e.g. genie runtime
- * modules that are imported as TypeScript source by consumers via megarepo symlinks.
+ * Use this rule via overrides to enforce dependency-free modules that are imported
+ * as TypeScript source by consumers.
  *
  * @example
  * // ✅ Good - relative imports
@@ -38,7 +38,6 @@
  * // ❌ Bad - mixed (has at least one value specifier)
  * import { type Effect, pipe } from 'effect'
  *
- * See: https://github.com/overengineeringstudio/effect-utils/issues/138
  */
 
 const isExternalSpecifier = (source: string): boolean => !source.startsWith('.') && !source.startsWith('node:')
