@@ -11,7 +11,7 @@ export MONOREPO_ROOT="${MONOREPO_ROOT:-$workspace_root}"
 export PATH="$workspace_root/scripts/bin:$workspace_root/scripts/node_modules/.bin:$PATH"
 
 export OTEL_EXPORTER_OTLP_ENDPOINT="${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
-export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="${VITE_OTEL_EXPORTER_OTLP_ENDPOINT:-$OTEL_EXPORTER_OTLP_ENDPOINT}"
+export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="${VITE_OTEL_EXPORTER_OTLP_ENDPOINT-$OTEL_EXPORTER_OTLP_ENDPOINT}"
 export OTEL_GRAFANA_URL="${OTEL_GRAFANA_URL:-http://localhost:30003}"
 export GRAFANA_ENDPOINT="${GRAFANA_ENDPOINT:-$OTEL_GRAFANA_URL}"
 export VITE_GRAFANA_ENDPOINT="${VITE_GRAFANA_ENDPOINT:-$GRAFANA_ENDPOINT}"
@@ -79,6 +79,10 @@ ensure_github_rulesets_dependencies() {
 
 run_task() {
   bash scripts/bin/package-task "$@"
+}
+
+run_setup_strict() {
+  run_task ts:build
 }
 
 devtools_artifact_verify() {
@@ -302,9 +306,11 @@ case "$task" in
     run_task lint:check:md-imports
     ;;
   test:unit)
+    run_setup_strict
     mono test unit "$@"
     ;;
   test:perf)
+    run_setup_strict
     mono test perf "$@"
     ;;
   test:integration:misc)
@@ -344,6 +350,7 @@ case "$task" in
     mono test integration sync-provider --provider cf-do-rpc-do "$@"
     ;;
   test:integration:sync-provider:matrix)
+    run_setup_strict
     provider="${TEST_SYNC_PROVIDER:-}"
     if [[ -z "$provider" ]]; then
       echo "Error: TEST_SYNC_PROVIDER is required"
@@ -361,6 +368,7 @@ case "$task" in
     mono test integration sync-provider --provider "$provider" "$@"
     ;;
   test:integration:playwright:suite)
+    run_setup_strict
     suite="${PLAYWRIGHT_SUITE:-}"
     if [[ -z "$suite" ]]; then
       echo "Error: PLAYWRIGHT_SUITE is required"
