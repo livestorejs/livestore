@@ -274,7 +274,7 @@ jobs:
       - name: Dry-run DevTools artifact repack
         run: pnpm run release:devtools-artifact:repack-dryrun:no-install
   publish-release:
-    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-release')
+    if: github.repository == 'livestorejs/livestore' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-release'))
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -392,7 +392,7 @@ jobs:
           MXBAI_API_KEY: ${{ secrets.MXBAI_API_KEY }}
           MXBAI_VECTOR_STORE_ID: ${{ secrets.MXBAI_VECTOR_STORE_ID }}
   publish-snapshot-version:
-    if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-snapshot')
+    if: github.repository == 'livestorejs/livestore' && ((github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'publish-snapshot'))
     runs-on: ubuntu-24.04
     permissions:
       contents: write
