@@ -6,7 +6,6 @@ import { debugCommand } from './commands/debug.ts'
 import { docsCommand } from './commands/docs.ts'
 import { examplesCommand } from './commands/examples/cli.ts'
 import { githubCommand } from './commands/github.ts'
-import { lintCommand } from './commands/lint.ts'
 import { releaseCommand } from './commands/release.ts'
 import { testCommand } from './commands/test-commands.ts'
 import { updateDepsCommand } from './commands/update-deps.ts'
@@ -15,7 +14,7 @@ const circularCommand = Cli.Command.make(
   'circular',
   {},
   Effect.fn(function* () {
-    yield* cmd('pnpm dlx madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true }).pipe(
+    yield* cmd('madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true }).pipe(
       Effect.provide(LivestoreWorkspace.toCwd()),
     )
   }),
@@ -24,7 +23,6 @@ const circularCommand = Cli.Command.make(
 const command = Cli.Command.make('mono').pipe(
   Cli.Command.withSubcommands([
     examplesCommand,
-    lintCommand,
     githubCommand,
     testCommand,
     circularCommand,

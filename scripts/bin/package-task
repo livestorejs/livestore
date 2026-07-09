@@ -8,7 +8,7 @@ workspace_root="${WORKSPACE_ROOT:-$(git rev-parse --show-toplevel)}"
 cd "$workspace_root"
 export WORKSPACE_ROOT="$workspace_root"
 export MONOREPO_ROOT="${MONOREPO_ROOT:-$workspace_root}"
-export PATH="$workspace_root/scripts/bin:$workspace_root/scripts/node_modules/.bin:$PATH"
+export PATH="$workspace_root/scripts/bin:$workspace_root/node_modules/.bin:$workspace_root/scripts/node_modules/.bin:$PATH"
 
 export OTEL_EXPORTER_OTLP_ENDPOINT="${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
 export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="${VITE_OTEL_EXPORTER_OTLP_ENDPOINT-$OTEL_EXPORTER_OTLP_ENDPOINT}"
@@ -218,73 +218,6 @@ devtools_artifact_certify_liveness() {
 }
 
 case "$task" in
-  lint:check:format)
-    oxfmt --check packages tests scripts docs .github "$@"
-    ;;
-  lint:check:oxlint)
-    oxlint --import-plugin --deny-warnings --type-aware --tsconfig tsconfig.dev.json packages tests scripts docs .github "$@"
-    ;;
-  lint:check:lockfile)
-    store_dir="${npm_config_store_dir:-${PNPM_CONFIG_STORE_DIR:-${PNPM_STORE_DIR:-}}}"
-    store_args=()
-    if [[ -n "$store_dir" ]]; then
-      export PNPM_STORE_DIR="$store_dir"
-      export PNPM_CONFIG_STORE_DIR="$store_dir"
-      export npm_config_store_dir="$store_dir"
-      store_args=(--config.store-dir="$store_dir")
-    fi
-    pnpm install \
-      --frozen-lockfile \
-      --ignore-scripts \
-      --config.confirmModulesPurge=false \
-      --config.side-effects-cache=false \
-      --config.verify-store-integrity=true \
-      --config.strict-store-pkg-content-check=true \
-      --config.package-import-method=clone-or-copy \
-      --pm-on-fail=ignore \
-      "${store_args[@]}" \
-      "$@"
-    ;;
-  lint:check)
-    run_task lint:check:format
-    run_task lint:check:oxlint
-    run_task lint:check:lockfile
-    ;;
-  lint:fix:format)
-    oxfmt packages tests scripts docs .github "$@"
-    ;;
-  lint:fix:oxlint)
-    oxlint --import-plugin --deny-warnings --fix --type-aware --tsconfig tsconfig.dev.json packages tests scripts docs .github "$@"
-    ;;
-  lint:fix)
-    run_task lint:fix:format
-    run_task lint:fix:oxlint
-    ;;
-  lint:check:madge)
-    ./scripts/node_modules/.bin/madge --circular --no-spinner examples/*/src packages/*/*/src "$@"
-    ;;
-  lint:check:md-imports)
-    matches="$(grep -rl '^import ' docs/src/content/docs --include='*.md' 2>/dev/null || true)"
-    violations="$(printf '%s\n' "$matches" | grep -v '^docs/src/content/docs/api/' || true)"
-
-    if [[ -n "$violations" ]]; then
-      echo "Error: Found .md files with import statements. These must be renamed to .mdx:"
-      printf '%s\n' "$violations" | while IFS= read -r path; do
-        [[ -n "$path" ]] && echo "  - $path"
-      done
-      exit 1
-    fi
-    ;;
-  lint:full)
-    run_task lint:check
-    run_task lint:check:madge
-    run_task lint:check:md-imports
-    ;;
-  lint:full:fix)
-    run_task lint:fix
-    run_task lint:check:madge
-    run_task lint:check:md-imports
-    ;;
   test:unit)
     run_setup_strict
     mono test unit "$@"

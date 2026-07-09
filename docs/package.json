@@ -13,6 +13,7 @@
     "build": "pnpm check && astro build",
     "dev": "astro dev",
     "dev:docs:sync": "mxbai store sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\"  --yes --strategy fast",
+    "lint:check:md-imports": "bash scripts/check-md-imports.sh",
     "prod:docs:sync": "mxbai store sync \"livestore-docs\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\" --yes --strategy fast",
     "dev:docs:sync:dry-run": "mxbai store sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\" --dry-run",
     "preview": "astro preview",
