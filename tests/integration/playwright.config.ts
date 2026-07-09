@@ -1,17 +1,23 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import process from 'node:process'
 
 import type { PlaywrightTestConfig } from '@playwright/test'
 import { devices } from '@playwright/test'
 
+const localEnvFile = path.resolve(import.meta.dirname, '.env.test.local')
+if (fs.existsSync(localEnvFile) === true) {
+  process.loadEnvFile(localEnvFile)
+}
+process.loadEnvFile(path.resolve(import.meta.dirname, '.env.test'))
+
 const envTruish = (env: string | undefined) =>
   env !== undefined && env.toLowerCase() !== 'false' && env.toLowerCase() !== '0'
 
-/**
- * Ensure Playwright tests are run via the mono CLI (or VS Code extension) to guarantee proper environment setup.
- */
-const isVSCode = process.env.VSCODE_PID !== undefined
-if (envTruish(process.env.FORCE_PLAYWRIGHT_VIA_CLI) === false && isVSCode === false) {
-  throw new Error(`Playwright tests must be run via 'mono test integration <devtools|todomvc|misc>'.`)
+const devServerPort = Number.parseInt(process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT ?? '4444', 10)
+const chromiumUse = {
+  ...devices['Desktop Chrome'],
+  deviceScaleFactor: 2,
 }
 
 /**
@@ -19,7 +25,6 @@ if (envTruish(process.env.FORCE_PLAYWRIGHT_VIA_CLI) === false && isVSCode === fa
  */
 const config: PlaywrightTestConfig = {
   testDir: './src/tests/playwright',
-  testMatch: /.*\.play\.ts/,
   /* Maximum time one test can run for. */
   timeout: 1 * 60 * 1000, // 1 minute
   expect: {
@@ -29,7 +34,6 @@ const config: PlaywrightTestConfig = {
      */
     timeout: 5000,
   },
-  outputDir: `test-results/${process.env.PLAYWRIGHT_SUITE}`,
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -58,67 +62,36 @@ const config: PlaywrightTestConfig = {
     headless: envTruish(process.env.PLAYWRIGHT_HEADLESS),
   },
 
-  /* Configure projects for major browsers */
   projects: [
     {
-      name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-        deviceScaleFactor: 2,
-      },
+      name: 'misc',
+      testMatch: /misc-tests\.play\.ts/,
+      outputDir: 'test-results/misc',
+      use: chromiumUse,
     },
-
-    // {
-    //   name: 'firefox',
-    //   use: {
-    //     ...devices['Desktop Firefox'],
-    //   },
-    // },
-
-    // {
-    //   name: 'webkit',
-    //   use: {
-    //     ...devices['Desktop Safari'],
-    //   },
-    // },
-
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: {
-    //     ...devices['Pixel 5'],
-    //   },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: {
-    //     ...devices['iPhone 12'],
-    //   },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: {
-    //     channel: 'msedge',
-    //   },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: {
-    //     channel: 'chrome',
-    //   },
-    // },
+    {
+      name: 'todomvc',
+      testMatch: /todomvc\.play\.ts/,
+      outputDir: 'test-results/todomvc',
+      use: chromiumUse,
+    },
+    {
+      name: 'devtools',
+      testMatch: /devtools\/.*\.play\.ts/,
+      outputDir: 'test-results/devtools',
+      use: chromiumUse,
+    },
   ],
 
   /* Folder for test artifacts such as screenshots, videos, traces, etc. */
   // outputDir: 'test-results/',
 
   /* Run your local dev server before starting the tests */
-  // webServer: {
-  //   command: process.env.DEV_SERVER_COMMAND!,
-  //   port: devServerPort,
-  // },
+  webServer: {
+    command: `./node_modules/.bin/vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devServerPort}`,
+    port: devServerPort,
+    reuseExistingServer: !process.env.CI,
+  },
 }
 
 export default config

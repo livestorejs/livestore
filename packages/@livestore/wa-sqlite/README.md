@@ -25,6 +25,8 @@ This fork adds synchronous APIs and session extensions needed for LiveStore's re
   - Exposed more types from `src/examples`
 - `dist`
   - Added Node.js build target (mostly used for testing)
+- `package.json`
+  - Exposes a `build` script that builds with Nix
 
 ### Building LiveStore fork
 

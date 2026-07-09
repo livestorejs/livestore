@@ -7,7 +7,7 @@
     "build": "pnpm exec vite build --config test-app/vite.config.ts",
     "dev": "pnpm exec vite --config test-app/vite.config.ts",
     "preview": "pnpm exec vite preview --config test-app/vite.config.ts",
-    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test"
+    "test": "playwright test"
   },
   "dependencies": {
     "@livestore/adapter-web": "workspace:^",

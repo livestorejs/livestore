@@ -1,14 +1,14 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import * as process from 'node:process'
 
 import { defineConfig, devices } from '@playwright/test'
 
-/**
- * Ensure Playwright tests are run via the mono CLI (or VS Code extension) to guarantee proper environment setup.
- */
-const isVSCode = process.env.VSCODE_PID !== undefined
-if (process.env.FORCE_PLAYWRIGHT_VIA_CLI !== '1' && isVSCode === false) {
-  throw new Error(`Playwright tests must be run via 'mono test perf'.`)
+const localEnvFile = path.resolve(import.meta.dirname, '.env.test.local')
+if (fs.existsSync(localEnvFile) === true) {
+  process.loadEnvFile(localEnvFile)
 }
+process.loadEnvFile(path.resolve(import.meta.dirname, '.env.test'))
 
 /**
  * See https://playwright.dev/docs/test-configuration.

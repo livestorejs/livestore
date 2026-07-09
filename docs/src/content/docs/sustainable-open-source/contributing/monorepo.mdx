@@ -68,9 +68,11 @@ environment variables used by `mono` and the TypeScript automation.
 
 ### Environment variables
 
-Project defaults are set by `scripts/bin/package-task`. For local overrides
-(credentials, custom service endpoints), export them in your shell before
-running the relevant `pnpm run ...` command.
+Test defaults are loaded from the closest owning package's `.env.test` file
+(for example `tests/integration/.env.test` for Playwright integration tests).
+For local overrides (credentials, custom service endpoints), export them in
+your shell or put them in an untracked `.env.test.local` file in that package
+before running the relevant `pnpm run ...` command.
 
 ### Common commands
 

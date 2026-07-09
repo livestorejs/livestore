@@ -3,11 +3,12 @@
   "version": "0.0.54-dev.23",
   "private": true,
   "type": "module",
-  "exports": {
-    "./run-tests": "./scripts/run-tests.ts"
-  },
   "scripts": {
-    "test": "CI=1 node ./scripts/run-tests.ts"
+    "test": "playwright test",
+    "test:devtools": "playwright test --project=devtools",
+    "test:misc": "playwright test --project=misc",
+    "test:todomvc": "playwright test --project=todomvc",
+    "upload-trace": "sh -c 'project=\"${1:?Pass project name}\"; if [ -n \"${NETLIFY_AUTH_TOKEN:-}\" ]; then pnpm dlx netlify-cli deploy --no-build --dir=playwright-report --site livestore-ci --filter @local/tests-integration --alias \"$project-$(git -C ../.. rev-parse --short HEAD)\"; else echo \"Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set\"; fi' --"
   },
   "dependencies": {
     "@livestore/adapter-cloudflare": "workspace:^",

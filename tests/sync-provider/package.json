@@ -8,8 +8,14 @@
     "./registry": "./src/providers/registry.ts"
   },
   "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest",
+    "test:cf-do-rpc-d1": "vitest --testNamePattern \"'Cloudflare Durable Object RPC \\(D1\\)' sync provider\"",
+    "test:cf-do-rpc-do": "vitest --testNamePattern \"'Cloudflare Durable Object RPC \\(DO\\)' sync provider\"",
+    "test:cf-http-d1": "vitest --testNamePattern \"'Cloudflare HTTP RPC \\(D1\\)' sync provider\"",
+    "test:cf-http-do": "vitest --testNamePattern \"'Cloudflare HTTP RPC \\(DO\\)' sync provider\"",
+    "test:cf-ws-d1": "vitest --testNamePattern \"'Cloudflare WebSocket \\(D1\\)' sync provider\"",
+    "test:cf-ws-do": "vitest --testNamePattern \"'Cloudflare WebSocket \\(DO\\)' sync provider\"",
+    "test:mock": "vitest --testNamePattern \"'Mock Sync Backend' sync provider\""
   },
   "dependencies": {
     "@cloudflare/workers-types": "4.20251118.0",

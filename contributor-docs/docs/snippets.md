@@ -56,6 +56,6 @@ component always reflects the pre-rendered bundle stored in `docs/node_modules/.
 
 ## Testing
 
-- Always run `CI=1 pnpm exec vitest run --config packages/@local/astro-twoslash-code/vitest.config.ts src/cli/snippets.render.test.ts`
+- Always run `CI=1 pnpm exec vitest --config packages/@local/astro-twoslash-code/vitest.config.ts src/cli/snippets.render.test.ts`
   and `CI=1 mono docs snippets build` after modifying snippet code or the pipeline.
 - Nightly/docs CI reuses the cached artefacts and will fail if the snippets no longer compile.

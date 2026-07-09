@@ -15,7 +15,7 @@ Install dependencies with `pnpm install`. The repository uses local package scri
 Use root package scripts for task entrypoints:
 
 - `pnpm run lint:full` / `pnpm run lint:full:fix` to run the linting checks
-- `pnpm run test:unit` / `pnpm run test:perf` or `mono test <unit|integration|perf>` to run the tests
+- `pnpm run test:unit` / `pnpm run test:perf` / relevant `pnpm run test:integration:*` scripts to run the tests
   - Some tests can take a while to run.
 - `pnpm run ts:build` / `pnpm run ts:build-watch` to build the TypeScript code
 - `pnpm run docs:<dev|build|deploy>` or `mono docs <dev|build|deploy>` for docs workflows
@@ -24,7 +24,7 @@ Use root package scripts for task entrypoints:
 
 ## Testing
 
-- When working on specific Vitest tests, use the `vitest` CLI directly instead of `mono test` and make sure to target the specific test file and test name: e.g. `vitest run packages/@livestore/common/src/index.test.ts --testNamePattern "should be able to get the number of users"`.
+- When working on specific Vitest tests, use the `vitest` CLI directly and make sure to target the specific test file and test name: e.g. `vitest run packages/@livestore/common/src/index.test.ts --testNamePattern "should be able to get the number of users"`.
 
 ## TypeScript
 

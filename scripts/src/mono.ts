@@ -7,7 +7,6 @@ import { docsCommand } from './commands/docs.ts'
 import { examplesCommand } from './commands/examples/cli.ts'
 import { githubCommand } from './commands/github.ts'
 import { releaseCommand } from './commands/release.ts'
-import { testCommand } from './commands/test-commands.ts'
 import { updateDepsCommand } from './commands/update-deps.ts'
 
 const circularCommand = Cli.Command.make(
@@ -24,7 +23,6 @@ const command = Cli.Command.make('mono').pipe(
   Cli.Command.withSubcommands([
     examplesCommand,
     githubCommand,
-    testCommand,
     circularCommand,
     docsCommand,
     releaseCommand,

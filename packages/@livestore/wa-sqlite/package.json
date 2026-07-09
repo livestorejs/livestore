@@ -33,6 +33,7 @@
     "./src/WebLocksMixin.js": "./src/WebLocksMixin.js"
   },
   "scripts": {
+    "build": "nix run .#build",
     "build-docs": "typedoc",
     "start": "web-dev-server --node-resolve",
     "test": "web-test-runner",

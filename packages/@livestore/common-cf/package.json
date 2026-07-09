@@ -26,7 +26,7 @@
     }
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest"
   },
   "dependencies": {
     "@cloudflare/workers-types": "4.20251118.0",
