@@ -119,7 +119,7 @@ enableGlobalVirtualStore: true
 ```
 
 Generated package-closure projections may still use injected snapshots for
-Nix/FOD dependency preparation. The distinction prevents duplicate LiveStore
+package dependency preparation. The distinction prevents duplicate LiveStore
 package identities in the live TypeScript workspace while preserving prepared
 dependency determinism.
 
@@ -169,7 +169,7 @@ contrib package manifest.
 
 | Surface           | Source of truth                                                       |
 | ----------------- | --------------------------------------------------------------------- |
-| devenv            | effect-utils modules, imported by contrib                             |
+| package scripts   | root task surface reused by contrib                                   |
 | pnpm workspace    | contrib-local package/example manifest plus core/effect-utils helpers |
 | package manifests | contrib-local package manifest plus core/effect-utils helpers         |
 | tsconfig          | contrib-local workspace shape plus core/effect-utils helpers          |
@@ -189,10 +189,8 @@ file's own megarepo root and fails for nested cross-repo composition.
 Contrib CI composes setup atoms with contrib-specific identifiers:
 
 ```ts
-installNixStep(...)
 applyMegarepoLockStep(...)
 restorePnpmStateStep({ keyPrefix: 'livestore-contrib-pnpm-state-v1' })
-cachixStep({ name: 'livestore-contrib', ... })
 ```
 
 It does not reuse `livestoreSetupSteps` wholesale because that composite carries

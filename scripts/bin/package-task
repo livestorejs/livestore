@@ -10,6 +10,48 @@ export WORKSPACE_ROOT="$workspace_root"
 export MONOREPO_ROOT="${MONOREPO_ROOT:-$workspace_root}"
 export PATH="$workspace_root/scripts/bin:$workspace_root/scripts/node_modules/.bin:$PATH"
 
+export OTEL_EXPORTER_OTLP_ENDPOINT="${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
+export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="${VITE_OTEL_EXPORTER_OTLP_ENDPOINT:-$OTEL_EXPORTER_OTLP_ENDPOINT}"
+export OTEL_GRAFANA_URL="${OTEL_GRAFANA_URL:-http://localhost:30003}"
+export GRAFANA_ENDPOINT="${GRAFANA_ENDPOINT:-$OTEL_GRAFANA_URL}"
+export VITE_GRAFANA_ENDPOINT="${VITE_GRAFANA_ENDPOINT:-$GRAFANA_ENDPOINT}"
+export LS_DEV="${LS_DEV:-1}"
+export VITE_LS_DEV="${VITE_LS_DEV:-$LS_DEV}"
+export LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT="${LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT:-4444}"
+export NODE_OPTIONS="${NODE_OPTIONS:---disable-warning=ExperimentalWarning}"
+
+resolve_playwright_chromium() {
+  local cache_root="${PLAYWRIGHT_BROWSERS_PATH:-}"
+  if [[ -z "$cache_root" ]]; then
+    case "$(uname -s)" in
+      Darwin) cache_root="$HOME/Library/Caches/ms-playwright" ;;
+      *) cache_root="$HOME/.cache/ms-playwright" ;;
+    esac
+  fi
+
+  for candidate in \
+    "$cache_root"/chromium-*/chrome-linux64/chrome \
+    "$cache_root"/chromium-*/chrome-linux/chrome \
+    "$cache_root"/chromium-*/chrome-mac-arm64/Google\ Chrome\ for\ Testing.app/Contents/MacOS/Google\ Chrome\ for\ Testing \
+    "$cache_root"/chromium-*/chrome-mac/Google\ Chrome\ for\ Testing.app/Contents/MacOS/Google\ Chrome\ for\ Testing \
+    "$cache_root"/chromium-*/chrome-win/chrome.exe
+  do
+    if [[ -x "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+if [[ -z "${PUPPETEER_EXECUTABLE_PATH:-}" ]]; then
+  if chromium_path="$(resolve_playwright_chromium)"; then
+    export PUPPETEER_EXECUTABLE_PATH="$chromium_path"
+  fi
+fi
+export PUPPETEER_SKIP_DOWNLOAD="${PUPPETEER_SKIP_DOWNLOAD:-1}"
+
 ensure_github_rulesets_dependencies() {
   if [[ -d "$workspace_root/scripts/node_modules/@livestore/utils-dev" ]]; then
     return 0
@@ -151,7 +193,6 @@ devtools_artifact_certify_liveness() {
       PLAYWRIGHT_SUITE=devtools \
       PLAYWRIGHT_HEADLESS="${PLAYWRIGHT_HEADLESS:-1}" \
       LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
-      DT_PASSTHROUGH=1 \
       ./node_modules/.bin/playwright test \
         src/tests/playwright/devtools/web.play.ts \
         --reporter=line
@@ -249,7 +290,11 @@ case "$task" in
     ;;
   lint:full:with-megarepo-check)
     run_task lint:full
-    devenv tasks run mr:check --mode before --no-tui
+    if [[ -x "$workspace_root/repos/effect-utils/packages/@overeng/megarepo/bin/megarepo" ]]; then
+      "$workspace_root/repos/effect-utils/packages/@overeng/megarepo/bin/megarepo" check
+    else
+      echo "Skipping megarepo consistency check: repos/effect-utils megarepo CLI is not available" >&2
+    fi
     ;;
   lint:full:fix)
     run_task lint:fix
@@ -398,7 +443,7 @@ case "$task" in
     mkdir -p tmp/ci-docs-prod
     date -u +%Y-%m-%dT%H:%M:%SZ | tee tmp/ci-docs-prod/failure-timestamp.log
     ps -eo pid,ppid,etime,pcpu,pmem,comm,args > tmp/ci-docs-prod/ps-full.log || true
-    pgrep -af 'astro|chromium|chrome_crashpad_handler|netlify|node|mono|dt' > tmp/ci-docs-prod/pgrep-procs.log || true
+    pgrep -af 'astro|chromium|chrome_crashpad_handler|netlify|node|mono' > tmp/ci-docs-prod/pgrep-procs.log || true
     if [[ -f tmp/ci-docs-prod/deploy-state.json ]]; then
       echo "--- deploy-state.json ---"
       cat tmp/ci-docs-prod/deploy-state.json
@@ -432,7 +477,7 @@ case "$task" in
     mkdir -p tmp/ci-docs
     date -u +%Y-%m-%dT%H:%M:%SZ | tee tmp/ci-docs/failure-timestamp.log
     ps -eo pid,ppid,etime,pcpu,pmem,comm,args > tmp/ci-docs/ps-full.log || true
-    pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono|dt' > tmp/ci-docs/pgrep-build-procs.log || true
+    pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono' > tmp/ci-docs/pgrep-build-procs.log || true
     ;;
   examples:test)
     mono examples test "$@"
@@ -498,23 +543,29 @@ case "$task" in
     node scripts/src/commands/changesets.ts check-bodies "$@"
     ;;
   release:changeset:status)
-    DT_PASSTHROUGH=1 pnpm exec changeset status --since "${CHANGESET_BASE_REF:-origin/main}" "$@"
+    pnpm exec changeset status --since "${CHANGESET_BASE_REF:-origin/main}" "$@"
     ;;
   release:changeset:version)
-    DT_PASSTHROUGH=1 pnpm exec changeset version "$@"
+    pnpm exec changeset version "$@"
     node scripts/src/commands/changesets.ts restore-prerelease-changesets
     node scripts/src/commands/changesets.ts sync-version-source
     node scripts/src/commands/changesets.ts sync-standalone-consumers
-    DT_PASSTHROUGH=1 pnpm install --lockfile-only --no-frozen-lockfile
+    pnpm install --lockfile-only --no-frozen-lockfile
     node scripts/src/commands/changesets.ts assert-fixed-versions
     node scripts/src/commands/changesets.ts write-release-plan --npm-tag "${LIVESTORE_NPM_TAG:-latest}"
     ;;
   release:changeset:verify-baseline)
     node scripts/src/commands/changesets.ts verify-baseline-changelog "$@"
     ;;
+  source-policy)
+    node scripts/src/commands/source-policy.ts "$@"
+    ;;
   github:rulesets:check)
     ensure_github_rulesets_dependencies
     mono github rulesets check "$@"
+    ;;
+  update-deps)
+    mono update-deps "$@"
     ;;
   *)
     echo "Unknown package task: $task" >&2

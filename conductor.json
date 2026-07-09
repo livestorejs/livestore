@@ -1,5 +1,5 @@
 {
   "scripts": {
-    "setup": "git fetch; devenv shell true"
+    "setup": "git fetch; pnpm install --frozen-lockfile"
   }
 }

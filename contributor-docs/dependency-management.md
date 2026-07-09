@@ -6,10 +6,10 @@ Update all NPM dependencies across the entire monorepo using the automated TypeS
 
 ```bash
 # 1. Dry run to preview changes
-devenv shell mono update-deps --dry-run
+pnpm run update-deps -- --dry-run
 
 # 2. Execute updates (Expo constraints applied globally for consistency)
-devenv shell mono update-deps
+pnpm run update-deps
 
 # 3. Review changes
 git diff package.json packages/*/package.json examples/*/package.json pnpm-workspace.yaml pnpm-lock.yaml
@@ -26,8 +26,8 @@ git diff package.json packages/*/package.json examples/*/package.json pnpm-works
 --validate        # Run validation after updates (default: true)
 
 # Examples:
-devenv shell mono update-deps --target patch --dry-run
-devenv shell mono update-deps --validate false
+pnpm run update-deps -- --target patch --dry-run
+pnpm run update-deps -- --validate false
 ```
 
 ## Version Constants Update
@@ -107,13 +107,13 @@ After dependency updates, verify these meta-items:
 - [ ] `pnpm --filter docs-code-snippets exec expo install --check` passes for all Expo examples
 - [ ] Version constants updated appropriately
 - [ ] TypeScript build passes: `mono ts`
-- [ ] Linting passes: `dt lint:full` (run `dt lint:full:fix` if needed)
+- [ ] Linting passes: `pnpm run lint:full` (run `pnpm run lint:full:fix` if needed)
 
 ## Troubleshooting
 
-**"Command not found" errors:** Run commands inside `devenv shell`, or prefix one-off commands with `devenv shell`
+**"Command not found" errors:** Run `pnpm install`, then use root `pnpm run ...` scripts
 
-**Script execution issues:** Ensure TypeScript builds pass: `devenv shell mono ts`
+**Script execution issues:** Ensure TypeScript builds pass: `pnpm run ts:build`
 
 **Expo compatibility:** Check [Expo SDK docs](https://docs.expo.dev/versions/latest/) before updating React
 

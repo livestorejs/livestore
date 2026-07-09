@@ -1,7 +1,7 @@
 # Vendored overeng oxlint plugin
 
 This directory vendors the runtime source for the `@overeng/oxc-config` oxlint
-plugin so LiveStore can run oxlint without Nix/devenv-provided plugin injection.
+plugin so LiveStore can run oxlint without package-manager-provided plugin injection.
 
 Node.js can load these `.ts` files directly because they live outside
 `node_modules`. Once `@overeng/oxc-config` is published to npm with a JavaScript

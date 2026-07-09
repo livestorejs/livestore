@@ -37,7 +37,7 @@ export class UpdateDepsError extends Schema.TaggedErrorClass<UpdateDepsError>()(
 
 // Dependencies that should never be automatically updated
 const DEPENDENCY_DENY_LIST = [
-  '@playwright/test', // Must be updated manually in lockstep with Nix flake dependency
+  '@playwright/test', // Must be updated manually in lockstep with the CI browser setup
 ] as const
 
 // Types for our dependency update workflow

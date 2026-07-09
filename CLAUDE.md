@@ -2,19 +2,19 @@
 
 ## Setup
 
-This repository uses [`devenv`](https://devenv.sh) for development environment management. Run `devenv shell` to enter the development environment.
+Install dependencies with `pnpm install`. The repository uses local package scripts for development workflows. The `packages/@livestore/wa-sqlite` build is the package-local exception and still uses its Nix flake.
 
 ## Tooling
 
-- If tools aren't directly in `$PATH`, enter the dev environment first with `devenv shell`.
+- Use root package scripts for task entrypoints. `scripts/bin/package-task` sets the workspace environment expected by the TypeScript `mono` CLI.
 
 - For dependency management see ./contributor-docs/dependency-management.md
 
 ### Package scripts and `mono` CLI
 
-Use root package scripts for task entrypoints; `dt` wraps the same task names with devenv setup/status behavior:
+Use root package scripts for task entrypoints:
 
-- `pnpm run lint:full` / `pnpm run lint:full:fix` or `dt lint:full` / `dt lint:full:fix` to run the linting checks
+- `pnpm run lint:full` / `pnpm run lint:full:fix` to run the linting checks
 - `pnpm run test:unit` / `pnpm run test:perf` or `mono test <unit|integration|perf>` to run the tests
   - Some tests can take a while to run.
 - `pnpm run ts:build` / `pnpm run ts:build-watch` or `mono ts [--watch] [--clean]` to build the TypeScript code
@@ -44,7 +44,7 @@ Use GitHub issues or an issue checklist for non-trivial work.
 ## Git
 
 - The default branch of this repository is `main`.
-- Before committing, run `pnpm run lint:full:fix` or `dt lint:full:fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
+- Before committing, run `pnpm run lint:full:fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
 
 ### Branch Naming Conventions
 
@@ -55,8 +55,8 @@ Use GitHub issues or an issue checklist for non-trivial work.
 ### Development Workflow
 
 - Run the relevant test suite before pushing: `pnpm run test:unit` plus any affected `pnpm run test:integration:*` or `pnpm run test:perf` task
-- Ensure TypeScript compilation passes: `pnpm run ts:check` or `dt ts:check`
-- Use `pnpm run lint:full:fix` or `dt lint:full:fix` to automatically fix formatting issues
+- Ensure TypeScript compilation passes: `pnpm run ts:check`
+- Use `pnpm run lint:full:fix` to automatically fix formatting issues
 
 ### Issues
 

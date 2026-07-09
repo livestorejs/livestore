@@ -15,7 +15,10 @@ import {
 import { validateLinksCommand } from './validate-links.ts'
 
 const workspaceRoot =
-  process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run inside 'devenv shell'`)
+  process.env.WORKSPACE_ROOT ??
+  shouldNeverHappen(
+    `WORKSPACE_ROOT is not set. Run commands through the root package scripts or export WORKSPACE_ROOT to the repository root`,
+  )
 const examplesDir = `${workspaceRoot}/examples`
 
 const exampleChoices = (() => {

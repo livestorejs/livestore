@@ -440,7 +440,7 @@ const packPackageForPublish = ({ cwd, pkg, version }: { cwd: string; pkg: string
      * `publishConfig`. `pnpm pack` materializes those mappings into the tarball;
      * plain `npm publish <directory>` would publish the source mappings instead.
      */
-    yield* cmd(`DT_PASSTHROUGH=1 pnpm --dir ${pkgDir} pack --pack-destination ${packDir}`, { shell: true }).pipe(
+    yield* cmd(`pnpm --dir ${pkgDir} pack --pack-destination ${packDir}`, { shell: true }).pipe(
       Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
 
@@ -481,7 +481,7 @@ const publishReleasePackages = ({
     yield* rewriteSnapshotInternalDependencyRanges({ cwd, snapshotPackages: packages, snapshotVersion: version })
 
     /** Rebuild TypeScript so dist/ picks up the release version from package.json (emit-only, type checking is separate). */
-    yield* cmd(`DT_PASSTHROUGH=1 ${tscBin} --build tsconfig.dev.json --noCheck`, { shell: true }).pipe(
+    yield* cmd(`${tscBin} --build tsconfig.dev.json --noCheck`, { shell: true }).pipe(
       Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
 
@@ -522,7 +522,7 @@ const publishReleasePackages = ({
         Effect.as(true),
         Effect.catchTag('CmdError', () => Effect.succeed(false)),
       )
-      yield* cmd(`DT_PASSTHROUGH=1 ${publishArgs.join(' ')}`, { shell: true }).pipe(
+      yield* cmd(publishArgs.join(' '), { shell: true }).pipe(
         Effect.provide(cwdLayer),
         Effect.catchTag('CmdError', (error) => {
           if (isCI === false || dryRun === true || isSnapshotVersion(version) === false) return Effect.fail(error)
@@ -568,7 +568,9 @@ export const releasePlanCommand = Cli.Command.make(
     cwd: Cli.Flag.string('cwd').pipe(
       Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ??
-          shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run inside 'devenv shell'`),
+          shouldNeverHappen(
+            `WORKSPACE_ROOT is not set. Run commands through the root package scripts or export WORKSPACE_ROOT to the repository root`,
+          ),
       ),
     ),
   },
@@ -592,7 +594,9 @@ export const releaseStableCommand = Cli.Command.make(
     cwd: Cli.Flag.string('cwd').pipe(
       Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ??
-          shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run inside 'devenv shell'`),
+          shouldNeverHappen(
+            `WORKSPACE_ROOT is not set. Run commands through the root package scripts or export WORKSPACE_ROOT to the repository root`,
+          ),
       ),
     ),
     tscBin: Cli.Flag.string('tsc-bin').pipe(Cli.Flag.optional),
@@ -650,7 +654,9 @@ export const releaseSnapshotCommand = Cli.Command.make(
     cwd: Cli.Flag.string('cwd').pipe(
       Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ??
-          shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run inside 'devenv shell'`),
+          shouldNeverHappen(
+            `WORKSPACE_ROOT is not set. Run commands through the root package scripts or export WORKSPACE_ROOT to the repository root`,
+          ),
       ),
     ),
     versionOption: Cli.Flag.string('version').pipe(Cli.Flag.optional),
@@ -710,7 +716,9 @@ export const releaseNotesExtractCommand = Cli.Command.make(
     cwd: Cli.Flag.string('cwd').pipe(
       Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ??
-          shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run inside 'devenv shell'`),
+          shouldNeverHappen(
+            `WORKSPACE_ROOT is not set. Run commands through the root package scripts or export WORKSPACE_ROOT to the repository root`,
+          ),
       ),
     ),
   },

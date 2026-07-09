@@ -91,9 +91,6 @@ const NETLIFY_API_URL = 'https://api.netlify.com/api/v1/purge'
  *   `[build] command` must `cd docs` and `publish` must be git-root-relative
  *   (`docs/dist`).
  * - `NODE_ENV=production`: the astro adapter only engages in production.
- * - `DT_PASSTHROUGH=1`: `pnpm`/`astro` are blocked by the agent-policy wrapper
- *   inside Netlify's spawned subprocess; the `[build] command` uses
- *   `pnpm exec astro` and this flag lets it through.
  * - Edge bundling needs Deno on PATH. The docs workspace owns the pnpm-installed
  *   `deno` package, so deploy prepends `docs/node_modules/.bin`.
  */
@@ -170,12 +167,9 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
             stderr: 'pipe',
             env: {
               CI: '1',
-              // The astro adapter only engages with NODE_ENV=production, and the
-              // agent-policy wrapper blocks pnpm/astro inside Netlify's spawned
-              // subprocess unless DT_PASSTHROUGH passes them through.
+              // The astro adapter only engages with NODE_ENV=production.
               NODE_ENV: 'production',
               NETLIFY_SITE_ID: resolvedSiteArg,
-              DT_PASSTHROUGH: '1',
               PATH: prependPath(docsNodeBin),
               // The `[build] command`'s astro build reads this to include typedoc.
               STARLIGHT_INCLUDE_API_DOCS: apiDocs === true ? '1' : undefined,
@@ -247,7 +241,7 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
   // With Option A (`--build`), the timeout must cover the full pipeline: Astro
   // build (including typedoc API docs) + Netlify upload. 20 minutes is a generous
   // inner backstop while staying clearly below the shell-level `timeout(1) 25m`
-  // wrapper in `docs:deploy:prod:phase:build-deploy` (mono-wrappers.nix), which
+  // wrapper in `docs:deploy:prod:phase:build-deploy` (scripts/bin/package-task), which
   // provides the hard PID-tree kill backstop.
   Effect.timeout(Duration.minutes(20)),
   Effect.catchTag(

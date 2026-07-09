@@ -12,7 +12,7 @@
 # Fish: Installed globally to ~/.config/fish/completions (works automatically)
 #
 # Zsh: Generated in project-local $WORKSPACE_ROOT/scripts/.completions/zsh/site-functions
-#      and loaded by devenv.nix enterShell via FPATH.
+#      and loaded by local shell setup via FPATH.
 
 maybe_generate_completions() {
   local src="$1"
@@ -35,7 +35,7 @@ if command -v fish >/dev/null 2>&1; then
     "$HOME/.config/fish/completions/mono.fish"
 fi
 
-# Zsh completions (project-local via FPATH, loaded in devenv.nix enterShell)
+# Zsh completions (project-local via FPATH)
 if command -v zsh >/dev/null 2>&1; then
   ZSH_COMPLETIONS_DIR="$WORKSPACE_ROOT/scripts/.completions/zsh/site-functions"
   mkdir -p "$ZSH_COMPLETIONS_DIR"

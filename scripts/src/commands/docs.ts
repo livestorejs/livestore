@@ -23,7 +23,10 @@ import { emitWorkflowReportRecord, nowIsoUtc } from '../shared/workflow-report.t
 import { exportMarkdownCommand } from './docs-export.ts'
 
 const workspaceRoot =
-  process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run inside 'devenv shell'`)
+  process.env.WORKSPACE_ROOT ??
+  shouldNeverHappen(
+    `WORKSPACE_ROOT is not set. Run commands through the root package scripts or export WORKSPACE_ROOT to the repository root`,
+  )
 const docsPath = `${workspaceRoot}/docs`
 const docsNodeBin = `${docsPath}/node_modules/.bin`
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
@@ -31,7 +34,7 @@ const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 /**
  * Where the prod deploy phases (`upload` → `verify` → `purge`) exchange state.
  *
- * Each prod-deploy phase runs as its own Nix task (and its own GitHub Actions
+ * Each prod-deploy phase runs as its own package-script task (and its own GitHub Actions
  * step / workflow_call job) so we can scope shell timeouts + heartbeats at the
  * OS boundary instead of inheriting an orphaned tldraw/Chromium child from a
  * preceding build step. The phases share Netlify identifiers via this file.
@@ -283,8 +286,9 @@ const runDocsBuild = Effect.fn('docs.build')(function* ({ apiDocs, clean, skipDe
     LS_SKIP_SNIPPET_AUTO_BUILD_AND_WATCH: '1',
     LS_TLDRAW_SKIP_AUTO_BUILD: '1',
     LS_SKIP_OG_IMAGES: process.env.LS_SKIP_OG_IMAGES ?? '1',
-    DT_PASSTHROUGH: '1',
-  } // Temporary workaround for https://github.com/livestorejs/livestore/issues/1377.
+  }
+
+  // Temporary workaround for https://github.com/livestorejs/livestore/issues/1377.
   // Astro 6 imports @astrojs/check from Astro's virtual-store package context, so run sync + astro-check
   // directly until the Astro/Vite package stack is upgraded.
   yield* cmd('pnpm astro sync', { env: astroEnv }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
@@ -557,7 +561,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         ),
         /**
          * Phase split for the prod deploy. The release CI runs each phase as a
-         * separate Nix task / GitHub Actions step so a hang in `upload` (e.g.
+         * separate package-script task / GitHub Actions step so a hang in `upload` (e.g.
          * an orphan Chromium left from build) cannot freeze `verify`/`purge`.
          *
          * - `upload`: build (if `--build`) + Netlify deploy. Writes deploy IDs to

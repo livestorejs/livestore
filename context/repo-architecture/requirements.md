@@ -11,7 +11,7 @@ Builds on [vision.md](./vision.md). Implementation details live in
   `livestorejs/livestore-contrib` live under the `livestorejs` GitHub
   organization and publish packages under the `@livestore` npm scope.
 - **A02 Shared tooling source:** `overengineeringstudio/effect-utils` supplies
-  canonical devenv modules, CI workflow builders, label/repo
+  canonical package-script helpers, CI workflow builders, label/repo
   settings helpers, oxlint/oxfmt policy, and pnpm policy.
 - **A03 Megarepo materialization:** `mr fetch --apply` materializes member
   repositories under `repos/` as filesystem symlinks that Bun, pnpm,
@@ -91,8 +91,8 @@ Builds on [vision.md](./vision.md). Implementation details live in
 
 ### Must Share Tooling
 
-- **R16 Same devenv stack:** Contrib imports the same effect-utils devenv
-  modules as core.
+- **R16 Same package-script stack:** Contrib uses the same root package-script
+  task surface as core.
 - **R17 Shared helpers, local ownership manifests:** Contrib's workspace,
   package, TypeScript, lint/format, CI, labels, and repo settings files are
   composed from core/effect-utils helpers rather than handwritten copies. Final

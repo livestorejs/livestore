@@ -84,6 +84,7 @@
     "release:snapshot:git-sha": "bash scripts/bin/package-task release:snapshot:git-sha",
     "release:stable:dryrun": "bash scripts/bin/package-task release:stable:dryrun",
     "release:stable:publish": "bash scripts/bin/package-task release:stable:publish",
+    "source-policy": "bash scripts/bin/package-task source-policy",
     "test:integration:devtools": "bash scripts/bin/package-task test:integration:devtools",
     "test:integration:misc": "bash scripts/bin/package-task test:integration:misc",
     "test:integration:playwright:suite": "bash scripts/bin/package-task test:integration:playwright:suite",
@@ -108,6 +109,7 @@
     "ts:check:strict": "bash scripts/bin/package-task ts:check:strict",
     "ts:clean": "bash scripts/bin/package-task ts:clean",
     "ts:emit": "bash scripts/bin/package-task ts:emit",
+    "update-deps": "bash scripts/bin/package-task update-deps",
     "changeset": "changeset",
     "changeset:status": "changeset status",
     "changeset:version": "changeset version"
