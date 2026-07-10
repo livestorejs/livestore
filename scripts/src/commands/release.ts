@@ -406,9 +406,9 @@ const patchReleasePackageVersions = ({
       yield* fsEffect.writeFileString(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
     }
   }).pipe(
-    Effect.catchAll((error) =>
+    Effect.catch((error) =>
       Effect.logWarning(`Failed to patch release package versions: ${toErrorMessage(error)}`).pipe(
-        Effect.zipRight(Effect.fail(error)),
+        Effect.andThen(Effect.fail(error)),
       ),
     ),
   )
