@@ -7,8 +7,8 @@ export const comment = State.SQLite.table({
     body: State.SQLite.text({ default: '' }),
     creator: State.SQLite.text({ default: '' }),
     issueId: State.SQLite.integer(),
-    created: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
-    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromEpochMillis }),
+    created: State.SQLite.integer({ schema: Schema.DateFromMillis }),
+    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
   },
   indexes: [{ name: 'issue_id', columns: ['issueId'] }],
 })

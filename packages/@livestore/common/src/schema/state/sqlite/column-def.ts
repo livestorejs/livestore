@@ -173,7 +173,7 @@ const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.Col
   }
 
   if (SchemaAST.isNumber(encodedAst) === true) {
-    if (hasCheck(coreAst.checks, 'isInt') === true || SchemaAST.resolveIdentifier(coreAst) === 'DateFromEpochMillis') {
+    if (hasCheck(coreAst.checks, 'isInt') === true || hasDateTypeConstructor(coreAst) === true) {
       return SqliteDsl.integer({ schema: coreSchema, nullable })
     }
     return SqliteDsl.real({ schema: coreSchema, nullable })
@@ -227,10 +227,7 @@ const getLiteralColumnDefinition = (
     case 'string':
       return SqliteDsl.text({ schema, nullable })
     case 'number': {
-      if (
-        hasCheck(sourceAst.checks, 'isInt') === true ||
-        SchemaAST.resolveIdentifier(sourceAst) === 'DateFromEpochMillis'
-      ) {
+      if (hasCheck(sourceAst.checks, 'isInt') === true || hasDateTypeConstructor(sourceAst) === true) {
         return SqliteDsl.integer({ schema, nullable })
       }
 
@@ -247,6 +244,10 @@ const getLiteralColumnDefinition = (
       return null
   }
 }
+
+/** Effect's built-in date codecs expose their semantic type through the Date type-constructor annotation. */
+const hasDateTypeConstructor = (ast: SchemaAST.AST): boolean =>
+  SchemaAST.resolveAt<{ readonly _tag: string }>('typeConstructor')(ast)?._tag === 'Date'
 
 const extractLiteralValues = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.LiteralValue> | null => {
   if (SchemaAST.isLiteral(ast) === true) return [ast.literal]

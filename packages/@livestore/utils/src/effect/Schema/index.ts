@@ -86,16 +86,6 @@ export const headOrElse: {
     ),
 )
 
-export const DateFromEpochMillis = Schema.Date.pipe(
-  Schema.encodeTo(
-    Schema.Number,
-    SchemaTransformation.transform({
-      decode: (epochMillis) => new Date(epochMillis),
-      encode: (date) => date.getTime(),
-    }),
-  ),
-).annotate({ identifier: 'DateFromEpochMillis' })
-
 // NOTE this is a temporary workaround until Effect schema has a better way to hash schemas
 // https://github.com/Effect-TS/effect/issues/2719
 // TODO remove this once the issue is resolved
