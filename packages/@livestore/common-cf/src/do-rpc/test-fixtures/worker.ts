@@ -29,6 +29,8 @@ export class TestRpcDurableObject extends DurableObject {
       Ping: ({ message }) => Effect.succeed({ response: `Pong: ${message}` }),
       Echo: ({ text }) => Effect.succeed({ echo: `Echo: ${text}` }),
       Add: ({ a, b }) => Effect.succeed({ result: a + b }),
+      OptionalPayload: ({ value }) => Effect.succeed({ wasUndefined: value === undefined }),
+      StreamOptionalPayload: ({ value }) => Stream.make({ wasUndefined: value === undefined }),
       Defect: ({ message }) => Effect.die(`some defect: ${message}`),
       Fail: ({ message }) => Effect.fail(`RPC failure: ${message}`),
       Stream: () =>
@@ -94,6 +96,8 @@ export default {
             Ping: (msg) => doRpcClient.Ping(msg).pipe(Effect.orDie),
             Echo: (msg) => doRpcClient.Echo(msg).pipe(Effect.orDie),
             Add: (msg) => doRpcClient.Add(msg).pipe(Effect.orDie),
+            OptionalPayload: () => doRpcClient.OptionalPayload({ value: undefined }).pipe(Effect.orDie),
+            StreamOptionalPayload: () => doRpcClient.StreamOptionalPayload({ value: undefined }).pipe(Stream.orDie),
             Defect: (msg) => doRpcClient.Defect(msg).pipe(Effect.orDie),
             Fail: (msg) => doRpcClient.Fail(msg).pipe(Effect.orDie),
             Stream: (msg) => doRpcClient.Stream(msg).pipe(Stream.orDie),

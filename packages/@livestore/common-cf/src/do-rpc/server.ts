@@ -5,6 +5,7 @@ import {
   type Layer,
   Option,
   type ReadonlyArray,
+  Result,
   Rpc,
   type RpcGroup,
   type RpcMessage,
@@ -70,11 +71,9 @@ export const toDurableObjectHandler =
 
         // Find the RPC handler
         // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- RpcGroup.requests map returns Rpc.Any; narrowing to AnyWithProps for property access
-        const rpc = group.requests.get(request.tag)! as unknown as Rpc.AnyWithProps
-        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- context.mapUnsafe dynamic lookup; type safety ensured by RpcGroup registration
-        const entry = context.mapUnsafe.get(rpc.key) as Rpc.Handler<Rpcs['_tag']>
+        const rpc = group.requests.get(request.tag) as unknown as Rpc.AnyWithProps | undefined
 
-        if (rpc == null || entry == null) {
+        if (rpc === undefined) {
           responses.push({
             _tag: 'Exit',
             requestId: request.id,
@@ -83,17 +82,50 @@ export const toDurableObjectHandler =
           continue
         }
 
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- context.mapUnsafe dynamic lookup; type safety ensured by RpcGroup registration
+        const entry = context.mapUnsafe.get(rpc.key) as Rpc.Handler<Rpcs['_tag']> | undefined
+
+        if (entry === undefined) {
+          responses.push({
+            _tag: 'Exit',
+            requestId: request.id,
+            exit: Exit.die(`No handler registered for request tag: ${request.tag}`),
+          })
+          continue
+        }
+
+        const payloadResult = yield* Schema.decodeUnknownEffect(Schema.toCodecJson(rpc.payloadSchema))(
+          request.payload,
+        ).pipe(Effect.provideContext(entry.context), Effect.result)
+
+        if (Result.isFailure(payloadResult) === true) {
+          // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; rpc has already been narrowed above
+          const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
+          const encodedExit = yield* Schema.encodeUnknownEffect(Schema.toCodecJson(exitSchema))(
+            Exit.die(payloadResult.failure.issue.toString()),
+          ).pipe(Effect.provideContext(entry.context))
+
+          responses.push({
+            _tag: 'Exit',
+            requestId: request.id,
+            exit: encodedExit,
+          })
+          continue
+        }
+
+        const decodedRequest = { ...request, payload: payloadResult.success }
+
         // Check if this is a streaming RPC
         const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
 
         // For streaming RPCs with only one request, return ReadableStream directly
         if (isStream === true && requests.length === 1) {
-          return yield* createStreamingResponse(rpc, entry, request, parser, options.layer)
+          return yield* createStreamingResponse(rpc, entry, decodedRequest, parser, options.layer)
         }
 
         // Execute the handler
         const result = yield* Effect.gen(function* () {
-          const handlerResult = entry.handler(request.payload, {
+          const handlerResult = entry.handler(decodedRequest.payload, {
             client: new Rpc.ServerClient(0), // TODO: add proper clientId if needed
             requestId: request.id,
             headers: Headers.fromInput({

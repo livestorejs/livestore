@@ -38,19 +38,23 @@ export interface Env {
   DB: CfTypes.D1Database
 }
 
-export class SyncBackendDO extends makeDurableObject({
-  // onPush: async (message) => {
-  //   console.log('onPush', message.batch)
-  // },
-  // onPull: async (message) => {
-  //   console.log('onPull', message)
-  // },
+const httpOptions = {
   http: {
     responseHeaders: {
       'X-Custom-Header': 'test-value',
       'X-LiveStore-Version': '1.0.0',
     },
   },
+}
+
+export class SyncBackendDO extends makeDurableObject({
+  ...httpOptions,
+  storage: { _tag: 'do-sqlite' },
+}) {}
+
+export class SyncBackendD1DO extends makeDurableObject({
+  ...httpOptions,
+  storage: { _tag: 'd1', binding: 'DB' },
 }) {}
 
 const DurableObjectBase = DurableObject as any as new (

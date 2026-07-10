@@ -1,9 +1,25 @@
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect, Fiber, Rpc, RpcClient, RpcGroup, Schema, Stream } from '@livestore/utils/effect'
+import {
+  Effect,
+  Exit,
+  Fiber,
+  Rpc,
+  RpcClient,
+  RpcGroup,
+  type RpcMessage,
+  RpcSerialization,
+  Schema,
+  Stream,
+} from '@livestore/utils/effect'
 
 import type * as CfTypes from '../cf-types.ts'
 import { layerProtocolDurableObject } from './client.ts'
 import { toDurableObjectHandler } from './server.ts'
+
+const EchoRpc = Rpc.make('Echo', {
+  payload: Schema.Struct({ text: Schema.String }),
+  success: Schema.Struct({ echo: Schema.String }),
+})
 
 class Rpcs extends RpcGroup.make(
   Rpc.make('BigStream', {
@@ -15,10 +31,7 @@ class Rpcs extends RpcGroup.make(
     }),
     stream: true,
   }),
-  Rpc.make('Echo', {
-    payload: Schema.Struct({ text: Schema.String }),
-    success: Schema.Struct({ echo: Schema.String }),
-  }),
+  EchoRpc,
 ) {}
 
 const READ_CHUNK_SIZE = 4096
@@ -35,6 +48,54 @@ const ServerLive = Rpcs.toLayer({
   BigStream: ({ n }) => Stream.fromIterable(expectedRows.slice(0, n)),
   Echo: ({ text }) => Effect.succeed({ echo: `Echo: ${text}` }),
 })
+
+const ResponseExitEncoded = Schema.Struct({
+  _tag: Schema.Literal('Exit'),
+  requestId: Schema.Union([Schema.String, Schema.Number]),
+  exit: Schema.Unknown,
+})
+
+Vitest.live('returns an encoded defect without invoking the handler for an invalid payload', () =>
+  Effect.gen(function* () {
+    let handlerCalled = false
+    const serverLive = Rpcs.toLayer({
+      BigStream: ({ n }) => Stream.fromIterable(expectedRows.slice(0, n)),
+      Echo: ({ text }) =>
+        Effect.sync(() => {
+          handlerCalled = true
+          return { echo: `Echo: ${text}` }
+        }),
+    })
+    const parser = RpcSerialization.msgPack.makeUnsafe()
+    const request: RpcMessage.RequestEncoded = {
+      _tag: 'Request',
+      id: 'invalid-echo',
+      tag: 'Echo',
+      payload: { text: 42 },
+      headers: [],
+    }
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- msgPack parser.encode returns unknown; this request is the expected wire payload
+    const encodedRequest = parser.encode([request]) as Uint8Array<ArrayBuffer>
+    const encodedResponse = yield* toDurableObjectHandler(Rpcs, { layer: serverLive })(encodedRequest)
+
+    if (encodedResponse instanceof Uint8Array === false) {
+      return yield* Effect.die('Expected a unary RPC response')
+    }
+
+    const decodedResponse = parser.decode(encodedResponse)
+    const messages = Array.isArray(decodedResponse) === true ? decodedResponse.flat(1) : [decodedResponse]
+    const [response] = yield* Schema.decodeUnknownEffect(Schema.Array(ResponseExitEncoded))(messages)
+    if (response === undefined) {
+      return yield* Effect.die('Expected an RPC exit response')
+    }
+
+    const exitSchema = Rpc.exitSchema(EchoRpc)
+    const exit = yield* Schema.decodeUnknownEffect(Schema.toCodecJson(exitSchema))(response.exit)
+
+    Vitest.expect(handlerCalled).toBe(false)
+    Vitest.expect(Exit.isFailure(exit)).toBe(true)
+  }),
+)
 
 Vitest.live('keeps a straddling stream frame isolated from a concurrent unary response', () =>
   Effect.gen(function* () {

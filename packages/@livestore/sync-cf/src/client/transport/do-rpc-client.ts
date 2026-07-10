@@ -52,7 +52,7 @@ export const makeDoRpcSync =
   ({ syncBackendStub, durableObjectContext }: DoRpcSyncOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
     Effect.gen(function* () {
-      const isConnected = yield* SubscriptionRef.make(true)
+      const isConnected = yield* SubscriptionRef.make(false)
 
       const ProtocolLive = layerProtocolDurableObject({
         callRpc: (payload) => syncBackendStub.rpc(payload),
@@ -63,8 +63,16 @@ export const makeDoRpcSync =
 
       const rpcClient = yield* RpcClient.make(SyncDoRpc).pipe(Effect.provide(context))
 
-      // Nothing to do here
-      const connect = Effect.void
+      const ping = rpcClient['SyncDoRpc.Ping']({
+        storeId,
+        payload,
+      }).pipe(
+        UnknownError.mapToUnknownError,
+        Effect.andThen(SubscriptionRef.set(isConnected, true)),
+        Effect.withSpan('rpc-sync-client:ping'),
+      )
+
+      const connect = ping
 
       const backendIdHelper = yield* SyncBackend.makeBackendIdHelper
 
@@ -137,11 +145,6 @@ export const makeDoRpcSync =
         ),
       )
 
-      const ping: SyncBackend.SyncBackend<{ createdAt: string }>['ping'] = rpcClient['SyncDoRpc.Ping']({
-        storeId,
-        payload,
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('rpc-sync-client:ping'))
-
       return SyncBackend.of({
         connect,
         isConnected,
@@ -179,7 +182,9 @@ export const makeDoRpcSync =
 export const handleSyncUpdateRpc = (payload: unknown) =>
   Effect.gen(function* () {
     const decodedPayload = yield* Schema.decodeUnknownEffect(ResponseChunkEncoded)(payload)
-    const decoded = yield* Schema.decodeUnknownEffect(SyncMessage.PullResponse)(decodedPayload.values[0])
+    const decoded = yield* Schema.decodeUnknownEffect(Schema.toCodecJson(SyncMessage.PullResponse))(
+      decodedPayload.values[0],
+    )
 
     const pullStreamQueue = requestIdQueueMap.get(decodedPayload.requestId)
 

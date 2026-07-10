@@ -12,7 +12,7 @@ database_id = "hibernation-test-db"
 
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"
-class_name = "SyncBackendDO"
+class_name = "SyncBackendD1DO"
 
 [[durable_objects.bindings]]
 name = "TEST_CLIENT_DO"
@@ -21,3 +21,7 @@ class_name = "TestClientDo"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO", "TestClientDo"]
+
+[[migrations]]
+tag = "v2"
+renamed_classes = [{ from = "SyncBackendDO", to = "SyncBackendD1DO" }]

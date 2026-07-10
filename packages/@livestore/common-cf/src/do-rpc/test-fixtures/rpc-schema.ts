@@ -13,6 +13,15 @@ export class TestRpcs extends RpcGroup.make(
     payload: Schema.Struct({ a: Schema.Number, b: Schema.Number }),
     success: Schema.Struct({ result: Schema.Number }),
   }),
+  Rpc.make('OptionalPayload', {
+    payload: Schema.Struct({ value: Schema.optional(Schema.String) }),
+    success: Schema.Struct({ wasUndefined: Schema.Boolean }),
+  }),
+  Rpc.make('StreamOptionalPayload', {
+    payload: Schema.Struct({ value: Schema.optional(Schema.String) }),
+    success: Schema.Struct({ wasUndefined: Schema.Boolean }),
+    stream: true,
+  }),
   Rpc.make('Defect', {
     payload: Schema.Struct({ message: Schema.String }),
     success: Schema.Struct({ never: Schema.String }),

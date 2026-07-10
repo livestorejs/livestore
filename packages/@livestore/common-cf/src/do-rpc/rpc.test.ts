@@ -87,6 +87,22 @@ Vitest.describe('Durable Object RPC', { timeout: testTimeout }, () => {
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
+  Vitest.live('should decode optional payload fields', (test) =>
+    Effect.gen(function* () {
+      const client = yield* RpcClient.make(TestRpcs)
+      const result = yield* client.OptionalPayload({})
+      expect(result).toEqual({ wasUndefined: true })
+    }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
+  )
+
+  Vitest.live('should decode optional payload fields for streams', (test) =>
+    Effect.gen(function* () {
+      const client = yield* RpcClient.make(TestRpcs)
+      const result = yield* client.StreamOptionalPayload({}).pipe(Stream.runFirstUnsafe)
+      expect(result).toEqual({ wasUndefined: true })
+    }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
+  )
+
   Vitest.live('should handle RPC fail method', (test) =>
     Effect.gen(function* () {
       const client = yield* RpcClient.make(TestRpcs)

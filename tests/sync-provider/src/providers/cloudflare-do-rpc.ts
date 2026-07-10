@@ -118,9 +118,14 @@ const makeProxyDoRpcSync = ({
 
     const client: DoRpcProxyClient = yield* RpcClient.make(DoRpcProxyRpcs).pipe(Effect.provide(ctx))
 
-    const isConnected = yield* SubscriptionRef.fromStream(
-      client.IsConnected({ clientId, storeId, payload }).pipe(Stream.catchTag('RpcClientError', (e) => Stream.die(e))),
-      false,
+    const isConnected = yield* SubscriptionRef.make(false)
+
+    yield* client.IsConnected({ clientId, storeId, payload }).pipe(
+      Stream.catchTag('RpcClientError', (e) => Stream.die(e)),
+      Stream.tap((connected) => SubscriptionRef.set(isConnected, connected)),
+      Stream.runDrain,
+      // Register the long-lived connection stream before issuing other requests through the same RPC client.
+      Effect.forkScoped({ startImmediately: true }),
     )
 
     const metadata = yield* client.GetMetadata({ clientId, storeId, payload })
