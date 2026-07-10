@@ -421,7 +421,9 @@ const restorePatchedReleaseFiles = (originalPackageJsonByPath: ReadonlyMap<strin
       yield* fsEffect.writeFileString(packageJsonPath, contents)
     }
   }).pipe(
-    Effect.catch((error) => Effect.logWarning(`Failed to restore release package manifests after publishing: ${toErrorMessage(error)}`)),
+    Effect.catch((error) =>
+      Effect.logWarning(`Failed to restore release package manifests after publishing: ${toErrorMessage(error)}`),
+    ),
   )
 
 const packPackageForPublish = ({ cwd, pkg, version }: { cwd: string; pkg: string; version: string }) =>
