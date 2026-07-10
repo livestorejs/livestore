@@ -346,7 +346,7 @@ const makeDevtoolsOptions = ({
           node,
           worker: sharedWorker,
           target: makeSharedWorkerNodeName({ storeId }),
-        }).pipe(Effect.tapCauseLogPretty, dieOnRpcClientError, Effect.forkScoped({ startImmediately: true }))
+        }).pipe(Effect.tapCauseLogPretty, dieOnRpcClientError, Effect.forkScoped)
 
         return { node, persistenceInfo, mode: 'direct' }
       }),

@@ -95,7 +95,7 @@ export const make = (args: Options) =>
           (acc, chunk) => acc + chunk,
         ),
         // Drain subprocess output immediately so the child cannot block while we wait for its exit code.
-        Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
+        Effect.forkChild,
       )
 
       const stderrFiber = yield* process.stderr.pipe(
@@ -105,7 +105,7 @@ export const make = (args: Options) =>
           (acc, chunk) => acc + chunk,
         ),
         // Drain subprocess output immediately so the child cannot block while we wait for its exit code.
-        Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
+        Effect.forkChild,
       )
 
       const exitCode = yield* process.exitCode

@@ -12,10 +12,7 @@ test(
       const { browserContext } = yield* Playwright.BrowserContext
       const page = yield* Effect.promise(() => browserContext.newPage())
 
-      const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(
-        // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-        Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
-      )
+      const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(Effect.forkChild)
 
       yield* Effect.promise(async () => {
         await page.goto(`http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`)

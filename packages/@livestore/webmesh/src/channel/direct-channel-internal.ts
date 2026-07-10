@@ -267,8 +267,7 @@ export const makeDirectChannelInternal = ({
               Stream.filter(Schema.is(MeshSchema.DirectChannelPong)),
               Stream.take(1),
               Stream.runDrain,
-              // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-              Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
+              Effect.forkChild,
             )
 
             // There seems to be some scenario where the initial ping message is lost.
@@ -343,12 +342,7 @@ export const makeDirectChannelInternal = ({
           return
         }
       }
-    }).pipe(
-      Effect.interruptible,
-      Effect.tapCauseLogPretty,
-      // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-      Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
-    )
+    }).pipe(Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
 
     const channel = yield* Deferred.await(deferred)
 

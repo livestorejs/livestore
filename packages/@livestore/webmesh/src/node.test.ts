@@ -482,11 +482,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               Stream.take(messageCount),
               Stream.runDrain,
             )
-          }).pipe(
-            Effect.scoped,
-            // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-            Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
-          )
+          }).pipe(Effect.scoped, Effect.forkChild)
 
           // yield* createChannel(nodeA, 'B').pipe(Effect.andThen(WebChannel.shutdown))
           // // yield* createChannel(nodeA, 'B').pipe(Effect.andThen(WebChannel.shutdown))
@@ -1292,15 +1288,13 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           Stream.mapEffect(Effect.fromResult),
           Stream.runHead,
           Effect.flatMap(Effect.fromOption),
-          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-          Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
+          Effect.forkChild,
         )
         const listenOnCFiber = yield* channelOnC.listen.pipe(
           Stream.mapEffect(Effect.fromResult),
           Stream.runHead,
           Effect.flatMap(Effect.fromOption),
-          // TODO(#1356): These options were set to preserve Effect v3 fork behavior while migrating to Effect v4. Verify if they're the most appropriate configuration for this specific fork.
-          Effect.forkChild({ startImmediately: true, uninterruptible: 'inherit' }),
+          Effect.forkChild,
         )
 
         yield* channelOnA.send('A1')

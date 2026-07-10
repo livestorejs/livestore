@@ -203,7 +203,7 @@ export const makeSingleTabAdapter =
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
-        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+        Effect.forkScoped,
       )
 
       // In single-tab mode, we always have the lock (we're always the leader)
@@ -296,14 +296,14 @@ export const makeSingleTabAdapter =
         ),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
-        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+        Effect.forkScoped,
       )
 
       yield* Queue.await(bootStatusQueue).pipe(
         Effect.andThen(Fiber.interrupt(bootStatusFiber)),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
-        Effect.forkScoped({ startImmediately: true, uninterruptible: 'inherit' }),
+        Effect.forkScoped,
       )
 
       // Get initial snapshot (either from fast-path or from worker)
