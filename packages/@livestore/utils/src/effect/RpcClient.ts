@@ -33,7 +33,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
     Effect.fnUntraced(function* (writeResponse, clientIds) {
       const socket = yield* Socket.Socket
       const serialization = yield* RpcSerialization.RpcSerialization
-      const requestClientMap = new Map<string, number>()
+      const requestClientMap = new Map<string | number, number>()
 
       const write = yield* socket.writer
       let parser = serialization.makeUnsafe()

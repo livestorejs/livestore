@@ -626,7 +626,7 @@ export const make = Effect.fnUntraced(function* ({
         // Retry transient errors
         Effect.retry({
           schedule: Schedule.exponential(Duration.seconds(1)).pipe(
-            Schedule.modifyDelay((_, delay) => Effect.succeed(Duration.min(delay, Duration.seconds(30)))), // Cap delay at 30s intervals.
+            Schedule.modifyDelay(({ duration }) => Effect.succeed(Duration.min(duration, Duration.seconds(30)))), // Cap delay at 30s intervals.
           ),
           while: (error) => error._tag === 'IsOfflineError' || error._tag === 'UnknownError',
         }),

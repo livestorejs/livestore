@@ -33,13 +33,13 @@ packages:
   - tests/wa-sqlite
 
 overrides:
-  effect: 4.0.0-beta.83
-  '@effect/platform-browser': 4.0.0-beta.83
-  '@effect/platform-bun': 4.0.0-beta.83
-  '@effect/platform-node': 4.0.0-beta.83
-  '@effect/platform-node-shared': 4.0.0-beta.83
-  '@effect/opentelemetry': 4.0.0-beta.83
-  '@effect/vitest': 4.0.0-beta.83
+  effect: 4.0.0-beta.97
+  '@effect/platform-browser': 4.0.0-beta.97
+  '@effect/platform-bun': 4.0.0-beta.97
+  '@effect/platform-node': 4.0.0-beta.97
+  '@effect/platform-node-shared': 4.0.0-beta.97
+  '@effect/opentelemetry': 4.0.0-beta.97
+  '@effect/vitest': 4.0.0-beta.97
   react: 19.2.3
   react-dom: 19.2.3
   '@tanstack/router-core': 1.145.7
@@ -86,6 +86,15 @@ allowBuilds:
   protobufjs: true
   puppeteer: true
   workerd: true
+
+minimumReleaseAgeExclude:
+  - effect@4.0.0-beta.97
+  - '@effect/platform-browser@4.0.0-beta.97'
+  - '@effect/platform-bun@4.0.0-beta.97'
+  - '@effect/platform-node@4.0.0-beta.97'
+  - '@effect/platform-node-shared@4.0.0-beta.97'
+  - '@effect/opentelemetry@4.0.0-beta.97'
+  - '@effect/vitest@4.0.0-beta.97'
 
 supportedArchitectures:
   os: [linux, darwin]

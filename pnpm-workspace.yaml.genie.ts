@@ -1,4 +1,5 @@
 import { catalog, commonPnpmPolicySettings, pnpmWorkspaceYaml, repoPnpmAllowBuilds } from './genie/repo.ts'
+import { effectVersion } from './genie/external.ts'
 import { rootWorkspacePackages } from './package.json.genie.ts'
 
 /**
@@ -34,6 +35,11 @@ const examplesWorkspaceSettings = {
     '@tanstack/start-client-core',
   ),
 }
+
+/** Allow the intentionally selected Effect beta through the workspace's minimum release age policy. */
+const effectMinimumReleaseAgeExclude = Object.keys(examplesWorkspaceSettings.overrides)
+  .filter((name) => name === 'effect' || name.startsWith('@effect/'))
+  .map((name) => `${name}@${effectVersion}`)
 
 export const repoPackageExtensions = {
   'starlight-auto-sidebar': {
@@ -72,6 +78,7 @@ export default pnpmWorkspaceYaml.root({
   injectWorkspacePackages: false,
   allowBuilds: repoPnpmAllowBuilds,
   packageExtensions: repoPackageExtensions,
+  minimumReleaseAgeExclude: effectMinimumReleaseAgeExclude,
   /** Relaxed until @livestore/devtools-vite publishes with updated Effect peer ranges */
   strictPeerDependencies: false,
   ...examplesWorkspaceSettings,

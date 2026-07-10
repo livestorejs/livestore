@@ -106,7 +106,7 @@ export const makeWebSocketEdge = ({
       const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
       const retryOpenErrorSchedule = Schedule.exponential(100).pipe(
-        Schedule.modifyDelay((_, delay) => Effect.succeed(Duration.min(delay, Duration.millis(5000)))),
+        Schedule.modifyDelay(({ duration }) => Effect.succeed(Duration.min(duration, Duration.millis(5000)))),
         Schedule.setInputType<Socket.SocketError>(),
         Schedule.while(({ input }) => input.reason._tag === 'SocketOpenError'),
       )

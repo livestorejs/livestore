@@ -1,4 +1,4 @@
-import * as OtelTracer from '@effect/opentelemetry/Tracer'
+import * as OtelTracer from '@effect/opentelemetry/OtelTracer'
 import {
   Cause,
   Console,

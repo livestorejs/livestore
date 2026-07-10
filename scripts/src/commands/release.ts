@@ -511,7 +511,7 @@ const publishReleasePackages = ({
       for (const pkg of packages) {
         yield* cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
           Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
-          Effect.retry(Schedule.spaced('5 seconds').pipe(Schedule.take(60))),
+          Effect.retry(Schedule.spaced('5 seconds').pipe(Schedule.upTo({ times: 60 }))),
         )
         yield* Effect.log(`Verified ${pkg}@${version}`)
       }
