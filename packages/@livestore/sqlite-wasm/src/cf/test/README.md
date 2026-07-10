@@ -23,9 +23,9 @@ Tests for the CloudflareWorkerVFS implementation, which uses DurableObjectStorag
 
 ### Testing Framework
 
-- **Vitest** with **@cloudflare/vitest-pool-workers** for Workers runtime testing
-- **Isolated Storage** - Each test gets fresh storage instances
-- **Real Runtime** - Tests run in the actual Cloudflare Workers runtime environment
+- **Vitest** in the Node test environment
+- **Mocked Cloudflare storage interfaces** - Tests provide in-memory `DurableObjectStorage` and SQL storage doubles
+- **Per-test setup** - Each test creates fresh mock storage and VFS instances
 
 ## VFS Implementation Comparison
 
@@ -69,11 +69,6 @@ Tests for the CloudflareWorkerVFS implementation, which uses DurableObjectStorag
    pnpm install
    ```
 
-2. Ensure Wrangler configuration is correct:
-   ```bash
-   # Check wrangler.toml exists and has correct Durable Object bindings
-   ```
-
 ### Test Commands
 
 ```bash
@@ -100,8 +95,9 @@ pnpm test --coverage
 
 ### Test Environment
 
-- **Runtime**: Cloudflare Workers (via workerd)
-- **Storage**: Isolated per-test storage instances
+- **Runtime**: Node via Vitest
+- **Storage**: Mocked Durable Object storage and SQL storage instances created per test
+- **Scope**: Unit/integration coverage for VFS behavior against Cloudflare-shaped interfaces, not workerd runtime coverage
 
 ## Test Structure
 
@@ -185,7 +181,7 @@ describe('Async Storage VFS Test Suite', () => {
 
 ### Automatic Cleanup
 
-- **Isolated Storage**: Each test gets fresh storage instances
+- **Fresh mock storage**: Each test creates new in-memory storage instances
 - **Temporary Files**: Cleaned up automatically
 - **Cache Management**: Memory caches cleared between tests
 
@@ -225,6 +221,7 @@ console.log('File metadata:', metadata)
 2. **Migration Tests**: Converting between storage backends
 3. **Stress Tests**: High-load scenarios for both implementations
 4. **Real SQLite Integration**: Tests with actual SQLite WASM
+5. **Workers Runtime Coverage**: Add dedicated workerd-based tests if runtime bindings or Wrangler configuration need validation
 
 ### Implementation Improvements
 
