@@ -3,13 +3,14 @@
 import process from 'node:process'
 
 import { cloudflare } from '@cloudflare/vite-plugin'
-import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
 import devtoolsJson from 'vite-plugin-devtools-json'
 import svgr from 'vite-plugin-svgr'
+import { defineConfig, lazyPlugins } from 'vite-plus'
+
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -22,7 +23,7 @@ export default defineConfig({
     // TODO remove once fixed https://github.com/vitejs/vite/issues/8427
     exclude: ['@livestore/wa-sqlite'],
   },
-  plugins: [
+  plugins: lazyPlugins(() => [
     // https://tanstack.com/start/latest/docs/framework/react/guide/hosting#cloudflare-workers--official-partner
     cloudflare({ viteEnvironment: { name: 'ssr' } }),
     tanstackStart(),
@@ -39,5 +40,5 @@ export default defineConfig({
       },
     }),
     devtoolsJson(), // Needed for https://github.com/TanStack/router/issues/2459#issuecomment-2969318833
-  ],
+  ]),
 })

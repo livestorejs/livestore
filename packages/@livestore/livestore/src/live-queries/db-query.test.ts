@@ -1,6 +1,6 @@
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
-import { assert, expect } from 'vitest'
+import { assert, expect } from 'vite-plus/test'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'

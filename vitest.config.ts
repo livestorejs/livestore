@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vite-plus'
 
 /*
 NOTE we're mapping to absolute paths here to avoid issues where tests seem to be resolved multiple times leading to duplicates
@@ -46,17 +46,9 @@ export default defineConfig({
     env: loadTestEnv(),
     projects: [
       ...rootPackages,
-      // path.join(rootDir, 'tests/'),
       path.join(rootDir, 'packages/@local/astro-twoslash-code/vitest.config.ts'),
       path.join(rootDir, 'packages/@local/astro-tldraw/vitest.config.ts'),
-      path.join(rootDir, 'tests/integration/src/tests/adapter-cloudflare/vitest.config.ts'),
-      path.join(rootDir, 'tests/integration/src/tests/adapter-web/vitest.config.ts'),
-      path.join(rootDir, 'tests/integration/src/tests/devtools/vitest.config.ts'),
       path.join(rootDir, 'tests/package-common/vitest.config.ts'),
-      path.join(rootDir, 'tests/sync-provider/vitest.config.ts'),
-      path.join(rootDir, 'tests/wa-sqlite/vitest.config.ts'),
-      path.join(rootDir, 'docs/vitest.config.ts'),
-      path.join(rootDir, 'scripts'),
     ],
     server: { deps: { inline: ['@effect/vitest'] } },
   },

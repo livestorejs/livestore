@@ -8,7 +8,7 @@ import {
   waitFor,
 } from '@testing-library/react'
 import * as React from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import {

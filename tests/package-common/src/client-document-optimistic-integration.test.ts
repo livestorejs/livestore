@@ -1,4 +1,4 @@
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 
 import { makeSchema, State } from '@livestore/common/schema'
 import { createStore, SessionIdSymbol, StoreInternalsSymbol } from '@livestore/livestore'

@@ -1,6 +1,6 @@
-/// <reference types="vitest/globals" />
+/// <reference types="vite-plus/test/globals" />
 
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vite-plus/test'
 
 import type { CfTypes } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'

@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 
 import { BrowserContext, browserContextLayer } from '@livestore/effect-playwright'
 import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'

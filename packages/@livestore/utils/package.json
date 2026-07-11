@@ -71,7 +71,7 @@
     }
   },
   "scripts": {
-    "test": "vitest"
+    "test": "vp test"
   },
   "dependencies": {
     "@effect/platform-node": "4.0.0-beta.83",
@@ -96,7 +96,9 @@
     "@types/web": "0.0.264",
     "effect": "4.0.0-beta.83",
     "jsdom": "26.1.0",
-    "vitest": "4.1.9"
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vite-plus": "catalog:"
   },
   "peerDependencies": {
     "@effect/opentelemetry": "^4.0.0-beta.83",

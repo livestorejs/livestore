@@ -4,7 +4,7 @@
  * These tests verify basic WebSocket edge functionality.
  */
 
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Result, Schema, WebChannel } from '@livestore/utils/effect'

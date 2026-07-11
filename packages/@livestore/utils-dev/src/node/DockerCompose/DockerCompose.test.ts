@@ -1,6 +1,6 @@
 import path from 'node:path'
 
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Duration, Effect, Layer, Stream } from '@livestore/utils/effect'

@@ -1,7 +1,7 @@
 import * as ReactTesting from '@testing-library/react'
 import React from 'react'
 import * as ReactWindow from 'react-window'
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel } from '@livestore/common'

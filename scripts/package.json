@@ -33,7 +33,9 @@
     "effect": "4.0.0-beta.83",
     "semver": "^7.7.3",
     "typescript": "6.0.3",
-    "vitest": "4.1.9",
-    "yaml": "2.8.1"
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "yaml": "2.8.1",
+    "vite-plus": "catalog:"
   }
 }

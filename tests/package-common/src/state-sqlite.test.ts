@@ -1,4 +1,4 @@
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 
 import { type MakeSqliteDb, migrateTable, sql } from '@livestore/common'
 import { State } from '@livestore/common/schema'

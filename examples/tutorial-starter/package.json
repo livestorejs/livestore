@@ -15,12 +15,13 @@
     "@vitejs/plugin-react": "5.1.2",
     "tailwindcss": "4.1.18",
     "typescript": "6.0.3",
-    "vite": "7.3.1"
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "scripts": {
-    "build": "tsc -b && vite build",
-    "dev": "vite",
-    "preview": "vite preview"
+    "build": "tsc -b && vp build",
+    "dev": "vp dev",
+    "preview": "vp preview"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

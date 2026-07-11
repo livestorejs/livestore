@@ -1,4 +1,4 @@
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 
 import { sql } from '@livestore/common'
 import { Eventlog, makeMaterializeEvent } from '@livestore/common/leader-thread'

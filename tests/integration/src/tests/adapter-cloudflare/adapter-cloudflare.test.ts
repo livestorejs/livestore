@@ -1,7 +1,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {

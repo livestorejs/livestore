@@ -1,4 +1,4 @@
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 
 import { IS_CI, omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'

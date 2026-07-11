@@ -1,5 +1,5 @@
 import { Effect, Option, Result, Stream } from 'effect'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 
 import { concatWithLastElement, runCollectReadonlyArray } from './Stream.ts'
 

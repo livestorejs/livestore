@@ -1,4 +1,4 @@
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { makeSchema, State } from '@livestore/common/schema'

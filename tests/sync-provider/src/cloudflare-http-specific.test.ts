@@ -1,4 +1,4 @@
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 
 import { nanoid } from '@livestore/livestore'
 import { objectToString } from '@livestore/utils'

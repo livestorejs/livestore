@@ -1,4 +1,4 @@
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 
 import { BackendIdMismatchError, SyncBackend } from '@livestore/common'
 import { EventFactory } from '@livestore/common/testing'

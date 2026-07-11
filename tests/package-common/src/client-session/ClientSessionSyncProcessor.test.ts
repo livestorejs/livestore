@@ -1,4 +1,4 @@
-import { assert, expect } from 'vitest'
+import { assert, expect } from 'vite-plus/test'
 
 import type { LockStatus, MockSyncBackend } from '@livestore/common'
 import {

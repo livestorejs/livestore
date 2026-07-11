@@ -50,6 +50,8 @@ overrides:
   '@tanstack/start-plugin-core': 1.145.7
   '@tanstack/start-server-core': 1.145.7
   '@tanstack/start-client-core': 1.145.7
+  vite: 'catalog:'
+  vitest: 'catalog:'
 
 packageExtensions:
   react-error-boundary:
@@ -111,7 +113,7 @@ strictPeerDependencies: false
 
 injectWorkspacePackages: false
 
-enableGlobalVirtualStore: true
+enableGlobalVirtualStore: false
 
 packageImportMethod: clone-or-copy
 
@@ -137,3 +139,14 @@ minimumReleaseAgeExclude:
   - '@deno/win32-arm64@2.9.2'
   - '@deno/win32-x64@2.9.2'
   - deno@2.9.2
+catalog:
+  vite: npm:@voidzero-dev/vite-plus-core@0.2.4
+  vitest: 4.1.10
+  vite-plus: 0.2.4
+peerDependencyRules:
+  allowAny:
+    - vite
+    - vitest
+  allowedVersions:
+    vite: '*'
+    vitest: '*'

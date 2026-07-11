@@ -1,6 +1,6 @@
 import * as ReactTesting from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { __resetUseRcResourceCache, useRcResource } from './useRcResource.ts'
 

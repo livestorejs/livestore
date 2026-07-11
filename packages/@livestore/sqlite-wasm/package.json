@@ -56,9 +56,9 @@
     }
   },
   "scripts": {
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:watch": "vitest --watch"
+    "test": "vp test",
+    "test:ui": "vp test --ui",
+    "test:watch": "vp test --watch"
   },
   "dependencies": {
     "@cloudflare/workers-types": "4.20251118.0",
@@ -71,8 +71,9 @@
     "@types/chrome": "0.1.4",
     "@types/node": "25.3.3",
     "@types/wicg-file-system-access": "2023.10.6",
-    "vitest": "4.1.9",
-    "wrangler": "4.42.2"
+    "vite": "catalog:",
+    "wrangler": "4.42.2",
+    "vite-plus": "catalog:"
   },
   "peerDependencies": {
     "@effect/opentelemetry": "^4.0.0-beta.83",

@@ -24,7 +24,10 @@
     "@playwright/test": "1.59.1",
     "@standard-schema/spec": "1.1.0",
     "@types/node": "25.3.3",
-    "effect": "4.0.0-beta.83"
+    "effect": "4.0.0-beta.83",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "@playwright/test": "^1.56.0"

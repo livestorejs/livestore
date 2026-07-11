@@ -1,4 +1,4 @@
-import { expect } from 'vitest'
+import { expect } from 'vite-plus/test'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Option, Schema } from '@livestore/utils/effect'

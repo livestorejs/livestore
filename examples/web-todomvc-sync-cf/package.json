@@ -25,17 +25,18 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.2",
     "typescript": "6.0.3",
-    "vite": "7.3.1",
-    "wrangler": "4.42.2"
+    "vite": "catalog:",
+    "wrangler": "4.42.2",
+    "vite-plus": "catalog:"
   },
   "engines": {
     "node": ">=24.0.0"
   },
   "scripts": {
-    "build": "vite build",
+    "build": "vp build",
     "deploy": "pnpm run build && pnpm exec wrangler deploy",
-    "dev": "vite --force",
-    "preview": "vite preview",
+    "dev": "vp dev --force",
+    "preview": "vp preview",
     "test": "playwright test"
   },
   "pnpm": {

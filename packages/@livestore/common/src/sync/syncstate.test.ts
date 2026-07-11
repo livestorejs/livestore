@@ -1,4 +1,4 @@
-import { assert, expect } from 'vitest'
+import { assert, expect } from 'vite-plus/test'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Cause, Effect, Exit, Schema } from '@livestore/utils/effect'

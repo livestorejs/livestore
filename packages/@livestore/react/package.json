@@ -26,7 +26,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest && REACT_STRICT_MODE=1 vitest"
+    "test": "vp test && REACT_STRICT_MODE=1 vp test"
   },
   "dependencies": {
     "@livestore/common": "workspace:^",
@@ -49,8 +49,9 @@
     "react-dom": "19.2.3",
     "react-window": "1.8.11",
     "typescript": "6.0.3",
-    "vite": "7.3.1",
-    "vitest": "4.1.9"
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vite-plus": "catalog:"
   },
   "peerDependencies": {
     "@effect/opentelemetry": "^4.0.0-beta.83",

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import * as path from 'node:path'
 
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vite-plus/test'
 
 import type { SQLiteAPI } from '@livestore/wa-sqlite'
 

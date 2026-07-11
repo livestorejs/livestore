@@ -55,13 +55,13 @@
     "examples:validate-links": "bash scripts/bin/package-task examples:validate-links",
     "github:rulesets:check": "bash scripts/bin/package-task github:rulesets:check",
     "lint:check": "pnpm run lint:check:format && pnpm run lint:check:oxlint && pnpm run lint:check:lockfile",
-    "lint:check:format": "oxfmt --check packages tests scripts docs .github",
+    "lint:check:format": "vp fmt --check packages tests scripts docs .github",
     "lint:check:lockfile": "pnpm install --frozen-lockfile --ignore-scripts --config.confirmModulesPurge=false --config.side-effects-cache=false --config.verify-store-integrity=true --config.strict-store-pkg-content-check=true --config.package-import-method=clone-or-copy --pm-on-fail=ignore",
     "lint:check:madge": "madge --circular --no-spinner examples/*/src packages/*/*/src",
-    "lint:check:oxlint": "oxlint --import-plugin --deny-warnings --type-aware --tsconfig tsconfig.dev.json packages tests scripts docs .github",
+    "lint:check:oxlint": "vp lint --import-plugin --deny-warnings --type-aware --tsconfig tsconfig.dev.json packages tests scripts docs .github",
     "lint:fix": "pnpm run lint:fix:format && pnpm run lint:fix:oxlint",
-    "lint:fix:format": "oxfmt packages tests scripts docs .github",
-    "lint:fix:oxlint": "oxlint --import-plugin --deny-warnings --fix --type-aware --tsconfig tsconfig.dev.json packages tests scripts docs .github",
+    "lint:fix:format": "vp fmt packages tests scripts docs .github",
+    "lint:fix:oxlint": "vp lint --import-plugin --deny-warnings --fix --type-aware --tsconfig tsconfig.dev.json packages tests scripts docs .github",
     "lint:full": "pnpm run lint:check && pnpm run lint:check:madge && pnpm --dir docs run lint:check:md-imports",
     "lint:full:fix": "pnpm run lint:fix && pnpm run lint:check:madge && pnpm --dir docs run lint:check:md-imports",
     "release:changeset:check-bodies": "bash scripts/bin/package-task release:changeset:check-bodies",
@@ -99,7 +99,7 @@
     "test:integration:wa-sqlite": "pnpm --dir tests/wa-sqlite run test",
     "test:integration:wa-sqlite:build": "pnpm --dir tests/wa-sqlite run build",
     "test:perf": "pnpm --dir tests/perf run test",
-    "test:unit": "vitest packages/@livestore packages/@local tests/package-common",
+    "test:unit": "vp test packages/@livestore packages/@local tests/package-common",
     "ts:build": "tsc --build tsconfig.dev.json",
     "ts:build-watch": "tsc --build tsconfig.dev.json --watch",
     "ts:clean": "tsc --build tsconfig.dev.json --clean",
@@ -107,17 +107,16 @@
     "update-deps": "bash scripts/bin/package-task update-deps",
     "changeset": "changeset",
     "changeset:status": "changeset status",
-    "changeset:version": "changeset version"
+    "changeset:version": "changeset version",
+    "prepare": "vp config"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
     "@types/node": "25.3.3",
     "madge": "^8.0.0",
-    "oxfmt": "0.57.0",
-    "oxlint": "1.39.0",
-    "oxlint-tsgolint": "0.18.0",
     "typescript": "6.0.3",
-    "vitest": "4.1.9"
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "packageManager": "pnpm@11.3.0"
 }

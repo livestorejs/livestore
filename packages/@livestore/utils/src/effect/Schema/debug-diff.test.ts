@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vite-plus/test'
 
 import type { DiffItem } from './debug-diff.ts'
 import { debugDiff } from './debug-diff.ts'

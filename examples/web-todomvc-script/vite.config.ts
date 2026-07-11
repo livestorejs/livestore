@@ -1,8 +1,9 @@
 import process from 'node:process'
 
 import { cloudflare } from '@cloudflare/vite-plugin'
+import { defineConfig, lazyPlugins } from 'vite-plus'
+
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
-import { defineConfig } from 'vite'
 
 export default defineConfig({
   server: {
@@ -10,5 +11,5 @@ export default defineConfig({
     fs: { strict: false },
   },
   worker: { format: 'es' },
-  plugins: [cloudflare(), livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' })],
+  plugins: lazyPlugins(() => [cloudflare(), livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' })]),
 })

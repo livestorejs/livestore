@@ -8,14 +8,14 @@
     "./registry": "./src/providers/registry.ts"
   },
   "scripts": {
-    "test": "vitest",
-    "test:cf-do-rpc-d1": "vitest --testNamePattern \"'Cloudflare Durable Object RPC \\(D1\\)' sync provider\"",
-    "test:cf-do-rpc-do": "vitest --testNamePattern \"'Cloudflare Durable Object RPC \\(DO\\)' sync provider\"",
-    "test:cf-http-d1": "vitest --testNamePattern \"'Cloudflare HTTP RPC \\(D1\\)' sync provider\"",
-    "test:cf-http-do": "vitest --testNamePattern \"'Cloudflare HTTP RPC \\(DO\\)' sync provider\"",
-    "test:cf-ws-d1": "vitest --testNamePattern \"'Cloudflare WebSocket \\(D1\\)' sync provider\"",
-    "test:cf-ws-do": "vitest --testNamePattern \"'Cloudflare WebSocket \\(DO\\)' sync provider\"",
-    "test:mock": "vitest --testNamePattern \"'Mock Sync Backend' sync provider\""
+    "test": "vp test",
+    "test:cf-do-rpc-d1": "vp test --testNamePattern \"'Cloudflare Durable Object RPC \\(D1\\)' sync provider\"",
+    "test:cf-do-rpc-do": "vp test --testNamePattern \"'Cloudflare Durable Object RPC \\(DO\\)' sync provider\"",
+    "test:cf-http-d1": "vp test --testNamePattern \"'Cloudflare HTTP RPC \\(D1\\)' sync provider\"",
+    "test:cf-http-do": "vp test --testNamePattern \"'Cloudflare HTTP RPC \\(DO\\)' sync provider\"",
+    "test:cf-ws-d1": "vp test --testNamePattern \"'Cloudflare WebSocket \\(D1\\)' sync provider\"",
+    "test:cf-ws-do": "vp test --testNamePattern \"'Cloudflare WebSocket \\(DO\\)' sync provider\"",
+    "test:mock": "vp test --testNamePattern \"'Mock Sync Backend' sync provider\""
   },
   "dependencies": {
     "@cloudflare/workers-types": "4.20251118.0",
@@ -41,6 +41,8 @@
     "@standard-schema/spec": "1.1.0",
     "@types/node": "25.3.3",
     "effect": "4.0.0-beta.83",
-    "vitest": "4.1.9"
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vite-plus": "catalog:"
   }
 }

@@ -258,7 +258,7 @@ export const makeSqliteDb = <
               return SqliteConstants.SQLITE_CHANGESET_OMIT
             })
             // @ts-expect-error data should be garbage collected after use
-            // oxlint-disable-next-line eslint(no-param-reassign)
+            // oxlint-disable-next-line no-param-reassign
             data = undefined
           } catch (cause: any) {
             throw new SqliteError({

@@ -49,8 +49,9 @@
     "react-dom": "19.2.3",
     "react-error-boundary": "6.1.1",
     "todomvc-app-css": "2.4.3",
-    "vite": "7.3.1",
-    "vitest": "4.1.9",
-    "wrangler": "4.42.2"
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "4.42.2",
+    "vite-plus": "catalog:"
   }
 }

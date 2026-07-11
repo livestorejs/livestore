@@ -14,7 +14,7 @@ import type { AddressInfo } from 'node:net'
 import path from 'node:path'
 
 import { type ConfigEnv, createServer, type ViteDevServer } from 'vite'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 

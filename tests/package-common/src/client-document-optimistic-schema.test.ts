@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 
 import { State } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'

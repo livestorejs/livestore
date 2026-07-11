@@ -26,7 +26,7 @@
     }
   },
   "scripts": {
-    "test": "vitest"
+    "test": "vp test"
   },
   "dependencies": {
     "@cloudflare/workers-types": "4.20251118.0",
@@ -34,8 +34,10 @@
   },
   "devDependencies": {
     "@livestore/utils-dev": "workspace:^",
-    "vitest": "4.1.9",
-    "wrangler": "4.42.2"
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "4.42.2",
+    "vite-plus": "catalog:"
   },
   "peerDependencies": {
     "@effect/opentelemetry": "^4.0.0-beta.83",

@@ -1,4 +1,4 @@
-import { describe, it } from 'vitest'
+import { describe, it } from 'vite-plus/test'
 
 import { type OtelTracer, Effect, Layer } from '@livestore/utils/effect'
 

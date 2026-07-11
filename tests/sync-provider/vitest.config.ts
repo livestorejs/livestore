@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vite-plus'
 
 const packageRoot = import.meta.dirname
 const workspaceRoot = path.resolve(packageRoot, '../..')

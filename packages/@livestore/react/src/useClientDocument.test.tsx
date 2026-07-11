@@ -2,7 +2,7 @@ import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import * as ReactTesting from '@testing-library/react'
 import * as React from 'react'
-import { beforeEach, expect, it } from 'vitest'
+import { beforeEach, expect, it } from 'vite-plus/test'
 
 import * as LiveStore from '@livestore/livestore'
 import { StoreInternalsSymbol } from '@livestore/livestore'

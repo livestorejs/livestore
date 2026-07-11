@@ -90,6 +90,8 @@
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "deno": "2.9.2",
-    "vitest": "4.1.9"
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vite-plus": "catalog:"
   }
 }
