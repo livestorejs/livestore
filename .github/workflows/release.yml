@@ -60,7 +60,7 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
       - name: Check first-party default refs
         run: pnpm run source-policy
   create-release-pr:
@@ -79,7 +79,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
       - name: Generate release plan from Changesets
         run: pnpm run release:changeset:version
         env:
@@ -193,7 +193,7 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
         with:
           playwright: 'true'
       - name: Select release plan for validation
@@ -282,7 +282,7 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
         with:
           playwright: 'true'
       - name: Read release plan
@@ -403,7 +403,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
         with:
           playwright: 'true'
       - name: Assert tokenless npm trusted publishing

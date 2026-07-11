@@ -26,7 +26,7 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
       - name: Check first-party default refs
         run: pnpm run source-policy
   lint:
@@ -36,9 +36,18 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
+        id: setup_vite_plus
+        with:
+          task-cache: 'true'
       - name: Run lint checks
-        run: pnpm run lint:full
+        run: vp run ci:lint
+      - name: Save Vite Task cache
+        if: ${{ success() }}
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules/.vite/task-cache
+          key: ${{ steps.setup_vite_plus.outputs.task-cache-primary-key }}
   changeset-check:
     runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
@@ -47,7 +56,7 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
       - name: Fetch changeset comparison base
         run: git fetch origin "${{ github.base_ref }}" --depth=1
       - name: Check release intent
@@ -65,7 +74,7 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
       - name: Check repository ruleset drift
         run: pnpm run github:rulesets:check
         env:
@@ -77,9 +86,18 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
+        id: setup_vite_plus
+        with:
+          task-cache: 'true'
       - name: Run type-check
-        run: pnpm run ts:build
+        run: vp run ci:type-check
+      - name: Save Vite Task cache
+        if: ${{ success() }}
+        uses: actions/cache/save@v6
+        with:
+          path: node_modules/.vite/task-cache
+          key: ${{ steps.setup_vite_plus.outputs.task-cache-primary-key }}
   test-unit:
     runs-on: ubuntu-24.04
     defaults:
@@ -87,9 +105,9 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
       - name: Run unit tests
-        run: pnpm run test:unit
+        run: vp run ci:test-unit
   test-integration-sync-provider:
     strategy:
       matrix:
@@ -107,7 +125,7 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
@@ -135,7 +153,7 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
         with:
           playwright: 'true'
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -176,7 +194,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
         with:
           playwright: 'true'
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -210,7 +228,7 @@ jobs:
             accept-flake-config = true
             access-tokens = github.com=${{ github.token }}
           summarize: true
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
         with:
           playwright: 'true'
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -238,7 +256,7 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
         with:
           playwright: 'true'
       - name: Install examples dependencies
@@ -276,7 +294,7 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
         with:
           playwright: 'true'
       - name: Build docs snippets

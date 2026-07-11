@@ -29,15 +29,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
         with:
-          version: 11.3.0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+          node-version: '24'
+          run-install: false
 
       - name: Sync vector store
         shell: bash
@@ -59,4 +55,4 @@ jobs:
           fi
 
           : "${vector_store_id:?Missing Mixedbread vector store id for target ${SYNC_TARGET}}"
-          pnpm dlx @mixedbread/cli@2.3.2 store sync "$vector_store_id" "./src/content/**/*.mdx" "./src/content/**/*.md" --yes --strategy fast
+          vp dlx @mixedbread/cli@2.3.2 store sync "$vector_store_id" "./src/content/**/*.mdx" "./src/content/**/*.md" --yes --strategy fast

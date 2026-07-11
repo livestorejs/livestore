@@ -1,0 +1,43 @@
+name: Setup Vite+ workspace
+description: Install the pinned Vite+ toolchain, dependencies, optional task cache, and Playwright browsers.
+
+inputs:
+  playwright:
+    description: Install Chromium and OS dependencies through Playwright.
+    required: false
+    default: 'false'
+  task-cache:
+    description: Restore and save the Vite Task cache for this CI job.
+    required: false
+    default: 'false'
+
+outputs:
+  task-cache-primary-key:
+    description: Primary key to use when saving the restored Vite Task cache.
+    value: ${{ steps.vite_task_cache.outputs.cache-primary-key }}
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Vite+
+      uses: voidzero-dev/setup-vp@v1
+      with:
+        node-version: '24'
+        cache: true
+
+    # Vite Task owns cache validity. GitHub only transports the cache directory
+    # between equivalent jobs; source files and lockfiles belong in task fingerprints.
+    - name: Restore Vite Task cache
+      id: vite_task_cache
+      if: ${{ inputs.task-cache == 'true' }}
+      uses: actions/cache/restore@v6
+      with:
+        path: node_modules/.vite/task-cache
+        key: vite-task-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: |
+          vite-task-${{ runner.os }}-${{ runner.arch }}-${{ github.job }}-
+
+    - name: Install Playwright Chromium
+      if: ${{ inputs.playwright == 'true' }}
+      shell: bash
+      run: vp exec --filter ./tests/integration -- playwright install --with-deps chromium

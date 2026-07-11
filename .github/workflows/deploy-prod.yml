@@ -30,7 +30,7 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
       - name: Check first-party default refs
         run: pnpm run source-policy
   deploy-docs:
@@ -42,7 +42,7 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
         with:
           playwright: 'true'
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -87,7 +87,7 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
         with:
           playwright: 'true'
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -114,7 +114,7 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-pnpm
+      - uses: ./.github/actions/setup-vite-plus
         with:
           playwright: 'true'
       - name: Sync production docs search

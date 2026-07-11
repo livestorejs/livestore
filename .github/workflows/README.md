@@ -9,6 +9,16 @@ It runs the normal repository quality gates: linting, Changesets release-intent
 checks, TypeScript builds, unit tests, integration tests, Playwright tests,
 performance tests, docs/examples builds, and dev docs/examples deploys.
 
+Jobs install the repository's pinned Vite+ toolchain through
+`voidzero-dev/setup-vp`, which also caches pnpm's package data. CI gates run as
+named `vp run ci:*` tasks. The deterministic lint and type-check task caches are
+transported between equivalent GitHub Actions jobs from
+`node_modules/.vite/task-cache`; Vite Task still fingerprints the actual files,
+arguments, and environment before replaying a result. Unit tests explicitly opt
+out because the suite includes randomized property checks and Docker-backed
+tests. Keep networked, credentialed, deployment, and other nondeterministic work
+outside cached tasks unless it can be made hermetic first.
+
 Docs deployment uses `mono docs deploy`. Normal `main` pushes update the dev
 Netlify site, pull requests publish sticky and commit-specific aliases on the
 dev site, and stable release publishing is the only workflow path that updates
