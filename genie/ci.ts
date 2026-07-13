@@ -25,6 +25,4 @@ export const requiredCIJobs = [
   ...syncProviderMatrix.map((provider) => `test-integration-sync-provider (${provider})`),
   ...playwrightSuites.map((suite) => `test-integration-playwright (${suite})`),
   'wa-sqlite-test',
-  'build-deploy-docs',
-  'build-and-deploy-examples-src',
 ] as const
