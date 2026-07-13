@@ -203,7 +203,7 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
     return makeCfResponse('Not found', { status: 404 })
   }
 
-  async syncUpdateRpc(payload: unknown) {
+  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
     await handleSyncUpdateRpc(payload)
   }
 

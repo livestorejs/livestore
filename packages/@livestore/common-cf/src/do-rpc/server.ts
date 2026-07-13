@@ -20,7 +20,7 @@ import type * as CfTypes from '../cf-types.ts'
 
 export interface ClientDoWithRpcCallback {
   __DURABLE_OBJECT_BRAND: never
-  syncUpdateRpc: (payload: RpcMessage.ResponseChunkEncoded) => Promise<void>
+  syncUpdateRpc: (payload: Uint8Array<ArrayBuffer>) => Promise<void>
 }
 
 /**
@@ -215,8 +215,13 @@ export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(functio
   const clientDo = clientDoNamespace.get(clientDoNamespace.idFromString(callerContext.durableObjectId))
 
   const res: RpcMessage.ResponseChunkEncoded = { _tag: 'Chunk', requestId, values }
+  const parser = RpcSerialization.msgPack.makeUnsafe()
+  // Native Cloudflare RPC rejects schema values with custom prototypes. Keep the callback
+  // boundary clone-safe by sending the already-encoded Effect RPC message as bytes.
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- msgPack parser.encode returns unknown; the encoded result is a byte payload
+  const serializedRes = parser.encode(res) as Uint8Array<ArrayBuffer>
 
-  yield* Effect.tryPromise(() => clientDo.syncUpdateRpc(res))
+  yield* Effect.tryPromise(() => clientDo.syncUpdateRpc(serializedRes))
 })
 
 /**

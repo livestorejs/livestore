@@ -170,16 +170,21 @@ export const makeDoRpcSync =
  * export class MyDurableObject extends DurableObject implements ClientDoWithRpcCallback {
  *   // ...
  *
- *   async syncUpdateRpc(payload: RpcMessage.ResponseChunkEncoded) {
+ *   async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
  *     return handleSyncUpdateRpc(payload)
  *   }
  * }
  * ```
  */
-export const handleSyncUpdateRpc = (payload: unknown) =>
+export const handleSyncUpdateRpc = (payload: Uint8Array<ArrayBuffer>) =>
   Effect.gen(function* () {
-    const decodedPayload = yield* Schema.decodeUnknownEffect(ResponseChunkEncoded)(payload)
-    const decoded = yield* Schema.decodeUnknownEffect(SyncMessage.PullResponse)(decodedPayload.values[0])
+    const parser = RpcSerialization.msgPack.makeUnsafe()
+    const decodedMessage = parser.decode(payload)
+    const [response] = Array.isArray(decodedMessage) === true ? decodedMessage.flat(1) : [decodedMessage]
+    const decodedPayload = yield* Schema.decodeUnknownEffect(ResponseChunkEncoded)(response)
+    const decoded = yield* Schema.decodeUnknownEffect(Schema.toCodecJson(SyncMessage.PullResponse))(
+      decodedPayload.values[0],
+    )
 
     const pullStreamQueue = requestIdQueueMap.get(decodedPayload.requestId)
 

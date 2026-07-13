@@ -18,7 +18,6 @@ import {
   FetchHttpClient,
   KeyValueStore,
   Layer,
-  type RpcMessage,
   RpcServer,
   Scope,
   Stream,
@@ -167,7 +166,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
     })
   }
 
-  async syncUpdateRpc(payload: RpcMessage.ResponseChunkEncoded) {
+  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
     await handleSyncUpdateRpc(payload)
   }
 }
