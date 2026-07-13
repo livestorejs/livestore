@@ -154,8 +154,14 @@ const formatValue = (value: TJsonValue) => JSON.stringify(value)
 const isBypassActorsDiff = (diff: string) => diff.startsWith('$.bypass_actors')
 
 const isGitHubExpandedDefaultDiff = (diff: string) =>
-  diff === '$.rules.0.parameters.allowed_merge_methods: desired null, live ["merge","squash","rebase"]' ||
-  diff === '$.rules.0.parameters.required_reviewers: desired null, live []'
+  githubExpandedDefaultDiffSuffixes.some((suffix) => diff.endsWith(suffix))
+
+/** GitHub may add inactive defaults to ruleset responses that were omitted from the request. */
+const githubExpandedDefaultDiffSuffixes = [
+  '.parameters.allowed_merge_methods: desired null, live ["merge","squash","rebase"]',
+  '.parameters.required_reviewers: desired null, live []',
+  '.parameters.dismissal_restriction: desired null, live {"allowed_actors":[],"enabled":false}',
+]
 
 const collectDiffs = (
   desired: TJsonValue,
