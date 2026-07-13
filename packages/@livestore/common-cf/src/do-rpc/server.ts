@@ -7,9 +7,10 @@ import {
   type ReadonlyArray,
   Rpc,
   type RpcGroup,
-  type RpcMessage,
+  RpcMessage,
   RpcSchema,
   RpcSerialization,
+  Result,
   Schema,
   type Scope,
   Stream,
@@ -46,7 +47,7 @@ export const toDurableObjectHandler =
       const decoded = parser.decode(serializedPayload)
 
       // Handle potential nested array from client serialization
-      let requests: RpcMessage.FromClient<Rpcs>[]
+      let requests: RpcMessage.FromClientEncoded[]
       if (Array.isArray(decoded) === true && decoded.length === 1 && Array.isArray(decoded[0]) === true) {
         // Double-wrapped array [[{...}]] -> [{...}]
         requests = decoded[0]
@@ -67,6 +68,7 @@ export const toDurableObjectHandler =
         if (request._tag !== 'Request') {
           continue
         }
+        const requestId = RpcMessage.RequestId(request.id)
 
         // Find the RPC handler
         // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- RpcGroup.requests map returns Rpc.Any; narrowing to AnyWithProps for property access
@@ -77,27 +79,50 @@ export const toDurableObjectHandler =
         if (rpc == null || entry == null) {
           responses.push({
             _tag: 'Exit',
-            requestId: request.id,
+            requestId,
             exit: Exit.die(`Unknown request tag: ${request.tag}`),
           })
           continue
         }
+
+        const payloadResult = yield* Schema.decodeUnknownEffect(Schema.toCodecJson(rpc.payloadSchema))(
+          request.payload,
+        ).pipe(Effect.provideContext(entry.context), Effect.result)
+
+        if (Result.isFailure(payloadResult) === true) {
+          // Request payloads are encoded with the JSON codec by Effect's RPC client. Decode them
+          // before dispatch so JSON-only representations such as `null` become their schema values.
+          // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
+          const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
+          const rawExit = Exit.die(payloadResult.failure.issue.toString())
+          const encodedExit = yield* Schema.encodeUnknownEffect(Schema.toCodecJson(exitSchema))(rawExit).pipe(
+            Effect.provideContext(entry.context),
+          )
+          responses.push({
+            _tag: 'Exit',
+            requestId,
+            exit: encodedExit,
+          })
+          continue
+        }
+
+        const payload = payloadResult.success
 
         // Check if this is a streaming RPC
         const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
 
         // For streaming RPCs with only one request, return ReadableStream directly
         if (isStream === true && requests.length === 1) {
-          return yield* createStreamingResponse(rpc, entry, request, parser, options.layer)
+          return yield* createStreamingResponse(rpc, entry, requestId, payload, parser, options.layer)
         }
 
         // Execute the handler
         const result = yield* Effect.gen(function* () {
-          const handlerResult = entry.handler(request.payload, {
+          const handlerResult = entry.handler(payload, {
             client: new Rpc.ServerClient(0), // TODO: add proper clientId if needed
-            requestId: request.id,
+            requestId,
             headers: Headers.fromInput({
-              'x-rpc-request-id': request.id.toString(),
+              'x-rpc-request-id': requestId.toString(),
             }),
             rpc,
           })
@@ -127,7 +152,7 @@ export const toDurableObjectHandler =
 
           return {
             _tag: 'Exit' as const,
-            requestId: request.id,
+            requestId,
             exit: encodedExit,
           }
         }).pipe(
@@ -149,7 +174,7 @@ export const toDurableObjectHandler =
 
               return {
                 _tag: 'Exit' as const,
-                requestId: request.id,
+                requestId,
                 exit: encodedExit,
               }
             })
@@ -201,17 +226,18 @@ export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(functio
 const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
   rpc: Rpc.AnyWithProps,
   entry: Rpc.Handler<Rpcs['_tag']>,
-  request: any,
+  requestId: RpcMessage.RequestId,
+  payload: unknown,
   parser: ReturnType<typeof RpcSerialization.msgPack.makeUnsafe>,
   layer: Layer.Layer<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>, LE>,
 ): Effect.Effect<CfTypes.ReadableStream, never, Scope.Scope> =>
   Effect.gen(function* () {
     // Execute the handler to get the stream
-    const handlerResult = entry.handler(request.payload, {
+    const handlerResult = entry.handler(payload, {
       client: new Rpc.ServerClient(0), // TODO: add proper clientId if needed
-      requestId: request.id,
+      requestId,
       headers: Headers.fromInput({
-        'x-rpc-request-id': request.id.toString(),
+        'x-rpc-request-id': requestId.toString(),
       }),
       rpc,
     })
@@ -250,7 +276,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
 
               const chunkMessage = {
                 _tag: 'Chunk' as const,
-                requestId: request.id,
+                requestId,
                 values: encodedValues,
               }
 
@@ -268,7 +294,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
 
           const exitMessage = {
             _tag: 'Exit' as const,
-            requestId: request.id,
+            requestId,
             exit: encodedExit,
           }
 
@@ -287,7 +313,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
 
               const exitMessage = {
                 _tag: 'Exit' as const,
-                requestId: request.id,
+                requestId,
                 exit: encodedExit,
               }
 
