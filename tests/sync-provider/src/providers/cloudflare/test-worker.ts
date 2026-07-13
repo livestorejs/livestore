@@ -2,7 +2,6 @@
 
 import { DurableObject } from 'cloudflare:workers'
 
-import type { SyncBackend } from '@livestore/common'
 import { type ClientDoWithRpcCallback, setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
 import type { CfDeclare } from '@livestore/common-cf/declare'
 import {
@@ -13,14 +12,15 @@ import {
   type SyncBackendRpcInterface,
 } from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc, makeDoRpcSync } from '@livestore/sync-cf/client'
-import type { SyncMessage } from '@livestore/sync-cf/common'
 import {
+  Cache,
   Effect,
   FetchHttpClient,
   KeyValueStore,
   Layer,
   type RpcMessage,
   RpcServer,
+  Scope,
   Stream,
   SubscriptionRef,
 } from '@livestore/utils/effect'
@@ -68,61 +68,64 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
     this.ctx = state
     this.env = env
 
-    const syncBackendMap = new Map<string, SyncBackend.SyncBackend<SyncMessage.SyncMetadata>>()
-
-    const getSyncBackend = ({ clientId, storeId, payload }: { clientId: string; storeId: string; payload: any }) =>
+    /**
+     * RPC handlers run in request scopes, but cached clients must live for the longer-lived WebSocket server scope.
+     */
+    const handlersLayer = Layer.unwrap(
       Effect.gen({ self: this }, function* () {
-        const key = JSON.stringify({ clientId, storeId, payload })
-        if (syncBackendMap.has(key) === true) {
-          return syncBackendMap.get(key)!
-        }
+        const syncBackendScope = yield* Effect.scope
+        const syncBackendCache = yield* Cache.make({
+          capacity: Number.POSITIVE_INFINITY,
+          lookup: (key: string) =>
+            Effect.gen({ self: this }, function* () {
+              const { clientId, storeId, payload } = JSON.parse(key) as SyncBackendArgs
 
-        const syncBackend = yield* makeDoRpcSync({
-          syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
-          durableObjectContext: { bindingName: 'TEST_CLIENT_DO', durableObjectId: this.ctx.id.toString() },
-        })({ storeId, clientId, payload })
+              return yield* makeDoRpcSync({
+                syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
+                durableObjectContext: { bindingName: 'TEST_CLIENT_DO', durableObjectId: this.ctx.id.toString() },
+              })({ storeId, clientId, payload }).pipe(Scope.provide(syncBackendScope), Effect.orDie)
+            }),
+        })
 
-        syncBackendMap.set(key, syncBackend)
+        const getSyncBackend = (args: SyncBackendArgs) => Cache.get(syncBackendCache, JSON.stringify(args))
 
-        return syncBackend
-      }).pipe(Effect.orDie)
-
-    /** Proxies WS messages to the DO RPC sync backend */
-    const handlersLayer = DoRpcProxyRpcs.toLayer({
-      Connect: (args) =>
-        Effect.gen(function* () {
-          const syncBackend = yield* getSyncBackend(args)
-          yield* syncBackend.connect
-        }),
-      Pull: (args) =>
-        Effect.gen(function* () {
-          const syncBackend = yield* getSyncBackend(args)
-          return syncBackend.pull(args.cursor as any, { live: args.live })
-        }).pipe(
-          Stream.unwrap,
-          Stream.map((msg) => ({ ...msg, backendId: 'TODO' })),
-        ),
-      Push: ({ batch, ...args }) =>
-        Effect.gen(function* () {
-          const syncBackend = yield* getSyncBackend(args)
-          yield* syncBackend.push(batch)
-        }),
-      Ping: (args) =>
-        Effect.gen(function* () {
-          const syncBackend = yield* getSyncBackend(args)
-          yield* syncBackend.ping
-        }).pipe(Effect.orDie),
-      IsConnected: (args) =>
-        Effect.gen(function* () {
-          const syncBackend = yield* getSyncBackend(args)
-          return SubscriptionRef.changes(syncBackend.isConnected)
-        }).pipe(Stream.unwrap),
-      GetMetadata: (args) =>
-        Effect.gen(function* () {
-          const syncBackend = yield* getSyncBackend(args)
-          return syncBackend.metadata
-        }),
-    })
+        return DoRpcProxyRpcs.toLayer({
+          Connect: (args) =>
+            Effect.gen(function* () {
+              const syncBackend = yield* getSyncBackend(args)
+              yield* syncBackend.connect
+            }),
+          Pull: (args) =>
+            Effect.gen(function* () {
+              const syncBackend = yield* getSyncBackend(args)
+              return syncBackend.pull(args.cursor as any, { live: args.live })
+            }).pipe(
+              Stream.unwrap,
+              Stream.map((msg) => ({ ...msg, backendId: 'TODO' })),
+            ),
+          Push: ({ batch, ...args }) =>
+            Effect.gen(function* () {
+              const syncBackend = yield* getSyncBackend(args)
+              yield* syncBackend.push(batch)
+            }),
+          Ping: (args) =>
+            Effect.gen(function* () {
+              const syncBackend = yield* getSyncBackend(args)
+              yield* syncBackend.ping
+            }).pipe(Effect.orDie),
+          IsConnected: (args) =>
+            Effect.gen(function* () {
+              const syncBackend = yield* getSyncBackend(args)
+              return SubscriptionRef.changes(syncBackend.isConnected)
+            }).pipe(Stream.unwrap),
+          GetMetadata: (args) =>
+            Effect.gen(function* () {
+              const syncBackend = yield* getSyncBackend(args)
+              return syncBackend.metadata
+            }),
+        })
+      }),
+    )
 
     const ServerLive = RpcServer.layer(DoRpcProxyRpcs).pipe(
       Layer.provide(handlersLayer),
@@ -194,4 +197,10 @@ export default {
 
     return new Response('Invalid path', { status: 400 })
   },
+}
+
+type SyncBackendArgs = {
+  clientId: string
+  storeId: string
+  payload: any
 }
