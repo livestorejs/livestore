@@ -100,22 +100,30 @@ const {
   ...baseTsconfigCompilerOptionsWithoutDefaults
 } = effectUtilsBaseTsconfigCompilerOptions
 
+/**
+ * #811 Effect-LSP gate — full effect-utils bar adopted (errors-only override removed).
+ *
+ * effect-utils sets `effectDiagnosticsGate = { warnings: true, suggestions: true }`, so its
+ * `@effect/language-service` plugin config fails `tsgo --build` on every Effect *error*,
+ * *warning*, and *suggestion*. While the burndown landed in dedicated PRs (mechanical /
+ * schema / semantic) an advisory LIVE-MIGRATION BRIDGE flipped
+ * `ignoreEffectWarnings/SuggestionsInTscExitCode` to keep the gate errors-only.
+ *
+ * That burndown is now complete, so the bridge is REMOVED here: warnings and suggestions
+ * gate `tsgo --build` again and LiveStore inherits effect-utils' full `effectDiagnosticsGate`
+ * unchanged. Every remaining Effect warning/suggestion is either fixed or carries a justified
+ * inline `:off`. The only LiveStore-specific tweak still injected is
+ * `allowedDuplicatedPackages: ['@livestore/utils']` — the internal duplicate-package
+ * diagnostics are an LSP workspace-resolution artifact, not real duplication.
+ */
 const baseTsconfigCompilerOptions = {
   ...baseTsconfigCompilerOptionsWithoutDefaults,
-  // LIVE-MIGRATION BRIDGE tsgo-strict-gate — DELETE at contraction — see live-migrations registry
-  // Advisory gate: Effect warnings and suggestions remain visible without failing the exit code.
-  // LiveStore-specific: the internal @livestore/utils duplicate-package diagnostics are an
-  // LSP workspace-resolution artifact (not real duplication), so they are allowed here.
   plugins: [
     {
       ...effectUtilsBaseTsconfigCompilerOptions.plugins[0],
-      ignoreEffectWarningsInTscExitCode: true,
-      ignoreEffectSuggestionsInTscExitCode: true,
-      ignoreEffectErrorsInTscExitCode: false,
       allowedDuplicatedPackages: ['@livestore/utils'],
     },
   ],
-  // LIVE-MIGRATION END tsgo-strict-gate
 } as const
 
 /**
