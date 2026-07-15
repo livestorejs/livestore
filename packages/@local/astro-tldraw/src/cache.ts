@@ -83,12 +83,10 @@ export const loadManifest = (
       const manifest = yield* fs.readFileString(manifestPath).pipe(
         Effect.map((content) => JSON.parse(content) as DiagramManifest),
         Effect.mapError((cause) => new FileSystemError({ path: manifestPath, operation: 'read manifest', cause })),
-        Effect.catch(() =>
-          Effect.succeed({
-            entries: [],
-            version: CACHE_VERSION,
-          }),
-        ),
+        Effect.orElseSucceed(() => ({
+          entries: [],
+          version: CACHE_VERSION,
+        })),
       )
 
       return manifest

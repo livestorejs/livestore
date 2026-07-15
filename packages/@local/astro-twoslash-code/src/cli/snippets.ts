@@ -1656,8 +1656,8 @@ const watchSnippetsInternal = (
     const fs = yield* FileSystem.FileSystem
     const { paths } = resolved
 
-    const snippetRootExists = yield* fs.exists(paths.snippetAssetsRoot).pipe(Effect.catch(() => Effect.succeed(false)))
-    const sourceRootExists = yield* fs.exists(paths.srcRoot).pipe(Effect.catch(() => Effect.succeed(false)))
+    const snippetRootExists = yield* fs.exists(paths.snippetAssetsRoot).pipe(Effect.orElseSucceed(() => false))
+    const sourceRootExists = yield* fs.exists(paths.srcRoot).pipe(Effect.orElseSucceed(() => false))
 
     const watchStreams: Array<Stream.Stream<WatchEventSummary, PlatformError.PlatformError>> = []
     if (snippetRootExists === true) {

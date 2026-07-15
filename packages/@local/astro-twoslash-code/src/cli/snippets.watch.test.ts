@@ -23,15 +23,15 @@ const writeInitialProject = (fs: FileSystem.FileSystem, projectRoot: string): Ef
     const snippetDir = path.join(projectRoot, 'src', 'content', '_assets', 'code')
     const docsDir = path.join(projectRoot, 'src', 'pages')
 
-    yield* fs.makeDirectory(snippetDir, { recursive: true }).pipe(Effect.orDie)
-    yield* fs.makeDirectory(docsDir, { recursive: true }).pipe(Effect.orDie)
+    yield* fs.makeDirectory(snippetDir, { recursive: true })
+    yield* fs.makeDirectory(docsDir, { recursive: true })
 
     const snippetPath = path.join(snippetDir, 'example.ts')
     const docsPath = path.join(docsDir, 'guide.mdx')
     const tsconfigPath = path.join(snippetDir, 'tsconfig.json')
 
-    yield* fs.writeFileString(snippetPath, 'export const value = 1\n').pipe(Effect.orDie)
-    yield* fs.writeFileString(docsPath, createDocsImportSource('../content/_assets/code/example.ts')).pipe(Effect.orDie)
+    yield* fs.writeFileString(snippetPath, 'export const value = 1\n')
+    yield* fs.writeFileString(docsPath, createDocsImportSource('../content/_assets/code/example.ts'))
     const tsconfigJson = JSON.stringify(
       {
         compilerOptions: {
@@ -50,8 +50,8 @@ const writeInitialProject = (fs: FileSystem.FileSystem, projectRoot: string): Ef
       null,
       2,
     )
-    yield* fs.writeFileString(tsconfigPath, tsconfigJson + '\n').pipe(Effect.orDie)
-  })
+    yield* fs.writeFileString(tsconfigPath, tsconfigJson + '\n')
+  }).pipe(Effect.orDie)
 
 describe('watchSnippets', () => {
   it('rebuilds when snippet assets change', async () => {

@@ -123,7 +123,12 @@ const baseTsconfigCompilerOptions = {
   ...baseTsconfigCompilerOptionsWithoutPlugins,
   plugins: inheritedTsconfigPlugins.map((plugin) =>
     plugin.name === '@effect/language-service'
-      ? { ...plugin, ignoreEffectWarningsInTscExitCode: true, ignoreEffectSuggestionsInTscExitCode: true }
+      ? {
+          ...plugin,
+          ignoreEffectWarningsInTscExitCode: true,
+          ignoreEffectSuggestionsInTscExitCode: true,
+          allowedDuplicatedPackages: ['@livestore/utils'],
+        }
       : plugin,
   ),
 } as const

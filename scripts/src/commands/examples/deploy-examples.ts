@@ -64,7 +64,7 @@ export const readExampleSlugs = Effect.fn('deploy-examples/readExampleSlugs')(fu
   for (const entry of entries) {
     const info = yield* fs.stat(`${examplesDir}/${entry}`).pipe(
       Effect.map((stat) => stat.type === 'Directory'),
-      Effect.catch(() => Effect.succeed(false)),
+      Effect.orElseSucceed(() => false),
     )
 
     if (info === true) {
@@ -101,7 +101,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
     for (const example of examples) {
       const isDirectory = yield* fs.stat(`${examplesDir}/${example}`).pipe(
         Effect.map((stat) => stat.type === 'Directory'),
-        Effect.catch(() => Effect.succeed(false)),
+        Effect.orElseSucceed(() => false),
       )
 
       if (isDirectory === false) {
