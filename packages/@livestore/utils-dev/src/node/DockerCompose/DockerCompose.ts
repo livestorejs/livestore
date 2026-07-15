@@ -280,7 +280,7 @@ const performHealthCheck = ({
 
     const checkHealth = spawner.exitCode(ChildProcess.make('curl', ['-f', '-s', url])).pipe(
       Effect.map((code: number) => code === 0),
-      Effect.catch(() => Effect.succeed(false)),
+      Effect.orElseSucceed(() => false),
     )
 
     const healthCheck = checkHealth.pipe(

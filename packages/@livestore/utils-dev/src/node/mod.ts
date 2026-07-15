@@ -142,7 +142,7 @@ const logTraceUiUrlForTraceId = (printMsg?: (url: string) => string) => (traceId
 
 export const getTracingBackendUrl = (traceIdOrSpan: string | otel.Span) =>
   Effect.gen(function* () {
-    const endpoint = yield* Config.string('GRAFANA_ENDPOINT').pipe(Config.option, Effect.orDie)
+    const endpoint = yield* Config.string('GRAFANA_ENDPOINT').pipe(Config.option)
     if (endpoint._tag === 'None') return
 
     const traceId = typeof traceIdOrSpan === 'string' ? traceIdOrSpan : traceIdOrSpan.spanContext().traceId
@@ -154,7 +154,7 @@ export const getTracingBackendUrl = (traceIdOrSpan: string | otel.Span) =>
       datasource: 'tempo',
       queries: [{ query: traceId, queryType: 'traceql', refId: 'A' }],
       range: { from: 'now-1h', to: 'now' },
-    }).pipe(Effect.orDie)
+    })
     const searchParams = new URLSearchParams({
       orgId: '1',
       left,
@@ -162,7 +162,7 @@ export const getTracingBackendUrl = (traceIdOrSpan: string | otel.Span) =>
 
     // TODO make dynamic via env var
     return `${grafanaEndpoint}/explore?${searchParams.toString()}`
-  })
+  }).pipe(Effect.orDie)
 
 /**
  * Compute absolute start/end timestamps for the Node.js bootstrap span in a

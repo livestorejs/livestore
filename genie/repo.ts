@@ -110,6 +110,7 @@ const baseTsconfigCompilerOptions = {
       ignoreEffectWarningsInTscExitCode: true,
       ignoreEffectSuggestionsInTscExitCode: true,
       ignoreEffectErrorsInTscExitCode: false,
+      allowedDuplicatedPackages: ['@livestore/utils'],
     },
   ],
   // LIVE-MIGRATION END tsgo-strict-gate

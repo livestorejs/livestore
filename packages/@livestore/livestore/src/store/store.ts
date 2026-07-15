@@ -659,7 +659,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     Stream.callback<TResult>((emit) =>
       Effect.gen({ self: this }, function* () {
         const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(
-          Effect.catchTag('NoSuchElementError', () => Effect.succeed(undefined)),
+          Effect.catchTag('NoSuchElementError', () => Effect.void),
         )
         const otelContext =
           otelSpan !== undefined ? otel.trace.setSpan(otel.context.active(), otelSpan) : otel.context.active()
