@@ -77,8 +77,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
   )
 
   return makeWorkerRunnerOuter(options).pipe(
-    Effect.provide(RpcServer.layerProtocolWorkerRunner),
-    Effect.provide(BrowserWorkerRunner.layer),
+    Effect.provide(Layer.provideMerge(RpcServer.layerProtocolWorkerRunner, BrowserWorkerRunner.layer)),
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
@@ -93,30 +92,32 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
   )
 }
 
-const makeWorkerRunnerOuter = (workerOptions: WorkerOptions) =>
-  Effect.gen(function* () {
-    // Port coming from client session and forwarded via the shared worker.
-    const {
-      port: incomingRequestsPort,
-      storeId,
-      clientId,
-    } = yield* RpcWorker.initialMessage(WorkerSchema.LeaderWorkerOuterInitialMessage.payloadSchema)
+const makeWorkerRunnerOuter = Effect.fn('@livestore/adapter-web:worker:wrapper:InitialMessage')(function* (
+  workerOptions: WorkerOptions,
+) {
+  // Port coming from client session and forwarded via the shared worker.
+  const {
+    port: incomingRequestsPort,
+    storeId,
+    clientId,
+  } = yield* RpcWorker.initialMessage(WorkerSchema.LeaderWorkerOuterInitialMessage.payloadSchema)
 
-    return yield* RpcServer.make(WorkerSchema.LeaderWorkerInnerRpcs).pipe(
-      Effect.provide(makeWorkerRunnerInner(workerOptions)),
-      Effect.provide(makeMessagePortRpcServerProtocol(incomingRequestsPort)),
-      Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage:innerFiber'),
-      Effect.tapCauseLogPretty,
-      Effect.provide(
-        Layer.mergeAll(
-          Opfs.layer,
-          WebmeshWorker.CacheService.layer({
-            nodeName: Devtools.makeNodeName.client.leader({ storeId, clientId }),
-          }),
-        ),
+  return yield* RpcServer.make(WorkerSchema.LeaderWorkerInnerRpcs).pipe(
+    Effect.provide(
+      Layer.provideMerge(makeWorkerRunnerInner(workerOptions), makeMessagePortRpcServerProtocol(incomingRequestsPort)),
+    ),
+    Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage:innerFiber'),
+    Effect.tapCauseLogPretty,
+    Effect.provide(
+      Layer.mergeAll(
+        Opfs.layer,
+        WebmeshWorker.CacheService.layer({
+          nodeName: Devtools.makeNodeName.client.leader({ storeId, clientId }),
+        }),
       ),
-    )
-  }).pipe(Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage'))
+    ),
+  )
+})
 
 const makeMessagePortRpcServerProtocol = (port: MessagePort): Layer.Layer<RpcServer.Protocol> =>
   Layer.effect(
