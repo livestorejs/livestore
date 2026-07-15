@@ -10,8 +10,8 @@ export class TestRpcs extends RpcGroup.make(
     success: Schema.Struct({ echo: Schema.String }),
   }),
   Rpc.make('Add', {
-    payload: Schema.Struct({ a: Schema.Number, b: Schema.Number }),
-    success: Schema.Struct({ result: Schema.Number }),
+    payload: Schema.Struct({ a: Schema.Finite, b: Schema.Finite }),
+    success: Schema.Struct({ result: Schema.Finite }),
   }),
   Rpc.make('Defect', {
     payload: Schema.Struct({ message: Schema.String }),
@@ -25,24 +25,24 @@ export class TestRpcs extends RpcGroup.make(
   Rpc.make('Stream', {
     payload: Schema.Struct({}),
     success: Schema.Struct({
-      maybeNumber: Schema.Option(Schema.Number),
+      maybeNumber: Schema.Option(Schema.Finite),
     }),
     stream: true,
   }),
   Rpc.make('StreamError', {
-    payload: Schema.Struct({ count: Schema.Number, errorAfter: Schema.Number }),
-    success: Schema.Number,
+    payload: Schema.Struct({ count: Schema.Finite, errorAfter: Schema.Finite }),
+    success: Schema.Finite,
     error: Schema.String,
     stream: true,
   }),
   Rpc.make('StreamDefect', {
-    payload: Schema.Struct({ count: Schema.Number, defectAfter: Schema.Number }),
-    success: Schema.Number,
+    payload: Schema.Struct({ count: Schema.Finite, defectAfter: Schema.Finite }),
+    success: Schema.Finite,
     stream: true,
   }),
   Rpc.make('StreamInterruptible', {
-    payload: Schema.Struct({ delay: Schema.Number, interruptAfterCount: Schema.Number }),
-    success: Schema.Number,
+    payload: Schema.Struct({ delay: Schema.Finite, interruptAfterCount: Schema.Finite }),
+    success: Schema.Finite,
     stream: true,
   }),
 ) {}

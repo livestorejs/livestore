@@ -12,7 +12,7 @@ const todos = State.SQLite.table({
 })
 
 const Config = Schema.Struct({
-  fontSize: Schema.Number,
+  fontSize: Schema.Finite,
   theme: Schema.Literals(['light', 'dark']),
 })
 

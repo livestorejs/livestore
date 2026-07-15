@@ -27,11 +27,11 @@ const facts = {
 const eventDefs = {
   add: defineEvent({
     name: 'add',
-    schema: Schema.Struct({ value: Schema.Number }),
+    schema: Schema.Struct({ value: Schema.Finite }),
   }),
   multiply: defineEvent({
     name: 'multiply',
-    schema: Schema.Struct({ value: Schema.Number }),
+    schema: Schema.Struct({ value: Schema.Finite }),
     facts: ({ value }, currentFacts) => ({
       modify: {
         set: value === 0 || currentFacts.has(facts.multiplyByZero) === true ? [facts.multiplyByZero] : [],

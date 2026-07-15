@@ -27,7 +27,7 @@ export const events = {
       id: Schema.String,
       name: Schema.String,
       description: Schema.String,
-      price: Schema.Number,
+      price: Schema.Finite,
     }),
   }),
   productUpdated: Events.clientOnly({
@@ -36,7 +36,7 @@ export const events = {
       id: Schema.String,
       name: Schema.OptionFromOptional(Schema.String),
       description: Schema.OptionFromOptional(Schema.String),
-      price: Schema.OptionFromOptional(Schema.Number),
+      price: Schema.OptionFromOptional(Schema.Finite),
     }),
   }),
   todoCreated: Events.clientOnly({

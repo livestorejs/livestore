@@ -22,12 +22,12 @@ export const ResultMultipleMigrations = Schema.TaggedStruct('Bridge.ResultMultip
   exit: Schema.toCodecIso(
     Schema.Exit(
       Schema.Struct({
-        migrationsCount: Schema.Number,
+        migrationsCount: Schema.Finite,
         archivedStateDbFiles: Schema.Array(
           Schema.Struct({
             name: Schema.String,
-            size: Schema.Number,
-            lastModified: Schema.Number,
+            size: Schema.Finite,
+            lastModified: Schema.Finite,
           }),
         ),
       }),
