@@ -11,9 +11,9 @@ export const issue = State.SQLite.table({
     creator: State.SQLite.text({ default: '' }),
     priority: State.SQLite.integer({ schema: Priority, default: 0 }),
     status: State.SQLite.integer({ schema: Status, default: 0 }),
-    created: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
-    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromEpochMillis }),
-    modified: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
+    created: State.SQLite.integer({ schema: Schema.DateFromMillis }),
+    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
+    modified: State.SQLite.integer({ schema: Schema.DateFromMillis }),
     kanbanorder: State.SQLite.text({ nullable: false, default: '' }),
   },
   indexes: [

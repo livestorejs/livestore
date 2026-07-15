@@ -6,7 +6,7 @@ export const description = State.SQLite.table({
     // TODO: id is also a foreign key to issue
     id: State.SQLite.integer({ primaryKey: true }),
     body: State.SQLite.text({ default: '' }),
-    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromEpochMillis }),
+    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
   },
 })
 

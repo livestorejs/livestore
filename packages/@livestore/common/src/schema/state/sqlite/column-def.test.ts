@@ -31,8 +31,8 @@ describe('getColumnDefForSchema', () => {
       ).toEqual({ _tag: 'Date' })
     })
 
-    it('should map Schema.DateFromEpochMillis to integer column', () => {
-      const columnDef = State.SQLite.getColumnDefForSchema(Schema.DateFromEpochMillis)
+    it('should map Schema.DateFromMillis to integer column', () => {
+      const columnDef = State.SQLite.getColumnDefForSchema(Schema.DateFromMillis)
       expect(columnDef.columnType).toBe('integer')
       expect(Schema.toEncoded(columnDef.schema).ast._tag).toBe('Number')
       expect(

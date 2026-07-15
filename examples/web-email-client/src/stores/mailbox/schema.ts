@@ -10,7 +10,7 @@ export const mailboxTables = {
       color: State.SQLite.text({ nullable: true }),
       threadCount: State.SQLite.integer({ default: 0 }),
       displayOrder: State.SQLite.integer({ default: 0 }), // Display order in UI
-      createdAt: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
+      createdAt: State.SQLite.integer({ schema: Schema.DateFromMillis }),
     },
   }),
 
@@ -22,8 +22,8 @@ export const mailboxTables = {
       id: State.SQLite.text({ primaryKey: true }), // threadId
       subject: State.SQLite.text(),
       participants: State.SQLite.text(), // JSON array of email addresses
-      lastActivity: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
-      createdAt: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
+      lastActivity: State.SQLite.integer({ schema: Schema.DateFromMillis }),
+      createdAt: State.SQLite.integer({ schema: Schema.DateFromMillis }),
     },
   }),
 
@@ -34,7 +34,7 @@ export const mailboxTables = {
     columns: {
       threadId: State.SQLite.text(),
       labelId: State.SQLite.text(),
-      appliedAt: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
+      appliedAt: State.SQLite.integer({ schema: Schema.DateFromMillis }),
     },
   }),
 

@@ -62,9 +62,9 @@ const issue = State.SQLite.table({
     title: State.SQLite.text({ default: '' }),
     creator: State.SQLite.text({ default: '' }),
     priority: State.SQLite.integer({ schema: Schema.Literals([0, 1, 2, 3, 4]), default: 0 }),
-    created: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
-    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromEpochMillis }),
-    modified: State.SQLite.integer({ schema: Schema.DateFromEpochMillis }),
+    created: State.SQLite.integer({ schema: Schema.DateFromMillis }),
+    deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
+    modified: State.SQLite.integer({ schema: Schema.DateFromMillis }),
     kanbanorder: State.SQLite.text({ nullable: false, default: '' }),
   },
   indexes: [

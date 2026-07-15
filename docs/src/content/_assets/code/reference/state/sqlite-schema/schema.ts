@@ -8,7 +8,7 @@ export const tables = {
       id: State.SQLite.text({ primaryKey: true }),
       text: State.SQLite.text({ default: '' }),
       completed: State.SQLite.boolean({ default: false }),
-      deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromEpochMillis }),
+      deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
     },
   }),
   // Client documents can be used for local-only state (e.g. form inputs)

@@ -231,7 +231,7 @@ export const datetime: SpecializedColDefFn<'text', false, Date> = makeSpecialize
 
 export const datetimeInteger: SpecializedColDefFn<'integer', false, Date> = makeSpecializedColDef('integer', {
   _tag: 'baseSchema',
-  baseSchema: Schema.DateFromEpochMillis,
+  baseSchema: Schema.DateFromMillis,
 })
 
 export const boolean: SpecializedColDefFn<'integer', false, boolean> = makeSpecializedColDef('integer', {
