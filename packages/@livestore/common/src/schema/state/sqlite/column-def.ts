@@ -73,7 +73,7 @@ export const schemaFieldsToColumns = (
     if (typeof prop.name !== 'string') continue
 
     const isOptional = SchemaAST.isOptional(prop.type)
-    const fieldSchema = Schema.make(prop.type)
+    const fieldSchema = Schema.make<Schema.Top>(prop.type)
 
     // Warn about lossy conversion for fields with both null and undefined
     if (isOptional === true) {

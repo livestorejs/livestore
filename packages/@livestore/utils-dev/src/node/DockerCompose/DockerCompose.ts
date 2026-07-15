@@ -253,8 +253,8 @@ export const make = (args: Options) =>
     yield* Effect.addFinalizer(() =>
       down({ volumes: true, removeOrphans: true }).pipe(
         Effect.tap(() => Effect.log(`Docker Compose cleanup completed for project ${projectName}`)),
-        Effect.catch((error) =>
-          Effect.log('Docker Compose cleanup failed for project', projectName, objectToString(error)),
+        Effect.catchCause((cause) =>
+          Effect.log('Docker Compose cleanup failed for project', projectName, objectToString(cause)),
         ),
       ),
     )
