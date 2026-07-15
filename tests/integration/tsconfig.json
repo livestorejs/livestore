@@ -3,7 +3,7 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": ["ES2024"],
+    "lib": ["ES2024", "DOM"],
     "module": "NodeNext",
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
@@ -23,7 +23,10 @@
     "plugins": [
       {
         "name": "@effect/language-service",
-        "reportSuggestionsAsWarningsInTsc": true,
+        "ignoreEffectWarningsInTscExitCode": true,
+        "ignoreEffectSuggestionsInTscExitCode": true,
+        "ignoreEffectErrorsInTscExitCode": false,
+        "includeSuggestionsInTsc": true,
         "pipeableMinArgCount": 2,
         "diagnosticSeverity": {
           "missedPipeableOpportunity": "warning",
@@ -49,7 +52,13 @@
       "path": "../../packages/@livestore/effect-playwright"
     },
     {
+      "path": "../../packages/@livestore/adapter-cloudflare"
+    },
+    {
       "path": "../../packages/@livestore/common"
+    },
+    {
+      "path": "../../packages/@livestore/common-cf"
     },
     {
       "path": "../../packages/@livestore/react"

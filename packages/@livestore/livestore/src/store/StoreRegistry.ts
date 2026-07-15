@@ -331,7 +331,7 @@ export class StoreRegistry {
       // Effect.never suspends indefinitely, keeping the RcMap reference alive.
       // When `release()` is called, the fiber is interrupted, closing the scope
       // and releasing the RcMap entry (which may trigger disposal after idleTimeToLive).
-      yield* Effect.never
+      return yield* Effect.never
     }).pipe(Effect.scoped, Effect.runCallbackWith(this.#context))
 
     return () => release()

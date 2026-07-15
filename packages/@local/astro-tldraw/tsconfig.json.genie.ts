@@ -11,4 +11,5 @@ export default tsconfigJson({
   },
   include: ['src'],
   exclude: [...packageTsconfigExclude],
+  references: [{ path: '../../@livestore/utils' }],
 })

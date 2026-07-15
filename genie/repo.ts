@@ -33,6 +33,7 @@ import {
   packageJson,
   type PnpmPackageClosureConfig,
   pnpmWorkspaceYaml,
+  projectionArtifact,
   reactJsx,
   tsconfigJson,
   type PackageJsonData,
@@ -68,6 +69,7 @@ export {
   oxlintConfig,
   packageJson,
   pnpmWorkspaceYaml,
+  projectionArtifact,
   tsconfigJson,
 }
 export type {
@@ -87,7 +89,8 @@ export type {
 export const domLib = effectUtilsDomLib.filter((lib) => lib !== 'DOM.Iterable' && lib !== 'DOM.AsyncIterable')
 
 // Strip inherited options that now match defaults so generated
-// tsconfigs only carry LiveStore-specific intent.
+// tsconfigs only carry LiveStore-specific intent. `plugins` is pulled out
+// separately so we can override the Effect-LSP exit-code gate below.
 const {
   allowJs: _allowJs,
   esModuleInterop: _esModuleInterop,
@@ -95,8 +98,35 @@ const {
   forceConsistentCasingInFileNames: _forceConsistentCasingInFileNames,
   moduleResolution: _moduleResolution,
   strict: _strict,
-  ...baseTsconfigCompilerOptions
+  plugins: inheritedTsconfigPlugins,
+  ...baseTsconfigCompilerOptionsWithoutPlugins
 } = effectUtilsBaseTsconfigCompilerOptions
+
+/**
+ * #811 Effect-LSP gate — deferred warning/suggestion burndown.
+ *
+ * effect-utils sets `effectDiagnosticsGate = { warnings: true, suggestions: true }`,
+ * so its `@effect/language-service` plugin config fails `tsgo --build` on every
+ * Effect *warning* and *suggestion*, not just errors. Adopting this effect-utils
+ * revision surfaced ~406 pre-existing advisory diagnostics (duplicatePackage,
+ * schemaNumber, preferSchemaOverJson, …) across the LiveStore tree.
+ *
+ * For this effect-utils bump we restore LiveStore's pre-bump gating — ERRORS only —
+ * by flipping just the two exit-code flags. Warnings/suggestions stay VISIBLE in
+ * build output (advisory) but no longer fail the build; real Effect errors (e.g.
+ * the `missingReturnYieldStar` bugs fixed in this PR) still gate hard via the
+ * inherited `ignoreEffectErrorsInTscExitCode: false`. The full warning/suggestion
+ * burndown to the #811 Effect-LSP bar is deferred to a dedicated follow-up PR.
+ * This mirrors effect-utils' own `effectDiagnosticsGate` phased-adoption design.
+ */
+const baseTsconfigCompilerOptions = {
+  ...baseTsconfigCompilerOptionsWithoutPlugins,
+  plugins: inheritedTsconfigPlugins.map((plugin) =>
+    plugin.name === '@effect/language-service'
+      ? { ...plugin, ignoreEffectWarningsInTscExitCode: true, ignoreEffectSuggestionsInTscExitCode: true }
+      : plugin,
+  ),
+} as const
 
 /**
  * Package tsconfig compiler options for livestore.
@@ -273,6 +303,7 @@ import {
   applyMegarepoLockStep,
   checkoutStep,
   defaultRefPolicyCheckJob,
+  prepareCiScriptsStep,
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
   restorePnpmStateStep,
@@ -319,6 +350,10 @@ export const namespaceRunner = (runId: string) =>
  * Uses shared step atoms from effect-utils/genie/ci-workflow.ts.
  */
 export const livestoreSetupStepsAfterCheckout = [
+  // Copy CI helper scripts (e.g. the nix-gc-race retry wrapper) into the prepared
+  // scripts dir before any retry-wrapped command runs, and before any alternate
+  // checkout can replace the workspace. Required by the genie CI workflow validator.
+  prepareCiScriptsStep,
   installNixStep({
     extraConf:
       'extra-substituters = https://cache.nixos.org\nextra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=',

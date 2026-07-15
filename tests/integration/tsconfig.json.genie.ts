@@ -1,8 +1,18 @@
-import { baseTsconfigCompilerOptions, packageTsconfigExclude, reactJsx, tsconfigJson } from '../../genie/repo.ts'
+import {
+  baseTsconfigCompilerOptions,
+  domLib,
+  packageTsconfigExclude,
+  reactJsx,
+  tsconfigJson,
+} from '../../genie/repo.ts'
 
 export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
+    // Playwright browser tests and their in-page fixtures use DOM globals
+    // (window, document, MessageEvent, FileSystemFileHandle, …), so pull in the
+    // DOM lib on top of the base ES lib set.
+    lib: [...domLib],
     composite: true,
     exactOptionalPropertyTypes: false,
     outDir: './dist',
@@ -17,7 +27,9 @@ export default tsconfigJson({
   references: [
     { path: '../../packages/@local/shared' },
     { path: '../../packages/@livestore/effect-playwright' },
+    { path: '../../packages/@livestore/adapter-cloudflare' },
     { path: '../../packages/@livestore/common' },
+    { path: '../../packages/@livestore/common-cf' },
     { path: '../../packages/@livestore/react' },
     { path: '../../packages/@livestore/livestore' },
     { path: '../../packages/@livestore/sync-cf' },

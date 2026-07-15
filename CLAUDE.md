@@ -14,7 +14,7 @@ This repository uses [`devenv`](https://devenv.sh) for development environment m
 
 Use the `mono` CLI for common workflows:
 
-- `dt lint:full` / `dt lint:full:fix` to run the linting checks
+- `devenv tasks run lint:full` / `devenv tasks run lint:full:fix` to run the linting checks
 - `mono test <unit|integration|perf>` to run the tests
   - Some tests can take a while to run.
 - `mono ts [--watch] [--clean]` to build the TypeScript code
@@ -44,7 +44,7 @@ Use GitHub issues or an issue checklist for non-trivial work.
 ## Git
 
 - The default branch of this repository is `main`.
-- Before committing, run `dt lint:full:fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
+- Before committing, run `devenv tasks run lint:full:fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
 
 ### Branch Naming Conventions
 
@@ -54,9 +54,9 @@ Use GitHub issues or an issue checklist for non-trivial work.
 
 ### Development Workflow
 
-- Run the full test suite before pushing: `dt test:run`
-- Ensure TypeScript compilation passes: `dt ts:check`
-- Use `dt lint:full:fix` to automatically fix formatting issues
+- Run the full test suite before pushing: `devenv tasks run test:run`
+- Ensure TypeScript compilation passes: `devenv tasks run ts:check`
+- Use `devenv tasks run lint:full:fix` to automatically fix formatting issues
 
 ### Issues
 

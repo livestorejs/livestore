@@ -1,0 +1,178 @@
+{
+  "contract": "livestore/pnpm-install-contract",
+  "dependencyMaterializationProfile": {
+    "buck2Boundary": {
+      "consumesEvidence": true,
+      "ownsLiveMaterialization": false
+    },
+    "identityInputs": [
+      "packageManager",
+      "gvsLinkContract",
+      "installPolicy",
+      "storeContract",
+      "workspaceManifestContract"
+    ],
+    "nativeBuildPolicyInputs": {
+      "allowBuilds": "gvsLinkContract.allowBuilds",
+      "compilerEnv": ["CC", "CXX"]
+    },
+    "schema": "dependency-materialization-profile/v0",
+    "supportedTraits": {
+      "ciJobLocal": {
+        "gcAuthority": "profile-local",
+        "mutableState": "job-local",
+        "repairAuthority": "ci-job"
+      },
+      "darwinSplitCas": {
+        "gcAuthority": "shared-pool-coordinator",
+        "mutableState": "profile-local",
+        "repairAuthority": "devenv",
+        "sharedContent": "store/v11/files"
+      },
+      "isolated": {
+        "gcAuthority": "profile-local",
+        "mutableState": "profile-local",
+        "repairAuthority": "devenv"
+      },
+      "nixPreparedDeps": {
+        "gcAuthority": "nix-store",
+        "mutableState": "none",
+        "repairAuthority": "evergreen-fod"
+      }
+    }
+  },
+  "gvsLinkContract": {
+    "allowBuilds": {
+      "@mixedbread/cli": true,
+      "@myobie/pty": false,
+      "@parcel/watcher": false,
+      "cbor-extract": true,
+      "dtrace-provider": true,
+      "esbuild": false,
+      "fsevents": false,
+      "msgpackr-extract": false,
+      "node-pty": false,
+      "protobufjs": true,
+      "puppeteer": true,
+      "sharp": false,
+      "unix-dgram": false,
+      "workerd": true
+    },
+    "packageExtensions": {
+      "react-error-boundary": {
+        "dependencies": {
+          "@types/react": "19.2.7",
+          "@types/react-dom": "19.2.3"
+        }
+      },
+      "starlight-auto-sidebar": {
+        "dependencies": {
+          "astro": ">=6.0.0"
+        }
+      },
+      "starlight-links-validator": {
+        "dependencies": {
+          "astro": ">=6.0.0"
+        }
+      },
+      "starlight-sidebar-topics": {
+        "dependencies": {
+          "astro": ">=6.0.0"
+        }
+      },
+      "typedoc": {
+        "dependencies": {
+          "typedoc-plugin-markdown": "^4.8.1"
+        }
+      }
+    },
+    "packageManager": {
+      "name": "pnpm",
+      "version": "11.8.0"
+    }
+  },
+  "installPolicy": {
+    "dedupePeerDependents": true,
+    "ignoreScripts": true,
+    "minimumReleaseAgeExclude": ["@effect/platform", "@types/node", "effect"],
+    "optimisticRepeatInstall": false,
+    "packageImportMethod": "clone-or-copy",
+    "pmOnFail": "ignore",
+    "sideEffectsCache": false,
+    "strictPeerDependencies": false,
+    "strictStorePkgContentCheck": true,
+    "supportedArchitectures": {
+      "cpu": ["x64", "arm64"],
+      "libc": ["glibc", "musl"],
+      "os": ["linux", "darwin"]
+    },
+    "verifyDepsBeforeRun": false,
+    "verifyStoreIntegrity": true
+  },
+  "metadata": {
+    "buck2Integration": {
+      "avoidNodeModulesLayoutAsApi": true,
+      "consumeContractArtifact": true
+    },
+    "nixIntegration": {
+      "fixedOutputDependencyPrepUsesLiveGlobalVirtualStore": false,
+      "liveInstallUsesGlobalVirtualStore": true
+    },
+    "pnpmStoreOwnership": {
+      "filesLifecycle": "pnpm-owned content-addressed files store",
+      "linksLifecycle": "pnpm-owned rebuildable dependency-graph projection",
+      "projectsLifecycle": "pnpm-owned store prune reachability registry"
+    }
+  },
+  "packageManager": {
+    "name": "pnpm",
+    "version": "11.8.0"
+  },
+  "schemaVersion": 1,
+  "storeContract": {
+    "globalVirtualStore": {
+      "enabled": true
+    },
+    "layoutVersion": "v11",
+    "owner": "pnpm",
+    "sharedFilesStore": {
+      "disabledInCi": true,
+      "enabledForLocalDev": true
+    },
+    "storeDir": ".devenv/pnpm-store-pure-v1"
+  },
+  "workspaceManifestContract": {
+    "injectWorkspacePackages": false,
+    "packages": [
+      "docs",
+      "docs/src/content/_assets/code",
+      "examples/*",
+      "packages/@livestore/adapter-cloudflare",
+      "packages/@livestore/adapter-web",
+      "packages/@livestore/common",
+      "packages/@livestore/common-cf",
+      "packages/@livestore/effect-playwright",
+      "packages/@livestore/framework-toolkit",
+      "packages/@livestore/livestore",
+      "packages/@livestore/peer-deps",
+      "packages/@livestore/react",
+      "packages/@livestore/sqlite-wasm",
+      "packages/@livestore/sync-cf",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/wa-sqlite",
+      "packages/@livestore/webmesh",
+      "packages/@local/astro-tldraw",
+      "packages/@local/astro-twoslash-code",
+      "packages/@local/astro-twoslash-code/example",
+      "packages/@local/shared",
+      "scripts",
+      "tests/integration",
+      "tests/package-common",
+      "tests/perf",
+      "tests/perf-eventlog",
+      "tests/sync-provider",
+      "tests/wa-sqlite"
+    ]
+  }
+}
