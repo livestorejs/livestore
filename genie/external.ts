@@ -183,7 +183,7 @@ export const livestoreOnlyCatalog = {
   '@opentelemetry/sdk-trace-base': '2.2.0',
   '@opentelemetry/sdk-trace-node': '2.2.0',
   '@opentelemetry/sdk-trace-web': '2.2.0',
-  '@playwright/test': '1.59.1',
+  '@playwright/test': '1.61.0',
   '@tailwindcss/vite': '4.1.18',
   tailwindcss: '4.1.18',
   '@tanstack/react-router': '1.145.7',
