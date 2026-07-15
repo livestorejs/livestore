@@ -45,8 +45,8 @@ const withTestCtx = Vitest.makeWithTestCtx({
 })
 
 const PersistenceSnapshotSchema = Schema.Struct({
-  state: Schema.Struct({ count: Schema.Number }),
-  eventlog: Schema.Struct({ count: Schema.Number }),
+  state: Schema.Struct({ count: Schema.Finite }),
+  eventlog: Schema.Struct({ count: Schema.Finite }),
 })
 
 const ResetPersistenceSnapshotSchema = Schema.Struct({
@@ -107,7 +107,7 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
           .pipe(
             Effect.flatMap(
               HttpClientResponse.schemaBodyJson(
-                Schema.Struct({ totalRowsWritten: Schema.Number, totalRowsRead: Schema.Number }),
+                Schema.Struct({ totalRowsWritten: Schema.Finite, totalRowsRead: Schema.Finite }),
               ),
             ),
           ),
@@ -118,7 +118,7 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
           .pipe(
             Effect.flatMap(
               HttpClientResponse.schemaBodyJson(
-                Schema.Struct({ totalRowsWritten: Schema.Number, totalRowsRead: Schema.Number }),
+                Schema.Struct({ totalRowsWritten: Schema.Finite, totalRowsRead: Schema.Finite }),
               ),
             ),
           ),

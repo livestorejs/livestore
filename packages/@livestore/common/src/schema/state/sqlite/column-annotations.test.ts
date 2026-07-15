@@ -22,11 +22,11 @@ describe.concurrent('annotations', () => {
       })
 
       test('Schema.Number with integer column type', () => {
-        expect(() => withColumnType(Schema.Number, 'integer')).not.toThrow()
+        expect(() => withColumnType(Schema.Finite, 'integer')).not.toThrow()
       })
 
       test('Schema.Number with real column type', () => {
-        expect(() => withColumnType(Schema.Number, 'real')).not.toThrow()
+        expect(() => withColumnType(Schema.Finite, 'real')).not.toThrow()
       })
 
       test('Schema.Boolean with integer column type', () => {
@@ -153,7 +153,7 @@ describe.concurrent('annotations', () => {
 
     describe('complex schemas', () => {
       test('should allow complex schemas that cannot be determined', () => {
-        const complexSchema = Schema.Struct({ name: Schema.String, age: Schema.Number })
+        const complexSchema = Schema.Struct({ name: Schema.String, age: Schema.Finite })
         expect(() => withColumnType(complexSchema, 'text')).not.toThrow()
       })
 

@@ -13,7 +13,7 @@ describe('getColumnDefForSchema', () => {
     })
 
     it('should map Schema.Number to real column', () => {
-      const columnDef = State.SQLite.getColumnDefForSchema(Schema.Number)
+      const columnDef = State.SQLite.getColumnDefForSchema(Schema.Finite)
       expect(columnDef.columnType).toBe('real')
     })
 
@@ -77,7 +77,7 @@ describe('getColumnDefForSchema', () => {
     it('should map number refinements to real column', () => {
       const refinements = [
         { schema: Schema.Finite, name: 'Finite' },
-        { schema: Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 100 })), name: 'between' },
+        { schema: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 100 })), name: 'between' },
       ]
 
       for (const { schema, name } of refinements) {
@@ -106,7 +106,7 @@ describe('getColumnDefForSchema', () => {
 
   describe('transformations', () => {
     it('should map transformations based on target type', () => {
-      const StringToNumber = Schema.NumberFromString
+      const StringToNumber = Schema.FiniteFromString
 
       const columnDef = State.SQLite.getColumnDefForSchema(StringToNumber)
       expect(columnDef.columnType).toBe('text') // Based on the encoded type (String)
@@ -122,7 +122,7 @@ describe('getColumnDefForSchema', () => {
     it('should map structs to json column', () => {
       const UserSchema = Schema.Struct({
         name: Schema.String,
-        age: Schema.Number,
+        age: Schema.Finite,
       })
 
       const columnDef = State.SQLite.getColumnDefForSchema(UserSchema)
@@ -135,12 +135,12 @@ describe('getColumnDefForSchema', () => {
     })
 
     it('should map records to json column', () => {
-      const columnDef = State.SQLite.getColumnDefForSchema(Schema.Record(Schema.String, Schema.Number))
+      const columnDef = State.SQLite.getColumnDefForSchema(Schema.Record(Schema.String, Schema.Finite))
       expect(columnDef.columnType).toBe('text')
     })
 
     it('should map tuples to json column', () => {
-      const columnDef = State.SQLite.getColumnDefForSchema(Schema.Tuple([Schema.String, Schema.Number]))
+      const columnDef = State.SQLite.getColumnDefForSchema(Schema.Tuple([Schema.String, Schema.Finite]))
       expect(columnDef.columnType).toBe('text')
     })
 
@@ -259,7 +259,7 @@ describe('getColumnDefForSchema', () => {
       const AnnotatedString = Schema.String.annotate({
         description: 'A special string',
       })
-      const AnnotatedNumber = Schema.Number.annotate({ min: 0, max: 100 })
+      const AnnotatedNumber = Schema.Finite.annotate({ min: 0, max: 100 })
 
       expect(State.SQLite.getColumnDefForSchema(AnnotatedString).columnType).toBe('text')
       expect(State.SQLite.getColumnDefForSchema(AnnotatedNumber).columnType).toBe('real')
@@ -332,7 +332,7 @@ describe('getColumnDefForSchema', () => {
         id: Schema.String,
         name: Schema.String,
         email: Schema.optional(Schema.String),
-        age: Schema.optional(Schema.Number),
+        age: Schema.optional(Schema.Finite),
       })
 
       const userTable = State.SQLite.table({
@@ -446,7 +446,7 @@ describe('getColumnDefForSchema', () => {
 
     it('should handle Schema.NullOr with complex types', async () => {
       const schema = Schema.Struct({
-        data: Schema.NullOr(Schema.Struct({ value: Schema.Number })),
+        data: Schema.NullOr(Schema.Struct({ value: Schema.Finite })),
       }).annotate({ title: 'test' })
 
       const table = State.SQLite.table({ schema })
@@ -463,7 +463,7 @@ describe('getColumnDefForSchema', () => {
       const schema = Schema.Struct({
         nullableText: Schema.NullOr(Schema.String),
         optionalText: Schema.optional(Schema.String),
-        optionalJson: Schema.optional(Schema.Struct({ x: Schema.Number })),
+        optionalJson: Schema.optional(Schema.Struct({ x: Schema.Finite })),
       }).annotate({ title: 'test' })
 
       const table = State.SQLite.table({ schema })
@@ -514,7 +514,7 @@ describe('getColumnDefForSchema', () => {
   describe('annotations', () => {
     describe('withColumnType', () => {
       it('should respect column type annotation for text', () => {
-        const schema = Schema.Number.pipe(withColumnType('text'))
+        const schema = Schema.Finite.pipe(withColumnType('text'))
         const columnDef = State.SQLite.getColumnDefForSchema(schema)
         expect(columnDef.columnType).toBe('text')
       })
@@ -539,7 +539,7 @@ describe('getColumnDefForSchema', () => {
 
       it('should override default type mapping', () => {
         // Number normally maps to real, but we override to text
-        const schema = Schema.Number.pipe(withColumnType('text'))
+        const schema = Schema.Finite.pipe(withColumnType('text'))
         const columnDef = State.SQLite.getColumnDefForSchema(schema)
         expect(columnDef.columnType).toBe('text')
       })
@@ -608,7 +608,7 @@ describe('getColumnDefForSchema', () => {
 
       it('should work with column type annotation', () => {
         const UserSchema = Schema.Struct({
-          id: Schema.Number.pipe(withColumnType('integer'), withPrimaryKey),
+          id: Schema.Finite.pipe(withColumnType('integer'), withPrimaryKey),
           name: Schema.String,
         })
 
