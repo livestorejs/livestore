@@ -705,8 +705,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           if (shouldPrintPlan === true) {
             console.log(
-              // Indented, ad-hoc plan preview for humans reading CI logs; Schema's JSON codec is compact.
-              // @effect-diagnostics-next-line preferSchemaOverJson:off
+              // @effect-diagnostics-next-line preferSchemaOverJson:off -- indented, ad-hoc plan preview for humans reading CI logs; Schema's JSON codec is compact
               JSON.stringify(
                 {
                   branchName,
