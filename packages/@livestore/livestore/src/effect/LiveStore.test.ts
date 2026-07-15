@@ -29,6 +29,7 @@ describe('Store.Tag R channel consistency', () => {
 
     /** Providing the store layer must fully eliminate MainStore from R */
     const _provided: Effect.Effect<void, unknown, OtelTracer.OtelTracer> = prog.pipe(Effect.provide(storeLayer))
+    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- regression test (issue #1103) asserts only the R channel; the error channel is intentionally widened to `unknown` to stay decoupled from the exact error type
     void _provided
   })
 
@@ -36,6 +37,7 @@ describe('Store.Tag R channel consistency', () => {
     const prog = MainStore.use(({ store }) => Effect.succeed(store))
 
     const _provided: Effect.Effect<unknown, unknown, OtelTracer.OtelTracer> = prog.pipe(Effect.provide(storeLayer))
+    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- regression test (issue #1103) asserts only the R channel; the success/error channels are intentionally widened to `unknown` to stay decoupled from exact types
     void _provided
   })
 

@@ -137,8 +137,12 @@ export const makeInMemoryAdapter =
       const sharedWorkerClient =
         sharedWebWorker !== undefined
           ? yield* RpcClient.make(WorkerSchema.SharedWorkerRpcs).pipe(
-              Effect.provide(RpcClient.layerProtocolWorker({ size: 1, concurrency: 100 })),
-              Effect.provide(BrowserWorker.layer(() => sharedWebWorker)),
+              Effect.provide(
+                Layer.provideMerge(
+                  RpcClient.layerProtocolWorker({ size: 1, concurrency: 100 }),
+                  BrowserWorker.layer(() => sharedWebWorker),
+                ),
+              ),
               Effect.tapCauseLogPretty,
               UnknownError.mapToUnknownError,
             )
