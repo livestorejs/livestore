@@ -166,9 +166,16 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
           // Since we're using websocket hibernation, we need to remember the storeId for subsequent `webSocketMessage` calls
           // Also store forwarded headers so they're available after hibernation resume
-          server.serializeAttachment(
-            Schema.encodeSync(WebSocketAttachmentSchema)({ storeId, payload, pullRequestIds: [], headers }),
-          )
+          // Encoding known-valid domain data: an encode failure is an invariant violation (a defect),
+          // so `Effect.orDie` is the correct modeling. serializeAttachment takes the value synchronously,
+          // so resolve the encoded value first, then pass it in.
+          const attachment = yield* Schema.encodeEffect(WebSocketAttachmentSchema)({
+            storeId,
+            payload,
+            pullRequestIds: [],
+            headers,
+          }).pipe(Effect.orDie)
+          server.serializeAttachment(attachment)
 
           // See https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server
 
