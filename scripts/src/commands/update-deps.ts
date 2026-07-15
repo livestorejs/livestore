@@ -383,7 +383,7 @@ export const updateDepsCommand = Cli.Command.make(
       const expoExamples = yield* cmdText('find examples -name "expo" -type d -o -name "*expo*" -type d').pipe(
         Effect.provide(LivestoreWorkspace.toCwd()),
         Effect.map((output) => output.trim().split('\n').filter(Boolean)),
-        Effect.catch(() => Effect.succeed([])),
+        Effect.orElseSucceed(() => []),
       )
 
       for (const exampleDir of expoExamples) {

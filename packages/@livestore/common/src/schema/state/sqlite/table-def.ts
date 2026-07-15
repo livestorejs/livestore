@@ -199,7 +199,7 @@ export function table<
     columns = SqliteDsl.isColumnDefinition(columnOrColumns) === true ? { value: columnOrColumns } : columnOrColumns
     additionalIndexes = []
   } else if ('schema' in args) {
-    const result = schemaFieldsToColumns(getSqlitePropertySignatures(args.schema))
+    const result = args.schema.pipe(getSqlitePropertySignatures, schemaFieldsToColumns)
     columns = result.columns
 
     // We'll set tableName first, then use it for index names

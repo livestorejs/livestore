@@ -164,7 +164,7 @@ export const exists = Effect.fn('@livestore/utils:Opfs.exists')(function* (path:
   const { parentSegments, leafSegment: targetName } = splitPathSegments(pathSegments)
 
   const parentDirHandle = yield* traverseDirectoryPath(parentSegments, { create: false }).pipe(
-    Effect.catchTag('NotFoundError', () => Effect.succeed(undefined)),
+    Effect.catchTag('NotFoundError', () => Effect.void),
   )
 
   if (parentDirHandle === undefined) return false

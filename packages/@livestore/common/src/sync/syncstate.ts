@@ -162,7 +162,7 @@ export class MergeResultReject extends Schema.Class<MergeResultReject>('MergeRes
 export const MergeResult = Schema.Union([MergeResultAdvance, MergeResultRebase, MergeResultReject])
 
 export const payloadFromMergeResult = (
-  mergeResult: typeof MergeResultAdvance.Type | typeof MergeResultRebase.Type,
+  mergeResult: MergeResultAdvance | MergeResultRebase,
 ): typeof PayloadUpstream.Type =>
   Match.value(mergeResult).pipe(
     Match.tag('advance', (result) => ({
