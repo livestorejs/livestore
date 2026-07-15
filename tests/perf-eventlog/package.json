@@ -39,7 +39,7 @@
     "@livestore/devtools-vite": "0.4.0-dev.25",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/resources": "2.2.0",
-    "@playwright/test": "1.59.1",
+    "@playwright/test": "1.61.0",
     "@standard-schema/spec": "1.1.0",
     "@types/node": "25.3.3",
     "@types/react": "19.2.7",
