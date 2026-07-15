@@ -1,5 +1,8 @@
 # Two-repo architecture — key decisions
 
+Moved from `context/repo-architecture/decisions/` on 2026-07-15 during the
+intent-layer restructuring; IDs referenced here now live under `LS.DEL-*`.
+
 This ADR records the durable decisions behind the LiveStore core/contrib
 repository architecture.
 
@@ -31,8 +34,8 @@ The materialized checkout must be writable because pnpm can write
 
 ## Exact Lockstep Versions At Publish
 
-Contrib mirrors core's version stamp and rewrites `workspace:*` dependencies to
-exact versions during publish.
+Contrib mirrors core's version stamp and rewrites `workspace:*` dependencies
+to exact versions during publish.
 
 | Option                       | Rejected because                                           |
 | ---------------------------- | ---------------------------------------------------------- |
@@ -47,9 +50,9 @@ package graph.
 Contrib imports core genie helpers through `../repos/livestore/...`, not
 `#mr/livestore/...`.
 
-`#mr` specifiers resolve against the file's own megarepo root. Relative imports
-enter core's source tree first, allowing core's internal `#mr/effect-utils/...`
-imports to resolve against core's materialized members.
+`#mr` specifiers resolve against the file's own megarepo root. Relative
+imports enter core's source tree first, allowing core's internal
+`#mr/effect-utils/...` imports to resolve against core's materialized members.
 
 Core does not own the final contrib package or example manifest. Core exports
 core package metadata and reusable generator helpers; contrib owns its local
@@ -59,8 +62,9 @@ still keeping shared tooling centralized.
 
 ## `framework-toolkit` Stays Core-Owned
 
-`@livestore/react` imports `framework-toolkit`, and React is core-owned. Moving
-`framework-toolkit` would either break React or force an unrelated refactor.
+`@livestore/react` imports `framework-toolkit`, and React is core-owned.
+Moving `framework-toolkit` would either break React or force an unrelated
+refactor.
 
 `framework-toolkit` is therefore a shared core primitive consumed by contrib
 framework packages through workspace links during development and exact
@@ -68,8 +72,8 @@ published versions at release time.
 
 ## Docs Source Ownership Can Lag Package Ownership
 
-The public docs site remains core-owned. Contrib package docs source can stay in
-the core docs tree while package source and TypeDoc entry points move to
+The public docs site remains core-owned. Contrib package docs source can stay
+in the core docs tree while package source and TypeDoc entry points move to
 contrib.
 
 This keeps docs-source ownership separate from the repository composition

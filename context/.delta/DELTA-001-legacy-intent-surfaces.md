@@ -3,13 +3,13 @@
 The branch table in [spec.md](../spec.md) assigns ownership of all intent
 content to branch nodes. Reality as of 2026-07-15 diverges:
 
-- `context/repo-architecture/` and `context/devtools-artifact-release/` are
-  standalone VRS roots; their content belongs to `03-delivery/`.
 - `contributor-docs/` holds operational guides (`package-release.md`,
   `release-workflows.md`, `dependency-management.md`,
   `wa-sqlite-management.md`, `changelog-guide.md`, `docs/*`) and the RFC
-  process definition (`rfcs/index.md`) whose owning nodes (`03-delivery/`,
-  `04-docs/`, `05-contributing/`) do not exist yet.
+  process definition (`rfcs/index.md`) not yet migrated into their owning
+  nodes (`03-delivery/`, `04-docs/`, `05-contributing/`). The delivery
+  runbooks are referenced as pending companions in
+  [03-delivery/spec.md](../03-delivery/spec.md).
 - Docs pages (`why-livestore`, `when-livestore`, `design-decisions`,
   `concepts`) are canonical-in-practice; per LS-R15 they should derive from
   `01-product/`, `02-system/`, and [ontology.md](../ontology.md).

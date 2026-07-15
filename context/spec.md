@@ -46,8 +46,10 @@ context/                     root: LiveStore the product (this node)
   03-delivery/               repo/package composition, packaging, release,
                              versioning, artifact flows
   04-docs/                   docs-site derivation rules, snippets/diagrams
-                             policy, examples
-  05-contributing/           collaboration model, RFC process, governance
+                             policy
+    01-examples/             example apps as learning surface + test fixtures
+  05-contributing/           RFC process + fold-in rule, governance
+    01-collaboration/        day-to-day human/agent collaboration model
   06-sustainability/         licensing, sponsorship, commercial surfaces
 ```
 
@@ -101,8 +103,8 @@ questions `DQ`, deltas `DELTA`, decisions by number):
 | `LS.SYS.INT-*` / `LS.SYS.INT.REACT-*` | `02-system/08-integrations/` and realizations |
 | `LS.SYS.VER-*` | `02-system/09-verification/` |
 | `LS.DEL-*` | `03-delivery/` |
-| `LS.DOCS-*` | `04-docs/` |
-| `LS.CONTRIB-*` | `05-contributing/` |
+| `LS.DOCS-*` / `LS.DOCS.EX-*` | `04-docs/` and `01-examples/` |
+| `LS.CONTRIB-*` / `LS.CONTRIB.COLLAB-*` | `05-contributing/` and `01-collaboration/` |
 | `LS.SUST-*` | `06-sustainability/` |
 
 Realization namespaces extend their dimension namespace with one more segment.
