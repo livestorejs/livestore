@@ -126,11 +126,15 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
     const backgroundLeaderPushing = Effect.gen(function* () {
       const batch = yield* TxQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
+      // The push must run uninterruptibly so a batch that has already been taken off the queue is fully
+      // persisted by the leader before this fiber is interrupted on store shutdown. Otherwise, with a
+      // co-located leader (e.g. the single-threaded node adapter), the in-flight batch is silently lost.
       yield* clientSession.leaderThread.events.push(batch).pipe(
         Effect.catchIf(isRejectedPushError, () => {
           debugInfo.rejectCount++
           return TxQueue.clear(leaderPushQueue)
         }),
+        Effect.uninterruptible,
       )
     }).pipe(
       Effect.forever,
@@ -140,6 +144,19 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     )
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+
+    // On store shutdown the background pushing fiber is interrupted, which can leave events queued in
+    // `leaderPushQueue` that were never handed to the leader. Flush them here so they are still durably
+    // persisted. This finalizer is registered after the pushing fiber, so it runs before it during scope
+    // teardown, while the leader is still alive to accept and persist the batch.
+    yield* Effect.addFinalizer(() =>
+      Effect.gen(function* () {
+        const remaining = yield* TxQueue.clear(leaderPushQueue)
+        if (remaining.length > 0) {
+          yield* clientSession.leaderThread.events.push(remaining).pipe(Effect.catchCause(() => Effect.void))
+        }
+      }).pipe(Effect.uninterruptible),
+    )
 
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
     yield* Stream.suspend(() =>
