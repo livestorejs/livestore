@@ -90,7 +90,8 @@ export const domLib = effectUtilsDomLib.filter((lib) => lib !== 'DOM.Iterable' &
 
 // Strip inherited options that now match defaults so generated
 // tsconfigs only carry LiveStore-specific intent. `plugins` is pulled out
-// separately so we can override the Effect-LSP exit-code gate below.
+// separately so we can inject LiveStore's `allowedDuplicatedPackages` onto the
+// inherited `@effect/language-service` plugin below (without altering its gate).
 const {
   allowJs: _allowJs,
   esModuleInterop: _esModuleInterop,
@@ -103,21 +104,24 @@ const {
 } = effectUtilsBaseTsconfigCompilerOptions
 
 /**
- * #811 Effect-LSP gate — deferred warning/suggestion burndown.
+ * #811 Effect-LSP gate — full effect-utils bar adopted (errors-only override removed).
  *
  * effect-utils sets `effectDiagnosticsGate = { warnings: true, suggestions: true }`,
  * so its `@effect/language-service` plugin config fails `tsgo --build` on every
- * Effect *warning* and *suggestion*, not just errors. Adopting this effect-utils
- * revision surfaced ~406 pre-existing advisory diagnostics (duplicatePackage,
- * schemaNumber, preferSchemaOverJson, …) across the LiveStore tree.
+ * Effect *error*, *warning*, and *suggestion*. Adopting the effect-utils bump
+ * originally surfaced ~406 pre-existing advisory diagnostics (duplicatePackage,
+ * schemaNumber, preferSchemaOverJson, …) across the LiveStore tree, and we
+ * temporarily flipped `ignoreEffectWarningsInTscExitCode` /
+ * `ignoreEffectSuggestionsInTscExitCode` to restore an ERRORS-only gate while the
+ * burndown landed in dedicated PRs (mechanical / schema / semantic).
  *
- * For this effect-utils bump we restore LiveStore's pre-bump gating — ERRORS only —
- * by flipping just the two exit-code flags. Warnings/suggestions stay VISIBLE in
- * build output (advisory) but no longer fail the build; real Effect errors (e.g.
- * the `missingReturnYieldStar` bugs fixed in this PR) still gate hard via the
- * inherited `ignoreEffectErrorsInTscExitCode: false`. The full warning/suggestion
- * burndown to the #811 Effect-LSP bar is deferred to a dedicated follow-up PR.
- * This mirrors effect-utils' own `effectDiagnosticsGate` phased-adoption design.
+ * That burndown is now complete, so the override is REMOVED: warnings and
+ * suggestions gate `tsgo --build` again, and LiveStore inherits effect-utils'
+ * full `effectDiagnosticsGate` unchanged. Every remaining Effect warning/suggestion
+ * is either fixed or carries a justified inline `:off`. The only LiveStore-specific
+ * tweak we still inject here is `allowedDuplicatedPackages: ['@livestore/utils']`,
+ * which suppresses the expected `@livestore/utils` duplicate-package diagnostics
+ * that are intentional in this workspace.
  */
 const baseTsconfigCompilerOptions = {
   ...baseTsconfigCompilerOptionsWithoutPlugins,
@@ -125,8 +129,6 @@ const baseTsconfigCompilerOptions = {
     plugin.name === '@effect/language-service'
       ? {
           ...plugin,
-          ignoreEffectWarningsInTscExitCode: true,
-          ignoreEffectSuggestionsInTscExitCode: true,
           allowedDuplicatedPackages: ['@livestore/utils'],
         }
       : plugin,
