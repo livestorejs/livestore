@@ -61,7 +61,7 @@ export const connectDevtoolsToStore = Effect.fn('LSD.devtools.connectStoreToDevt
   const sendToDevtools = (message: Devtools.ClientSession.MessageFromApp) =>
     storeDevtoolsChannel.send(message).pipe(Effect.tapCauseLogPretty, Effect.runFork)
 
-  const onMessage = (decodedMessage: typeof Devtools.ClientSession.MessageToApp.Type) => {
+  const onMessage = (decodedMessage: Devtools.ClientSession.MessageToApp) => {
     // console.debug('@livestore/livestore:store:devtools:onMessage', decodedMessage)
 
     if (decodedMessage.clientId !== clientId || decodedMessage.sessionId !== sessionId) {
