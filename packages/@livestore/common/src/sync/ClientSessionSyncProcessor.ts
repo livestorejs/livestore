@@ -106,7 +106,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
   const leaderPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta, Cause.Done>()
 
-  const boot: ClientSessionSyncProcessor['boot'] = Effect.fn('client-session-sync-processor:boot')(function* () {
+  const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
     if (
       confirmUnsavedChanges === true &&
       typeof window !== 'undefined' &&
@@ -347,7 +347,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
-  })()
+  }).pipe(Effect.withSpan('client-session-sync-processor:boot'))
 
   const encodeEvents: ClientSessionSyncProcessor['encodeEvents'] = Effect.fn(
     'client-session-sync-processor:encode-events',

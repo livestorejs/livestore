@@ -2,10 +2,13 @@ import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { Effect, FileSystem, Queue } from '@livestore/utils/effect'
+import { Effect, FileSystem, Queue, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
 import { type WatchSnippetsRebuildInfo, watchSnippets } from './snippets.ts'
+
+/** Module-scoped JSON encoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
 
 const createDocsImportSource = (relativeSnippetPath: string) => `---
 title: Snippet Watch Test
@@ -32,24 +35,20 @@ const writeInitialProject = (fs: FileSystem.FileSystem, projectRoot: string): Ef
 
     yield* fs.writeFileString(snippetPath, 'export const value = 1\n')
     yield* fs.writeFileString(docsPath, createDocsImportSource('../content/_assets/code/example.ts'))
-    const tsconfigJson = JSON.stringify(
-      {
-        compilerOptions: {
-          target: 'ESNext',
-          module: 'ESNext',
-          moduleResolution: 'Bundler',
-          jsx: 'react-jsx',
-          types: ['node'],
-          skipLibCheck: true,
-          allowImportingTsExtensions: true,
-          noEmit: true,
-        },
-        include: ['./**/*'],
-        exclude: ['./node_modules'],
+    const tsconfigJson = jsonStringify({
+      compilerOptions: {
+        target: 'ESNext',
+        module: 'ESNext',
+        moduleResolution: 'Bundler',
+        jsx: 'react-jsx',
+        types: ['node'],
+        skipLibCheck: true,
+        allowImportingTsExtensions: true,
+        noEmit: true,
       },
-      null,
-      2,
-    )
+      include: ['./**/*'],
+      exclude: ['./node_modules'],
+    })
     yield* fs.writeFileString(tsconfigPath, tsconfigJson + '\n')
   }).pipe(Effect.orDie)
 

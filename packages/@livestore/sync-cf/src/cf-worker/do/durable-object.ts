@@ -33,6 +33,9 @@ const Response = CfDeclare.Response
 const WebSocketPair = CfDeclare.WebSocketPair
 const WebSocketRequestResponsePair = CfDeclare.WebSocketRequestResponsePair
 
+/** Module-scoped JSON encoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
+
 const DurableObjectBase = DurableObject as any as new (
   state: CfTypes.DurableObjectState,
   env: Env,
@@ -183,10 +186,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
           // Ping requests are sent by Effect RPC internally
           this.ctx.setWebSocketAutoResponse(
-            new WebSocketRequestResponsePair(
-              JSON.stringify(RpcMessage.constPing),
-              JSON.stringify(RpcMessage.constPong),
-            ),
+            new WebSocketRequestResponsePair(jsonStringify(RpcMessage.constPing), jsonStringify(RpcMessage.constPong)),
           )
 
           return new Response(null, {
