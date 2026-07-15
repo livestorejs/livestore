@@ -13,18 +13,17 @@ contrib-owned (stub pending LS-DQ2).
 
 ## Requirements
 
-- **LS.SYS.INT-R01 Thin wrappers:** `refines: LS-R09` — Integrations adapt
-  Store primitives to framework idioms; they hold no data state of their own
-  and add no query semantics.
+- **LS.SYS.INT-R01 Thin wrappers:** Integrations adapt Store primitives to
+  framework idioms; they hold no data state of their own and add no query
+  semantics. `refines: LS-R09`
 - **LS.SYS.INT-R02 Shared toolkit:** Cross-framework logic — queryable
   normalization, client-document helpers, stack-info for query provenance —
   lives once in `framework-toolkit`, not per integration.
 - **LS.SYS.INT-R03 Lifecycle ownership:** Integrations acquire and release
   stores through the store registry so store lifetime follows component/app
-  lifetime without manual shutdown (`refines: LS.SYS.STORE-R07`).
+  lifetime without manual shutdown. `refines: LS.SYS.STORE-R07`
 - **LS.SYS.INT-R04 Reactive parity:** Framework-rendered values reflect live
-  query updates without stale reads or missed updates
-  (`refines: LS-R12`).
+  query updates without stale reads or missed updates. `refines: LS-R12`
 - **LS.SYS.INT-R05 Robust under framework semantics:** Integrations tolerate
   their framework's rendering model (e.g. React StrictMode double-invoke,
   concurrent rendering) without leaking or double-registering resources.

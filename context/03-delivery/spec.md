@@ -281,12 +281,11 @@ release-candidate state.
 ### Cadence Invariant
 
 LiveStore releases must not require `overeng` work when the selected DevTools
-artifact is still compatible.
-
-This invariant is intentional because LiveStore releases happen more often
-than DevTools releases. A normal LiveStore release should download the pinned
-artifact, verify its integrity, run release-candidate compatibility checks,
-and publish the repacked DevTools package if those checks pass.
+artifact is still compatible (rationale:
+[decision 0002](./.decisions/0002-devtools-artifact-cadence.md)). A normal
+LiveStore release downloads the pinned artifact, verifies its integrity, runs
+release-candidate compatibility checks, and publishes the repacked DevTools
+package if those checks pass.
 
 `overeng` is required only when:
 
@@ -369,17 +368,14 @@ by default, but release certification runs with the explicit
 connectivity and protocol compatibility rather than a maintainer's local
 license cache.
 
-### Simplification
+### Durable-State Rule
 
-The durable state is intentionally limited to immutable artifact identity:
+Per [decision 0002](./.decisions/0002-devtools-artifact-cadence.md):
 
 1. keep only immutable artifact identity in `release/devtools-artifact.json`
 2. run compatibility certification during LiveStore release validation
 3. publish only from the same release candidate that passed certification
 4. require `overeng` only to produce or replace artifacts
-
-This preserves the original safety property without making every LiveStore
-release a DevTools release.
 
 ### Documentation Contract
 

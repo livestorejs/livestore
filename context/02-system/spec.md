@@ -26,6 +26,7 @@ specifics (`04-runtime/` realizations), or delivery concerns
   ┌─ 05-store ─────────────────────────────────────────┐
   │  Store · reactivity graph · live queries            │   08-integrations
   │  (client session, in-memory state)                  │ ◄─ framework wrappers
+  │  03-sync: ClientSessionSyncProcessor                │
   └───────┬─────────────────────────────────▲───────────┘
           │ push events (proxy)             │ state updates
   ────────┼── leader ⇄ session boundary ────┼──── (04-runtime: workers,

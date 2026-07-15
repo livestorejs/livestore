@@ -20,12 +20,12 @@ The devtools UI ships through a separate artifact pipeline (see
 - **LS.SYS.DT-R02 Explicit compatibility:** Handshakes carry a devtools
   protocol version; unsupported versions are rejected deterministically, and
   legacy peers without a version are treated as protocol 1.
-- **LS.SYS.DT-R03 Inspection surface:** `refines: LS-R13` — Devtools can
-  browse the eventlog, inspect state, and observe sync/network status and
-  session identity for any connected client.
+- **LS.SYS.DT-R03 Inspection surface:** Devtools can browse the eventlog,
+  inspect state, and observe sync/network status and session identity for any
+  connected client. `refines: LS-R13`
 - **LS.SYS.DT-R04 Control surface:** Devtools can issue explicit control
-  operations (e.g. database reset, sync latches for simulating offline)
-  that are distinguishable from app-originated behavior.
+  operations (e.g. database reset, sync latches for simulating offline) that
+  are distinguishable from app-originated behavior.
 - **LS.SYS.DT-R05 Pluggable surfaces:** Surfaces attach over webmesh channels
   discovered by node naming; the web channel ships in-repo, other surfaces
   (e.g. Expo devtools) are contrib realizations (stub pending LS-DQ2).

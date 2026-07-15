@@ -79,8 +79,9 @@ kinds (e.g. `04-docs/` vs `05-contributing/`) is reading order only.
   each realization is a child node whose requirements declare
   `refines: <parent-id>`. Contrib-owned realizations get a contract-level stub
   child here; their implementation specs live in `livestore-contrib`.
-- Child requirements that constrain a parent concept declare `refines:` with
-  the parent ID so the tree reads upward.
+- Child requirements that constrain a parent concept declare a backticked
+  `` `refines: <parent-ids>` `` marker at the end of the requirement bullet
+  so the tree reads upward.
 
 ## ID Scheme
 
@@ -147,11 +148,7 @@ Current divergence from this contract is tracked in
 
 ## Open Design Questions
 
-- **LS-DQ1 Command/intent design placement.** RFC 0002 (command replay) stays
-  an active proposal for now; whether it becomes a dedicated design-stage node
-  in `02-system/` or folds into event-model + sync on acceptance is
-  unresolved. See [open-questions.md](./open-questions.md).
-- **LS-DQ2 Contrib-repo referencing mechanics.** How `livestore-contrib`
-  nodes reference and refine this tree (stub shape, ID allocation, link
-  direction) is unresolved until the first contrib realization stub is
-  written.
+- **LS-DQ1 Command/intent design placement** — see
+  [open-questions.md](./open-questions.md).
+- **LS-DQ2 Contrib-repo referencing mechanics** — see
+  [open-questions.md](./open-questions.md).

@@ -14,8 +14,9 @@
   one store; the source of truth all state derives from.
 - **Event sequence number** — The composite position of an event in the
   eventlog: global part, client part, and rebase generation.
-- **Materializer** — A pure function mapping an event to state changes; runs
-  identically on every client. _Avoid:_ projector, event handler.
+- **Materializer** — A pure function of an event and current state, producing
+  state changes; runs identically on every client. _Avoid:_ projector, event
+  handler.
 - **State** — Data derived from the eventlog via materializers and queryable
   by the app. "Read model" is the event-sourcing literature term for the same
   thing; State is canonical in LiveStore.
@@ -49,6 +50,12 @@
   state changes to live queries.
 - **Devtools** — The tooling surface for inspecting eventlog, state, and sync
   status, connected via the devtools protocol.
+- **Changeset (SQLite session)** — A SQLite session-extension changeset
+  recorded per materialization, used to roll back state during rebase.
+- **Changeset (release)** — A pnpm changeset file describing a package-level
+  change, folded into release notes.
+- **BDFL** — Benevolent Dictator For Life: the project creator holds final
+  decision authority; governance detail in `05-contributing/`.
 - **Facts** _(experimental)_ — Declarative constraints an event sets,
   unsets, requires, or reads; input to ordering, compaction, and conflict
   detection.

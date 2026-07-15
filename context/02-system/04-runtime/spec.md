@@ -96,7 +96,8 @@ Leader boot rehydrates sync state entirely from the persisted eventlog
 `LeaderSyncProcessor.boot`):
 
 - the upstream head is read from the eventlog system table
-  (`Eventlog.getBackendHeadFromDb`);
+  (`Eventlog.getBackendHeadFromDb`; the value `backendHead` here is what
+  `../03-sync/` calls `upstreamHead`);
 - pending events are re-derived as all persisted events after the upstream
   head (`Eventlog.getEventsSince`);
 - pending non-client-only events are re-enqueued to the backend push queue.

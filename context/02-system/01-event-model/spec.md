@@ -17,7 +17,8 @@ type EventDef<TName, TType, TEncoded, TDerived> = {
   options: {
     clientOnly: boolean            // sync scope (LS.SYS.EVT-R02)
     facts: FactsCallback | undefined   // experimental
-    derived: TDerived              // derived events have no materializers
+    derived: TDerived              // no user-defined materializer; framework
+                                   // may wire an implicit one (client docs)
     deprecated: string | undefined // warn-at-commit (LS.SYS.EVT-R04)
   }
   (args: TType): { name; args }    // callable → partial event for commit()

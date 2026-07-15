@@ -9,8 +9,8 @@ Draft.
 
 ## Inventory
 
-`examples/` currently contains: `tutorial-starter`, `web-todomvc` (plus
-variants: `-script`, `-sync-cf`, `-react-router`, `-redwood`),
+`examples/` contains (as of 2026-07-15): `tutorial-starter`, `web-todomvc`
+(plus variants: `-script`, `-sync-cf`, `-react-router`, `-redwood`),
 `web-linearlite`, `web-email-client`, `cloudflare-todomvc`.
 
 Naming: `<platform>-<app>[-<variant>]`; the directory name is the deploy

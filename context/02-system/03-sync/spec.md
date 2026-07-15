@@ -41,8 +41,11 @@ becomes `e4r1` — state rollback uses session changesets
 
 ## Provider Contract
 
-`sync/sync-backend.ts` (LS.SYS.SYNC-R06) — note: code TODO renames
-`SyncBackend` → `SyncProviderClient`:
+`sync/sync-backend.ts` (LS.SYS.SYNC-R06). Naming note: despite its name,
+the `SyncBackend` type is the *client-side provider interface* — the
+ontology's "Sync provider" package surface, not the ontology's "Sync
+backend" (the central server). A code TODO renames it to
+`SyncProviderClient`:
 
 ```ts
 SyncBackend = {
@@ -89,10 +92,9 @@ rebasing and enable log compaction. Not part of the shipping contract
 
 ## Open Design Questions
 
-- **LS.SYS.SYNC-DQ1 Commit confirmation surface:** How commit acknowledgment
-  across leader/backend stages is exposed to apps.
-  **Maturity: proposal** — `wip/upcoming-specs/store-commit-receipt.md`
-  (folds in per decision 0002 when accepted).
+- **LS.SYS.SYNC-DQ1 Commit confirmation surface:** Owned by `05-store/`
+  (LS.SYS.STORE-DQ1); sync's role is providing the leader/backend
+  confirmation stages.
 - **LS.SYS.SYNC-DQ2 next/ graduation:** What evidence graduates the history
   DAG + compaction design (couples with LS.SYS.EVT-DQ2 facts and root
   LS-DQ1 command replay).

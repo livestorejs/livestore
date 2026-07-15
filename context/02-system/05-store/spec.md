@@ -80,5 +80,9 @@ candidate per decision 0002.
 ## Open Design Questions
 
 - **LS.SYS.STORE-DQ1 Commit receipt.** Whether the commit-receipt proposal
-  lands as specified (two-stage awaitables) or folds into a broader command
-  design (LS-DQ1).
+  (`wip/upcoming-specs/store-commit-receipt.md`: `store.commit` returns
+  leader/backend confirmation awaitables) lands as specified or folds into a
+  broader command design (LS-DQ1). The wip document's error names are stale
+  against code (`InvalidPushError` does not exist; see the
+  `RejectedPushError` family in `../03-sync/spec.md`). Sole owner of this
+  question; `../03-sync/` LS.SYS.SYNC-DQ1 cross-references it.
