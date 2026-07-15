@@ -119,7 +119,7 @@ describe('client document table', () => {
     test('struct value (partial set=true) advanced', () => {
       expect(
         forSchema(
-          Schema.Struct({ a: Schema.String, b: Schema.String, c: Schema.Number }),
+          Schema.Struct({ a: Schema.String, b: Schema.String, c: Schema.Finite }),
           { a: 'hello', c: 123 } as any,
           'id1',
           { partialSet: true },

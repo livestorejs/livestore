@@ -8,7 +8,7 @@ describe('debug-diff', () => {
   test('simple object', () => {
     const schema = Schema.Struct({
       a: Schema.String,
-      b: Schema.Number,
+      b: Schema.Finite,
     })
 
     const a = { a: 'hello', b: 1 }
@@ -35,7 +35,7 @@ describe('debug-diff', () => {
     const schema = Schema.Struct({
       a: Schema.String,
       b: Schema.Struct({
-        c: Schema.Number,
+        c: Schema.Finite,
       }),
     })
     const a = { a: 'hello', b: { c: 1 } }
@@ -58,7 +58,7 @@ describe('debug-diff', () => {
   })
 
   test('union', () => {
-    const schema = Schema.Union([Schema.String, Schema.Number])
+    const schema = Schema.Union([Schema.String, Schema.Finite])
     const a = 'hello'
     const b = 1
     const diff = debugDiff(schema)(a, b)
@@ -76,7 +76,7 @@ describe('debug-diff', () => {
   test('tagged union', () => {
     const schema = Schema.Union([
       Schema.TaggedStruct('a', { a: Schema.String }),
-      Schema.TaggedStruct('b', { b: Schema.Number }),
+      Schema.TaggedStruct('b', { b: Schema.Finite }),
     ])
     const a = { _tag: 'a', a: 'hello' } as const
     const b = { _tag: 'b', b: 1 } as const

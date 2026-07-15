@@ -49,7 +49,7 @@ describe('migrateTable - quoting and autoincrement', () => {
           primaryKey: true,
           autoIncrement: true,
           default: Option.none(),
-          schema: Schema.Number,
+          schema: Schema.Finite,
         }),
         SqliteAst.column({
           name: 'text',
@@ -67,7 +67,7 @@ describe('migrateTable - quoting and autoincrement', () => {
           primaryKey: false,
           autoIncrement: false,
           default: Option.some(0),
-          schema: Schema.Number,
+          schema: Schema.Finite,
         }),
       ],
       [],

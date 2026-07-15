@@ -136,7 +136,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         _tag: 'CountQuery',
         tableDef,
         where: ast.where,
-        resultSchema: Schema.Struct({ count: Schema.Number }).pipe(
+        resultSchema: Schema.Struct({ count: Schema.Finite }).pipe(
           Schema.pluck('count'),
           Schema.Array,
           Schema.headOrElse(),
@@ -341,7 +341,7 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>) => {
       }
     }
     case 'CountQuery': {
-      return Schema.Struct({ count: Schema.Number }).pipe(Schema.pluck('count'), Schema.Array, Schema.headOrElse())
+      return Schema.Struct({ count: Schema.Finite }).pipe(Schema.pluck('count'), Schema.Array, Schema.headOrElse())
     }
     case 'InsertQuery':
     case 'UpdateQuery':
@@ -353,7 +353,7 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>) => {
       }
 
       // For write operations without RETURNING, the result is the number of affected rows
-      return Schema.Number
+      return Schema.Finite
     }
     case 'RowQuery': {
       return queryAst.tableDef.rowSchema.pipe(

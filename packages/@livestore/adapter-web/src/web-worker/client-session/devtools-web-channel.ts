@@ -23,7 +23,7 @@ export const ClientSessionContentscriptMainReq = Schema.TaggedStruct('ClientSess
 })
 
 export const ClientSessionContentscriptMainRes = Schema.TaggedStruct('ClientSessionContentscriptMainRes', {
-  tabId: Schema.Number,
+  tabId: Schema.Finite,
 })
 
 export const makeStaticClientSessionChannel: {

@@ -26,8 +26,8 @@ export interface ChunkingOptions<A> {
 export class OversizeChunkItemError extends Schema.TaggedErrorClass<OversizeChunkItemError>(
   '~@livestore/common/OversizeChunkItemError',
 )('OversizeChunkItemError', {
-  size: Schema.Number,
-  maxBytes: Schema.Number,
+  size: Schema.Finite,
+  maxBytes: Schema.Finite,
 }) {}
 
 /**

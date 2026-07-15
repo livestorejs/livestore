@@ -9,7 +9,7 @@ export type Bindable = ReadonlyArray<SqlValue> | ParamsObject
 
 export const SqlValueSchema = Schema.Union([
   Schema.String,
-  Schema.Number,
+  Schema.Finite,
   Schema.Uint8Array as any as Schema.Codec<Uint8Array<ArrayBuffer>>,
   Schema.Null,
 ])

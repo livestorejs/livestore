@@ -25,7 +25,7 @@ export class WranglerDevServerError extends Schema.TaggedErrorClass<WranglerDevS
 )('WranglerDevServerError', {
   cause: Schema.Defect(),
   message: Schema.String,
-  port: Schema.Number,
+  port: Schema.Finite,
 }) {}
 
 /**
