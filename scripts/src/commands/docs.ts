@@ -44,15 +44,15 @@ const PROD_DEPLOY_STATE_FILE = `${PROD_DEPLOY_STATE_DIR}/deploy-state.json`
  */
 class DocsPhaseTimeoutError extends Schema.TaggedErrorClass<DocsPhaseTimeoutError>()('DocsPhaseTimeoutError', {
   phase: Schema.String,
-  durationMs: Schema.Number,
+  durationMs: Schema.Finite,
 }) {}
 
 class DocsDeployProbeError extends Schema.TaggedErrorClass<DocsDeployProbeError>()('DocsDeployProbeError', {
   label: Schema.String,
   path: Schema.String,
   message: Schema.String,
-  expectedStatus: Schema.Array(Schema.Number),
-  actualStatus: Schema.Number,
+  expectedStatus: Schema.Array(Schema.Finite),
+  actualStatus: Schema.Finite,
   expectedLocationPath: Schema.optional(Schema.String),
   actualLocation: Schema.optional(Schema.String),
   cause: Schema.optional(Schema.Defect()),

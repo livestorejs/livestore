@@ -99,7 +99,7 @@ export const NetworkStatus = Schema.Struct({
   /** True when the upstream sync backend is reachable and responding to health checks. */
   isConnected: Schema.Boolean,
   /** Unix epoch timestamp (ms) of the latest connectivity state transition. */
-  timestampMs: Schema.Number,
+  timestampMs: Schema.Finite,
   /** Devtools specific metadata describing simulator overrides. */
   devtools: Schema.Struct({
     /** Indicates whether the devtools latch forced the client into an offline state. */
@@ -143,7 +143,7 @@ export const isSyncBackend = (value: unknown): value is SyncBackend<any> => {
 export const PullResPageInfo = Schema.Union([
   Schema.TaggedStruct('MoreUnknown', {}),
   Schema.TaggedStruct('MoreKnown', {
-    remaining: Schema.Number,
+    remaining: Schema.Finite,
   }),
   Schema.TaggedStruct('NoMore', {}),
 ])

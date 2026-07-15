@@ -14,7 +14,7 @@ export const UiState = State.SQLite.clientDocument({
 })
 
 const Config = Schema.Struct({
-  fontSize: Schema.Number,
+  fontSize: Schema.Finite,
   theme: Schema.Literals(['light', 'dark']),
 })
 

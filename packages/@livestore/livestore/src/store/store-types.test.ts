@@ -20,7 +20,7 @@ describe('isQueryable', () => {
   it('identifies live query definitions', () => {
     const def = queryDb({
       query: 'select 1 as value',
-      schema: Schema.Array(Schema.Struct({ value: Schema.Number })),
+      schema: Schema.Array(Schema.Struct({ value: Schema.Finite })),
     })
 
     expect(isQueryable(def)).toBe(true)

@@ -29,7 +29,7 @@ export class NonMonotonicBatchError extends Schema.TaggedErrorClass<NonMonotonic
   /** The sequence number that was expected to be greater than `precedingSeqNum`. */
   violatingSeqNum: EventSequenceNumber.Client.Composite,
   /** The index in the batch where the violation occurred. */
-  violationIndex: Schema.Number,
+  violationIndex: Schema.Finite,
   /** The session that produced the malformed batch. */
   sessionId: Schema.String,
 }) {
@@ -51,9 +51,9 @@ export class StaleRebaseGenerationError extends Schema.TaggedErrorClass<StaleReb
   `${RejectedPushErrorTypeId}/StaleRebaseGenerationError`,
 )('StaleRebaseGenerationError', {
   /** The leader's current rebase generation. */
-  currentRebaseGeneration: Schema.Number,
+  currentRebaseGeneration: Schema.Finite,
   /** The rebase generation carried by the dropped events. */
-  providedRebaseGeneration: Schema.Number,
+  providedRebaseGeneration: Schema.Finite,
   /** The session that produced the stale batch. */
   sessionId: Schema.String,
 }) {

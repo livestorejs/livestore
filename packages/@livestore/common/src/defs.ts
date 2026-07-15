@@ -3,8 +3,8 @@ import { Schema } from '@livestore/utils/effect'
 export const MigrationsReportEntry = Schema.Struct({
   tableName: Schema.String,
   hashes: Schema.Struct({
-    expected: Schema.Number,
-    actual: Schema.optional(Schema.Number),
+    expected: Schema.Finite,
+    actual: Schema.optional(Schema.Finite),
   }),
 })
 

@@ -16,10 +16,10 @@ export type SlowQueryInfo = {
 export const SlowQueryInfo = Schema.Struct({
   queryStr: Schema.String,
   bindValues: Schema.UndefinedOr(PreparedBindValues),
-  durationMs: Schema.Number,
-  rowsCount: Schema.UndefinedOr(Schema.Number),
+  durationMs: Schema.Finite,
+  rowsCount: Schema.UndefinedOr(Schema.Finite),
   queriedTables: Schema.ReadonlySet(Schema.String),
-  startTimePerfNow: Schema.Number,
+  startTimePerfNow: Schema.Finite,
 })
 
 const isBoundArrayLike = <A>(value: unknown): value is BoundArray<A> => value instanceof BoundArray
@@ -66,7 +66,7 @@ const BoundArraySchemaFromSelf = <A, I, RD, RE>(
 
 export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Codec<ItemDecoded, ItemEncoded>) =>
   Schema.Struct({
-    size: Schema.Number,
+    size: Schema.Finite,
     items: Schema.Array(elSchema),
   }).pipe(
     Schema.decodeTo(BoundArraySchemaFromSelf(Schema.toType(elSchema)), {
@@ -77,8 +77,8 @@ export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Code
 
 export const DebugInfo = Schema.Struct({
   slowQueries: BoundArraySchema(SlowQueryInfo),
-  queryFrameDuration: Schema.Number,
-  queryFrameCount: Schema.Number,
+  queryFrameDuration: Schema.Finite,
+  queryFrameCount: Schema.Finite,
   events: BoundArraySchema(Schema.Tuple([Schema.String, Schema.Any])),
 })
 

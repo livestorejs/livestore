@@ -12,7 +12,7 @@ export const ResetAllDataReq = LSDReqResMessage('LSD.Leader.ResetAllDataReq', {
 export const DatabaseFileInfoReq = LSDReqResMessage('LSD.Leader.DatabaseFileInfoReq', {})
 
 export const DatabaseFileInfo = Schema.Struct({
-  fileSize: Schema.Number,
+  fileSize: Schema.Finite,
   persistenceInfo: Schema.StructWithRest(Schema.Struct({ fileName: Schema.String }), [
     Schema.Record(Schema.String, Schema.Any),
   ]),
@@ -110,11 +110,11 @@ export const EventlogRes = LSDReqResMessage('LSD.Leader.EventlogRes', {
 })
 
 export const Ping = LSDReqResMessage('LSD.Leader.Ping', {
-  devtoolsProtocolVersion: Schema.optional(Schema.Number),
+  devtoolsProtocolVersion: Schema.optional(Schema.Finite),
 })
 
 export const Pong = LSDReqResMessage('LSD.Leader.Pong', {
-  devtoolsProtocolVersion: Schema.optional(Schema.Number),
+  devtoolsProtocolVersion: Schema.optional(Schema.Finite),
 })
 
 /**
@@ -126,8 +126,8 @@ export const VersionMismatch = LSDReqResMessage('LSD.Leader.VersionMismatch', {
   appVersion: Schema.String,
   /** The version that was sent by DevTools (that caused the mismatch) */
   receivedVersion: Schema.String,
-  appDevtoolsProtocolVersion: Schema.Number,
-  receivedDevtoolsProtocolVersion: Schema.optional(Schema.Number),
+  appDevtoolsProtocolVersion: Schema.Finite,
+  receivedDevtoolsProtocolVersion: Schema.optional(Schema.Finite),
 })
 
 export const Disconnect = LSDReqResMessage('LSD.Leader.Disconnect', {})

@@ -15,7 +15,7 @@ export type Items = Item[]
 
 const uiState = State.SQLite.clientDocument({
   name: 'uiState',
-  schema: Schema.Struct({ selected: Schema.NullOr(Schema.Number) }),
+  schema: Schema.Struct({ selected: Schema.NullOr(Schema.Finite) }),
   default: {
     id: SessionIdSymbol,
     value: { selected: null },

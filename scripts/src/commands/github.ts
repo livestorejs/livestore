@@ -14,7 +14,7 @@ const RulesetRequestBody = Schema.Struct({
   enforcement: Schema.Literals(['disabled', 'active', 'evaluate']),
   bypass_actors: Schema.Array(
     Schema.Struct({
-      actor_id: Schema.Number,
+      actor_id: Schema.Finite,
       actor_type: Schema.Literals(['RepositoryRole', 'Team', 'Integration', 'OrganizationAdmin', 'DeployKey']),
       bypass_mode: Schema.Literals(['always', 'pull_request', 'exempt']),
     }),
@@ -95,7 +95,7 @@ const getRulesetByName = (name: string) =>
     const ExistingRulesetSchema = Schema.fromJsonString(
       Schema.Array(
         Schema.Struct({
-          id: Schema.Number,
+          id: Schema.Finite,
           name: Schema.String,
           enforcement: Schema.String,
         }),

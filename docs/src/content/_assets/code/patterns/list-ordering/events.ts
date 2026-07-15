@@ -11,7 +11,7 @@ export const events = {
   updateTaskOrder: Events.synced({
     name: 'v1.UpdateTaskOrder',
     schema: Schema.Struct({
-      id: Schema.Number,
+      id: Schema.Finite,
       order: Schema.String,
     }),
   }),
