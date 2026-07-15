@@ -59,12 +59,52 @@
 - **Facts** _(experimental)_ — Declarative constraints an event sets,
   unsets, requires, or reads; input to ordering, compaction, and conflict
   detection.
-- **Command** _(proposal, [RFC 0002](../contributor-docs/rfcs/0002-command-replay.md))_ —
-  A replayable capture of user intent that re-validates against current state
+- **Command** _(proposal,
+  [RFC 0002](../contributor-docs/rfcs/0002-command-replay.md))_ — A
+  replayable capture of user intent that re-validates against current state
   before producing events. "Intent" names the concept a command captures; it
   is not an API term while the design is a proposal.
 
 ## Structure
+
+The **event** is the spine: every other concept produces events, orders
+them, derives from them, or observes the result.
+
+| Relation to the spine | Terms |
+| --- | --- |
+| Produce | Store (commit), Client session, Command _(proposal)_ |
+| Order | Eventlog, Event sequence number, Sync backend, Rebase, Facts _(experimental)_ |
+| Derive | Materializer, State, Client document |
+| Observe | Live query, Reactivity graph, Devtools |
+
+### Term families and leitwörter
+
+Families group terms around an anchor; followers carry the anchor's leitwort
+in their name:
+
+- **Event family** (leitwort "event") — anchor **Event**; followers Event
+  definition, Eventlog, Event sequence number, Synced event, Client-only
+  event.
+- **Client family** (leitwort "client") — anchor **Client**; followers
+  Client session, Client document.
+- **Sync family** (leitwort "sync") — no single anchor noun; Sync provider,
+  Sync backend, Sync processor share the leitwort. Rebase is this family's
+  operation term (no leitwort — it names the act, not a sync part).
+- **State family** — anchor **State**; Materializer and Changeset (SQLite
+  session) are its derivation vocabulary (mechanism names, no shared
+  leitwort).
+- **Store family** (leitwort "store") — anchor **Store**; follower storeId.
+  Live query and Reactivity graph are its observation vocabulary.
+
+### Naming rubric
+
+- A new term that follows an existing anchor joins that family and carries
+  its leitwort (e.g. anything scoped to one event starts with "event").
+- A compound touching two families is named by its primary anchor ("Sync
+  processor" is sync-family even though it moves events).
+- A term enters the Language layer before specs may use it.
+
+### Other relations
 
 - **Derivation chain:** Event definition → Event → Eventlog → Materializer →
   State → Live query → App.

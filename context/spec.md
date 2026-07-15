@@ -124,6 +124,20 @@ unmistakably distinct:
   RFC (no code, e.g. command replay → RFC 0002).
 - Unmarked spec content describes shipping behavior.
 
+## Evidence Conventions
+
+- **Decision provenance.** A decision record cites its decisive evidence in
+  or directly below its Status line: experiment path, prototype, benchmark,
+  or user confirmation with date. Records without evidence stay proposed.
+- **Rename mapping.** When a canonical term or ID is renamed, the rename is
+  recorded in `.decisions/mapping.md` (created on first rename) so
+  `ontology.md` and requirements stay timeless while history remains
+  traceable.
+- **External assumptions.** Platform guarantees the contracts depend on
+  (e.g. Cloudflare Durable Object storage durability) are captured as
+  `.reference/` records and cited from the requirement or DQ that depends on
+  them.
+
 ## Precedence Across Intent Surfaces
 
 Per [decision 0002](./.decisions/0002-single-intent-layer.md):
@@ -145,6 +159,18 @@ Per [decision 0002](./.decisions/0002-single-intent-layer.md):
 
 Current divergence from this contract is tracked in
 [.delta/DELTA-001-legacy-intent-surfaces.md](./.delta/DELTA-001-legacy-intent-surfaces.md).
+
+## Enforcement
+
+The mechanical invariants of this document are enforced by a Vitest suite at
+`tests/package-common/src/intent-layer/intent-layer.test.ts`, which runs in
+the default unit lane (`mono test unit`, CI `test-unit`). It checks: ID
+uniqueness, ID namespace ↔ directory mapping (parsed from the ID Scheme table
+above), `refines:` target resolution, relative-link integrity, spec `Status`
+headers, absence of empty companion dirs, decision-record shape (
+`NNNN-slug.md`, `Status:` line, no committed `.proposed/`), and the maturity
+vocabulary. Semantic review (testability, decision evidence quality) remains
+human/agent judgment.
 
 ## Open Design Questions
 

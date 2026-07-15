@@ -1,7 +1,8 @@
 # Two-repo architecture — key decisions
 
-Moved from `context/repo-architecture/decisions/` on 2026-07-15 during the
-intent-layer restructuring; IDs referenced here now live under `LS.DEL-*`.
+Status: accepted (original ADR predates the intent layer; moved from
+`context/repo-architecture/decisions/` on 2026-07-15 during the intent-layer
+restructuring; IDs referenced here now live under `LS.DEL-*`).
 
 This ADR records the durable decisions behind the LiveStore core/contrib
 repository architecture.
