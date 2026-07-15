@@ -33,6 +33,8 @@ feature requests. Student devtools licenses via Discord request.
 
 - **LS.SUST-DQ1 "Fully open source" wording.** The sponsoring page calls the
   project "fully open source" while devtools ship under a sponsor license;
-  the positioning wording and the policy need reconciliation.
+  the positioning wording and the policy need reconciliation. Blocked on: a
+  dedicated sustainability/licensing session (intersects the roadmap plan to
+  open-source the devtools UI as a component kit).
 - **LS.SUST-DQ2 Scaling maintainership.** The stated goal of funding
   additional maintainers has no defined thresholds or mechanics.

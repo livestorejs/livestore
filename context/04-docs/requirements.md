@@ -10,6 +10,12 @@ Builds on the root [requirements.md](../requirements.md) and
 [decision 0002](../.decisions/0002-single-intent-layer.md). The docs site
 lives in `docs/` (Astro Starlight) and publishes to `docs.livestore.dev`.
 
+## Acceptable Tradeoffs
+
+- **LS.DOCS-T01 Latest-only docs:** The site documents the latest release
+  only; users of older releases may read docs that no longer match their
+  version. Accepted to keep one always-current surface.
+
 ## Requirements
 
 ### Docs derive from the intent layer

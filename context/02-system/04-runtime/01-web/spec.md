@@ -45,8 +45,23 @@ tab 1 (main thread)      tab 2 (main thread)
 
 All variants return the same `ClientSession` contract (LS.SYS.RT.WEB-R04).
 
-## Open Design Questions
+## Identity Persistence
 
-- **LS.SYS.RT.WEB-DQ1 Session persistence across reloads.** `sessionId` can
-  persist across tab reloads; the exact contract (when it rotates) should be
-  stated testably.
+Both adapters derive identity the same way (`getPersistedId`):
+
+- `clientId`: `options.clientId` override, else `localStorage`
+  key `livestore:clientId:<storeId>` — shared by all tabs of the origin,
+  created once as `nanoid(5)`.
+- `sessionId`: `options.sessionId` override, else `sessionStorage` key
+  `livestore:sessionId:<storeId>` — per tab; survives reloads and
+  same-tab restores, a new tab gets a fresh id. Browser tab duplication
+  copies `sessionStorage`, so a duplicated tab inherits the same `sessionId`
+  (platform behavior, currently not guarded against).
+- Non-window contexts fall back to a fresh random id per boot.
+
+Leader election among tabs uses a blocking Web Lock per store
+(`LIVESTORE_TAB_LOCK`); the winning tab spawns the dedicated leader worker
+and hands its `MessagePort` to the shared worker (`UpdateMessagePort`). When
+the leading tab closes, the lock releases, a waiting tab spawns a fresh
+leader worker, and the shared worker swaps ports; recovery follows the
+handover contract in [../spec.md](../spec.md).

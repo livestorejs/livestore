@@ -40,10 +40,28 @@ leader/backend confirmation awaitables is proposed in
 ## Reactivity Graph
 
 `src/reactive.ts` + `src/live-queries/base-class.ts` implement a
-signals-based incremental graph (Adapton-inspired): nodes are queries,
-computeds, and signals; edges are read dependencies. Commits mark affected
-table nodes dirty; recomputation is demand-driven and deduplicated through
-`QueryCache` (`src/QueryCache.ts`) and `SqliteDbWrapper` write tracking.
+signals-based incremental graph (Adapton-inspired, eager — no lazy
+recomputation): nodes are queries, computeds, and signals; edges are read
+dependencies. Commits set the affected table refs; query instances are
+deduplicated through `QueryCache` (`src/QueryCache.ts`) with write tracking
+in `SqliteDbWrapper`.
+
+Update guarantees (`reactive.ts`):
+
+- **Synchronous and eager:** a ref update refreshes the graph before
+  `setRef(s)` returns; there is no scheduler or microtask deferral.
+- **Atomic per commit:** one commit sets all written table refs in a single
+  `setRefs` batch, producing exactly one refresh pass regardless of how many
+  tables the events touched.
+- **Glitch-free:** refresh proceeds in topological sort order (heights
+  maintained eagerly as edges change), so a node never observes a mix of
+  old and new inputs.
+- **Equality cutoff:** each thunk compares against its previous result and
+  stops propagation when equal.
+- **Opt-out:** `commit({ skipRefresh: true }, …)` defers the refresh to a
+  later manual refresh / `runDeferredEffects` pass; subscriber effects run
+  through the adapter-provided `batchUpdates` wrapper (e.g. React's
+  `unstable_batchedUpdates`).
 
 | Kind | Constructor | Notes |
 | --- | --- | --- |
@@ -64,5 +82,3 @@ candidate per decision 0002.
 - **LS.SYS.STORE-DQ1 Commit receipt.** Whether the commit-receipt proposal
   lands as specified (two-stage awaitables) or folds into a broader command
   design (LS-DQ1).
-- **LS.SYS.STORE-DQ2 Reactivity guarantees.** Precise staleness/glitch
-  freedom guarantees of the graph are implemented but not stated testably.

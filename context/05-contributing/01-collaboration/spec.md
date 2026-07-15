@@ -41,10 +41,12 @@ immutable apart from editorial fixes.
 - Discord: pre-coordination (`#contrib`), community help.
 - GitHub: issues (minimal repros; `help wanted` label), PRs, RFC review.
 
-## Open Design Questions
+## Review and Merge
 
-- **LS.CONTRIB.COLLAB-DQ1 Review expectations.** Required approvals, reviewer
-  assignment, and merge rights are not documented.
-- **LS.CONTRIB.COLLAB-DQ2 Agent attribution convention.** How agent
-  authorship is marked (commit trailer, PR label, or both) is not
-  standardized in repo docs.
+Current practice (captured 2026-07-15): merges are maintainer-led under the
+project's BDFL governance (see [../spec.md](../spec.md)); there is no
+required-approval count. External PRs are reviewed by a maintainer before
+merge. Contributor-side tooling conventions (which accounts or automation a
+contributor uses to author changes) are the contributor's own concern and out
+of scope for this layer; repo-level agent conventions live in `CLAUDE.md` and
+`AGENTS.md`.

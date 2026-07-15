@@ -70,7 +70,8 @@ sync backend, devtools hooks, shutdown channel.
 
 Edges exist over message ports, workers, and websockets
 (`websocket-edge.ts`). Node naming for devtools follows
-`Devtools.makeNodeName.*`.
+`Devtools.makeNodeName.*`. Split into its own child node when content
+warrants (e.g. non-LiveStore consumers).
 
 ## Persistence Substrate (SQLite)
 
@@ -88,11 +89,28 @@ Durable Object storage in cf) but share query/materialization behavior
 | Cloudflare (Durable Object) | [02-cloudflare/](./02-cloudflare/spec.md) | in-repo |
 | Node, Expo, Tauri/Electron | contrib | stub pending LS-DQ2 |
 
+## Leadership Handover
+
+Leader boot rehydrates sync state entirely from the persisted eventlog
+(`make-leader-thread-layer.ts` `getInitialSyncState`,
+`LeaderSyncProcessor.boot`):
+
+- the upstream head is read from the eventlog system table
+  (`Eventlog.getBackendHeadFromDb`);
+- pending events are re-derived as all persisted events after the upstream
+  head (`Eventlog.getEventsSince`);
+- pending non-client-only events are re-enqueued to the backend push queue.
+
+A new leader therefore continues from persisted state alone; no state is
+transferred from the previous leader. Boot asserts the invariant
+`backendHead <= localHead` and fails as a defect otherwise. Election is
+realization-specific (e.g. Web Locks on web) but must be blocking so exactly
+one leader exists per client at any time.
+
 ## Open Design Questions
 
-- **LS.SYS.RT-DQ1 Leadership handover contract.** The cross-platform
-  guarantees during handover (in-flight pushes, cursor continuity) are
-  implemented but not yet stated precisely enough to test per realization.
-- **LS.SYS.RT-DQ2 Substrate split.** When webmesh or the SQLite substrate
-  grows its own requirements (e.g. non-LiveStore consumers), split each into
-  a child node.
+- **LS.SYS.RT-DQ1 Handover races.** Rehydration semantics are captured above,
+  but the race where a push batch is accepted upstream concurrently with
+  leader death (new leader re-pushes the same events and must recover via
+  pull + rebase) is not explicitly contracted or covered by a targeted test
+  per realization.

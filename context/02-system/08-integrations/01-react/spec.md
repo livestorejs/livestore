@@ -25,7 +25,14 @@ resource pattern behind LS.SYS.INT.REACT-R03.
 **Maturity: experimental** — `experimental/` (`LiveList`) provides a
 virtualized list component driven by live queries; API unstable.
 
-## Open Design Questions
+## Suspense Contract
 
-- **LS.SYS.INT.REACT-DQ1 Suspense contract.** Which operations may suspend
-  (store boot vs first query) should be stated testably.
+Only store loading suspends. `useStore` calls
+`storeRegistry.getOrLoadPromise` on every render: an unloaded store returns
+a promise consumed via `React.use` (suspending the component); a cached
+store returns synchronously and `React.use` is skipped entirely (this also
+keeps React transitions committable). Store loading errors and calling
+outside `<StoreRegistryProvider>` throw (error-boundary path). Query hooks
+(`useQuery`, `useClientDocument`, `useSyncStatus`) never suspend: they
+compute the initial result synchronously against the loaded store and
+subscribe for updates.

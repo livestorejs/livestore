@@ -56,8 +56,7 @@ pipeline, and diagram policy. Does not define example apps (see
   existing diagrams (`docs/src/content/_assets/diagrams/`).
 - Diagram sources are versioned next to the docs content that uses them.
 
-## Open Design Questions
+## Versioning Policy
 
-- **LS.DOCS-DQ1 Docs versioning.** The site documents the latest dev state;
-  how documentation is versioned across releases (per-release snapshots vs
-  latest-only with a dev preface) is unresolved.
+The docs site tracks the latest release only; there are no per-release
+snapshots (policy captured 2026-07-15; tradeoff LS.DOCS-T01).

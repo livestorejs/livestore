@@ -60,8 +60,8 @@ Adopters model their app before adopting:
 | `overview/when-livestore` | Fit matrix, evaluation exercise, envelope |
 | `overview/technology-comparison` | Comparison stance |
 
-## Open Design Questions
+## Maturity Messaging
 
-- **LS.PROD-DQ1 Maturity messaging.** How product-maturity communication
-  (`misc/state-of-the-project`) is governed — what triggers updates and who
-  owns the claims — is unresolved.
+Product-maturity communication (`misc/state-of-the-project`) is maintained by
+the BDFL (see `05-contributing/`), updated at notable milestones; there is no
+formal trigger contract (current practice captured 2026-07-15).

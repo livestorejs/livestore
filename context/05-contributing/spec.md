@@ -49,12 +49,14 @@ candidate. RFC 0002 (command replay) is an active proposal (root LS-DQ1).
 
 ## Governance (LS.CONTRIB-R07, R08)
 
-- Creator-led maintainership (no company); community maintainer roles for
-  named areas; coordination via Discord (`#contrib`) and GitHub.
+- BDFL governance: the project creator holds final decision authority
+  (captured 2026-07-15). Community maintainer roles exist for named areas;
+  coordination via Discord (`#contrib`) and GitHub.
 - Review judgment applies the guiding principles from `CONTRIBUTING.md`.
 
 ## Open Design Questions
 
-- **LS.CONTRIB-DQ1 Governance formality.** Beyond creator-led maintainership,
-  there is no documented model for maintainer rights, decision escalation, or
-  bus-factor mitigation.
+- **LS.CONTRIB-DQ1 Governance formality.** BDFL is the current model; a
+  documented model for maintainer rights, decision escalation, and bus-factor
+  mitigation becomes necessary as the maintainer count grows. Blocked on:
+  that growth actually happening.

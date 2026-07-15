@@ -35,8 +35,22 @@ Persistence keys are versioned with `liveStoreStorageFormatVersion` and the
 schema hash (migration strategy `manual` pins the suffix), so schema changes
 recreate state rather than migrate it in place.
 
+## Eviction and Resume
+
+The DO adapter has no eviction-specific handling (no alarms, no hibernation
+hooks): the store is created lazily per DO instance (typically cached on the
+DO class between requests), leader and single client session are colocated
+in the same isolate, and all persistence goes through the DO's SQL storage
+(`ctx.storage`). Commits materialize and persist to the eventlog before the
+background backend push, so an evicted DO recovers on the next request
+through the ordinary leader boot rehydration path
+([../spec.md](../spec.md) Leadership Handover): upstream head and pending
+events are re-derived from DO storage and pending events are re-pushed.
+
 ## Open Design Questions
 
-- **LS.SYS.RT.CF-DQ1 Eviction/resume guarantees.** What the DO client
-  guarantees about in-flight commits across DO eviction is implemented but
-  not yet stated testably.
+- **LS.SYS.RT.CF-DQ1 Platform durability assumptions.** Recovery relies on
+  Cloudflare's DO storage write/output-gate durability semantics, which are
+  external platform guarantees not verified in this repo; capture them as a
+  `.reference/` record and state which commit-loss windows (if any) the
+  adapter accepts.
