@@ -83,8 +83,8 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
     ]),
     syncMetadata: Schema.Option(Schema.Json),
     /** Used to detect if the materializer is side effecting (during dev) */
-    materializerHashLeader: Schema.Option(Schema.Number),
-    materializerHashSession: Schema.Option(Schema.Number),
+    materializerHashLeader: Schema.Option(Schema.Finite),
+    materializerHashSession: Schema.Option(Schema.Finite),
   })
     .mapFields(Struct.map(Schema.mutableKey))
     .pipe(

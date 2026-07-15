@@ -78,11 +78,11 @@ export const LiveQueriesUnsubscribe = LSDClientSessionReqResMessage('LSD.ClientS
 
 export const SerializedLiveQuery = Schema.Struct({
   _tag: Schema.Literals(['computed', 'db', 'graphql', 'signal']),
-  id: Schema.Number,
+  id: Schema.Finite,
   label: Schema.String,
   hash: Schema.String,
-  runs: Schema.Number,
-  executionTimes: Schema.Array(Schema.Number),
+  runs: Schema.Finite,
+  executionTimes: Schema.Array(Schema.Finite),
   lastestResult: Schema.Any,
   activeSubscriptions: Schema.Array(
     Schema.Struct({ frames: Schema.Array(Schema.Struct({ name: Schema.String, filePath: Schema.String })) }),
@@ -95,11 +95,11 @@ export const LiveQueriesRes = LSDClientSessionReqResMessage('LSD.ClientSession.L
 })
 
 export const Ping = LSDClientSessionReqResMessage('LSD.ClientSession.Ping', {
-  devtoolsProtocolVersion: Schema.optional(Schema.Number),
+  devtoolsProtocolVersion: Schema.optional(Schema.Finite),
 })
 
 export const Pong = LSDClientSessionReqResMessage('LSD.ClientSession.Pong', {
-  devtoolsProtocolVersion: Schema.optional(Schema.Number),
+  devtoolsProtocolVersion: Schema.optional(Schema.Finite),
 })
 
 /**
@@ -111,8 +111,8 @@ export const VersionMismatch = LSDClientSessionReqResMessage('LSD.ClientSession.
   appVersion: Schema.String,
   /** The version that was sent by DevTools (that caused the mismatch) */
   receivedVersion: Schema.String,
-  appDevtoolsProtocolVersion: Schema.Number,
-  receivedDevtoolsProtocolVersion: Schema.optional(Schema.Number),
+  appDevtoolsProtocolVersion: Schema.Finite,
+  receivedDevtoolsProtocolVersion: Schema.optional(Schema.Finite),
 })
 
 export const Disconnect = LSDClientSessionChannelMessage('LSD.ClientSession.Disconnect', {})

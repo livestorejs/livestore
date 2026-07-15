@@ -41,7 +41,7 @@ const NumberFromDescriptionAnnotation = <T extends string>(typeLiteral: T) =>
     Schema.decodeTo(
       Schema.Struct({
         type: Schema.Literal(typeLiteral),
-        description: Schema.Number,
+        description: Schema.Finite,
       }),
       SchemaTransformation.transformOrFail({
         decode: ({ description, ...rest }) =>
@@ -107,14 +107,14 @@ type CpuSummary = {
 const Cpus = Schema.NonEmptyArray(
   Schema.Struct({
     model: Schema.String,
-    speed: Schema.Number,
+    speed: Schema.Finite,
   }),
 ).pipe(
   Schema.decodeTo(
     Schema.Struct({
       model: Schema.String,
-      count: Schema.Number,
-      speed: Schema.Number.pipe(Schema.overrideToFormatter(() => (value) => `${(value / 1000).toFixed(2)} GHz`)),
+      count: Schema.Finite,
+      speed: Schema.Finite.pipe(Schema.overrideToFormatter(() => (value) => `${(value / 1000).toFixed(2)} GHz`)),
     }),
     {
       decode: SchemaGetter.transform((cpus: readonly [CpuInfo, ...CpuInfo[]]) => ({
@@ -136,10 +136,10 @@ const SystemInfo = Schema.Struct({
   }),
   cpus: Cpus,
   memory: Schema.Struct({
-    total: Schema.Number.pipe(
+    total: Schema.Finite.pipe(
       Schema.overrideToFormatter(() => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`),
     ),
-    free: Schema.Number.pipe(
+    free: Schema.Finite.pipe(
       Schema.overrideToFormatter(() => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`),
     ),
   }),

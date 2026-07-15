@@ -46,8 +46,8 @@ export interface ClientSession {
 export type ResetMode = 'all-data' | 'only-app-db'
 
 export const BootStateProgress = Schema.Struct({
-  done: Schema.Number,
-  total: Schema.Number,
+  done: Schema.Finite,
+  total: Schema.Finite,
 })
 
 /**

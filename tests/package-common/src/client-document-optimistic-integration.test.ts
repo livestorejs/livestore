@@ -36,7 +36,7 @@ Vitest.describe('Client Document Optimistic Decoding Integration', () => {
         name: 'Settings',
         schema: Schema.Struct({
           theme: Schema.String,
-          fontSize: Schema.Number,
+          fontSize: Schema.Finite,
         }),
         default: { id: SessionIdSymbol, value: { theme: 'light', fontSize: 14 } },
       })

@@ -26,7 +26,7 @@ const remainingHopsUndefined = Schema.Undefined.pipe(Schema.optional)
 export const DirectChannelRequest = Schema.TaggedStruct('DirectChannelRequest', {
   ...defaultPacketFields,
   remainingHops: Schema.Array(Schema.String).pipe(Schema.optional),
-  channelVersion: Schema.Number,
+  channelVersion: Schema.Finite,
   /** Only set if the request is in response to an incoming request */
   reqId: Schema.UndefinedOr(Schema.String),
   /**
@@ -42,7 +42,7 @@ export const DirectChannelResponseSuccess = Schema.TaggedStruct('DirectChannelRe
   port: Transferable.MessagePort,
   // Since we can't copy this message, we need to follow the exact route back to the sender
   remainingHops: Schema.Array(Schema.String),
-  channelVersion: Schema.Number,
+  channelVersion: Schema.Finite,
 })
 
 export const DirectChannelResponseNoTransferables = Schema.TaggedStruct('DirectChannelResponseNoTransferables', {

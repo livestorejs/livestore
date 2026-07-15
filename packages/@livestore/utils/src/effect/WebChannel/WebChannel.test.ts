@@ -16,7 +16,7 @@ Vitest.describe('WebChannel', () => {
             listenWindow: windowA,
             sendWindow: windowB,
             ids: { own: 'a', other: 'b' },
-            schema: Schema.Number,
+            schema: Schema.Finite,
           })
 
           const msgFromBFiber = yield* channelToB.listen.pipe(
@@ -36,7 +36,7 @@ Vitest.describe('WebChannel', () => {
             listenWindow: windowB,
             sendWindow: windowA,
             ids: { own: 'b', other: 'a' },
-            schema: Schema.Number,
+            schema: Schema.Finite,
           })
 
           const msgFromAFiber = yield* channelToA.listen.pipe(
@@ -64,7 +64,7 @@ Vitest.describe('WebChannel', () => {
             listenWindow: window,
             sendWindow: window,
             ids: { own: 'a', other: 'b' },
-            schema: Schema.Number,
+            schema: Schema.Finite,
           })
 
           const msgFromBFiber = yield* channelToB.listen.pipe(
@@ -84,7 +84,7 @@ Vitest.describe('WebChannel', () => {
             listenWindow: window,
             sendWindow: window,
             ids: { own: 'b', other: 'a' },
-            schema: Schema.Number,
+            schema: Schema.Finite,
           })
 
           const msgFromAFiber = yield* channelToA.listen.pipe(
