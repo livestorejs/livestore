@@ -123,6 +123,7 @@ import type { SnippetBundle } from '../vite/snippet-graph.ts'
 import { buildSnippetBundle, __internal as snippetGraphInternal } from '../vite/snippet-graph.ts'
 
 const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
+const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
 const jsonStringifyPretty = (value: unknown): string => JSON.stringify(value, null, 2)
 
 type THastRendererResult = {
@@ -1301,7 +1302,7 @@ const loadPreviousManifest = (
 
     const manifestSource = manifestSourceResult.success
     const parsedResult = yield* Effect.try({
-      try: () => JSON.parse(manifestSource) as TSnippetManifest,
+      try: () => jsonParse(manifestSource) as TSnippetManifest,
       catch: (cause) => new Cause.UnknownError(cause),
     }).pipe(Effect.result)
     if (Result.isFailure(parsedResult) === true) {

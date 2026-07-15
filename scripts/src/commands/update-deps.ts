@@ -286,6 +286,8 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
 
             // Write back to file with consistent formatting
             yield* Effect.try({
+              // package.json is committed and diffed, so it must stay indented; Schema's JSON codec is compact.
+              // @effect-diagnostics-next-line preferSchemaOverJson:off
               try: () => fs.writeFileSync(packageJsonPath, `${JSON.stringify(updatedPackageJson, null, 2)}\n`),
               catch: () => new UpdateDepsError({ message: `Failed to write ${packageJsonPath}` }),
             })
