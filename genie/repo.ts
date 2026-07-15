@@ -89,7 +89,9 @@ export type {
 export const domLib = effectUtilsDomLib.filter((lib) => lib !== 'DOM.Iterable' && lib !== 'DOM.AsyncIterable')
 
 // Strip inherited options that now match defaults so generated
-// tsconfigs only carry LiveStore-specific intent.
+// tsconfigs only carry LiveStore-specific intent. `plugins` is pulled out
+// separately so we can inject LiveStore's `allowedDuplicatedPackages` onto the
+// inherited `@effect/language-service` plugin below without altering its gate.
 const {
   allowJs: _allowJs,
   esModuleInterop: _esModuleInterop,
@@ -97,23 +99,25 @@ const {
   forceConsistentCasingInFileNames: _forceConsistentCasingInFileNames,
   moduleResolution: _moduleResolution,
   strict: _strict,
-  ...baseTsconfigCompilerOptionsWithoutDefaults
+  plugins: inheritedTsconfigPlugins,
+  ...baseTsconfigCompilerOptionsWithoutPlugins
 } = effectUtilsBaseTsconfigCompilerOptions
 
+/**
+ * LiveStore inherits effect-utils' full Effect-LSP gate, including fatal warnings
+ * and suggestions. The only LiveStore-specific plugin setting allows the expected
+ * duplicate `@livestore/utils` package identity in this workspace.
+ */
 const baseTsconfigCompilerOptions = {
-  ...baseTsconfigCompilerOptionsWithoutDefaults,
-  // LIVE-MIGRATION BRIDGE tsgo-strict-gate — DELETE at contraction — see live-migrations registry
-  // Advisory gate: Effect warnings and suggestions remain visible without failing the exit code.
-  plugins: [
-    {
-      ...effectUtilsBaseTsconfigCompilerOptions.plugins[0],
-      ignoreEffectWarningsInTscExitCode: true,
-      ignoreEffectSuggestionsInTscExitCode: true,
-      ignoreEffectErrorsInTscExitCode: false,
-      allowedDuplicatedPackages: ['@livestore/utils'],
-    },
-  ],
-  // LIVE-MIGRATION END tsgo-strict-gate
+  ...baseTsconfigCompilerOptionsWithoutPlugins,
+  plugins: inheritedTsconfigPlugins.map((plugin) =>
+    plugin.name === '@effect/language-service'
+      ? {
+          ...plugin,
+          allowedDuplicatedPackages: ['@livestore/utils'],
+        }
+      : plugin,
+  ),
 } as const
 
 /**
