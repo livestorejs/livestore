@@ -185,9 +185,7 @@ const writeReleasePlan = (cwd: string, plan: TReleasePlan) =>
     yield* validateReleasePlan(plan)
     const fsEffect = yield* FileSystem.FileSystem
     yield* fsEffect.makeDirectory(`${cwd}/release`, { recursive: true })
-    // The persisted release plan is read back and human-inspected in CI, so keep it indented.
-    // Schema's JSON codec emits compact output, which is why this stays on `JSON.stringify`.
-    // @effect-diagnostics-next-line preferSchemaOverJson:off
+    // @effect-diagnostics-next-line preferSchemaOverJson:off -- persisted release plan is read back and human-inspected in CI; keep it indented (Schema's JSON codec emits compact output)
     yield* fsEffect.writeFileString(releasePlanPath(cwd), `${JSON.stringify(plan, null, 2)}\n`)
   })
 
@@ -275,8 +273,7 @@ export const rewriteSnapshotInternalDependencyRanges = ({
 
       if (rewriteCount === 0) continue
 
-      // package.json must stay indented (published + diff-friendly); Schema's JSON codec is compact.
-      // @effect-diagnostics-next-line preferSchemaOverJson:off
+      // @effect-diagnostics-next-line preferSchemaOverJson:off -- package.json must stay indented (published + diff-friendly); Schema's JSON codec is compact
       yield* fsEffect.writeFileString(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
       yield* Effect.log(`Pinned ${rewriteCount} internal snapshot dependency range(s) in ${packageName}`)
     }
