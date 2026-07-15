@@ -119,7 +119,7 @@ export const waitForLock = (lockName: string) =>
     if (signal.aborted === true) return
 
     navigator.locks.request(lockName, { mode: 'shared', signal, ifAvailable: false }, (_lock: Lock | null) => {
-      cb(Effect.succeed(void 0))
+      cb(Effect.void)
     })
   })
 
@@ -132,7 +132,7 @@ export const getLockAndWaitForSteal = (lockName: string) =>
       .request(lockName, { mode: 'exclusive', ifAvailable: true }, async (lock: Lock | null) => {
         if (lock === null) {
           // Lock wasn't available, resolve immediately
-          cb(Effect.succeed(void 0))
+          cb(Effect.void)
           return
         }
 
@@ -150,7 +150,7 @@ export const getLockAndWaitForSteal = (lockName: string) =>
           return Promise.race([holdLock, signal.aborted === true ? Promise.resolve() : holdLock]).catch(() => {})
         }).catch(() => {})
 
-        cb(Effect.succeed(void 0))
+        cb(Effect.void)
       })
       .catch((error) => {
         if (
@@ -160,7 +160,7 @@ export const getLockAndWaitForSteal = (lockName: string) =>
         ) {
           // Given signal interruption is handled via Effect, we can ignore this case
           // or the case when the lock is stolen
-          cb(Effect.succeed(void 0))
+          cb(Effect.void)
         } else {
           console.error('[@livestore/utils:WebLock] getLockAndWaitForSteal. error', error)
           throw error

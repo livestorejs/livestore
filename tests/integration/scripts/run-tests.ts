@@ -139,7 +139,7 @@ export const runDevtoolsTest = Effect.fn('test:devtools')(function* ({
 
     const spanContext = yield* OtelTracer.currentOtelSpan.pipe(
       Effect.map((span) => JSON.stringify(span.spanContext())),
-      Effect.catch(() => Effect.succeed(undefined)),
+      Effect.orElseSucceed(() => undefined),
     )
 
     if (mode === 'dev-server') {
