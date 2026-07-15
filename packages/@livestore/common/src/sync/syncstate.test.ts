@@ -422,7 +422,7 @@ Vitest.describe('syncstate', () => {
               id: Schema.String,
               flag: Schema.optional(Schema.Boolean),
             })
-            const localArgs = Schema.encodeUnknownSync(argsSchema)({ id: 'abc' } as any)
+            const localArgs = yield* Schema.encodeUnknownEffect(argsSchema)({ id: 'abc' } as any).pipe(Effect.orDie)
             const wireArgs = JSON.parse(JSON.stringify(localArgs))
 
             const localPending = new LiveStoreEvent.Client.EncodedWithMeta({

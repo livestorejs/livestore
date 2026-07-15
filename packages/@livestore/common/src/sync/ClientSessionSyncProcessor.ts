@@ -278,17 +278,18 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           rebaseGeneration: baseEventSequenceNumber.rebaseGeneration,
         })
         baseEventSequenceNumber = nextNumPair.seqNum
-        return new LiveStoreEvent.Client.EncodedWithMeta(
-          Schema.encodeUnknownSync(eventSchema)({
-            name,
-            // Client-document events expose SessionIdSymbol as an input placeholder, but encoded events are persisted
-            // and replayed by concrete id. Resolve during schema encoding so commit never mutates the caller's event.
-            args: resolveSessionIdSymbolInEventArgs(args, clientSession.sessionId),
-            ...nextNumPair,
-            clientId: clientSession.clientId,
-            sessionId: clientSession.sessionId,
-          }),
-        )
+        // Encoding known-valid domain data: an encode failure is an invariant violation (a defect),
+        // so `Effect.orDie` is the correct modeling — it keeps the typed error channel narrow.
+        const encoded = yield* Schema.encodeUnknownEffect(eventSchema)({
+          name,
+          // Client-document events expose SessionIdSymbol as an input placeholder, but encoded events are persisted
+          // and replayed by concrete id. Resolve during schema encoding so commit never mutates the caller's event.
+          args: resolveSessionIdSymbolInEventArgs(args, clientSession.sessionId),
+          ...nextNumPair,
+          clientId: clientSession.clientId,
+          sessionId: clientSession.sessionId,
+        }).pipe(Effect.orDie)
+        return new LiveStoreEvent.Client.EncodedWithMeta(encoded)
       }),
     )
   })
