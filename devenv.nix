@@ -160,7 +160,7 @@ let
         PLAYWRIGHT_SUITE=devtools \
         PLAYWRIGHT_HEADLESS="''${PLAYWRIGHT_HEADLESS:-1}" \
         LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
-        DT_PASSTHROUGH=1 \
+        DEVENV_TASK_PASSTHROUGH=1 \
         ./node_modules/.bin/playwright test \
           src/tests/playwright/devtools/web.play.ts \
           --reporter=line
@@ -197,8 +197,6 @@ let
 in
 {
   imports = [
-    # dt command for running devenv tasks
-    effectUtils.devenvModules.dt
     # OTEL observability stack with livestore-specific dashboards
     # Keep release/task automation independent from user machine-level OTEL
     # dashboard sync state. System OTEL remains useful for interactive shells,
@@ -218,7 +216,7 @@ in
       packages = pnpmPackages;
       extraDirs = [ ".astro" ];
     })
-    # Lint tasks are dt-native via lint-oxc plus local aggregate wrappers.
+    # Lint tasks via lint-oxc plus local aggregate wrappers.
     (taskModules.lint-oxc {
       lintPaths = [
         "packages"
@@ -226,37 +224,6 @@ in
         "scripts"
         "docs"
         ".github"
-      ];
-      execIfModifiedPatterns = [
-        # packages/@livestore
-        "packages/@livestore/*/src/**/*.ts"
-        "packages/@livestore/*/src/**/*.tsx"
-        "packages/@livestore/*/src/**/*.js"
-        "packages/@livestore/*/src/**/*.jsx"
-        "packages/@livestore/*/*.ts"
-        "packages/@livestore/*/*.js"
-        "packages/@livestore/*/bin/*.ts"
-        "packages/@livestore/*/examples/*/*.ts"
-        "packages/@livestore/*/examples/*/*.tsx"
-        "packages/@livestore/*/examples/*/src/**/*.ts"
-        "packages/@livestore/*/examples/*/src/**/*.tsx"
-        # packages/@local
-        "packages/@local/*/src/**/*.ts"
-        "packages/@local/*/src/**/*.tsx"
-        "packages/@local/*/*.ts"
-        "packages/@local/*/*.js"
-        # tests
-        "tests/**/*.ts"
-        "tests/**/*.tsx"
-        # scripts
-        "scripts/**/*.ts"
-        "scripts/**/*.js"
-        # docs
-        "docs/src/**/*.ts"
-        "docs/src/**/*.tsx"
-        # linter configs
-        ".oxfmtrc.json"
-        ".oxlintrc.json"
       ];
       geniePatterns = [
         ".github/workflows/*.genie.ts"
@@ -281,10 +248,14 @@ in
       genieCoverageExcludes = [ "packages/@livestore/wa-sqlite/" ];
       tsconfig = "tsconfig.dev.json";
     })
-    (taskModules.ts-effect-lsp {
-      tsconfigFile = "tsconfig.dev.json";
-    })
     (taskModules.pnpm { packages = pnpmPackages; })
+    # PR-preview reporting: provides workflow-report:{collect-bundle,
+    # render-comment-body,publish}, invoked by the generated report-pr-preview
+    # CI job. Replaces the former `nix run <effect-utils>#workflow-report` flake
+    # entrypoint (removed upstream when reporting moved into ci-tools).
+    (taskModules.workflow-report {
+      ciToolsBin = "${effectUtilsPackages.ci-tools}/bin/ci-tools";
+    })
     # Setup task (auto-runs in enterShell)
     (taskModules.setup {
       requiredTasks = [ ];
@@ -297,6 +268,16 @@ in
     # Local task: mono command wrappers for uniform dt interface
     ./nix/devenv-modules/tasks/local/mono-wrappers.nix
     ./nix/devenv-modules/tasks/local/github-rulesets.nix
+  ];
+
+  # Non-`.genie.ts` generator inputs (source-of-truth modules that the `.genie.ts`
+  # files import: catalog/topology/validation helpers under genie/). These join the
+  # `genie:run` warm-cache fingerprint so editing e.g. `genie/external.ts` actually
+  # busts the cache and regenerates — otherwise a helper-only edit is silently
+  # skipped as "up to date". The `.genie.ts` sources themselves are already tracked
+  # by the module; the glob overlap with genie/**/*.genie.ts is harmless.
+  effectUtils.genie.extraInputGlobs = [
+    ":(glob)genie/**/*.ts"
   ];
 
   # Keep Nix-provided `tsc` aligned with the workspace TypeScript catalog override so
@@ -454,7 +435,7 @@ in
       set -euo pipefail
       cd "$DEVENV_ROOT"
 
-      DT_PASSTHROUGH=1 pnpm exec changeset status --since "''${CHANGESET_BASE_REF:-origin/main}"
+      DEVENV_TASK_PASSTHROUGH=1 pnpm exec changeset status --since "''${CHANGESET_BASE_REF:-origin/main}"
     '';
     after = [ "pnpm:install" ];
   };
@@ -468,12 +449,12 @@ in
       # Changesets edits generated package manifests before Genie re-materializes
       # them from release/version.json.
       git ls-files '*package.json' | xargs chmod u+w
-      DT_PASSTHROUGH=1 pnpm exec changeset version
+      DEVENV_TASK_PASSTHROUGH=1 pnpm exec changeset version
       bun scripts/src/commands/changesets.ts restore-prerelease-changesets
       bun scripts/src/commands/changesets.ts sync-version-source
-      DT_PASSTHROUGH=1 genie
+      DEVENV_TASK_PASSTHROUGH=1 genie
       bun scripts/src/commands/changesets.ts sync-standalone-consumers
-      DT_PASSTHROUGH=1 pnpm install --lockfile-only --no-frozen-lockfile
+      DEVENV_TASK_PASSTHROUGH=1 pnpm install --lockfile-only --no-frozen-lockfile
       bun scripts/src/commands/changesets.ts assert-fixed-versions
       bun scripts/src/commands/changesets.ts write-release-plan --npm-tag "''${LIVESTORE_NPM_TAG:-latest}"
     '';

@@ -23,7 +23,10 @@
     "plugins": [
       {
         "name": "@effect/language-service",
-        "reportSuggestionsAsWarningsInTsc": true,
+        "ignoreEffectWarningsInTscExitCode": true,
+        "ignoreEffectSuggestionsInTscExitCode": true,
+        "ignoreEffectErrorsInTscExitCode": false,
+        "includeSuggestionsInTsc": true,
         "pipeableMinArgCount": 2,
         "diagnosticSeverity": {
           "missedPipeableOpportunity": "warning",
@@ -48,6 +51,9 @@
     },
     {
       "path": "../../../packages/@livestore/react"
+    },
+    {
+      "path": "../../../packages/@livestore/sqlite-wasm"
     },
     {
       "path": "../../../packages/@livestore/utils"

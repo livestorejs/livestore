@@ -435,6 +435,20 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
+      - name: Prepare CI helper scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts_src='genie/ci-scripts'
+          scripts_dst='${{ runner.temp }}/genie-ci-scripts'
+          if [ ! -d "$scripts_src" ]; then
+            echo "::error::CI helper script directory is missing: $scripts_src"
+            exit 1
+          fi
+          rm -rf "$scripts_dst"
+          mkdir -p "$scripts_dst"
+          cp -R "$scripts_src/." "$scripts_dst/"
+          chmod +x "$scripts_dst"/*.sh
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
