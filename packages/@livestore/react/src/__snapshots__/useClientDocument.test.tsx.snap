@@ -38,8 +38,13 @@ exports[`useClientDocument > otel > should update the data based on component ke
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "span.label": "⚠︎ Interrupted",
-            "status.interrupted": true,
+          },
+        },
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
           },
         },
       ],
@@ -312,8 +317,13 @@ exports[`useClientDocument > otel > should update the data based on component ke
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "span.label": "⚠︎ Interrupted",
-            "status.interrupted": true,
+          },
+        },
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
           },
         },
       ],
