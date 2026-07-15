@@ -70,6 +70,9 @@ const ProdDeployStateSchema = Schema.Struct({
 })
 type ProdDeployState = typeof ProdDeployStateSchema.Type
 
+/** Module-scoped JSON encoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
+const encodeProdDeployState = Schema.encodeSync(Schema.fromJsonString(ProdDeployStateSchema))
+
 const docsSnippetsCommand = createSnippetsCommand({ projectRoot: docsPath })
 
 const runDocsDiagramsBuild = buildDiagrams({ projectRoot: docsPath, verbose: true }).pipe(
@@ -314,7 +317,7 @@ const docsBuildCommand = Cli.Command.make(
 const writeProdDeployState = (state: ProdDeployState) =>
   Effect.sync(() => {
     fs.mkdirSync(PROD_DEPLOY_STATE_DIR, { recursive: true })
-    fs.writeFileSync(PROD_DEPLOY_STATE_FILE, JSON.stringify(state, null, 2))
+    fs.writeFileSync(PROD_DEPLOY_STATE_FILE, encodeProdDeployState(state))
   }).pipe(Effect.withSpan('docs.deploy.state.write', { attributes: { path: PROD_DEPLOY_STATE_FILE } }))
 
 const readProdDeployState = Effect.gen(function* () {
@@ -702,6 +705,8 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           if (shouldPrintPlan === true) {
             console.log(
+              // Indented, ad-hoc plan preview for humans reading CI logs; Schema's JSON codec is compact.
+              // @effect-diagnostics-next-line preferSchemaOverJson:off
               JSON.stringify(
                 {
                   branchName,

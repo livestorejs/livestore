@@ -85,6 +85,7 @@ export const toDurableObjectHandler =
           continue
         }
 
+        // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Schema.toCodecJson` on the erased dynamic payload schema surfaces `unknown` requirements; the context is supplied at runtime via `Effect.provideContext(entry.context)`
         const payloadResult = yield* Schema.decodeUnknownEffect(Schema.toCodecJson(rpc.payloadSchema))(
           request.payload,
         ).pipe(Effect.provideContext(entry.context), Effect.result)
@@ -95,6 +96,7 @@ export const toDurableObjectHandler =
           // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
           const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
           const rawExit = Exit.die(payloadResult.failure.issue.toString())
+          // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Schema.toCodecJson` on the erased `Schema.Top` exit schema surfaces `unknown` requirements; the context is supplied at runtime via `Effect.provideContext(entry.context)`
           const encodedExit = yield* Schema.encodeUnknownEffect(Schema.toCodecJson(exitSchema))(rawExit).pipe(
             Effect.provideContext(entry.context),
           )
@@ -144,6 +146,7 @@ export const toDurableObjectHandler =
           if (exitSchema !== undefined) {
             // Use schema encoding for proper serialization
             const rawExit = Exit.succeed(value)
+            // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Schema.toCodecJson` on the erased `Schema.Top` exit schema surfaces `unknown` requirements; the effect runs under the provided `options.layer`
             encodedExit = yield* Schema.encodeUnknownEffect(Schema.toCodecJson(exitSchema))(rawExit)
           } else {
             // Fallback to direct exit
@@ -166,6 +169,7 @@ export const toDurableObjectHandler =
               if (exitSchema !== undefined) {
                 // Use schema encoding for proper serialization
                 const rawExit = Exit.failCause(cause)
+                // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Schema.toCodecJson` on the erased `Schema.Top` exit schema surfaces `unknown` requirements; the effect runs under the provided `options.layer`
                 encodedExit = yield* Schema.encodeUnknownEffect(Schema.toCodecJson(exitSchema))(rawExit)
               } else {
                 // Fallback to direct exit
@@ -249,6 +253,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
     const effectOrStream = Rpc.isWrapper(handlerResult) === true ? handlerResult.value : handlerResult
 
     const stream: Stream.Stream<any, any> =
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch; orDie converts the error to a defect handled by the downstream catchCause
       Effect.isEffect(effectOrStream) === true ? yield* Effect.orDie(effectOrStream) : effectOrStream
 
     // Get the stream schemas for proper chunk-level encoding

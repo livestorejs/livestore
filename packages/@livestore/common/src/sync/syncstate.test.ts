@@ -7,6 +7,10 @@ import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import * as SyncState from './syncstate.ts'
 
+/** Module-scoped JSON codecs; keeping the sync codecs out of Effect generators avoids `schemaSyncInEffect`. */
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
+const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
+
 const makeTestEvent = ({
   seqNum,
   parentSeqNum,
@@ -424,7 +428,7 @@ Vitest.describe('syncstate', () => {
               flag: Schema.optional(Schema.Boolean),
             })
             const localArgs = yield* Schema.encodeUnknownEffect(argsSchema)({ id: 'abc' } as any).pipe(Effect.orDie)
-            const wireArgs = JSON.parse(JSON.stringify(localArgs))
+            const wireArgs = jsonParse(jsonStringify(localArgs))
 
             const localPending = new LiveStoreEvent.Client.EncodedWithMeta({
               seqNum: e1_0.seqNum,
