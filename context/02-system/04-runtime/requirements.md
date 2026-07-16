@@ -11,8 +11,9 @@ Builds on [../requirements.md](../requirements.md) (`LS.SYS-*`). Sync
 *semantics* are owned by `02-system/03-sync/`; this node only places the sync
 processors in the topology. Children: realizations
 [01-web/](./01-web/requirements.md),
-[02-cloudflare/](./02-cloudflare/requirements.md) (node and Expo adapters are
-contrib-owned, stub shape pending LS-DQ2), and the transport substrate
+[02-cloudflare/](./02-cloudflare/requirements.md) (Node and Expo adapters are
+contrib-owned — see [realizations.md](./realizations.md), decision
+0003-contrib-referencing), and the transport substrate
 [03-webmesh/](./03-webmesh/requirements.md).
 
 ## Assumptions

@@ -15,6 +15,7 @@ import { events, makeTodoMvcReact, schema, tables } from './__tests__/fixture.ts
 import { __resetUseRcResourceCache } from './useRcResource.ts'
 import { withReactApi } from './useStore.ts'
 
+/** Verifies: LS.SYS.INT.REACT-R01, LS.SYS.INT.REACT-R04, LS.SYS.INT.REACT-R05 */
 Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
   'useQuery (strictMode=%s)',
   ({ strictMode }) => {

@@ -43,8 +43,9 @@ From this you might want to derive the following state (modeled as SQLite tables
 ## Great use cases for LiveStore
 
 - High-performance desktop/web/mobile apps
-  - e.g. productivity apps like
-- AI agents
+  - e.g. productivity tools like [Overtone](https://overtone.pro) (music
+    app), project management, calendaring, or note-taking apps
+- AI agents that need durable, auditable local state
 - Apps that need ...
   - solid offline support
   - audit logs
@@ -75,7 +76,7 @@ From this you might want to derive the following state (modeled as SQLite tables
 
 - All the client app data should fit into a in-memory SQLite database
   - Depending on the target device having databases up to 1GB in size should be okay.
-  - If you you have more data, you can consider segmenting your database into multiple SQLite database (e.g. segmented per project, workspace, document, ...).
+  - If you have more data, you can consider segmenting your database into multiple SQLite databases (e.g. segmented per project, workspace, document, ...).
   - You can either use the `storeId` option for the segmentation or there could also be a way to use the [SQLite attach feature](https://www.sqlite.org/lang_attach.html) to dynamically attach/detach databases.
 
 ### Syncing
@@ -84,6 +85,10 @@ LiveStore's syncing system is designed for small/medium-level concurrency scenar
 
 - Collaboration on multiple different eventlogs concurrently is supported and should be used to "scale horizontally".
 
-### Other considerations
+### Data flow
 
-- How data flows / what's the source of truth?
+LiveStore treats the local eventlog as the source of truth: state is derived
+from it, and a sync backend orders and distributes events between clients.
+If your app needs a remote server to be the primary data source, see the
+non-fit cases above. [How LiveStore works](/overview/how-livestore-works)
+walks through the full data flow.

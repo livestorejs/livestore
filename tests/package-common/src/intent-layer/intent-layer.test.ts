@@ -93,6 +93,7 @@ const parseNamespaceTable = () => {
   return map
 }
 
+/** Verifies: LS-R15 */
 describe('intent layer (context/)', () => {
   it('defines every ID exactly once', () => {
     const byId = new Map<string, IdSite[]>()

@@ -2,7 +2,10 @@
 
 This document specifies the SQLite realization of the state contract. It
 builds on [requirements.md](./requirements.md) and the parent
-[state spec](../spec.md) for the mechanism-agnostic pipeline.
+[state spec](../spec.md) for the mechanism-agnostic pipeline. Why SQLite is
+the primary read-model realization (and why the dimension stays open) is
+recorded in
+[.decisions/0001](./.decisions/0001-sqlite-primary-read-model.md).
 
 ## Status
 

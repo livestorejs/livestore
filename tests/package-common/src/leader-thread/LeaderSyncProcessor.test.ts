@@ -86,6 +86,7 @@ const seedPaginatedBackendTodos = (mockBackend: MockSyncBackend) => {
   )
 }
 
+/** Verifies: LS.SYS.SYNC.PROC-R01, LS.SYS.SYNC.PROC-R02, LS.SYS.SYNC.SS-R06, LS.SYS.SYNC-R03, LS.SYS.RT-R10 */
 Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   Vitest.live('sync', (test) =>
     Effect.gen(function* () {

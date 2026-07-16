@@ -7,11 +7,6 @@
   `01-event-model/` + `03-sync/` on acceptance. Blocked on: dedicated
   follow-up design session (requested 2026-07-15).
 
-- **LS-DQ2 Contrib-repo referencing mechanics.** How `livestore-contrib`
-  realizations reference and refine this tree: stub node shape, ID
-  allocation across repos, and link direction. Blocked on: writing the first
-  contrib realization stub.
-
 All branch nodes are populated as drafts (2026-07-15); node-local design
 questions live in each node's spec. Remaining drift between the intent layer
 and legacy doc surfaces is tracked in

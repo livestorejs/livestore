@@ -7,6 +7,7 @@ import { Effect, Schema } from '@livestore/utils/effect'
 
 import { makeTestAdapter } from './test-adapter.ts'
 
+/** Verifies: LS.SYS.STATE.SQLITE-R03, LS.SYS.STATE.SQLITE-R07 */
 Vitest.describe('Client Document Optimistic Decoding Integration', () => {
   Vitest.live('handles schema evolution gracefully', (test) =>
     Effect.gen(function* () {

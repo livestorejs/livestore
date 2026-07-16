@@ -6,6 +6,7 @@ import { createStore, SessionIdSymbol } from '@livestore/livestore'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Schema } from '@livestore/utils/effect'
 
+/** Verifies: LS.SYS.STATE.SQLITE-R03 */
 Vitest.describe('SessionIdSymbol', () => {
   Vitest.live('encodes commit events without mutating caller-provided args', (test) =>
     Effect.gen(function* () {

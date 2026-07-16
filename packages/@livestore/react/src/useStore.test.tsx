@@ -24,6 +24,7 @@ import { schema } from './__tests__/fixture.tsx'
 import { StoreRegistryProvider } from './StoreRegistryContext.tsx'
 import { useStore } from './useStore.ts'
 
+/** Verifies: LS.SYS.STORE-R06, LS.SYS.INT.REACT-R01 */
 describe('experimental useStore', () => {
   it('should return the same promise instance for concurrent getOrLoadStore calls', async () => {
     const storeRegistry = new StoreRegistry()

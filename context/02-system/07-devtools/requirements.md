@@ -33,7 +33,8 @@ The devtools UI ships through a separate artifact pipeline (see
   [.delta/DELTA-001-import-unattributed.md](./.delta/DELTA-001-import-unattributed.md).)
 - **LS.SYS.DT-R05 Pluggable surfaces:** Surfaces attach over webmesh channels
   discovered by node naming; the web channel ships in-repo, other surfaces
-  (e.g. Expo devtools) are contrib realizations (stub pending LS-DQ2).
+  (e.g. Expo devtools) are contrib realizations — see
+  [realizations.md](./realizations.md).
 - **LS.SYS.DT-R06 Session discovery:** Running sessions announce identity
   (store, client, session, schema alias, leader flag, origin) so surfaces can
   enumerate and target them without app cooperation.

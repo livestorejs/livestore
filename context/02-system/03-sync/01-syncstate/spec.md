@@ -30,6 +30,9 @@ SyncState = {
 (`syncstate.ts:44-56`.) Heads are composite sequence numbers
 (`{global, client, rebaseGeneration}`, see `../../01-event-model/`).
 
+Total-order rebase as the default conflict model is a founding decision —
+see [.decisions/0001](./.decisions/0001-total-order-rebase-default.md).
+
 ## Payloads and Outcomes
 
 ```

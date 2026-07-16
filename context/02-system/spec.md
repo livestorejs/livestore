@@ -44,6 +44,12 @@ specifics (`04-runtime/` realizations), or delivery concerns
   via its own protocol · 09-verification proves the contracts
 ```
 
+Foundational choices behind this architecture are recorded in
+[.decisions/0001](./.decisions/0001-event-sourcing-foundation.md) (event
+sourcing) and
+[.decisions/0002](./.decisions/0002-typescript-effect-substrate.md)
+(TypeScript + Effect substrate).
+
 ## Child Nodes
 
 | Node | Owns |

@@ -20,6 +20,10 @@ devtools surface (web channel · Expo proxy · browser extension)
          eventlog/state export+import · sync state · reset · latches
 ```
 
+Protocol-first (tools as peers, no privileged access) is a founding
+decision — see
+[.decisions/0001](./.decisions/0001-protocol-first-devtools.md).
+
 - Message schemas are tagged structs (`LSD.{Leader,ClientSession}.*`) built
   by shared factories that stamp the envelope: `liveStoreVersion` on every
   message, plus `clientId`/`requestId` (leader) and
@@ -107,7 +111,7 @@ one is a spec change.
 | Web channel | `adapter-web` `./devtools-web-channel` | webmesh `direct` | in-repo |
 | Browser extension | `adapter-web` client-session bridge | window `postMessage` contentscript bridge into webmesh | in-repo |
 | Devtools UI | separate artifact pipeline (`../../03-delivery/`) | consumes the above | external artifact |
-| Expo devtools | contrib | webmesh `proxy` | stub pending LS-DQ2 |
+| Expo devtools | contrib `devtools-expo` (see [realizations.md](./realizations.md)) | webmesh `proxy` | contrib-owned |
 
 Web discovery also probes `fetch('/_livestore')` + a
 `<meta name="livestore-devtools">` tag and sniffs for the Chrome-extension

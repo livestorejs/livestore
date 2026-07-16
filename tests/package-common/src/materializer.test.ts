@@ -47,6 +47,7 @@ const materializers = State.SQLite.materializers(events, {
 
 const schema = makeSchema({ events, state: State.SQLite.makeState({ tables, materializers }) })
 
+/** Verifies: LS.SYS.STATE-R01, LS.SYS.STATE.SQLITE-R02, LS.SYS.VER.DET-R01 */
 Vitest.describe.each(['raw', 'query-builder'] as const)('materializer', (queryType) => {
   Vitest.live('should allow queries in materializer', (test) =>
     Effect.gen(function* () {

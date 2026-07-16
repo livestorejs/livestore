@@ -12,7 +12,7 @@ import SourceOfTruthDiagram from '../../_assets/diagrams/sot-vs-cache.tldr?tldra
 Building modern apps with great UX means handling a lot of complexity:
 
 - **State management**: Keeping UI in sync with data
-- **Persistence**: Surviving refreshes and app restarts  
+- **Persistence**: Surviving refreshes and app restarts
 - **Offline support**: Working without a network connection
 - **Real-time sync**: Reflecting changes across devices instantly
 - **Conflict resolution**: Handling concurrent edits gracefully
@@ -108,6 +108,7 @@ LiveStore is designed to make the right thing easy:
 - You're building a new app that should work offline
 - You want a unified solution for state, persistence, and sync
 - Your app has complex local state that benefits from SQL queries
+- You're building AI agents that need durable, auditable local state
 - You value auditability and the ability to replay/debug state changes
 
 **Consider alternatives if:**

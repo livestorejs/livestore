@@ -84,11 +84,10 @@ stack duplicating core concepts; not part of the shipping contract
 
 ## Realizations
 
-- [03-cf](./03-cf/spec.md) — Cloudflare (in-repo reference realization).
-- `sync-electric`, `sync-s2` — contrib-owned; stub shape pending root
-  LS-DQ2.
-- `mock-sync-backend.ts` — in-memory realization for tests
-  (`09-verification/`).
+Full registry (in-repo + contrib, with conformance status):
+[realizations.md](./realizations.md). In-repo:
+[03-cf](./03-cf/spec.md) (Cloudflare reference realization) and
+`mock-sync-backend.ts` (in-memory, tests).
 
 ## Open Design Questions
 

@@ -83,7 +83,7 @@ kinds (e.g. `04-docs/` vs `05-contributing/`) is reading order only.
 | Branch | Owns | Absorbs (over time) |
 | --- | --- | --- |
 | `01-product/` | Positioning, target use cases, comparison criteria, adoption guidance | `docs/overview/why-livestore`, `when-livestore` (as canonical source; docs pages become derived) |
-| `02-system/` | All technical contracts and their realizations | `docs/understanding-livestore/design-decisions` content, RFC fold-ins |
+| `02-system/` | All technical contracts and their realizations | `docs/understanding-livestore/design-decisions` (absorbed 2026-07-16 into `.decisions/` records; page is now derived), RFC fold-ins |
 | `03-delivery/` | Repo topology, package composition, release/versioning, artifact flows | `context/repo-architecture/`, `context/devtools-artifact-release/`, `contributor-docs/{package-release,release-workflows,dependency-management,wa-sqlite-management}` |
 | `04-docs/` | Derivation rule (docs follow VRS), snippets/diagrams policy, examples as learning surface | `contributor-docs/docs/*`, examples policy |
 | `05-contributing/` | Collaboration model, RFC process + fold-in rule, governance, community surfaces | `contributor-docs/rfcs/index.md`, `CONTRIBUTING.md` (as canonical source) |
@@ -197,5 +197,6 @@ human/agent judgment.
 
 - **LS-DQ1 Command/intent design placement** — see
   [open-questions.md](./open-questions.md).
-- **LS-DQ2 Contrib-repo referencing mechanics** — see
-  [open-questions.md](./open-questions.md).
+
+(LS-DQ2 was resolved 2026-07-16 into
+[.decisions/0003-contrib-referencing.md](./.decisions/0003-contrib-referencing.md).)

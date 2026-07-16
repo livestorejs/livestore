@@ -91,6 +91,7 @@ const rebaseTestEvent = ({
   rebaseGeneration: number
 }) => event.rebase({ parentSeqNum, isClientOnly: isClientOnlyEvent(event), rebaseGeneration })
 
+/** Verifies: LS.SYS.SYNC.SS-R01, LS.SYS.SYNC.SS-R02, LS.SYS.SYNC.SS-R03, LS.SYS.SYNC.SS-R05, LS.SYS.SYNC.SS-R06 */
 Vitest.describe('syncstate', () => {
   Vitest.describe('merge', () => {
     const merge = ({

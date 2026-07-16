@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { __resetUseRcResourceCache, useRcResource } from './useRcResource.ts'
 
+/** Verifies: LS.SYS.INT.REACT-R03, LS.SYS.INT.REACT-R05 */
 describe.each([{ strictMode: true }, { strictMode: false }])('useRcResource (strictMode=%s)', ({ strictMode }) => {
   beforeEach(() => {
     __resetUseRcResourceCache()

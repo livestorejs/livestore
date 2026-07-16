@@ -13,16 +13,22 @@ step (`contributor-docs/rfcs/index.md` §4), ownership headers on
 `02-system/04-runtime/02-cloudflare/.decisions/0001` plus a roadmap entry;
 bug notes handled via issue filing).
 
+Regenerated as derived views (2026-07-16): `overview/why-livestore`,
+`overview/when-livestore`, `overview/technology-comparison` (now covers all
+three comparison categories; former 04-docs DELTA-002 closed),
+`overview/concepts` (rendered from `ontology.md`), and
+`misc/state-of-the-project` (derives from `01-product/` §Maturity &
+Stability Promise + `03-delivery/02-release/` breaking-change mechanics).
+The FAQ's community/funding claims were verified consistent with
+`05-contributing/02-community/` and `06-sustainability/` (no regeneration
+needed).
+
+`understanding-livestore/design-decisions` was regenerated 2026-07-16 as a
+derived page linking the founding decision records (decision-archaeology
+pass).
+
 Remaining divergence:
 
-- **Canonical-in-practice docs pages** pending regeneration as derived
-  views: `overview/why-livestore`, `overview/when-livestore`,
-  `overview/technology-comparison` (see
-  [04-docs/.delta/DELTA-002](../04-docs/.delta/DELTA-002-derived-surface-rot.md)),
-  `understanding-livestore/design-decisions`, `overview/concepts` (ontology
-  rendering), `misc/state-of-the-project` (derives from `01-product/`
-  §Maturity & Stability Promise), and the FAQ's community/funding claims
-  (derive from `05-contributing/02-community/` and `06-sustainability/`).
 - **`wip/upcoming-specs/store-commit-receipt.md`** — stale proposal, kept
   (with status header) until the command/intent design session (LS-DQ1).
 

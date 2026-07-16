@@ -62,6 +62,7 @@ const withTestCtx = Vitest.makeWithTestCtx({
 })
 
 // TODO use property tests for simulation params
+/** Verifies: LS.SYS.SYNC.SS-R01, LS.SYS.SYNC.SS-R04 */
 Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
   Vitest.live('from scratch', (test) =>
     Effect.gen(function* () {

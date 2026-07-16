@@ -24,3 +24,28 @@ Verification maps claim shapes to evidence shapes (see
 Evidence conventions: benchmark results, prototype outcomes, and validation
 runs that inform contracts are recorded as `.experiments/` records in the
 owning node, per the meta-VRS contract.
+
+## Traceability Annotations
+
+Requirement↔evidence traceability lives in the test code, not a central
+matrix (decided 2026-07-16, interview). A test file declares which
+intent-layer requirements it evidences via a `Verifies:` line listing
+`LS.*` IDs in a JSDoc-style comment at the file or describe-block level:
+
+```ts
+/** Verifies: LS.SYS.SYNC.SS-R02, LS.SYS.SYNC.SS-R06 */
+```
+
+Rules:
+
+- Comments only — annotations never change test names or behavior.
+- Appending the `Verifies:` line to an existing header comment is
+  preferred over adding a second comment block.
+- Honesty rule: annotate only what the test genuinely asserts, not the
+  requirement's whole neighborhood. A test that exercises a mechanism
+  without asserting the contracted property does not verify it.
+- Requirements without any `Verifies:` annotation are simply unverified —
+  that is honest state, not an error.
+
+A future enforcement check can grep `Verifies:` coverage (which IDs have
+evidence, and that annotated IDs exist); not built today.

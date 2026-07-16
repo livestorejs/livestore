@@ -25,11 +25,9 @@ registry (LS.SYS.INT-R03).
 
 ## Realizations
 
-| Framework | Node | Status |
-| --- | --- | --- |
-| React | [01-react/](./01-react/spec.md) | in-repo |
-| Effect (Layer/Context idioms) | [02-effect/](./02-effect/spec.md) | in-repo |
-| Vue, Solid, Svelte | contrib | stub pending LS-DQ2 |
+Full registry (in-repo + contrib, with conformance status):
+[realizations.md](./realizations.md). In-repo children:
+[01-react/](./01-react/spec.md) and [02-effect/](./02-effect/spec.md).
 
 ## Open Design Questions
 

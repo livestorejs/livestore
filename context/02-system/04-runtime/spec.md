@@ -41,6 +41,10 @@ client (clientId)
   specified in `../03-sync/`; this node only fixes their placement.
 - Leadership is observable through a `lockStatus` subscription; handover is
   realization-specific (see children) but must satisfy LS.SYS.RT-R04.
+- The split itself and the in-memory session database are founding
+  decisions — see
+  [.decisions/0002](./.decisions/0002-leader-session-worker-split.md) and
+  [.decisions/0001](./.decisions/0001-in-memory-session-db.md).
 
 ## Adapter Contract
 
@@ -127,11 +131,9 @@ Durable Object storage in cf) but share query/materialization behavior
 
 ## Realizations
 
-| Realization | Node | Status |
-| --- | --- | --- |
-| Web (workers, OPFS) | [01-web/](./01-web/spec.md) | in-repo |
-| Cloudflare (Durable Object) | [02-cloudflare/](./02-cloudflare/spec.md) | in-repo |
-| Node, Expo, Tauri/Electron | contrib | stub pending LS-DQ2 |
+Full registry (in-repo + contrib, with conformance status):
+[realizations.md](./realizations.md). In-repo children:
+[01-web/](./01-web/spec.md) and [02-cloudflare/](./02-cloudflare/spec.md).
 
 Realizations with leader transitions must keep store invariants (storeId,
 storage options, sync payload, versions) stable across a handover
