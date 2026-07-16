@@ -107,14 +107,14 @@ export interface Service {
   readonly push: (
     /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
     batch: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
-  ) => Effect.Effect<void, RejectedPushError>
+  ) => Effect.Effect<void, RejectedPushError | MaterializeError>
 
   /** Currently only used by devtools which don't provide their own event numbers */
   readonly pushPartial: (args: {
     event: LiveStoreEvent.Input.Encoded
     clientId: string
     sessionId: string
-  }) => Effect.Effect<void, UnknownEventError>
+  }) => Effect.Effect<void, UnknownEventError | MaterializeError>
 
   readonly boot: Effect.Effect<
     { initialLeaderHead: EventSequenceNumber.Client.Composite },
@@ -237,9 +237,9 @@ export const make = Effect.fnUntraced(function* ({
 
   type LocalPushQueueItem = [
     event: LiveStoreEvent.Client.EncodedWithMeta,
-    deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>,
+    deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError | MaterializeError>,
   ]
-  const localPushesQueue = yield* TxQueue.unbounded<LocalPushQueueItem>()
+  const localPushesQueue = yield* TxQueue.unbounded<LocalPushQueueItem, MaterializeError>()
   // Ensures mutual exclusion between local push and backend pull processing.
   const localPushBackendPullMutex = yield* Semaphore.make(1)
 
@@ -257,27 +257,20 @@ export const make = Effect.fnUntraced(function* ({
     pushHeadRef.current = EventSequenceNumber.Client.max(pushHeadRef.current, eventNum)
   }
 
-  let localPushTerminalCause: Cause.Cause<never> | undefined
+  let localPushTerminalCause: Cause.Cause<MaterializeError> | undefined
   const currentLocalPushBatch = yield* TxRef.make<ReadonlyArray<LocalPushQueueItem>>([])
 
-  const toLocalPushFatalCause = <E>(cause: Cause.Cause<E>): Cause.Cause<never> =>
-    Cause.fromReasons(
-      cause.reasons.map((reason) =>
-        Cause.isFailReason(reason) === true
-          ? Cause.makeDieReason(reason.error).annotate(Cause.reasonAnnotations(reason))
-          : reason,
-      ),
-    )
-
-  const completeLocalPushesWithCause = (items: ReadonlyArray<LocalPushQueueItem>, cause: Cause.Cause<never>) =>
+  const completeLocalPushesWithCause = (
+    items: ReadonlyArray<LocalPushQueueItem>,
+    cause: Cause.Cause<MaterializeError>,
+  ) =>
     Effect.forEach(items, ([, deferred]) => Deferred.complete(deferred, Effect.failCause(cause))).pipe(
       Effect.uninterruptible,
     )
 
   const terminateLocalPushes = (cause: Cause.Cause<MaterializeError>) =>
     Effect.gen(function* () {
-      const fatalCause = toLocalPushFatalCause(cause)
-      localPushTerminalCause = fatalCause
+      localPushTerminalCause = cause
 
       // Closing admission and taking ownership of every buffered item is one transaction. An offer either happens
       // before this transaction and is drained here, or is rejected afterwards and observes `localPushTerminalCause`.
@@ -286,12 +279,12 @@ export const make = Effect.fnUntraced(function* ({
           const currentItems = yield* TxRef.get(currentLocalPushBatch)
           yield* TxRef.set(currentLocalPushBatch, [])
           const queuedItems = yield* TxQueue.clear(localPushesQueue)
-          yield* TxQueue.failCause(localPushesQueue, fatalCause)
+          yield* TxQueue.failCause(localPushesQueue, cause)
           return [...currentItems, ...queuedItems]
         }),
       )
 
-      yield* completeLocalPushesWithCause(ownedItems, fatalCause)
+      yield* completeLocalPushesWithCause(ownedItems, cause)
     }).pipe(Effect.uninterruptible)
 
   const backgroundApplyLocalPushes = Effect.gen(function* () {
@@ -1188,7 +1181,7 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
     }
   })
 
-const snapshotTxQueue = <A>(queue: TxQueue.TxQueue<A>): Effect.Effect<ReadonlyArray<A>> =>
+const snapshotTxQueue = <A, E>(queue: TxQueue.TxQueue<A, E>): Effect.Effect<ReadonlyArray<A>, E> =>
   Effect.tx(
     Effect.gen(function* () {
       const items = yield* TxQueue.clear(queue)
@@ -1197,10 +1190,10 @@ const snapshotTxQueue = <A>(queue: TxQueue.TxQueue<A>): Effect.Effect<ReadonlyAr
     }),
   )
 
-const takePrefixUntil = <A>(
-  queue: TxQueue.TxQueue<A>,
+const takePrefixUntil = <A, E>(
+  queue: TxQueue.TxQueue<A, E>,
   predicate: (value: A) => boolean,
-): Effect.Effect<ReadonlyArray<A>> =>
+): Effect.Effect<ReadonlyArray<A>, E> =>
   Effect.tx(
     Effect.gen(function* () {
       const items = yield* TxQueue.clear(queue)

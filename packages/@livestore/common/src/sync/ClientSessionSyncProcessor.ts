@@ -178,11 +178,19 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       return true
     }
 
-    const terminate = (cause: Cause.Cause<never>, exit: Parameters<ClientSession['shutdown']>[0]) =>
+    const terminate = (cause: Cause.Cause<MaterializeError>, exit: Parameters<ClientSession['shutdown']>[0]) =>
       Effect.gen(function* () {
         const targetEpoch = yield* Effect.sync(() => {
           if (terminalCause !== undefined) return undefined
-          terminalCause = cause
+          // Scope finalizers have no typed error channel. Preserve the complete cause structure while the original
+          // typed cause is sent through ClientSession.shutdown below.
+          terminalCause = Cause.fromReasons(
+            cause.reasons.map((reason) =>
+              Cause.isFailReason(reason) === true
+                ? Cause.makeDieReason(reason.error).annotate(Cause.reasonAnnotations(reason))
+                : reason,
+            ),
+          )
           admissionOpen = false
           lifecycle = 'aborting'
           return currentEpoch
@@ -278,7 +286,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         ? pullCompletion === undefined
           ? Effect.void
           : Deferred.succeed(pullCompletion, undefined).pipe(Effect.asVoid)
-        : terminate(Cause.die(Cause.squash(cause)), Exit.failCause(cause)).pipe(
+        : terminate(cause, Exit.failCause(cause)).pipe(
             pullCompletion === undefined ? Effect.asVoid : Effect.andThen(Deferred.succeed(pullCompletion, undefined)),
           )
 

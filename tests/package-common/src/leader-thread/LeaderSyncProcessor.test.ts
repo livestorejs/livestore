@@ -181,13 +181,15 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     })
     const companionDefect = new Error('injected companion defect')
 
-    const expectTerminalCauses = (exit: Exit.Exit<void, RejectedPushError>) => {
+    const expectTerminalCauses = (exit: Exit.Exit<void, RejectedPushError | MaterializeError>) => {
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit) === false) return
+      const errors = exit.cause.reasons.flatMap((reason) => (Cause.isFailReason(reason) === true ? [reason.error] : []))
       const defects = exit.cause.reasons.flatMap((reason) =>
         Cause.isDieReason(reason) === true ? [reason.defect] : [],
       )
-      expect(defects).toEqual(expect.arrayContaining([materializeFailure, companionDefect]))
+      expect(errors).toEqual([materializeFailure])
+      expect(defects).toEqual([companionDefect])
     }
 
     const beforeLocalPushCommit = Effect.gen(function* () {
@@ -954,7 +956,7 @@ class TestContext extends Context.Service<
     /** Equivalent to the ClientSessionSyncProcessor calling `.push` on the LeaderThreadCtx */
     pushEncoded: (
       ...events: ReadonlyArray<LiveStoreEvent.Global.Encoded>
-    ) => Effect.Effect<void, RejectedPushError, Scope.Scope | LeaderThreadCtx>
+    ) => Effect.Effect<void, RejectedPushError | MaterializeError, Scope.Scope | LeaderThreadCtx>
   }
 >()('TestContext') {}
 
