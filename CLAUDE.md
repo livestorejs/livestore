@@ -8,7 +8,7 @@ This repository uses [`devenv`](https://devenv.sh) for development environment m
 
 - If tools aren't directly in `$PATH`, enter the dev environment first with `devenv shell`.
 
-- For dependency management see ./contributor-docs/dependency-management.md
+- For dependency management see ./context/03-delivery/02-release/dependency-management.md
 
 ### `mono` CLI
 
