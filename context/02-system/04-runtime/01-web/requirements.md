@@ -4,18 +4,19 @@ The browser realization of the runtime contract: worker-based topology with
 OPFS persistence and multi-tab support. Refines
 [../requirements.md](../requirements.md) (`LS.SYS.RT-*`).
 
+## Context
+
+Child nodes own the three mechanics:
+[01-persistence](./01-persistence/requirements.md) (`LS.SYS.RT.WEB.PERSIST`),
+[02-topology](./02-topology/requirements.md) (`LS.SYS.RT.WEB.TOPO`),
+[03-leadership](./03-leadership/requirements.md) (`LS.SYS.RT.WEB.LEAD`).
+
+Re-homed 2026-07-16: `LS.SYS.RT.WEB-R01` → `LS.SYS.RT.WEB.TOPO-R01`,
+`-R02` → `LS.SYS.RT.WEB.LEAD-R01`, `-R03` → `LS.SYS.RT.WEB.PERSIST-R01`
+(numbers retired).
+
 ## Requirements
 
-- **LS.SYS.RT.WEB-R01 Worker isolation:** The leader runs in a dedicated leader
-  worker; a shared worker mediates between tabs and the leader so the main
-  thread never blocks on persistence or sync. `refines: LS.SYS.RT-R01`
-- **LS.SYS.RT.WEB-R02 Multi-tab clients:** Every tab is a client session of the
-  same client; leadership and shared-worker liveness are coordinated through
-  the Web Locks API so tab close/crash triggers handover.
-  `refines: LS.SYS.RT-R04`
-- **LS.SYS.RT.WEB-R03 OPFS persistence with fallback:** Eventlog and state
-  persist to OPFS; when OPFS is unavailable (e.g. private browsing) the adapter
-  degrades to in-memory with an explicit boot warning. `refines: LS.SYS.RT-R07`
 - **LS.SYS.RT.WEB-R04 Deployment variants:** Besides the worker topology, the
   adapter offers single-tab and in-memory variants with the same session
   contract, so apps can trade multi-tab support for setup simplicity.

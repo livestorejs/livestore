@@ -41,7 +41,9 @@ context/                     root: LiveStore the product (this node)
     04-runtime/              leader ⇄ client-session topology, adapter
                              contract + realizations, proxy contract,
                              persistence substrate (SQLite builds)
-      01-web/  02-cloudflare/  platform realizations
+      01-web/                browser realization
+        01-persistence/  02-topology/  03-leadership/
+      02-cloudflare/         Durable Object realization
       03-webmesh/            transport: channel kinds, edges, ack semantics
     05-store/                app-facing Store, commit path, lifecycle,
                              multi-store/StoreRegistry
@@ -109,7 +111,7 @@ questions `DQ`, deltas `DELTA`, decisions by number):
 | `LS.SYS.EVT-*` | `02-system/01-event-model/` |
 | `LS.SYS.STATE-*` / `LS.SYS.STATE.SQLITE-*`, `LS.SYS.STATE.SQLITE.SM-*` | `02-system/02-state/` and children |
 | `LS.SYS.SYNC-*` / `LS.SYS.SYNC.SS-*`, `LS.SYS.SYNC.PROC-*`, `LS.SYS.SYNC.CF-*` | `02-system/03-sync/` and children |
-| `LS.SYS.RT-*` / `LS.SYS.RT.WEB-*`, `LS.SYS.RT.CF-*`, `LS.SYS.RT.MESH-*` | `02-system/04-runtime/` and children |
+| `LS.SYS.RT-*` / `LS.SYS.RT.WEB-*`, `LS.SYS.RT.CF-*`, `LS.SYS.RT.MESH-*`, `LS.SYS.RT.WEB.PERSIST-*`, `LS.SYS.RT.WEB.TOPO-*`, `LS.SYS.RT.WEB.LEAD-*` | `02-system/04-runtime/` and children |
 | `LS.SYS.STORE-*` / `LS.SYS.STORE.RX-*` | `02-system/05-store/` and children |
 | `LS.SYS.OBS-*` | `02-system/06-observability/` |
 | `LS.SYS.DT-*` | `02-system/07-devtools/` |
