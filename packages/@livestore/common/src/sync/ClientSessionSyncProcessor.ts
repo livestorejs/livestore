@@ -2,14 +2,15 @@
 import { LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
 import {
   Cause,
+  Deferred,
   Effect,
   Exit,
   Filter,
-  FiberHandle,
+  Fiber,
   Option,
   Queue,
   Schema,
-  type Scope,
+  Scope,
   Stream,
   Subscribable,
   TxQueue,
@@ -17,7 +18,7 @@ import {
 
 import type { ClientSession } from '../adapter-types.ts'
 import type { MaterializeError } from '../errors.ts'
-import { isRejectedPushError, type RejectedPushError } from '../leader-thread/RejectedPushError.ts'
+import { isRejectedPushError } from '../leader-thread/RejectedPushError.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
@@ -81,11 +82,6 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 }): Effect.fn.Return<ClientSessionSyncProcessor> {
   const eventSchema = LiveStoreEvent.Client.makeSchemaMemo(schema)
 
-  const simSleep = <TKey extends keyof ClientSessionSyncProcessorSimulationParams>(
-    key: TKey,
-    key2: keyof ClientSessionSyncProcessorSimulationParams[TKey],
-  ) => Effect.sleep((params.simulation?.[key]?.[key2] ?? 0) as number)
-
   const syncStateRef = {
     // The initial state is identical to the leader's initial state
     current: new SyncState.SyncState({
@@ -101,8 +97,38 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   const isClientOnlyEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
-  /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
-  const leaderPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta, Cause.Done>()
+  type EpochResult = 'drained' | 'fatal' | { readonly _tag: 'replaced'; readonly successor: PushEpoch }
+  type PushEpoch = {
+    readonly queue: TxQueue.TxQueue<LiveStoreEvent.Client.EncodedWithMeta, Cause.Done>
+    readonly done: Deferred.Deferred<EpochResult>
+    pullCompletion: Deferred.Deferred<void>
+    pullAdmissionOpen: boolean
+    fiber?: Fiber.Fiber<void, never>
+    status: 'accepting' | 'awaiting-rebase'
+  }
+
+  const makePushEpoch = Effect.fnUntraced(function* (): Effect.fn.Return<PushEpoch> {
+    const pullCompletion = yield* Deferred.make<void>()
+    yield* Deferred.succeed(pullCompletion, undefined)
+    return {
+      queue: yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta, Cause.Done>(),
+      done: yield* Deferred.make<EpochResult>(),
+      pullCompletion,
+      pullAdmissionOpen: true,
+      status: 'accepting',
+    }
+  })
+
+  let currentEpoch = yield* makePushEpoch()
+  let lifecycle: 'open' | 'closing' | 'drained' | 'aborting' | 'closed' = 'open'
+  let admissionOpen = true
+  let terminalCause: Cause.Cause<never> | undefined
+  let upstreamRevision = 0
+  const closingStarted = yield* Deferred.make<void>()
+  const pullAdmissionClosed = yield* Deferred.make<void>()
+  const beforePullHandoffDelay = params.simulation?.pull?.before_pull_handoff ?? 0
+  const beforePullHandoffQueue =
+    SIMULATION_ENABLED === true && beforePullHandoffDelay > 0 ? yield* Queue.unbounded<void>() : undefined
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.fn('client-session-sync-processor:boot')(function* () {
     if (
@@ -123,141 +149,279 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       )
     }
 
-    const leaderPushingFiberHandle = yield* FiberHandle.make<void, never>()
-    let drainRejection: RejectedPushError | undefined
+    // Pull and push workers deliberately outlive the outer scope while a successful close drains. A rejected push
+    // needs the still-live pull stream to observe the leader head, rebase the canonical pending list, and retry it.
+    const runtimeScope = yield* Scope.make()
 
-    const backgroundLeaderPushing: Effect.Effect<void> = Effect.gen(function* () {
-      while (true) {
-        const batch = yield* TxQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize).pipe(
-          Effect.catchIf(Cause.isDone, () => Effect.succeed(undefined)),
-        )
-        if (batch === undefined) return
+    const requestShutdown = (exit: Parameters<ClientSession['shutdown']>[0]) =>
+      clientSession.shutdown(exit).pipe(Effect.forkDetach, Effect.asVoid)
 
-        yield* clientSession.leaderThread.events.push(batch).pipe(
-          Effect.catchIf(isRejectedPushError, (error) => {
-            debugInfo.rejectCount++
-            return Effect.gen(function* () {
-              const wasOpen = yield* Effect.tx(
-                Effect.gen(function* () {
-                  const wasOpen = yield* TxQueue.isOpen(leaderPushQueue)
-                  yield* TxQueue.clear(leaderPushQueue)
-                  return wasOpen
-                }),
-              )
-
-              // Normal rejection recovery relies on pull rebasing and repopulating the open queue. Pull has already
-              // stopped once graceful scope teardown closes the queue, so that path must fail rather than report a
-              // successful durable drain after discarding pending events.
-              if (wasOpen === false) drainRejection = error
-            })
-          }),
-        )
+    /** Atomically transfers delivery ownership; canonical pending is the only source used to seed a successor. */
+    const installEpoch = (previousEpoch: PushEpoch, successorEpoch: PushEpoch): boolean => {
+      if (
+        terminalCause !== undefined ||
+        currentEpoch !== previousEpoch ||
+        lifecycle === 'drained' ||
+        lifecycle === 'aborting' ||
+        lifecycle === 'closed'
+      ) {
+        return false
       }
-    }).pipe(
-      Effect.interruptible,
-      Effect.tapCauseLogPretty,
-      // The worker must exit before shutdown can await it, otherwise a fatal push creates a self-deadlock.
-      Effect.catchCause((cause) =>
-        clientSession.shutdown(Exit.failCause(cause)).pipe(Effect.forkDetach, Effect.asVoid),
-      ),
-    )
+      // Delivery ownership includes the exact pull lease active on the previous generation. This matters both for
+      // pull-driven handoff and revision-mismatch recovery installed while that pull is still before its handoff.
+      successorEpoch.pullCompletion = previousEpoch.pullCompletion
+      currentEpoch = successorEpoch
+      const rejected = Effect.runSync(TxQueue.offerAll(successorEpoch.queue, syncStateRef.current.pending))
+      if (rejected.length > 0) throw new Error('Fresh leader push epoch rejected its initial pending events')
+      if (lifecycle === 'closing') Effect.runSync(TxQueue.end(successorEpoch.queue))
+      Effect.runSync(Deferred.succeed(previousEpoch.done, { _tag: 'replaced', successor: successorEpoch }))
+      return true
+    }
 
-    yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+    const terminate = (cause: Cause.Cause<never>, exit: Parameters<ClientSession['shutdown']>[0]) =>
+      Effect.gen(function* () {
+        const targetEpoch = yield* Effect.sync(() => {
+          if (terminalCause !== undefined) return undefined
+          terminalCause = cause
+          admissionOpen = false
+          lifecycle = 'aborting'
+          return currentEpoch
+        })
+        if (targetEpoch === undefined) return
 
-    // Public Store commits finish synchronously before shutdown closes the Store to new commits. Ending the queue
-    // therefore happens after its final producer and lets the sole push worker drain every buffered batch. This
-    // finalizer is registered after the FiberHandle so the handle only tears down after the graceful drain.
+        // Fork the external shutdown before waking teardown through the epoch terminal result.
+        yield* requestShutdown(exit)
+        yield* Deferred.succeed(targetEpoch.done, 'fatal')
+      }).pipe(Effect.uninterruptible)
+
+    let startEpoch: (epoch: PushEpoch) => Effect.Effect<void>
+    const runEpoch = (epoch: PushEpoch): Effect.Effect<void> =>
+      Effect.gen(function* () {
+        while (true) {
+          const batch = yield* TxQueue.takeBetween(epoch.queue, 1, params.leaderPushBatchSize).pipe(
+            Effect.catchIf(Cause.isDone, () => Effect.succeed(undefined)),
+          )
+          if (batch === undefined) {
+            while (true) {
+              const activePull = yield* Effect.sync(() => {
+                if (currentEpoch !== epoch || terminalCause !== undefined) return undefined
+                if (lifecycle === 'closing') {
+                  // Queue exhaustion is the pull cutoff for this epoch: an already-admitted pull may still hand off
+                  // to a successor, but an endlessly productive upstream cannot keep moving the drain barrier.
+                  epoch.pullAdmissionOpen = false
+                  Effect.runSync(Deferred.succeed(pullAdmissionClosed, undefined))
+                  if (Effect.runSync(Deferred.isDone(epoch.pullCompletion)) === false) return epoch.pullCompletion
+                  lifecycle = 'drained'
+                }
+                Effect.runSync(Deferred.succeed(epoch.done, 'drained'))
+                return undefined
+              })
+              if (activePull === undefined) break
+              yield* Deferred.await(activePull)
+            }
+            return
+          }
+
+          const attemptRevision = upstreamRevision
+          const accepted = yield* clientSession.leaderThread.events.push(batch).pipe(
+            Effect.as(true),
+            Effect.catchIf(isRejectedPushError, () =>
+              Effect.gen(function* () {
+                // A response from an epoch already replaced by pull must not clear or otherwise mutate its successor.
+                if (currentEpoch === epoch && lifecycle !== 'aborting' && lifecycle !== 'closed') {
+                  if (attemptRevision === upstreamRevision) {
+                    epoch.status = 'awaiting-rebase'
+                    yield* TxQueue.clear(epoch.queue)
+                  } else {
+                    // Pull already consumed the progress that explains this rejection. Rebuild immediately from the
+                    // latest canonical pending state instead of waiting forever for another upstream payload.
+                    const successorEpoch = yield* Effect.sync(() => {
+                      if (currentEpoch !== epoch || terminalCause !== undefined) return undefined
+                      epoch.status = 'awaiting-rebase'
+                      const successor = Effect.runSync(makePushEpoch())
+                      return installEpoch(epoch, successor) === true ? successor : undefined
+                    })
+                    if (successorEpoch !== undefined) yield* startEpoch(successorEpoch)
+                  }
+                }
+                debugInfo.rejectCount++
+                return false
+              }),
+            ),
+          )
+          if (accepted === false) return
+        }
+      }).pipe(
+        Effect.catchCause((cause) =>
+          Cause.hasInterruptsOnly(cause) === true &&
+          (currentEpoch !== epoch || lifecycle === 'aborting' || lifecycle === 'closed')
+            ? Effect.void
+            : terminate(cause, Exit.failCause(cause)),
+        ),
+      )
+
+    startEpoch = (epoch) =>
+      Effect.gen(function* () {
+        epoch.fiber = yield* runEpoch(epoch).pipe(Effect.forkIn(runtimeScope))
+      })
+
+    const awaitGracefulDrain = Effect.fnUntraced(function* (epoch: PushEpoch): Effect.fn.Return<void> {
+      const result = yield* Deferred.await(epoch.done)
+      if (terminalCause !== undefined) return yield* Effect.failCause(terminalCause)
+      if (result === 'drained') return
+      if (result === 'fatal') return yield* Effect.die('Fatal epoch result published without its terminal cause')
+      yield* awaitGracefulDrain(result.successor)
+    })
+
+    const handlePullCause = (cause: Cause.Cause<MaterializeError>, pullCompletion?: Deferred.Deferred<void>) =>
+      Cause.hasInterruptsOnly(cause) === true && (lifecycle === 'aborting' || lifecycle === 'closed')
+        ? pullCompletion === undefined
+          ? Effect.void
+          : Deferred.succeed(pullCompletion, undefined).pipe(Effect.asVoid)
+        : terminate(Cause.die(Cause.squash(cause)), Exit.failCause(cause)).pipe(
+            pullCompletion === undefined ? Effect.asVoid : Effect.andThen(Deferred.succeed(pullCompletion, undefined)),
+          )
+
+    // Register ownership before starting either child so every boot exit closes the manually managed runtime scope.
     yield* Effect.addFinalizer((exit) =>
       Exit.isSuccess(exit) === true
         ? Effect.gen(function* () {
-            yield* TxQueue.end(leaderPushQueue)
-            yield* FiberHandle.awaitEmpty(leaderPushingFiberHandle)
-            if (drainRejection !== undefined) return yield* Effect.die(drainRejection)
-          })
+            yield* Effect.sync(() => {
+              admissionOpen = false
+              lifecycle = 'closing'
+              Effect.runSync(Deferred.succeed(closingStarted, undefined))
+            })
+            if (terminalCause !== undefined) return yield* Effect.failCause(terminalCause)
+            yield* TxQueue.end(currentEpoch.queue)
+            yield* awaitGracefulDrain(currentEpoch)
+          }).pipe(
+            Effect.ensuring(
+              Effect.sync(() => {
+                lifecycle = 'closed'
+              }).pipe(Effect.andThen(Scope.close(runtimeScope, Exit.void))),
+            ),
+          )
         : Effect.gen(function* () {
-            yield* TxQueue.end(leaderPushQueue)
-            yield* FiberHandle.clear(leaderPushingFiberHandle)
+            yield* Effect.sync(() => {
+              admissionOpen = false
+              lifecycle = 'aborting'
+            })
+            if (currentEpoch.fiber !== undefined) yield* Fiber.interrupt(currentEpoch.fiber)
+            yield* Scope.close(runtimeScope, exit)
+            lifecycle = 'closed'
           }),
     )
+
+    yield* startEpoch(currentEpoch)
 
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
     yield* Stream.suspend(() =>
       clientSession.leaderThread.events.pull({ cursor: syncStateRef.current.upstreamHead }),
     ).pipe(
-      Stream.tap(({ payload }) =>
-        Effect.gen(function* () {
+      Stream.tap(({ payload }) => {
+        // This variable belongs to one tap invocation; failure cleanup must complete that exact epoch lease.
+        let claimedPullCompletion: Deferred.Deferred<void> | undefined
+        return Effect.gen(function* () {
+          const pullClaim = yield* Effect.sync(() => {
+            const epoch = currentEpoch
+            if (
+              terminalCause !== undefined ||
+              epoch.pullAdmissionOpen === false ||
+              (lifecycle !== 'open' && lifecycle !== 'closing')
+            ) {
+              return undefined
+            }
+            const completion = Effect.runSync(Deferred.make<void>())
+            epoch.pullCompletion = completion
+            return { completion, epoch }
+          })
+          if (pullClaim === undefined) return
+          const pullCompletion = pullClaim.completion
+          claimedPullCompletion = pullCompletion
           // yield* Effect.logDebug('ClientSessionSyncProcessor:pull', payload)
 
           if (clientSession.devtools.enabled === true) {
             yield* clientSession.devtools.pullLatch.await
           }
 
-          const mergeResult = yield* SyncState.merge({
-            syncState: syncStateRef.current,
-            payload,
-            isClientOnlyEvent,
-            isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-          }).pipe(
-            Effect.filterOrElse(
-              (r) => r._tag !== 'reject',
-              () => Effect.die(new Error('Unexpected reject in client-session-sync-processor')),
-            ),
-          )
+          // The ownership handoff below is synchronous; this barrier deterministically exposes its pre-state.
+          if (beforePullHandoffQueue !== undefined) {
+            yield* Queue.offer(beforePullHandoffQueue, undefined)
+            yield* Effect.sleep(beforePullHandoffDelay)
+          }
 
-          if (mergeResult._tag === 'rebase') {
-            // Publishing the rebased state, replacing the queue, and restarting its sole worker form one ownership
-            // transition. Finish that short transition before honoring teardown; leader pushes remain interruptible.
-            yield* Effect.gen(function* () {
-              syncStateRef.current = mergeResult.newSyncState
+          let replacedEpoch: PushEpoch | undefined
+          let successorEpoch: PushEpoch | undefined
+          const mergeResult = yield* Effect.sync(() => {
+            // A pull claimed by a replaced epoch follows ownership to the current generation.
+            currentEpoch.pullCompletion = pullCompletion
+            upstreamRevision++
+            // `push` uses the same non-suspending admission discipline, so recomputing and publishing here forms a
+            // linearizable transition even when the preview above raced a local commit.
+            const currentMergeResult = Effect.runSync(
+              SyncState.merge({
+                syncState: syncStateRef.current,
+                payload,
+                isClientOnlyEvent,
+                isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+              }).pipe(
+                Effect.filterOrElse(
+                  (r) => r._tag !== 'reject',
+                  () => Effect.die(new Error('Unexpected reject in client-session-sync-processor')),
+                ),
+              ),
+            )
 
-              yield* Effect.spanEvent('merge:pull:rebase', {
-                payloadTag: payload._tag,
-                ...(TRACE_VERBOSE === true ? { payload: jsonStringify(payload) } : {}),
-                newEventsCount: mergeResult.newEvents.length,
-                rollbackCount: mergeResult.rollbackEvents.length,
-                ...(TRACE_VERBOSE === true ? { res: jsonStringify(mergeResult) } : {}),
-              })
+            if (currentMergeResult._tag === 'rebase' || currentEpoch.status === 'awaiting-rebase') {
+              const previousEpoch = currentEpoch
+              const candidateEpoch = Effect.runSync(makePushEpoch())
 
-              debugInfo.rebaseCount++
-
-              if (SIMULATION_ENABLED === true) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
-
-              yield* FiberHandle.clear(leaderPushingFiberHandle)
-
-              if (SIMULATION_ENABLED === true) yield* simSleep('pull', '2_before_leader_push_queue_clear')
-
-              // Reset the leader push queue since we're rebasing and will push again
-              yield* TxQueue.clear(leaderPushQueue)
-
-              if (SIMULATION_ENABLED === true) yield* simSleep('pull', '3_before_rebase_rollback')
-
-              if (LS_DEV === true) {
-                yield* Effect.logDebug(
-                  'merge:pull:rebase: rollback',
-                  mergeResult.rollbackEvents.length,
-                  ...mergeResult.rollbackEvents.slice(0, 10).map((_) => _.toJSON()),
-                )
-              }
-
-              for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
-                const event = mergeResult.rollbackEvents[i]!
-                if (event.meta.sessionChangeset._tag !== 'no-op' && event.meta.sessionChangeset._tag !== 'unset') {
-                  rollback(event.meta.sessionChangeset.data)
-                  event.meta.sessionChangeset = { _tag: 'unset' }
+              if (currentMergeResult._tag === 'rebase') {
+                for (let i = currentMergeResult.rollbackEvents.length - 1; i >= 0; i--) {
+                  const event = currentMergeResult.rollbackEvents[i]!
+                  if (event.meta.sessionChangeset._tag !== 'no-op' && event.meta.sessionChangeset._tag !== 'unset') {
+                    rollback(event.meta.sessionChangeset.data)
+                    event.meta.sessionChangeset = { _tag: 'unset' }
+                  }
                 }
               }
 
-              if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
+              syncStateRef.current = currentMergeResult.newSyncState
+              if (installEpoch(previousEpoch, candidateEpoch) === true) {
+                successorEpoch = candidateEpoch
+                replacedEpoch = previousEpoch
+              }
+            } else {
+              syncStateRef.current = currentMergeResult.newSyncState
+            }
 
-              yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
+            return currentMergeResult
+          })
 
-              if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
+          if (successorEpoch !== undefined) {
+            if (replacedEpoch?.fiber !== undefined) yield* Fiber.interrupt(replacedEpoch.fiber)
+            yield* startEpoch(successorEpoch)
+          }
 
-              yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
-            }).pipe(Effect.uninterruptible)
+          if (mergeResult._tag === 'rebase') {
+            yield* Effect.spanEvent('merge:pull:rebase', {
+              payloadTag: payload._tag,
+              ...(TRACE_VERBOSE === true ? { payload: jsonStringify(payload) } : {}),
+              newEventsCount: mergeResult.newEvents.length,
+              rollbackCount: mergeResult.rollbackEvents.length,
+              ...(TRACE_VERBOSE === true ? { res: jsonStringify(mergeResult) } : {}),
+            })
+
+            debugInfo.rebaseCount++
+
+            if (LS_DEV === true) {
+              yield* Effect.logDebug(
+                'merge:pull:rebase: rollback',
+                mergeResult.rollbackEvents.length,
+                ...mergeResult.rollbackEvents.slice(0, 10).map((_) => _.toJSON()),
+              )
+            }
           } else {
-            syncStateRef.current = mergeResult.newSyncState
-
             yield* Effect.spanEvent('merge:pull:advance', {
               payloadTag: payload._tag,
               ...(TRACE_VERBOSE === true ? { payload: jsonStringify(payload) } : {}),
@@ -271,6 +435,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           if (mergeResult.newEvents.length === 0) {
             // If there are no new events, we need to update the sync state as well
             yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
+            yield* Deferred.succeed(pullCompletion, undefined)
             return
           }
 
@@ -296,17 +461,21 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
           // We're only triggering the sync state update after all events have been materialized
           yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
+          yield* Deferred.succeed(pullCompletion, undefined)
         }).pipe(
           Effect.tapCauseLogPretty,
-          Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
-        ),
-      ),
+          Effect.catchCause((cause) =>
+            handlePullCause(cause, claimedPullCompletion).pipe(Effect.andThen(Effect.failCause(cause))),
+          ),
+        )
+      }),
       Stream.runDrain,
       Effect.forever, // NOTE Whenever the leader changes, we need to re-start the stream
       Effect.interruptible,
       Effect.withSpan('client-session-sync-processor:pull'),
       Effect.tapCauseLogPretty,
-      Effect.forkScoped,
+      Effect.catchCause(handlePullCause),
+      Effect.forkIn(runtimeScope),
     )
   })()
 
@@ -362,20 +531,35 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
   const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(
     function* (encodedEvents) {
-      if ((yield* TxQueue.isOpen(leaderPushQueue)) === false) {
-        return yield* Effect.die('Cannot push events after the client session sync processor starts shutting down')
-      }
+      const mergeResult = yield* Effect.sync(() => {
+        if (admissionOpen === false) {
+          throw new Error('Cannot push events after the client session sync processor starts shutting down')
+        }
 
-      const mergeResult = yield* SyncState.merge({
-        syncState: syncStateRef.current,
-        payload: { _tag: 'local-push', newEvents: encodedEvents },
-        isClientOnlyEvent,
-        isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-      }).pipe(
-        Effect.filterMapOrElse(Filter.tagged<typeof SyncState.MergeResult.Type>()('advance'), () =>
-          Effect.die(new Error('Expected advance from local-push merge')),
-        ),
-      )
+        const currentMergeResult = Effect.runSync(
+          SyncState.merge({
+            syncState: syncStateRef.current,
+            payload: { _tag: 'local-push', newEvents: encodedEvents },
+            isClientOnlyEvent,
+            isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+          }).pipe(
+            Effect.filterMapOrElse(Filter.tagged<typeof SyncState.MergeResult.Type>()('advance'), () =>
+              Effect.die(new Error('Expected advance from local-push merge')),
+            ),
+          ),
+        )
+
+        syncStateRef.current = currentMergeResult.newSyncState
+        // While rejection recovery waits for pull, canonical pending owns new commits. The replacement epoch is
+        // seeded from that complete list after rebase, so offering them to the rejected epoch would be both redundant
+        // and vulnerable to a stale worker response.
+        if (currentEpoch.status === 'accepting') {
+          const rejectedEvents = Effect.runSync(TxQueue.offerAll(currentEpoch.queue, currentMergeResult.newEvents))
+          if (rejectedEvents.length > 0) throw new Error('Leader push queue closed while accepting events')
+        }
+
+        return currentMergeResult
+      })
 
       yield* Effect.annotateCurrentSpan({
         batchSize: encodedEvents.length,
@@ -387,12 +571,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
       })
 
-      syncStateRef.current = mergeResult.newSyncState
       yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
-      const rejectedEvents = yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
-      if (rejectedEvents.length > 0) {
-        return yield* Effect.die('Leader push queue closed while accepting events')
-      }
     },
   )
 
@@ -416,7 +595,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         Effect.gen(function* () {
           console.log('debugInfo', debugInfo)
           console.log('syncState', syncStateRef.current)
-          const pushQueueItems = yield* snapshotTxQueue(leaderPushQueue).pipe(
+          const pushQueueItems = yield* snapshotTxQueue(currentEpoch.queue).pipe(
             Effect.catchIf(Cause.isDone, () => Effect.succeed([])),
           )
           console.log('pushQueueSize', pushQueueItems.length)
@@ -426,6 +605,9 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           )
         }).pipe(Effect.runSync),
       debugInfo: () => debugInfo,
+      awaitClosing: Deferred.await(closingStarted),
+      awaitPullAdmissionClosed: Deferred.await(pullAdmissionClosed),
+      awaitBeforePullHandoff: beforePullHandoffQueue === undefined ? Effect.never : Queue.take(beforePullHandoffQueue),
     },
   } satisfies ClientSessionSyncProcessor
 })
@@ -460,7 +642,14 @@ export interface ClientSessionSyncProcessor {
     debugInfo: () => {
       rebaseCount: number
       advanceCount: number
+      rejectCount: number
     }
+    /** Diagnostic synchronization point completed by the atomic graceful-close transition. */
+    awaitClosing: Effect.Effect<void>
+    /** Diagnostic synchronization point completed when teardown stops admitting upstream payloads. */
+    awaitPullAdmissionClosed: Effect.Effect<void>
+    /** Diagnostic synchronization point completed immediately before each simulated pull handoff. */
+    awaitBeforePullHandoff: Effect.Effect<void>
   }
 }
 
@@ -470,11 +659,7 @@ const SIMULATION_ENABLED = true
 // Warning: High values for the simulation params can lead to very long test runs since those get multiplied with the number of events
 export const ClientSessionSyncProcessorSimulationParams = Schema.Struct({
   pull: Schema.Struct({
-    '1_before_leader_push_fiber_interrupt': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
-    '2_before_leader_push_queue_clear': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
-    '3_before_rebase_rollback': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
-    '4_before_leader_push_queue_offer': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
-    '5_before_leader_push_fiber_run': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
+    before_pull_handoff: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
   }),
 })
 type ClientSessionSyncProcessorSimulationParams = typeof ClientSessionSyncProcessorSimulationParams.Type
