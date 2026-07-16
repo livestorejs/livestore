@@ -17,7 +17,7 @@ import {
 
 import type { ClientSession } from '../adapter-types.ts'
 import type { MaterializeError } from '../errors.ts'
-import { isRejectedPushError } from '../leader-thread/RejectedPushError.ts'
+import { isRejectedPushError, type RejectedPushError } from '../leader-thread/RejectedPushError.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
@@ -124,6 +124,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     }
 
     const leaderPushingFiberHandle = yield* FiberHandle.make<void, never>()
+    let drainRejection: RejectedPushError | undefined
 
     const backgroundLeaderPushing: Effect.Effect<void> = Effect.gen(function* () {
       while (true) {
@@ -133,9 +134,22 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         if (batch === undefined) return
 
         yield* clientSession.leaderThread.events.push(batch).pipe(
-          Effect.catchIf(isRejectedPushError, () => {
+          Effect.catchIf(isRejectedPushError, (error) => {
             debugInfo.rejectCount++
-            return TxQueue.clear(leaderPushQueue)
+            return Effect.gen(function* () {
+              const wasOpen = yield* Effect.tx(
+                Effect.gen(function* () {
+                  const wasOpen = yield* TxQueue.isOpen(leaderPushQueue)
+                  yield* TxQueue.clear(leaderPushQueue)
+                  return wasOpen
+                }),
+              )
+
+              // Normal rejection recovery relies on pull rebasing and repopulating the open queue. Pull has already
+              // stopped once graceful scope teardown closes the queue, so that path must fail rather than report a
+              // successful durable drain after discarding pending events.
+              if (wasOpen === false) drainRejection = error
+            })
           }),
         )
       }
@@ -158,6 +172,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         ? Effect.gen(function* () {
             yield* TxQueue.end(leaderPushQueue)
             yield* FiberHandle.awaitEmpty(leaderPushingFiberHandle)
+            if (drainRejection !== undefined) return yield* Effect.die(drainRejection)
           })
         : Effect.gen(function* () {
             yield* TxQueue.end(leaderPushQueue)
