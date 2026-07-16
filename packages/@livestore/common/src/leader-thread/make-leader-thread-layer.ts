@@ -18,6 +18,7 @@ import {
 import {
   type BootStatus,
   type MakeSqliteDb,
+  type MaterializeError,
   type MaterializerHashMismatchError,
   type SqliteDb,
   UnknownError,
@@ -67,6 +68,8 @@ export interface MakeLeaderThreadLayerParams {
     syncProcessor?: {
       delays?: {
         localPushProcessing?: Effect.Effect<void>
+        beforeLocalPushCommit?: Effect.Effect<void, MaterializeError>
+        afterLocalPushOffer?: Effect.Effect<void>
       }
     }
   }
