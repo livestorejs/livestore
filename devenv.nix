@@ -31,13 +31,26 @@ let
   # NOTE: Using pnpm temporarily due to bun bugs. Plan to switch back once fixed.
   # See: effect-utils/context/workarounds/bun-issues.md
   pnpmPackages = [
+    "."
+    "docs"
+    "docs/src/content/_assets/code"
+    # examples
+    "examples/cloudflare-todomvc"
+    "examples/tutorial-starter"
+    "examples/web-email-client"
+    "examples/web-linearlite"
+    "examples/web-todomvc"
+    "examples/web-todomvc-script"
+    "examples/web-todomvc-sync-cf"
     # packages/@livestore
     "packages/@livestore/adapter-cloudflare"
     "packages/@livestore/adapter-web"
     "packages/@livestore/common"
     "packages/@livestore/common-cf"
     "packages/@livestore/effect-playwright"
+    "packages/@livestore/framework-toolkit"
     "packages/@livestore/livestore"
+    "packages/@livestore/peer-deps"
     "packages/@livestore/react"
     "packages/@livestore/sqlite-wasm"
     "packages/@livestore/sync-cf"
@@ -48,15 +61,16 @@ let
     # packages/@local
     "packages/@local/astro-tldraw"
     "packages/@local/astro-twoslash-code"
+    "packages/@local/astro-twoslash-code/example"
     "packages/@local/shared"
     # tests
     "tests/integration"
+    "tests/package-common"
     "tests/perf"
     "tests/perf-eventlog"
+    "tests/sync-provider"
     "tests/wa-sqlite"
     # other
-    "docs"
-    "examples"
     "scripts"
   ];
 
