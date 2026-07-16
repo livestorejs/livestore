@@ -1,5 +1,31 @@
 # Ruleset reconciliation — Open questions
 
+## OQ4 — Absorb this subsystem into the hierarchical intent layer (#1406)
+
+This `context/repo-ruleset-sync/` VRS uses the pre-hierarchy flat convention
+(non-hidden `decisions/`/`reference/`, no `## Status` sections, no `LS.*` IDs).
+PR livestorejs/livestore#1406 establishes the canonical hierarchical intent
+layer and **absorbs** the sibling flat roots (`repo-architecture`,
+`devtools-artifact-release`). This subsystem must be absorbed the same way.
+
+- **Target:** `context/03-delivery/02-release/` (release governance).
+- **Capture:** (1) the ruleset auto-reconcile design + decision (from
+  [spec.md](./spec.md), [decisions/0001](./decisions/0001-github-app-definition-as-iac.md),
+  [reference](./reference/github-app-platform-constraints.md)); (2) [OQ1](#oq1--decouple-snapshot-publishing-from-the-whole-ci-conclusion)
+  as a requirement + `.delta` (snapshot publishing must not be gated on the
+  whole `ci` conclusion — currently violated); (3) the manual App-provisioning
+  runbook (from spec.md) next to `release-workflows-runbook.md`.
+- **Then:** delete this directory, add the new namespace to `context/spec.md`'s
+  ID Scheme table, note the absorption in `.delta/DELTA-001`.
+- **Forcing function:** this directory intentionally does not satisfy #1406's
+  intent-layer enforcement suite, so once that suite reaches `main` it will fail
+  until this subsystem is absorbed — do not "conform in place", absorb.
+
+Detail + coordination: livestorejs/livestore#1406 comment (issuecomment-4992697046).
+
+Status: **open** — owned by the #1406 (VRS) workstream; sequencing: #1424 merges
+before #1406.
+
 ## OQ1 — Decouple snapshot publishing from the whole `ci` conclusion
 
 Removing the hard ruleset drift-gate (spec: Gate removal) stops *this* governance
