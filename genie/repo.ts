@@ -106,6 +106,17 @@ export const packageTsconfigCompilerOptions = {
   ...effectUtilsPackageTsconfigCompilerOptions,
   rootDir: './src',
   tsBuildInfoFile: './dist/.tsbuildinfo',
+  // LIVE-MIGRATION BRIDGE tsgo-strict-gate — DELETE at contraction — see live-migrations registry
+  // Advisory gate: Effect warnings and suggestions remain visible without failing the exit code.
+  plugins: [
+    {
+      ...baseTsconfigCompilerOptions.plugins[0],
+      ignoreEffectWarningsInTscExitCode: true,
+      ignoreEffectSuggestionsInTscExitCode: true,
+      ignoreEffectErrorsInTscExitCode: false,
+    },
+  ],
+  // LIVE-MIGRATION END tsgo-strict-gate
 } as const
 
 /**
