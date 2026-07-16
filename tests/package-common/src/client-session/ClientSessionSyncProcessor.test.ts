@@ -36,7 +36,7 @@ import {
   References,
   Result,
   Schema,
-  type Scope,
+  Scope,
   Stream,
   Subscribable,
   SubscriptionRef,
@@ -351,6 +351,112 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       expect(res).toMatchObject([
         { id: 'client_0', text: 't1', completed: false, deletedAt: null },
         { id: 'backend_0', text: 't2', completed: false, deletedAt: null },
+      ])
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.live('flushes in-flight and queued leader pushes serially before shutdown', (test) =>
+    Effect.gen(function* () {
+      const firstPushStarted = yield* Deferred.make<void>()
+      const releaseFirstPush = yield* Deferred.make<void>()
+      const shutdownStarted = yield* Deferred.make<void>()
+      const persistedBatches: ReadonlyArray<LiveStoreEvent.Client.Encoded>[] = []
+      let isFirstPush = true
+      let activePushCount = 0
+      let maxActivePushCount = 0
+
+      const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
+      const leaderThread: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy = {
+        events: {
+          pull: () => Stream.empty,
+          push: (batch) =>
+            Effect.gen(function* () {
+              activePushCount++
+              maxActivePushCount = Math.max(maxActivePushCount, activePushCount)
+
+              if (isFirstPush === true) {
+                isFirstPush = false
+                yield* Deferred.succeed(firstPushStarted, undefined)
+                yield* Deferred.await(releaseFirstPush)
+              }
+
+              persistedBatches.push(batch)
+              activePushCount--
+            }),
+          stream: () => Stream.empty,
+        },
+        initialState: {
+          leaderHead: EventSequenceNumber.Client.ROOT,
+          migrationsReport: { migrations: [] },
+          storageMode: 'persisted',
+        },
+        export: Effect.die(new Error('not implemented')),
+        getEventlogData: Effect.die(new Error('not implemented')),
+        syncState: Subscribable.make({
+          get: Effect.die(new Error('not implemented')),
+          changes: Stream.empty,
+        }),
+        sendDevtoolsMessage: () => Effect.void,
+        networkStatus: Subscribable.make({
+          get: Effect.die(new Error('not implemented')),
+          changes: Stream.empty,
+        }),
+      }
+
+      const clientSession: ClientSession = {
+        sqliteDb: {} as ClientSession['sqliteDb'],
+        devtools: { enabled: false },
+        clientId: 'client-test',
+        sessionId: 'session-test',
+        lockStatus,
+        shutdown: () => Effect.void,
+        leaderThread,
+        debugInstanceId: 'test-instance',
+      }
+
+      const syncProcessor = yield* makeClientSessionSyncProcessor({
+        schema: schema as LiveStoreSchema,
+        clientSession,
+        materializeEvent: () => Effect.die(new Error('not used')),
+        rollback: () => undefined,
+        refreshTables: () => undefined,
+        params: { leaderPushBatchSize: 1 },
+        confirmUnsavedChanges: false,
+      })
+
+      const processorScope = yield* Scope.make()
+      yield* syncProcessor.boot.pipe(Scope.provide(processorScope))
+
+      const [firstEvent] = yield* syncProcessor.encodeEvents([
+        events.todoCreated({ id: 'first', text: 'first', completed: false }),
+      ])
+      yield* syncProcessor.push([firstEvent!])
+      yield* Deferred.await(firstPushStarted)
+
+      const [secondEvent] = yield* syncProcessor.encodeEvents([
+        events.todoCreated({ id: 'second', text: 'second', completed: false }),
+      ])
+      yield* syncProcessor.push([secondEvent!])
+      const [thirdEvent] = yield* syncProcessor.encodeEvents([
+        events.todoCreated({ id: 'third', text: 'third', completed: false }),
+      ])
+      yield* syncProcessor.push([thirdEvent!])
+
+      // This marker runs first during teardown and lets the test release the blocked leader push only after
+      // scope closure has begun. The shutdown path must finish that push before flushing the queued batch.
+      yield* Effect.addFinalizer(() => Deferred.succeed(shutdownStarted, undefined)).pipe(Scope.provide(processorScope))
+      const closeFiber = yield* Scope.close(processorScope, Exit.void).pipe(Effect.forkChild)
+      yield* Deferred.await(shutdownStarted)
+      yield* Effect.yieldNow
+      yield* Effect.yieldNow
+      yield* Deferred.succeed(releaseFirstPush, undefined)
+      yield* Fiber.join(closeFiber)
+
+      expect(maxActivePushCount).toBe(1)
+      expect(persistedBatches).toMatchObject([
+        [{ args: { id: 'first' } }],
+        [{ args: { id: 'second' } }],
+        [{ args: { id: 'third' } }],
       ])
     }).pipe(withTestCtx(test)),
   )

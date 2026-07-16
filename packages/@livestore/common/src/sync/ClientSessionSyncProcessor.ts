@@ -122,6 +122,28 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       )
     }
 
+    // Register this before the pushing fiber's finalizer so scope teardown first interrupts and awaits the
+    // fiber (including an uninterruptible in-flight push), then flushes queued events without concurrent pushes.
+    // The leader belongs to the surrounding client-session scope and remains available throughout this teardown.
+    yield* Effect.addFinalizer(() =>
+      Effect.gen(function* () {
+        const remaining = yield* TxQueue.clear(leaderPushQueue)
+
+        for (let offset = 0; offset < remaining.length; offset += params.leaderPushBatchSize) {
+          const batch = remaining.slice(offset, offset + params.leaderPushBatchSize)
+          const wasAccepted = yield* clientSession.leaderThread.events.push(batch).pipe(
+            Effect.as(true),
+            Effect.catchIf(isRejectedPushError, () => {
+              debugInfo.rejectCount++
+              return Effect.succeed(false)
+            }),
+          )
+
+          if (wasAccepted === false) break
+        }
+      }).pipe(Effect.uninterruptible),
+    )
+
     const leaderPushingFiberHandle = yield* FiberHandle.make()
 
     const backgroundLeaderPushing = Effect.gen(function* () {
@@ -144,19 +166,6 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     )
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
-
-    // On store shutdown the background pushing fiber is interrupted, which can leave events queued in
-    // `leaderPushQueue` that were never handed to the leader. Flush them here so they are still durably
-    // persisted. This finalizer is registered after the pushing fiber, so it runs before it during scope
-    // teardown, while the leader is still alive to accept and persist the batch.
-    yield* Effect.addFinalizer(() =>
-      Effect.gen(function* () {
-        const remaining = yield* TxQueue.clear(leaderPushQueue)
-        if (remaining.length > 0) {
-          yield* clientSession.leaderThread.events.push(remaining).pipe(Effect.catchCause(() => Effect.void))
-        }
-      }).pipe(Effect.uninterruptible),
-    )
 
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
     yield* Stream.suspend(() =>
