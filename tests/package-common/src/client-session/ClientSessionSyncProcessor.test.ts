@@ -1224,9 +1224,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       yield* Deferred.await(firstPushStarted)
       yield* Deferred.succeed(releaseRejection, undefined)
       yield* Deferred.await(rejectionObserved)
-      while (processor.debug.debugInfo().rejectCount === 0) {
-        yield* Effect.sync(() => processor.debug.debugInfo().rejectCount)
-      }
+      yield* processor.debug.awaitRejection
       expect(processor.debug.debugInfo().rejectCount).toBe(1)
       yield* pushIds(['admitted-awaiting'])
 
@@ -1270,6 +1268,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       const [rejectedEvent] = yield* pushIds(['rejected-prefix'])
       yield* Deferred.await(rejectionReturned)
+      yield* processor.debug.awaitRejection
       yield* pushIds(['newer-admitted'])
 
       yield* Queue.offer(pullQueue, SyncState.PayloadUpstreamAdvance.make({ newEvents: [rejectedEvent!] }))
@@ -1390,6 +1389,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         sessionId: 'remote-session',
       })
       yield* Queue.offer(pullQueue, SyncState.PayloadUpstreamAdvance.make({ newEvents: [remoteEvent] }))
+      yield* processor.debug.awaitBeforePullHandoff
       yield* TestClock.adjust('1 millis')
       const stateAfterHandoff = yield* processor.syncState.get
       expect(EventSequenceNumber.Client.isEqual(stateAfterHandoff.upstreamHead, remoteEvent.seqNum)).toBe(true)

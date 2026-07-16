@@ -125,6 +125,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   let terminalCause: Cause.Cause<never> | undefined
   let upstreamRevision = 0
   const closingStarted = yield* Deferred.make<void>()
+  const firstRejectionHandled = yield* Deferred.make<void>()
   const pullAdmissionClosed = yield* Deferred.make<void>()
   const beforePullHandoffDelay = params.simulation?.pull?.before_pull_handoff ?? 0
   const beforePullHandoffQueue =
@@ -253,6 +254,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
                   }
                 }
                 debugInfo.rejectCount++
+                yield* Deferred.succeed(firstRejectionHandled, undefined)
                 return false
               }),
             ),
@@ -614,6 +616,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         }).pipe(Effect.runSync),
       debugInfo: () => debugInfo,
       awaitClosing: Deferred.await(closingStarted),
+      awaitRejection: Deferred.await(firstRejectionHandled),
       awaitPullAdmissionClosed: Deferred.await(pullAdmissionClosed),
       awaitBeforePullHandoff: beforePullHandoffQueue === undefined ? Effect.never : Queue.take(beforePullHandoffQueue),
     },
@@ -654,6 +657,8 @@ export interface ClientSessionSyncProcessor {
     }
     /** Diagnostic synchronization point completed by the atomic graceful-close transition. */
     awaitClosing: Effect.Effect<void>
+    /** Diagnostic synchronization point completed after the first rejected response is handled. */
+    awaitRejection: Effect.Effect<void>
     /** Diagnostic synchronization point completed when teardown stops admitting upstream payloads. */
     awaitPullAdmissionClosed: Effect.Effect<void>
     /** Diagnostic synchronization point completed immediately before each simulated pull handoff. */
