@@ -71,12 +71,14 @@ const makeClientProcessorHarness = Effect.fn(function* ({
   push,
   pull = () => Stream.empty,
   rollback = () => undefined,
+  shutdown = () => Effect.void,
   leaderPushBatchSize = 1,
   simulation,
 }: {
   push: LeaderEvents['push']
   pull?: LeaderEvents['pull']
   rollback?: (changeset: Uint8Array<ArrayBuffer>) => void
+  shutdown?: ClientSession['shutdown']
   leaderPushBatchSize?: number
   simulation?: ClientProcessorParams['params']['simulation']
 }) {
@@ -107,7 +109,7 @@ const makeClientProcessorHarness = Effect.fn(function* ({
     clientId: 'client-test',
     sessionId: 'session-test',
     lockStatus,
-    shutdown: () => Effect.void,
+    shutdown,
     leaderThread,
     debugInstanceId: 'test-instance',
   }
@@ -586,7 +588,12 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     Effect.gen(function* () {
       const firstPushStarted = yield* Deferred.make<void>()
       const firstPushInterrupted = yield* Deferred.make<void>()
+      let shutdownCalls = 0
       const { pushIds, scope } = yield* makeClientProcessorHarness({
+        shutdown: () =>
+          Effect.sync(() => {
+            shutdownCalls++
+          }),
         push: () =>
           Deferred.succeed(firstPushStarted, undefined).pipe(
             Effect.andThen(Effect.never),
@@ -600,6 +607,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       yield* Scope.close(scope, Exit.fail(new Error('test shutdown failure')))
 
       expect(yield* Deferred.isDone(firstPushInterrupted)).toBe(true)
+      expect(shutdownCalls).toBe(0)
     }).pipe(withTestCtx(test)),
   )
 
@@ -630,6 +638,96 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const closeExit = yield* Fiber.join(closeFiber)
 
       expect(Exit.isFailure(closeExit)).toBe(true)
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.it.effect('fails the drain when pull stops before a leader rejection can recover', (test) =>
+    Effect.gen(function* () {
+      const pullStopped = yield* Deferred.make<void>()
+      const pushStarted = yield* Deferred.make<void>()
+      const rejectPush = yield* Deferred.make<void>()
+      const rejection = new LeaderAheadError({
+        minimumExpectedNum: EventSequenceNumber.Client.ROOT,
+        providedNum: EventSequenceNumber.Client.ROOT,
+        sessionId: 'session-test',
+      })
+      const { pushIds, scope } = yield* makeClientProcessorHarness({
+        pull: () => Stream.never.pipe(Stream.ensuring(Deferred.succeed(pullStopped, undefined))),
+        push: () =>
+          Deferred.succeed(pushStarted, undefined).pipe(
+            Effect.andThen(Deferred.await(rejectPush)),
+            Effect.andThen(Effect.fail(rejection)),
+          ),
+      })
+
+      yield* pushIds(['rejected-after-pull'])
+      yield* Deferred.await(pushStarted)
+
+      const closeFiber = yield* Scope.close(scope, Exit.void).pipe(Effect.exit, Effect.forkChild)
+      yield* Deferred.await(pullStopped)
+      yield* Deferred.succeed(rejectPush, undefined)
+      const closeExit = yield* Fiber.join(closeFiber)
+
+      expect(Exit.isFailure(closeExit)).toBe(true)
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.it.effect('does not treat an unrelated pull advance as recovery from a rejected push', (test) =>
+    Effect.gen(function* () {
+      const pullQueue = yield* Queue.unbounded<typeof SyncState.PayloadUpstream.Type>()
+      const pushReturned = yield* Deferred.make<void>()
+      const rejection = new LeaderAheadError({
+        minimumExpectedNum: EventSequenceNumber.Client.ROOT,
+        providedNum: EventSequenceNumber.Client.ROOT,
+        sessionId: 'session-test',
+      })
+      const { processor, pushIds, scope } = yield* makeClientProcessorHarness({
+        pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+        push: () => Effect.fail(rejection).pipe(Effect.ensuring(Deferred.succeed(pushReturned, undefined))),
+      })
+
+      yield* pushIds(['still-pending'])
+      // Drain the local-push notification so the next observed change belongs to the explicit upstream payload.
+      yield* processor.syncState.changes.pipe(Stream.take(1), Stream.runDrain)
+      yield* Deferred.await(pushReturned)
+      yield* TestClock.adjust(0)
+
+      yield* Queue.offer(pullQueue, SyncState.PayloadUpstreamAdvance.make({ newEvents: [] }))
+      yield* processor.syncState.changes.pipe(Stream.take(1), Stream.runDrain)
+
+      const closeExit = yield* Scope.close(scope, Exit.void).pipe(Effect.exit)
+
+      expect(Exit.isFailure(closeExit)).toBe(true)
+      expect((yield* processor.syncState.get).pending.map((event) => event.args.id)).toEqual(['still-pending'])
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.it.effect('propagates a fatal leader push from the graceful drain', (test) =>
+    Effect.gen(function* () {
+      const pushStarted = yield* Deferred.make<void>()
+      const failPush = yield* Deferred.make<void>()
+      const failure = new Error('leader push crashed')
+      const { pushIds, scope } = yield* makeClientProcessorHarness({
+        push: () =>
+          Deferred.succeed(pushStarted, undefined).pipe(
+            Effect.andThen(Deferred.await(failPush)),
+            Effect.andThen(Effect.die(failure)),
+          ),
+      })
+
+      yield* pushIds(['fatal'])
+      yield* Deferred.await(pushStarted)
+
+      const closeFiber = yield* Scope.close(scope, Exit.void).pipe(Effect.exit, Effect.forkChild)
+      yield* TestClock.adjust(0)
+      yield* Deferred.succeed(failPush, undefined)
+      const closeExit = yield* Fiber.join(closeFiber)
+
+      expect(Exit.isFailure(closeExit)).toBe(true)
+      Exit.match(closeExit, {
+        onFailure: (cause) => expect(Cause.squash(cause)).toBe(failure),
+        onSuccess: () => assert.fail('expected graceful drain to fail'),
+      })
     }).pipe(withTestCtx(test)),
   )
 
