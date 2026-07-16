@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import path from 'node:path'
 
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
@@ -298,11 +299,138 @@ const showRulesetsCommand = Cli.Command.make(
   }),
 ).pipe(Cli.Command.withDescription('Show current ruleset configuration'))
 
+const getAppManifestPath = () => path.join(process.env.WORKSPACE_ROOT ?? '.', '.github', 'reconcile-app-manifest.json')
+
+const AppManifestSchema = Schema.Struct({
+  name: Schema.String,
+  default_permissions: Schema.Record(Schema.String, Schema.String),
+  default_events: Schema.Array(Schema.String),
+})
+
+const LiveAppSchema = Schema.Struct({
+  name: Schema.String,
+  permissions: Schema.Record(Schema.String, Schema.String),
+  events: Schema.Array(Schema.String),
+})
+
+const toErrorMessage = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause))
+
+const base64Url = (input: Buffer | string) =>
+  (Buffer.isBuffer(input) === true ? input : Buffer.from(input)).toString('base64url')
+
+/**
+ * Mints a short-lived GitHub App JWT (RS256) to authenticate `GET /app`.
+ * `iat` is backdated 60s to tolerate clock skew; GitHub rejects `exp` beyond 10 minutes.
+ */
+const mintAppJwt = ({ appId, privateKeyPem }: { appId: string; privateKeyPem: string }) =>
+  Effect.try({
+    try: () => {
+      const nowSec = Math.floor(Date.now() / 1000)
+      const header = base64Url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
+      const payload = base64Url(JSON.stringify({ iat: nowSec - 60, exp: nowSec + 540, iss: appId }))
+      const signer = crypto.createSign('RSA-SHA256')
+      signer.update(`${header}.${payload}`)
+      return `${header}.${payload}.${base64Url(signer.sign(privateKeyPem))}`
+    },
+    catch: (cause) => new Error(`Failed to mint App JWT: ${toErrorMessage(cause)}`),
+  })
+
+const fetchLiveApp = (jwt: string) =>
+  Effect.tryPromise({
+    try: async () => {
+      const response = await fetch('https://api.github.com/app', {
+        headers: {
+          Authorization: `Bearer ${jwt}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'User-Agent': `${OWNER}-ruleset-reconciler`,
+        },
+      })
+      if (response.ok === false) {
+        throw new Error(`GET /app failed: ${response.status} ${await response.text()}`)
+      }
+      return (await response.json()) as unknown
+    },
+    catch: (cause) => new Error(toErrorMessage(cause)),
+  })
+
+/** Compares the manifest's requested permissions/events against the live App definition. */
+const collectAppDiffs = (
+  manifest: typeof AppManifestSchema.Type,
+  live: typeof LiveAppSchema.Type,
+): ReadonlyArray<string> => {
+  const diffs: string[] = []
+  const permKeys = Array.from(
+    new Set([...Object.keys(manifest.default_permissions), ...Object.keys(live.permissions)]),
+  ).toSorted((a, b) => a.localeCompare(b))
+  for (const key of permKeys) {
+    const desired = manifest.default_permissions[key]
+    const actual = live.permissions[key]
+    if (desired !== actual) {
+      diffs.push(
+        `permissions.${key}: manifest ${JSON.stringify(desired ?? null)}, live ${JSON.stringify(actual ?? null)}`,
+      )
+    }
+  }
+  const desiredEvents = [...manifest.default_events].toSorted((a, b) => a.localeCompare(b))
+  const liveEvents = [...live.events].toSorted((a, b) => a.localeCompare(b))
+  if (JSON.stringify(desiredEvents) !== JSON.stringify(liveEvents)) {
+    diffs.push(`events: manifest ${JSON.stringify(desiredEvents)}, live ${JSON.stringify(liveEvents)}`)
+  }
+  return diffs
+}
+
+/**
+ * Checks the live GitHub App's definition against the committed manifest.
+ * GitHub exposes no API to update an App's permissions, so drift is reported for
+ * manual reconciliation rather than auto-applied (see context/repo-ruleset-sync).
+ */
+const checkAppCommand = Cli.Command.make(
+  'check',
+  {},
+  Effect.fn(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const appId = process.env.RECONCILE_APP_ID
+    const privateKeyPem = process.env.RECONCILE_APP_PRIVATE_KEY
+
+    if (appId == null || appId === '' || privateKeyPem == null || privateKeyPem === '') {
+      console.error('RECONCILE_APP_ID and RECONCILE_APP_PRIVATE_KEY must be set to check App drift.')
+      process.exitCode = 1
+      return
+    }
+
+    const manifestPath = getAppManifestPath()
+    const manifestRaw = yield* fs.readFileString(manifestPath)
+    const manifest = yield* Schema.decodeEffect(Schema.fromJsonString(AppManifestSchema))(manifestRaw)
+
+    const jwt = yield* mintAppJwt({ appId, privateKeyPem })
+    const live = yield* fetchLiveApp(jwt).pipe(Effect.flatMap(Schema.decodeUnknownEffect(LiveAppSchema)))
+
+    const diffs = collectAppDiffs(manifest, live)
+
+    if (diffs.length === 0) {
+      console.log(`App '${manifest.name}' definition is in sync with ${manifestPath}.`)
+      return
+    }
+
+    console.error(`App definition drift detected against ${manifestPath}:`)
+    for (const diff of diffs) console.error(`- ${diff}`)
+    console.error(
+      'GitHub has no API to update App permissions; reconcile manually in the App settings UI, then update the manifest.',
+    )
+    process.exitCode = 1
+  }),
+).pipe(Cli.Command.withDescription('Check the live GitHub App definition against the committed manifest'))
+
 export const githubCommand = Cli.Command.make('github').pipe(
   Cli.Command.withSubcommands([
     Cli.Command.make('rulesets').pipe(
       Cli.Command.withDescription('Manage repository rulesets from generated repo-settings files'),
       Cli.Command.withSubcommands([syncRulesetsCommand, checkRulesetsCommand, showRulesetsCommand]),
+    ),
+    Cli.Command.make('app').pipe(
+      Cli.Command.withDescription('Manage the reconcile GitHub App definition from the committed manifest'),
+      Cli.Command.withSubcommands([checkAppCommand]),
     ),
   ]),
 )
