@@ -524,6 +524,131 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     { fastCheck: { numRuns: 50 } },
   )
 
+  Vitest.asProp(
+    Vitest.live,
+    'preserves pending FIFO across repeated completed rebase replacements',
+    [
+      FastCheck.integer({ min: 1, max: 5 }),
+      FastCheck.array(FastCheck.array(FastCheck.integer({ min: 1, max: 4 }), { minLength: 1, maxLength: 4 }), {
+        minLength: 1,
+        maxLength: 3,
+      }),
+    ] as const,
+    ([leaderPushBatchSize, epochPushGroups], test) =>
+      Effect.gen(function* () {
+        type Attempt = {
+          readonly batch: ReadonlyArray<LiveStoreEvent.Client.Encoded>
+          readonly release: Deferred.Deferred<void>
+          readonly settled: Deferred.Deferred<Exit.Exit<void>>
+        }
+
+        const pullQueue = yield* Queue.unbounded<typeof SyncState.PayloadUpstream.Type>()
+        const attempts = yield* Queue.unbounded<Attempt>()
+        let activePushCount = 0
+        let maxActivePushCount = 0
+
+        const { processor, pushIds, scope } = yield* makeClientProcessorHarness({
+          leaderPushBatchSize,
+          pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+          push: (batch) =>
+            Effect.gen(function* () {
+              const release = yield* Deferred.make<void>()
+              const settled = yield* Deferred.make<Exit.Exit<void>>()
+              activePushCount++
+              maxActivePushCount = Math.max(maxActivePushCount, activePushCount)
+              yield* Queue.offer(attempts, { batch, release, settled })
+
+              yield* Deferred.await(release).pipe(
+                Effect.onExit((exit) =>
+                  Effect.sync(() => {
+                    activePushCount--
+                  }).pipe(Effect.andThen(Deferred.succeed(settled, exit))),
+                ),
+              )
+            }),
+        })
+        let scopeClosed = false
+        yield* Effect.addFinalizer(() =>
+          scopeClosed === true ? Effect.void : Scope.close(scope, Exit.fail(new Error('property run cleanup'))),
+        )
+
+        const expectedIds: string[] = []
+        const offerGroups = Effect.fnUntraced(function* (pushGroupSizes: ReadonlyArray<number>) {
+          for (const groupSize of pushGroupSizes) {
+            const groupIds = Array.from({ length: groupSize }, (_, index) => `event-${expectedIds.length + index}`)
+            expectedIds.push(...groupIds)
+            yield* pushIds(groupIds)
+          }
+        })
+
+        yield* offerGroups(epochPushGroups[0]!)
+        let currentAttempt = yield* Queue.take(attempts)
+
+        for (const [epochIndex, pushGroupSizes] of epochPushGroups.entries()) {
+          if (epochIndex > 0) yield* offerGroups(pushGroupSizes)
+
+          // Taking the attempt is the explicit happens-before edge proving that the old epoch owns a batch.
+          // The upstream advance then forces rebase to interrupt that owner and reconstruct its queue from pending.
+          const global = epochIndex + 1
+          const [remoteBase] = yield* processor.encodeEvents([
+            events.todoCreated({ id: `remote-${global}`, text: `remote-${global}`, completed: false }),
+          ])
+          yield* Queue.offer(
+            pullQueue,
+            SyncState.PayloadUpstreamAdvance.make({
+              newEvents: [
+                LiveStoreEvent.Client.EncodedWithMeta.make({
+                  ...remoteBase!,
+                  seqNum: EventSequenceNumber.Client.Composite.make({ global, client: 0 }),
+                  parentSeqNum:
+                    global === 1
+                      ? EventSequenceNumber.Client.ROOT
+                      : EventSequenceNumber.Client.Composite.make({ global: global - 1, client: 0 }),
+                  clientId: 'remote-client',
+                  sessionId: 'remote-session',
+                }),
+              ],
+            }),
+          )
+
+          const replacedExit = yield* Deferred.await(currentAttempt.settled)
+          expect(Exit.isFailure(replacedExit)).toBe(true)
+          assert(Exit.isFailure(replacedExit))
+          expect(Cause.hasInterruptsOnly(replacedExit.cause)).toBe(true)
+
+          // The successor can only call the fake leader after pending has been projected and its worker published.
+          // Carry that attempt into the next command instead of depending on scheduler progress between commands.
+          currentAttempt = yield* Queue.take(attempts)
+          const stateAfterReplacement = yield* processor.syncState.get
+          expect(stateAfterReplacement.pending.map((event) => event.args.id)).toEqual(expectedIds)
+        }
+
+        const acceptedIds: string[] = []
+        let nextAttempt: Attempt | undefined = currentAttempt
+        while (acceptedIds.length < expectedIds.length) {
+          const attempt = nextAttempt ?? (yield* Queue.take(attempts))
+          nextAttempt = undefined
+          const attemptIds = attempt.batch.map((event) => event.args.id as string)
+          expect(attemptIds).toEqual(expectedIds.slice(acceptedIds.length, acceptedIds.length + attemptIds.length))
+          expect(attemptIds.length).toBeGreaterThan(0)
+          expect(attemptIds.length).toBeLessThanOrEqual(leaderPushBatchSize)
+
+          acceptedIds.push(...attemptIds)
+          yield* Deferred.succeed(attempt.release, undefined)
+          const attemptExit = yield* Deferred.await(attempt.settled)
+          expect(Exit.isSuccess(attemptExit)).toBe(true)
+        }
+
+        yield* Scope.close(scope, Exit.void)
+        scopeClosed = true
+
+        expect(acceptedIds).toEqual(expectedIds)
+        expect(new Set(acceptedIds).size).toBe(expectedIds.length)
+        expect(maxActivePushCount).toBe(1)
+      }).pipe(withTestCtx(test)),
+    { fastCheck: { numRuns: 50 } },
+  )
+
   Vitest.it.effect('finishes closing while upstream continuously produces empty payloads', (test) =>
     Effect.gen(function* () {
       const pullQueue = yield* Queue.bounded<typeof SyncState.PayloadUpstream.Type>(1)
