@@ -491,7 +491,7 @@ jobs:
             printf '\''MEGAREPO_STORE=%s\n'\'' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
           fi
 
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all'
+          nix run "https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all'
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -720,7 +720,7 @@ jobs:
             printf '\''MEGAREPO_STORE=%s\n'\'' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
           fi
 
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all'
+          nix run "https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all'
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -956,7 +956,7 @@ jobs:
             printf '\''MEGAREPO_STORE=%s\n'\'' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
           fi
 
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all'
+          nix run "https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all'
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1235,7 +1235,7 @@ jobs:
             printf '\''MEGAREPO_STORE=%s\n'\'' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
           fi
 
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all'
+          nix run "https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all'
         shell: bash
       - name: Use pinned devenv from lock
         run: |

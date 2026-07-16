@@ -353,11 +353,17 @@ export const namespaceRunner = (runId: string) =>
 
 const shellSingleQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
 
+const setupMegarepoRun = (run: string) =>
+  run.replace(
+    'nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all',
+    'nix run "https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all',
+  )
+
 const withNixSetupRetry = <TStep extends { readonly name: string; readonly run: string }>(step: TStep): TStep => ({
   ...step,
   run: [
     `__genie_ci_retry_script='\${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'`,
-    `bash "$__genie_ci_retry_script" ${shellSingleQuote(step.name)} ${shellSingleQuote(step.run)}`,
+    `bash "$__genie_ci_retry_script" ${shellSingleQuote(step.name)} ${shellSingleQuote(setupMegarepoRun(step.run))}`,
   ].join('\n'),
 })
 
