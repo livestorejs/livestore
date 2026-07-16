@@ -365,13 +365,16 @@ const setupMegarepoRun = (run: string) =>
     ].join(' '),
   )
 
-const withNixSetupRetry = <TStep extends { readonly name: string; readonly run: string }>(step: TStep): TStep => ({
+const withNixRetry = <TStep extends { readonly name: string; readonly run: string }>(step: TStep, run = step.run): TStep => ({
   ...step,
   run: [
     `__genie_ci_retry_script='\${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'`,
-    `bash "$__genie_ci_retry_script" ${shellSingleQuote(step.name)} ${shellSingleQuote(setupMegarepoRun(step.run))}`,
+    `bash "$__genie_ci_retry_script" ${shellSingleQuote(step.name)} ${shellSingleQuote(run)}`,
   ].join('\n'),
 })
+
+const withNixSetupRetry = <TStep extends { readonly name: string; readonly run: string }>(step: TStep): TStep =>
+  withNixRetry(step, setupMegarepoRun(step.run))
 
 /**
  * Setup steps for livestore CI jobs (without checkout).
@@ -395,7 +398,7 @@ export const livestoreSetupStepsAfterCheckout = [
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
   restorePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
-  validateNixStoreStep,
+  withNixRetry(validateNixStoreStep),
 ] as const
 
 /**

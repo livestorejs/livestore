@@ -118,9 +118,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'Resolve devenv' 'DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo '\''::error::devenv.lock missing .nodes.devenv.locked.rev'\''
             exit 1
           fi
 
@@ -171,7 +172,7 @@ jobs:
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
-          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"'
         shell: bash
       - id: app-token
         name: Mint App token
@@ -289,9 +290,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'Resolve devenv' 'DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo '\''::error::devenv.lock missing .nodes.devenv.locked.rev'\''
             exit 1
           fi
 
@@ -342,7 +344,7 @@ jobs:
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
-          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"'
         shell: bash
       - id: app-token
         name: Mint App token
