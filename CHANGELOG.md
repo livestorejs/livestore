@@ -6,6 +6,18 @@
 > for more info. LiveStore is following a semver-like release strategy where
 > breaking changes are released in minor versions before the 1.0 release.
 
+## Upcoming
+
+See the [development documentation](https://dev.docs.livestore.dev/) for the latest features. To test the development build, keep all LiveStore packages on the `dev` tag:
+
+```bash
+pnpm add @livestore/livestore@dev @livestore/adapter-web@dev @livestore/wa-sqlite@dev @livestore/react@dev
+```
+
+### Bug Fixes
+
+- **Concurrency & Lifecycle:** Hardened client-to-leader event delivery across rebases and shutdown. Repeated recovery preserves pending event order, leader pushes acknowledge only committed work, and concurrent shutdown callers share one cleanup operation ([#1425](https://github.com/livestorejs/livestore/issues/1425)).
+
 ## 0.4.0 - 2026-06-02
 
 > **Installing v0.4.0:** Make sure all LiveStore packages use the same version:
