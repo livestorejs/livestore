@@ -25,6 +25,7 @@ import {
   Subscribable,
   SubscriptionRef,
   TxQueue,
+  TxRef,
 } from '@livestore/utils/effect'
 
 import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
@@ -195,6 +196,8 @@ interface Options {
   readonly testing: {
     readonly delays?: {
       readonly localPushProcessing?: Effect.Effect<void>
+      readonly beforeLocalPushCommit?: Effect.Effect<void, MaterializeError>
+      readonly afterLocalPushOffer?: Effect.Effect<void>
     }
   }
 }
@@ -254,13 +257,56 @@ export const make = Effect.fnUntraced(function* ({
     pushHeadRef.current = EventSequenceNumber.Client.max(pushHeadRef.current, eventNum)
   }
 
+  let localPushTerminalCause: Cause.Cause<never> | undefined
+  const currentLocalPushBatch = yield* TxRef.make<ReadonlyArray<LocalPushQueueItem>>([])
+
+  const toLocalPushFatalCause = <E>(cause: Cause.Cause<E>): Cause.Cause<never> =>
+    Cause.fromReasons(
+      cause.reasons.map((reason) =>
+        Cause.isFailReason(reason) === true
+          ? Cause.makeDieReason(reason.error).annotate(Cause.reasonAnnotations(reason))
+          : reason,
+      ),
+    )
+
+  const completeLocalPushesWithCause = (items: ReadonlyArray<LocalPushQueueItem>, cause: Cause.Cause<never>) =>
+    Effect.forEach(items, ([, deferred]) => Deferred.complete(deferred, Effect.failCause(cause))).pipe(
+      Effect.uninterruptible,
+    )
+
+  const terminateLocalPushes = (cause: Cause.Cause<MaterializeError>) =>
+    Effect.gen(function* () {
+      const fatalCause = toLocalPushFatalCause(cause)
+      localPushTerminalCause = fatalCause
+
+      // Closing admission and taking ownership of every buffered item is one transaction. An offer either happens
+      // before this transaction and is drained here, or is rejected afterwards and observes `localPushTerminalCause`.
+      const ownedItems = yield* Effect.tx(
+        Effect.gen(function* () {
+          const currentItems = yield* TxRef.get(currentLocalPushBatch)
+          yield* TxRef.set(currentLocalPushBatch, [])
+          const queuedItems = yield* TxQueue.clear(localPushesQueue)
+          yield* TxQueue.failCause(localPushesQueue, fatalCause)
+          return [...currentItems, ...queuedItems]
+        }),
+      )
+
+      yield* completeLocalPushesWithCause(ownedItems, fatalCause)
+    }).pipe(Effect.uninterruptible)
+
   const backgroundApplyLocalPushes = Effect.gen(function* () {
     while (true) {
       if (testing.delays?.localPushProcessing !== undefined) {
         yield* testing.delays.localPushProcessing.pipe(Effect.withSpan('localPushProcessingDelay'))
       }
 
-      const batchItems = yield* TxQueue.takeBetween(localPushesQueue, 1, localPushBatchSize)
+      const batchItems = yield* Effect.tx(
+        Effect.gen(function* () {
+          const batchItems = yield* TxQueue.takeBetween(localPushesQueue, 1, localPushBatchSize)
+          yield* TxRef.set(currentLocalPushBatch, batchItems)
+          return batchItems
+        }),
+      )
 
       // Applies a batch of local pushes, guarded by the localPushBackendPullMutex to ensure mutual exclusion with backend pulling
       yield* Effect.gen(function* () {
@@ -372,27 +418,42 @@ export const make = Effect.fnUntraced(function* ({
           }
         }
 
-        yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
+        yield* Effect.gen(function* () {
+          // This is a successful adapter commit boundary, not a cross-database atomicity guarantee. Some adapters use
+          // distinct SQLite databases and Cloudflare auto-commits eventlog writes.
+          yield* materializeEventsBatch({
+            batchItems: mergeResult.newEvents,
+            ...(testing.delays?.beforeLocalPushCommit !== undefined
+              ? { beforeCommit: testing.delays.beforeLocalPushCommit }
+              : {}),
+          })
 
-        yield* connectedClientSessionPullQueues.offer({
-          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }),
-          leaderHead: mergeResult.newSyncState.localHead,
-        })
+          // Publication and acknowledgement are bounded, in-memory operations.
+          yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
-        yield* Effect.spanEvent(`push:advance`, {
-          batchSize: newEvents.length,
-          ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
-        })
+          yield* connectedClientSessionPullQueues.offer({
+            payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }),
+            leaderHead: mergeResult.newSyncState.localHead,
+          })
 
-        // Don't sync client-only events
-        const globalOrUnknownEvents = mergeResult.newEvents.filter((e) => !isClientOnlyEvent(e))
+          yield* Effect.spanEvent(`push:advance`, {
+            batchSize: newEvents.length,
+            ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+          })
 
-        yield* TxQueue.offerAll(syncBackendPushQueue, globalOrUnknownEvents)
+          // Don't sync client-only events
+          const globalOrUnknownEvents = mergeResult.newEvents.filter((e) => !isClientOnlyEvent(e))
+          yield* TxQueue.offerAll(syncBackendPushQueue, globalOrUnknownEvents)
 
-        yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
+          // Caller acknowledgement is the final publication step.
+          yield* Effect.forEach(deferreds, (deferred) => Deferred.succeed(deferred, void 0))
+          yield* TxRef.set(currentLocalPushBatch, [])
+        }).pipe(Effect.uninterruptible)
       }).pipe(localPushBackendPullMutex.withPermits(1))
+
+      yield* TxRef.set(currentLocalPushBatch, [])
     }
-  })
+  }).pipe(Effect.tapCause(terminateLocalPushes))
 
   const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcessor:backend-pulling')(function* ({
     restartBackendPushing,
@@ -520,7 +581,7 @@ export const make = Effect.fnUntraced(function* ({
 
           advancePushHead(mergeResult.newSyncState.localHead)
 
-          yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
+          yield* materializeEventsBatch({ batchItems: mergeResult.newEvents })
 
           yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
         }).pipe(Effect.exit)
@@ -641,6 +702,8 @@ export const make = Effect.fnUntraced(function* ({
     Effect.gen(function* () {
       if (newEvents.length === 0) return
 
+      if (localPushTerminalCause !== undefined) return yield* Effect.failCause(localPushTerminalCause)
+
       // console.debug('push', newEvents)
 
       yield* validatePushBatch(newEvents, pushHeadRef.current)
@@ -653,7 +716,16 @@ export const make = Effect.fnUntraced(function* ({
 
       const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
 
-      yield* TxQueue.offerAll(localPushesQueue, items)
+      const rejectedItems = yield* TxQueue.offerAll(localPushesQueue, items)
+      if (rejectedItems.length > 0) {
+        // A terminal race may advance pushHeadRef before admission closes. The worker is permanently stopped, so the
+        // head must not be rolled back and every subsequent push observes the same terminal cause.
+        return yield* Effect.failCause(
+          localPushTerminalCause ?? Cause.die(new Error('Local push worker stopped before accepting queued events')),
+        )
+      }
+
+      if (testing.delays?.afterLocalPushOffer !== undefined) yield* testing.delays.afterLocalPushOffer
 
       yield* Effect.all(deferreds.map(Deferred.await))
     }).pipe(
@@ -836,43 +908,37 @@ export const layer = (options: Options) => Layer.effect(LeaderSyncProcessor, mak
 
 type MaterializeEventsBatch = (_: {
   batchItems: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
-  /**
-   * The deferreds are used by the caller to know when the mutation has been processed.
-   * Indexes are aligned with `batchItems`
-   */
-  deferreds:
-    | ReadonlyArray<Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError> | undefined>
-    | undefined
+  /** Test-only barrier for exercising acknowledgement and publication around the commit boundary. */
+  beforeCommit?: Effect.Effect<void, MaterializeError>
 }) => Effect.Effect<void, MaterializeError, LeaderThreadCtx>
 
 // TODO how to handle errors gracefully
-const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds }) =>
+const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, beforeCommit }) =>
   Effect.gen(function* () {
     const { dbState: db, dbEventlog, materializeEvent } = yield* LeaderThreadCtx
 
     // NOTE We always start a transaction to ensure consistency between db and eventlog (even for single-item batches)
-    db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
-    dbEventlog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
-
     yield* Effect.addFinalizer((exit) =>
       Effect.gen(function* () {
         if (Exit.isSuccess(exit) === true) return
 
-        // Rollback in case of an error
-        db.execute('ROLLBACK', undefined)
-        dbEventlog.execute('ROLLBACK', undefined)
+        // Roll back each still-open transaction independently. In a two-database partial commit, rolling back the
+        // already-committed database can itself fail and must not replace the original processing cause.
+        yield* Effect.try(() => db.execute('ROLLBACK', undefined)).pipe(Effect.ignore)
+        yield* Effect.try(() => dbEventlog.execute('ROLLBACK', undefined)).pipe(Effect.ignore)
       }),
     )
+
+    db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
+    dbEventlog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
 
     for (let i = 0; i < batchItems.length; i++) {
       const { sessionChangeset, hash } = yield* materializeEvent(batchItems[i]!)
       batchItems[i]!.meta.sessionChangeset = sessionChangeset
       batchItems[i]!.meta.materializerHashLeader = hash
-
-      if (deferreds?.[i] !== undefined) {
-        yield* Deferred.succeed(deferreds[i]!, void 0)
-      }
     }
+
+    if (beforeCommit !== undefined) yield* beforeCommit
 
     db.execute('COMMIT', undefined) // Commit the transaction
     dbEventlog.execute('COMMIT', undefined) // Commit the transaction
