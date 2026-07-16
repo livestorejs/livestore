@@ -35,6 +35,11 @@ than automated. Validated against GitHub docs and the Terraform GitHub provider.
   storing the private key. It is the single unavoidable long-lived secret.
 - **App ID / Client ID are not secret.** They are generated identifiers that can
   be committed as non-secret configuration.
+- **`metadata: read` is granted implicitly.** Every App holds `metadata: read`
+  even if the manifest does not request it, so `GET /app` always returns it. The
+  committed manifest must declare it explicitly, otherwise the App drift-check
+  flags a false-positive drift (`permissions.metadata: manifest null, live
+  "read"`). Verified e2e 2026-07-16.
 
 ## Tooling coverage
 
