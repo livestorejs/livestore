@@ -8,7 +8,7 @@ import {
   LeaderAheadError,
   makeMockSyncBackend,
   SyncState,
-  type UnknownError,
+  UnknownError,
 } from '@livestore/common'
 import { Eventlog, makeMaterializeEvent, recreateDb } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -33,6 +33,7 @@ import {
   Fiber,
   Hash,
   Layer,
+  Logger,
   Option,
   Queue,
   References,
@@ -768,8 +769,10 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.it.effect('store shutdown timeout stops waiting without cancelling teardown', (test) =>
-    Effect.gen(function* () {
+  Vitest.it.effect('store shutdown timeout stops waiting without cancelling teardown', (test) => {
+    const logMessages: string[] = []
+
+    return Effect.gen(function* () {
       const { makeStore } = yield* TestContext
       const pushStarted = yield* Deferred.make<void>()
       const releasePush = yield* Deferred.make<void>()
@@ -800,15 +803,137 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       store.commit(events.todoCreated({ id: 'blocked', text: 'blocked', completed: false }))
       yield* Deferred.await(pushStarted)
 
-      const shutdownFiber = yield* store.shutdown().pipe(Effect.forkChild)
+      const shutdownReturned = yield* Deferred.make<void>()
+      const concurrentShutdownReturned = yield* Deferred.make<void>()
+      const shutdownFiber = yield* store
+        .shutdown()
+        .pipe(Effect.ensuring(Deferred.succeed(shutdownReturned, undefined)), Effect.forkChild)
+      const concurrentShutdownFiber = yield* store
+        .shutdown()
+        .pipe(Effect.ensuring(Deferred.succeed(concurrentShutdownReturned, undefined)), Effect.forkChild)
+      yield* TestClock.adjust(0)
+
+      expect(yield* Deferred.isDone(shutdownReturned)).toBe(false)
+      expect(yield* Deferred.isDone(concurrentShutdownReturned)).toBe(false)
+      expect(logMessages.some((message) => message.includes('shutdown cleanup completed successfully'))).toBe(false)
+
       yield* TestClock.adjust(1000)
       yield* Fiber.join(shutdownFiber)
+      yield* Fiber.join(concurrentShutdownFiber)
 
       expect(yield* Deferred.isDone(pushCompleted)).toBe(false)
       expect(yield* Deferred.isDone(pushInterrupted)).toBe(false)
+      expect(logMessages.filter((message) => message.includes('cleanup is continuing in the background'))).toHaveLength(
+        1,
+      )
+      expect(logMessages.some((message) => message.includes('shutdown cleanup completed successfully'))).toBe(false)
 
       yield* Deferred.succeed(releasePush, undefined)
       yield* Deferred.await(pushCompleted)
+      // A later caller joins the same cleanup fiber and gives the detached finalizer chain a deterministic
+      // completion boundary for the completion-log assertion.
+      yield* store.shutdown()
+
+      expect(logMessages.filter((message) => message.includes('shutdown cleanup completed successfully'))).toHaveLength(
+        1,
+      )
+    }).pipe(
+      Effect.provide(
+        Logger.layer([
+          Logger.make(({ message }) => {
+            const messages = Array.isArray(message) === true ? message : [message]
+            logMessages.push(messages.map(String).join(' '))
+          }),
+        ]),
+      ),
+      withTestCtx(test),
+    )
+  })
+
+  Vitest.it.effect('signals the elected successful exit when rejected drain cleanup fails', (test) => {
+    const logMessages: string[] = []
+
+    return Effect.gen(function* () {
+      const { makeStore, shutdownDeferred } = yield* TestContext
+      const pushStarted = yield* Deferred.make<void>()
+      const rejectPush = yield* Deferred.make<void>()
+      const rejection = new LeaderAheadError({
+        minimumExpectedNum: EventSequenceNumber.Client.ROOT,
+        providedNum: EventSequenceNumber.Client.ROOT,
+        sessionId: 'session-test',
+      })
+
+      const store = yield* makeStore({
+        testing: {
+          overrides: {
+            clientSession: {
+              leaderThreadProxy: (leader) => ({
+                ...leader,
+                events: {
+                  ...leader.events,
+                  push: () =>
+                    Deferred.succeed(pushStarted, undefined).pipe(
+                      Effect.andThen(Deferred.await(rejectPush)),
+                      Effect.andThen(Effect.fail(rejection)),
+                    ),
+                },
+              }),
+            },
+          },
+        },
+      })
+
+      store.commit(events.todoCreated({ id: 'rejected', text: 'rejected', completed: false }))
+      yield* Deferred.await(pushStarted)
+
+      const electedShutdownFiber = yield* store.shutdown().pipe(Effect.exit, Effect.forkChild)
+      yield* TestClock.adjust(0)
+
+      const laterFailure = new UnknownError({ cause: new Error('later shutdown failure') })
+      const concurrentShutdownFiber = yield* store
+        .shutdown(Cause.fail(laterFailure))
+        .pipe(Effect.exit, Effect.forkChild)
+      yield* TestClock.adjust(0)
+      yield* Deferred.succeed(rejectPush, undefined)
+
+      const electedShutdownExit = yield* Fiber.join(electedShutdownFiber)
+      const concurrentShutdownExit = yield* Fiber.join(concurrentShutdownFiber)
+      expect(Exit.isFailure(electedShutdownExit)).toBe(true)
+      expect(Exit.isFailure(concurrentShutdownExit)).toBe(true)
+
+      // Cleanup failure is reported to callers, while the shutdown signal still records the first elected trigger.
+      const notifiedExit = yield* Effect.exit(Deferred.await(shutdownDeferred))
+      expect(Exit.isSuccess(notifiedExit)).toBe(true)
+      expect(logMessages.filter((message) => message.includes('shutdown cleanup failed'))).toHaveLength(1)
+      expect(logMessages.some((message) => message.includes('cleanup completed successfully'))).toBe(false)
+    }).pipe(
+      Effect.provide(
+        Logger.layer([
+          Logger.make(({ message }) => {
+            const messages = Array.isArray(message) === true ? message : [message]
+            logMessages.push(messages.map(String).join(' '))
+          }),
+        ]),
+      ),
+      withTestCtx(test),
+    )
+  })
+
+  Vitest.it.effect('records a failed exit when failed shutdown wins election', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, shutdownDeferred } = yield* TestContext
+      const store = yield* makeStore()
+      const electedFailure = new UnknownError({ cause: new Error('elected shutdown failure') })
+
+      const electedShutdownFiber = yield* store.shutdown(Cause.fail(electedFailure)).pipe(Effect.forkChild)
+      yield* TestClock.adjust(0)
+      const concurrentShutdownFiber = yield* store.shutdown().pipe(Effect.forkChild)
+
+      yield* Fiber.join(electedShutdownFiber)
+      yield* Fiber.join(concurrentShutdownFiber)
+
+      const notifiedError = yield* Deferred.await(shutdownDeferred).pipe(Effect.flip)
+      expect(notifiedError).toBe(electedFailure)
     }).pipe(withTestCtx(test)),
   )
 
