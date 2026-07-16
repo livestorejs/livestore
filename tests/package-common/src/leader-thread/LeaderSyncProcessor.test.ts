@@ -6,8 +6,10 @@ import {
   type MockSyncBackend,
   type MockSyncBackendOptions,
   makeMockSyncBackend,
+  MaterializeError,
   type RejectedPushError,
   ServerAheadError,
+  SqliteError,
   StaleRebaseGenerationError,
   type SyncBackend,
   type SyncOptions,
@@ -23,11 +25,14 @@ import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
+  Cause,
   Context,
   Deferred,
   Duration,
   Effect,
+  Exit,
   FetchHttpClient,
+  Fiber,
   Layer,
   Queue,
   References,
@@ -114,6 +119,142 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
     }).pipe(withTestCtx()(test)),
   )
+
+  Vitest.live('publishes and acknowledges a local push only after its commit boundary', (test) => {
+    let commitReached!: Deferred.Deferred<void>
+    let commitAllowed!: Deferred.Deferred<void>
+
+    const beforeLocalPushCommit = Effect.gen(function* () {
+      yield* Deferred.succeed(commitReached, void 0)
+      yield* Deferred.await(commitAllowed)
+    })
+
+    return Effect.gen(function* () {
+      commitReached = yield* Deferred.make<void>()
+      commitAllowed = yield* Deferred.make<void>()
+
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+      const pushFiber = yield* testContext
+        .pushEncoded(
+          testContext.eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }),
+          testContext.eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }),
+        )
+        .pipe(Effect.forkChild)
+
+      yield* Deferred.await(commitReached)
+
+      const pushBeforeCommit = pushFiber.pollUnsafe()
+      const syncStateBeforeCommit = yield* leaderThreadCtx.syncProcessor.syncState.get
+      const pullBeforeCommit = yield* Queue.poll(testContext.pullQueue)
+      expect(pushBeforeCommit).toBeUndefined()
+      expect(syncStateBeforeCommit.localHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(pullBeforeCommit._tag).toBe('None')
+
+      yield* Deferred.succeed(commitAllowed, void 0)
+      yield* Fiber.join(pushFiber)
+
+      expect(leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)).toEqual([
+        { id: '1', text: 't1', completed: 0, deletedAt: null },
+        { id: '2', text: 't2', completed: 0, deletedAt: null },
+      ])
+      expect(leaderThreadCtx.dbEventlog.select<{ count: number }>('SELECT COUNT(*) AS count FROM eventlog')).toEqual([
+        { count: 2 },
+      ])
+      const syncStateAfterCommit = yield* leaderThreadCtx.syncProcessor.syncState.get
+      const pullAfterCommit = yield* Queue.poll(testContext.pullQueue)
+      expect(syncStateAfterCommit.localHead.global).toBe(2)
+      expect(pullAfterCommit._tag).toBe('Some')
+    }).pipe(
+      Effect.ensuring(Effect.suspend(() => Deferred.succeed(commitAllowed, void 0))),
+      withTestCtx({ testing: { syncProcessor: { delays: { beforeLocalPushCommit } } } })(test),
+    )
+  })
+
+  Vitest.live('terminates local push waiters without publication when materialization fails', (test) => {
+    let commitReached!: Deferred.Deferred<void>
+    let commitAllowed!: Deferred.Deferred<void>
+    let secondPushOffered!: Deferred.Deferred<void>
+    let offerCount = 0
+    const materializeFailure = MaterializeError.make({
+      cause: SqliteError.make({ cause: new Error('injected local push materialization failure') }),
+    })
+    const companionDefect = new Error('injected companion defect')
+
+    const expectTerminalCauses = (exit: Exit.Exit<void, RejectedPushError>) => {
+      expect(Exit.isFailure(exit)).toBe(true)
+      if (Exit.isFailure(exit) === false) return
+      const defects = exit.cause.reasons.flatMap((reason) =>
+        Cause.isDieReason(reason) === true ? [reason.defect] : [],
+      )
+      expect(defects).toEqual(expect.arrayContaining([materializeFailure, companionDefect]))
+    }
+
+    const beforeLocalPushCommit = Effect.gen(function* () {
+      yield* Deferred.succeed(commitReached, void 0)
+      yield* Deferred.await(commitAllowed)
+      return yield* Effect.failCause(
+        Cause.fromReasons([Cause.makeFailReason(materializeFailure), Cause.makeDieReason(companionDefect)]),
+      )
+    })
+
+    const afterLocalPushOffer = Effect.gen(function* () {
+      offerCount++
+      if (offerCount === 2) yield* Deferred.succeed(secondPushOffered, void 0)
+    })
+
+    return Effect.gen(function* () {
+      commitReached = yield* Deferred.make<void>()
+      commitAllowed = yield* Deferred.make<void>()
+      secondPushOffered = yield* Deferred.make<void>()
+
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+      const pushFiber = yield* testContext
+        .pushEncoded(testContext.eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }))
+        .pipe(Effect.forkChild)
+
+      yield* Deferred.await(commitReached)
+      const queuedPushFiber = yield* testContext
+        .pushEncoded(testContext.eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }))
+        .pipe(Effect.forkChild)
+      yield* Deferred.await(secondPushOffered)
+
+      const pushBeforeCommit = pushFiber.pollUnsafe()
+      const queuedPushBeforeCommit = queuedPushFiber.pollUnsafe()
+      const syncStateBeforeCommit = yield* leaderThreadCtx.syncProcessor.syncState.get
+      const pullBeforeCommit = yield* Queue.poll(testContext.pullQueue)
+      expect(pushBeforeCommit).toBeUndefined()
+      expect(queuedPushBeforeCommit).toBeUndefined()
+      expect(syncStateBeforeCommit.localHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(pullBeforeCommit._tag).toBe('None')
+
+      yield* Deferred.succeed(commitAllowed, void 0)
+      const pushExit = yield* Fiber.await(pushFiber)
+      const queuedPushExit = yield* Fiber.await(queuedPushFiber)
+
+      expectTerminalCauses(pushExit)
+      expectTerminalCauses(queuedPushExit)
+      expect(leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)).toEqual([])
+      expect(leaderThreadCtx.dbEventlog.select<{ count: number }>('SELECT COUNT(*) AS count FROM eventlog')).toEqual([
+        { count: 0 },
+      ])
+      const syncStateAfterFailure = yield* leaderThreadCtx.syncProcessor.syncState.get
+      const pullAfterFailure = yield* Queue.poll(testContext.pullQueue)
+      expect(syncStateAfterFailure.localHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(pullAfterFailure._tag).toBe('None')
+
+      const futurePushExit = yield* testContext
+        .pushEncoded(testContext.eventFactory.todoCreated.next({ id: '3', text: 't3', completed: false }))
+        .pipe(Effect.exit)
+      expectTerminalCauses(futurePushExit)
+    }).pipe(
+      Effect.ensuring(Effect.suspend(() => Deferred.succeed(commitAllowed, void 0))),
+      withTestCtx({
+        testing: { syncProcessor: { delays: { beforeLocalPushCommit, afterLocalPushOffer } } },
+      })(test),
+    )
+  })
 
   Vitest.live('non-live paginated pull does not stall local pushes', (test) =>
     Effect.gen(function* () {
@@ -818,7 +959,7 @@ class TestContext extends Context.Service<
 >()('TestContext') {}
 
 const LeaderThreadCtxLive = ({
-  syncProcessor,
+  testing,
   params,
   syncOptions,
   captureShutdown,
@@ -826,7 +967,7 @@ const LeaderThreadCtxLive = ({
   seedMockBackend,
   mockBackendOverride,
 }: {
-  syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor']
+  testing?: MakeLeaderThreadLayerParams['testing']
   params?: MakeLeaderThreadLayerParams['params']
   /** Optional overrides for sync options (e.g. custom backend, livePull flag) */
   syncOptions?: Partial<SyncOptions>
@@ -872,10 +1013,7 @@ const LeaderThreadCtxLive = ({
       dbEventlog: yield* makeSqliteDb({ _tag: 'in-memory' }),
       devtoolsOptions: { enabled: false },
       shutdownChannel: shutdownProxy?.webChannel ?? (yield* WebChannel.noopChannel<any, any>()),
-      testing: {
-        ...omitUndefineds({ syncProcessor }),
-      },
-      ...omitUndefineds({ params }),
+      ...omitUndefineds({ params, testing }),
     }).pipe(Layer.provide(FetchHttpClient.layer))
 
     const testContextLayer = Effect.gen(function* () {
