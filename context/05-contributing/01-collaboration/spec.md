@@ -24,7 +24,9 @@ branch ──► changes + changeset ──► lint/type gates ──► PR (pro
 
 ## Changelog Model (LS.CONTRIB.COLLAB-R03)
 
-Two artifacts with distinct roles:
+Companion runbook:
+[`contributor-docs/changelog-guide.md`](../../../contributor-docs/changelog-guide.md)
+(owned by this node). Two artifacts with distinct roles:
 
 - **Changesets** — per-PR release ledger and semver signal.
 - **`CHANGELOG.md`** — editorial narrative; upcoming section at top, folded
@@ -40,6 +42,18 @@ immutable apart from editorial fixes.
 
 - Discord: pre-coordination (`#contrib`), community help.
 - GitHub: issues (minimal repros; `help wanted` label), PRs, RFC review.
+
+Public community surfaces (office hours, contributor sync, support
+expectations) are owned by [../02-community/](../02-community/spec.md).
+
+## Templates and Labels (LS.CONTRIB.COLLAB-R06)
+
+`.github/ISSUE_TEMPLATE/bug_report.yml` enforces the minimal-repro rule
+(LS.CONTRIB-R06); `.github/pull_request_template.md` enforces PR framing
+(LS.CONTRIB.COLLAB-R04); the label taxonomy (`bug`, `help wanted`, `docs`,
+`adapter:*`, `integration:*`, `syncing:*`, …) carries the routing the scope
+tiers assume. Template or taxonomy changes are reviewed against the
+contributing requirements they realize.
 
 ## Review and Merge
 

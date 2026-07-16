@@ -17,7 +17,10 @@ Builds on [../requirements.md](../requirements.md). Examples are exercised by
   infrastructure.
 - **LS.DOCS.EX-R02 Integration fixtures:** Examples are executed in CI
   (`mono examples test`); an example that breaks against current packages
-  fails CI. `refines: LS.DOCS-R04`
+  fails CI as a required gate. Currently violated — optional since #1391
+  except the todomvc E2E (see
+  [../.delta/DELTA-001-docs-gates-optional.md](../.delta/DELTA-001-docs-gates-optional.md)).
+  `refines: LS.DOCS-R04`
 - **LS.DOCS.EX-R03 Current APIs:** Examples use the current shipping APIs;
   changing a public API includes updating affected examples in the same
   change.

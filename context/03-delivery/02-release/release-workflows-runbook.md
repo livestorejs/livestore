@@ -1,5 +1,8 @@
 # Release Workflows
 
+> Companion runbook of [02-release](./spec.md) — operational procedure only;
+> the normative contract lives in this node's requirements/spec.
+
 LiveStore releases are CI-driven and represented as reviewable repository
 state. Local release commands are still useful for dry-runs and emergency
 operations, but the preferred stable release path is to let GitHub Actions open

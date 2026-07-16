@@ -1,7 +1,8 @@
 # Sustainability — Requirements
 
 Role: owns how the project stays maintained without a company — license
-policy, funding model, and the boundaries of commercial surfaces.
+policy, funding model, brand stewardship, and the boundaries of commercial
+surfaces.
 
 ## Context
 
@@ -32,3 +33,7 @@ surface per LS-R15).
 - **LS.SUST-R05 Published benefits:** Sponsor benefits are published and
   honored via the sponsor dashboard (devtools license, sponsor-only Discord,
   office hours, prioritized fixes/requests).
+- **LS.SUST-R06 Brand stewardship:** The LiveStore name and logo are
+  stewarded by the project creator; use by forks and contrib packages is
+  good-faith and informal (no formal trademark policy exists). Adopted
+  2026-07-16 (interview).

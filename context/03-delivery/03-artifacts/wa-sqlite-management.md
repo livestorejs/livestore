@@ -1,5 +1,8 @@
 # wa-sqlite Management
 
+> Companion runbook of [03-artifacts](./spec.md) — operational procedure only;
+> the normative contract lives in this node's requirements/spec.
+
 wa-sqlite is included as a git subtree (not submodule) at `packages/@livestore/wa-sqlite`.
 
 ## Update from upstream

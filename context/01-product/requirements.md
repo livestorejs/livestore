@@ -45,3 +45,21 @@ Builds on the root [requirements.md](../requirements.md). The docs pages
   current with the shipping schema API.
 - **LS.PROD-R07 Derived docs:** The overview docs pages derive from this node
   and must not contradict it. `refines: LS-R15`
+
+### Maturity and stability promise
+
+- **LS.PROD-R08 Stability promise:** Adopters are told the current maturity
+  (beta) and the stability stance that goes with it: minor releases may
+  carry breaking changes (API, client storage format, or sync backend
+  storage format — mechanics in
+  [../03-delivery/02-release/](../03-delivery/02-release/requirements.md)),
+  patch releases do not, and migration guidance accompanies breaking changes
+  where feasible. Adopted 2026-07-16 (interview).
+
+## Open Design Questions
+
+- **LS.PROD-DQ1 Support matrix.** No formal browser/platform support matrix
+  is published; platform support is communicated only implicitly via the
+  adapter docs pages. Whether adopters need an explicit
+  supported-vs-best-effort matrix (browsers, OS platforms, JS runtimes) is
+  undecided.

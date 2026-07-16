@@ -1,5 +1,9 @@
 # Cloudflare Example Deployments
 
+> Companion of the intent-layer node
+> [`context/04-docs/01-examples/`](../context/04-docs/01-examples/spec.md),
+> which owns the example-deployment contract (LS.DOCS.EX-R04).
+
 LiveStore examples ship via Cloudflare Workers using the `mono examples deploy` workflow. The script builds each example and deploys the corresponding Worker. Each deployment is reachable via its `*.livestore.workers.dev` hostname—no additional DNS step is required.
 
 ## Branch Behaviour

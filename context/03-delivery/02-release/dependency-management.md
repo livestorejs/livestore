@@ -1,5 +1,8 @@
 # Dependency Management Guide
 
+> Companion runbook of [02-release](./spec.md) — operational procedure only;
+> the normative contract lives in this node's requirements/spec.
+
 Update all NPM dependencies across the entire monorepo using the automated TypeScript script.
 
 ## Quick Start

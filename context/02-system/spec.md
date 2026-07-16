@@ -40,8 +40,8 @@ specifics (`04-runtime/` realizations), or delivery concerns
           ▼                                 │
        sync backend (03-sync provider realizations)
 
-  06-observability instruments all layers · 07-devtools consumes
-  telemetry + protocol · 09-verification proves the contracts
+  06-observability instruments all layers · 07-devtools inspects/controls
+  via its own protocol · 09-verification proves the contracts
 ```
 
 ## Child Nodes
@@ -49,14 +49,14 @@ specifics (`04-runtime/` realizations), or delivery concerns
 | Node | Owns |
 | --- | --- |
 | `01-event-model/` | Event definitions, event shapes, sequence numbers, eventlog semantics, facts (experimental) |
-| `02-state/` | Read-model dimension contract; SQLite realization as child |
-| `03-sync/` | Sync-state machine, push/pull/rebase semantics, provider contract; provider realizations as children |
-| `04-runtime/` | Leader/session topology, adapter contract + realizations, transport, persistence substrate |
-| `05-store/` | App-facing Store, reactivity graph, live queries, multi-store |
+| `02-state/` | Read-model dimension contract; children: `01-sqlite/` realization (+ `02-schema-management/`) |
+| `03-sync/` | Provider contract boundary; children: `01-syncstate/` (pure merge core), `02-processors/`, `03-cf/` realization |
+| `04-runtime/` | Leader/session topology, adapter + proxy contracts; children: `01-web/` (+ persistence/topology/leadership), `02-cloudflare/`, `03-webmesh/` |
+| `05-store/` | App-facing Store, commit path, lifecycle, multi-store; child: `01-reactivity/` |
 | `06-observability/` | Instrumentation contract, telemetry semantics |
 | `07-devtools/` | Devtools protocol + surfaces contract |
-| `08-integrations/` | Framework-integration contract + realizations |
-| `09-verification/` | Test architecture, conformance suites, benchmarks |
+| `08-integrations/` | Framework-integration contract; children: `01-react/`, `02-effect/` |
+| `09-verification/` | Verification contract; children: lanes, conformance, performance, protocol-compat, determinism |
 
 ## Leader ⇄ Client-Session Boundary (overview)
 

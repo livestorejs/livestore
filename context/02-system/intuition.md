@@ -37,9 +37,11 @@ they run in a browser tab, a worker, or a Durable Object.
 Every interesting runtime question is about one of two edges: the
 **session ⇄ leader** edge (many optimistic in-memory replicas, one persisted
 writer) and the **leader ⇄ backend** edge (many clients, one ordering
-authority). The same sync-state machine runs at both — once you understand
-"pending events waiting to be confirmed by upstream," you understand both
-edges; only the transport differs.
+authority). The same sync-state machine runs at both — one pure merge core
+(`03-sync/01-syncstate/`) driven by two processors
+(`03-sync/02-processors/`). Once you understand "pending events waiting to
+be confirmed by upstream," you understand both edges; only the transport
+differs.
 
 ## Why the seams are contracts
 
@@ -49,7 +51,8 @@ devtools surfaces are deliberately pluggable (root
 contract once, realizations refine it, and `09-verification/` owns the
 suites a realization must pass. When you add a
 platform or provider, you implement a contract — you never touch the layers
-above the line.
+above the line. Dense realizations decompose further (the web adapter splits
+into persistence, topology, and leadership children).
 
 For precision, start at [requirements.md](./requirements.md) and
 [spec.md](./spec.md), then descend into the child that owns your question.

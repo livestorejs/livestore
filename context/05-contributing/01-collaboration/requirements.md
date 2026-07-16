@@ -26,3 +26,8 @@ conventions (`CLAUDE.md`/`AGENTS.md`) and
   approach, and validation; title and description track scope as it evolves.
 - **LS.CONTRIB.COLLAB-R05 Agent parity:** Agent-authored changes are
   attributed as such and pass the same gates as human changes.
+- **LS.CONTRIB.COLLAB-R06 Templates and labels realize the contract:** The
+  issue/PR templates and the label taxonomy realize the contributing
+  requirements (minimal repro, PR framing, scope tiers); changing them is a
+  contract-relevant change reviewed against this branch. Adopted 2026-07-16
+  (interview).

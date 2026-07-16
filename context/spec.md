@@ -57,14 +57,21 @@ context/                     root: LiveStore the product (this node)
     09-verification/         verification contract
       01-lanes/  02-conformance/  03-performance/  04-protocol-compat/
       05-determinism/
-  03-delivery/               repo/package composition, packaging, release,
-                             versioning, artifact flows
+  03-delivery/               delivery identity boundary
+    01-composition/          repo/package composition, locks, tooling, docs
+    02-release/              versioning, publish flow, dependency policy
+    03-artifacts/            devtools artifact contract, wa-sqlite vendoring
   04-docs/                   docs-site derivation rules, snippets/diagrams
                              policy
     01-examples/             example apps as learning surface + test fixtures
-  05-contributing/           RFC process + fold-in rule, governance
+    02-search/               docs search UX + index freshness
+    03-operations/           deploy contract, agent/markdown surface, docs
+                             testing
+  05-contributing/           RFC process + fold-in rule, governance, security
     01-collaboration/        day-to-day human/agent collaboration model
-  06-sustainability/         licensing, sponsorship, commercial surfaces
+    02-community/            public community surfaces + support expectations
+  06-sustainability/         licensing, sponsorship, commercial surfaces,
+                             brand
 ```
 
 Numeric prefixes encode dependency direction within a level: a higher-numbered
@@ -117,9 +124,9 @@ questions `DQ`, deltas `DELTA`, decisions by number):
 | `LS.SYS.DT-*` | `02-system/07-devtools/` |
 | `LS.SYS.INT-*` / `LS.SYS.INT.REACT-*`, `LS.SYS.INT.EFFECT-*` | `02-system/08-integrations/` and realizations |
 | `LS.SYS.VER-*` / `LS.SYS.VER.LANE-*`, `LS.SYS.VER.CONF-*`, `LS.SYS.VER.PERF-*`, `LS.SYS.VER.PROTO-*`, `LS.SYS.VER.DET-*` | `02-system/09-verification/` and children |
-| `LS.DEL-*` | `03-delivery/` |
-| `LS.DOCS-*` / `LS.DOCS.EX-*` | `04-docs/` and `01-examples/` |
-| `LS.CONTRIB-*` / `LS.CONTRIB.COLLAB-*` | `05-contributing/` and `01-collaboration/` |
+| `LS.DEL-*` / `LS.DEL.COMP-*`, `LS.DEL.REL-*`, `LS.DEL.ART-*` | `03-delivery/` and children |
+| `LS.DOCS-*` / `LS.DOCS.EX-*`, `LS.DOCS.SEARCH-*`, `LS.DOCS.OPS-*` | `04-docs/` and children |
+| `LS.CONTRIB-*` / `LS.CONTRIB.COLLAB-*`, `LS.CONTRIB.COMM-*` | `05-contributing/` and children |
 | `LS.SUST-*` | `06-sustainability/` |
 
 Realization namespaces extend their dimension namespace with one more segment.

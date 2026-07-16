@@ -38,11 +38,12 @@ An adapter answers the platform questions: which context hosts the leader,
 how contexts talk (webmesh channels over ports/workers/websockets), which
 VFS backs SQLite (OPFS on web, DO storage on Cloudflare), how leadership is
 locked, how shutdown propagates. Web spreads roles across
-tab/shared-worker/leader-worker ([01-web/](./01-web/spec.md)); Cloudflare
-collapses them into one Durable Object
-([02-cloudflare/](./02-cloudflare/spec.md)). Same roles, different floor
-plans.
+tab/shared-worker/leader-worker ([01-web/](./01-web/spec.md), decomposed
+into persistence/topology/leadership children); Cloudflare collapses them
+into one Durable Object ([02-cloudflare/](./02-cloudflare/spec.md)). Same
+roles, different floor plans.
 
-Two substrates keep adapters honest: webmesh makes messaging
-platform-agnostic, and the single WASM SQLite build makes materialization
-bit-identical everywhere — an adapter chooses *where*, never *what*.
+Two substrates keep adapters honest: webmesh
+([03-webmesh/](./03-webmesh/spec.md)) makes messaging platform-agnostic,
+and the single WASM SQLite build makes materialization bit-identical
+everywhere — an adapter chooses *where*, never *what*.

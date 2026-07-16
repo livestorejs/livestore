@@ -39,6 +39,9 @@ The same machine runs session⇄leader and leader⇄backend. A session treats
 its leader exactly as the leader treats the backend: an upstream that
 confirms, advances, or rebases you. Purity is the point — merge decisions
 are deterministic and unit-testable in `e{n}` notation without any I/O.
+The pure core lives in [01-syncstate/](./01-syncstate/spec.md); the two
+drivers that feed it (queues, batching, retry, cursors) in
+[02-processors/](./02-processors/spec.md).
 
 ## Failure is a normal input
 
@@ -51,5 +54,6 @@ pulls, not a mode.
 Providers only supply transport — `connect/pull/push/ping` over the
 schema-defined encoding. Everything above the wire is owned here, which is
 why one conformance suite can verify any provider
-([../09-verification/](../09-verification/spec.md)). The history-DAG /
+([../09-verification/](../09-verification/spec.md)); the Cloudflare
+realization lives in [03-cf/](./03-cf/spec.md). The history-DAG /
 compaction design (`sync/next/`) is experimental; see [spec.md](./spec.md).

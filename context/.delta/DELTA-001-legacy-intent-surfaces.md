@@ -1,20 +1,31 @@
 # DELTA-001 — Legacy intent surfaces not yet absorbed
 
-The branch table in [spec.md](../spec.md) assigns ownership of all intent
-content to branch nodes. Reality as of 2026-07-15 diverges:
+Status: open (narrowed 2026-07-16)
 
-- `contributor-docs/` holds operational guides (`package-release.md`,
-  `release-workflows.md`, `dependency-management.md`,
-  `wa-sqlite-management.md`, `changelog-guide.md`, `docs/*`) and the RFC
-  process definition (`rfcs/index.md`) not yet migrated into their owning
-  nodes (`03-delivery/`, `04-docs/`, `05-contributing/`). The delivery
-  runbooks are referenced as pending companions in
-  [03-delivery/spec.md](../03-delivery/spec.md).
-- Docs pages (`why-livestore`, `when-livestore`, `design-decisions`,
-  `concepts`) are canonical-in-practice; per LS-R15 they should derive from
-  `01-product/`, `02-system/`, and [ontology.md](../ontology.md).
-- `wip/` holds `2025-cf.md` and `upcoming-specs/store-commit-receipt.md`,
-  which should become RFC proposals, node DQs, or roadmap entries.
+The branch table in [spec.md](../spec.md) assigns ownership of all intent
+content to branch nodes. Absorbed so far: the four delivery runbooks (moved
+under `03-delivery/{02-release,03-artifacts}/`), the RFC process fold-in
+step (`contributor-docs/rfcs/index.md` §4), and ownership headers on
+`events-notation.md`, `changelog-guide.md`, and `examples-cloudflare.md`
+(files stay in place, owned by their nodes).
+
+Remaining divergence:
+
+- **Canonical-in-practice docs pages** pending regeneration as derived
+  views: `overview/why-livestore`, `overview/when-livestore`,
+  `overview/technology-comparison` (see
+  [04-docs/.delta/DELTA-002](../04-docs/.delta/DELTA-002-derived-surface-rot.md)),
+  `understanding-livestore/design-decisions`, `overview/concepts` (ontology
+  rendering), `misc/state-of-the-project` (derives from `01-product/`
+  §Maturity & Stability Promise), and the FAQ's community/funding claims
+  (derive from `05-contributing/02-community/` and `06-sustainability/`).
+- **`wip/2025-cf.md`** — pending evidence capture: durable design rationale
+  (rejected CF transport explorations, 2-phase pull-streaming) belongs in
+  `.decisions/`/`.experiments/` of `02-system/03-sync/03-cf/` and
+  `02-system/04-runtime/02-cloudflare/`; several bug notes are unfiled
+  issue candidates.
+- **`wip/upcoming-specs/store-commit-receipt.md`** — stale proposal, kept
+  (with status header) until the command/intent design session (LS-DQ1).
 
 Update this delta as surfaces migrate. Close it when every surface above is
-absorbed into its owning node and the branch table matches reality.
+absorbed or regenerated and the branch table matches reality.

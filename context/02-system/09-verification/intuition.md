@@ -27,10 +27,10 @@ Every pluggable dimension needs a realization-independent suite — otherwise
 providers already have this: `tests/sync-provider/` drives the provider
 interface directly, so an in-repo, contrib, or custom backend all face the
 same questions (connection lifecycle, cursor/live pull, large batches).
-Adapters, integrations, and read models don't yet — that gap is tracked
-openly (LS.SYS.VER.CONF-DQ1 in
-[02-conformance/spec.md](./02-conformance/spec.md)) rather than papered
-over.
+Adapter and framework-integration suites are now contracted but not yet
+built (open deltas in
+[02-conformance/](./02-conformance/requirements.md)); read-model
+conformance remains the open question (LS.SYS.VER.CONF-DQ1).
 
 ## Where evidence lives
 
@@ -41,5 +41,6 @@ design question, justifies a requirement — its record belongs in the owning
 node's `.experiments/`, so the spec can stay timeless while the evidence
 trail stays findable.
 
-The perf suites currently measure without gating; thresholds for the
-interactive-grade claim are an open question (LS.SYS.VER.PERF-DQ1).
+Perf gating is contracted (LS.SYS.VER.PERF-R02) but not built — the suites
+currently measure without persisting or thresholding; concrete budget
+values remain open (LS.SYS.VER.PERF-DQ1).

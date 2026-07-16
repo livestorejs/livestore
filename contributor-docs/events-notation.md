@@ -1,5 +1,9 @@
 # Event Notation Guide
 
+> Companion of the intent-layer node
+> [`context/02-system/01-event-model/`](../context/02-system/01-event-model/spec.md),
+> which owns the notation contract (LS.SYS.EVT-R06/R10).
+
 Concise notation for describing event sequences in Livestore.
 
 ## Core Concepts

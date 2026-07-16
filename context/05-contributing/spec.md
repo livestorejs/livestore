@@ -31,9 +31,8 @@ draft ──► review PR ──► accepted (PR merged) ──► implemented
 4. **Fold in** (normative addition per decision 0002) — with the landed
    implementation, move durable content into the owning VRS nodes; record
    the choice and rejected alternatives as `.decisions/` entries citing the
-   RFC. The published RFC process description must include this step
-   (currently missing from `contributor-docs/rfcs/index.md` — docs bug per
-   LS.DOCS-R01).
+   RFC. The published RFC process description includes this step
+   (`contributor-docs/rfcs/index.md` §4, added 2026-07-16).
 
 Current RFC state: RFC 0001 (multi-store API) is largely shipped — fold-in
 candidate. RFC 0002 (command replay) is an active proposal (root LS-DQ1).
@@ -46,6 +45,14 @@ candidate. RFC 0002 (command replay) is an active proposal (root LS-DQ1).
 | Encouraged | Docs improvements, examples, test cases, bug fixes, benchmarking |
 | Potentially in scope | New features, larger core changes (RFC first), new integrations, monorepo/docs-site changes |
 | Out of scope (for now) | Landing page, devtools, core rewrite in another language |
+
+## Security Policy (LS.CONTRIB-R09)
+
+Vulnerabilities are reported privately via GitHub Security Advisories on
+`livestorejs/livestore`; the repo-root `SECURITY.md` is the public statement
+of the channel. Response is maintainer best-effort; fixes target the latest
+release line only (consistent with LS.DOCS-T01 latest-only docs). Decided
+2026-07-16 (interview).
 
 ## Governance (LS.CONTRIB-R07, R08)
 

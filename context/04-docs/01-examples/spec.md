@@ -9,9 +9,9 @@ Draft.
 
 ## Inventory
 
-`examples/` contains (as of 2026-07-15): `tutorial-starter`, `web-todomvc`
-(plus variants: `-script`, `-sync-cf`, `-react-router`, `-redwood`),
-`web-linearlite`, `web-email-client`, `cloudflare-todomvc`.
+The `examples/` directory is the source of truth for the inventory — this
+spec deliberately does not enumerate it (frozen lists rot; e.g. the
+react-router todomvc variant was removed mid-2026).
 
 Naming: `<platform>-<app>[-<variant>]`; the directory name is the deploy
 slug.
@@ -24,9 +24,9 @@ slug.
 - `mono examples deploy` — Cloudflare Workers deployment per branch tier
   (LS.DOCS.EX-R04): `main` → `example-<slug>-dev`, PR/feature branches →
   `example-<slug>-preview`, stable release (`--prod`) → `example-<slug>`,
-  each at `*.livestore.workers.dev`. Contract details:
-  `contributor-docs/examples-cloudflare.md` (pending absorption per root
-  DELTA-001).
+  each at `*.livestore.workers.dev`. Companion runbook:
+  [`contributor-docs/examples-cloudflare.md`](../../../contributor-docs/examples-cloudflare.md)
+  (owned by this node).
 
 ## Open Design Questions
 

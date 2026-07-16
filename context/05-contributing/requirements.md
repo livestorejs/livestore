@@ -1,9 +1,10 @@
 # Contributing — Requirements
 
 Role: owns how the project accepts contributions and governs change — scope
-boundaries, the RFC proposal pipeline and its fold-in rule, and governance.
-Day-to-day collaboration mechanics live in the child node
-[01-collaboration/](./01-collaboration/requirements.md).
+boundaries, the RFC proposal pipeline and its fold-in rule, governance, and
+the security-reporting policy. Day-to-day collaboration mechanics live in
+[01-collaboration/](./01-collaboration/requirements.md); public community
+surfaces live in [02-community/](./02-community/requirements.md).
 
 ## Context
 
@@ -35,6 +36,13 @@ absorbed surfaces per root DELTA-001).
   changeset (empty when the change has no release-note impact).
 - **LS.CONTRIB-R06 Reproducible bug reports:** Bug reports include a minimal
   reproducible example.
+
+### Security
+
+- **LS.CONTRIB-R09 Vulnerability reporting channel:** Security
+  vulnerabilities have a documented private reporting channel (GitHub
+  Security Advisories), realized by the repo-root `SECURITY.md`; security
+  fixes target the latest release line. Adopted 2026-07-16 (interview).
 
 ### Governance
 

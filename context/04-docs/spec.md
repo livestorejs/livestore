@@ -10,9 +10,11 @@ Draft.
 ## Scope
 
 Defines: the derivation mechanics, information architecture, snippet
-pipeline, and diagram policy. Does not define example apps (see
-[01-examples/](./01-examples/requirements.md)) or contribution workflow
-(`05-contributing/`).
+pipeline, and diagram policy. Does not define example apps
+([01-examples/](./01-examples/requirements.md)), search
+([02-search/](./02-search/requirements.md)), docs operations
+([03-operations/](./03-operations/requirements.md)), or contribution
+workflow (`05-contributing/`).
 
 ## Derivation Mechanics (LS.DOCS-R01, R02)
 
@@ -52,8 +54,9 @@ pipeline, and diagram policy. Does not define example apps (see
 
 ## Diagram Policy (LS.DOCS-R05)
 
-- New diagrams use D2 (`...@base.d2` include); Mermaid and TLDraw remain for
-  existing diagrams (`docs/src/content/_assets/diagrams/`).
+- New diagrams use D2 (`...@base.d2` include); legacy diagrams remain as
+  TLDraw sources (`docs/src/content/_assets/diagrams/*.tldr`) and inline
+  Mermaid blocks in MDX pages.
 - Diagram sources are versioned next to the docs content that uses them.
 
 ## Versioning Policy

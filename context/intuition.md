@@ -41,7 +41,8 @@ materializer effects are recomputed.
 
 ## Invariants
 
-- The eventlog is append-only; nothing edits or deletes history.
+- Confirmed history is immutable; pending (unconfirmed) events may still be
+  re-parented by a rebase before they join it.
 - Materializers are pure and deterministic: the same eventlog yields
   identical state on every client and platform.
 - State is disposable: it can always be rebuilt from the eventlog, which is
@@ -85,5 +86,9 @@ This directory is the root of LiveStore's intent layer. Six branches:
 - `06-sustainability/` — licensing, sponsorship, and staying maintained
   without a company.
 
-The formal contracts live in each branch's `requirements.md` and `spec.md`;
-[ontology.md](./ontology.md) is the canonical vocabulary used throughout.
+Branches nest: subsystems with real surface area carry child nodes of their
+own (e.g. sync splits into its pure merge core, its processors, and provider
+realizations), each with its own `requirements.md`/`spec.md` and often an
+`intuition.md` like this one. The formal contracts live in each node's
+`requirements.md` and `spec.md`; [ontology.md](./ontology.md) is the
+canonical vocabulary used throughout.

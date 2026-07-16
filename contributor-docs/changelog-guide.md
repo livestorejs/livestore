@@ -1,5 +1,9 @@
 # Changelog Guide
 
+> Companion of the intent-layer node
+> [`context/05-contributing/01-collaboration/`](../context/05-contributing/01-collaboration/spec.md),
+> which owns the changelog contract (LS.CONTRIB.COLLAB-R03).
+
 LiveStore is a data-layer library used by application developers. This changelog should help them understand version-to-version changes, assess risk before upgrading, and find migration guidance when behaviour shifts. Use the guide below to keep entries focused, accurate, and easy to scan.
 
 ## From the perspective of an application developer

@@ -1,5 +1,11 @@
 # Store Commit Receipt Awaitables
 
+> Status: stale proposal — the error names below predate the
+> `RejectedPushError` family; superseded by `LS.SYS.STORE-DQ1` / root
+> `LS-DQ1` in
+> [`context/`](../../context/02-system/05-store/spec.md). Kept until the
+> command/intent design session settles the commit-confirmation surface.
+
 ## Overview
 
 Redesign `store.commit` to return a structured receipt that exposes awaitables for both leader-thread processing and upstream sync backend confirmation while keeping the commit call itself synchronous for local materialisation. This work is motivated in part by [livestorejs/livestore#285](https://github.com/livestorejs/livestore/issues/285).

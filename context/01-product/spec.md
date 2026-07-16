@@ -59,9 +59,23 @@ Adopters model their app before adopting:
 | `overview/why-livestore` | Positioning statement, comparison stance |
 | `overview/when-livestore` | Fit matrix, evaluation exercise, envelope |
 | `overview/technology-comparison` | Comparison stance |
+| `misc/state-of-the-project` | Maturity & stability promise (below) |
 
-## Maturity Messaging
+## Maturity & Stability Promise (LS.PROD-R08)
 
-Product-maturity communication (`misc/state-of-the-project`) is maintained by
-the BDFL (see `05-contributing/`), updated at notable milestones; there is no
-formal trigger contract (current practice captured 2026-07-15).
+LiveStore is in beta: most APIs are fairly stable, and work focuses on
+reliability and performance toward an untimed 1.0. The stability stance
+adopters can rely on:
+
+- Minor releases may carry breaking changes of three kinds — API, client
+  storage format (a `liveStoreStorageFormatVersion` bump), and sync backend
+  storage format. Patch releases do not break.
+- Migration guidance accompanies breaking changes where feasible; the
+  release mechanics and change classification live in
+  [../03-delivery/02-release/](../03-delivery/02-release/spec.md).
+
+Maturity messaging (`misc/state-of-the-project`, a derived page) is
+maintained by the BDFL (see `05-contributing/`), updated at notable
+milestones; there is no formal trigger contract (current practice captured
+2026-07-15). No formal browser/platform support matrix exists
+(LS.PROD-DQ1).

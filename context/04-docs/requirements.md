@@ -2,7 +2,8 @@
 
 Role: owns the documentation system — the derivation rule binding the docs
 site to the intent layer, information architecture, snippet and diagram
-policy, and examples (child node `01-examples/`).
+policy, and the children: examples (`01-examples/`), search (`02-search/`),
+and docs operations (`03-operations/`).
 
 ## Context
 
@@ -34,7 +35,9 @@ lives in `docs/` (Astro Starlight) and publishes to `docs.livestore.dev`.
 
 - **LS.DOCS-R04 Type-checked snippets:** Every code snippet in the docs is
   type-checked against the current packages; snippets that no longer compile
-  fail CI.
+  fail CI as a required gate. Currently violated — the gate is optional
+  since #1391 (see
+  [.delta/DELTA-001-docs-gates-optional.md](./.delta/DELTA-001-docs-gates-optional.md)).
 - **LS.DOCS-R05 Editable diagram sources:** Every architecture diagram in the
   docs has an editable source checked into the repo.
 
