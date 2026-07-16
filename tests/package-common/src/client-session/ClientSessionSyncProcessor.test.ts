@@ -702,6 +702,43 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
+  Vitest.it.effect('clears a recovered rejection while newer admitted events remain pending', (test) =>
+    Effect.gen(function* () {
+      const pullQueue = yield* Queue.unbounded<typeof SyncState.PayloadUpstream.Type>()
+      const secondPushAccepted = yield* Deferred.make<void>()
+      const rejection = new LeaderAheadError({
+        minimumExpectedNum: EventSequenceNumber.Client.ROOT,
+        providedNum: EventSequenceNumber.Client.ROOT,
+        sessionId: 'session-test',
+      })
+      let pushCount = 0
+      const { processor, pushIds, scope } = yield* makeClientProcessorHarness({
+        pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+        push: () => {
+          pushCount++
+          return pushCount === 1
+            ? Effect.fail(rejection)
+            : Deferred.succeed(secondPushAccepted, undefined).pipe(Effect.asVoid)
+        },
+      })
+
+      const [rejectedEvent] = yield* pushIds(['rejected-prefix'])
+      yield* processor.debug.awaitRejection
+      yield* pushIds(['newer-admitted'])
+      yield* Deferred.await(secondPushAccepted)
+      // Drain both local notifications so the next one proves the upstream confirmation was processed.
+      yield* processor.syncState.changes.pipe(Stream.take(2), Stream.runDrain)
+
+      yield* Queue.offer(pullQueue, SyncState.PayloadUpstreamAdvance.make({ newEvents: [rejectedEvent!] }))
+      yield* processor.syncState.changes.pipe(Stream.take(1), Stream.runDrain)
+
+      const closeExit = yield* Scope.close(scope, Exit.void).pipe(Effect.exit)
+
+      expect(Exit.isSuccess(closeExit)).toBe(true)
+      expect((yield* processor.syncState.get).pending.map((event) => event.args.id)).toEqual(['newer-admitted'])
+    }).pipe(withTestCtx(test)),
+  )
+
   Vitest.it.effect('propagates a fatal leader push from the graceful drain', (test) =>
     Effect.gen(function* () {
       const pushStarted = yield* Deferred.make<void>()

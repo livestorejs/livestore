@@ -2,6 +2,7 @@
 import { LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
 import {
   Cause,
+  Deferred,
   Effect,
   Exit,
   Filter,
@@ -98,6 +99,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
   /** Only used for debugging / observability / testing, it's not relied upon for correctness of the sync processor. */
   const syncStateUpdateQueue = yield* Queue.unbounded<SyncState.SyncState>()
+  const rejectionObserved = yield* Deferred.make<void>()
   const isClientOnlyEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
@@ -126,7 +128,13 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     const leaderPushingFiberHandle = yield* FiberHandle.make<void, never>()
     let drainFailure: Cause.Cause<never> | undefined
     let rejectionRevision = 0
-    let rejectionAwaitingPull: { readonly error: Error; readonly revision: number } | undefined
+    let rejectionAwaitingPull:
+      | {
+          readonly error: Error
+          readonly rejectedEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
+          readonly revision: number
+        }
+      | undefined
 
     const backgroundLeaderPushing: Effect.Effect<void> = Effect.gen(function* () {
       while (true) {
@@ -150,8 +158,10 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
               // Normal rejection recovery relies on pull rebasing and repopulating the open queue. Pull has already
               // stopped once graceful scope teardown closes the queue, so that path must fail rather than report a
               // successful durable drain after discarding pending events.
-              if (wasOpen === true) rejectionAwaitingPull = { error, revision: ++rejectionRevision }
-              else drainFailure = Cause.die(error)
+              if (wasOpen === true) {
+                rejectionAwaitingPull = { error, rejectedEvents: batch, revision: ++rejectionRevision }
+              } else drainFailure = Cause.die(error)
+              yield* Deferred.succeed(rejectionObserved, undefined)
             })
           }),
         )
@@ -283,9 +293,14 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           if (mergeResult.newEvents.length === 0) {
             // If there are no new events, we need to update the sync state as well
             yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
-            // An advance only resolves a cleared transport queue when it confirms every canonical pending event.
-            // Otherwise keep the marker so shutdown cannot claim a durable drain for still-stranded pending events.
-            if (mergeResult.newSyncState.pending.length === 0 && rejectionAwaitingPull === rejectionAtPullStart) {
+            // Clear only when this pull confirms the rejected prefix. Newer pending events may already have been
+            // admitted successfully and must not keep an obsolete rejection marker alive.
+            if (
+              rejectionAtPullStart !== undefined &&
+              isRejectedBatchRecovered(rejectionAtPullStart.rejectedEvents, mergeResult.newSyncState.pending) ===
+                true &&
+              rejectionAwaitingPull === rejectionAtPullStart
+            ) {
               rejectionAwaitingPull = undefined
             }
             return
@@ -313,7 +328,11 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
           // We're only triggering the sync state update after all events have been materialized
           yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
-          if (mergeResult.newSyncState.pending.length === 0 && rejectionAwaitingPull === rejectionAtPullStart) {
+          if (
+            rejectionAtPullStart !== undefined &&
+            isRejectedBatchRecovered(rejectionAtPullStart.rejectedEvents, mergeResult.newSyncState.pending) === true &&
+            rejectionAwaitingPull === rejectionAtPullStart
+          ) {
             rejectionAwaitingPull = undefined
           }
         }).pipe(
@@ -432,6 +451,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       changes: Stream.fromQueue(syncStateUpdateQueue),
     }),
     debug: {
+      awaitRejection: Deferred.await(rejectionObserved),
       print: () =>
         Effect.gen(function* () {
           console.log('debugInfo', debugInfo)
@@ -462,6 +482,15 @@ const snapshotTxQueue = <A, E>(queue: TxQueue.TxQueue<A, E>): Effect.Effect<Read
     }),
   )
 
+const isRejectedBatchRecovered = (
+  rejectedEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+  pendingEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+): boolean =>
+  rejectedEvents.every(
+    (rejectedEvent) =>
+      pendingEvents.some((pendingEvent) => LiveStoreEvent.Client.isEqualEncoded(pendingEvent, rejectedEvent)) === false,
+  )
+
 export interface ClientSessionSyncProcessor {
   boot: Effect.Effect<void, never, Scope.Scope>
   encodeEvents: (
@@ -476,6 +505,8 @@ export interface ClientSessionSyncProcessor {
    */
   syncState: Subscribable.Subscribable<SyncState.SyncState>
   debug: {
+    /** Diagnostic/test barrier completed after the first rejected leader push updates coordinator state. */
+    awaitRejection: Effect.Effect<void>
     print: () => void
     debugInfo: () => {
       rebaseCount: number
