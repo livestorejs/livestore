@@ -20,7 +20,10 @@ Draft.
 | Perf (eventlog) | Event-streaming measurements | `tests/perf-eventlog/` | Playwright | package `test` script | — |
 | Examples-as-tests | Examples still build and run | `examples/` | per-example `test` script | `mono examples test` | not a required gate |
 
-## Known Mismatches (captured 2026-07-16)
+## Known Mismatches
+
+Open violations of LS.SYS.VER.LANE-R03, tracked in
+[DELTA-002](./.delta/DELTA-002-lane-ci-mismatches.md):
 
 - "Integration" is one local verb but three CI job families
   (sync-provider, playwright suites, wa-sqlite).
@@ -35,3 +38,7 @@ Colocated unit-test counts are heavily skewed toward the engine core
 packages have **zero** colocated tests: `adapter-web`,
 `adapter-cloudflare`, `sync-cf`, `framework-toolkit`, `wa-sqlite`.
 Their coverage rests entirely on the integration and conformance lanes.
+Under LS.SYS.VER.LANE-R02 each needs tests or a documented exemption here;
+open violation tracked in
+[DELTA-001](./.delta/DELTA-001-zero-test-packages.md). No exemptions are
+recorded yet.

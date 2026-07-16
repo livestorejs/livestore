@@ -20,3 +20,19 @@ themselves live in their owning nodes (`../../03-sync/`, `../../04-runtime/`,
   (adapters, framework integrations, read-model realizations) has a
   realization-independent conformance suite a new realization must pass.
   Re-homed from `LS.SYS.VER-R03`.
+- **LS.SYS.VER.CONF-R03 Adapter conformance:** Every platform adapter passes
+  a shared conformance suite covering storage lifecycle, boot, and leader
+  election. Adopted 2026-07-16 (interview); not yet built — see
+  [.delta/DELTA-001-adapter-conformance-missing.md](./.delta/DELTA-001-adapter-conformance-missing.md).
+  `refines: LS-R07`
+- **LS.SYS.VER.CONF-R04 Framework-integration conformance:** Every framework
+  integration passes a realization-independent binding conformance suite.
+  Adopted 2026-07-16 (interview); not yet built — see
+  [.delta/DELTA-002-framework-conformance-missing.md](./.delta/DELTA-002-framework-conformance-missing.md).
+  `refines: LS-R09`
+- **LS.SYS.VER.CONF-R05 Provider-suite hardening:** The sync-provider suite
+  asserts reconnection-after-drop and auth-failure behavior for every
+  provider in the matrix. Adopted 2026-07-16 (interview); not yet built —
+  see
+  [.delta/DELTA-003-provider-suite-assertion-gaps.md](./.delta/DELTA-003-provider-suite-assertion-gaps.md).
+  `refines: LS-R08`

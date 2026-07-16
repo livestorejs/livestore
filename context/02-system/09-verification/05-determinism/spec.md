@@ -28,7 +28,7 @@ Draft.
 
 ## Open Design Questions
 
-- **LS.SYS.VER.DET-DQ1 Determinism oracle.** Which executable oracle should
-  back LS-R05 beyond the dev-mode runtime guard: rematerialize-twice,
-  cross-build state-hash equivalence, property-based merge tests, or a
-  combination — undecided.
+- **LS.SYS.VER.DET-DQ1 Property-based coverage.** The oracle is decided
+  (rematerialize-twice + cross-build hash equivalence, LS.SYS.VER.DET-R02);
+  whether merge/rebase/sequence-number semantics additionally warrant
+  property-based generative tests remains open.

@@ -34,3 +34,15 @@ unchanged.
 - **LS.SYS.SYNC.SS-R04 Uniform machine at both boundaries:** The same
   merge core runs at session⇄leader and leader⇄backend; placement is
   `../../04-runtime/`'s concern, driving is `../02-processors/`'s.
+- **LS.SYS.SYNC.SS-R05 Client-only event semantics:** Client-only events
+  advance only the client component of the sequence number (`eN.k`), are
+  never pushed upstream, and are filtered by the leader when merging
+  upstream advances and when building backend pushes (spec: [Client-Only
+  Event Handling](./spec.md#client-only-event-handling)). Adopted 2026-07-16
+  (interview).
+- **LS.SYS.SYNC.SS-R06 Rebase-generation monotonicity:** Every rebase
+  increments the rebase generation of the re-parented pending events, and
+  the leader rejects pushed batches carrying an older generation
+  (`StaleRebaseGenerationError`; spec: [Rebase
+  Generations](./spec.md#rebase-generations)). Adopted 2026-07-16
+  (interview). `refines: LS.SYS.SYNC.SS-R03`

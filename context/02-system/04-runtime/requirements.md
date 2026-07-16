@@ -40,6 +40,33 @@ contrib-owned, stub shape pending LS-DQ2), and the transport substrate
 - **LS.SYS.RT-R04 Leadership handover:** When the current leader context goes
   away, another eligible context takes over leadership without data loss;
   sessions observe leadership via a lock status signal.
+- **LS.SYS.RT-R10 Push-rejection contract:** A rejected push
+  (`RejectedPushError` family) is recoverable: the session rebases and
+  retries; events are never dropped (see spec §Boundary Error Taxonomy).
+  Adopted 2026-07-16 (interview).
+- **LS.SYS.RT-R12 Handover invariant stability:** Store invariants (storeId,
+  storage options, sync payload, versions) stay stable across leader
+  transitions; a mismatch fails loudly instead of silently reconfiguring
+  (see spec §Realizations). Adopted 2026-07-16 (interview).
+- **LS.SYS.RT-R13 Boot safety assertion:** Leader boot rejects
+  `backendHead > localHead` as an unrecoverable defect (see spec §Leadership
+  Handover). Adopted 2026-07-16 (interview). `refines: LS-R04`
+
+### Session boot
+
+- **LS.SYS.RT-R11 Boot-progress surface:** Adapters stream boot progress
+  (`loading → migrating → rehydrating → syncing → done`, plus an optional
+  warning stage) so apps can render boot state (see spec §Session Boot).
+  Adopted 2026-07-16 (interview).
+- **LS.SYS.RT-R14 Blocking initial-sync bound:** With blocking initial sync
+  configured, boot waits for the first sync page up to a timeout, then
+  proceeds (see spec §Session Boot). Adopted 2026-07-16 (interview).
+  `refines: LS-R03`
+- **LS.SYS.RT-R15 Fast-path read consistency:** Fast-path-derived head and
+  state must equal what the leader would report; divergence is detected,
+  not trusted. Adopted 2026-07-16 (interview); not yet enforced — see
+  [.delta/DELTA-001-fast-path-unvalidated.md](./.delta/DELTA-001-fast-path-unvalidated.md).
+  `refines: LS-R05`
 
 ### Adapter contract
 
@@ -54,6 +81,11 @@ contrib-owned, stub shape pending LS-DQ2), and the transport substrate
 - **LS.SYS.RT-R07 Storage-mode transparency:** Persistence may degrade to
   in-memory (e.g. private browsing); the adapter must surface the effective
   storage mode and a boot warning instead of failing silently.
+- **LS.SYS.RT-R16 Storage-mode source of truth:** The effective storage mode
+  has one source of truth; the app-visible mode always matches the actual
+  database backing. Adopted 2026-07-16 (interview); today two independent
+  probes can disagree — see
+  [.delta/DELTA-002-dual-storage-probes.md](./.delta/DELTA-002-dual-storage-probes.md).
 
 ### Substrates
 

@@ -32,9 +32,21 @@ LS-R04…R06, LS-R10, LS-T04. Realization:
   contract; the engine core depends only on the contract. `refines: LS-R10`
 - **LS.SYS.STATE-R06 Read-only queries:** The app query surface cannot mutate
   state.
+- **LS.SYS.STATE-R07 Error classification:** Materializer failures are
+  recoverable tagged errors (`MaterializeError`, materializer-hash
+  mismatch); contract violations (unknown event on write, missing event
+  definition during materialization) are defects (see [spec.md](./spec.md)
+  §Error classification). Adopted 2026-07-16 (interview).
 
 ## Open Design Questions
 
 - **LS.SYS.STATE-DQ1 Conformance definition:** Which observable invariants must
   any future non-SQLite realization prove (owned jointly with
   `09-verification/`)?
+- **LS.SYS.STATE-DQ2 Crash-divergence contract:** State-db and eventlog commit
+  in two coordinated transactions; a process crash between commits can
+  diverge them silently (rebuild triggers only on absent state tables).
+  Whether the contract becomes "never observably diverge" is deliberately
+  deferred to the planned read/write-model separation (see root
+  [roadmap.md](../../roadmap.md)), where per-read-model cursors and error
+  boundaries change the shape of the answer. Decided 2026-07-16 (interview).

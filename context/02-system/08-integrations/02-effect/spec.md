@@ -13,7 +13,7 @@ Draft.
 The binding is reachable only via the `@livestore/livestore/effect` subpath
 (`package.json#exports`); the main entry re-exports no Effect API. It wraps
 the same `createStore` as every other consumer — it is a Context/Layer
-adapter, not a parallel store implementation.
+adapter, not a parallel store implementation (LS.SYS.INT.EFFECT-R01).
 
 `Store.Tag(schema, storeId)` (`effect/LiveStore.ts:240-341`) returns a
 yieldable `Context.Service` subclass keyed `@livestore/store/${storeId}`,

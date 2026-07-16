@@ -92,20 +92,24 @@ Two boot paths produce the session's initial in-memory state:
   without touching the leader. This is the one sanctioned direct
   persistence *read*; the snapshot is currently trusted without validation
   (code TODO), and its head source differs from the leader's
-  (eventlog-derived), so the two can in principle diverge.
+  (eventlog-derived), so the two can in principle diverge — violating
+  LS.SYS.RT-R15
+  ([DELTA-001](./.delta/DELTA-001-fast-path-unvalidated.md)).
 - **Slow path:** the leader provides a recreate snapshot plus a
   `migrationsReport` (`GetRecreateSnapshot`).
 
 Boot progress is a streamed `BootStatus` surface
 (`adapter-types.ts`): `loading → migrating → rehydrating → syncing → done`,
 with per-stage progress counts and an optional `warning` stage (e.g. OPFS
-unavailable). With `initialSync: Blocking` the leader delays boot completion
-until the first sync page arrives, bounded by a timeout.
+unavailable) (LS.SYS.RT-R11). With `initialSync: Blocking` the leader delays
+boot completion until the first sync page arrives, bounded by a timeout
+(LS.SYS.RT-R14).
 
 `storageMode` (persisted vs in-memory fallback) is derived from the client
 session's own storage probe, not from leader boot info; Cloudflare hardcodes
 `persisted`. On web, client and leader probe storage independently and can
-in principle disagree (two probes, one reported mode).
+in principle disagree (two probes, one reported mode) — violating
+LS.SYS.RT-R16 ([DELTA-002](./.delta/DELTA-002-dual-storage-probes.md)).
 
 ## Transport Substrate (webmesh)
 
@@ -130,9 +134,9 @@ Durable Object storage in cf) but share query/materialization behavior
 | Node, Expo, Tauri/Electron | contrib | stub pending LS-DQ2 |
 
 Realizations with leader transitions must keep store invariants (storeId,
-storage options, sync payload, versions) stable across a handover; the web
-realization enforces this at the shared-worker port swap
-([01-web/](./01-web/spec.md)).
+storage options, sync payload, versions) stable across a handover
+(LS.SYS.RT-R12); the web realization enforces this at the shared-worker
+port swap ([01-web/](./01-web/spec.md)).
 
 ## Leadership Handover
 
@@ -160,8 +164,8 @@ The session ⇄ leader boundary has a typed failure contract:
 - **Push rejection (recoverable):** `RejectedPushError` =
   `LeaderAheadError` | `NonMonotonicBatchError` |
   `StaleRebaseGenerationError` (`leader-thread/RejectedPushError.ts`).
-  The session responds by rebasing and retrying; events are never dropped.
-  Semantics: [../03-sync/](../03-sync/spec.md).
+  The session responds by rebasing and retrying; events are never dropped
+  (LS.SYS.RT-R10). Semantics: [../03-sync/](../03-sync/spec.md).
 - **Shutdown broadcast:** the shutdown channel carries
   `IntentionalShutdownCause` (reasons: `devtools-reset`, `devtools-import`,
   `adapter-reset`, `manual`, `backend-id-mismatch`) *and* terminal failure
@@ -170,8 +174,8 @@ The session ⇄ leader boundary has a typed failure contract:
   intentional causes to a successful exit and everything else to a failed
   exit. Cloudflare has no channel (noop; single-context).
 - **Boot defect:** leader boot asserts `backendHead <= localHead` and dies
-  otherwise — the sole handover safety check; there is no cross-source
-  reconciliation beyond it.
+  otherwise (LS.SYS.RT-R13) — the sole handover safety check; there is no
+  cross-source reconciliation beyond it.
 
 ## Open Design Questions
 

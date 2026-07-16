@@ -29,10 +29,34 @@ The devtools UI ships through a separate artifact pipeline (see
   operations (database reset, database import, event injection, sync latches
   for simulating offline); every control operation is an explicit protocol
   message, never inferred behavior. (Attribution of imported data is
-  currently incomplete — see the spec's control-operation table.)
+  currently incomplete — see LS.SYS.DT-R09 and
+  [.delta/DELTA-001-import-unattributed.md](./.delta/DELTA-001-import-unattributed.md).)
 - **LS.SYS.DT-R05 Pluggable surfaces:** Surfaces attach over webmesh channels
   discovered by node naming; the web channel ships in-repo, other surfaces
   (e.g. Expo devtools) are contrib realizations (stub pending LS-DQ2).
 - **LS.SYS.DT-R06 Session discovery:** Running sessions announce identity
   (store, client, session, schema alias, leader flag, origin) so surfaces can
   enumerate and target them without app cooperation.
+- **LS.SYS.DT-R07 Idempotent delivery:** Every request-bearing message
+  carries a `requestId`; handlers are idempotent under duplicate delivery
+  (the proxy transport is at-least-once). Adopted 2026-07-16 (interview).
+- **LS.SYS.DT-R08 Subscription lifecycle:** Streaming inspection uses
+  explicit `Subscribe`/`Unsubscribe` messages keyed by `subscriptionId`; all
+  subscriptions of a peer drop on `Disconnect`. Adopted 2026-07-16
+  (interview).
+- **LS.SYS.DT-R09 Destructive-op accounting:** Every state-mutating devtools
+  operation is enumerated in the protocol catalog and attributable as
+  devtools-originated. Adopted 2026-07-16 (interview); database import is
+  not attributable today — see
+  [.delta/DELTA-001-import-unattributed.md](./.delta/DELTA-001-import-unattributed.md).
+- **LS.SYS.DT-R10 Discovery liveness:** Session discovery is poll plus TTL
+  eviction; a non-responsive session disappears from surfaces within the
+  stale window. Adopted 2026-07-16 (interview). `refines: LS.SYS.DT-R06`
+- **LS.SYS.DT-R11 Side-effect-free inspection:** Inspection operations must
+  not mutate engine state observable to other readers. Adopted 2026-07-16
+  (interview); debug-info reads currently reset shared state — see
+  [.delta/DELTA-002-debuginfo-reset-on-read.md](./.delta/DELTA-002-debuginfo-reset-on-read.md).
+- **LS.SYS.DT-R12 Transport enumeration:** The spec's surfaces contract
+  names all supported transports (web channel, browser-extension bridge,
+  Expo webmesh proxy); adding a transport is a spec change, never an
+  undocumented side door. Adopted 2026-07-16 (interview).

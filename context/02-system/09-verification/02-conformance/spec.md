@@ -34,12 +34,20 @@ No shared suites exist for adapters, framework integrations, or read-model
 realizations; their coverage rests on browser-integration tests (web) and
 colocated hook tests (react).
 
+Adapter and framework-integration suites are now contracted
+(LS.SYS.VER.CONF-R03/R04) with open deltas
+([DELTA-001](./.delta/DELTA-001-adapter-conformance-missing.md),
+[DELTA-002](./.delta/DELTA-002-framework-conformance-missing.md));
+reconnection/auth assertions are contracted by LS.SYS.VER.CONF-R05
+([DELTA-003](./.delta/DELTA-003-provider-suite-assertion-gaps.md)).
+
 ## Open Design Questions
 
-- **LS.SYS.VER.CONF-DQ1 Missing dimension suites.** Adapter, framework
-  integration, and read-model conformance suites (LS.SYS.VER.CONF-R02) do
-  not exist yet — a contract/reality gap for this node. Moved from
-  `LS.SYS.VER-DQ1`.
-- **LS.SYS.VER.CONF-DQ2 Sync-suite assertion gaps.** Whether
-  reconnection-after-drop, auth failure, and `pageInfo` semantics become
-  required suite assertions for every provider is undecided.
+- **LS.SYS.VER.CONF-DQ1 Read-model conformance.** What a read-model
+  realization suite must prove is owned jointly with `LS.SYS.STATE-DQ1`
+  (`../../02-state/requirements.md`); undecided until a second read-model
+  realization is concrete. Narrowed 2026-07-16 from the broader
+  missing-dimension question.
+- **LS.SYS.VER.CONF-DQ2 `pageInfo` assertions.** Whether `pageInfo.remaining`
+  semantics become required suite assertions is undecided (reconnection and
+  auth are now contracted via R05).

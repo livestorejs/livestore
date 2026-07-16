@@ -28,3 +28,8 @@ Builds on [../requirements.md](../requirements.md) (LS.SYS.SYNC-R02). Code:
 - **LS.SYS.SYNC.CF-R04 Reference status:** Serves as the conformance
   baseline for the provider contract (`09-verification/`) and the deploy
   target for examples.
+- **LS.SYS.SYNC.CF-R05 Liveness parity:** Live pull is native on WebSocket
+  (server-held stream) and DO-RPC (callback queue) and poll-emulated on
+  HTTP; all three converge on the same pull results, differing only in
+  latency and mechanism (spec: [Transports](./spec.md#transports)). Adopted
+  2026-07-16 (interview). `refines: LS.SYS.SYNC.CF-R02`

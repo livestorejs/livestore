@@ -55,6 +55,8 @@ mechanics live in `../03-sync/02-processors/`.
 
 ### Error classification
 
+The classification is contract (LS.SYS.STATE-R07):
+
 | Failure | Kind |
 | --- | --- |
 | `MaterializeError` (materializer threw / bad SQL) | recoverable tagged error |

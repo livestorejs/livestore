@@ -23,3 +23,8 @@ registry-based lifecycle. Refines [../requirements.md](../requirements.md)
   tear-freedom under concurrent rendering is not guaranteed by construction
   and is currently unverified (see [spec.md](./spec.md) §Subscription
   Model). `refines: LS.SYS.INT-R04`
+- **LS.SYS.INT.REACT-R05 Resource identity:** Query and store resources are
+  created and disposed exactly once per key across StrictMode double-invoke
+  and Fast Refresh (per-store reference-counted buckets; see
+  [spec.md](./spec.md) §Store Acquisition). Adopted 2026-07-16 (interview).
+  `refines: LS.SYS.INT-R05`

@@ -51,7 +51,7 @@ materializer; `get(id?)` is a typed query. Mechanics:
   a partial that merges into the current document; otherwise the
   materializer upserts the full value via
   `INSERT … ON CONFLICT (id) DO UPDATE` (`client-document-def.ts:305-321`)
-  — last-write-wins per key.
+  — last-write-wins per key (LS.SYS.STATE.SQLITE-R07).
 - The `value` column stores full documents decoded through an
   *optimistic* schema (`client-document-def.ts:66`) so historical value
   formats remain readable after the document schema evolves.
@@ -80,5 +80,6 @@ rollback.
 ## Schema Change
 
 Owned by [02-schema-management](./02-schema-management/spec.md): hash-based
-rebuild via adapter file naming, `auto`/`manual` strategies + hooks, and the
-state-vs-eventlog versioning asymmetry.
+rebuild via adapter file naming, `auto`/`manual` strategies + hooks
+(contracted by LS.SYS.STATE.SQLITE-R08), and the state-vs-eventlog
+versioning asymmetry.

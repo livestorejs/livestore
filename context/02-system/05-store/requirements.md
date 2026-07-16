@@ -34,3 +34,17 @@ former `LS.SYS.STORE-R03`/`-R05` were re-homed there (2026-07-16) as
   from failure.
 - **LS.SYS.STORE-R08 Typed results:** Query results are schema-validated; the
   query builder and result schemas are fully typed. `refines: LS-R11`
+- **LS.SYS.STORE-R09 Fatal commit:** A failed local commit shuts the store
+  down; it does not throw recoverably to the caller (see
+  [spec.md](./spec.md) §Commit Path). Adopted 2026-07-16 (interview).
+- **LS.SYS.STORE-R10 Registry identity:** A store's registry identity is its
+  `storeId` alone; a later load with differing options returns the existing
+  store and the differing options are ignored. Adopted 2026-07-16
+  (interview). `refines: LS.SYS.STORE-R06`
+- **LS.SYS.STORE-R11 Fixed cache-time:** `unusedCacheTime` is fixed at first
+  load; later differing values do not change it (supersedes RFC 0001's
+  longest-wins proposal). Adopted 2026-07-16 (interview).
+  `refines: LS.SYS.STORE-R06`
+- **LS.SYS.STORE-R12 Storage mode surfaced:** The store exposes whether its
+  state is persisted or in-memory (`storageMode`). Adopted 2026-07-16
+  (interview).

@@ -33,7 +33,8 @@ implemented):
 - **Equality cutoff:** each thunk compares against its previous result and
   stops propagation when equal. Db queries use an eagerly-built
   `Schema.toEquivalence`; supplying `map` disables the equivalence, so
-  mapped queries always re-propagate (`db-query.ts:332-346`).
+  mapped queries always re-propagate (`db-query.ts:332-346`;
+  LS.SYS.STORE.RX-R05).
 - **Opt-out:** `commit({ skipRefresh: true }, …)` defers the refresh to a
   later manual refresh / `runDeferredEffects` pass; subscriber effects run
   through the adapter-provided `batchUpdates` wrapper.
@@ -57,7 +58,7 @@ queries resolve tables lazily via `getTablesUsed`
 
 Contextual (function-form) db queries whose builder is not introspectable on
 Hermes (Expo) must supply explicit `deps` or construction throws
-(`db-query.ts:115`, `base-class.ts:104-125`).
+(`db-query.ts:115`, `base-class.ts:104-125`; LS.SYS.STORE.RX-R04).
 
 Query instances expose debug fields: `runs` (recomputation count; always `0`
 for signals, whose `results$` is a ref, not a thunk), `executionTimes`,
@@ -70,7 +71,8 @@ ref-counted until the query is destroyed (`base-class.ts:329` TODO).
 
 ## Identity and Dedup — Two Independent Layers
 
-The current-layer distinction (previously conflated in this tree):
+The current-layer distinction (LS.SYS.STORE.RX-R03; previously conflated in
+this tree):
 
 1. **Instance dedup** (`defRcMap`, `base-class.ts:345-373`): live-query
    instances are shared by `def.hash` with reference counting; `deref()` at

@@ -33,8 +33,8 @@ Most traffic is not request/response but subscription lifecycles: a
 `…Subscribe` message carrying a devtools-chosen `subscriptionId` starts a
 server-pushed stream of `…Res` messages tagged with that id; `…Unsubscribe`
 ends it. Handlers keep per-subscription fibers in a `FiberMap` keyed by
-`subscriptionId` and drop all subscriptions on `Disconnect`. Response
-messages mint fresh `nanoid` request ids.
+`subscriptionId` and drop all subscriptions on `Disconnect`
+(LS.SYS.DT-R08). Response messages mint fresh `nanoid` request ids.
 
 ### Delivery semantics
 
@@ -42,7 +42,8 @@ Channel delivery is at-least-once: webmesh proxy channels can double-deliver
 (observed on Expo). Both endpoints therefore keep a `handledRequestIds` dedup
 set and ignore repeats; unsubscribe paths tolerate stale ids from prior
 channel incarnations (`?.()` guards). Handlers must stay idempotent under
-duplicate delivery. Moving dedup into the webmesh layer is a code TODO.
+duplicate delivery (LS.SYS.DT-R07). Moving dedup into the webmesh layer is
+a code TODO.
 
 ### Versioning and compatibility
 
@@ -65,7 +66,8 @@ leader flag, browser origin) once on connect; devtools poll with
 poll. Devtools evict entries not re-seen within a 5s stale timeout
 (`devtools-sessioninfo.ts`). Discovery is poll + TTL eviction, not a push
 registry: a dead session disappears within the stale window
-(LS.SYS.DT-R06). Channel and node names follow `Devtools.makeNodeName.*` /
+(LS.SYS.DT-R06, LS.SYS.DT-R10). Channel and node names follow
+`Devtools.makeNodeName.*` /
 `isChannelName.*`; channels are origin-scoped in browsers.
 
 ### Channel modes
@@ -84,16 +86,21 @@ All state-mutating operations are explicit protocol messages
 | Operation | Effect | Attribution |
 | --- | --- | --- |
 | `ResetAllData` | wipe persisted data (`all-data` / `only-app-db`) | implicit (shutdown broadcast) |
-| `LoadDatabaseFile` | import a state/eventlog DB, forces shutdown | **not** origin-tagged in the eventlog |
+| `LoadDatabaseFile` | import a state/eventlog DB, forces shutdown | **not** origin-tagged — violates LS.SYS.DT-R09 ([DELTA-001](./.delta/DELTA-001-import-unattributed.md)) |
 | `CommitEventReq` | inject an event into the store | committed with origin `devtools-${clientId}` |
 | `SetSyncLatch` | close/open sync latch (simulate offline) | n/a (transient) |
 | `DebugInfoResetReq` | clear collected debug info | n/a (diagnostic state) |
 
 Known wart: `DebugInfoHistorySubscribe` *reads with a side effect* — each
 tick resets `sqliteDbWrapper.debugInfo` to empty, starving any other reader
-of the same struct (code TODO; issue #1421).
+of the same struct — violating LS.SYS.DT-R11
+([DELTA-002](./.delta/DELTA-002-debuginfo-reset-on-read.md); code TODO;
+issue #1421).
 
 ## Surfaces
+
+The transports below are the complete enumeration (LS.SYS.DT-R12); adding
+one is a spec change.
 
 | Surface | Home | Transport | Status |
 | --- | --- | --- | --- |

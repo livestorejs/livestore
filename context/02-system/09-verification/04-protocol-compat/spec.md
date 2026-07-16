@@ -24,10 +24,6 @@ protocol versions (only protocol 1 exists today).
 The sync wire messages (`sync-cf`) carry no protocol version and have **no**
 compatibility test; the only versioning is `PERSISTENCE_FORMAT_VERSION`
 baked into storage table names (a soft-reset mechanism, not wire compat).
-
-## Open Design Questions
-
-- **LS.SYS.VER.PROTO-DQ1 Sync wire compatibility.** Whether the sync
-  protocol should gain an explicit wire version plus an executable
-  compatibility test (parity with devtools) is undecided; today
-  compatibility rests on structural schema decoding alone.
+A sync wire-compatibility test is now contracted (LS.SYS.VER.PROTO-R02;
+[DELTA-001](./.delta/DELTA-001-sync-wire-compat-missing.md)) — it may force
+an explicit wire version, a `03-sync/` design change.

@@ -49,7 +49,7 @@ short-circuits only on reference equality (`===`), then issues a full
 client-only LWW event per `setState` call, no debouncing
 (`useClientDocument.ts:137-145`). The first read of a client document seeds
 its default row via a `skipRefresh: true` commit to avoid a reactive loop
-during render (`client-document-get-query.ts:47-53`).
+during render (`client-document-get-query.ts:47-53`; LS.SYS.INT-R06).
 
 ## Store Acquisition
 

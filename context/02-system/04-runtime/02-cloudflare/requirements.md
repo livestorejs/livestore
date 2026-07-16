@@ -20,3 +20,11 @@ a Cloudflare Durable Object as a headless client. Refines
   server-derived state equals client-derived state. `refines: LS-R05`
 - **LS.SYS.RT.CF-R05 Headless operation:** Devtools are disabled; the DO client
   is operated through the Store API only.
+- **LS.SYS.RT.CF-R06 Accepted commit-loss window:** Commits acked to the
+  colocated in-process session but not yet flushed to disk may be lost on
+  abrupt isolate termination. This window is accepted (platform default; no
+  forced `ctx.storage.sync()` before ack). It must never be externally
+  observable: outbound messages and backend pushes are output-gated on the
+  flush (see
+  [.reference/cloudflare-do-durability.md](./.reference/cloudflare-do-durability.md)).
+  Decided 2026-07-16 (interview).

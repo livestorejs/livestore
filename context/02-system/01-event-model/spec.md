@@ -93,12 +93,14 @@ Notation (`contributor-docs/events-notation.md`): `e0`, `e3'` (unconfirmed),
 `e5.1` (client-local), `e3r1` (after rebase), `A:`/`B:` client prefixes.
 Code emits only the `e{global}[.{client}][r{gen}]` subset — the `'`
 unconfirmed marker and client prefixes exist in docs/tests only
-(LS.SYS.EVT-R06 is satisfied by the shared subset; full round-trip is an
-open gap).
+(LS.SYS.EVT-R06 is satisfied by the shared subset; full round-trip is
+contracted by LS.SYS.EVT-R10 and tracked in
+[.delta/DELTA-001-notation-partial.md](./.delta/DELTA-001-notation-partial.md)).
 
 ## Eventlog
 
-The leader persists events in the eventlog database (`eventlog-tables.ts`):
+The leader persists events in the eventlog database (`eventlog-tables.ts`;
+row completeness contracted by LS.SYS.EVT-R09):
 
 - **`eventlog`** — one row per event: composite seqNum triple (3-column PK)
   + parent triple, `name`, `argsJson` (note: `undefined` args are stored as

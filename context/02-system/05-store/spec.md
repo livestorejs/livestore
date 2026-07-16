@@ -29,7 +29,7 @@ see `../04-runtime/`). Members (`store.ts`):
   snapshot), `syncStatusStream`, `subscribeSyncStatus`.
 - Identity/environment: `storeId`, `clientId`, `sessionId`, `storageMode`
   (persisted vs in-memory fallback, e.g. Safari/Firefox private browsing —
-  `store.ts:166-207`).
+  `store.ts:166-207`; LS.SYS.STORE-R12).
 - Lifecycle: `shutdown`, `shutdownPromise`; debug: `_dev.*`, devtools wiring
   (`src/store/devtools.ts`).
 
@@ -66,7 +66,7 @@ The pipeline is fully synchronous, run via `Effect.runSyncWith`
 
 **A failed local commit is fatal to the store**: the commit path catches the
 cause and forks `store.shutdown` rather than throwing a recoverable error to
-the caller (`store.ts:944`).
+the caller (`store.ts:944`; LS.SYS.STORE-R09).
 
 Telemetry: long-lived `LiveStore:commits`/`LiveStore:queries` spans plus a
 per-commit root span with links.
@@ -98,10 +98,10 @@ RFC 0001, the implementation is the contract:
 
 - **Cache identity is `storeId` alone** (`StoreRegistry.ts:120-139`):
   loading the same `storeId` with a different adapter/schema silently
-  returns the first store.
+  returns the first store (LS.SYS.STORE-R10).
 - **`unusedCacheTime` is fixed at first load** (`StoreRegistry.ts:74`), not
   longest-wins as RFC 0001 §cache-time proposed (the longest-wins test is
-  `it.skip`).
+  `it.skip`; LS.SYS.STORE-R11).
 - Defaults: 60s in the browser, `Infinity` under SSR.
 - Disposal API is `dispose()` (RFC 0001 called it `clear()`).
 - `getOrLoadPromise` returns synchronously for a cached store and a

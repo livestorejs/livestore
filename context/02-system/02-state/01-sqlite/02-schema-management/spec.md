@@ -76,3 +76,11 @@ The eventlog side is guarded only by a code comment
 `liveStoreStorageFormatVersion`") and a TODO for a proper versioning system.
 This asymmetry is the sharpest edge of the schema-management story and is
 captured honestly rather than as a guarantee.
+
+## Open Design Questions
+
+- **LS.SYS.STATE.SQLITE.SM-DQ1 Format-bump policy.** What an incompatible
+  `liveStoreStorageFormatVersion` bump owes users — refuse to open, migrate,
+  export, or the current silent soft-reset/orphaning — is deliberately
+  undecided (2026-07-16 interview). Blocked on: a migration/export story
+  design.

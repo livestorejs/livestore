@@ -37,3 +37,13 @@ ID note: former LS.SYS.SYNC-R02…R05 moved to LS.SYS.SYNC.SS-R01…R04 when
   batches (≤100 events per message at the Cloudflare transports) and chunk
   oversized payloads below the transport frame limit; batches are strictly
   ascending.
+- **LS.SYS.SYNC-R05 Pull pagination signal:** Pull responses carry a
+  pagination signal — `NoMore`, `MoreKnown(remaining)`, or `MoreUnknown` —
+  and providers declare `pullPageInfoKnown` in their capability flags
+  (spec: [Provider Contract](./spec.md#provider-contract)). Adopted
+  2026-07-16 (interview). `refines: LS.SYS.SYNC-R02`
+- **LS.SYS.SYNC-R06 Provider-opaque cursor:** The pull cursor is a global
+  sequence number plus provider-supplied metadata that the engine persists
+  (eventlog `syncMetadataJson`) and replays without interpreting (spec:
+  [Provider Contract](./spec.md#provider-contract)). Adopted 2026-07-16
+  (interview). `refines: LS.SYS.SYNC-R02`

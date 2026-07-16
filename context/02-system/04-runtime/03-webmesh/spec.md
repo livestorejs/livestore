@@ -21,10 +21,12 @@ A mesh node (`makeMeshNode(nodeName)`, `node.ts`) is a named participant
 holding edges to other nodes. All packets share `id` (nanoid), `target`,
 `source`, `channelName`, and `hops` (`mesh-schema.ts`). Nodes deduplicate
 packets via a `TimeoutSet` of handled packet ids (forgotten after 1 min), so
-edges may deliver duplicates without effect — consumers above still see
-at-least-once delivery per channel kind below.
+edges may deliver duplicates without effect (LS.SYS.RT.MESH-R03) —
+consumers above still see at-least-once delivery per channel kind below.
 
 ## Channel Kinds
+
+The delivery contracts below are stable per kind (LS.SYS.RT.MESH-R01):
 
 | Kind | Negotiation | Delivery | Transferables |
 | --- | --- | --- | --- |
@@ -67,7 +69,7 @@ When a `DirectChannelRequest` reaches a node whose only forward edges
 cannot carry transferables (e.g. a websocket edge on the path),
 `checkTransferableEdges` short-circuits with a
 `DirectChannelResponseNoTransferables` on the target's behalf, letting the
-requester fall back to a proxy channel.
+requester fall back to a proxy channel (LS.SYS.RT.MESH-R02).
 
 ## Devtools Node Naming
 

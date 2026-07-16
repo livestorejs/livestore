@@ -26,3 +26,16 @@ this node owns tracing/telemetry semantics.
 - **LS.SYS.OBS-R04 Debuggable failures:** Errors carry enough structured
   context (store, client, session identity) to diagnose without reproducing.
   `refines: LS-R13`
+- **LS.SYS.OBS-R05 Span namespacing:** Every LiveStore-emitted span name is
+  prefixed `@livestore/<pkg>:`; no bare names (`LiveStore`, `createStore`)
+  that can collide with app spans in a shared trace. Grep-testable. Adopted
+  2026-07-16 (interview); four conventions coexist today — see
+  [.delta/DELTA-001-span-naming-conventions.md](./.delta/DELTA-001-span-naming-conventions.md).
+  `refines: LS-R13`
+- **LS.SYS.OBS-R06 Attribute contract:** Span attribute keys are namespaced
+  and enumerated in the spec's attribute inventory; attributes carrying query
+  text (`sql.query`) are gated behind a debug flag and absent by default.
+  Adopted 2026-07-16 (interview); keys are ad hoc and `sql.query` is ungated
+  today — see
+  [.delta/DELTA-002-attribute-contract-gaps.md](./.delta/DELTA-002-attribute-contract-gaps.md).
+  `refines: LS-R13`

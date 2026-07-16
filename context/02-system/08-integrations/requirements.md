@@ -28,3 +28,7 @@ contrib-owned (stub pending LS-DQ2).
 - **LS.SYS.INT-R05 Robust under framework semantics:** Integrations tolerate
   their framework's rendering model (e.g. React StrictMode double-invoke,
   concurrent rendering) without leaking or double-registering resources.
+- **LS.SYS.INT-R06 Read seeds default:** The first read of a client document
+  idempotently materializes its default value without triggering a refresh
+  loop. Adopted 2026-07-16 (interview).
+  `refines: LS.SYS.STATE.SQLITE-R03`

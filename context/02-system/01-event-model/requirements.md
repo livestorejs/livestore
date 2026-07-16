@@ -43,6 +43,12 @@ and root LS-R04…R06. Code: `packages/@livestore/common/src/schema/EventDef/`,
   `e{global}[.{client}][r{rebaseGeneration}][']` notation (see
   `contributor-docs/events-notation.md`) across docs and tests; code emits
   the `e{global}[.{client}][r{gen}]` subset via `toString`/`fromString`.
+- **LS.SYS.EVT-R10 Notation round-trip:** The canonical notation round-trips
+  through code (`toString`/`fromString`) including the unconfirmed (`'`) and
+  client (`A:`/`B:`) markers of `contributor-docs/events-notation.md`.
+  Adopted 2026-07-16 (interview); code covers only the R06 subset today —
+  see
+  [.delta/DELTA-001-notation-partial.md](./.delta/DELTA-001-notation-partial.md).
 
 ### Eventlog
 
@@ -52,3 +58,8 @@ and root LS-R04…R06. Code: `packages/@livestore/common/src/schema/EventDef/`,
 - **LS.SYS.EVT-R08 Self-describing log:** The eventlog persists enough metadata
   (event name, schema hash, sequence numbers, sync status) to detect schema
   drift and to serve as the source for full state rebuilds.
+- **LS.SYS.EVT-R09 Self-decoding rows:** Every eventlog row carries the event
+  name, args, per-row schema hash, composite sequence number, parent
+  sequence number, and client/session identity — decodable without external
+  context (sharpens LS.SYS.EVT-R08 to a column-level enumeration; see
+  [spec.md](./spec.md) §Eventlog). Adopted 2026-07-16 (interview).

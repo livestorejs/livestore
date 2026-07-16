@@ -19,11 +19,13 @@ Draft.
 
 The reporter prints per-run tables; there is no baseline storage, no
 cross-run comparison, and no threshold that can fail a run. Perf runs today
-produce *measurements*, not *verdicts*.
+produce *measurements*, not *verdicts*. Gating is now contracted
+(LS.SYS.VER.PERF-R02;
+[DELTA-001](./.delta/DELTA-001-perf-gating-missing.md)).
 
 ## Open Design Questions
 
-- **LS.SYS.VER.PERF-DQ1 Measurement gating.** Perf suites measure but do not
-  gate: no persisted baselines, no machine-readable comparability across
-  runs, no codified budgets/regression thresholds for the LS-R14 claim.
-  Sharpened from `LS.SYS.VER-DQ2`.
+- **LS.SYS.VER.PERF-DQ1 Budget values.** Which concrete latency/memory
+  budgets back LS.SYS.VER.PERF-R02, and per which machine classes — needs
+  baseline data before numbers can be codified. Narrowed 2026-07-16 from
+  the broader gating question.

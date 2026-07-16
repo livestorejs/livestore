@@ -15,6 +15,9 @@ lifecycle and thin-wrapper constraints apply in full). Surface lives in
 
 ## Requirements
 
-Realization-specific requirements (`LS.SYS.INT.EFFECT-*`) are pending the
-requirements-alignment round; until then this node is constrained by the
-parent contract only.
+- **LS.SYS.INT.EFFECT-R01 Effect realization:** The store is consumable as a
+  first-class Effect Context/Layer service (`Store.Tag`) via the
+  `@livestore/livestore/effect` subpath, wrapping the same `createStore` as
+  every other consumer — no parallel store implementation (see
+  [spec.md](./spec.md)). Adopted 2026-07-16 (interview).
+  `refines: LS.SYS.INT-R01`
