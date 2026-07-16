@@ -5,6 +5,7 @@ import {
   type BootStatus,
   type ClientSession,
   type ClientSessionLeaderThreadProxy,
+  LeaderAheadError,
   makeMockSyncBackend,
   SyncState,
   type UnknownError,
@@ -599,6 +600,36 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       yield* Scope.close(scope, Exit.fail(new Error('test shutdown failure')))
 
       expect(yield* Deferred.isDone(firstPushInterrupted)).toBe(true)
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.it.effect('does not report a successful drain when the leader rejects during shutdown', (test) =>
+    Effect.gen(function* () {
+      const pushStarted = yield* Deferred.make<void>()
+      const rejectPush = yield* Deferred.make<void>()
+      const rejection = new LeaderAheadError({
+        minimumExpectedNum: EventSequenceNumber.Client.ROOT,
+        providedNum: EventSequenceNumber.Client.ROOT,
+        sessionId: 'session-test',
+      })
+      const { pushIds, scope } = yield* makeClientProcessorHarness({
+        push: () =>
+          Deferred.succeed(pushStarted, undefined).pipe(
+            Effect.andThen(Deferred.await(rejectPush)),
+            Effect.andThen(Effect.fail(rejection)),
+          ),
+      })
+
+      yield* pushIds(['rejected'])
+      yield* Deferred.await(pushStarted)
+
+      const closeFiber = yield* Scope.close(scope, Exit.void).pipe(Effect.exit, Effect.forkChild)
+      // Drive close until it ends queue admission and waits for the in-flight leader response.
+      yield* TestClock.adjust(0)
+      yield* Deferred.succeed(rejectPush, undefined)
+      const closeExit = yield* Fiber.join(closeFiber)
+
+      expect(Exit.isFailure(closeExit)).toBe(true)
     }).pipe(withTestCtx(test)),
   )
 
