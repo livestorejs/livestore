@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
 import {
+  Cause,
   Effect,
   Exit,
   Filter,
@@ -12,7 +13,6 @@ import {
   Stream,
   Subscribable,
   TxQueue,
-  TxRef,
 } from '@livestore/utils/effect'
 
 import type { ClientSession } from '../adapter-types.ts'
@@ -102,27 +102,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
-  const leaderPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
-  const leaderPushLifecycleState = yield* TxRef.make<LeaderPushLifecycleState>({
-    _tag: 'accepting',
-    activePushCount: 0,
-  })
-
-  const takeNextLeaderPushWorkerAction: Effect.Effect<LeaderPushWorkerAction> = Effect.tx(
-    Effect.gen(function* () {
-      if ((yield* TxQueue.isEmpty(leaderPushQueue)) === false) {
-        const batch = yield* TxQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
-        return { _tag: 'push' as const, batch }
-      }
-
-      const lifecycleState = yield* TxRef.get(leaderPushLifecycleState)
-      if (lifecycleState._tag === 'stopping' && lifecycleState.activePushCount === 0) {
-        return { _tag: 'stop' as const }
-      }
-
-      return yield* Effect.txRetry
-    }),
-  )
+  const leaderPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta, Cause.Done>()
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.fn('client-session-sync-processor:boot')(function* () {
     if (
@@ -147,10 +127,12 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
     const backgroundLeaderPushing: Effect.Effect<void> = Effect.gen(function* () {
       while (true) {
-        const action = yield* takeNextLeaderPushWorkerAction
-        if (action._tag === 'stop') return
+        const batch = yield* TxQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize).pipe(
+          Effect.catchIf(Cause.isDone, () => Effect.succeed(undefined)),
+        )
+        if (batch === undefined) return
 
-        yield* clientSession.leaderThread.events.push(action.batch).pipe(
+        yield* clientSession.leaderThread.events.push(batch).pipe(
           Effect.catchIf(isRejectedPushError, () => {
             debugInfo.rejectCount++
             return TxQueue.clear(leaderPushQueue)
@@ -168,27 +150,19 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
 
-    // Close admission and let the sole push worker drain every admitted event before it exits. This finalizer is
-    // registered after the FiberHandle so it runs first; once the worker exits, the handle finalizer has nothing
-    // left to interrupt. The pull fiber is registered later and therefore stops before this shutdown begins.
+    // Public Store commits finish synchronously before shutdown closes the Store to new commits. Ending the queue
+    // therefore happens after its final producer and lets the sole push worker drain every buffered batch. This
+    // finalizer is registered after the FiberHandle so the handle only tears down after the graceful drain.
     yield* Effect.addFinalizer((exit) =>
-      Effect.gen(function* () {
-        yield* Effect.tx(
-          TxRef.update(
-            leaderPushLifecycleState,
-            (state): LeaderPushLifecycleState => ({
-              _tag: 'stopping',
-              activePushCount: state.activePushCount,
-            }),
-          ),
-        )
-
-        // A healthy shutdown drains durably. On failure, the leader may already be unavailable or blocked in
-        // the failing push, so waiting would deadlock teardown and cannot provide a durability guarantee.
-        yield* Exit.isSuccess(exit) === true
-          ? FiberHandle.awaitEmpty(leaderPushingFiberHandle)
-          : FiberHandle.clear(leaderPushingFiberHandle)
-      }).pipe(Effect.uninterruptible),
+      Exit.isSuccess(exit) === true
+        ? Effect.gen(function* () {
+            yield* TxQueue.end(leaderPushQueue)
+            yield* FiberHandle.awaitEmpty(leaderPushingFiberHandle)
+          })
+        : Effect.gen(function* () {
+            yield* TxQueue.end(leaderPushQueue)
+            yield* FiberHandle.clear(leaderPushingFiberHandle)
+          }),
     )
 
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
@@ -215,54 +189,60 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
             ),
           )
 
-          syncStateRef.current = mergeResult.newSyncState
-
           if (mergeResult._tag === 'rebase') {
-            yield* Effect.spanEvent('merge:pull:rebase', {
-              payloadTag: payload._tag,
-              ...(TRACE_VERBOSE === true ? { payload: jsonStringify(payload) } : {}),
-              newEventsCount: mergeResult.newEvents.length,
-              rollbackCount: mergeResult.rollbackEvents.length,
-              ...(TRACE_VERBOSE === true ? { res: jsonStringify(mergeResult) } : {}),
-            })
+            // Publishing the rebased state, replacing the queue, and restarting its sole worker form one ownership
+            // transition. Finish that short transition before honoring teardown; leader pushes remain interruptible.
+            yield* Effect.gen(function* () {
+              syncStateRef.current = mergeResult.newSyncState
 
-            debugInfo.rebaseCount++
+              yield* Effect.spanEvent('merge:pull:rebase', {
+                payloadTag: payload._tag,
+                ...(TRACE_VERBOSE === true ? { payload: jsonStringify(payload) } : {}),
+                newEventsCount: mergeResult.newEvents.length,
+                rollbackCount: mergeResult.rollbackEvents.length,
+                ...(TRACE_VERBOSE === true ? { res: jsonStringify(mergeResult) } : {}),
+              })
 
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
+              debugInfo.rebaseCount++
 
-            yield* FiberHandle.clear(leaderPushingFiberHandle)
+              if (SIMULATION_ENABLED === true) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
 
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '2_before_leader_push_queue_clear')
+              yield* FiberHandle.clear(leaderPushingFiberHandle)
 
-            // Reset the leader push queue since we're rebasing and will push again
-            yield* TxQueue.clear(leaderPushQueue)
+              if (SIMULATION_ENABLED === true) yield* simSleep('pull', '2_before_leader_push_queue_clear')
 
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '3_before_rebase_rollback')
+              // Reset the leader push queue since we're rebasing and will push again
+              yield* TxQueue.clear(leaderPushQueue)
 
-            if (LS_DEV === true) {
-              yield* Effect.logDebug(
-                'merge:pull:rebase: rollback',
-                mergeResult.rollbackEvents.length,
-                ...mergeResult.rollbackEvents.slice(0, 10).map((_) => _.toJSON()),
-              )
-            }
+              if (SIMULATION_ENABLED === true) yield* simSleep('pull', '3_before_rebase_rollback')
 
-            for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
-              const event = mergeResult.rollbackEvents[i]!
-              if (event.meta.sessionChangeset._tag !== 'no-op' && event.meta.sessionChangeset._tag !== 'unset') {
-                rollback(event.meta.sessionChangeset.data)
-                event.meta.sessionChangeset = { _tag: 'unset' }
+              if (LS_DEV === true) {
+                yield* Effect.logDebug(
+                  'merge:pull:rebase: rollback',
+                  mergeResult.rollbackEvents.length,
+                  ...mergeResult.rollbackEvents.slice(0, 10).map((_) => _.toJSON()),
+                )
               }
-            }
 
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
+              for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
+                const event = mergeResult.rollbackEvents[i]!
+                if (event.meta.sessionChangeset._tag !== 'no-op' && event.meta.sessionChangeset._tag !== 'unset') {
+                  rollback(event.meta.sessionChangeset.data)
+                  event.meta.sessionChangeset = { _tag: 'unset' }
+                }
+              }
 
-            yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
+              if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
 
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
+              yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
 
-            yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+              if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
+
+              yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+            }).pipe(Effect.uninterruptible)
           } else {
+            syncStateRef.current = mergeResult.newSyncState
+
             yield* Effect.spanEvent('merge:pull:advance', {
               payloadTag: payload._tag,
               ...(TRACE_VERBOSE === true ? { payload: jsonStringify(payload) } : {}),
@@ -367,56 +347,37 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
   const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(
     function* (encodedEvents) {
-      const wasAdmitted = yield* Effect.tx(
-        TxRef.modify(leaderPushLifecycleState, (state): [boolean, LeaderPushLifecycleState] =>
-          state._tag === 'accepting'
-            ? [true, { _tag: 'accepting', activePushCount: state.activePushCount + 1 }]
-            : [false, state],
-        ),
-      )
-
-      if (wasAdmitted === false) {
+      if ((yield* TxQueue.isOpen(leaderPushQueue)) === false) {
         return yield* Effect.die('Cannot push events after the client session sync processor starts shutting down')
       }
 
-      yield* Effect.gen(function* () {
-        const mergeResult = yield* SyncState.merge({
-          syncState: syncStateRef.current,
-          payload: { _tag: 'local-push', newEvents: encodedEvents },
-          isClientOnlyEvent,
-          isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-        }).pipe(
-          Effect.filterMapOrElse(Filter.tagged<typeof SyncState.MergeResult.Type>()('advance'), () =>
-            Effect.die(new Error('Expected advance from local-push merge')),
-          ),
-        )
-
-        yield* Effect.annotateCurrentSpan({
-          batchSize: encodedEvents.length,
-          mergeResultTag: mergeResult._tag,
-          eventCounts: encodedEvents.reduce<Record<string, number>>((acc, event) => {
-            acc[event.name] = (acc[event.name] ?? 0) + 1
-            return acc
-          }, {}),
-          ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
-        })
-
-        syncStateRef.current = mergeResult.newSyncState
-        yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
-        yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
+      const mergeResult = yield* SyncState.merge({
+        syncState: syncStateRef.current,
+        payload: { _tag: 'local-push', newEvents: encodedEvents },
+        isClientOnlyEvent,
+        isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
       }).pipe(
-        Effect.ensuring(
-          Effect.tx(
-            TxRef.update(
-              leaderPushLifecycleState,
-              (state): LeaderPushLifecycleState => ({
-                ...state,
-                activePushCount: state.activePushCount - 1,
-              }),
-            ),
-          ),
+        Effect.filterMapOrElse(Filter.tagged<typeof SyncState.MergeResult.Type>()('advance'), () =>
+          Effect.die(new Error('Expected advance from local-push merge')),
         ),
       )
+
+      yield* Effect.annotateCurrentSpan({
+        batchSize: encodedEvents.length,
+        mergeResultTag: mergeResult._tag,
+        eventCounts: encodedEvents.reduce<Record<string, number>>((acc, event) => {
+          acc[event.name] = (acc[event.name] ?? 0) + 1
+          return acc
+        }, {}),
+        ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+      })
+
+      syncStateRef.current = mergeResult.newSyncState
+      yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
+      const rejectedEvents = yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
+      if (rejectedEvents.length > 0) {
+        return yield* Effect.die('Leader push queue closed while accepting events')
+      }
     },
   )
 
@@ -440,7 +401,9 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         Effect.gen(function* () {
           console.log('debugInfo', debugInfo)
           console.log('syncState', syncStateRef.current)
-          const pushQueueItems = yield* snapshotTxQueue(leaderPushQueue)
+          const pushQueueItems = yield* snapshotTxQueue(leaderPushQueue).pipe(
+            Effect.catchIf(Cause.isDone, () => Effect.succeed([])),
+          )
           console.log('pushQueueSize', pushQueueItems.length)
           console.log(
             'pushQueueItems',
@@ -452,9 +415,12 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   } satisfies ClientSessionSyncProcessor
 })
 
-const snapshotTxQueue = <A>(queue: TxQueue.TxQueue<A>): Effect.Effect<ReadonlyArray<A>> =>
+const snapshotTxQueue = <A, E>(queue: TxQueue.TxQueue<A, E>): Effect.Effect<ReadonlyArray<A>, E> =>
   Effect.tx(
     Effect.gen(function* () {
+      // Re-offering a snapshot to a closing queue would reject and lose the cleared items.
+      if ((yield* TxQueue.isOpen(queue)) === false) return []
+
       const items = yield* TxQueue.clear(queue)
       yield* TxQueue.offerAll(queue, items)
       return items
@@ -497,11 +463,3 @@ export const ClientSessionSyncProcessorSimulationParams = Schema.Struct({
   }),
 })
 type ClientSessionSyncProcessorSimulationParams = typeof ClientSessionSyncProcessorSimulationParams.Type
-
-type LeaderPushLifecycleState =
-  | { readonly _tag: 'accepting'; readonly activePushCount: number }
-  | { readonly _tag: 'stopping'; readonly activePushCount: number }
-
-type LeaderPushWorkerAction =
-  | { readonly _tag: 'push'; readonly batch: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> }
-  | { readonly _tag: 'stop' }
