@@ -74,6 +74,10 @@ export class SentinelRpcDO extends DurableObject<Env, unknown> {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    // Guard before routing, so the harness's readiness `GET /` can't construct a stray DO.
+    if (request.headers.get('Upgrade') !== 'websocket') {
+      return new Response('Durable Object expected Upgrade: websocket', { status: 426 })
+    }
     const url = new URL(request.url)
     const ns = url.pathname.startsWith('/sentinel') === true ? env.SENTINEL_RPC_DO : env.REAL_RPC_DO
     // Keyed by path so one case's traffic can't wake another's DO.

@@ -7,6 +7,7 @@ import { expect } from 'vitest'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { WranglerDevServer } from '@livestore/utils-dev/wrangler'
 import {
+  Deferred,
   Effect,
   FetchHttpClient,
   Layer,
@@ -56,8 +57,15 @@ const observeHibernation = ({ path, withLivePull }: { path: string; withLivePull
     const client = yield* RpcClient.make(HibRpcs)
     yield* client.Ping({})
     if (withLivePull === true) {
-      yield* client.Live({}).pipe(Stream.runDrain, Effect.forkScoped)
-      yield* Effect.sleep(500)
+      // Wait for a chunk rather than a fixed delay: a broken `Live` handler would otherwise leave no
+      // park at all, and the hibernation assertion below would pass for exactly the wrong reason.
+      const streaming = yield* Deferred.make<void>()
+      yield* client.Live({}).pipe(
+        Stream.tap(() => Deferred.succeed(streaming, undefined)),
+        Stream.runDrain,
+        Effect.forkScoped,
+      )
+      yield* Deferred.await(streaming).pipe(Effect.timeout('5 seconds'))
     }
     const { id: id1 } = yield* client.InstanceId({})
     yield* Effect.sleep(IDLE_MS)
