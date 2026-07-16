@@ -1,5 +1,26 @@
 { ... }:
 {
+  # Apply the committed desired ruleset to GitHub (reconcile live <- .github/repo-settings.json).
+  # Requires an admin-scoped token in GH_TOKEN (the reconcile workflow provides a GitHub App
+  # installation token). Delegates to mono rather than reimplementing the PUT in bash.
+  tasks."github:rulesets:sync" = {
+    description = "Apply the committed ruleset to GitHub (reconcile)";
+    exec = "mono github rulesets sync";
+  };
+
+  # Non-mutating preview of what `github:rulesets:sync` would change. Used by the PR plan job.
+  tasks."github:rulesets:plan" = {
+    description = "Preview ruleset drift without applying (dry-run)";
+    exec = "mono github rulesets sync --dry-run";
+  };
+
+  # Drift-check the live GitHub App definition against .github/reconcile-app-manifest.json.
+  # Requires RECONCILE_APP_ID and RECONCILE_APP_PRIVATE_KEY.
+  tasks."github:app:check" = {
+    description = "Check the reconcile GitHub App definition against the committed manifest";
+    exec = "mono github app check";
+  };
+
   tasks."github:rulesets:check" = {
     description = "Check live GitHub repository rulesets against generated source files";
     exec = ''

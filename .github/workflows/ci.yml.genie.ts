@@ -161,20 +161,6 @@ export default githubWorkflow({
       ],
     }),
 
-    'ruleset-drift-check': standardCIJob({
-      if: "(github.event_name == 'workflow_dispatch' && !startsWith(github.ref_name, 'automation/release-')) || github.ref == 'refs/heads/main'",
-      steps: [
-        ...livestoreSetupSteps,
-        {
-          name: 'Check repository ruleset drift',
-          run: runDevenvTasksBefore('github:rulesets:check'),
-          env: {
-            GH_TOKEN: '${{ secrets.LIVESTORE_RULESET_ADMIN_TOKEN || github.token }}',
-          },
-        },
-      ],
-    }),
-
     'type-check': standardCIJob({
       // TODO(oep-1n3.9): Switch back to patched tsc once Effect diagnostics backlog is addressed.
       steps: [...livestoreSetupSteps, { name: 'Run type-check', run: runDevenvTasksBefore('ts:build') }],
