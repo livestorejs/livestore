@@ -17,7 +17,7 @@ import {
 
 import type { ClientSession } from '../adapter-types.ts'
 import type { MaterializeError } from '../errors.ts'
-import { isRejectedPushError, type RejectedPushError } from '../leader-thread/RejectedPushError.ts'
+import { isRejectedPushError } from '../leader-thread/RejectedPushError.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
@@ -124,7 +124,9 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     }
 
     const leaderPushingFiberHandle = yield* FiberHandle.make<void, never>()
-    let drainRejection: RejectedPushError | undefined
+    let drainFailure: Cause.Cause<never> | undefined
+    let rejectionRevision = 0
+    let rejectionAwaitingPull: { readonly error: Error; readonly revision: number } | undefined
 
     const backgroundLeaderPushing: Effect.Effect<void> = Effect.gen(function* () {
       while (true) {
@@ -148,7 +150,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
               // Normal rejection recovery relies on pull rebasing and repopulating the open queue. Pull has already
               // stopped once graceful scope teardown closes the queue, so that path must fail rather than report a
               // successful durable drain after discarding pending events.
-              if (wasOpen === false) drainRejection = error
+              if (wasOpen === true) rejectionAwaitingPull = { error, revision: ++rejectionRevision }
+              else drainFailure = Cause.die(error)
             })
           }),
         )
@@ -158,21 +161,27 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       Effect.tapCauseLogPretty,
       // The worker must exit before shutdown can await it, otherwise a fatal push creates a self-deadlock.
       Effect.catchCause((cause) =>
-        clientSession.shutdown(Exit.failCause(cause)).pipe(Effect.forkDetach, Effect.asVoid),
+        Cause.hasInterruptsOnly(cause) === true
+          ? Effect.void
+          : Effect.sync(() => {
+              drainFailure = cause
+            }).pipe(
+              Effect.andThen(clientSession.shutdown(Exit.failCause(cause)).pipe(Effect.forkDetach, Effect.asVoid)),
+            ),
       ),
     )
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
 
-    // Public Store commits finish synchronously before shutdown closes the Store to new commits. Ending the queue
-    // therefore happens after its final producer and lets the sole push worker drain every buffered batch. This
-    // finalizer is registered after the FiberHandle so the handle only tears down after the graceful drain.
+    // Register after the FiberHandle so the push worker drains first, but before pull so LIFO scope teardown stops
+    // pull before deciding whether a rejection was left without a recovery path.
     yield* Effect.addFinalizer((exit) =>
       Exit.isSuccess(exit) === true
         ? Effect.gen(function* () {
             yield* TxQueue.end(leaderPushQueue)
             yield* FiberHandle.awaitEmpty(leaderPushingFiberHandle)
-            if (drainRejection !== undefined) return yield* Effect.die(drainRejection)
+            if (drainFailure !== undefined) return yield* Effect.failCause(drainFailure)
+            if (rejectionAwaitingPull !== undefined) return yield* Effect.die(rejectionAwaitingPull.error)
           })
         : Effect.gen(function* () {
             yield* TxQueue.end(leaderPushQueue)
@@ -191,6 +200,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           if (clientSession.devtools.enabled === true) {
             yield* clientSession.devtools.pullLatch.await
           }
+
+          const rejectionAtPullStart = rejectionAwaitingPull
 
           const mergeResult = yield* SyncState.merge({
             syncState: syncStateRef.current,
@@ -253,6 +264,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
               if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
 
+              rejectionAwaitingPull = undefined
               yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
             }).pipe(Effect.uninterruptible)
           } else {
@@ -271,6 +283,11 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           if (mergeResult.newEvents.length === 0) {
             // If there are no new events, we need to update the sync state as well
             yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
+            // An advance only resolves a cleared transport queue when it confirms every canonical pending event.
+            // Otherwise keep the marker so shutdown cannot claim a durable drain for still-stranded pending events.
+            if (mergeResult.newSyncState.pending.length === 0 && rejectionAwaitingPull === rejectionAtPullStart) {
+              rejectionAwaitingPull = undefined
+            }
             return
           }
 
@@ -296,6 +313,9 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
           // We're only triggering the sync state update after all events have been materialized
           yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
+          if (mergeResult.newSyncState.pending.length === 0 && rejectionAwaitingPull === rejectionAtPullStart) {
+            rejectionAwaitingPull = undefined
+          }
         }).pipe(
           Effect.tapCauseLogPretty,
           Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
