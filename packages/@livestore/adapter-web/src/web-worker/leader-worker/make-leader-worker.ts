@@ -36,6 +36,7 @@ import { BrowserWorkerRunner, Opfs, WebError } from '@livestore/utils/effect/bro
 import * as WebmeshWorker from '@livestore/webmesh/worker'
 
 import { cleanupOldStateDbFiles, getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.ts'
+import { requestScopedCauseRpcServerOptions } from '../common/rpc-server-options.ts'
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
 import * as WorkerSchema from '../common/worker-schema.ts'
 
@@ -102,7 +103,7 @@ const makeWorkerRunnerOuter = (workerOptions: WorkerOptions) =>
       clientId,
     } = yield* RpcWorker.initialMessage(WorkerSchema.LeaderWorkerOuterInitialMessage.payloadSchema)
 
-    return yield* RpcServer.make(WorkerSchema.LeaderWorkerInnerRpcs).pipe(
+    return yield* RpcServer.make(WorkerSchema.LeaderWorkerInnerRpcs, requestScopedCauseRpcServerOptions).pipe(
       Effect.provide(makeWorkerRunnerInner(workerOptions)),
       Effect.provide(makeMessagePortRpcServerProtocol(incomingRequestsPort)),
       Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage:innerFiber'),

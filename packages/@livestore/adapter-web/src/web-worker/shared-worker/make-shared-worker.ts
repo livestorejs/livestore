@@ -22,6 +22,7 @@ import {
 import { BrowserWorker, BrowserWorkerRunner } from '@livestore/utils/effect/browser'
 import * as WebmeshWorker from '@livestore/webmesh/worker'
 
+import { requestScopedCauseRpcServerOptions } from '../common/rpc-server-options.ts'
 import { dieOnRpcClientError, dieOnRpcClientErrorStream, makeWebmeshWorkerProxy } from '../common/rpc-worker.ts'
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
 import { makeSharedWorkerNodeName } from '../common/webmesh-node-names.ts'
@@ -250,7 +251,7 @@ export const makeWorker = (options?: LogConfig.LoggerOptions): void => {
     WebmeshWorker.CacheService.layer({ nodeName: makeSharedWorkerNodeName({ storeId }) }),
   )
 
-  RpcServer.layer(WorkerSchema.SharedWorkerRpcs).pipe(
+  RpcServer.layer(WorkerSchema.SharedWorkerRpcs, requestScopedCauseRpcServerOptions).pipe(
     Layer.provide(WorkerSchema.SharedWorkerRpcs.toLayer(makeWorkerRunner)),
     Layer.provide(RpcServer.layerProtocolWorkerRunner),
     Layer.provide(BrowserWorkerRunner.layer),
