@@ -351,6 +351,16 @@ export {
 export const namespaceRunner = (runId: string) =>
   namespaceRunnerBase({ profile: 'namespace-profile-linux-x86-64', runId })
 
+const shellSingleQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
+
+const withNixSetupRetry = <TStep extends { readonly name: string; readonly run: string }>(step: TStep): TStep => ({
+  ...step,
+  run: [
+    `__genie_ci_retry_script='\${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'`,
+    `bash "$__genie_ci_retry_script" ${shellSingleQuote(step.name)} ${shellSingleQuote(step.run)}`,
+  ].join('\n'),
+})
+
 /**
  * Setup steps for livestore CI jobs (without checkout).
  * Uses shared step atoms from effect-utils/genie/ci-workflow.ts.
@@ -369,7 +379,7 @@ export const livestoreSetupStepsAfterCheckout = [
     const base = cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' })
     return { ...base, with: { ...base.with, skipPush: true } }
   })(),
-  applyMegarepoLockStep(),
+  withNixSetupRetry(applyMegarepoLockStep()),
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
   restorePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
