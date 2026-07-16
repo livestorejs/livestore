@@ -26,6 +26,8 @@ import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.ts'
 import { checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
 
+const appStoreId = 'app-root'
+
 export class TestError extends Schema.TaggedErrorClass<TestError>()('TestError', {
   message: Schema.String,
 }) {}
@@ -405,14 +407,17 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
           await tabLocalhost.page.locator('.todo-list li label:text("Buy milk")').waitFor()
 
           // Derive labels used in the session links
-          const [localClientId, localSessionId] = await tabLocalhost.page.evaluate<[string, string]>(() => [
-            (window as any).__debugLiveStore.default.clientId,
-            (window as any).__debugLiveStore.default.sessionId,
-          ])
-          const [loopClientId, loopSessionId] = await tabLoopback.page.evaluate<[string, string]>(() => [
-            (window as any).__debugLiveStore.default.clientId,
-            (window as any).__debugLiveStore.default.sessionId,
-          ])
+          const [localClientId, localSessionId] = await tabLocalhost.page.evaluate<[string, string], string>(
+            (storeId) => {
+              const store = (window as any).__debugLiveStore[storeId]
+              return [store.clientId, store.sessionId]
+            },
+            appStoreId,
+          )
+          const [loopClientId, loopSessionId] = await tabLoopback.page.evaluate<[string, string], string>((storeId) => {
+            const store = (window as any).__debugLiveStore[storeId]
+            return [store.clientId, store.sessionId]
+          }, appStoreId)
 
           const localLabel = `${localClientId}:${localSessionId}`
           const loopLabel = `${loopClientId}:${loopSessionId}`

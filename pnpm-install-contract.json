@@ -45,7 +45,7 @@
     "allowBuilds": {
       "@mixedbread/cli": true,
       "@myobie/pty": false,
-      "@parcel/watcher": false,
+      "@parcel/watcher": true,
       "cbor-extract": true,
       "dtrace-provider": true,
       "esbuild": false,
@@ -59,6 +59,11 @@
       "workerd": true
     },
     "packageExtensions": {
+      "@livestore/devtools-vite": {
+        "dependencies": {
+          "@parcel/watcher": "^2.5.6"
+        }
+      },
       "react-error-boundary": {
         "dependencies": {
           "@types/react": "19.2.7",

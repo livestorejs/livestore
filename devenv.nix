@@ -120,13 +120,6 @@ let
       exit 1
     fi
 
-    playwright_bin="tests/integration/node_modules/.bin/playwright"
-    if [ ! -x "$playwright_bin" ]; then
-      echo "Expected Playwright binary not found: $playwright_bin" >&2
-      echo "Run release:devtools-artifact:certify-liveness instead of the no-install variant when dependencies are not installed yet." >&2
-      exit 1
-    fi
-
     backup_dir="$(mktemp -d)"
     package_links=(
       "tests/integration/node_modules/@livestore/devtools-vite"
@@ -149,10 +142,89 @@ let
       done
       rm -rf "$backup_dir"
     }
-    trap restore_node_modules EXIT
+
+    dev_server_pid=""
+    dev_server_log=""
+    stop_dev_server() {
+      if [ -n "$dev_server_pid" ]; then
+        kill "$dev_server_pid" 2>/dev/null || true
+        wait "$dev_server_pid" 2>/dev/null || true
+      fi
+      if [ -n "$dev_server_log" ]; then
+        rm -f "$dev_server_log"
+      fi
+    }
+    cleanup_certification() {
+      stop_dev_server
+      restore_node_modules
+    }
+    trap cleanup_certification EXIT
 
     unpack_dir="$(mktemp -d)"
     tar -xzf "$repacked_tarball" -C "$unpack_dir"
+    hydrate_devtools_package() {
+      package_dir="$1"
+      installed_devtools_package="$(readlink -f tests/integration/node_modules/@livestore/devtools-vite)"
+      mkdir -p "$package_dir/node_modules/@livestore"
+
+      dependencies=(
+        "@livestore/adapter-web"
+        "@livestore/utils"
+        "vite"
+      )
+
+      for dependency in "''${dependencies[@]}"; do
+        source_path="tests/integration/node_modules/$dependency"
+        target_path="$package_dir/node_modules/$dependency"
+        if [ ! -e "$source_path" ]; then
+          echo "Expected installed dependency for exact DevTools artifact not found: $source_path" >&2
+          exit 1
+        fi
+        rm -rf "$target_path"
+        mkdir -p "$(dirname "$target_path")"
+        ln -s "$(readlink -f "$source_path")" "$target_path"
+      done
+
+      parcel_watcher_path="$(
+        bun --eval '
+          const { createRequire } = require("node:module")
+          const path = require("node:path")
+          const requireFromDevtools = createRequire(path.resolve(process.argv[1], "package.json"))
+          console.log(path.dirname(requireFromDevtools.resolve("@parcel/watcher/package.json")))
+        ' "$installed_devtools_package"
+      )"
+      parcel_watcher_target="$package_dir/node_modules/@parcel/watcher"
+      rm -rf "$parcel_watcher_target"
+      mkdir -p "$(dirname "$parcel_watcher_target")"
+      cp -a "$parcel_watcher_path" "$parcel_watcher_target"
+
+      parcel_watcher_platform_packages="$(
+        bun --eval '
+          const { createRequire } = require("node:module")
+          const path = require("node:path")
+          const watcherPackageJson = path.resolve(process.argv[1], "package.json")
+          const requireFromWatcher = createRequire(watcherPackageJson)
+          for (const dependency of Object.keys(require(watcherPackageJson).optionalDependencies ?? {})) {
+            try {
+              console.log(dependency + "\t" + path.dirname(requireFromWatcher.resolve(dependency + "/package.json")))
+            } catch {}
+          }
+        ' "$parcel_watcher_path"
+      )"
+      mkdir -p "$package_dir/node_modules/@parcel"
+      while IFS="$(printf '\t')" read -r dependency dependency_path; do
+        if [ -z "$dependency" ] || [ -z "$dependency_path" ]; then
+          continue
+        fi
+        platform_target="$package_dir/node_modules/$dependency"
+        rm -rf "$platform_target"
+        mkdir -p "$(dirname "$platform_target")"
+        ln -s "$dependency_path" "$platform_target"
+      done <<EOF
+$parcel_watcher_platform_packages
+EOF
+    }
+    hydrate_devtools_package "$unpack_dir/package"
     for package_link in "''${package_links[@]}"; do
       rm -rf "$package_link"
       cp -a "$unpack_dir/package" "$package_link"
@@ -169,19 +241,49 @@ let
 
     (
       cd tests/integration
-      CI=true \
-        FORCE_PLAYWRIGHT_VIA_CLI=1 \
-        PLAYWRIGHT_SUITE=devtools \
-        PLAYWRIGHT_HEADLESS="''${PLAYWRIGHT_HEADLESS:-1}" \
+      dev_server_port="''${LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT:-4444}"
+      dev_server_log="$(mktemp)"
+      TEST_LIVESTORE_SCHEMA_PATH_JSON='"./devtools/todomvc/livestore/schema.ts"' \
         LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
-        DEVENV_TASK_PASSTHROUGH=1 \
-        ./node_modules/.bin/playwright test \
-          src/tests/playwright/devtools/web.play.ts \
-          --reporter=line
+        VITE_OTEL_EXPORTER_OTLP_ENDPOINT= \
+        ./node_modules/.bin/vite \
+          --config src/tests/playwright/fixtures/vite.config.ts \
+          dev \
+          --port "$dev_server_port" \
+          --strictPort \
+          >"$dev_server_log" 2>&1 &
+      dev_server_pid="$!"
+      trap stop_dev_server EXIT
+
+      if ! LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT="$dev_server_port" \
+        LIVESTORE_DEV_SERVER_PID="$dev_server_pid" \
+        bun --eval '
+          const port = process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT ?? "4444"
+          const pid = Number(process.env.LIVESTORE_DEV_SERVER_PID ?? "0")
+          const deadline = Date.now() + 60_000
+          const paths = ["/devtools/todomvc", "/_livestore/web"]
+          while (Date.now() < deadline) {
+            try {
+              if (pid > 0) process.kill(pid, 0)
+            } catch {
+              throw new Error("Vite dev server exited before accepting connections")
+            }
+            try {
+              const responses = await Promise.all(paths.map((path) => fetch("http://localhost:" + port + path)))
+              if (responses.every((response) => response.status < 500)) process.exit(0)
+            } catch {}
+            await new Promise((resolve) => setTimeout(resolve, 250))
+          }
+          throw new Error("Timed out waiting for exact DevTools artifact routes on localhost:" + port)
+        '; then
+        echo "Vite dev server log:" >&2
+        sed -n '1,200p' "$dev_server_log" >&2
+        exit 1
+      fi
     )
 
     certification_path="''${LIVESTORE_DEVTOOLS_CERTIFICATION:-release/devtools-artifact.certification.json}"
-    evidence="DevTools exact-artifact liveness passed for $LIVESTORE_RELEASE_VERSION"
+    evidence="DevTools exact-artifact Vite route liveness passed for $LIVESTORE_RELEASE_VERSION"
     if [[ -n "''${GITHUB_SERVER_URL:-}" && -n "''${GITHUB_REPOSITORY:-}" && -n "''${GITHUB_RUN_ID:-}" ]]; then
       evidence="$evidence in $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
     fi

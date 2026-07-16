@@ -196,6 +196,7 @@ export const workspaceMember = (
 
 export const repoPnpmAllowBuilds = {
   ...commonPnpmPolicySettings.allowBuilds,
+  '@parcel/watcher': true,
   '@mixedbread/cli': true,
   'cbor-extract': true,
   'dtrace-provider': true,
@@ -211,6 +212,11 @@ export const repoPnpmOnlyBuiltDependencies = Object.entries(repoPnpmAllowBuilds)
 
 /** Repo-specific pnpm packageExtensions for starlight/typedoc peer resolution */
 export const repoPackageExtensions = {
+  '@livestore/devtools-vite': {
+    dependencies: {
+      '@parcel/watcher': '^2.5.6',
+    },
+  },
   'starlight-auto-sidebar': { dependencies: { astro: '>=5.0.0' } },
   'starlight-links-validator': { dependencies: { astro: '>=5.0.0' } },
   'starlight-sidebar-topics': { dependencies: { astro: '>=5.0.0' } },

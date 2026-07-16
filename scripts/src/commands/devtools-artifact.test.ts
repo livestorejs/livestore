@@ -40,7 +40,7 @@ const certification = (overrides: Partial<DevtoolsArtifactCertification> = {}) =
   devtoolsProtocolVersion: 1,
   status: 'passed' as const,
   testSuite: 'tests/integration/src/tests/playwright/devtools',
-  scenarios: ['node adapter session loads through Vite and stays connected past 35 seconds'],
+  scenarios: ['@livestore/devtools-vite artifact serves DevTools through Vite'],
   ...overrides,
 })
 
@@ -201,7 +201,7 @@ describe('assertCertifiedDevtoolsArtifactForLivestore', () => {
           scenarios: ['direct web session loads and stays connected past heartbeat window'],
         }),
       }),
-    ).toThrow(/missing required scenario: node adapter session loads through Vite/)
+    ).toThrow(/missing required scenario: @livestore\/devtools-vite artifact serves DevTools through Vite/)
   })
 })
 

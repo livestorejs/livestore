@@ -77,10 +77,11 @@ type DevtoolsArtifactEphemeralCertification = {
 
 const requiredReleaseCertificationScenarios = [
   // Exact artifact certification installs the repacked @livestore/devtools-vite
-  // package into the Node adapter fixture. Direct web transport liveness is
-  // covered by the normal Playwright DevTools suite, but it is not evidence
-  // that this selected npm artifact was installed and exercised.
-  'node adapter session loads through Vite and stays connected past 35 seconds',
+  // package and proves the selected artifact is the Vite plugin that serves the
+  // release-candidate DevTools bundle. Runtime protocol coverage stays in the
+  // normal Playwright DevTools suite, which runs against current workspace
+  // packages instead of an older published adapter-node package.
+  '@livestore/devtools-vite artifact serves DevTools through Vite',
 ] as const
 
 type ArtifactManifestV1 = {
