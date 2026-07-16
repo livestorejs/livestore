@@ -333,7 +333,10 @@ export const createStore = <
         exit: Exit.Exit<IntentionalShutdownCause, UnknownError | MaterializeError | BackendIdMismatchError>,
       ) =>
         Effect.gen(function* () {
-          yield* Scope.close(lifetimeScope, exit).pipe(
+          // Time out waiting for teardown, not teardown itself. Interrupting Scope.close can leave its sequential
+          // finalizer chain half-run while the scope is already marked closed and cannot be resumed.
+          const closeFiber = yield* Scope.close(lifetimeScope, exit).pipe(Effect.forkDetach)
+          yield* Fiber.join(closeFiber).pipe(
             Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
             Effect.timeout(1000),
             Effect.catchTag('TimeoutError', () =>
