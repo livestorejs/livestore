@@ -328,27 +328,58 @@ export const createStore = <
         })
 
       const services = yield* Effect.context<Scope.Scope>()
+      const cleanupStarted = yield* Deferred.make<void>()
+      const cleanupFiberDeferred = yield* Deferred.make<Fiber.Fiber<void, never>>()
 
       const shutdown = (
         exit: Exit.Exit<IntentionalShutdownCause, UnknownError | MaterializeError | BackendIdMismatchError>,
       ) =>
         Effect.gen(function* () {
-          // Time out waiting for teardown, not teardown itself. Interrupting Scope.close can leave its sequential
-          // finalizer chain half-run while the scope is already marked closed and cannot be resumed.
-          const closeFiber = yield* Scope.close(lifetimeScope, exit).pipe(Effect.forkDetach)
-          yield* Fiber.join(closeFiber).pipe(
-            Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
-            Effect.timeout(1000),
-            Effect.catchTag('TimeoutError', () =>
-              Effect.logError('@livestore/livestore:shutdown: Timed out after 1 second'),
-            ),
-          )
+          const didInitiateCleanup = yield* Deferred.succeed(cleanupStarted, undefined)
 
-          if (shutdownDeferred !== undefined) {
-            yield* Deferred.done(shutdownDeferred, exit)
+          if (didInitiateCleanup === true) {
+            // Time out waiting for teardown, not teardown itself. Interrupting Scope.close can leave its sequential
+            // finalizer chain half-run while the scope is already marked closed and cannot be resumed.
+            const cleanupFiber = yield* Scope.close(lifetimeScope, exit).pipe(
+              Effect.onExit((cleanupExit) =>
+                Exit.isSuccess(cleanupExit) === true
+                  ? Effect.logDebug('LiveStore shutdown cleanup completed successfully')
+                  : Effect.logError('LiveStore shutdown cleanup failed', cleanupExit.cause),
+              ),
+              Effect.withSpan('@livestore/livestore:shutdown:cleanup', {
+                attributes: {
+                  'livestore.shutdown.trigger': Exit.isSuccess(exit) === true ? 'intentional' : 'failure',
+                },
+              }),
+              Effect.forkDetach,
+            )
+            yield* Deferred.succeed(cleanupFiberDeferred, cleanupFiber)
           }
 
-          yield* Effect.logDebug('LiveStore shutdown complete')
+          const cleanupFiber = yield* Deferred.await(cleanupFiberDeferred)
+          if (didInitiateCleanup === true) {
+            yield* Fiber.join(cleanupFiber).pipe(
+              Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
+              Effect.timeout(1000),
+              Effect.catchTag('TimeoutError', () =>
+                Effect.gen(function* () {
+                  yield* Effect.spanEvent('cleanup:continuing-after-timeout', { timeoutMs: 1000 })
+                  yield* Effect.logError(
+                    '@livestore/livestore:shutdown: Timed out after 1 second; cleanup is continuing in the background',
+                  )
+                }),
+              ),
+              // The shutdown signal records the elected exit after this caller's wait has either settled or exhausted
+              // its budget. Cleanup defects must not leave adapter shutdown observers waiting forever.
+              Effect.ensuring(shutdownDeferred === undefined ? Effect.void : Deferred.done(shutdownDeferred, exit)),
+            )
+          } else {
+            // Concurrent callers join the same finalizer chain without duplicating lifecycle diagnostics.
+            yield* Fiber.join(cleanupFiber).pipe(
+              Effect.timeout(1000),
+              Effect.catchTag('TimeoutError', () => Effect.void),
+            )
+          }
         }).pipe(
           Effect.withSpan('@livestore/livestore:shutdown'),
           Effect.provide(services),

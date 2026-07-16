@@ -2,6 +2,7 @@ import {
   BootStatus,
   Devtools,
   liveStoreVersion,
+  MaterializeError,
   MigrationsReport,
   RejectedPushError,
   SyncBackend,
@@ -79,7 +80,7 @@ export class LeaderWorkerInnerPushToLeader extends Rpc.make('PushToLeader', {
     batch: Schema.Array(Schema.toType(LiveStoreEvent.Client.Encoded)),
   },
   success: Schema.Void,
-  error: RejectedPushError,
+  error: Schema.Union([RejectedPushError, MaterializeError]),
 }) {}
 
 export class LeaderWorkerInnerPullStream extends Rpc.make('PullStream', {
