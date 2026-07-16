@@ -79,8 +79,9 @@ linkage today. Convergence is an open direction.
   LiveStore should expose counters/histograms (commit rate, rebase count,
   query latency) is undesigned.
 - **LS.SYS.OBS-DQ3 No-op overhead budget.** The NoopTracer allocates and
-  reads clocks per span on hot paths; whether a zero-allocation budget
-  should be contracted (and how to verify it) is open.
+  reads clocks per span on hot paths (issue #1420); whether a
+  zero-allocation budget should be contracted (and how to verify it) is
+  open.
 - **LS.SYS.OBS-DQ4 Attribute contract.** Attribute keys are ad hoc and
   `sql.query` exports query text into app exporters; a namespaced, stability-
   and privacy-classified attribute inventory is missing.

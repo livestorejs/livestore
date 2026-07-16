@@ -72,21 +72,22 @@ Object hosting a store) is `04-runtime/`'s adapter concern
 
 ## Known Gaps (Non-Obligations)
 
-Current reality a consumer must not read as guaranteed behavior; GitHub
-issues pending:
+Current reality a consumer must not read as guaranteed behavior:
 
 - **Hibernated DO-RPC clients drop live updates.** When the client DO was
   hibernated, the pull-stream queue is gone and the update is only logged,
-  not applied (`client/transport/do-rpc-client.ts:189-197`).
+  not applied (`client/transport/do-rpc-client.ts:189-197`; issue #1415).
 - **Cross-store subscription bleed risk.** The DO-RPC client's
   `requestIdQueueMap` is module-global with a scoping TODO
-  (`do-rpc-client.ts:30`).
+  (`do-rpc-client.ts:30`; issue #1416).
 - **HTTP push drops `payload`.** The per-push payload (used for
   auth/multi-tenancy) is passed as `undefined` server-side over HTTP but
-  threaded on WS/DO-RPC (`cf-worker/transport/http-rpc-server.ts:47`).
+  threaded on WS/DO-RPC (`cf-worker/transport/http-rpc-server.ts:47`;
+  issue #1417).
 - **Live-subscriber leaks on abnormal disconnect.** WS `Interrupt` emits
   no Exit and DO-RPC `Interrupt` handling is a TODO
-  (`cf-worker/durable-object.ts:136`, `cf-worker/do/pull.ts:19`).
+  (`cf-worker/durable-object.ts:136`, `cf-worker/do/pull.ts:19`;
+  issue #1418).
 - **Admin RPCs are defined but unwired** in all three transports
   (`AdminResetRoom`/`AdminInfo`).
 - **No head↔eventlog consistency check at load** (`layer.ts:96`), and

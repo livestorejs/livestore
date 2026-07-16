@@ -86,7 +86,7 @@ leader/backend confirmation awaitables is proposed in
   events committed during boot are unbatched.
 - `setSignal` before/while the reactive graph is externally retained relies
   on an `rc > 1` guard to avoid losing the set value
-  (`store.ts:797-804`; acknowledged fragile in code, issue pending).
+  (`store.ts:797-804`; acknowledged fragile in code, issue #1419).
 
 ## Multi-Store (StoreRegistry)
 

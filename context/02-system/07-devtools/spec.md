@@ -91,7 +91,7 @@ All state-mutating operations are explicit protocol messages
 
 Known wart: `DebugInfoHistorySubscribe` *reads with a side effect* — each
 tick resets `sqliteDbWrapper.debugInfo` to empty, starving any other reader
-of the same struct (code TODO; tracked as a code issue).
+of the same struct (code TODO; issue #1421).
 
 ## Surfaces
 

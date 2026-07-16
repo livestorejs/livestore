@@ -110,7 +110,7 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   Anti-thrash relies on interrupt/clear on rebase and queue-clear on
   rejection.
 - `cachedPayloads` in the leader's session pull path can grow without
-  bound (TODO, `LeaderSyncProcessor.ts:912-913`).
+  bound (TODO, `LeaderSyncProcessor.ts:912-913`; issue #1423).
 - Per-event `materializerHashLeader` beyond the first item of a pull chunk
   is unknown (TODO, `:555-556`, issue #503).
 - Metrics for retry/queue health are an acknowledged TODO (`:599`).

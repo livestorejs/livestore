@@ -39,7 +39,7 @@ Subscription happens in `useEffect` with a `deepEqual` gate before
 Two `useRcResource` calls per query defer instance disposal past the
 subscription switch. Consequence: updates are commit-atomic and deduped,
 but the ref+effect model is not structurally tear-proof under concurrent
-rendering (LS.SYS.INT.REACT-R04 flags this as unverified).
+rendering (LS.SYS.INT.REACT-R04 flags this as unverified; issue #1422).
 
 ## Write Path (`useClientDocument`)
 
