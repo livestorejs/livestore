@@ -23,6 +23,15 @@ requirements, spec, or a decision record.
   `02-system/02-state/` (contract) when promoted; also the frame in which
   cross-DB crash consistency gets decided (see `LS.SYS.STATE-DQ2`).
 
+- **Cloudflare runtime directions.** (from the 2025 CF design exploration,
+  recorded 2026-07-16) Deploying the sync DO and client DOs via separate
+  workers; read-replica support; WebSocket transport for hibernated
+  *outgoing* connections once workerd supports it
+  ([workerd#4864](https://github.com/cloudflare/workerd/issues/4864)), which
+  could simplify the phase-2 liveness path (see
+  `02-system/03-sync/03-cf/.decisions/0001`); investigating CF Queues as a
+  transport substrate.
+
 - **Legacy doc-surface dissolution.** Complete the migration of
   `contributor-docs/` operational guides and `wip/` content into their owning
   VRS nodes, per the branch table in [spec.md](./spec.md). Current drift is

@@ -66,6 +66,10 @@ Message payloads share `sync-message-types.ts`
 (PullRequest/PullResponse/PushRequest/PushAck/Ping/Pong + unwired admin
 messages). Wire messages are unversioned (LS.SYS.SYNC.CF-R03).
 
+The two-phase pull shape (bounded history stream + per-transport liveness)
+and the rejected long-lived streaming alternatives are recorded in
+[.decisions/0001-transport-liveness-design.md](./.decisions/0001-transport-liveness-design.md).
+
 Server-side embedding of a LiveStore client inside Cloudflare (Durable
 Object hosting a store) is `04-runtime/`'s adapter concern
 (`adapter-cloudflare`), not part of this provider node.

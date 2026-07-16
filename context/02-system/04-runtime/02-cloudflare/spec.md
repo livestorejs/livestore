@@ -50,6 +50,9 @@ behaviors versus the portable contract:
   (`make-sqlite-db.ts`). Safe because the eventlog is append-only and
   idempotent, state is rebuildable, and the DO is single-threaded — but it
   means SQLite transaction semantics do not exist on this realization.
+  Why the state DB runs WASM SQLite over a VFS instead of `SqlStorage`
+  directly is recorded in
+  [.decisions/0001-sqlite-over-vfs.md](./.decisions/0001-sqlite-over-vfs.md).
 - **`export()`/`import()` are no-ops** — `SqlStorage` has no
   serialize/deserialize; the session's initial snapshot import is therefore
   also a no-op (leader and session share the isolate anyway).

@@ -5,9 +5,13 @@ Status: open (narrowed 2026-07-16)
 The branch table in [spec.md](../spec.md) assigns ownership of all intent
 content to branch nodes. Absorbed so far: the four delivery runbooks (moved
 under `03-delivery/{02-release,03-artifacts}/`), the RFC process fold-in
-step (`contributor-docs/rfcs/index.md` §4), and ownership headers on
+step (`contributor-docs/rfcs/index.md` §4), ownership headers on
 `events-notation.md`, `changelog-guide.md`, and `examples-cloudflare.md`
-(files stay in place, owned by their nodes).
+(files stay in place, owned by their nodes), and `wip/2025-cf.md` (deleted
+2026-07-16 — durable rationale captured as
+`02-system/03-sync/03-cf/.decisions/0001` and
+`02-system/04-runtime/02-cloudflare/.decisions/0001` plus a roadmap entry;
+bug notes handled via issue filing).
 
 Remaining divergence:
 
@@ -19,11 +23,6 @@ Remaining divergence:
   rendering), `misc/state-of-the-project` (derives from `01-product/`
   §Maturity & Stability Promise), and the FAQ's community/funding claims
   (derive from `05-contributing/02-community/` and `06-sustainability/`).
-- **`wip/2025-cf.md`** — pending evidence capture: durable design rationale
-  (rejected CF transport explorations, 2-phase pull-streaming) belongs in
-  `.decisions/`/`.experiments/` of `02-system/03-sync/03-cf/` and
-  `02-system/04-runtime/02-cloudflare/`; several bug notes are unfiled
-  issue candidates.
 - **`wip/upcoming-specs/store-commit-receipt.md`** — stale proposal, kept
   (with status header) until the command/intent design session (LS-DQ1).
 
