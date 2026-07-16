@@ -355,7 +355,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.live('flushes in-flight and queued leader pushes serially before shutdown', (test) =>
+  Vitest.live('drains admitted leader pushes serially and closes admission on shutdown', (test) =>
     Effect.gen(function* () {
       const firstPushStarted = yield* Deferred.make<void>()
       const releaseFirstPush = yield* Deferred.make<void>()
@@ -441,16 +441,19 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         events.todoCreated({ id: 'third', text: 'third', completed: false }),
       ])
       yield* syncProcessor.push([thirdEvent!])
+      const [postShutdownEvent] = yield* syncProcessor.encodeEvents([
+        events.todoCreated({ id: 'post-shutdown', text: 'post-shutdown', completed: false }),
+      ])
 
-      // This marker runs first during teardown and lets the test release the blocked leader push only after
-      // scope closure has begun. The shutdown path must finish that push before flushing the queued batch.
+      // Release the blocked worker only after scope closure begins. Graceful shutdown must let that same worker
+      // finish its owned batch, drain the queued batches, and exit without admitting any later pushes.
       yield* Effect.addFinalizer(() => Deferred.succeed(shutdownStarted, undefined)).pipe(Scope.provide(processorScope))
       const closeFiber = yield* Scope.close(processorScope, Exit.void).pipe(Effect.forkChild)
       yield* Deferred.await(shutdownStarted)
-      yield* Effect.yieldNow
-      yield* Effect.yieldNow
       yield* Deferred.succeed(releaseFirstPush, undefined)
       yield* Fiber.join(closeFiber)
+
+      const postShutdownPushExit = yield* Effect.exit(syncProcessor.push([postShutdownEvent!]))
 
       expect(maxActivePushCount).toBe(1)
       expect(persistedBatches).toMatchObject([
@@ -458,6 +461,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         [{ args: { id: 'second' } }],
         [{ args: { id: 'third' } }],
       ])
+      expect(Exit.isFailure(postShutdownPushExit)).toBe(true)
     }).pipe(withTestCtx(test)),
   )
 
