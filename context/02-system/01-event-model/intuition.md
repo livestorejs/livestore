@@ -45,6 +45,7 @@ schema hash — enough to detect drift and rebuild all state from scratch.
 Append-only means exactly one mutation is ever allowed: re-parenting the
 *unconfirmed* tail during rebase. Confirmed history is immutable.
 
-Facts (declarative ordering/conflict constraints) are experimental, and
-command replay is a proposal (RFC 0002) — see [spec.md](./spec.md) for their
-maturity markers; neither is part of the shipping model.
+Facts (declarative ordering/conflict constraints) are experimental — see
+[spec.md](./spec.md) for their maturity marker. Command replay is an open
+proposal (RFC 0002, tracked by root LS-DQ1); its design lives in the RFC, not
+in this tree, and it is not part of the shipping model.

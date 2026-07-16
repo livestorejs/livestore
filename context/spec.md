@@ -139,11 +139,17 @@ The intent layer must keep shipping reality and design-stage material
 unmistakably distinct:
 
 - Every `spec.md` carries a `## Status` (`Draft` / `Active` / `Stable`).
-- Sections describing non-shipping behavior open with a bold marker:
-  `**Maturity: experimental**` (code exists behind an experimental flag, e.g.
-  facts, `sync/next/`) or `**Maturity: proposal**` with a link to the owning
-  RFC (no code, e.g. command replay → RFC 0002).
+- Sections describing non-shipping behavior that **has code** open with a bold
+  `**Maturity: experimental**` marker (code exists behind an experimental flag,
+  e.g. facts, `sync/next/`).
 - Unmarked spec content describes shipping behavior.
+- **No-code proposals do not appear as spec content.** A design with no code
+  (typically an open RFC) is never written into a `spec.md`, `requirements.md`,
+  or `ontology.md` body; it surfaces only as an open question that points to the
+  owning RFC, keeping the RFC the single source of truth for its own proposal
+  until acceptance folds it in (see Precedence Across Intent Surfaces, and
+  [decision 0004](./.decisions/0004-rfc-vrs-boundary.md)). This keeps the tree
+  describing the system that exists.
 
 ## Evidence Conventions
 
@@ -164,10 +170,17 @@ unmistakably distinct:
 Per [decision 0002](./.decisions/0002-single-intent-layer.md):
 
 - This VRS tree is the only always-current intent layer (LS-R15).
-- **RFCs** (`contributor-docs/rfcs/`) are the proposal pipeline. On
-  acceptance, durable content folds into the owning nodes (requirements/spec
-  clauses; choices + rejected alternatives as `.decisions/` records citing the
-  RFC); the RFC becomes a historical record. The fold-in rule is owned by
+- **RFCs** (`contributor-docs/rfcs/`) are the proposal pipeline. While an RFC
+  is unaccepted, its design and coined terms live **only** in the RFC; the
+  tree's entire footprint is (1) the real limitation the RFC addresses, stated
+  on the affected node where that limitation is a true property of the shipping
+  system, and (2) a pointer to the RFC from an open question — root `LS-DQ1` is
+  the anchor, node `DQ`s cross-reference it rather than each holding their own
+  RFC pointer. On acceptance, durable content folds into the owning nodes
+  (requirements/spec clauses; choices + rejected alternatives as `.decisions/`
+  records citing the RFC), coined terms enter `ontology.md`, and the RFC becomes
+  a historical record. The fold-in rule and this pre-acceptance footprint rule
+  ([decision 0004](./.decisions/0004-rfc-vrs-boundary.md)) are owned by
   `05-contributing/`.
 - **Docs site** (`docs/`) teaches users; it derives from VRS and never defines
   contracts. `ontology.md` is the canonical term source; divergence in docs is
@@ -175,11 +188,13 @@ Per [decision 0002](./.decisions/0002-single-intent-layer.md):
 - **`contributor-docs/`** operational guides migrate into their owning nodes
   as those nodes are written (see branch table); step-by-step runbooks may
   remain as companion files under the owning node.
-- **`wip/`** dissolves: entries become RFC proposals, node DQs, or roadmap
-  items; no new content.
+- **`wip/`** is dissolved (removed 2026-07-16): design uncertainty lives in
+  node/root `DQ`s, proposals in RFCs, and future direction in `roadmap.md`; no
+  such staging area exists.
 
-Current divergence from this contract is tracked in
-[.delta/DELTA-001-legacy-intent-surfaces.md](./.delta/DELTA-001-legacy-intent-surfaces.md).
+Prior divergence from this contract was tracked in
+[.delta/DELTA-001-legacy-intent-surfaces.md](./.delta/DELTA-001-legacy-intent-surfaces.md)
+(closed 2026-07-16).
 
 ## Enforcement
 
@@ -190,12 +205,16 @@ uniqueness, ID namespace ↔ directory mapping (parsed from the ID Scheme table
 above), `refines:` target resolution, relative-link integrity, spec `Status`
 headers, absence of empty companion dirs, decision-record shape (
 `NNNN-slug.md`, `Status:` line, no committed `.proposed/`), and the maturity
-vocabulary. Semantic review (testability, decision evidence quality) remains
-human/agent judgment.
+vocabulary (only `experimental` is a legal marker; `proposal` is rejected —
+see Maturity Markers). Semantic review (testability, decision evidence quality)
+remains human/agent judgment.
 
 ## Open Design Questions
 
-- **LS-DQ1 Command/intent design placement** — see
+- **LS-DQ1 Command/intent design** — RFC 0002 (command replay) is an open
+  proposal whose design lives in the RFC per
+  [decision 0004](./.decisions/0004-rfc-vrs-boundary.md); the open part is
+  whether to accept and fold it in. See
   [open-questions.md](./open-questions.md).
 
 (LS-DQ2 was resolved 2026-07-16 into

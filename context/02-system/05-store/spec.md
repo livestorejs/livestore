@@ -71,10 +71,6 @@ the caller (`store.ts:944`; LS.SYS.STORE-R09).
 Telemetry: long-lived `LiveStore:commits`/`LiveStore:queries` spans plus a
 per-commit root span with links.
 
-**Maturity: proposal** — `store.commit` returning a receipt with
-leader/backend confirmation awaitables is proposed in
-`wip/upcoming-specs/store-commit-receipt.md`.
-
 ## Lifecycle
 
 - Every public operation guards on `isShutdown` (`checkShutdown`).
@@ -110,10 +106,12 @@ RFC 0001, the implementation is the contract:
 
 ## Open Design Questions
 
-- **LS.SYS.STORE-DQ1 Commit receipt.** Whether the commit-receipt proposal
-  (`wip/upcoming-specs/store-commit-receipt.md`: `store.commit` returns
-  leader/backend confirmation awaitables) lands as specified or folds into a
-  broader command design (LS-DQ1). The wip document's error names are stale
-  against code (`InvalidPushError` does not exist; see the
-  `RejectedPushError` family in `../03-sync/spec.md`). Sole owner of this
-  question; `../03-sync/` LS.SYS.SYNC-DQ1 cross-references it.
+- **LS.SYS.STORE-DQ1 Commit confirmation surface.** `store.commit` returns
+  `void` (or a `Promise`); it exposes no handle to await leader-thread
+  materialization or sync-backend confirmation. Whether it should return such a
+  receipt is open, and is gated by the command/intent design (root LS-DQ1):
+  command replay can reject a pending commit during reconciliation, so the
+  confirmation surface cannot be specified independently. A concrete design, if
+  pursued, belongs in an RFC (per
+  [decision 0004](../../.decisions/0004-rfc-vrs-boundary.md)). `../03-sync/`
+  LS.SYS.SYNC-DQ1 cross-references this.

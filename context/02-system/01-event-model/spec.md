@@ -140,12 +140,6 @@ materialization at all*: the materializer context's `currentFacts` is a
 constant empty `Map` (`common/src/materializer-helper.ts:70`). Not part of
 the shipping contract.
 
-## Command Replay
-
-**Maturity: proposal.** RFC 0002 proposes commands as replayable captures of
-user intent layered above events; placement in this tree is open (root
-LS-DQ1). Not specified here.
-
 ## Open Design Questions
 
 - **LS.SYS.EVT-DQ1 Event schema evolution:** Versioned names (`v1.*`) are

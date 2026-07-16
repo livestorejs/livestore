@@ -107,12 +107,6 @@
 - **Facts** _(experimental)_ — Declarative constraints an event sets,
   unsets, requires, or reads; input to ordering, compaction, and conflict
   detection.
-- **Command** _(proposal,
-  [RFC 0002](../contributor-docs/rfcs/0002-command-replay.md))_ — A
-  replayable capture of user intent that re-validates against current state
-  before producing events. "Intent" names the concept a command captures; it
-  is not an API term while the design is a proposal.
-
 ## Structure
 
 The **event** is the spine: every other concept produces events, orders
@@ -120,7 +114,7 @@ them, derives from them, or observes the result.
 
 | Relation to the spine | Terms |
 | --- | --- |
-| Produce | Store (commit), Client session, Command _(proposal)_ |
+| Produce | Store (commit), Client session |
 | Order | Eventlog, Event sequence number, Sync backend, Rebase, Facts _(experimental)_ |
 | Derive | Materializer, State, Client document |
 | Observe | Live query, Reactivity graph, Devtools |

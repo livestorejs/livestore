@@ -223,7 +223,9 @@ describe('intent layer (context/)', () => {
         .split('\n')
         .forEach((lineText, i) => {
           for (const match of lineText.matchAll(/\*\*Maturity: ([a-zA-Z-]+)/g)) {
-            if (['experimental', 'proposal'].includes(match[1]!) === false) {
+            // Only `experimental` (code behind a flag) is a legal marker. No-code
+            // proposals stay in their RFC, never in spec content — decision 0004.
+            if (['experimental'].includes(match[1]!) === false) {
               violations.push(`${rel(file)}:${i + 1} — unknown maturity ${JSON.stringify(match[1])}`)
             }
           }

@@ -1,6 +1,9 @@
 # DELTA-001 — Legacy intent surfaces not yet absorbed
 
-Status: open (narrowed 2026-07-16)
+Status: closed (2026-07-16) — every legacy surface below is absorbed or
+regenerated, and `wip/` is dissolved. The branch table in
+[spec.md](../spec.md) now matches reality. Kept as a historical record of the
+absorption pass.
 
 The branch table in [spec.md](../spec.md) assigns ownership of all intent
 content to branch nodes. Absorbed so far: the four delivery runbooks (moved
@@ -27,10 +30,10 @@ needed).
 derived page linking the founding decision records (decision-archaeology
 pass).
 
-Remaining divergence:
+Resolved 2026-07-16 (command/intent design session):
 
-- **`wip/upcoming-specs/store-commit-receipt.md`** — stale proposal, kept
-  (with status header) until the command/intent design session (LS-DQ1).
-
-Update this delta as surfaces migrate. Close it when every surface above is
-absorbed or regenerated and the branch table matches reality.
+- **`wip/upcoming-specs/store-commit-receipt.md`** — deleted. A no-code
+  proposal living outside both the RFC pipeline and the tree; under
+  [decision 0004](../.decisions/0004-rfc-vrs-boundary.md) such a proposal
+  belongs in an RFC. The store's commit-confirmation surface is now tracked by
+  `LS.SYS.STORE-DQ1` (gated by root LS-DQ1). `wip/` is removed.

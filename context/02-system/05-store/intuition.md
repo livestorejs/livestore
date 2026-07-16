@@ -48,5 +48,6 @@ Multi-store apps (one store per project/workspace/document) go through the
 `StoreRegistry`: integrations acquire and release, reference counts drive
 shutdown, and intentional shutdown stays distinguishable from failure.
 
-The commit-receipt proposal (awaitable leader/backend confirmation) is not
-shipped — see LS.SYS.STORE-DQ1 in [spec.md](./spec.md).
+Whether `store.commit` should expose awaitable leader/backend confirmation is
+an open question, gated by the command/intent design — see LS.SYS.STORE-DQ1 in
+[spec.md](./spec.md).

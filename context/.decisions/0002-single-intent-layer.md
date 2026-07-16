@@ -50,6 +50,8 @@ option A).
 - The fold-in rule is owned by `05-contributing/` (which also absorbs
   `contributor-docs/rfcs/index.md`).
 - RFC 0001 (multi-store API, largely shipped) is a fold-in candidate.
-- RFC 0002 (command replay) stays an active proposal; its placement is
-  LS-DQ1 in [open-questions.md](../open-questions.md).
+- RFC 0002 (command replay) stays an active proposal, tracked by LS-DQ1 in
+  [open-questions.md](../open-questions.md). How proposals relate to the tree
+  before acceptance is set by
+  [decision 0004](./0004-rfc-vrs-boundary.md).
 - Enforced by root requirement LS-R15.
