@@ -9,9 +9,11 @@ determinism requirements of the root ([LS-R04], [LS-R05], [LS-R07]).
 
 Builds on [../requirements.md](../requirements.md) (`LS.SYS-*`). Sync
 *semantics* are owned by `02-system/03-sync/`; this node only places the sync
-processors in the topology. Realizations: [01-web/](./01-web/requirements.md),
-[02-cloudflare/](./02-cloudflare/requirements.md); node and Expo adapters are
-contrib-owned (stub shape pending LS-DQ2).
+processors in the topology. Children: realizations
+[01-web/](./01-web/requirements.md),
+[02-cloudflare/](./02-cloudflare/requirements.md) (node and Expo adapters are
+contrib-owned, stub shape pending LS-DQ2), and the transport substrate
+[03-webmesh/](./03-webmesh/requirements.md).
 
 ## Assumptions
 
@@ -26,12 +28,15 @@ contrib-owned (stub shape pending LS-DQ2).
 - **LS.SYS.RT-R01 Single leader per client:** At any time exactly one leader
   per client owns the persisted eventlog, the state database, and upstream
   sync. `refines: LS-R04`
-- **LS.SYS.RT-R02 Proxy-only leader access:** Client sessions interact with the
-  leader exclusively through the leader-thread proxy contract (event
-  pull/push/stream, initial state, export, sync state, network status).
-- **LS.SYS.RT-R03 Session resume:** A session boots from the leader's initial
-  state (leader head cursor, migrations report, storage mode) and resumes event
-  streaming from its cursor without event loss or duplication.
+- **LS.SYS.RT-R02 Proxy-only durable effects:** Client sessions perform every
+  durable effect (event push, sync, persistence writes) exclusively through
+  the leader-thread proxy contract. A realization may let a booting session
+  *read* persisted state directly (fast path), provided the derived state and
+  head match what the leader would provide.
+- **LS.SYS.RT-R03 Session resume:** A session boots from an initial state
+  snapshot (fast-path read or leader-provided recreate snapshot with a
+  migrations report) and resumes event streaming from its cursor without
+  event loss or duplication.
 - **LS.SYS.RT-R04 Leadership handover:** When the current leader context goes
   away, another eligible context takes over leadership without data loss;
   sessions observe leadership via a lock status signal.
@@ -42,9 +47,10 @@ contrib-owned (stub shape pending LS-DQ2).
   session for its platform, providing: a session-local SQLite database, a
   leader-thread proxy, lock status, shutdown handling, and devtools
   connectivity (where supported). `refines: LS-R07`
-- **LS.SYS.RT-R06 Graceful shutdown:** Intentional shutdown propagates to all
-  contexts of a client (shutdown channel); sessions distinguish intentional
-  shutdown from failure.
+- **LS.SYS.RT-R06 Shutdown-cause propagation:** Shutdown and terminal failure
+  causes propagate to all contexts of a client (shutdown channel); sessions
+  distinguish intentional shutdown from failure. Single-context realizations
+  may degenerate to no channel.
 - **LS.SYS.RT-R07 Storage-mode transparency:** Persistence may degrade to
   in-memory (e.g. private browsing); the adapter must surface the effective
   storage mode and a boot warning instead of failing silently.

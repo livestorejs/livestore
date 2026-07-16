@@ -17,10 +17,14 @@ push:    send my pending commits; backend either appends them in order
 
 The reason this converges without a conflict UI: the sync backend is the
 *single ordering authority*. Clients never negotiate order among themselves
-— the backend assigns global sequence numbers, so there is exactly one
-history, and every client eventually replays exactly that history. Total
-order makes convergence trivial; all the machinery exists to get everyone
-onto that order without losing local work (rebase, not reject).
+— each client proposes events numbered on top of the head it knows, and the
+backend accepts a push only if it chains onto the actual current head
+(otherwise: "you're behind, pull first"). Like git, the server never
+rewrites your commits; it just refuses non-fast-forward pushes. So there is
+exactly one history, and every client eventually replays exactly that
+history. Total order makes convergence trivial; all the machinery exists to
+get everyone onto that order without losing local work (rebase, not
+reject).
 
 ## One state machine, two boundaries
 

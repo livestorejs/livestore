@@ -40,4 +40,6 @@ binding is verified against; a shared conformance suite is still an open
 question ([spec.md](./spec.md), with `../09-verification/`).
 
 React ([01-react/](./01-react/spec.md)) is the in-repo reference binding;
-Vue/Solid/Svelte live in contrib.
+Effect ([02-effect/](./02-effect/spec.md)) shows that "framework" doesn't
+mean UI — it binds the store to Layer/Context idioms the same way React
+binds it to hooks. Vue/Solid/Svelte live in contrib.

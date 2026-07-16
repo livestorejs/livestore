@@ -14,6 +14,22 @@
   one store; the source of truth all state derives from.
 - **Event sequence number** — The composite position of an event in the
   eventlog: global part, client part, and rebase generation.
+- **Rebase generation** — The component of an event sequence number that
+  increments each time pending events are rebased; the leader rejects pushes
+  carrying an older generation.
+- **Pending event** — An event committed locally but not yet confirmed by
+  the sync backend.
+- **Upstream head** — The latest backend-confirmed eventlog position
+  (persisted leader-side as `backendHead`).
+- **Local head** — The latest locally committed eventlog position, including
+  pending events.
+- **Derived event** — A framework-generated event with an implicit
+  materializer (e.g. client-document set events); never user-defined.
+- **Schema hash** — The hash of the state-schema AST and event definitions
+  that drives drift detection and state rebuild.
+- **Storage format version** — The manually bumped version of persisted
+  eventlog/state formats (`liveStoreStorageFormatVersion`); incompatible
+  bumps reset persistence.
 - **Materializer** — A pure function of an event and current state, producing
   state changes; runs identically on every client. _Avoid:_ projector, event
   handler.
@@ -46,10 +62,42 @@
   events, incrementing their rebase generation.
 - **Live query** — A reactive query over state (`queryDb`, `computed`,
   `signal`) that recomputes when its inputs change.
+- **Query definition** — The hash-keyed blueprint of a live query; equal
+  definitions share one query instance.
+- **Query instance** — A live, reference-counted node in the reactivity
+  graph, created from a query definition.
+- **Result cache** — The bounded SQL-result cache keyed by statement and
+  bind values, invalidated per written table; distinct from query-instance
+  dedup.
 - **Reactivity graph** — The incremental computation graph that propagates
   state changes to live queries.
+- **Store registry** — The `storeId`-keyed manager of store lifecycles:
+  load, reuse, eviction.
+- **Fast path** — The session-boot shortcut that reads the persisted state
+  DB directly instead of requesting a snapshot from the leader.
+- **Boot status** — The staged boot progress surface
+  (loading → migrating → rehydrating → syncing → done).
+- **Termination lock** — A steal-mode Web Lock held by the shared worker;
+  its release signals worker death.
+- **Mesh node** — A named participant in the webmesh transport, connected to
+  peers by edges and communicating over channels.
+- **Direct channel** — A webmesh channel over a negotiated `MessagePort`;
+  no per-message acknowledgements.
+- **Proxy channel** — A hop-routed webmesh channel in which every payload is
+  individually acknowledged.
+- **Broadcast channel** — A fan-out webmesh channel without
+  acknowledgements or buffering for late joiners.
 - **Devtools** — The tooling surface for inspecting eventlog, state, and sync
   status, connected via the devtools protocol.
+- **Devtools protocol version** — The integer handshake version that decides
+  devtools compatibility; the package version is display-only.
+- **SessionInfo** — The periodic identity announcement devtools use to
+  discover live client sessions.
+- **Introspection surface** — Devtools' direct inspection surface (debug
+  info, graph snapshots), parallel to and currently independent of OTel
+  telemetry. _Avoid:_ introspection channel (not a webmesh channel).
+- **Control operation** — A devtools message that mutates engine state
+  (reset, import, event injection) rather than inspecting it.
 - **Changeset (SQLite session)** — A SQLite session-extension changeset
   recorded per materialization, used to roll back state during rebase.
 - **Changeset (release)** — A pnpm changeset file describing a package-level
@@ -84,17 +132,25 @@ in their name:
 
 - **Event family** (leitwort "event") — anchor **Event**; followers Event
   definition, Eventlog, Event sequence number, Synced event, Client-only
-  event.
+  event, Pending event, Derived event.
 - **Client family** (leitwort "client") — anchor **Client**; followers
   Client session, Client document.
 - **Sync family** (leitwort "sync") — no single anchor noun; Sync provider,
-  Sync backend, Sync processor share the leitwort. Rebase is this family's
-  operation term (no leitwort — it names the act, not a sync part).
-- **State family** — anchor **State**; Materializer and Changeset (SQLite
-  session) are its derivation vocabulary (mechanism names, no shared
-  leitwort).
-- **Store family** (leitwort "store") — anchor **Store**; follower storeId.
-  Live query and Reactivity graph are its observation vocabulary.
+  Sync backend, Sync processor share the leitwort. Rebase, Rebase
+  generation, Upstream head, and Local head are its operation/position
+  vocabulary (no leitwort — they name acts and places, not sync parts).
+- **State family** — anchor **State**; Materializer, Changeset (SQLite
+  session), Schema hash, and Storage format version are its derivation and
+  versioning vocabulary (mechanism names, no shared leitwort).
+- **Store family** (leitwort "store") — anchor **Store**; followers storeId,
+  Store registry. Live query, Query definition, Query instance, Result
+  cache, and Reactivity graph are its observation vocabulary.
+- **Channel family** (leitwort "channel") — webmesh transport channels:
+  Direct channel, Proxy channel, Broadcast channel; Mesh node is the
+  participant term.
+- **Devtools family** (leitwort "devtools") — anchor **Devtools**; follower
+  Devtools protocol version. SessionInfo, Introspection surface, and
+  Control operation are its discovery/inspection vocabulary.
 
 ### Naming rubric
 

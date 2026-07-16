@@ -11,13 +11,13 @@ or endpoints. It emits OpenTelemetry spans for its core operations (boot,
 commit, materialization, queries, sync push/pull) *into whatever tracer the
 app provides*, so a developer sees "button click → commit → leader push →
 backend ack" as one trace next to their own spans. No tracer provided means
-a no-op tracer: observability must cost nothing when unused, because the
-synchronous read path is a performance promise
+a no-op tracer: observability should cost as little as possible when
+unused, because the synchronous read path is a performance promise
 ([../05-store/](../05-store/intuition.md)).
 
 ```
 app tracer (injected) ◀── spans: boot · commit · materialize · query · sync
-no tracer             ◀── NoopTracer (zero cost)
+no tracer             ◀── NoopTracer (near-zero cost)
 ```
 
 ## Telemetry vs. inspection
@@ -26,8 +26,10 @@ This node and [../07-devtools/](../07-devtools/intuition.md) split
 "explaining the system" in two: observability is *passive narration*
 (traces, structured failure context — what happened, in time order) while
 devtools is *active inspection and control* (browse the eventlog now, reset
-the database). Devtools consume what this node emits, but the protocol
-between tools and clients is theirs.
+the database). Today the two are parallel channels: devtools read their own
+introspection surface (debug info, query timings, reactivity-graph
+snapshots) rather than consuming these traces — converging them is an open
+direction, not current behavior.
 
 ## Failures should carry their own context
 

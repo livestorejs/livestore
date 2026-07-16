@@ -29,12 +29,12 @@ attack/compat surface.
 Sessions announce themselves (store/client/session identity, schema alias,
 leader flag) on a broadcast channel — tools enumerate running clients
 without app cooperation. Every handshake carries an integer devtools
-protocol version; unsupported versions fail deterministically instead of
-half-working (unversioned legacy peers count as protocol 1; the LiveStore
-package version in messages is display-only). Control operations — reset the
-database, latch pull/push to simulate offline — are explicit protocol
-messages, so tool-induced behavior is always distinguishable from
-app-originated behavior.
+protocol version; an unsupported version gets an explicit version-mismatch
+reply instead of a half-working session (unversioned legacy peers count as
+protocol 1; the LiveStore package version in messages is display-only).
+Control operations — reset or import the database, inject an event, latch
+pull/push to simulate offline — are explicit protocol messages, never
+behavior a tool triggers implicitly.
 
 ## What "inspectable" promises
 

@@ -29,20 +29,32 @@ context/                     root: LiveStore the product (this node)
                              eventlog, facts (experimental)
     02-state/                read-model contract; realizations as children
       01-sqlite/             SQLite schema DSL, materializers, client
-                             documents, query builder, schema management
-    03-sync/                 syncstate machine, push/pull/rebase semantics,
-                             sync-provider contract; provider realizations
+                             documents, query builder
+        02-schema-management/  hash-based rebuild, auto/manual migration
+                               strategies, storage-format versioning
+    03-sync/                 sync-provider contract (boundary)
+      01-syncstate/          pure merge core: outcomes, invariants,
+                             rebase generations, client-only events
+      02-processors/         leader/session processors: queues, batching,
+                             retry, pull precedence, cursors
+      03-cf/                 Cloudflare provider realization
     04-runtime/              leader ⇄ client-session topology, adapter
-                             contract + realizations, transport (webmesh),
+                             contract + realizations, proxy contract,
                              persistence substrate (SQLite builds)
-    05-store/                app-facing Store, reactivity graph, live
-                             queries, signals, multi-store/StoreRegistry
+      01-web/  02-cloudflare/  platform realizations
+      03-webmesh/            transport: channel kinds, edges, ack semantics
+    05-store/                app-facing Store, commit path, lifecycle,
+                             multi-store/StoreRegistry
+      01-reactivity/         reactive graph, live-query kinds, dedup and
+                             caching layers
     06-observability/        OTel instrumentation contract, telemetry
                              semantics, debug surfaces
     07-devtools/             devtools protocol + surfaces contract
     08-integrations/         framework-integration contract + realizations
-    09-verification/         test architecture, conformance suites for
-                             pluggable dimensions, benchmarks
+      01-react/  02-effect/  realizations (hooks; Store.Tag layer API)
+    09-verification/         verification contract
+      01-lanes/  02-conformance/  03-performance/  04-protocol-compat/
+      05-determinism/
   03-delivery/               repo/package composition, packaging, release,
                              versioning, artifact flows
   04-docs/                   docs-site derivation rules, snippets/diagrams
@@ -95,14 +107,14 @@ questions `DQ`, deltas `DELTA`, decisions by number):
 | `LS.PROD-*` | `01-product/` |
 | `LS.SYS-*` | `02-system/` |
 | `LS.SYS.EVT-*` | `02-system/01-event-model/` |
-| `LS.SYS.STATE-*` / `LS.SYS.STATE.SQLITE-*` | `02-system/02-state/` and realization |
-| `LS.SYS.SYNC-*` / `LS.SYS.SYNC.CF-*` | `02-system/03-sync/` and realizations |
-| `LS.SYS.RT-*` / `LS.SYS.RT.WEB-*`, `LS.SYS.RT.CF-*` | `02-system/04-runtime/` and adapter realizations |
-| `LS.SYS.STORE-*` | `02-system/05-store/` |
+| `LS.SYS.STATE-*` / `LS.SYS.STATE.SQLITE-*`, `LS.SYS.STATE.SQLITE.SM-*` | `02-system/02-state/` and children |
+| `LS.SYS.SYNC-*` / `LS.SYS.SYNC.SS-*`, `LS.SYS.SYNC.PROC-*`, `LS.SYS.SYNC.CF-*` | `02-system/03-sync/` and children |
+| `LS.SYS.RT-*` / `LS.SYS.RT.WEB-*`, `LS.SYS.RT.CF-*`, `LS.SYS.RT.MESH-*` | `02-system/04-runtime/` and children |
+| `LS.SYS.STORE-*` / `LS.SYS.STORE.RX-*` | `02-system/05-store/` and children |
 | `LS.SYS.OBS-*` | `02-system/06-observability/` |
 | `LS.SYS.DT-*` | `02-system/07-devtools/` |
-| `LS.SYS.INT-*` / `LS.SYS.INT.REACT-*` | `02-system/08-integrations/` and realizations |
-| `LS.SYS.VER-*` | `02-system/09-verification/` |
+| `LS.SYS.INT-*` / `LS.SYS.INT.REACT-*`, `LS.SYS.INT.EFFECT-*` | `02-system/08-integrations/` and realizations |
+| `LS.SYS.VER-*` / `LS.SYS.VER.LANE-*`, `LS.SYS.VER.CONF-*`, `LS.SYS.VER.PERF-*`, `LS.SYS.VER.PROTO-*`, `LS.SYS.VER.DET-*` | `02-system/09-verification/` and children |
 | `LS.DEL-*` | `03-delivery/` |
 | `LS.DOCS-*` / `LS.DOCS.EX-*` | `04-docs/` and `01-examples/` |
 | `LS.CONTRIB-*` / `LS.CONTRIB.COLLAB-*` | `05-contributing/` and `01-collaboration/` |

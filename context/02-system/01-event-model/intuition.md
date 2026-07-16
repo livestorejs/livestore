@@ -25,16 +25,18 @@ are tolerated on read so old readers survive logs written by newer apps.
 A sequence number is a composite `{global, client, rebaseGeneration}`:
 
 ```
-e0 ── e1 ── e2 ── e3        global: assigned by the sync backend
-              └─ e2.1'      client: local commits after e2, unconfirmed (')
+e0 ── e1 ── e2 ── e3        global: canonical once admitted by the backend
+              └─ e2.1'      client: client-only commits after e2 (')
 e3 ── e4r1                  r1: that pending event, re-parented by a rebase
 ```
 
-Only the backend hands out global numbers — a client can never claim a place
-in canonical history on its own. Everything a client commits sits in a
-provisional tail (`e2.1'`) until confirmed or rebased. The `rN` generation
-counts how often that tail was re-parented. The notation is shared by docs,
-tests, and debug output, so `e3'` means the same thing everywhere.
+Clients number their events optimistically; the backend admits only a push
+that extends its current head, so a client can never unilaterally claim a
+place in canonical history — a losing race means rebase and re-number.
+Everything a client commits sits in a provisional tail (`e2.1'`) until
+admitted or rebased. The `rN` generation counts how often that tail was
+re-parented. The notation comes from `events-notation.md`; code emits the
+`e{g}[.{c}][r{n}]` subset (the `'` marker lives in docs and tests).
 
 ## The eventlog is self-describing
 

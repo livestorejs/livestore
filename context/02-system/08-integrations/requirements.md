@@ -7,8 +7,9 @@ framework-agnosticism requirement of the root ([LS-R09]).
 ## Context
 
 Builds on [../requirements.md](../requirements.md) (`LS.SYS-*`) and the Store
-contract (`../05-store/`). Realization:
-[01-react/](./01-react/requirements.md); Vue/Solid/Svelte integrations are
+contract (`../05-store/`). Realizations:
+[01-react/](./01-react/requirements.md) and
+[02-effect/](./02-effect/requirements.md); Vue/Solid/Svelte integrations are
 contrib-owned (stub pending LS-DQ2).
 
 ## Requirements

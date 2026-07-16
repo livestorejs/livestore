@@ -10,11 +10,12 @@ Draft.
 
 ## Scope
 
-Defines: topology roles, the adapter and leader-proxy contracts, webmesh
-transport, SQLite substrate entrypoints. Does not define: sync semantics
-(`../03-sync/`), the Store surface (`../05-store/`), or per-platform
-realizations ([01-web/](./01-web/spec.md),
-[02-cloudflare/](./02-cloudflare/spec.md)).
+Defines: topology roles, session boot, the adapter and leader-proxy
+contracts, the boundary error taxonomy, SQLite substrate entrypoints. Does
+not define: sync semantics (`../03-sync/`), the Store surface
+(`../05-store/`), the transport substrate
+([03-webmesh/](./03-webmesh/spec.md)), or per-platform realizations
+([01-web/](./01-web/spec.md), [02-cloudflare/](./02-cloudflare/spec.md)).
 
 ## Topology
 
@@ -32,7 +33,9 @@ client (clientId)
 ```
 
 - One leader per client owns `dbEventlog` + `dbState` and the upstream sync
-  connection (LS.SYS.RT-R01). Sessions never touch persistence directly.
+  connection (LS.SYS.RT-R01). Sessions route every durable effect through
+  the leader; on web a booting session may *read* the persisted state DB
+  directly (fast path, below) but never writes it.
 - The `LeaderSyncProcessor` runs in the leader; the
   `ClientSessionSyncProcessor` runs in each session. Their semantics are
   specified in `../03-sync/`; this node only fixes their placement.
@@ -58,20 +61,57 @@ The leader side is assembled by `makeLeaderThreadLayer`
 (`common/src/leader-thread/`): eventlog init, materializer wiring, optional
 sync backend, devtools hooks, shutdown channel.
 
+## Proxy Contract
+
+`ClientSessionLeaderThreadProxy`
+(`common/src/ClientSessionLeaderThreadProxy.ts`) is the session's only
+channel for durable effects:
+
+| Member | Shape | Purpose |
+| --- | --- | --- |
+| `events.pull({ cursor })` | stream | upstream payloads from the leader |
+| `events.push(batch)` | effect | submit local events (rejection: below) |
+| `events.stream(...)` | stream | eventlog range reads (devtools, export) |
+| `initialState` | `{ leaderHead, migrationsReport }` | boot snapshot info |
+| `export` | effect | state DB snapshot |
+| `getEventlogData` | effect | eventlog DB snapshot (distinct from `export`) |
+| `getSyncState` / `syncState` | `Subscribable` (get + changes) | leader sync state |
+| `networkStatus` | `Subscribable` (get + changes) | connectivity (folds in devtools latch overrides) |
+| `sendDevtoolsMessage` | effect | devtools control channel |
+
+Realizations may expose a superset over their worker RPC (web adds
+`GetLeaderHead`, `Shutdown`, `WebmeshWorker.CreateConnection`, boot-status
+streaming — `worker-schema.ts`); the proxy above is the portable contract.
+
+## Session Boot
+
+Two boot paths produce the session's initial in-memory state:
+
+- **Fast path (web):** the session reads the persisted state DB directly
+  from OPFS and derives `leaderHead` from `SESSION_CHANGESET_META_TABLE` —
+  without touching the leader. This is the one sanctioned direct
+  persistence *read*; the snapshot is currently trusted without validation
+  (code TODO), and its head source differs from the leader's
+  (eventlog-derived), so the two can in principle diverge.
+- **Slow path:** the leader provides a recreate snapshot plus a
+  `migrationsReport` (`GetRecreateSnapshot`).
+
+Boot progress is a streamed `BootStatus` surface
+(`adapter-types.ts`): `loading → migrating → rehydrating → syncing → done`,
+with per-stage progress counts and an optional `warning` stage (e.g. OPFS
+unavailable). With `initialSync: Blocking` the leader delays boot completion
+until the first sync page arrives, bounded by a timeout.
+
+`storageMode` (persisted vs in-memory fallback) is derived from the client
+session's own storage probe, not from leader boot info; Cloudflare hardcodes
+`persisted`. On web, client and leader probe storage independently and can
+in principle disagree (two probes, one reported mode).
+
 ## Transport Substrate (webmesh)
 
-`@livestore/webmesh` provides named mesh nodes with three channel kinds
-(`mesh-schema.ts`):
-
-- **Direct channels** — negotiated `MessagePort` links carrying
-  transferables; used session ⇄ leader where the platform allows.
-- **Proxy channels** — hop-routed packets for contexts without direct ports.
-- **Broadcast channels** — fan-out without acks (e.g. devtools session info).
-
-Edges exist over message ports, workers, and websockets
-(`websocket-edge.ts`). Node naming for devtools follows
-`Devtools.makeNodeName.*`. Split into its own child node when content
-warrants (e.g. non-LiveStore consumers).
+Owned by [03-webmesh/](./03-webmesh/spec.md): mesh nodes, edges, and the
+three channel kinds (direct / proxy / broadcast) with their reliability
+semantics.
 
 ## Persistence Substrate (SQLite)
 
@@ -88,6 +128,11 @@ Durable Object storage in cf) but share query/materialization behavior
 | Web (workers, OPFS) | [01-web/](./01-web/spec.md) | in-repo |
 | Cloudflare (Durable Object) | [02-cloudflare/](./02-cloudflare/spec.md) | in-repo |
 | Node, Expo, Tauri/Electron | contrib | stub pending LS-DQ2 |
+
+Realizations with leader transitions must keep store invariants (storeId,
+storage options, sync payload, versions) stable across a handover; the web
+realization enforces this at the shared-worker port swap
+([01-web/](./01-web/spec.md)).
 
 ## Leadership Handover
 
@@ -107,6 +152,26 @@ transferred from the previous leader. Boot asserts the invariant
 `backendHead <= localHead` and fails as a defect otherwise. Election is
 realization-specific (e.g. Web Locks on web) but must be blocking so exactly
 one leader exists per client at any time.
+
+## Boundary Error Taxonomy
+
+The session ⇄ leader boundary has a typed failure contract:
+
+- **Push rejection (recoverable):** `RejectedPushError` =
+  `LeaderAheadError` | `NonMonotonicBatchError` |
+  `StaleRebaseGenerationError` (`leader-thread/RejectedPushError.ts`).
+  The session responds by rebasing and retrying; events are never dropped.
+  Semantics: [../03-sync/](../03-sync/spec.md).
+- **Shutdown broadcast:** the shutdown channel carries
+  `IntentionalShutdownCause` (reasons: `devtools-reset`, `devtools-import`,
+  `adapter-reset`, `manual`, `backend-id-mismatch`) *and* terminal failure
+  causes (`UnknownError`, `BackendIdMismatchError`, `MaterializeError`) —
+  it is a failure broadcast, not an intentional-only signal. Sessions map
+  intentional causes to a successful exit and everything else to a failed
+  exit. Cloudflare has no channel (noop; single-context).
+- **Boot defect:** leader boot asserts `backendHead <= localHead` and dies
+  otherwise — the sole handover safety check; there is no cross-source
+  reconciliation beyond it.
 
 ## Open Design Questions
 

@@ -26,9 +26,11 @@ Every pluggable dimension needs a realization-independent suite — otherwise
 "pluggable" means "works with the one implementation we tried." Sync
 providers already have this: `tests/sync-provider/` drives the provider
 interface directly, so an in-repo, contrib, or custom backend all face the
-same questions (ordering, reconnection, auth failure). Adapters,
-integrations, and read models don't yet — that gap is tracked openly
-(LS.SYS.VER-DQ1 in [spec.md](./spec.md)) rather than papered over.
+same questions (connection lifecycle, cursor/live pull, large batches).
+Adapters, integrations, and read models don't yet — that gap is tracked
+openly (LS.SYS.VER.CONF-DQ1 in
+[02-conformance/spec.md](./02-conformance/spec.md)) rather than papered
+over.
 
 ## Where evidence lives
 
@@ -40,4 +42,4 @@ node's `.experiments/`, so the spec can stay timeless while the evidence
 trail stays findable.
 
 The perf suites currently measure without gating; thresholds for the
-interactive-grade claim are an open question (LS.SYS.VER-DQ2).
+interactive-grade claim are an open question (LS.SYS.VER.PERF-DQ1).

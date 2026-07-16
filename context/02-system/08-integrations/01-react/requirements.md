@@ -16,6 +16,10 @@ registry-based lifecycle. Refines [../requirements.md](../requirements.md)
   acquisitions are reference-counted so StrictMode double-invocation and
   concurrent rendering cause no leaks or duplicate boots.
   `refines: LS.SYS.INT-R05`
-- **LS.SYS.INT.REACT-R04 Tear-free reads:** `refines: LS.SYS.INT-R04` — Query
-  results delivered to React are consistent snapshots; a commit never yields a
-  render mixing old and new state.
+- **LS.SYS.INT.REACT-R04 Consistent update delivery:** Every update delivered
+  to React reflects a complete commit (the engine refreshes atomically), and
+  identical results are deduplicated before triggering a re-render. The
+  binding reads from mutable refs rather than `useSyncExternalStore`, so
+  tear-freedom under concurrent rendering is not guaranteed by construction
+  and is currently unverified (see [spec.md](./spec.md) §Subscription
+  Model). `refines: LS.SYS.INT-R04`

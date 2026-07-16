@@ -35,6 +35,28 @@ Persistence keys are versioned with `liveStoreStorageFormatVersion` and the
 schema hash (migration strategy `manual` pins the suffix), so schema changes
 recreate state rather than migrate it in place.
 
+## Platform Adaptations
+
+Colocation and the `SqlStorage` API force several degenerate or adapted
+behaviors versus the portable contract:
+
+- **No shutdown channel** — `WebChannel.noopChannel`; with a single context
+  there is nothing to broadcast to (degenerate case of LS.SYS.RT-R06).
+- **Devtools disabled** — `devtoolsOptions.enabled` is hardcoded false; the
+  websocket webmesh connect is commented out (stub). `webmeshMode` is
+  `'proxy'` (web adapters use `'direct'`).
+- **Transaction control is dropped** — `BEGIN`/`COMMIT`/`ROLLBACK`/
+  `SAVEPOINT` statements are silently discarded on the `SqlStorage` path
+  (`make-sqlite-db.ts`). Safe because the eventlog is append-only and
+  idempotent, state is rebuildable, and the DO is single-threaded — but it
+  means SQLite transaction semantics do not exist on this realization.
+- **`export()`/`import()` are no-ops** — `SqlStorage` has no
+  serialize/deserialize; the session's initial snapshot import is therefore
+  also a no-op (leader and session share the isolate anyway).
+- **`resetPersistence` spans three tables** — `vfs_pages` (state VFS),
+  `eventlog`, and `__livestore_sync_status` (direct), inside
+  `storage.transactionSync`.
+
 ## Eviction and Resume
 
 The DO adapter has no eviction-specific handling (no alarms, no hibernation

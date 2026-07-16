@@ -13,9 +13,11 @@ behind it. The two promises that define the surface:
 - **Reads never wait.** `store.query` runs against the session's in-memory
   SQLite synchronously — no promise, no loading state. This is what "local
   source of truth" feels like in API shape.
-- **Writes feel instant.** `commit` validates, materializes locally in one
-  transaction, refreshes affected queries, and returns. Persistence and sync
-  happen behind the scenes via the leader.
+- **Writes feel instant.** `commit` validates, materializes locally,
+  refreshes affected queries, and returns — all synchronously. Persistence
+  and sync happen behind the scenes via the leader. The flip side of "writes
+  never fail visibly": a commit that *does* fail locally shuts the store
+  down rather than throwing back to the caller.
 
 ## The reactivity graph: a spreadsheet over SQLite
 
@@ -34,7 +36,11 @@ table refs they wrote. Its guarantees are easiest to remember as
 
 When you wonder "can a subscriber observe an intermediate state?", the
 answer is designed to be no — and the escape hatches (`skipRefresh`,
-`batchUpdates`) are explicit opt-outs, not accidents.
+`batchUpdates`) are explicit opt-outs, not accidents. The full query-kind
+and caching semantics live in [01-reactivity/](./01-reactivity/spec.md);
+one identity rule worth internalizing: db queries and computeds dedup by
+definition hash, signals never dedup (each `signal()` call is a distinct
+node).
 
 ## Many stores, counted references
 

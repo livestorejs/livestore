@@ -18,7 +18,8 @@ and root LS-R04…R06. Code: `packages/@livestore/common/src/schema/EventDef/`,
 - **LS.SYS.EVT-R01 Complete definitions:** An event type is declared by an
   event definition: unique name (versioned by convention, e.g.
   `v1.TodoCreated`), payload schema, and sync scope. Optional: facts callback
-  (experimental), derived flag, deprecation reason.
+  (experimental), deprecation reason. The derived flag is framework-set
+  (client documents), never user-supplied.
 - **LS.SYS.EVT-R02 Sync scope:** Every event is either `synced` (distributed
   via the sync backend) or `clientOnly` (reaches all sessions of the committing
   client, never the backend). `refines: LS-R04`
@@ -33,13 +34,15 @@ and root LS-R04…R06. Code: `packages/@livestore/common/src/schema/EventDef/`,
 
 - **LS.SYS.EVT-R05 Composite sequence numbers:** Every committed event has a
   composite sequence number `{global, client, rebaseGeneration}`. Global
-  numbers are assigned by the sync backend and define the canonical total
-  order; client numbers order locally-committed events between global
+  numbers are allocated optimistically by the committing client and admitted
+  into the canonical total order by the sync backend, which only accepts a
+  push extending its current head (otherwise the client rebases and
+  re-numbers). Client numbers order client-only events between global
   positions; the rebase generation increments on each rebase.
 - **LS.SYS.EVT-R06 Canonical notation:** Event positions are written in the
   `e{global}[.{client}][r{rebaseGeneration}][']` notation (see
-  `contributor-docs/events-notation.md`), shared by docs, tests, and debugging
-  output.
+  `contributor-docs/events-notation.md`) across docs and tests; code emits
+  the `e{global}[.{client}][r{gen}]` subset via `toString`/`fromString`.
 
 ### Eventlog
 

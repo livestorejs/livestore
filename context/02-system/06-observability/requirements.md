@@ -16,9 +16,11 @@ this node owns tracing/telemetry semantics.
   spans — session/leader boot, commits, materialization, query execution, sync
   push/pull — so app developers can correlate LiveStore behavior with their own
   traces.
-- **LS.SYS.OBS-R02 Zero-cost default:** Without an app-provided tracer,
-  instrumentation degrades to a no-op with negligible overhead.
-  `refines: LS-R14`
+- **LS.SYS.OBS-R02 No-op default:** Without an app-provided tracer,
+  instrumentation degrades to a built-in no-op tracer: no exporter, no
+  network, bounded per-span overhead (today: one object allocation plus
+  start/end timestamps — a stricter zero-allocation budget is open, see
+  LS.SYS.OBS-DQ3). `refines: LS-R14`
 - **LS.SYS.OBS-R03 Injectable tracer:** Apps provide their tracer/exporter;
   LiveStore never configures a global exporter on its own.
 - **LS.SYS.OBS-R04 Debuggable failures:** Errors carry enough structured

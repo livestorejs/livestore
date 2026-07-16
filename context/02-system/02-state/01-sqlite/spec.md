@@ -28,40 +28,57 @@ schema-level metadata.
 
 ## Query Builder
 
-`query-builder/` provides typed `select/where/orderBy/first/count`,
-`insert`, `update`, `delete` over table defs; results decode through the
-row schema. Materializers may return query-builder writes, raw SQL strings,
-or `{sql, bindValues, writeTables}` (LS.SYS.STATE.SQLITE-R02).
+`query-builder/` (`api.ts`, `astToSql.ts`) provides a deliberately small
+SQL subset over table defs — reads: `select`, `where`, `orderBy`, `offset`,
+`limit`, `first`, `count`, `row`; writes: `insert`, `update`, `delete` with
+`onConflict` and `returning`. No joins, subqueries, or aggregations beyond
+`count` — raw SQL (with bind values) is the escape hatch for those. Results
+decode through the row schema derived from the table AST. Every builder
+query carries its `writeTables`/`usedTables`, which feed both the query
+hash used for live-query dedup and reactive invalidation
+(`05-store/01-reactivity/`). Materializers may return query-builder writes,
+raw SQL strings, or `{sql, bindValues, writeTables}`
+(LS.SYS.STATE.SQLITE-R02).
 
 ## Client Documents
 
 `client-document-def.ts`: a keyed document table where `set(value, id?)`
 emits an auto-generated derived client-only event with an implicit
-materializer; `get(id?)` is a typed query. `SessionIdSymbol` keys the
-document to the current session. Semantics: last-write-wins per key;
-reaches all sessions of the client, never other clients. Caveat (from
-code): incompatible re-definitions of a client-document table can orphan
-old auto-generated events — rebuilds then lose that document state.
+materializer; `get(id?)` is a typed query. Mechanics:
+
+- The set-event payload is always `{ id, value }`; with
+  `partialSet: true` (default, struct-valued documents only) `value` may be
+  a partial that merges into the current document; otherwise the
+  materializer upserts the full value via
+  `INSERT … ON CONFLICT (id) DO UPDATE` (`client-document-def.ts:305-321`)
+  — last-write-wins per key.
+- The `value` column stores full documents decoded through an
+  *optimistic* schema (`client-document-def.ts:66`) so historical value
+  formats remain readable after the document schema evolves.
+- `SessionIdSymbol` keys the document to the current session and is
+  resolved before materialization (materializing an unresolved symbol is a
+  defect).
+- Scope: reaches all sessions of the client, never other clients. Caveat
+  (from code): incompatible re-definitions of a client-document table can
+  orphan old auto-generated events — rebuilds then lose that document
+  state.
 
 ## System Tables
 
-| Group | Tables (code) | Purpose |
+| Group | Tables | Purpose |
 | --- | --- | --- |
-| Eventlog | `eventlog-tables.ts` | event rows, sync-status head |
-| State meta | `state-tables.ts` | schema hashes, session changesets |
+| Eventlog | `eventlog` (`eventlog-tables.ts`) | one row per event: composite seqNum triple (PK) + parent triple, `name`, `argsJson`, `clientId`, `sessionId`, per-row `schemaHash`, `syncMetadataJson`; indexed on seqNum |
+| Sync status | `__livestore_sync_status` | upstream head + `backendId` (backend-identity change detection) |
+| Schema meta | `__livestore_schema`, `__livestore_schema_event_defs` (`state-tables.ts`) | table-AST and event-definition hashes for drift detection |
+| Changeset/rollback | `__livestore_session_changeset` (`state-tables.ts`) | per-event SQLite session changesets enabling rebase rollback (LS.SYS.STATE.SQLITE-R06) |
 
-(LS.SYS.STATE.SQLITE-R04.)
+(LS.SYS.STATE.SQLITE-R04.) Note the eventlog and changeset groups span two
+databases: changeset rows live in the *state* DB while event rows live in
+the *eventlog* DB; `getEventsSince` joins across both to serve rebase
+rollback.
 
-## Schema Change Flow
+## Schema Change
 
-Per `schema-management/migrations.ts` (LS.SYS.STATE.SQLITE-R05):
-
-1. Hash each table AST (`SqliteAst.hash`).
-2. Compare against hashes stored in the schema meta table.
-3. On mismatch: drop + recreate the state table, rematerialize from the
-   eventlog (`rematerialize-from-eventlog.ts`); system tables are
-   recreated; eventlog tables are never auto-migrated.
-4. Store new hashes after success.
-
-Event-definition schemas are hashed and tracked the same way
-(drift detection, `LS.SYS.EVT-R08`).
+Owned by [02-schema-management](./02-schema-management/spec.md): hash-based
+rebuild via adapter file naming, `auto`/`manual` strategies + hooks, and the
+state-vs-eventlog versioning asymmetry.

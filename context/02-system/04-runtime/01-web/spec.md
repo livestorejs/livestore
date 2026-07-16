@@ -40,10 +40,41 @@ tab 1 (main thread)      tab 2 (main thread)
 | Variant | Entry | Tradeoff |
 | --- | --- | --- |
 | Worker (default) | `web-worker/` | Full: multi-tab, OPFS, devtools |
-| Single-tab | `single-tab/` | No shared worker; one tab only |
-| In-memory | `in-memory/` | No persistence; tests/demos |
+| Single-tab | `single-tab/` | No shared worker (dedicated leader worker still spawned); one tab only; devtools disabled |
+| In-memory | `in-memory/` | No persistence; leader colocated in-context; tests/demos |
 
 All variants return the same `ClientSession` contract (LS.SYS.RT.WEB-R04).
+The worker adapter falls back to single-tab automatically when
+`SharedWorker` is unavailable (e.g. Android Chrome).
+
+## Locks and Leadership
+
+Two Web Locks per store drive coordination:
+
+- **Tab lock** (`livestore-tab-lock-<storeId>`) — cooperative leader
+  election: a booting tab first tries `ifAvailable`, then blocks on the lock
+  if another tab leads. Release on leader scope exit promotes the next
+  waiting tab. The lock is never stolen; election is blocking so exactly one
+  leader exists and no events are dropped.
+- **Shared-worker termination lock**
+  (`livestore-shared-worker-termination-lock-<storeId>`) — the shared worker
+  grabs this with `steal: true` and holds it forever; its release is the
+  only signal that the shared worker died. Tabs can opt in to awaiting it
+  (`awaitSharedWorkerTermination`, default false — awaiting would block
+  forever in multi-tab use since the shared worker outlives any one tab).
+
+## Leader Handover (port swap)
+
+Only the lock-holding tab spawns the dedicated leader worker
+(`livestore-worker-<storeId>-<sessionId>`) and hands one `MessagePort` end
+to the worker and the other to the shared worker (`UpdateMessagePort`). The
+shared worker mediates all tabs' RPCs to whichever port is current. On a
+swap it enforces **invariant stability** — `storeId`, `storageOptions`,
+`syncPayload`, `liveStoreVersion`, `devtoolsEnabled` must match what the
+first leader registered; a mismatch hard-fails with a schema diff (so e.g.
+devtools-on and devtools-off tabs of one store cannot coexist). A
+`workerDisconnectChannel` broadcast exists on takeover but currently has no
+listener (inert).
 
 ## Identity Persistence
 
@@ -59,9 +90,6 @@ Both adapters derive identity the same way (`getPersistedId`):
   (platform behavior, currently not guarded against).
 - Non-window contexts fall back to a fresh random id per boot.
 
-Leader election among tabs uses a blocking Web Lock per store
-(`LIVESTORE_TAB_LOCK`); the winning tab spawns the dedicated leader worker
-and hands its `MessagePort` to the shared worker (`UpdateMessagePort`). When
-the leading tab closes, the lock releases, a waiting tab spawns a fresh
-leader worker, and the shared worker swaps ports; recovery follows the
+When the leading tab closes, the tab lock releases, a waiting tab spawns a
+fresh leader worker, and the shared worker swaps ports; recovery follows the
 handover contract in [../spec.md](../spec.md).

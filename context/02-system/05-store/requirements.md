@@ -10,7 +10,10 @@ synchronous-read, and reactivity requirements of the root ([LS-R01],
 Builds on [../requirements.md](../requirements.md) (`LS.SYS-*`). Event
 semantics: `../01-event-model/`; state semantics: `../02-state/`; runtime
 topology: `../04-runtime/`. Framework bindings build on this node
-(`../08-integrations/`).
+(`../08-integrations/`). The reactive layer is the child node
+[01-reactivity/](./01-reactivity/requirements.md) (`LS.SYS.STORE.RX-*`);
+former `LS.SYS.STORE-R03`/`-R05` were re-homed there (2026-07-16) as
+`LS.SYS.STORE.RX-R01`/`-R02` — the numbers stay retired here.
 
 ## Requirements
 
@@ -20,15 +23,9 @@ topology: `../04-runtime/`. Framework bindings build on this node
 - **LS.SYS.STORE-R02 Synchronous queries:** `refines: LS-R02, LS-R14` —
   `store.query` executes synchronously against the session state database; no
   promise, no loading state.
-- **LS.SYS.STORE-R03 Reactive subscriptions:** `refines: LS-R12` —
-  Subscriptions fire exactly when a query's result may have changed, driven by
-  an incremental reactivity graph rather than re-running all queries.
 - **LS.SYS.STORE-R04 Atomic local commits:** A commit of one or more events
   materializes locally as one unit before the call returns; upstream
   propagation is asynchronous. `refines: LS-R04`
-- **LS.SYS.STORE-R05 Composable query kinds:** Db queries, computed values, and
-  signals compose into one reactive graph; client-document queries build on the
-  same primitives.
 - **LS.SYS.STORE-R06 Multi-store:** Multiple stores (different `storeId`s) run
   concurrently in one app through a store registry with reference-counted
   lifecycles.

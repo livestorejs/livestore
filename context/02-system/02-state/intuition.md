@@ -9,7 +9,8 @@ why state is disposable and what a materializer really is*
 The eventlog is truth; state is a derived, disposable view of it. Nothing in
 the app writes state directly — the only writer is the materializer pipeline
 processing committed events. Delete the state database and replay the log:
-you must get byte-for-byte the same thing back. That property is not an
+you must get the same state back (same rows everywhere; dev builds compare
+materializer-result hashes to enforce it). That property is not an
 implementation detail, it is the contract that makes three hard problems
 easy:
 

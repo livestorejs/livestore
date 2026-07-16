@@ -8,8 +8,9 @@ materializers, queried through a typed query builder.
 
 Builds on [../requirements.md](../requirements.md). Code:
 `packages/@livestore/common/src/schema/state/sqlite/`,
-`schema-management/`, `leader-thread/{materialize-event,
-rematerialize-from-eventlog,recreate-db}.ts`.
+`leader-thread/{materialize-event,recreate-db}.ts`, and
+`common/src/rematerialize-from-eventlog.ts`. Schema change and migration:
+[02-schema-management](./02-schema-management/requirements.md).
 
 ## Requirements
 
@@ -28,10 +29,10 @@ rematerialize-from-eventlog,recreate-db}.ts`.
 - **LS.SYS.STATE.SQLITE-R04 System/user separation:** Engine bookkeeping
   (schema hashes, eventlog meta, sync status, session changesets) lives in
   dedicated system tables, never in user tables.
-- **LS.SYS.STATE.SQLITE-R05 Hash-based rebuild:** Every table schema is hashed;
-  on mismatch at startup, state tables are recreated and rematerialized from
-  the eventlog — no in-place migrations of state tables. `refines: LS-T04,
-  LS.SYS.STATE-R03`
 - **LS.SYS.STATE.SQLITE-R06 Rollback via changesets:** Materializations record
   SQLite session changesets so rebase can roll state back without a full
   rebuild.
+
+(`LS.SYS.STATE.SQLITE-R05` re-homed to
+[`LS.SYS.STATE.SQLITE.SM-R01`](./02-schema-management/requirements.md)
+on 2026-07-16; the ID is retired, not reused.)
