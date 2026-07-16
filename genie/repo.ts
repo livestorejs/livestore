@@ -356,7 +356,13 @@ const shellSingleQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'
 const setupMegarepoRun = (run: string) =>
   run.replace(
     'nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all',
-    'nix run "https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all',
+    [
+      'nix run --no-write-lock-file',
+      '--override-input flake-utils "https://codeload.github.com/numtide/flake-utils/tar.gz/11707dc2f618dd54ca8739b309ec4fc024de578b"',
+      '--override-input nixpkgs "https://codeload.github.com/NixOS/nixpkgs/tar.gz/5b63481602d9b0a714d5791c53bebe829d6b1a3c"',
+      '--override-input tsgo "https://codeload.github.com/Effect-TS/tsgo/tar.gz/8d34c0a2d603a4b963b85ffccd4322c0ef74f472"',
+      '"https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all',
+    ].join(' '),
   )
 
 const withNixSetupRetry = <TStep extends { readonly name: string; readonly run: string }>(step: TStep): TStep => ({
