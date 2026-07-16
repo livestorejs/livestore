@@ -1,9 +1,9 @@
 # DELTA-001 — Legacy intent surfaces not yet absorbed
 
-Status: closed (2026-07-16) — every legacy surface below is absorbed or
-regenerated, and `wip/` is dissolved. The branch table in
-[spec.md](../spec.md) now matches reality. Kept as a historical record of the
-absorption pass.
+Status: open (reopened 2026-07-16) — the surfaces below were all absorbed or
+regenerated and `wip/` dissolved, but an inbound legacy surface from
+livestorejs/livestore#1424 remains to absorb (see Pending). Was briefly closed
+after the command/intent design session.
 
 The branch table in [spec.md](../spec.md) assigns ownership of all intent
 content to branch nodes. Absorbed so far: the four delivery runbooks (moved
@@ -37,3 +37,18 @@ Resolved 2026-07-16 (command/intent design session):
   [decision 0004](../.decisions/0004-rfc-vrs-boundary.md) such a proposal
   belongs in an RFC. The store's commit-confirmation surface is now tracked by
   `LS.SYS.STORE-DQ1` (gated by root LS-DQ1). `wip/` is removed.
+
+## Pending (inbound)
+
+- **`context/repo-ruleset-sync/`** — a flat, pre-hierarchy VRS added by
+  livestorejs/livestore#1424 (branch-ruleset auto-reconcile). **Absorb** into
+  `03-delivery/02-release/`: (1) the ruleset auto-reconcile design (org-owned
+  GitHub App defined as-code + `GET /app` drift-check; apply-on-merge +
+  scheduled backstop + non-gating PR dry-run; `ruleset-drift-check` job removed)
+  as a decision record + spec section under a new `LS.DEL.REL.*` namespace, and
+  (2) a requirement + `.delta` that snapshot publishing must not gate on the
+  whole `ci` run conclusion. Sequenced **after #1424 merges** — its `spec.md`
+  uses a blockquote status, so it intentionally fails the intent-layer
+  enforcement suite as a forcing function. **Absorb, do not conform-in-place;
+  do not delete without capturing.** Source and full spec: #1424
+  `context/repo-ruleset-sync/open-questions.md` OQ4 and the #1406 PR comment.

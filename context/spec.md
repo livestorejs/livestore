@@ -192,9 +192,10 @@ Per [decision 0002](./.decisions/0002-single-intent-layer.md):
   node/root `DQ`s, proposals in RFCs, and future direction in `roadmap.md`; no
   such staging area exists.
 
-Prior divergence from this contract was tracked in
+Divergence from this contract is tracked in
 [.delta/DELTA-001-legacy-intent-surfaces.md](./.delta/DELTA-001-legacy-intent-surfaces.md)
-(closed 2026-07-16).
+(the original absorption pass is complete; one inbound surface from
+livestorejs/livestore#1424 remains to absorb).
 
 ## Enforcement
 
