@@ -8,7 +8,7 @@ run_nix_gc_race_retry() {
   local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
   local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
   local attempt=1
-  local log log_dir stdout_pipe stderr_pipe rc path start now elapsed hb_pid stdout_tee_pid stderr_tee_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature saw_daemon_socket_failure had_errexit
+  local log log_dir stdout_pipe stderr_pipe rc path start now elapsed hb_pid stdout_tee_pid stderr_tee_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature saw_github_archive_503 saw_daemon_socket_failure had_errexit
 
   shift
   start="$(date +%s)"
@@ -115,15 +115,17 @@ run_nix_gc_race_retry() {
     saw_invalid_path=false
     saw_cachix_signature=false
     saw_fetch_signature=false
+    saw_github_archive_503=false
     saw_daemon_socket_failure=false
     [ -n "$path" ] && saw_invalid_path=true
     printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
     printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
     printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
+    printf '%s' "$flattened" | grep -Eq "unable to download 'https://api\\.github\\.com/repos/[^[:space:]']+/tarball/[^[:space:]']+': HTTP error 503|Failed to open archive .*HTTP error 503" && saw_github_archive_503=true || true
     printf '%s' "$flattened" | grep -Eq "error:[[:space:]]*cannot connect to socket at '/nix/var/nix/daemon-socket/socket'" && saw_daemon_socket_failure=true || true
     rm -f "$log"
 
-    if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ] && [ "$saw_daemon_socket_failure" != true ]; then
+    if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ] && [ "$saw_github_archive_503" != true ] && [ "$saw_daemon_socket_failure" != true ]; then
       echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
       write_summary failure "No transient Nix failure signature detected"
       return "$rc"
@@ -132,6 +134,11 @@ run_nix_gc_race_retry() {
     if [ "$saw_daemon_socket_failure" = true ]; then
       repair_nix_daemon
       echo "::warning::Nix daemon socket failure detected for $task (attempt $attempt/$max); retrying after daemon repair"
+    elif [ "$saw_github_archive_503" = true ]; then
+      github_archive_delay_base="${NIX_GITHUB_ARCHIVE_503_BASE_DELAY_SECONDS:-15}"
+      github_archive_delay=$((github_archive_delay_base * attempt + RANDOM % github_archive_delay_base))
+      echo "::warning::GitHub archive fetch returned HTTP 503 for $task (attempt $attempt/$max); retrying after ${github_archive_delay}s backoff"
+      sleep "$github_archive_delay"
     elif [ "$saw_fetch_signature" = true ]; then
       echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
     elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
