@@ -29,7 +29,7 @@ env:
 
 jobs:
   reconcile:
-    if: github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -164,6 +164,7 @@ jobs:
         with:
           app-id: '4312996'
           private-key: ${{ secrets.LIVESTORE_RULESET_APP_KEY }}
+          permission-administration: write
       - name: Apply ruleset
         run: |
           __nix_gc_retry_helper=$(mktemp)
@@ -649,6 +650,7 @@ jobs:
         with:
           app-id: '4312996'
           private-key: ${{ secrets.LIVESTORE_RULESET_APP_KEY }}
+          permission-administration: read
       - name: Plan ruleset
         run: |
           __nix_gc_retry_helper=$(mktemp)

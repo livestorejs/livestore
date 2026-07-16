@@ -18,15 +18,22 @@ import {
 // App ID of the org-owned `livestore-ruleset-reconciler` GitHub App (see context/repo-ruleset-sync).
 const RECONCILE_APP_ID = '4312996'
 
-const appTokenStep = {
+/**
+ * Mints a GitHub App installation token scoped to least privilege. Without an
+ * explicit `permission-*` input the token inherits all of the App's permissions
+ * (`administration:write`); the PR `plan` job runs PR-controlled code, so it gets
+ * a read-only token, while `reconcile` (which PUTs the ruleset) gets write.
+ */
+const appTokenStep = (administration: 'read' | 'write') => ({
   id: 'app-token',
   name: 'Mint App token',
   uses: 'actions/create-github-app-token@v2',
   with: {
     'app-id': RECONCILE_APP_ID,
     'private-key': '${{ secrets.LIVESTORE_RULESET_APP_KEY }}',
+    'permission-administration': administration,
   },
-}
+})
 
 export default githubWorkflow({
   name: 'Repo settings',
@@ -61,12 +68,16 @@ export default githubWorkflow({
 
   jobs: {
     reconcile: {
-      if: "github.event_name != 'pull_request'",
+      // Only reconcile from `main`. push(main) and schedule already run on main;
+      // this also blocks a `workflow_dispatch` from an unmerged branch (whose
+      // checkout would otherwise apply that branch's repo-settings.json to the
+      // live main ruleset). PRs (ref `refs/pull/N/merge`) are excluded too.
+      if: "github.ref == 'refs/heads/main'",
       'runs-on': 'ubuntu-latest',
       defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        appTokenStep,
+        appTokenStep('write'),
         {
           name: 'Apply ruleset',
           run: runDevenvTasksBefore('github:rulesets:sync'),
@@ -94,7 +105,7 @@ export default githubWorkflow({
       defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        appTokenStep,
+        appTokenStep('read'),
         {
           name: 'Plan ruleset',
           run: runDevenvTasksBefore('github:rulesets:plan'),
