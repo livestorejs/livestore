@@ -6,12 +6,15 @@
   tasks."github:rulesets:sync" = {
     description = "Apply the committed ruleset to GitHub (reconcile)";
     exec = "mono github rulesets sync";
+    # mono resolves `effect` from the built workspace; setup:strict installs+builds it.
+    after = [ "setup:strict" ];
   };
 
   # Non-mutating preview of what `github:rulesets:sync` would change. Used by the PR plan job.
   tasks."github:rulesets:plan" = {
     description = "Preview ruleset drift without applying (dry-run)";
     exec = "mono github rulesets sync --dry-run";
+    after = [ "setup:strict" ];
   };
 
   # Drift-check the live GitHub App definition against .github/reconcile-app-manifest.json.
@@ -19,6 +22,7 @@
   tasks."github:app:check" = {
     description = "Check the reconcile GitHub App definition against the committed manifest";
     exec = "mono github app check";
+    after = [ "setup:strict" ];
   };
 
   tasks."github:rulesets:check" = {
