@@ -162,7 +162,6 @@ export default githubWorkflow({
     }),
 
     'type-check': standardCIJob({
-      // TODO(oep-1n3.9): Switch back to patched tsc once Effect diagnostics backlog is addressed.
       steps: [...livestoreSetupSteps, { name: 'Run type-check', run: runDevenvTasksBefore('ts:build') }],
     }),
 
