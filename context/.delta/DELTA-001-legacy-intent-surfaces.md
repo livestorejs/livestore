@@ -52,3 +52,10 @@ Resolved 2026-07-16 (command/intent design session):
   enforcement suite as a forcing function. **Absorb, do not conform-in-place;
   do not delete without capturing.** Source and full spec: #1424
   `context/repo-ruleset-sync/open-questions.md` OQ4 and the #1406 PR comment.
+- **Contrib GitHub labels reconciliation.** `livestorejs/livestore-contrib`'s
+  labels are unmanaged (stock GitHub defaults vs the 28-label
+  `.github/labels.json` manifest). Decided 2026-07-17 (interview): reconcile
+  them through the **same** org GitHub-App apparatus #1424 builds for
+  `repo-settings.json` — not a one-off manual `gh label` sync — so one mechanism
+  owns all `.github/` desired-state. Fold `labels.json` into that reconciliation
+  scope when the ruleset design is absorbed into `03-delivery/02-release/`.
