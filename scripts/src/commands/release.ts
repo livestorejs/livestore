@@ -7,6 +7,15 @@ import { Cli } from '@livestore/utils/node'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 
+export type ReleaseSnapshotOptions = {
+  readonly cwd: string
+  readonly gitSha?: string | undefined
+  readonly version?: string | undefined
+  readonly dryRun?: boolean
+  readonly yes?: boolean
+  readonly tscBin?: string | undefined
+}
+
 class PackageJsonParseError extends Schema.TaggedErrorClass<PackageJsonParseError>()('PackageJsonParseError', {
   message: Schema.String,
   cause: Schema.Defect(),
@@ -594,6 +603,57 @@ export const releaseStableCommand = Cli.Command.make(
   }),
 )
 
+export const releaseSnapshot = Effect.fn(function* ({
+  gitSha: gitShaOption,
+  dryRun = false,
+  yes = false,
+  cwd,
+  version: versionOption,
+  tscBin = 'tsc',
+}: ReleaseSnapshotOptions) {
+  const gitSha =
+    gitShaOption ??
+    (yield* cmdText('git rev-parse HEAD').pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))).trim()
+
+  const snapshotVersion = versionOption ?? `0.0.0-snapshot-${gitSha}`
+  const snapshotPackages = yield* listSnapshotPackages(cwd)
+
+  /** Confirm before proceeding unless --yes is passed or CI is detected. */
+  const isCI = process.env.CI === 'true' || process.env.CI === '1'
+  const skipConfirmation = yes || isCI
+  if (skipConfirmation === false) {
+    yield* Effect.log(
+      `About to publish ${snapshotPackages.length} package(s) as ${snapshotVersion}${dryRun === true ? ' (dry-run)' : ''}`,
+    )
+    const confirmed = yield* Cli.Prompt.confirm({ message: 'Proceed with snapshot release?' })
+    if (confirmed === false) {
+      yield* Effect.log('Snapshot release aborted by user')
+      return
+    }
+  }
+
+  yield* publishReleasePackages({
+    cwd,
+    version: snapshotVersion,
+    npmTag: 'snapshot',
+    packages: snapshotPackages,
+    dryRun,
+    allowExisting: true,
+    tscBin,
+  })
+
+  yield* appendGithubSummaryMarkdown({
+    markdown: formatReleaseSummaryMarkdown({
+      packages: snapshotPackages,
+      version: snapshotVersion,
+      npmTag: 'snapshot',
+      dryRun,
+      title: 'Snapshot release',
+    }),
+    context: 'snapshot release',
+  })
+})
+
 export const releaseSnapshotCommand = Cli.Command.make(
   'snapshot',
   {
@@ -611,51 +671,15 @@ export const releaseSnapshotCommand = Cli.Command.make(
     versionOption: Cli.Flag.string('version').pipe(Cli.Flag.optional),
     tscBin: Cli.Flag.string('tsc-bin').pipe(Cli.Flag.optional),
   },
-  Effect.fn(function* ({ gitShaOption, dryRun, yes, cwd, versionOption, tscBin: tscBinOption }) {
-    const gitSha =
-      gitShaOption._tag === 'Some'
-        ? gitShaOption.value
-        : (yield* cmdText('git rev-parse HEAD').pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))).trim()
-
-    const snapshotVersion = versionOption._tag === 'Some' ? versionOption.value : `0.0.0-snapshot-${gitSha}`
-    const snapshotPackages = yield* listSnapshotPackages(cwd)
-
-    /** Confirm before proceeding unless --yes is passed or CI is detected. */
-    const isCI = process.env.CI === 'true' || process.env.CI === '1'
-    const skipConfirmation = yes || isCI
-    if (skipConfirmation === false) {
-      yield* Effect.log(
-        `About to publish ${snapshotPackages.length} package(s) as ${snapshotVersion}${dryRun === true ? ' (dry-run)' : ''}`,
-      )
-      const confirmed = yield* Cli.Prompt.confirm({ message: 'Proceed with snapshot release?' })
-      if (confirmed === false) {
-        yield* Effect.log('Snapshot release aborted by user')
-        return
-      }
-    }
-
-    const tsc = tscBinOption._tag === 'Some' ? tscBinOption.value : 'tsc'
-    yield* publishReleasePackages({
-      cwd,
-      version: snapshotVersion,
-      npmTag: 'snapshot',
-      packages: snapshotPackages,
+  ({ gitShaOption, dryRun, yes, cwd, versionOption, tscBin }) =>
+    releaseSnapshot({
+      gitSha: gitShaOption._tag === 'Some' ? gitShaOption.value : undefined,
       dryRun,
-      allowExisting: true,
-      tscBin: tsc,
-    })
-
-    yield* appendGithubSummaryMarkdown({
-      markdown: formatReleaseSummaryMarkdown({
-        packages: snapshotPackages,
-        version: snapshotVersion,
-        npmTag: 'snapshot',
-        dryRun,
-        title: 'Snapshot release',
-      }),
-      context: 'snapshot release',
-    })
-  }),
+      yes,
+      cwd,
+      version: versionOption._tag === 'Some' ? versionOption.value : undefined,
+      tscBin: tscBin._tag === 'Some' ? tscBin.value : undefined,
+    }),
 )
 
 export const releaseNotesExtractCommand = Cli.Command.make(

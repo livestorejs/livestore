@@ -6,6 +6,77 @@ import { Cli } from '@livestore/utils/node'
 import { transformMultiCodeDocument } from '@local/docs/multi-code-markdown'
 import { docsSidebar, type TSidebarItem } from '@local/docs/sidebar'
 
+export type ExportMarkdownOptions = {
+  readonly out?: string | undefined
+  readonly includeLlms?: boolean
+  readonly workspaceRoot?: string | undefined
+}
+
+export const exportMarkdown = Effect.fn(function* ({
+  out,
+  includeLlms = false,
+  workspaceRoot: workspaceRootOption,
+}: ExportMarkdownOptions) {
+  const workspaceRoot =
+    workspaceRootOption ??
+    process.env.WORKSPACE_ROOT ??
+    shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`)
+  const docsRoot = path.join(workspaceRoot, 'docs')
+  const contentRoot = path.join(docsRoot, 'src', 'content', 'docs')
+  const outputDir =
+    out === undefined ? path.join(workspaceRoot, 'packages', '@livestore', 'livestore', 'docs') : path.resolve(out)
+
+  yield* assertSnippetManifest(docsRoot)
+
+  const docs = yield* loadDocs(contentRoot)
+
+  const llmsDocs: ReadonlyArray<TLlmsDoc> = docs
+    .filter((doc) => !doc.slug.startsWith('api/'))
+    .map((doc) => ({
+      title: doc.title,
+      description: doc.description,
+      slug: doc.slug,
+      sidebarOrder: doc.sidebarOrder,
+    }))
+
+  for (const doc of docs) {
+    const transformed = yield* Effect.promise(() =>
+      transformMultiCodeDocument({
+        id: doc.id,
+        collection: 'docs',
+        body: doc.body,
+        docsRoot,
+      }),
+    )
+
+    const cleaned = stripLeadingImports(transformed).trim()
+    const markdown = replaceLlmsShortPlaceholders({
+      markdown: cleaned,
+      docs: llmsDocs,
+      site: null,
+    })
+    const final = `# ${doc.title}\n\n${markdown}\n`
+    yield* writeDoc(outputDir, doc, final)
+  }
+
+  if (includeLlms === true) {
+    const fs = yield* FileSystem.FileSystem
+    const llmsList = renderLlmsListHierarchical({ docs: llmsDocs, site: null })
+    const llmsBody = `# LiveStore Documentation for LLMs
+
+> LiveStore is a client-centric local-first data layer for high-performance apps based on SQLite and event-sourcing.
+
+## Notes
+
+- Most LiveStore APIs are synchronous and don't need \`await\`
+
+${llmsList}`
+    yield* fs.writeFileString(path.join(outputDir, 'llms.txt'), `${llmsBody.trimEnd()}\n`)
+  }
+
+  yield* Effect.log(`Exported ${docs.length} docs to ${outputDir}`)
+})
+
 export const exportMarkdownCommand = Cli.Command.make(
   'export-markdown',
   {
@@ -22,73 +93,12 @@ export const exportMarkdownCommand = Cli.Command.make(
       Cli.Flag.withDescription('Also emit llms.txt alongside index.md'),
     ),
   },
-  Effect.fn(function* ({ out, includeLlms, workspaceRoot: workspaceRootOption }) {
-    const workspaceRoot =
-      workspaceRootOption._tag === 'Some'
-        ? workspaceRootOption.value
-        : (process.env.WORKSPACE_ROOT ??
-          shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`))
-    const docsRoot = path.join(workspaceRoot, 'docs')
-    const contentRoot = path.join(docsRoot, 'src', 'content', 'docs')
-    const outputDir =
-      out._tag === 'Some'
-        ? path.resolve(out.value)
-        : path.join(workspaceRoot, 'packages', '@livestore', 'livestore', 'docs')
-
-    yield* assertSnippetManifest(docsRoot)
-
-    const docs = yield* loadDocs(contentRoot)
-
-    const llmsDocs: ReadonlyArray<TLlmsDoc> = docs
-      .filter((doc) => !doc.slug.startsWith('api/'))
-      .map((doc) => ({
-        title: doc.title,
-        description: doc.description,
-        slug: doc.slug,
-        sidebarOrder: doc.sidebarOrder,
-      }))
-
-    const exportEffect = Effect.gen(function* () {
-      for (const doc of docs) {
-        const transformed = yield* Effect.promise(() =>
-          transformMultiCodeDocument({
-            id: doc.id,
-            collection: 'docs',
-            body: doc.body,
-            docsRoot,
-          }),
-        )
-
-        const cleaned = stripLeadingImports(transformed).trim()
-        const markdown = replaceLlmsShortPlaceholders({
-          markdown: cleaned,
-          docs: llmsDocs,
-          site: null,
-        })
-        const final = `# ${doc.title}\n\n${markdown}\n`
-        yield* writeDoc(outputDir, doc, final)
-      }
-
-      if (includeLlms === true) {
-        const fs = yield* FileSystem.FileSystem
-        const llmsList = renderLlmsListHierarchical({ docs: llmsDocs, site: null })
-        const llmsBody = `# LiveStore Documentation for LLMs
-
-> LiveStore is a client-centric local-first data layer for high-performance apps based on SQLite and event-sourcing.
-
-## Notes
-
-- Most LiveStore APIs are synchronous and don't need \`await\`
-
-${llmsList}`
-        yield* fs.writeFileString(path.join(outputDir, 'llms.txt'), `${llmsBody.trimEnd()}\n`)
-      }
-
-      yield* Effect.log(`Exported ${docs.length} docs to ${outputDir}`)
-    })
-
-    yield* exportEffect
-  }),
+  ({ out, includeLlms, workspaceRoot }) =>
+    exportMarkdown({
+      out: out._tag === 'Some' ? out.value : undefined,
+      includeLlms,
+      workspaceRoot: workspaceRoot._tag === 'Some' ? workspaceRoot.value : undefined,
+    }),
 )
 
 export class SnippetManifestMissing extends Schema.TaggedErrorClass<SnippetManifestMissing>()(
