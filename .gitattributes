@@ -9,6 +9,7 @@ package.json linguist-generated=true
 tsconfig.json linguist-generated=true
 **/tsconfig.json linguist-generated=true
 tsconfig.*.json linguist-generated=true
+pnpm-install-contract.json linguist-generated=true
 .github/workflows/*.yml linguist-generated=true
 
 # Lock files - collapse in GitHub PR diffs

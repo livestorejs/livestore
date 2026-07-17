@@ -437,6 +437,20 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
+      - name: Prepare CI helper scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts_src='genie/ci-scripts'
+          scripts_dst='${{ runner.temp }}/genie-ci-scripts'
+          if [ ! -d "$scripts_src" ]; then
+            echo "::error::CI helper script directory is missing: $scripts_src"
+            exit 1
+          fi
+          rm -rf "$scripts_dst"
+          mkdir -p "$scripts_dst"
+          cp -R "$scripts_src/." "$scripts_dst/"
+          chmod +x "$scripts_dst"/*.sh
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -465,18 +479,19 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
         run: |
-          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
           if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
-            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            echo '\''::error::megarepo.lock missing members["effect-utils"].commit'\''
             exit 1
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
           if [ -n "${GITHUB_ENV:-}" ]; then
-            printf 'MEGAREPO_STORE=%s\n' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+            printf '\''MEGAREPO_STORE=%s\n'\'' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
           fi
 
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+          nix run --no-write-lock-file --override-input flake-utils "https://codeload.github.com/numtide/flake-utils/tar.gz/11707dc2f618dd54ca8739b309ec4fc024de578b" --override-input nixpkgs "https://codeload.github.com/NixOS/nixpkgs/tar.gz/5b63481602d9b0a714d5791c53bebe829d6b1a3c" --override-input tsgo "https://codeload.github.com/Effect-TS/tsgo/tar.gz/8d34c0a2d603a4b963b85ffccd4322c0ef74f472" "https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all'
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -504,9 +519,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'Resolve devenv' 'DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo '\''::error::devenv.lock missing .nodes.devenv.locked.rev'\''
             exit 1
           fi
 
@@ -557,238 +573,18 @@ jobs:
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
-          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"'
         shell: bash
       - name: Generate release plan from Changesets
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:changeset:version --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:changeset:version --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run release:changeset:version' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:changeset:version'
         env:
           LIVESTORE_NPM_TAG: ${{ inputs.npm_tag }}
       - name: Extract release notes
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:notes:extract --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:notes:extract --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run release:notes:extract' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:notes:extract'
       - name: Open release plan PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -871,6 +667,20 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
+      - name: Prepare CI helper scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts_src='genie/ci-scripts'
+          scripts_dst='${{ runner.temp }}/genie-ci-scripts'
+          if [ ! -d "$scripts_src" ]; then
+            echo "::error::CI helper script directory is missing: $scripts_src"
+            exit 1
+          fi
+          rm -rf "$scripts_dst"
+          mkdir -p "$scripts_dst"
+          cp -R "$scripts_src/." "$scripts_dst/"
+          chmod +x "$scripts_dst"/*.sh
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -899,18 +709,19 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
         run: |
-          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
           if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
-            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            echo '\''::error::megarepo.lock missing members["effect-utils"].commit'\''
             exit 1
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
           if [ -n "${GITHUB_ENV:-}" ]; then
-            printf 'MEGAREPO_STORE=%s\n' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+            printf '\''MEGAREPO_STORE=%s\n'\'' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
           fi
 
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+          nix run --no-write-lock-file --override-input flake-utils "https://codeload.github.com/numtide/flake-utils/tar.gz/11707dc2f618dd54ca8739b309ec4fc024de578b" --override-input nixpkgs "https://codeload.github.com/NixOS/nixpkgs/tar.gz/5b63481602d9b0a714d5791c53bebe829d6b1a3c" --override-input tsgo "https://codeload.github.com/Effect-TS/tsgo/tar.gz/8d34c0a2d603a4b963b85ffccd4322c0ef74f472" "https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all'
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -938,9 +749,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'Resolve devenv' 'DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo '\''::error::devenv.lock missing .nodes.devenv.locked.rev'\''
             exit 1
           fi
 
@@ -991,7 +803,7 @@ jobs:
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
-          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"'
         shell: bash
       - name: Select release plan for validation
         run: |
@@ -1030,118 +842,8 @@ jobs:
             }' > release/release-plan.json
       - name: Dry-run stable package publish
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:stable:dryrun --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:stable:dryrun --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run release:stable:dryrun' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:stable:dryrun'
       - name: Read release plan
         run: |
           set -euo pipefail
@@ -1158,118 +860,8 @@ jobs:
           fi
       - name: Certify DevTools artifact liveness
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:certify-liveness:no-install --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:certify-liveness:no-install --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run release:devtools-artifact:certify-liveness:no-install' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:certify-liveness:no-install'
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -1281,118 +873,8 @@ jobs:
           if-no-files-found: ignore
       - name: Dry-run DevTools artifact repack
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:repack-dryrun:no-install --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:repack-dryrun:no-install --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run release:devtools-artifact:repack-dryrun:no-install' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:repack-dryrun:no-install'
       - name: Save pnpm state
         if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
@@ -1422,6 +904,20 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
+      - name: Prepare CI helper scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts_src='genie/ci-scripts'
+          scripts_dst='${{ runner.temp }}/genie-ci-scripts'
+          if [ ! -d "$scripts_src" ]; then
+            echo "::error::CI helper script directory is missing: $scripts_src"
+            exit 1
+          fi
+          rm -rf "$scripts_dst"
+          mkdir -p "$scripts_dst"
+          cp -R "$scripts_src/." "$scripts_dst/"
+          chmod +x "$scripts_dst"/*.sh
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -1450,18 +946,19 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
         run: |
-          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
           if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
-            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            echo '\''::error::megarepo.lock missing members["effect-utils"].commit'\''
             exit 1
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
           if [ -n "${GITHUB_ENV:-}" ]; then
-            printf 'MEGAREPO_STORE=%s\n' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+            printf '\''MEGAREPO_STORE=%s\n'\'' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
           fi
 
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+          nix run --no-write-lock-file --override-input flake-utils "https://codeload.github.com/numtide/flake-utils/tar.gz/11707dc2f618dd54ca8739b309ec4fc024de578b" --override-input nixpkgs "https://codeload.github.com/NixOS/nixpkgs/tar.gz/5b63481602d9b0a714d5791c53bebe829d6b1a3c" --override-input tsgo "https://codeload.github.com/Effect-TS/tsgo/tar.gz/8d34c0a2d603a4b963b85ffccd4322c0ef74f472" "https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all'
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1489,9 +986,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'Resolve devenv' 'DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo '\''::error::devenv.lock missing .nodes.devenv.locked.rev'\''
             exit 1
           fi
 
@@ -1542,7 +1040,7 @@ jobs:
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
-          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"'
         shell: bash
       - name: Read release plan
         run: |
@@ -1580,232 +1078,12 @@ jobs:
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Publish stable package release
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:stable:publish --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:stable:publish --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run release:stable:publish' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:stable:publish'
       - name: Certify DevTools artifact liveness
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:certify-liveness:no-install --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:certify-liveness:no-install --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run release:devtools-artifact:certify-liveness:no-install' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:certify-liveness:no-install'
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -1817,587 +1095,37 @@ jobs:
           if-no-files-found: ignore
       - name: Publish DevTools artifact release
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:publish:no-install --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:publish:no-install --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run release:devtools-artifact:publish:no-install' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:publish:no-install'
       - name: Deploy production docs — build + deploy
         if: env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'
         timeout-minutes: 30
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run docs:deploy:prod:phase:build-deploy --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy:prod:phase:build-deploy --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run docs:deploy:prod:phase:build-deploy' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy:prod:phase:build-deploy'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       - name: Deploy production docs — verify
         if: env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'
         timeout-minutes: 15
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run docs:deploy:prod:phase:verify --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy:prod:phase:verify --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run docs:deploy:prod:phase:verify' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy:prod:phase:verify'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       - name: Deploy production docs — purge CDN
         if: env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'
         timeout-minutes: 15
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run docs:deploy:prod:phase:purge --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy:prod:phase:purge --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run docs:deploy:prod:phase:purge' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy:prod:phase:purge'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       - name: Collect docs deploy diagnostics on failure
         if: ${{ failure() && env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod' }}
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run docs:deploy:prod:diagnostics --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy:prod:diagnostics --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run docs:deploy:prod:diagnostics' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy:prod:diagnostics'
       - name: Upload docs prod deploy logs
         if: ${{ always() && env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod' }}
         uses: actions/upload-artifact@v4
@@ -2410,118 +1138,8 @@ jobs:
         if: env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'
         timeout-minutes: 30
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run examples:deploy:prod --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:deploy:prod --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run examples:deploy:prod' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:deploy:prod'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -2529,118 +1147,8 @@ jobs:
         if: env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'
         timeout-minutes: 15
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run docs:search:sync:prod --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:search:sync:prod --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run docs:search:sync:prod' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:search:sync:prod'
         env:
           MXBAI_API_KEY: ${{ secrets.MXBAI_API_KEY }}
           MXBAI_VECTOR_STORE_ID: ${{ secrets.MXBAI_VECTOR_STORE_ID }}
@@ -2676,6 +1184,20 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Prepare CI helper scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts_src='genie/ci-scripts'
+          scripts_dst='${{ runner.temp }}/genie-ci-scripts'
+          if [ ! -d "$scripts_src" ]; then
+            echo "::error::CI helper script directory is missing: $scripts_src"
+            exit 1
+          fi
+          rm -rf "$scripts_dst"
+          mkdir -p "$scripts_dst"
+          cp -R "$scripts_src/." "$scripts_dst/"
+          chmod +x "$scripts_dst"/*.sh
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -2704,18 +1226,19 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
         run: |
-          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
           if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
-            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            echo '\''::error::megarepo.lock missing members["effect-utils"].commit'\''
             exit 1
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
           if [ -n "${GITHUB_ENV:-}" ]; then
-            printf 'MEGAREPO_STORE=%s\n' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+            printf '\''MEGAREPO_STORE=%s\n'\'' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
           fi
 
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+          nix run --no-write-lock-file --override-input flake-utils "https://codeload.github.com/numtide/flake-utils/tar.gz/11707dc2f618dd54ca8739b309ec4fc024de578b" --override-input nixpkgs "https://codeload.github.com/NixOS/nixpkgs/tar.gz/5b63481602d9b0a714d5791c53bebe829d6b1a3c" --override-input tsgo "https://codeload.github.com/Effect-TS/tsgo/tar.gz/8d34c0a2d603a4b963b85ffccd4322c0ef74f472" "https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all'
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -2743,9 +1266,10 @@ jobs:
           key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'Resolve devenv' 'DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo '\''::error::devenv.lock missing .nodes.devenv.locked.rev'\''
             exit 1
           fi
 
@@ -2796,7 +1320,7 @@ jobs:
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
-          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"'
         shell: bash
       - name: Assert tokenless npm trusted publishing
         run: |
@@ -2807,234 +1331,14 @@ jobs:
           fi
       - name: Publish snapshot version
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:snapshot:git-sha --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:snapshot:git-sha --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run release:snapshot:git-sha' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:snapshot:git-sha'
         env:
           GIT_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
       - name: Publish DevTools artifact snapshot
         run: |
-          __nix_gc_retry_helper=$(mktemp)
-          cat > "$__nix_gc_retry_helper" <<'EOF'
-          #!/usr/bin/env bash
-
-          run_nix_gc_race_retry() {
-            local task="$1"
-            local command="$2"
-            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
-            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
-            local attempt=1
-            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature had_errexit
-
-            start="$(date +%s)"
-
-            write_summary() {
-              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
-              {
-                echo "### CI Task"
-                echo "- Task: $task"
-                echo "- Status: $1"
-                echo "- Duration: $elapsed s"
-                echo "- Attempts: $attempt/$max"
-                [ -z "${2:-}" ] || echo "- Note: $2"
-              } >> "$GITHUB_STEP_SUMMARY"
-            }
-
-            while [ "$attempt" -le "$max" ]; do
-              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
-              (
-                while sleep "$heartbeat"; do
-                  now=$(date +%s)
-                  elapsed=$((now - start))
-                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
-                done
-              ) &
-              hb_pid=$!
-
-              log=$(mktemp)
-              had_errexit=false
-              case $- in
-                *e*) had_errexit=true ;;
-              esac
-              set +e
-              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
-              rc=$?
-              if [ "$had_errexit" = true ]; then
-                set -e
-              fi
-
-              kill "$hb_pid" 2>/dev/null || true
-              wait "$hb_pid" 2>/dev/null || true
-
-              now=$(date +%s)
-              elapsed=$((now - start))
-
-              if [ "$rc" -eq 0 ]; then
-                echo "::notice::[ci] completed $task in $elapsed s"
-                if [ "$attempt" -gt 1 ]; then
-                  write_summary success "Recovered from transient Nix failure after retry"
-                else
-                  write_summary success
-                fi
-                rm -f "$log"
-                return 0
-              fi
-
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
-              path=$(printf '%s' "$flattened" |
-                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
-                head -1 |
-                grep -o "/nix/store/[^']*" |
-                tr -d '[:space:]' || true)
-              saw_invalid_path=false
-              saw_cachix_signature=false
-              saw_fetch_signature=false
-              [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
-              rm -f "$log"
-
-              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ]; then
-                echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
-                write_summary failure "No transient Nix failure signature detected"
-                return "$rc"
-              fi
-
-              if [ "$saw_fetch_signature" = true ]; then
-                echo "::warning::Nix source fetch corruption detected for $task (attempt $attempt/$max); retrying with a refreshed eval cache"
-              elif [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
-              elif [ "$saw_cachix_signature" = true ]; then
-                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
-              else
-                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
-              fi
-
-              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
-              rm -rf ~/.cache/nix/eval-cache-*
-              attempt=$((attempt + 1))
-            done
-
-            now=$(date +%s)
-            elapsed=$((now - start))
-            echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
-            write_summary failure "Transient Nix retry exhausted"
-            return 1
-          }
-          EOF
-          . "$__nix_gc_retry_helper"
-          rm -f "$__nix_gc_retry_helper"
-          run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:publish --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:publish --mode before'
+          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          bash "$__genie_ci_retry_script" 'devenv tasks run release:devtools-artifact:publish' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:publish'
         env:
           LIVESTORE_DEVTOOLS_OUT_DIR: '${{ runner.temp }}/livestore-devtools-snapshot'
           LIVESTORE_RELEASE_VERSION: '0.0.0-snapshot-${{ github.event.workflow_run.head_sha || github.sha }}'
