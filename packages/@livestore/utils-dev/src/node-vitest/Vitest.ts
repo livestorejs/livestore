@@ -12,7 +12,7 @@ import {
   Layer,
   type OtelTracer,
   Predicate,
-  type Schema,
+  Schema,
   type Scope,
 } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
@@ -189,6 +189,7 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
   propOptions: number | PropOptions<Arbs>,
 ) => {
   const normalizedPropOptions = normalizePropOptions(propOptions)
+  const normalizedArbitraries = normalizeArbitraries(arbitraries)
   const numRuns = normalizedPropOptions.fastCheck?.numRuns ?? 100
   let runIndex = 0
   let shrinkAttempts = 0
@@ -196,7 +197,7 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
 
   return api.prop(
     name,
-    arbitraries,
+    normalizedArbitraries,
     (properties, ctx) => {
       if (ctx.signal.aborted === true) {
         return ctx.skip('Test aborted')
@@ -229,4 +230,23 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
     },
     normalizedPropOptions,
   )
+}
+
+/**
+ * Work around Effect-TS/effect#6413 until `@effect/vitest` converts schemas in
+ * record-form property definitions instead of passing them to FastCheck unchanged.
+ */
+const normalizeArbitraries = <Arbs extends Vitest.Vitest.Arbitraries>(arbitraries: Arbs): Arbs => {
+  if (Array.isArray(arbitraries) === true) return arbitraries
+
+  const normalized = Object.fromEntries(
+    Object.entries(arbitraries).map(([key, arbitrary]) => [
+      key,
+      Schema.isSchema(arbitrary) === true ? Schema.toArbitrary(arbitrary) : arbitrary,
+    ]),
+  )
+
+  // Normalization preserves record keys and value output types while replacing
+  // schema values with their equivalent FastCheck arbitraries.
+  return normalized as unknown as Arbs
 }
