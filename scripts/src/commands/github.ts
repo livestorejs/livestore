@@ -359,7 +359,8 @@ const fetchLiveApp = (jwt: string) =>
       }
       return (await response.json()) as unknown
     },
-    catch: (cause) => (cause instanceof GitHubAppError ? cause : new GitHubAppError({ message: toErrorMessage(cause), cause })),
+    catch: (cause) =>
+      cause instanceof GitHubAppError ? cause : new GitHubAppError({ message: toErrorMessage(cause), cause }),
   })
 
 /** Compares the manifest's requested permissions/events against the live App definition. */
