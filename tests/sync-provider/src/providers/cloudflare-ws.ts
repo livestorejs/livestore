@@ -22,7 +22,7 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
         makeProvider: makeWsSync({ url: server.url }),
         turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
         turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
-        providerSpecific: {},
+        providerSpecific: { port: server.port },
       }
     }),
   ).pipe(

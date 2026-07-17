@@ -34,8 +34,12 @@ declare class WebSocketPair extends CfDeclare.WebSocketPair {}
 /** Module-scoped JSON decoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
 const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
 
+interface SyncDoProbe {
+  getHibernationProbe(): { instanceId: string; webSocketCount: number }
+}
+
 export interface Env {
-  SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface>
+  SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface & SyncDoProbe>
   TEST_CLIENT_DO: CfTypes.DurableObjectNamespace
   /** Eventlog database */
   DB: CfTypes.D1Database
@@ -54,7 +58,20 @@ export class SyncBackendDO extends makeDurableObject({
       'X-LiveStore-Version': '1.0.0',
     },
   },
-}) {}
+}) {
+  /** Never persisted, so a different id means this DO was evicted and rebuilt. */
+  instanceId = crypto.randomUUID()
+  #state: CfTypes.DurableObjectState
+
+  constructor(state: CfTypes.DurableObjectState, env: Env) {
+    super(state, env)
+    this.#state = state
+  }
+
+  getHibernationProbe(): { instanceId: string; webSocketCount: number } {
+    return { instanceId: this.instanceId, webSocketCount: this.#state.getWebSockets().length }
+  }
+}
 
 const DurableObjectBase = DurableObject as any as new (
   state: CfTypes.DurableObjectState,
@@ -178,6 +195,17 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
 export default {
   fetch: async (request: CfTypes.Request, env: Env, ctx: CfTypes.ExecutionContext) => {
     const url = new URL(request.url)
+
+    // Same `idFromName(storeId)` the sync router uses, so this reaches the DO the client is on.
+    if (url.pathname.endsWith('/instance/sync') === true) {
+      const storeId = url.searchParams.get('storeId')
+      if (storeId === null) {
+        return new Response('storeId required', { status: 400 })
+      }
+      const probe = await env.SYNC_BACKEND_DO.get(env.SYNC_BACKEND_DO.idFromName(storeId)).getHibernationProbe()
+      return new Response(JSON.stringify(probe), { headers: { 'content-type': 'application/json' } })
+    }
+
     const searchParams = matchSyncRequest(request)
     if (searchParams !== undefined) {
       return handleSyncRequest({
