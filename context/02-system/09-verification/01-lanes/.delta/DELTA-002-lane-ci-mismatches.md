@@ -1,27 +1,23 @@
 # DELTA-002 — Lane table and CI decomposition mismatch
 
-Status: open
+Status: closed (2026-07-17) — resolved by correcting the lane table.
 
-## Divergence
+## Resolution
 
-LS.SYS.VER.LANE-R03 requires each lane to map to exactly one command with
-the table in sync with CI. Today: "integration" is one local verb but three
-CI job families (sync-provider matrix, playwright suites, wa-sqlite);
-`tests/package-common/` has no dedicated verb (hardcoded into the unit lane
-in `scripts/src/commands/test-commands.ts`); examples-as-tests
-(`mono examples test`) is not a required CI gate and is absent from the
-lane table's command column.
+The asserted table↔CI mismatch did not actually exist: each lane maps 1:1 to its
+CI job (Unit→`test-unit`, Browser→`test-integration-playwright`,
+Sync-provider→`test-integration-sync-provider`, SQLite→`wa-sqlite-test`,
+Perf→`perf-test`), and the examples row was already present in the table. The
+only real inaccuracy was the local-command column: `tests/sync-provider/` and
+`tests/wa-sqlite/` are subcommands of `integration`
+(`mono test integration {sync-provider,wa-sqlite}`,
+`scripts/src/commands/test-commands.ts`), not top-level `mono test {…}` verbs.
+That column is corrected in [spec.md](../spec.md) §Lane / CI Correspondence.
+
+The `integration` CLI grouping and the package-common-folds-into-unit /
+examples-on-demand behaviors are intended, documented characteristics — not
+LS.SYS.VER.LANE-R03 violations.
 
 ## VRS
 
-[requirements.md](../requirements.md) LS.SYS.VER.LANE-R03 (adopted
-2026-07-16, interview).
-
-## Implementation Contract
-
-Either give the divergent surfaces their own verbs/gates (e.g.
-`mono test package-common`, an examples gate) or restructure the lane table
-so each row maps 1:1 to an existing command and CI job family; then keep
-them in sync (candidate: extend the intent-layer enforcement suite to
-cross-check the table against `test-commands.ts` and `ci.yml`). Close when
-table, commands, and CI agree.
+[requirements.md](../requirements.md) LS.SYS.VER.LANE-R03.

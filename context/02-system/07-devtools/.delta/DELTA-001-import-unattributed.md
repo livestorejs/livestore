@@ -6,10 +6,11 @@ Status: open
 
 LS.SYS.DT-R09 requires every state-mutating devtools operation to be
 attributable as devtools-originated. `CommitEventReq` conforms (events are
-committed with origin `devtools-${clientId}`), but `LoadDatabaseFile`
-(state/eventlog import, forces shutdown) leaves no devtools-origin marker in
-the imported data — an import is indistinguishable from organically produced
-state afterwards.
+committed with origin `devtools-${clientId}`, `leader-worker-devtools.ts:345`),
+but `LoadDatabaseFile` (state/eventlog import, forces shutdown;
+`leader-worker-devtools.ts:202`) leaves no devtools-origin marker in the
+imported data — an import is indistinguishable from organically produced state
+afterwards.
 
 ## VRS
 

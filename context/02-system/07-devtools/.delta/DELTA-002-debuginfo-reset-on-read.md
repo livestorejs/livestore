@@ -6,8 +6,8 @@ Status: open
 
 LS.SYS.DT-R11 requires inspection to be side-effect free for other readers.
 `DebugInfoHistorySubscribe` violates this: each tick resets
-`sqliteDbWrapper.debugInfo` to empty, starving any other consumer of the
-same struct (code TODO; issue #1421).
+`sqliteDbWrapper.debugInfo` to empty (`livestore/src/store/devtools.ts:167`),
+starving any other consumer of the same struct (code TODO; issue #1421).
 
 ## VRS
 

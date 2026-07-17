@@ -5,11 +5,14 @@ Status: open
 ## Divergence
 
 LS.SYS.OBS-R06 requires namespaced, enumerated attribute keys with
-query-text attributes gated behind a debug flag. Today (see the spec's
-attribute inventory): only `livestore.manualRefreshLabel` is namespaced;
-`sql.query`, `sql.rowsCount`, `sql.cached`, `span.label`, and `batchSize`
-are ad hoc; `sql.query` carries full query text into app exporters
-unconditionally — a PII/exposure surface.
+query-text attributes gated behind a debug flag. Most emitted keys are now
+namespaced (`livestore.commitLabel`, `livestore.debugRefreshReason`,
+`livestore.eventTags`, `livestore.eventsCount`, `livestore.eventLog.since/until`,
+`livestore.streamEvents.*`, `livestore.manualRefreshLabel`), but several remain
+ad hoc — `sql.query`, `sql.rowsCount`, `sql.cached`
+(`SqliteDbWrapper.ts:179,252,257,258,271,272`), `span.label`, and `batchSize` —
+and `sql.query` carries full query text into app exporters unconditionally
+(`SqliteDbWrapper.ts:179,252`), a PII/exposure surface.
 
 ## VRS
 

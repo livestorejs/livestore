@@ -18,7 +18,10 @@ that can fail a run.
 
 ## Implementation Contract
 
-Extend the measurements-reporter to persist runs machine-readably (per
-machine class), add baseline comparison, and codify budgets for the key
-latency/memory metrics; wire a CI failure on budget breach. Close when a
-regression beyond budget fails CI.
+A `perf-test` CI job already runs the suites (`.github/workflows/ci.yml`,
+`test:perf --mode before`) but is **not** in `required_status_checks`, so a
+regression cannot fail a PR today. Two gaps: (1) extend the
+measurements-reporter to persist runs machine-readably (per machine class), add
+baseline comparison, and codify budgets for the key latency/memory metrics,
+failing the run on a budget breach; (2) promote `perf-test` to a required check.
+Close when a regression beyond budget fails a required CI check.
