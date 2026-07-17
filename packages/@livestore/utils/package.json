@@ -95,6 +95,7 @@
     "@types/node": "25.3.3",
     "@types/web": "0.0.264",
     "effect": "4.0.0-beta.97",
+    "esbuild": "0.28.0",
     "jsdom": "26.1.0",
     "vitest": "4.1.9"
   },

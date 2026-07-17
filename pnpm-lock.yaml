@@ -1537,6 +1537,9 @@ importers:
       effect:
         specifier: 4.0.0-beta.97
         version: 4.0.0-beta.97
+      esbuild:
+        specifier: 0.28.0
+        version: 0.28.0
       jsdom:
         specifier: 26.1.0
         version: 26.1.0
