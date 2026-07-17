@@ -1,7 +1,6 @@
 /**
- * @fileoverview A sync backend DO must hibernate once its WS clients go idle, or it bills for full
- * wall-clock residency at zero traffic. Observed by idling a real client against the real DO and
- * asking for an `instanceId` the DO never persists: a different id means it was rebuilt.
+ * @fileoverview Hibernation is observed by idling a real client against the real sync DO and asking
+ * for an `instanceId` it never persists: a different id means the DO was evicted and rebuilt.
  */
 import { expect } from 'vitest'
 
@@ -12,6 +11,7 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   type Context,
   Data,
+  type Duration,
   Effect,
   FetchHttpClient,
   type HttpClient,
@@ -27,7 +27,7 @@ import * as CloudflareWsProvider from './providers/cloudflare-ws.ts'
 import { SyncProviderImpl } from './types.ts'
 
 const testTimeout = 60_000
-const idleWindow = '20 seconds' // workerd evicts somewhere between 9s and 11s idle
+const idleWindow: Duration.Input = '20 seconds' // workerd evicts somewhere between 9s and 11s idle
 
 type RuntimeServices = SyncProviderImpl | HttpClient.HttpClient | KeyValueStore.KeyValueStore
 
@@ -128,8 +128,7 @@ const hibernatesWhenIdle = ({ livePull }: { livePull: boolean }) =>
         Effect.forkScoped,
       )
 
-      // A dead pull would leave no park at all, so the hibernation assertion below would pass for the
-      // wrong reason unless we prove delivery first.
+      // Prove delivery first: a dead pull leaves no park, so "it hibernated" would pass for the wrong reason.
       yield* Effect.sleep('1 second')
       yield* syncBackend.push([factory.todoCreated.next({ id: 'before-idle', text: 'before', completed: false })])
       yield* awaitDelivery({ received, id: 'before-idle' })
@@ -153,7 +152,6 @@ const staysResidentWhileWarm = Effect.gen(function* () {
   const storeId = `hibernation-warm-${nanoid()}`
 
   const before = yield* probeSyncDo({ port, storeId })
-  // Probe throughout the window so it never idles long enough to evict.
   yield* probeSyncDo({ port, storeId }).pipe(
     Effect.delay('3 seconds'),
     Effect.forever,
