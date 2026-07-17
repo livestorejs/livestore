@@ -1,6 +1,7 @@
+import { TestSchema } from 'effect/testing'
 import { describe, expect, it } from 'vitest'
 
-import { Schema, SchemaTransformation, TestSchema } from '@livestore/utils/effect'
+import { Schema, SchemaTransformation } from '@livestore/utils/effect'
 
 import { State } from '../../../mod.ts'
 import { getResultSchema } from './impl.ts'

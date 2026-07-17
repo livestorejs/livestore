@@ -194,6 +194,7 @@ export const livestoreOnlyCatalog = {
   '@types/node': '25.3.3',
   '@types/react': '19.2.7',
   '@vitejs/plugin-react': '5.1.2',
+  esbuild: '0.28.0',
   react: '19.2.3',
   'react-dom': '19.2.3',
   vite: '7.3.1',

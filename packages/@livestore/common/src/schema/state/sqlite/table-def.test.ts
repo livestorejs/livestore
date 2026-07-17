@@ -1,6 +1,7 @@
+import { TestSchema } from 'effect/testing'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
-import { Schema, SchemaAST, SchemaTransformation, TestSchema } from '@livestore/utils/effect'
+import { Schema, SchemaAST, SchemaTransformation } from '@livestore/utils/effect'
 
 import { State } from '../../mod.ts'
 
