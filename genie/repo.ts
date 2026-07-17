@@ -89,8 +89,7 @@ export type {
 export const domLib = effectUtilsDomLib.filter((lib) => lib !== 'DOM.Iterable' && lib !== 'DOM.AsyncIterable')
 
 // Strip inherited options that now match defaults so generated
-// tsconfigs only carry LiveStore-specific intent. `plugins` is pulled out
-// separately so we can override the Effect-LSP exit-code gate below.
+// tsconfigs only carry LiveStore-specific intent.
 const {
   allowJs: _allowJs,
   esModuleInterop: _esModuleInterop,
@@ -98,34 +97,22 @@ const {
   forceConsistentCasingInFileNames: _forceConsistentCasingInFileNames,
   moduleResolution: _moduleResolution,
   strict: _strict,
-  plugins: inheritedTsconfigPlugins,
-  ...baseTsconfigCompilerOptionsWithoutPlugins
+  ...baseTsconfigCompilerOptionsWithoutDefaults
 } = effectUtilsBaseTsconfigCompilerOptions
 
-/**
- * #811 Effect-LSP gate — deferred warning/suggestion burndown.
- *
- * effect-utils sets `effectDiagnosticsGate = { warnings: true, suggestions: true }`,
- * so its `@effect/language-service` plugin config fails `tsgo --build` on every
- * Effect *warning* and *suggestion*, not just errors. Adopting this effect-utils
- * revision surfaced ~406 pre-existing advisory diagnostics (duplicatePackage,
- * schemaNumber, preferSchemaOverJson, …) across the LiveStore tree.
- *
- * For this effect-utils bump we restore LiveStore's pre-bump gating — ERRORS only —
- * by flipping just the two exit-code flags. Warnings/suggestions stay VISIBLE in
- * build output (advisory) but no longer fail the build; real Effect errors (e.g.
- * the `missingReturnYieldStar` bugs fixed in this PR) still gate hard via the
- * inherited `ignoreEffectErrorsInTscExitCode: false`. The full warning/suggestion
- * burndown to the #811 Effect-LSP bar is deferred to a dedicated follow-up PR.
- * This mirrors effect-utils' own `effectDiagnosticsGate` phased-adoption design.
- */
 const baseTsconfigCompilerOptions = {
-  ...baseTsconfigCompilerOptionsWithoutPlugins,
-  plugins: inheritedTsconfigPlugins.map((plugin) =>
-    plugin.name === '@effect/language-service'
-      ? { ...plugin, ignoreEffectWarningsInTscExitCode: true, ignoreEffectSuggestionsInTscExitCode: true }
-      : plugin,
-  ),
+  ...baseTsconfigCompilerOptionsWithoutDefaults,
+  // LIVE-MIGRATION BRIDGE tsgo-strict-gate — DELETE at contraction — see live-migrations registry
+  // Advisory gate: Effect warnings and suggestions remain visible without failing the exit code.
+  plugins: [
+    {
+      ...effectUtilsBaseTsconfigCompilerOptions.plugins[0],
+      ignoreEffectWarningsInTscExitCode: true,
+      ignoreEffectSuggestionsInTscExitCode: true,
+      ignoreEffectErrorsInTscExitCode: false,
+    },
+  ],
+  // LIVE-MIGRATION END tsgo-strict-gate
 } as const
 
 /**
