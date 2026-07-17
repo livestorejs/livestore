@@ -21,9 +21,6 @@ export class DockerComposeError extends Schema.TaggedErrorClass<DockerComposeErr
   note: Schema.String,
 }) {}
 
-/** Module-scoped JSON encoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
-const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
-
 export interface Options {
   readonly cwd: string
   readonly serviceName?: string
@@ -168,7 +165,8 @@ export const make = (args: Options) =>
       if (Number(exitCode) !== 0) {
         return yield* new DockerComposeError({
           cause: new Error(`Docker compose exited with code ${exitCode}`),
-          note: `Docker Compose failed to start with exit code ${exitCode}. Env: ${jsonStringify(options.env)}`,
+          // @effect-diagnostics-next-line preferSchemaOverJson:off -- diagnostic-only formatting of an optional env record; JSON.stringify's forgiving `undefined`->"undefined" is intended, and Schema's JSON codec throws on top-level `undefined`, which would mask the real DockerComposeError
+          note: `Docker Compose failed to start with exit code ${exitCode}. Env: ${JSON.stringify(options.env)}`,
         })
       }
 
