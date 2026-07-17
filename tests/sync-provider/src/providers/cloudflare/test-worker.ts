@@ -59,7 +59,7 @@ export class SyncBackendDO extends makeDurableObject({
     },
   },
 }) {
-  /** Never persisted, so a different id means this DO was evicted and rebuilt. */
+  /** Never persisted: a different id means this DO was evicted and rebuilt. */
   instanceId = crypto.randomUUID()
   #state: CfTypes.DurableObjectState
 
@@ -196,7 +196,6 @@ export default {
   fetch: async (request: CfTypes.Request, env: Env, ctx: CfTypes.ExecutionContext) => {
     const url = new URL(request.url)
 
-    // Same `idFromName(storeId)` the sync router uses, so this reaches the DO the client is on.
     if (url.pathname.endsWith('/instance/sync') === true) {
       const storeId = url.searchParams.get('storeId')
       if (storeId === null) {

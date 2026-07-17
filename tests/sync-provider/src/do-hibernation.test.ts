@@ -1,7 +1,4 @@
-/**
- * @fileoverview Hibernation is observed by idling a real client against the real sync DO and asking
- * for an `instanceId` it never persists: a different id means the DO was evicted and rebuilt.
- */
+/** @fileoverview Hibernation is inferred from an `instanceId` the sync DO never persists. */
 import { expect } from 'vitest'
 
 import { EventFactory } from '@livestore/common/testing'
@@ -31,8 +28,7 @@ const idleWindow: Duration.Input = '20 seconds' // workerd evicts somewhere betw
 
 type RuntimeServices = SyncProviderImpl | HttpClient.HttpClient | KeyValueStore.KeyValueStore
 
-// Each CI cell selects tests by name (`<provider> sync provider`, see scripts/src/commands/test-commands.ts),
-// so dropping that phrase from the title silently stops this from running anywhere.
+// CI cells select by title (see scripts/src/commands/test-commands.ts); renaming this stops it running anywhere.
 Vitest.describe(
   `${CloudflareWsProvider.doSqlite.name} sync provider — DO hibernation`,
   { timeout: testTimeout },
@@ -53,7 +49,6 @@ Vitest.describe(
 
     Vitest.afterAll(async () => await runtime.dispose())
 
-    // One test, not three: each arm owns a distinct store (so a distinct DO), so they share one idle window.
     Vitest.live('an idle WS client lets the DO hibernate, and a warm DO stays resident', (test) =>
       Effect.gen(function* () {
         const observed = yield* Effect.all(
@@ -113,7 +108,6 @@ const awaitDelivery = ({ received, id }: { received: ReadonlyArray<string>; id: 
 const hibernatesWhenIdle = ({ livePull }: { livePull: boolean }) =>
   Effect.gen(function* () {
     const { makeProvider, port } = yield* syncProvider
-    // Unique per run so persisted DO state from a prior run can't poison the head.
     const storeId = `hibernation-${livePull === true ? 'live-pull' : 'idle'}-${nanoid()}`
     const syncBackend = yield* makeProvider({ storeId, clientId: eventClient.clientId, payload: undefined })
     const factory = makeFactory({ client: eventClient, startSeq: 1, initialParent: 'root' })
@@ -134,7 +128,7 @@ const hibernatesWhenIdle = ({ livePull }: { livePull: boolean }) =>
         Effect.forkScoped,
       )
 
-      // Prove delivery first: a dead pull leaves no park, so "it hibernated" would pass for the wrong reason.
+      // A dead pull leaves no park, so "it hibernated" would pass for the wrong reason.
       yield* Effect.sleep('1 second')
       yield* syncBackend.push([factory.todoCreated.next({ id: 'before-idle', text: 'before', completed: false })])
       yield* awaitDelivery({ received, id: 'before-idle' })
@@ -145,7 +139,7 @@ const hibernatesWhenIdle = ({ livePull }: { livePull: boolean }) =>
     const after = yield* probeWithOpenSocket({ port, storeId })
 
     if (livePull === true) {
-      // Hibernating but silently dropping the subscription would be worse than never hibernating.
+      // Hibernating but dropping the subscription is worse than never hibernating.
       yield* syncBackend.push([factory.todoCreated.next({ id: 'after-idle', text: 'after', completed: false })])
       yield* awaitDelivery({ received, id: 'after-idle' })
     }
