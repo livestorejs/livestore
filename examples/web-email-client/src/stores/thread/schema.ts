@@ -44,7 +44,7 @@ export const threadEvents = {
       id: Schema.String,
       subject: Schema.String,
       participants: Schema.Array(Schema.String), // Array of email addresses
-      createdAt: Schema.Date,
+      createdAt: Schema.DateFromString.check(Schema.isDateValid()),
     }),
   }),
 
@@ -56,7 +56,7 @@ export const threadEvents = {
       content: Schema.String,
       sender: Schema.String,
       senderName: Schema.String.pipe(Schema.NullOr),
-      timestamp: Schema.Date,
+      timestamp: Schema.DateFromString.check(Schema.isDateValid()),
     }),
   }),
 
@@ -66,7 +66,7 @@ export const threadEvents = {
     schema: Schema.Struct({
       threadId: Schema.String,
       labelId: Schema.String,
-      appliedAt: Schema.Date,
+      appliedAt: Schema.DateFromString.check(Schema.isDateValid()),
     }),
   }),
 
@@ -76,7 +76,7 @@ export const threadEvents = {
     schema: Schema.Struct({
       threadId: Schema.String,
       labelId: Schema.String,
-      removedAt: Schema.Date,
+      removedAt: Schema.DateFromString.check(Schema.isDateValid()),
     }),
   }),
 }

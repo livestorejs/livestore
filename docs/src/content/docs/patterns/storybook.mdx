@@ -172,11 +172,14 @@ export const events = {
   }),
   todoDeleted: Events.synced({
     name: 'v1.TodoDeleted',
-    schema: Schema.Struct({ id: Schema.String, deletedAt: Schema.Date }),
+    schema: Schema.Struct({
+      id: Schema.String,
+      deletedAt: Schema.DateFromString.check(Schema.isDateValid()),
+    }),
   }),
   todoClearedCompleted: Events.synced({
     name: 'v1.TodoClearedCompleted',
-    schema: Schema.Struct({ deletedAt: Schema.Date }),
+    schema: Schema.Struct({ deletedAt: Schema.DateFromString.check(Schema.isDateValid()) }),
   }),
   // Auto-generated client document event
   uiStateSet: tables.uiState.set,
@@ -225,5 +228,4 @@ Create a decorator that wraps stories with a fresh LiveStore instance and use th
 <Code code={CODE.schema} lang="ts" title="src/schema.ts" />
 </TabItem>
 </Tabs>
-
 
