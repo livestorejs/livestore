@@ -31,39 +31,45 @@ const idleWindow: Duration.Input = '20 seconds' // workerd evicts somewhere betw
 
 type RuntimeServices = SyncProviderImpl | HttpClient.HttpClient | KeyValueStore.KeyValueStore
 
-Vitest.describe('sync backend DO hibernation', { timeout: testTimeout }, () => {
-  let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
-  let runtimeContext: Context.Context<RuntimeServices>
+// Each CI cell selects tests by name (`<provider> sync provider`, see scripts/src/commands/test-commands.ts),
+// so dropping that phrase from the title silently stops this from running anywhere.
+Vitest.describe(
+  `${CloudflareWsProvider.doSqlite.name} sync provider — DO hibernation`,
+  { timeout: testTimeout },
+  () => {
+    let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
+    let runtimeContext: Context.Context<RuntimeServices>
 
-  Vitest.beforeAll(async () => {
-    runtime = ManagedRuntime.make(
-      CloudflareWsProvider.doSqlite.layer.pipe(
-        Layer.provideMerge(FetchHttpClient.layer),
-        Layer.provideMerge(KeyValueStore.layerMemory),
-        Layer.orDie,
-      ),
-    )
-    runtimeContext = await runtime.context()
-  })
-
-  Vitest.afterAll(async () => await runtime.dispose())
-
-  // One test, not three: each arm owns a distinct store (so a distinct DO), so they share one idle window.
-  Vitest.live('an idle WS client lets the DO hibernate, and a warm DO stays resident', (test) =>
-    Effect.gen(function* () {
-      const observed = yield* Effect.all(
-        {
-          idle: hibernatesWhenIdle({ livePull: false }),
-          livePull: hibernatesWhenIdle({ livePull: true }),
-          warmControl: staysResidentWhileWarm,
-        },
-        { concurrency: 'unbounded' },
+    Vitest.beforeAll(async () => {
+      runtime = ManagedRuntime.make(
+        CloudflareWsProvider.doSqlite.layer.pipe(
+          Layer.provideMerge(FetchHttpClient.layer),
+          Layer.provideMerge(KeyValueStore.layerMemory),
+          Layer.orDie,
+        ),
       )
+      runtimeContext = await runtime.context()
+    })
 
-      expect(observed).toEqual({ idle: true, livePull: true, warmControl: false })
-    }).pipe(Effect.provide(runtimeContext)),
-  )
-})
+    Vitest.afterAll(async () => await runtime.dispose())
+
+    // One test, not three: each arm owns a distinct store (so a distinct DO), so they share one idle window.
+    Vitest.live('an idle WS client lets the DO hibernate, and a warm DO stays resident', (test) =>
+      Effect.gen(function* () {
+        const observed = yield* Effect.all(
+          {
+            idle: hibernatesWhenIdle({ livePull: false }),
+            livePull: hibernatesWhenIdle({ livePull: true }),
+            warmControl: staysResidentWhileWarm,
+          },
+          { concurrency: 'unbounded' },
+        )
+
+        expect(observed).toEqual({ idle: true, livePull: true, warmControl: false })
+      }).pipe(Effect.provide(runtimeContext)),
+    )
+  },
+)
 
 class HibernationProbeError extends Data.TaggedError('HibernationProbeError')<{ message: string }> {}
 
