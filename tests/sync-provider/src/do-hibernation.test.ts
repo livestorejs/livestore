@@ -1,4 +1,3 @@
-/** @fileoverview Hibernation is inferred from an `instanceId` the sync DO never persists. */
 import { expect } from 'vitest'
 
 import { EventFactory } from '@livestore/common/testing'
@@ -134,7 +133,6 @@ const hibernatesWhenIdle = ({ livePull }: { livePull: boolean }) =>
     const after = yield* probeWithOpenSocket({ port, storeId })
 
     if (livePull === true) {
-      // Hibernating but dropping the subscription is worse than never hibernating.
       yield* syncBackend.push([factory.todoCreated.next({ id: 'after-idle', text: 'after', completed: false })])
       yield* awaitDelivery({ received, id: 'after-idle' })
     }
