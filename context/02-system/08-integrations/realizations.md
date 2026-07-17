@@ -10,7 +10,6 @@ All realizations of the framework-integration contract
 | Effect (Layer/Context idioms) | [02-effect/](./02-effect/spec.md) | no binding suite yet |
 | Solid | [contrib `solid`](https://github.com/livestorejs/livestore-contrib/tree/main/packages/%40livestore/solid) · intent: contrib `context/integrations/solid/` | no binding suite yet |
 | Svelte | [contrib `svelte`](https://github.com/livestorejs/livestore-contrib/tree/main/packages/%40livestore/svelte) · intent: contrib `context/integrations/svelte/` | no binding suite yet |
-| GraphQL (query-surface integration) | [contrib `graphql`](https://github.com/livestorejs/livestore-contrib/tree/main/packages/%40livestore/graphql) · intent: contrib `context/integrations/graphql/` | not a framework binding; query-surface (see contrib node's DELTA-001) |
 | Vue | no package today | — |
 
 The realization-independent binding conformance suite is contracted but

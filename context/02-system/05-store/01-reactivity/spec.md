@@ -69,6 +69,15 @@ Known limitation: `dependencyQueriesRef` is append-only across runs — a
 dynamic query whose dependencies change keeps earlier dep instances
 ref-counted until the query is destroyed (`base-class.ts:329` TODO).
 
+### Extension: query surfaces
+
+The built-in kinds above are not a closed set. A **query surface** is a
+realization that adds a new live-query kind — a different query language over
+the same session state — that joins the reactive graph, dedup, and equality
+cutoff exactly like the built-ins (LS.SYS.STORE.RX-R02), so a query language can
+be layered on without touching the engine. Realizations are listed in
+[realizations.md](./realizations.md); contrib's GraphQL surface is the first.
+
 ## Identity and Dedup — Two Independent Layers
 
 The current-layer distinction (LS.SYS.STORE.RX-R03; previously conflated in
