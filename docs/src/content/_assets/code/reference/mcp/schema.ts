@@ -6,7 +6,7 @@ const events = {
     schema: Schema.Struct({
       id: Schema.String,
       title: Schema.String,
-      createdAt: Schema.DateFromString,
+      createdAt: Schema.DateFromString.check(Schema.isDateValid()),
     }),
   }),
 }

@@ -23,7 +23,11 @@ export const tables = {
 export const events = {
   todoCreated: Events.synced({
     name: 'v1.TodoCreated',
-    schema: Schema.Struct({ id: Schema.String, text: Schema.String, createdAt: Schema.Date }),
+    schema: Schema.Struct({
+      id: Schema.String,
+      text: Schema.String,
+      createdAt: Schema.DateFromString.check(Schema.isDateValid()),
+    }),
   }),
 } as const
 

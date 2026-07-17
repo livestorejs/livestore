@@ -25,7 +25,10 @@ const todoCompleted = Events.synced({
 // Emitted when a todo item is deleted (soft delete)
 const todoDeleted = Events.synced({
   name: 'v1.TodoDeleted',
-  schema: Schema.Struct({ todoId: Schema.String, deletedAt: Schema.Date }),
+  schema: Schema.Struct({
+    todoId: Schema.String,
+    deletedAt: Schema.DateFromString.check(Schema.isDateValid()),
+  }),
 })
 
 // Emitted when a new user joins this workspace
