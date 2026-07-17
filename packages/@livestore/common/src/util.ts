@@ -9,7 +9,8 @@ export type Bindable = ReadonlyArray<SqlValue> | ParamsObject
 
 export const SqlValueSchema = Schema.Union([
   Schema.String,
-  Schema.Finite,
+  // @effect-diagnostics-next-line schemaNumber:off -- SQL bind values feed SQLite REAL columns, which can legitimately hold Infinity/NaN (matching the field-defs.ts DEFAULT-codec carve-out); Schema.Finite would reject those and break PreparedBindValues round-tripping in the devtools/debug protocol. Keep Schema.Number on purpose.
+  Schema.Number,
   Schema.Uint8Array as any as Schema.Codec<Uint8Array<ArrayBuffer>>,
   Schema.Null,
 ])
