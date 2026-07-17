@@ -25,6 +25,7 @@ const runtimeDeps = catalog.compose({
       '@types/jsdom',
       '@types/node',
       '@types/web',
+      'esbuild',
       'jsdom',
       'vitest',
     ),

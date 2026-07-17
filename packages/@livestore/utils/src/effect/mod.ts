@@ -110,7 +110,9 @@ export {
   TxRef,
   Types,
 } from 'effect'
-export { FastCheck, TestClock, TestConsole, TestSchema } from 'effect/testing'
+export * as FastCheck from 'effect/testing/FastCheck'
+export * as TestClock from 'effect/testing/TestClock'
+export * as TestConsole from 'effect/testing/TestConsole'
 export * as Debug from './Debug.ts'
 export * as Effect from './Effect.ts'
 export * from './Error.ts'
