@@ -34,8 +34,11 @@ draft ──► review PR ──► accepted (PR merged) ──► implemented
    RFC. The published RFC process description includes this step
    (`contributor-docs/rfcs/index.md` §4, added 2026-07-16).
 
-Current RFC state: RFC 0001 (multi-store API) is largely shipped — fold-in
-candidate. RFC 0002 (command replay) is an active proposal (root LS-DQ1).
+Current RFC state: RFC 0001 (multi-store API) is shipped and folded into
+[`02-system/05-store/`](../02-system/05-store/spec.md) — whose spec records
+where the implementation diverged from the proposal (e.g. `dispose()` vs the
+RFC's `clear()`, longest-wins cache-time); the RFC is retained as a historical
+record. RFC 0002 (command replay) is an active proposal (root LS-DQ1).
 
 ## Contribution Scope Tiers (LS.CONTRIB-R04)
 
