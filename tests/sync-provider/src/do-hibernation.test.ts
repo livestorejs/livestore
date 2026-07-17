@@ -23,48 +23,43 @@ import {
 import * as CloudflareWsProvider from './providers/cloudflare-ws.ts'
 import { SyncProviderImpl } from './types.ts'
 
-const testTimeout = 60_000
 const idleWindow: Duration.Input = '20 seconds' // workerd evicts somewhere between 9s and 11s idle
 
 type RuntimeServices = SyncProviderImpl | HttpClient.HttpClient | KeyValueStore.KeyValueStore
 
 // CI cells select by title (see scripts/src/commands/test-commands.ts); renaming this stops it running anywhere.
-Vitest.describe(
-  `${CloudflareWsProvider.doSqlite.name} sync provider — DO hibernation`,
-  { timeout: testTimeout },
-  () => {
-    let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
-    let runtimeContext: Context.Context<RuntimeServices>
+Vitest.describe(`${CloudflareWsProvider.doSqlite.name} sync provider — DO hibernation`, () => {
+  let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
+  let runtimeContext: Context.Context<RuntimeServices>
 
-    Vitest.beforeAll(async () => {
-      runtime = ManagedRuntime.make(
-        CloudflareWsProvider.doSqlite.layer.pipe(
-          Layer.provideMerge(FetchHttpClient.layer),
-          Layer.provideMerge(KeyValueStore.layerMemory),
-          Layer.orDie,
-        ),
-      )
-      runtimeContext = await runtime.context()
-    })
-
-    Vitest.afterAll(async () => await runtime.dispose())
-
-    Vitest.live('an idle WS client lets the DO hibernate, and a warm DO stays resident', (test) =>
-      Effect.gen(function* () {
-        const observed = yield* Effect.all(
-          {
-            idle: hibernatesWhenIdle({ livePull: false }),
-            livePull: hibernatesWhenIdle({ livePull: true }),
-            warmControl: staysResidentWhileWarm,
-          },
-          { concurrency: 'unbounded' },
-        )
-
-        expect(observed).toEqual({ idle: true, livePull: true, warmControl: false })
-      }).pipe(Effect.provide(runtimeContext)),
+  Vitest.beforeAll(async () => {
+    runtime = ManagedRuntime.make(
+      CloudflareWsProvider.doSqlite.layer.pipe(
+        Layer.provideMerge(FetchHttpClient.layer),
+        Layer.provideMerge(KeyValueStore.layerMemory),
+        Layer.orDie,
+      ),
     )
-  },
-)
+    runtimeContext = await runtime.context()
+  })
+
+  Vitest.afterAll(async () => await runtime.dispose())
+
+  Vitest.live('an idle WS client lets the DO hibernate, and a warm DO stays resident', () =>
+    Effect.gen(function* () {
+      const observed = yield* Effect.all(
+        {
+          idle: hibernatesWhenIdle({ livePull: false }),
+          livePull: hibernatesWhenIdle({ livePull: true }),
+          warmControl: staysResidentWhileWarm,
+        },
+        { concurrency: 'unbounded' },
+      )
+
+      expect(observed).toEqual({ idle: true, livePull: true, warmControl: false })
+    }).pipe(Effect.provide(runtimeContext)),
+  )
+})
 
 class HibernationProbeError extends Data.TaggedError('HibernationProbeError')<{ message: string }> {}
 
