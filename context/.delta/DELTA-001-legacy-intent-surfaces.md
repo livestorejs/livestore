@@ -38,24 +38,26 @@ Resolved 2026-07-16 (command/intent design session):
   belongs in an RFC. The store's commit-confirmation surface is now tracked by
   `LS.SYS.STORE-DQ1` (gated by root LS-DQ1). `wip/` is removed.
 
+## Resolved (inbound)
+
+- **`context/repo-ruleset-sync/`** (from livestorejs/livestore#1424) — absorbed
+  2026-07-18 into `03-delivery/02-release/` when #1424 merged to main: the
+  ruleset auto-reconcile design → spec §Ruleset Reconciliation +
+  `.decisions/0001-ruleset-reconciliation.md` +
+  `.reference/github-app-platform-constraints.md` +
+  `ruleset-app-provisioning-runbook.md`; the snapshot-gating divergence →
+  `.delta/DELTA-001-snapshot-gated-on-ci-conclusion.md` + `LS.DEL.REL-DQ2`
+  (promotion to a normative requirement is flagged there, pending owner
+  confirmation of a protected `requirements.md` edit). The flat
+  `context/repo-ruleset-sync/` dir is removed.
+
 ## Pending (inbound)
 
-- **`context/repo-ruleset-sync/`** — a flat, pre-hierarchy VRS added by
-  livestorejs/livestore#1424 (branch-ruleset auto-reconcile). **Absorb** into
-  `03-delivery/02-release/`: (1) the ruleset auto-reconcile design (org-owned
-  GitHub App defined as-code + `GET /app` drift-check; apply-on-merge +
-  scheduled backstop + non-gating PR dry-run; `ruleset-drift-check` job removed)
-  as a decision record + spec section under a new `LS.DEL.REL.*` namespace, and
-  (2) a requirement + `.delta` that snapshot publishing must not gate on the
-  whole `ci` run conclusion. Sequenced **after #1424 merges** — its `spec.md`
-  uses a blockquote status, so it intentionally fails the intent-layer
-  enforcement suite as a forcing function. **Absorb, do not conform-in-place;
-  do not delete without capturing.** Source and full spec: #1424
-  `context/repo-ruleset-sync/open-questions.md` OQ4 and the #1406 PR comment.
 - **Contrib GitHub labels reconciliation.** `livestorejs/livestore-contrib`'s
   labels are unmanaged (stock GitHub defaults vs the 28-label
   `.github/labels.json` manifest). Decided 2026-07-17 (interview): reconcile
   them through the **same** org GitHub-App apparatus #1424 builds for
   `repo-settings.json` — not a one-off manual `gh label` sync — so one mechanism
-  owns all `.github/` desired-state. Fold `labels.json` into that reconciliation
-  scope when the ruleset design is absorbed into `03-delivery/02-release/`.
+  owns all `.github/` desired-state. The ruleset reconciliation is now absorbed
+  (see Resolved above); the follow-up is to extend that apparatus's scope to
+  `labels.json` (it currently reconciles only `repo-settings.json`).

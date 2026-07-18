@@ -57,4 +57,4 @@ but its *lifecycle* (creation, permission edits, installation, key generation)
 has an irreducible manual core. The IaC boundary is therefore "manifest as spec +
 drift verify", with the manual steps enumerated as an explicit provisioning
 runbook — see [`../spec.md`](../spec.md) and
-[`../decisions/0001-github-app-definition-as-iac.md`](../decisions/0001-github-app-definition-as-iac.md).
+[`../.decisions/0001-ruleset-reconciliation.md`](../.decisions/0001-ruleset-reconciliation.md).

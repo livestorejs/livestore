@@ -1,5 +1,7 @@
 # Ruleset reconciliation — key decisions
 
+Status: accepted (2026-07-17) — design agreed and implemented via livestorejs/livestore#1424; absorbed into this node 2026-07-18.
+
 Durable decisions behind reconciling the repository branch ruleset from the
 committed desired-state file (`.github/repo-settings.json`) using an org-owned
 GitHub App as the privileged identity.
@@ -37,7 +39,7 @@ than a per-repo secret.
 
 ## Define the App As-Code Via a Committed Manifest + Drift-Check
 
-The App's definition is a committed [App Manifest](../reference/github-app-platform-constraints.md)
+The App's definition is a committed [App Manifest](../.reference/github-app-platform-constraints.md)
 (name, `default_permissions`, `default_events`, no webhook). A drift-check reads
 the live App via `GET /app` and diffs it against the manifest — symmetric with
 the existing ruleset drift-check.
@@ -75,7 +77,7 @@ Live drift is now *reconciled by the merge*, not *policed before it*. This
 removes the "governance check wedges releases" failure class structurally.
 Decoupling snapshot publishing from the whole `ci` conclusion (so a governance
 job can never gate a release) remains a separate, still-recommended change
-tracked in [open-questions.md](../open-questions.md). A post-apply drift is a
+tracked in [LS.DEL.REL-DQ2](../.delta/DELTA-001-snapshot-gated-on-ci-conclusion.md). A post-apply drift is a
 real, alertable failure. Cost: a merged ruleset change is enforced on GitHub only
 after the post-merge apply runs, not at merge instant.
 

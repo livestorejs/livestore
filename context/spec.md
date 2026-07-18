@@ -194,8 +194,9 @@ Per [decision 0002](./.decisions/0002-single-intent-layer.md):
 
 Divergence from this contract is tracked in
 [.delta/DELTA-001-legacy-intent-surfaces.md](./.delta/DELTA-001-legacy-intent-surfaces.md)
-(the original absorption pass is complete; one inbound surface from
-livestorejs/livestore#1424 remains to absorb).
+(the original absorption pass and the #1424 ruleset-sync absorption are complete;
+one follow-up remains — folding contrib label reconciliation into that
+apparatus).
 
 ## Enforcement
 
