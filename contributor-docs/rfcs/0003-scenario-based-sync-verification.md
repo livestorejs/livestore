@@ -48,7 +48,9 @@ sync components, evaluating convergence, and explaining the result.
 The current contracts are documented in the intent layer under
 [`context/02-system/09-verification/`](../../context/02-system/09-verification/spec.md).
 This RFC proposes new architecture and therefore remains the sole design
-source until it is accepted, implemented, and folded into that intent layer.
+source until it is accepted and its durable contracts are folded into that
+intent layer. Missing implementation is then tracked explicitly as intent-layer
+deltas.
 
 ## Problem
 
@@ -143,6 +145,15 @@ The scenario semantics, runner, trace, and oracles are distinct contracts.
 This allows the file format and visualization to evolve without changing the
 meaning of a run.
 
+The runner controls clients and sessions only through a transport-neutral
+participant-host contract. Commands, acknowledgements, application actions,
+faults, capability descriptions, and trace records crossing that contract must
+be serializable. The first host implementation runs in-process and may use
+direct Effect calls internally, but the runner must not depend on references to
+a participant's `Store`, processors, adapter, or databases. A later browser or
+process host can therefore carry the same control protocol over an RPC or
+message transport without changing scenario semantics.
+
 ### Terminology
 
 | Term | Meaning |
@@ -150,11 +161,14 @@ meaning of a run.
 | **Application definition** | Executable module exporting the LiveStore event schema and, when enabled, materializers and state inspection helpers. |
 | **Scenario specification** | Serializable description of participants, workloads, faults, schedule, execution options, and assertions. |
 | **Participant** | A role instantiated by the runner: sync backend, client, leader, or client session. |
+| **Participant host** | Execution-profile implementation that creates and controls clients and sessions behind the serializable runner-control and trace boundary. |
 | **Participant execution profile** | How client-side roles run: in-process, worker/process, or browser. |
 | **Sync-backend realization** | What the leader synchronizes with: a mock/in-memory backend, a locally running concrete backend, or a deployed backend. |
 | **Execution configuration** | Combination of one participant execution profile, one sync-backend realization, and an optional state profile. |
 | **Workload pattern** | Reusable generator of application actions assigned to one or more clients. |
 | **Fault model** | Controlled changes to connectivity, availability, latency, process lifetime, or capacity. |
+| **Convergence group** | Participants that a settle phase requires to reach the same authoritative eventlog and, when requested, equivalent state. |
+| **Settlement barrier** | Profile-appropriate confirmation that convergence predicates form a stable fixed point even if background streams or future polling remain active. |
 | **Trace** | Ordered stream of scenario actions and observed system transitions. |
 | **Oracle** | Executable rule that turns observed state and trace data into a verdict. |
 | **Run artifact** | Scenario, seed, execution configuration, trace, measurements, snapshots, and oracle results needed to inspect or reproduce one run. |
@@ -180,7 +194,7 @@ The scenario specification must be able to express:
 | Workloads | Explicit actions and reusable parameterized activity patterns assigned to clients. |
 | Schedule | Actions triggered by logical time, prior actions, observed conditions, or phase boundaries. |
 | Faults | Backend outages, partitions, latency, constrained throughput, process death, and recovery. |
-| Completion | Duration, quiescence condition, phase completion, or explicit terminal action. |
+| Completion | Duration, convergence group, settlement barrier and timeout, phase completion, or explicit terminal action. |
 | Assertions | Safety, convergence, liveness, state, and optional performance oracles. |
 | Capture | Trace detail, state snapshots, and measurement options. |
 
@@ -206,10 +220,15 @@ format. That module can expose:
 - value generators used by workload patterns; and
 - canonical state normalization or hashing for convergence checks.
 
-Scenario actions are validated against the referenced application definition
-before execution. Deliberately invalid application events or malformed wire
-payloads should require an explicit adversarial mode so normal scenarios do
-not accidentally test behavior outside the protocol contract.
+Scenario actions are named, serializable commands validated against the
+referenced application definition before execution. The participant host loads
+that definition and dispatches each command through the real `Store` API in the
+target session. The runner never calls a participant's `Store` directly. This
+keeps the same application-action protocol usable when the target moves from
+the in-process host to a worker, process, or browser host. Deliberately invalid
+application events or malformed wire payloads should require an explicit
+adversarial mode so normal scenarios do not accidentally test behavior outside
+the protocol contract.
 
 ### Topology Model
 
@@ -246,11 +265,39 @@ scenario selects a participant execution profile and a sync-backend
 realization independently. For example, browser clients can use the mock
 backend, while in-process clients can connect to a deployed backend.
 
+#### Participant-Host Boundary
+
+Every participant execution profile implements the same logical host contract.
+The exact TypeScript API remains an implementation decision, but the contract
+must support:
+
+- creating a client and adding a session to an existing client;
+- executing a named, serialized application action in a target session;
+- stopping and restarting a session, client, or leader where supported;
+- applying and healing faults exposed by the selected profile;
+- acknowledging lifecycle and control operations;
+- advertising profile capabilities before a run starts; and
+- emitting the normalized trace without exposing participant implementation
+  objects to the runner.
+
+Participants and control operations use stable scenario-level identifiers.
+Scenarios declare the capabilities they require, and the runner rejects an
+execution configuration that cannot provide them. This allows portable
+scenarios to use the common capability set while browser- or process-specific
+scenarios explicitly request platform behavior such as Web Locks, OPFS, or
+actual process termination.
+
+The existing LiveStore `Adapter` remains below this boundary: an adapter creates
+one client session for a platform, while a participant host orchestrates a
+dynamic collection of clients and sessions and exposes scenario lifecycle,
+fault, and observation controls. The host may use different adapters in
+different execution profiles.
+
 #### Participant Execution Profiles
 
 | Profile | Intended use | Fidelity and cost |
 | --- | --- | --- |
-| **In-process** | Default correctness, generative, and stress exploration. | Real sync state and processors with controlled boundaries; highest determinism and density. |
+| **In-process** | Default correctness, generative, and stress exploration. | Real Stores, client-session and leader processors, materializers, and SQLite databases behind in-memory boundaries; highest determinism and density. |
 | **Worker/process** | Process-boundary, lifecycle, and crash behavior. | Real isolation with moderate startup and coordination cost. |
 | **Browser** | Web adapter, OPFS, Web Locks, worker topology, and browser lifecycle. | High fidelity and cost; fewer participants. |
 
@@ -268,15 +315,53 @@ runs. A browser profile and deployed-backend realization together form the
 highest-fidelity end-to-end configuration, but either can be selected without
 the other.
 
-The proposed first configuration is in-process participants using the actual
-`SyncState`, `ClientSessionSyncProcessor`, and `LeaderSyncProcessor`, together
-with the mock/in-memory sync backend, eventlog, and SQLite materialization
-path. This exercises the current production-shaped critical sections without
-requiring one OS process or browser per client.
+The first authoritative configuration is a production-shaped in-process host.
+Each client has one actual leader and one or more actual client sessions. Each
+session owns a real `Store`, `ClientSessionSyncProcessor`, and in-memory SQLite
+state database; the sessions share the client's real `LeaderSyncProcessor`,
+eventlog database, and leader state database through an in-memory leader proxy.
+Multiple clients share the selected mock/in-memory sync backend. This exercises
+the current production-shaped critical sections without requiring one OS
+process or browser per client.
+
+Direct processor-only harnesses may remain useful as a subordinate testing
+profile, but they do not satisfy the authoritative in-process scenario profile
+by themselves because they bypass Store and participant lifecycle behavior.
 
 Later participant profiles and backend realizations must preserve scenario
 semantics and trace vocabulary. A scenario using capabilities shared by
 several configurations should run unchanged across them.
+
+#### Profile Conformance and Calibration
+
+Every participant execution profile must pass one shared host-conformance suite
+covering client and session creation, named action dispatch, lifecycle control,
+capability rejection, stable participant identities, required core trace
+records, fault/control failure reporting, and valid run artifacts.
+
+A maintained calibration corpus then runs unchanged across the in-process and
+browser profiles using only their shared capabilities. It covers at least
+initial sync, single and concurrent writers, offline accumulation and reconnect,
+backend outage and recovery, multiple sessions, participant restart, rebase
+after remote progress, settlement, and state convergence.
+
+Cross-profile calibration compares semantic outcomes rather than byte-identical
+executions. The profiles must satisfy equivalent safety, pending-resolution,
+convergence, and requested state oracles; preserve the same accepted event set;
+and emit the required stable trace families. Timing, diagnostics, retry counts,
+and exact trace order need not match. Exact eventlog order is compared only when
+the scenario defines that order; genuinely concurrent runs may produce
+different valid authoritative orders.
+
+The browser profile is the platform-fidelity calibration target because it
+exercises the web adapter, worker topology, Web Locks, OPFS, and browser
+lifecycle. A worker/process profile helps isolate transport and lifecycle
+differences but does not substitute for browser calibration.
+
+The in-process profile may be delivered and used before the browser host exists.
+Until browser calibration is available, its artifacts identify the evidence as
+in-process and do not claim browser-platform fidelity. Adding the browser host
+must not require changing the portable scenario corpus or oracle semantics.
 
 ### Time and Scheduling
 
@@ -288,9 +373,33 @@ Correctness runs and performance runs need different notions of time:
 - **Wall-clock time** is required for throughput, latency, CPU, and memory
   measurements.
 
-Every generated choice must derive from a recorded seed. Where execution still
-depends on nondeterministic host scheduling, the runner should record observed
-ordering decisions in the run artifact.
+Every generated choice must derive from a recorded seed. Seeded reproduction is
+the minimum guarantee for every execution profile: it recreates application
+actions, generated values, workload parameters, requested timings, and fault
+choices, but does not by itself promise the same host interleaving.
+
+The authoritative in-process correctness profile must additionally support
+controlled boundary record/replay. The runner records the order in which it:
+
+- dispatches scenario actions and lifecycle operations;
+- activates and heals faults;
+- releases mock-backend responses;
+- releases controlled session-to-leader and leader-to-backend deliveries; and
+- advances runner-owned logical time.
+
+A recorded replay gates those boundaries according to the captured decision
+sequence. If the next recorded operation cannot become available or its
+preconditions differ, the runner reports the decision at which replay diverged;
+it must not silently claim to have reproduced the execution. Exact Effect fiber
+scheduling, browser event-loop scheduling, remote-backend ordering, and
+byte-identical trace reproduction are not part of the guarantee.
+
+Execution profiles advertise `logical-time`, boundary-recording, and
+boundary-replay capabilities independently. Worker, browser, and deployed
+backend configurations always preserve the seed and detailed observed trace but
+only promise stronger scheduling control when their capabilities provide it.
+Wall-clock performance runs reproduce workload inputs and environment metadata,
+not logical scheduling.
 
 The schedule should support:
 
@@ -353,12 +462,14 @@ Sync correctness and materialized-state correctness are related but distinct:
 2. **Full-stack correctness:** after eventlog convergence, the clients'
    materialized state also converges and can be reproduced from that eventlog.
 
-The scenario model should not define SQLite as part of sync semantics. It
-should select a state profile supplied by the application definition and
-execution configuration.
+The scenario model does not define SQLite as part of sync semantics. It selects
+state capabilities supplied by the application definition and execution
+configuration. Eventlog convergence is available independently of state
+assertions; state convergence and rematerialization are optional oracle
+families that require compatible state-inspection capabilities.
 
-The initial full-stack state profile should nevertheless include SQLite
-because the current processors integrate materialization into important
+The first authoritative in-process profile requires SQLite materialization for
+every participant because the current processors integrate it into important
 behavior:
 
 - session rebases roll back SQLite changesets;
@@ -366,41 +477,78 @@ behavior:
 - leader state and eventlog transactions are coordinated; and
 - materializer failures can terminate the runtime.
 
-An eventlog-only state profile would isolate the sync protocol, but
-implementing it before the planned sync/read-model separation may create a
-test-only seam that does not represent the running product. The runner boundary
-should permit that state profile later without requiring a new scenario
-language.
+Version one does not add an eventlog-only participant profile. Such a profile
+would isolate the sync protocol, but implementing it before the planned
+sync/state separation may create a test-only seam that does not represent the
+running product. The participant-host and scenario boundaries must permit an
+eventlog-only or alternative-state profile later without requiring a new
+scenario language. A scenario that requests state-specific capabilities is
+rejected by a profile that cannot provide them; a sync-only scenario can run
+unchanged.
 
 ### Trace Protocol
 
 The runner emits one normalized trace for live observation and replay. The
 visualizer never needs private access to participant internals outside this
-contract.
+contract. The trace is a versioned verification-artifact protocol, not a
+promise that all diagnostic details become permanent public LiveStore APIs.
 
-Every trace record should carry:
+A stable run descriptor records metadata that applies to the whole stream once:
 
+- trace-protocol and scenario-format versions;
 - scenario and run identifiers;
-- logical time and, where meaningful, wall-clock time;
-- participant, role, and boundary identifiers;
-- record type and structured payload;
-- event, batch, request, and causal-parent identifiers where applicable;
-- local, upstream, and backend heads where observed;
-- rebase generation;
-- execution configuration and component version information; and
-- severity or failure classification.
+- source revision and application-definition identity;
+- execution configuration, component versions, and advertised capabilities;
+  and
+- seed and reproduction mode.
 
-Initial record families should cover:
+Every stable trace record then uses a small common envelope containing:
 
-- participant lifecycle and connectivity;
-- scenario actions and generated application events;
-- push, pull, confirmation, retry, and failure transitions;
-- batches crossing session/leader and leader/backend boundaries;
-- queue and buffer depths;
-- advance and rebase outcomes;
-- state rollback and materialization phases;
-- oracle progress and verdicts; and
-- optional performance measurements.
+- run identifier and a monotonic runner-observation index;
+- stable record kind and origin (`instruction`, `acknowledgement`,
+  `observation`, or `verdict`);
+- participant, role, and boundary identifiers where applicable;
+- logical time and wall-clock time where the profile provides them;
+- correlation and causation identifiers where applicable; and
+- a typed, versioned payload for the record kind.
+
+The observation index defines the order in which the runner received records;
+it does not claim that distributed operations happened atomically in that
+order. Correlation joins records belonging to one action, batch, request, or
+fault, while causation records why a transition occurred.
+
+The stable semantic record families cover:
+
+- run and phase lifecycle;
+- participant lifecycle and runner-control acknowledgements;
+- named application actions and their results;
+- connectivity and batches crossing session/leader or leader/backend
+  boundaries;
+- event disposition, including pending, confirmed, rejected, and terminally
+  failed events;
+- observed local, upstream, and backend positions;
+- advance and rebase transitions with relevant event identities and
+  generations;
+- fault request, observed activation, and healing;
+- settlement progress and barrier results;
+- oracle verdicts and their evidence references; and
+- structured failure classifications.
+
+Implementation-specific observations are namespaced diagnostic extensions,
+not stable core records. Initial examples include private queue and buffer
+names, raw queue depths, Effect scheduler state, SQLite statements and
+changesets, detailed materializer execution, provider-specific payloads, Web
+Lock and OPFS internals, raw OTel spans, stack traces, and performance entries.
+Core consumers ignore unknown diagnostic records. Portable correctness oracles
+must not depend on a diagnostic extension unless the scenario explicitly
+requires a capability that provides it. A diagnostic concept may be promoted
+to the stable core when several profiles and portable consumers need the same
+semantic meaning.
+
+Additive optional core fields do not require a new major trace-protocol version;
+removing a field or changing its meaning does. Saved artifacts retain their
+original version, and large payloads may be stored as referenced artifact blobs
+rather than embedded in every record.
 
 The trace must distinguish a scenario instruction (“disconnect client A”) from
 an observation (“client A reported offline”). This preserves causality and
@@ -432,6 +580,47 @@ convergence delay may eventually be treated as a correctness failure, but the
 scenario must state the applicable deadline rather than rely on a global
 implicit timeout.
 
+#### Settlement, Convergence, and Quiescence
+
+Quiescence is a stable contract-level fixed point, not the absence of all
+runtime activity. Live pull streams may stay open, polling may schedule future
+work, and telemetry may continue after a run has converged.
+
+A scenario enters a settle phase by:
+
+1. stopping new workload actions and awaiting acknowledgement of actions
+   already dispatched;
+2. healing the faults named by the phase;
+3. declaring the convergence group, including which intentionally removed or
+   offline participants are excluded; and
+4. stopping new writes from that group while the settlement barrier is being
+   evaluated.
+
+For an authoritative backend head `H`, convergence requires every expected
+participant to hold the same authoritative event order through `H`, with no
+unexplained pending events. Local and upstream heads must agree at `H`, and any
+requested state-convergence or rematerialization oracle must also pass. The
+runner must have no unacknowledged control operations or held, due controlled
+delivery capable of changing the verdict.
+
+An unresolved pending event prevents successful settlement. It must become
+backend-confirmed, explicitly rejected, or reach a terminal failure that the
+scenario permits. Expiry of the settlement timeout while an event remains
+pending is a liveness failure.
+
+The authoritative in-process profile confirms stability through an explicit
+settlement barrier: it releases boundary work due under the selected schedule,
+advances logical time until no immediately due controlled work can change the
+verdict, observes every expected participant at `H`, confirms that the backend
+head remains `H`, and re-evaluates the convergence predicates. Open streams and
+future polling timers do not prevent success.
+
+Profiles without a controlled settlement barrier may confirm stability through
+repeated observations or a bounded wall-clock stability window. The profile
+must advertise that weaker capability, and the run artifact records which
+confirmation mechanism was used. Every settle phase has an explicit logical-
+or wall-clock timeout; there is no hidden global meaning of “eventually.”
+
 ### Headless Runs and Visualization
 
 Headless execution is the authoritative mode. It must be usable in focused
@@ -457,15 +646,17 @@ A failed or noteworthy run should produce a self-contained artifact containing:
 - the normalized scenario specification;
 - application-definition identity and component versions;
 - execution configuration and environment metadata;
-- seed and recorded scheduling decisions;
+- seed, runner-control decisions, and any recorded boundary schedule;
 - complete or policy-filtered trace;
 - oracle results and failure explanation;
 - relevant eventlog and state snapshots; and
 - performance measurements when wall-clock mode is enabled.
 
 The minimum reproduction command should need only the artifact and the matching
-source revision. Automated shrinking or minimization of a failing workload is
-desirable but can follow deterministic reproduction.
+source revision. It supports seeded replay for every profile and recorded
+boundary replay when the artifact and selected profile provide it. Automated
+shrinking or minimization of a failing workload is desirable but can follow
+reliable reproduction.
 
 ### Agent Authoring
 
@@ -484,23 +675,69 @@ client writes offline, another writes in bursts, the backend becomes
 unavailable, and all clients must converge after recovery” by composing
 declared primitives rather than writing TypeScript orchestration code.
 
+### Intent-Layer Ownership
+
+On acceptance, the durable architecture in this RFC folds into a new
+verification child:
+
+```text
+context/02-system/09-verification/
+└── 06-scenarios/
+    ├── intuition.md
+    ├── requirements.md
+    ├── spec.md
+    └── .delta/
+        └── DELTA-001-scenario-verification-not-built.md
+```
+
+The node is titled **Scenario-Based Sync Verification** and uses the
+`LS.SYS.VER.SCEN-*` namespace. `06-scenarios` is preferred over
+`06-simulation` because the authoritative profiles exercise real LiveStore
+components rather than a separate behavioral model.
+
+The scenarios node owns the scenario semantics, participant-host contract,
+execution-profile and backend-realization composition, workloads, fault
+semantics, reproduction guarantees, settlement, trace protocol, oracle
+composition, artifacts, profile conformance, cross-profile calibration, and
+runner/visualizer separation.
+
+The existing verification children retain their current responsibilities:
+lanes own invocation, conformance owns the general realization-independent
+testing pattern, performance owns trustworthy performance evidence, and
+determinism owns system determinism guards. The scenarios node composes those
+evidence shapes for this architecture. Sync, runtime, state, and observability
+remain owners of the product behavior being verified rather than acquiring
+scenario-runner requirements.
+
+The fold-in also registers the child and namespace in the verification parent
+and root intent-layer structure, adds accepted scenario terminology to
+`context/ontology.md`, and records architectural acceptance in
+`context/.decisions/` with this RFC as evidence. The initial delta records that
+the accepted runner and profiles are not yet implemented.
+
+The remaining design questions become `LS.SYS.VER.SCEN-DQ*` questions in the
+new node. After the fold-in, this RFC remains the historical proposal and is no
+longer updated as the implementation evolves.
+
 ## Delivery Sequence
 
 The architecture can be delivered incrementally:
 
 1. **Semantic model:** settle participants, scheduling, workloads, faults,
    trace vocabulary, and oracle definitions; select the concrete file format.
-2. **Headless in-process runner:** real sync processors, mock backend, SQLite,
-   explicit actions, basic disconnect/reconnect faults, convergence oracles,
-   and reproducible artifacts.
+2. **Headless in-process runner:** participant-host conformance suite,
+   production-shaped in-process host, real sync processors, mock backend,
+   SQLite, explicit actions, basic disconnect/reconnect faults, convergence
+   oracles, portable calibration scenarios, and reproducible artifacts.
 3. **Generated stress scenarios:** reusable workloads, seeded scheduling,
    conditional actions, richer faults, resource observations, and failure
    minimization.
 4. **Visualization:** live trace transport, saved-run replay, system view,
    timeline view, and participant drill-down.
 5. **Additional fidelity configurations:** worker/process and browser
-   participant profiles, local and deployed sync backends, and alternative
-   read models when their product boundaries exist.
+   participant profiles, shared host-conformance runs, cross-profile calibration,
+   local and deployed sync backends, and alternative state profiles when their
+   product boundaries exist.
 6. **Performance use:** wall-clock execution, comparable measurements, and
    scenario-specific budgets integrated with performance verification.
 
@@ -557,33 +794,17 @@ and version the serialization.
 
 ## Open Questions
 
-1. What is the exact minimum component boundary for the first in-process
-   participant profile, and can the real processors be instantiated without
-   introducing simulation-only abstractions into production code?
-2. Should SQLite materialization be mandatory in version one, or should the
-   first delivery include both eventlog-only and full-stack state profiles?
-3. Which concrete scenario syntax best balances authoring, schema validation,
+1. Which concrete scenario syntax best balances authoring, schema validation,
    comments, composition, and canonical formatting?
-4. What is the smallest application-definition API that supports event
+2. What is the smallest application-definition API that supports event
    construction, generated values, materialization, and state comparison?
-5. Which scheduling decisions can be made deterministic with virtual time,
-   and which host/runtime interleavings must instead be recorded?
-6. At which abstraction should latency and partitions be injected for each
+3. At which abstraction should latency and partitions be injected for each
    combination of participant execution profile and sync-backend realization?
-7. What constitutes quiescence when providers can use live pull streams,
-   polling, retries, and indefinitely pending events?
-8. Which trace fields are stable public contracts, and which are optional
-   diagnostic details tied to one implementation?
-9. How should large traces be sampled, compressed, or streamed without losing
+4. How should large traces be sampled, compressed, or streamed without losing
    the causal evidence needed to explain a failure?
-10. When should invalid application events, malformed protocol payloads, and
-    impossible transport behavior become supported adversarial modes?
-11. Which browser/process profile is sufficient to validate that the
-    in-process runner has not hidden meaningful boundary behavior?
-12. How should failing generated scenarios be minimized while preserving the
+5. When should invalid application events, malformed protocol payloads, and
+   impossible transport behavior become supported adversarial modes?
+6. How should failing generated scenarios be minimized while preserving the
     causal interleaving that triggered the failure?
-13. Which correctness scenarios can also produce trustworthy performance
+7. Which correctness scenarios can also produce trustworthy performance
     evidence, and which require a separate wall-clock configuration?
-14. Where should the accepted architecture fold into the verification intent
-    layer: a new `06-simulation/` node or refinements to lanes, performance,
-    and determinism?
