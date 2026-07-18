@@ -8,6 +8,17 @@ import { rootWorkspacePackages } from './package.json.genie.ts'
  */
 const { peerDependencyRules: _effectV3PeerDependencyRules, ...livestorePnpmPolicySettings } = commonPnpmPolicySettings
 
+const effectV4MinimumReleaseAgeExclude = Object.entries(
+  catalog.pick(
+    '@effect/opentelemetry',
+    '@effect/platform-browser',
+    '@effect/platform-bun',
+    '@effect/platform-node',
+    '@effect/platform-node-shared',
+    '@effect/vitest',
+  ),
+).map(([name, version]) => `${name}@${version}`)
+
 const examplesWorkspaceSettings = {
   linkWorkspacePackages: true,
   /** Dedupe package identities pulled in transitively by older example and peer-deps packages. */
@@ -77,6 +88,10 @@ export default pnpmWorkspaceYaml.root({
   injectWorkspacePackages: false,
   allowBuilds: repoPnpmAllowBuilds,
   packageExtensions: repoPackageExtensions,
+  minimumReleaseAgeExclude: [
+    ...livestorePnpmPolicySettings.minimumReleaseAgeExclude,
+    ...effectV4MinimumReleaseAgeExclude,
+  ],
   /** Relaxed until @livestore/devtools-vite publishes with updated Effect peer ranges */
   strictPeerDependencies: false,
   ...examplesWorkspaceSettings,
