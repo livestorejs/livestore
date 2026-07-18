@@ -4,9 +4,9 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "schickling-assistant/2026-07-17-pnpm-projection-authority",
-      "commit": "931731d7140a4d0df3727818ead372ebfa80e627",
+      "commit": "7394861c2b0d2ed5f26e837d9f7fe2152240f1c0",
       "pinned": true,
-      "lockedAt": "2026-07-18T18:39:21.322Z"
+      "lockedAt": "2026-07-18T18:58:56.624Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
