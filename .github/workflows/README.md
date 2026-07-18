@@ -87,9 +87,12 @@ npm promotion uses the repository's ordinary required code-review decision as
 its only manual trust boundary. GitHub's authoritative review decision must be
 `APPROVED`, and a counting approval must name the current head commit. An
 approval for an earlier head, a non-counting approval, or a later changes request
-does not authorize publication. Approval before CI
-is observed when CI completes, while approval after CI triggers validation from
-the exact successful CI run automatically. The OIDC job rechecks the unchanged
+does not authorize publication. Approval before CI is observed when CI completes.
+For approval after CI, the trusted default-branch workflow polls approved open
+PRs every five minutes and dispatches `release.yml` explicitly at `main`; it does
+not grant workflow-write authority to PR-controlled review-event code. The
+dispatched run treats PR and head inputs only as selectors, then resolves and
+validates the exact successful CI producer again. The OIDC job rechecks the unchanged
 head and approval immediately before publishing. It never checks out or executes
 the PR head and publishes the validated tarballs directly with scripts disabled
 under the immutable `pr-<number>-<40-character-head-sha>` tag. npm provenance

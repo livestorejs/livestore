@@ -157,9 +157,19 @@ test('requires the authoritative required-review decision', () => {
   )
 })
 
-test('generated review workflow checks out only its trusted workflow commit', async () => {
+test('generated promotion workflow is anchored to trusted main', async () => {
   const workflow = await readFile(new URL('../workflows/release.yml', import.meta.url), 'utf8')
-  assert.match(workflow, /pull_request_review:/)
+  assert.doesNotMatch(workflow, /pull_request_review:/)
+  assert.match(workflow, /cron: '\*\/5 \* \* \* \*'/)
+  const dispatchStart = workflow.indexOf('\n  dispatch-approved-pr-snapshots:')
+  const validateStart = workflow.indexOf('\n  validate-pr-snapshot:', dispatchStart)
+  const dispatch = workflow.slice(dispatchStart, validateStart)
+  assert.match(dispatch, /actions: write/)
+  assert.doesNotMatch(dispatch, /id-token: write/)
+  assert.match(dispatch, /gh workflow run release\.yml.*--ref main/s)
+  assert.match(dispatch, /reviewDecision == "APPROVED"/)
+  assert.match(dispatch, /headRepository\.nameWithOwner/)
+
   const checkoutStart = workflow.indexOf('- name: Checkout trusted validator only')
   const checkoutEnd = workflow.indexOf('\n      - name: Use pinned Node validator runtime', checkoutStart)
   assert.notEqual(checkoutStart, -1)
@@ -168,12 +178,12 @@ test('generated review workflow checks out only its trusted workflow commit', as
   assert.match(checkout, /ref: \$\{\{ github\.workflow_sha \}\}/)
   assert.doesNotMatch(checkout, /github\.sha|head-sha/)
 
-  const validateStart = workflow.indexOf('\n  validate-pr-snapshot:')
   const attestStart = workflow.indexOf('\n  attest-pr-snapshot:', validateStart)
   const authorizeStart = workflow.indexOf('\n  authorize-pr-snapshot:', attestStart)
   const publishStart = workflow.indexOf('\n  publish-pr-snapshot:', authorizeStart)
   const nextJobStart = workflow.indexOf('\n  create-release-pr:', publishStart)
   assert.match(workflow.slice(validateStart, attestStart), /GITHUB_WORKFLOW_REF.*refs\/heads\/main/)
+  assert.match(workflow.slice(validateStart, attestStart), /workflow_dispatch.*refs\/heads\/main.*promote-pr-snapshot/s)
   assert.doesNotMatch(workflow.slice(validateStart, attestStart), /id-token: write/)
   assert.match(workflow.slice(validateStart, attestStart), /pull-requests: read/)
   assert.match(workflow.slice(attestStart, authorizeStart), /id-token: write/)

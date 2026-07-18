@@ -11,17 +11,27 @@ on:
         required: true
         default: latest
         type: string
+      pr_number:
+        description: PR number selector for trusted snapshot promotion
+        required: false
+        default: '0'
+        type: string
+      head_sha:
+        description: Expected PR head selector for trusted snapshot promotion
+        required: false
+        default: ''
+        type: string
       mode:
         description: Release workflow mode
         required: true
         default: create-release-pr
         type: choice
-        options: [create-release-pr, validate-release-plan, publish-release, publish-snapshot]
+        options: [create-release-pr, validate-release-plan, publish-release, publish-snapshot, promote-pr-snapshot]
   workflow_run:
     workflows: [ci]
     types: [completed]
-  pull_request_review:
-    types: [submitted]
+  schedule:
+    - cron: '*/5 * * * *'
   pull_request:
     paths:
       - .github/workflows/release.yml
@@ -422,9 +432,52 @@ jobs:
           process.exit(1)
           NODE
         shell: bash
-    if: github.event_name != 'pull_request_review'
+    if: github.event_name != 'schedule'
+  dispatch-approved-pr-snapshots:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout trusted package topology
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          sparse-checkout: scripts/src/generated/release-topology.json
+      - name: Dispatch incomplete approved cohorts to trusted main workflow
+        run: |
+          set -euo pipefail
+          test "$GITHUB_WORKFLOW_REF" = "$GITHUB_REPOSITORY/.github/workflows/release.yml@refs/heads/main"
+          prs_json=$(gh api graphql   -f query='query($owner:String!,$name:String!){repository(owner:$owner,name:$name){pullRequests(first:100,states:OPEN,orderBy:{field:UPDATED_AT,direction:DESC}){nodes{number isDraft reviewDecision baseRefName headRefOid headRepository{nameWithOwner}}}}}'   -f owner="${GITHUB_REPOSITORY%%/*}"   -f name="${GITHUB_REPOSITORY#*/}")
+
+          jq -r --arg repository "$GITHUB_REPOSITORY"   '.data.repository.pullRequests.nodes[] | select(.isDraft == false and .reviewDecision == "APPROVED" and .baseRefName == "main" and .headRepository.nameWithOwner == $repository) | [.number, .headRefOid] | @tsv'   <<<"$prs_json" |
+          while IFS=$'	' read -r pr_number head_sha; do
+            [[ "$pr_number" =~ ^[1-9][0-9]*$ ]]
+            [[ "$head_sha" =~ ^[0-9a-f]{40}$ ]]
+            version="0.0.0-snapshot-pr.$pr_number.$head_sha"
+            complete=true
+            while IFS= read -r package_name; do
+              if ! npm view "$package_name@$version" version --json --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+                complete=false
+                break
+              fi
+            done < <(jq -r '.publishablePackageNames[]' scripts/src/generated/release-topology.json)
+            if [ "$complete" = true ]; then
+              echo "PR #$pr_number snapshot cohort is already complete"
+              continue
+            fi
+            gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main     -f mode=promote-pr-snapshot     -f npm_tag=latest     -f pr_number="$pr_number"     -f head_sha="$head_sha"
+          done
   validate-pr-snapshot:
-    if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository) || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved' && github.event.pull_request.head.repo.full_name == github.repository)
+    if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'promote-pr-snapshot')
     runs-on: ubuntu-24.04
     permissions:
       actions: read
@@ -465,8 +518,9 @@ jobs:
             test "$(jq 'length' <<<"$prs_json")" = 1
             pr_number=$(jq -r '.[0].number' <<<"$prs_json")
           else
-            pr_number='${{ github.event.pull_request.number }}'
-            head_sha='${{ github.event.pull_request.head.sha }}'
+            test "$GITHUB_EVENT_NAME" = workflow_dispatch
+            pr_number='${{ inputs.pr_number }}'
+            head_sha='${{ inputs.head_sha }}'
             runs_json=$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?event=pull_request&status=success&head_sha=$head_sha&per_page=100")
             run_json=$(jq -c --arg sha "$head_sha" '[.workflow_runs[] | select(.head_sha == $sha and .event == "pull_request" and .conclusion == "success")] | sort_by(.created_at) | reverse | .[0]' <<<"$runs_json")
             test "$run_json" != null
