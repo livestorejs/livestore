@@ -49,7 +49,10 @@ interface IdSite {
   line: number
 }
 
-const ID_PATTERN = String.raw`LS(?:\.[A-Z]+)*-(?:A|T|R|DQ)\d+`
+// Namespace segments may contain digits (e.g. a `SYNC.S2`-style realization), so
+// allow `[A-Z0-9]` after the leading letter — otherwise digit-bearing IDs are
+// silently skipped by definition parsing and the namespace-table check.
+const ID_PATTERN = String.raw`LS(?:\.[A-Z][A-Z0-9]*)*-(?:A|T|R|DQ)\d+`
 /** A definition is a bulleted bold ID whose bold span ends in `:` or `.` —
  * pointer bullets (`**LS-DQ1 …** — see`) intentionally don't match. */
 const DEFINITION_RE = new RegExp(String.raw`^\s*-\s+\*\*(${ID_PATTERN})[^*]*[:.]\*\*`)
@@ -83,7 +86,7 @@ const parseNamespaceTable = () => {
     if (row.trimStart().startsWith('|') === false) continue
     const cells = row.split('|').map((c) => c.trim())
     if (cells.length < 3) continue
-    const namespaces = [...cells[1]!.matchAll(/`(LS(?:\.[A-Z]+)*)-\*`/g)].map((m) => m[1]!)
+    const namespaces = [...cells[1]!.matchAll(/`(LS(?:\.[A-Z][A-Z0-9]*)*)-\*`/g)].map((m) => m[1]!)
     if (namespaces.length === 0) continue
     const firstPath = /`([\w./-]+\/)`/.exec(cells[2]!)?.[1] ?? ''
     namespaces.forEach((namespace, i) => {
@@ -133,20 +136,21 @@ describe('intent layer (context/)', () => {
   it('has a resolvable target for every refines: marker', () => {
     const violations: string[] = []
     for (const file of mdFiles) {
-      fs.readFileSync(file, 'utf8')
-        .split('\n')
-        .forEach((lineText, i) => {
-          for (const match of lineText.matchAll(/`refines: ([^`]+)`/g)) {
-            for (const token of match[1]!.split(',').map((t) => t.trim())) {
-              if (/^<[^>]+>$/.test(token) === true) continue // syntax placeholder in convention docs
-              if (new RegExp(`^${ID_PATTERN}$`).test(token) === false) {
-                violations.push(`${rel(file)}:${i + 1} — malformed refines target ${JSON.stringify(token)}`)
-              } else if (definedIds.has(token) === false) {
-                violations.push(`${rel(file)}:${i + 1} — refines target ${token} is not defined anywhere`)
-              }
-            }
+      // Scan the whole file (not line-by-line) so a `refines:` span that wraps
+      // across lines is parsed as one span; the line number is derived from the
+      // match offset for reporting.
+      const text = fs.readFileSync(file, 'utf8')
+      for (const match of text.matchAll(/`refines:\s*([^`]+)`/g)) {
+        const line = text.slice(0, match.index).split('\n').length
+        for (const token of match[1]!.split(',').map((t) => t.trim()).filter((t) => t.length > 0)) {
+          if (/^<[^>]+>$/.test(token) === true) continue // syntax placeholder in convention docs
+          if (new RegExp(`^${ID_PATTERN}$`).test(token) === false) {
+            violations.push(`${rel(file)}:${line} — malformed refines target ${JSON.stringify(token)}`)
+          } else if (definedIds.has(token) === false) {
+            violations.push(`${rel(file)}:${line} — refines target ${token} is not defined anywhere`)
           }
-        })
+        }
+      }
     }
     expect(violations, violations.join('\n')).toEqual([])
   })
