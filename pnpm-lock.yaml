@@ -26,7 +26,7 @@ overrides:
   '@tanstack/start-server-core': 1.145.7
   '@tanstack/start-client-core': 1.145.7
 
-packageExtensionsChecksum: sha256-+vuw21Y4B6QmumvqtVA0lp3bJmZUtO5Uam8Y3wfubzE=
+packageExtensionsChecksum: sha256-6QRcYLQaei02Zt3wQj7DyvIhJqzSdeJ8crzELgh/JTI=
 
 importers:
 
@@ -190,7 +190,7 @@ importers:
         version: 19.2.3(react@19.2.3)
       rehype-mermaid:
         specifier: 3.0.0
-        version: 3.0.0(playwright@1.59.1)
+        version: 3.0.0(playwright@1.61.0)
       remark-custom-header-id:
         specifier: 1.0.0
         version: 1.0.0
@@ -238,8 +238,8 @@ importers:
         version: 5.0.0
     devDependencies:
       '@playwright/test':
-        specifier: 1.59.1
-        version: 1.59.1
+        specifier: 1.61.0
+        version: 1.61.0
       '@types/hast':
         specifier: 3.0.4
         version: 3.0.4
@@ -660,8 +660,8 @@ importers:
         specifier: 0.4.0-dev.25
         version: 0.4.0-dev.25(7052566b436493a41bc3bee2aca6f228)
       '@playwright/test':
-        specifier: 1.59.1
-        version: 1.59.1
+        specifier: 1.61.0
+        version: 1.61.0
       '@svgr/plugin-jsx':
         specifier: ^8.1.0
         version: 8.1.0(@svgr/core@8.1.0(typescript@6.0.3))
@@ -757,8 +757,8 @@ importers:
         specifier: 0.4.0-dev.25
         version: 0.4.0-dev.25(7052566b436493a41bc3bee2aca6f228)
       '@playwright/test':
-        specifier: 1.59.1
-        version: 1.59.1
+        specifier: 1.61.0
+        version: 1.61.0
       '@types/react':
         specifier: 19.2.7
         version: 19.2.7
@@ -806,8 +806,8 @@ importers:
         specifier: 0.4.0-dev.25
         version: 0.4.0-dev.25(7052566b436493a41bc3bee2aca6f228)
       '@playwright/test':
-        specifier: 1.59.1
-        version: 1.59.1
+        specifier: 1.61.0
+        version: 1.61.0
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -864,8 +864,8 @@ importers:
         specifier: 0.4.0-dev.25
         version: 0.4.0-dev.25(7052566b436493a41bc3bee2aca6f228)
       '@playwright/test':
-        specifier: 1.59.1
-        version: 1.59.1
+        specifier: 1.61.0
+        version: 1.61.0
       '@types/react':
         specifier: 19.2.7
         version: 19.2.7
@@ -1124,8 +1124,8 @@ importers:
         specifier: 2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
       '@playwright/test':
-        specifier: 1.59.1
-        version: 1.59.1
+        specifier: 1.61.0
+        version: 1.61.0
       '@standard-schema/spec':
         specifier: 1.1.0
         version: 1.1.0
@@ -1537,6 +1537,9 @@ importers:
       effect:
         specifier: 4.0.0-beta.97
         version: 4.0.0-beta.97
+      esbuild:
+        specifier: 0.28.0
+        version: 0.28.0
       jsdom:
         specifier: 26.1.0
         version: 26.1.0
@@ -1854,8 +1857,8 @@ importers:
         specifier: 2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
       '@playwright/test':
-        specifier: 1.59.1
-        version: 1.59.1
+        specifier: 1.61.0
+        version: 1.61.0
       '@standard-schema/spec':
         specifier: 1.1.0
         version: 1.1.0
@@ -2044,8 +2047,8 @@ importers:
         specifier: 2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
       '@playwright/test':
-        specifier: 1.59.1
-        version: 1.59.1
+        specifier: 1.61.0
+        version: 1.61.0
       '@standard-schema/spec':
         specifier: 1.1.0
         version: 1.1.0
@@ -2180,8 +2183,8 @@ importers:
         specifier: 2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
       '@playwright/test':
-        specifier: 1.59.1
-        version: 1.59.1
+        specifier: 1.61.0
+        version: 1.61.0
       '@vitejs/plugin-react':
         specifier: 5.1.2
         version: 5.1.2(vite@7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))
@@ -2314,8 +2317,8 @@ importers:
         specifier: 0.4.0-dev.25
         version: 0.4.0-dev.25(515121e40303e1eba3656a6597d10e40)
       '@playwright/test':
-        specifier: 1.59.1
-        version: 1.59.1
+        specifier: 1.61.0
+        version: 1.61.0
       '@standard-schema/spec':
         specifier: 1.1.0
         version: 1.1.0
@@ -5623,8 +5626,8 @@ packages:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
 
-  '@playwright/test@1.59.1':
-    resolution: {integrity: sha512-PG6q63nQg5c9rIi4/Z5lR5IVF7yU5MqmKaPOe0HSc0O2cX1fPi96sUQu5j7eo4gKCkB2AnNGoWt7y4/Xx3Kcqg==}
+  '@playwright/test@1.61.0':
+    resolution: {integrity: sha512-cKA5B6lpFEMyMGjxF54QihfYpB4FkEGH+qZhtArDEG+wezQAJY8Pq6C7T1SjWz+FFzt3TbyoXBQYk/0292TdJA==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -11849,13 +11852,13 @@ packages:
   pkg-types@1.3.1:
     resolution: {integrity: sha512-/Jm5M4RvtBFVkKWRu2BLUTNP8/M2a+UwuAX+ae4770q1qVGtfjG+WTCupoZixokjmHiry8uI+dlY8KXYV5HVVQ==}
 
-  playwright-core@1.59.1:
-    resolution: {integrity: sha512-HBV/RJg81z5BiiZ9yPzIiClYV/QMsDCKUyogwH9p3MCP6IYjUFu/MActgYAvK0oWyV9NlwM3GLBjADyWgydVyg==}
+  playwright-core@1.61.0:
+    resolution: {integrity: sha512-caX7TrY3Ml6egyDX0WUcTHDxodl/b51y5wJOdCEA36QviK/s2g081hvmGs8eaE3DWb6NYZQ6BjO/QkNRPenoPA==}
     engines: {node: '>=18'}
     hasBin: true
 
-  playwright@1.59.1:
-    resolution: {integrity: sha512-C8oWjPR3F81yljW9o5OxcWzfh6avkVwDD2VYdwIGqTkl+OGFISgypqzfu7dOe4QNLL2aqcWBmI3PMtLIK233lw==}
+  playwright@1.61.0:
+    resolution: {integrity: sha512-Z+7BeeqQPRRzklHsVFP4KTGIyMxKUmfeRA4WisM6G3/XW6nwGeX6fX9qYaDa+CiUqpOkb2f6X3nar05R3kSuJQ==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -15538,9 +15541,9 @@ snapshots:
       effect: 4.0.0-beta.97
       find-my-way-ts: 0.1.6
 
-  '@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.96.1(effect@4.0.0-beta.97))(@effect/rpc@0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)':
+  '@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.96.1(effect@4.0.0-beta.97))(@effect/rpc@0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)':
     dependencies:
-      '@effect/experimental': 0.60.0(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1)
+      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1)
       '@effect/platform': 0.96.1(effect@4.0.0-beta.97)
       '@effect/rpc': 0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)
       effect: 4.0.0-beta.97
@@ -15574,11 +15577,11 @@ snapshots:
       toml: 3.0.0
       yaml: 2.8.1
 
-  '@effect/cluster@0.58.2(@effect/platform@0.96.1(effect@4.0.0-beta.97))(@effect/rpc@0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.82.4(effect@4.0.0-beta.97))(@effect/rpc@0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)':
+  '@effect/cluster@0.58.2(@effect/platform@0.96.1(effect@4.0.0-beta.97))(@effect/rpc@0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.82.4(effect@4.0.0-beta.97))(@effect/rpc@0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)':
     dependencies:
       '@effect/platform': 0.96.1(effect@4.0.0-beta.97)
       '@effect/rpc': 0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)
-      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)
+      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)
       '@effect/workflow': 0.18.0(@effect/experimental@0.60.0(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.82.4(effect@4.0.0-beta.97))(@effect/rpc@0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)
       effect: 4.0.0-beta.97
       kubernetes-types: 1.30.0
@@ -15731,7 +15734,7 @@ snapshots:
       effect: 4.0.0-beta.97
       find-my-way-ts: 0.1.6
       msgpackr: 1.11.12
-      multipasta: 0.2.7
+      multipasta: 0.2.8
 
   '@effect/printer-ansi@0.43.2(@effect/typeclass@0.34.2(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)':
     dependencies:
@@ -15766,13 +15769,6 @@ snapshots:
       '@effect/platform': 0.96.1(effect@4.0.0-beta.97)
       effect: 4.0.0-beta.97
       msgpackr: 1.11.12
-
-  '@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)':
-    dependencies:
-      '@effect/experimental': 0.60.0(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1)
-      '@effect/platform': 0.96.1(effect@4.0.0-beta.97)
-      effect: 4.0.0-beta.97
-      uuid: 11.1.0
 
   '@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)':
     dependencies:
@@ -17618,6 +17614,7 @@ snapshots:
     dependencies:
       '@livestore/adapter-web': 0.3.1(0d3f5cbacd1e2cf93060d7fca89116e1)
       '@livestore/utils': 0.3.1(f6c1b14131029678faafc6f2021d3a6b)
+      '@parcel/watcher': 2.5.6
       vite: 7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@effect/cli'
@@ -17641,6 +17638,7 @@ snapshots:
     dependencies:
       '@livestore/adapter-web': 0.4.0-dev.25(ed1eeb1ec70d5f13d36dbd153b67b464)
       '@livestore/utils': 0.4.0-dev.25(ed1eeb1ec70d5f13d36dbd153b67b464)
+      '@parcel/watcher': 2.5.6
       vite: 7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@effect/ai'
@@ -17667,6 +17665,7 @@ snapshots:
     dependencies:
       '@livestore/adapter-web': 0.4.0-dev.25(0bee7813882395aa3f6aeafe479bf9de)
       '@livestore/utils': 0.4.0-dev.25(0bee7813882395aa3f6aeafe479bf9de)
+      '@parcel/watcher': 2.5.6
       vite: 7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@effect/ai'
@@ -17693,6 +17692,7 @@ snapshots:
     dependencies:
       '@livestore/adapter-web': 0.4.0-dev.25(de075cfeb143eba5bc1e773d14c0f5f5)
       '@livestore/utils': 0.4.0-dev.25(de075cfeb143eba5bc1e773d14c0f5f5)
+      '@parcel/watcher': 2.5.6
       vite: 7.3.6(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@effect/ai'
@@ -17719,6 +17719,7 @@ snapshots:
     dependencies:
       '@livestore/adapter-web': 0.4.0-dev.25(01dad68931190ff3fa273ec838d11204)
       '@livestore/utils': 0.4.0-dev.25(01dad68931190ff3fa273ec838d11204)
+      '@parcel/watcher': 2.5.6
       vite: 7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@effect/ai'
@@ -18105,9 +18106,9 @@ snapshots:
 
   '@livestore/peer-deps@0.4.0(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.82.4(effect@4.0.0-beta.97))(@effect/rpc@0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(@opentelemetry/api-logs@0.217.0)(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.7.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.41.1)(ioredis@5.11.1)(vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(jsdom@26.1.0)(vite@7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)))':
     dependencies:
-      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.96.1(effect@4.0.0-beta.97))(@effect/rpc@0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)
+      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.96.1(effect@4.0.0-beta.97))(@effect/rpc@0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)
       '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-beta.97))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)
-      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-beta.97))(@effect/rpc@0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.82.4(effect@4.0.0-beta.97))(@effect/rpc@0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)
+      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-beta.97))(@effect/rpc@0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.82.4(effect@4.0.0-beta.97))(@effect/rpc@0.75.1(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)
       '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1)
       '@effect/opentelemetry': 4.0.0-beta.97(@opentelemetry/api-logs@0.217.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.7.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.41.1)(effect@4.0.0-beta.97)
       '@effect/platform': 0.96.1(effect@4.0.0-beta.97)
@@ -18117,7 +18118,7 @@ snapshots:
       '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)
       '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)
       '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)
-      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.82.4(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)
+      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)(ioredis@5.11.1))(@effect/platform@0.96.1(effect@4.0.0-beta.97))(effect@4.0.0-beta.97)
       '@effect/typeclass': 0.40.0(effect@4.0.0-beta.97)
       '@effect/vitest': 4.0.0-beta.97(effect@4.0.0-beta.97)(vitest@4.1.9(@opentelemetry/api@1.9.0)(@types/node@25.3.3)(jsdom@26.1.0)(vite@7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)))
       '@opentelemetry/api': 1.9.0
@@ -19576,9 +19577,9 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
-  '@playwright/test@1.59.1':
+  '@playwright/test@1.61.0':
     dependencies:
-      playwright: 1.59.1
+      playwright: 1.61.0
 
   '@pnpm/tabtab@0.5.4':
     dependencies:
@@ -26191,13 +26192,13 @@ snapshots:
 
   merge2@1.4.1: {}
 
-  mermaid-isomorphic@3.1.0(playwright@1.59.1):
+  mermaid-isomorphic@3.1.0(playwright@1.61.0):
     dependencies:
       '@fortawesome/fontawesome-free': 6.7.2
       katex: 0.16.47
       mermaid: 11.15.0
     optionalDependencies:
-      playwright: 1.59.1
+      playwright: 1.61.0
 
   mermaid@11.15.0:
     dependencies:
@@ -27494,11 +27495,11 @@ snapshots:
       mlly: 1.8.2
       pathe: 2.0.3
 
-  playwright-core@1.59.1: {}
+  playwright-core@1.61.0: {}
 
-  playwright@1.59.1:
+  playwright@1.61.0:
     dependencies:
-      playwright-core: 1.59.1
+      playwright-core: 1.61.0
     optionalDependencies:
       fsevents: 2.3.2
 
@@ -28291,19 +28292,19 @@ snapshots:
       '@types/hast': 3.0.4
       hast-util-format: 1.1.0
 
-  rehype-mermaid@3.0.0(playwright@1.59.1):
+  rehype-mermaid@3.0.0(playwright@1.61.0):
     dependencies:
       '@types/hast': 3.0.4
       hast-util-from-html-isomorphic: 2.0.0
       hast-util-to-text: 4.0.2
-      mermaid-isomorphic: 3.1.0(playwright@1.59.1)
+      mermaid-isomorphic: 3.1.0(playwright@1.61.0)
       mini-svg-data-uri: 1.4.4
       space-separated-tokens: 2.0.2
       unified: 11.0.5
       unist-util-visit-parents: 6.0.2
       vfile: 6.0.3
     optionalDependencies:
-      playwright: 1.59.1
+      playwright: 1.61.0
 
   rehype-parse@9.0.1:
     dependencies:

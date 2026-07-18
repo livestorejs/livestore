@@ -170,6 +170,34 @@ export const livestoreOnlyCatalog = {
   husky: '9.1.7',
   madge: '8.0.0',
   yaml: '2.8.1',
+  /**
+   * HELD pending a dedicated dep-upgrade PR. The effect-utils base catalog moved these
+   * external deps forward (incl. risky majors: vite 7→8, @types/node 25→26,
+   * @vitejs/plugin-react 5→6, @tanstack/react-router +25 minors). We pin them back to
+   * their prior versions here so this effect-utils bump PR stays scoped to CI/genie
+   * changes; the follow-up PR will take the upgrades. Remove this block once that lands.
+   */
+  '@opentelemetry/api': '1.9.0',
+  '@opentelemetry/resources': '2.2.0',
+  '@opentelemetry/sdk-metrics': '2.2.0',
+  '@opentelemetry/sdk-trace-base': '2.2.0',
+  '@opentelemetry/sdk-trace-node': '2.2.0',
+  '@opentelemetry/sdk-trace-web': '2.2.0',
+  '@playwright/test': '1.61.0',
+  '@tailwindcss/vite': '4.1.18',
+  tailwindcss: '4.1.18',
+  '@tanstack/react-router': '1.145.7',
+  '@tanstack/react-start': '1.145.10',
+  '@tanstack/router-plugin': '1.145.10',
+  '@testing-library/react': '16.3.1',
+  '@types/bun': '1.3.10',
+  '@types/node': '25.3.3',
+  '@types/react': '19.2.7',
+  '@vitejs/plugin-react': '5.1.2',
+  esbuild: '0.28.0',
+  react: '19.2.3',
+  'react-dom': '19.2.3',
+  vite: '7.3.1',
 } as const
 
 const toCamelCase = (value: string) => value.replace(/-([a-z])/g, (_, char: string) => char.toUpperCase())

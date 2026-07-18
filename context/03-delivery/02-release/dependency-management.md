@@ -109,7 +109,7 @@ After dependency updates, verify these meta-items:
 - [ ] `bunx expo install --check` passes for all Expo examples
 - [ ] Version constants updated appropriately
 - [ ] TypeScript build passes: `mono ts`
-- [ ] Linting passes: `dt lint:full` (run `dt lint:full:fix` if needed)
+- [ ] Linting passes: `devenv tasks run lint:full` (run `devenv tasks run lint:full:fix` if needed)
 
 ## Troubleshooting
 

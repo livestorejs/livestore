@@ -14,7 +14,9 @@ let
     else
       inputs.effect-utils;
   effectUtilsPackages = effectUtils.packages.${pkgs.system};
+  effectTsgo = effectUtilsPackages.effect-tsgo;
   taskModules = effectUtils.devenvModules.tasks;
+  pnpmPkg = effectUtils.lib.mkPnpm { inherit pkgs; };
   ci = builtins.getEnv "CI" != "";
 
   # Custom oxlint with NAPI bindings + @overeng/oxc-config JS plugin
@@ -31,13 +33,26 @@ let
   # NOTE: Using pnpm temporarily due to bun bugs. Plan to switch back once fixed.
   # See: effect-utils/context/workarounds/bun-issues.md
   pnpmPackages = [
+    "."
+    "docs"
+    "docs/src/content/_assets/code"
+    # examples
+    "examples/cloudflare-todomvc"
+    "examples/tutorial-starter"
+    "examples/web-email-client"
+    "examples/web-linearlite"
+    "examples/web-todomvc"
+    "examples/web-todomvc-script"
+    "examples/web-todomvc-sync-cf"
     # packages/@livestore
     "packages/@livestore/adapter-cloudflare"
     "packages/@livestore/adapter-web"
     "packages/@livestore/common"
     "packages/@livestore/common-cf"
     "packages/@livestore/effect-playwright"
+    "packages/@livestore/framework-toolkit"
     "packages/@livestore/livestore"
+    "packages/@livestore/peer-deps"
     "packages/@livestore/react"
     "packages/@livestore/sqlite-wasm"
     "packages/@livestore/sync-cf"
@@ -48,15 +63,16 @@ let
     # packages/@local
     "packages/@local/astro-tldraw"
     "packages/@local/astro-twoslash-code"
+    "packages/@local/astro-twoslash-code/example"
     "packages/@local/shared"
     # tests
     "tests/integration"
+    "tests/package-common"
     "tests/perf"
     "tests/perf-eventlog"
+    "tests/sync-provider"
     "tests/wa-sqlite"
     # other
-    "docs"
-    "examples"
     "scripts"
   ];
 
@@ -106,13 +122,6 @@ let
       exit 1
     fi
 
-    playwright_bin="tests/integration/node_modules/.bin/playwright"
-    if [ ! -x "$playwright_bin" ]; then
-      echo "Expected Playwright binary not found: $playwright_bin" >&2
-      echo "Run release:devtools-artifact:certify-liveness instead of the no-install variant when dependencies are not installed yet." >&2
-      exit 1
-    fi
-
     backup_dir="$(mktemp -d)"
     package_links=(
       "tests/integration/node_modules/@livestore/devtools-vite"
@@ -135,10 +144,89 @@ let
       done
       rm -rf "$backup_dir"
     }
-    trap restore_node_modules EXIT
+
+    dev_server_pid=""
+    dev_server_log=""
+    stop_dev_server() {
+      if [ -n "$dev_server_pid" ]; then
+        kill "$dev_server_pid" 2>/dev/null || true
+        wait "$dev_server_pid" 2>/dev/null || true
+      fi
+      if [ -n "$dev_server_log" ]; then
+        rm -f "$dev_server_log"
+      fi
+    }
+    cleanup_certification() {
+      stop_dev_server
+      restore_node_modules
+    }
+    trap cleanup_certification EXIT
 
     unpack_dir="$(mktemp -d)"
     tar -xzf "$repacked_tarball" -C "$unpack_dir"
+    hydrate_devtools_package() {
+      package_dir="$1"
+      installed_devtools_package="$(readlink -f tests/integration/node_modules/@livestore/devtools-vite)"
+      mkdir -p "$package_dir/node_modules/@livestore"
+
+      dependencies=(
+        "@livestore/adapter-web"
+        "@livestore/utils"
+        "vite"
+      )
+
+      for dependency in "''${dependencies[@]}"; do
+        source_path="tests/integration/node_modules/$dependency"
+        target_path="$package_dir/node_modules/$dependency"
+        if [ ! -e "$source_path" ]; then
+          echo "Expected installed dependency for exact DevTools artifact not found: $source_path" >&2
+          exit 1
+        fi
+        rm -rf "$target_path"
+        mkdir -p "$(dirname "$target_path")"
+        ln -s "$(readlink -f "$source_path")" "$target_path"
+      done
+
+      parcel_watcher_path="$(
+        bun --eval '
+          const { createRequire } = require("node:module")
+          const path = require("node:path")
+          const requireFromDevtools = createRequire(path.resolve(process.argv[1], "package.json"))
+          console.log(path.dirname(requireFromDevtools.resolve("@parcel/watcher/package.json")))
+        ' "$installed_devtools_package"
+      )"
+      parcel_watcher_target="$package_dir/node_modules/@parcel/watcher"
+      rm -rf "$parcel_watcher_target"
+      mkdir -p "$(dirname "$parcel_watcher_target")"
+      cp -a "$parcel_watcher_path" "$parcel_watcher_target"
+
+      parcel_watcher_platform_packages="$(
+        bun --eval '
+          const { createRequire } = require("node:module")
+          const path = require("node:path")
+          const watcherPackageJson = path.resolve(process.argv[1], "package.json")
+          const requireFromWatcher = createRequire(watcherPackageJson)
+          for (const dependency of Object.keys(require(watcherPackageJson).optionalDependencies ?? {})) {
+            try {
+              console.log(dependency + "\t" + path.dirname(requireFromWatcher.resolve(dependency + "/package.json")))
+            } catch {}
+          }
+        ' "$parcel_watcher_path"
+      )"
+      mkdir -p "$package_dir/node_modules/@parcel"
+      while IFS="$(printf '\t')" read -r dependency dependency_path; do
+        if [ -z "$dependency" ] || [ -z "$dependency_path" ]; then
+          continue
+        fi
+        platform_target="$package_dir/node_modules/$dependency"
+        rm -rf "$platform_target"
+        mkdir -p "$(dirname "$platform_target")"
+        ln -s "$dependency_path" "$platform_target"
+      done <<EOF
+$parcel_watcher_platform_packages
+EOF
+    }
+    hydrate_devtools_package "$unpack_dir/package"
     for package_link in "''${package_links[@]}"; do
       rm -rf "$package_link"
       cp -a "$unpack_dir/package" "$package_link"
@@ -155,19 +243,49 @@ let
 
     (
       cd tests/integration
-      CI=true \
-        FORCE_PLAYWRIGHT_VIA_CLI=1 \
-        PLAYWRIGHT_SUITE=devtools \
-        PLAYWRIGHT_HEADLESS="''${PLAYWRIGHT_HEADLESS:-1}" \
+      dev_server_port="''${LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT:-4444}"
+      dev_server_log="$(mktemp)"
+      TEST_LIVESTORE_SCHEMA_PATH_JSON='"./devtools/todomvc/livestore/schema.ts"' \
         LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
-        DT_PASSTHROUGH=1 \
-        ./node_modules/.bin/playwright test \
-          src/tests/playwright/devtools/web.play.ts \
-          --reporter=line
+        VITE_OTEL_EXPORTER_OTLP_ENDPOINT= \
+        ./node_modules/.bin/vite \
+          --config src/tests/playwright/fixtures/vite.config.ts \
+          dev \
+          --port "$dev_server_port" \
+          --strictPort \
+          >"$dev_server_log" 2>&1 &
+      dev_server_pid="$!"
+      trap stop_dev_server EXIT
+
+      if ! LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT="$dev_server_port" \
+        LIVESTORE_DEV_SERVER_PID="$dev_server_pid" \
+        bun --eval '
+          const port = process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT ?? "4444"
+          const pid = Number(process.env.LIVESTORE_DEV_SERVER_PID ?? "0")
+          const deadline = Date.now() + 60_000
+          const paths = ["/devtools/todomvc", "/_livestore/web"]
+          while (Date.now() < deadline) {
+            try {
+              if (pid > 0) process.kill(pid, 0)
+            } catch {
+              throw new Error("Vite dev server exited before accepting connections")
+            }
+            try {
+              const responses = await Promise.all(paths.map((path) => fetch("http://localhost:" + port + path)))
+              if (responses.every((response) => response.status < 500)) process.exit(0)
+            } catch {}
+            await new Promise((resolve) => setTimeout(resolve, 250))
+          }
+          throw new Error("Timed out waiting for exact DevTools artifact routes on localhost:" + port)
+        '; then
+        echo "Vite dev server log:" >&2
+        sed -n '1,200p' "$dev_server_log" >&2
+        exit 1
+      fi
     )
 
     certification_path="''${LIVESTORE_DEVTOOLS_CERTIFICATION:-release/devtools-artifact.certification.json}"
-    evidence="DevTools exact-artifact liveness passed for $LIVESTORE_RELEASE_VERSION"
+    evidence="DevTools exact-artifact Vite route liveness passed for $LIVESTORE_RELEASE_VERSION"
     if [[ -n "''${GITHUB_SERVER_URL:-}" && -n "''${GITHUB_REPOSITORY:-}" && -n "''${GITHUB_RUN_ID:-}" ]]; then
       evidence="$evidence in $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
     fi
@@ -197,8 +315,6 @@ let
 in
 {
   imports = [
-    # dt command for running devenv tasks
-    effectUtils.devenvModules.dt
     # OTEL observability stack with livestore-specific dashboards
     # Keep release/task automation independent from user machine-level OTEL
     # dashboard sync state. System OTEL remains useful for interactive shells,
@@ -209,7 +325,11 @@ in
     # Shared task modules from effect-utils
     taskModules.genie
     (taskModules.megarepo { syncAll = !ci; })
-    (taskModules.ts { tsconfigFile = "tsconfig.dev.json"; })
+    (taskModules.ts {
+      tsconfigFile = "tsconfig.dev.json";
+      tsBinPkg = effectTsgo;
+      tscBin = "$DEVENV_ROOT/node_modules/.bin/tsc";
+    })
     (taskModules.check {
       hasTests = false;
       hasNixCheck = false;
@@ -218,7 +338,7 @@ in
       packages = pnpmPackages;
       extraDirs = [ ".astro" ];
     })
-    # Lint tasks are dt-native via lint-oxc plus local aggregate wrappers.
+    # Lint tasks via lint-oxc plus local aggregate wrappers.
     (taskModules.lint-oxc {
       lintPaths = [
         "packages"
@@ -226,37 +346,6 @@ in
         "scripts"
         "docs"
         ".github"
-      ];
-      execIfModifiedPatterns = [
-        # packages/@livestore
-        "packages/@livestore/*/src/**/*.ts"
-        "packages/@livestore/*/src/**/*.tsx"
-        "packages/@livestore/*/src/**/*.js"
-        "packages/@livestore/*/src/**/*.jsx"
-        "packages/@livestore/*/*.ts"
-        "packages/@livestore/*/*.js"
-        "packages/@livestore/*/bin/*.ts"
-        "packages/@livestore/*/examples/*/*.ts"
-        "packages/@livestore/*/examples/*/*.tsx"
-        "packages/@livestore/*/examples/*/src/**/*.ts"
-        "packages/@livestore/*/examples/*/src/**/*.tsx"
-        # packages/@local
-        "packages/@local/*/src/**/*.ts"
-        "packages/@local/*/src/**/*.tsx"
-        "packages/@local/*/*.ts"
-        "packages/@local/*/*.js"
-        # tests
-        "tests/**/*.ts"
-        "tests/**/*.tsx"
-        # scripts
-        "scripts/**/*.ts"
-        "scripts/**/*.js"
-        # docs
-        "docs/src/**/*.ts"
-        "docs/src/**/*.tsx"
-        # linter configs
-        ".oxfmtrc.json"
-        ".oxlintrc.json"
       ];
       geniePatterns = [
         ".github/workflows/*.genie.ts"
@@ -281,10 +370,17 @@ in
       genieCoverageExcludes = [ "packages/@livestore/wa-sqlite/" ];
       tsconfig = "tsconfig.dev.json";
     })
-    (taskModules.ts-effect-lsp {
-      tsconfigFile = "tsconfig.dev.json";
+    (taskModules.pnpm {
+      packages = pnpmPackages;
+      inherit pnpmPkg;
     })
-    (taskModules.pnpm { packages = pnpmPackages; })
+    # PR-preview reporting: provides workflow-report:{collect-bundle,
+    # render-comment-body,publish}, invoked by the generated report-pr-preview
+    # CI job. Replaces the former `nix run <effect-utils>#workflow-report` flake
+    # entrypoint (removed upstream when reporting moved into ci-tools).
+    (taskModules.workflow-report {
+      ciToolsBin = "${effectUtilsPackages.ci-tools}/bin/ci-tools";
+    })
     # Setup task (auto-runs in enterShell)
     (taskModules.setup {
       requiredTasks = [ ];
@@ -299,45 +395,25 @@ in
     ./nix/devenv-modules/tasks/local/github-rulesets.nix
   ];
 
-  # Keep Nix-provided `tsc` aligned with the workspace TypeScript catalog override so
-  # devenv tasks validate against the same compiler as package-local tooling. Remove
-  # this once the inherited nixpkgs `pkgs.typescript` provides TypeScript 6.0.3 or newer.
-  overlays = [
-    (_final: prev: {
-      typescript = prev.typescript.overrideAttrs (
-        _finalAttrs: _oldAttrs:
-        let
-          typescriptSrc = prev.fetchFromGitHub {
-            owner = "microsoft";
-            repo = "TypeScript";
-            rev = "v6.0.3";
-            hash = "sha256-RvM+fGO94ItdQxgXUcCdkpX039pytnMri100wGjNhhc=";
-          };
-        in
-        {
-          version = "6.0.3";
-          src = typescriptSrc;
-          npmDeps = prev.fetchNpmDeps {
-            name = "typescript-6.0.3-npm-deps";
-            src = typescriptSrc;
-            hash = "sha256-nnBXImViLpuPPNYwBxe3T+hpoiuA/7qpIMVcXJmjklg=";
-          };
-          npmDepsHash = "sha256-nnBXImViLpuPPNYwBxe3T+hpoiuA/7qpIMVcXJmjklg=";
-        }
-      );
-    })
+  # Non-`.genie.ts` generator inputs (source-of-truth modules that the `.genie.ts`
+  # files import: catalog/topology/validation helpers under genie/). These join the
+  # `genie:run` warm-cache fingerprint so editing e.g. `genie/external.ts` actually
+  # busts the cache and regenerates — otherwise a helper-only edit is silently
+  # skipped as "up to date". The `.genie.ts` sources themselves are already tracked
+  # by the module; the glob overlap with genie/**/*.genie.ts is harmless.
+  effectUtils.genie.extraInputGlobs = [
+    ":(glob)genie/**/*.ts"
   ];
 
   packages = [
-    (effectUtils.lib.mkPnpm { inherit pkgs; })
+    (lib.lowPrio pnpmPkg)
+    (lib.lowPrio effectTsgo)
     pkgs.bun
     pkgs.nodejs_24
-    pkgs.typescript
     oxlintWithPlugins
     pkgs.oxfmt
     # CLIs from effect-utils (Nix-built packages)
   ]
-  ++ [ effectUtilsPackages.effect-tsgo ]
   ++ [
     effectUtilsPackages.genie
     effectUtils.packages.${pkgs.system}.megarepo
@@ -454,7 +530,7 @@ in
       set -euo pipefail
       cd "$DEVENV_ROOT"
 
-      DT_PASSTHROUGH=1 pnpm exec changeset status --since "''${CHANGESET_BASE_REF:-origin/main}"
+      DEVENV_TASK_PASSTHROUGH=1 pnpm exec changeset status --since "''${CHANGESET_BASE_REF:-origin/main}"
     '';
     after = [ "pnpm:install" ];
   };
@@ -468,12 +544,12 @@ in
       # Changesets edits generated package manifests before Genie re-materializes
       # them from release/version.json.
       git ls-files '*package.json' | xargs chmod u+w
-      DT_PASSTHROUGH=1 pnpm exec changeset version
+      DEVENV_TASK_PASSTHROUGH=1 pnpm exec changeset version
       bun scripts/src/commands/changesets.ts restore-prerelease-changesets
       bun scripts/src/commands/changesets.ts sync-version-source
-      DT_PASSTHROUGH=1 genie
+      DEVENV_TASK_PASSTHROUGH=1 genie
       bun scripts/src/commands/changesets.ts sync-standalone-consumers
-      DT_PASSTHROUGH=1 pnpm install --lockfile-only --no-frozen-lockfile
+      DEVENV_TASK_PASSTHROUGH=1 pnpm install --lockfile-only --no-frozen-lockfile
       bun scripts/src/commands/changesets.ts assert-fixed-versions
       bun scripts/src/commands/changesets.ts write-release-plan --npm-tag "''${LIVESTORE_NPM_TAG:-latest}"
     '';

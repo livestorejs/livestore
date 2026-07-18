@@ -14,6 +14,6 @@ export default tsconfigJson({
     jsx: 'preserve',
     jsxImportSource: 'astro',
   },
-  references: [{ path: '..' }],
+  references: [{ path: '..' }, { path: '../../../@livestore/utils' }],
   include: ['astro.config.mjs', 'src', 'scripts', 'tests', 'playwright.config.ts'],
 })

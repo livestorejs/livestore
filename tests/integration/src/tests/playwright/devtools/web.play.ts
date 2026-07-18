@@ -13,6 +13,7 @@ import { type Scope, Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } 
 import { checkConnectionRemainsActive, checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
 
 const usedPages = new Set<PW.Page>()
+const appStoreId = 'app-root'
 
 type AdapterKind = 'persisted' | 'inmemory'
 
@@ -94,8 +95,13 @@ const makeTabPair = (
     if (options?.appDevtoolsProtocolVersionOverride == null && options?.skipOtelSpanLink !== true) {
       const rootSpanContext = yield* Effect.tryPromise(() =>
         page
-          .waitForFunction('window.__debugLiveStore?.default !== undefined')
-          .then(() => page.evaluate('window.__debugLiveStore.default._dev.otel.rootSpanContext()')),
+          .waitForFunction((storeId) => (window as any).__debugLiveStore?.[storeId] !== undefined, appStoreId)
+          .then(() =>
+            page.evaluate(
+              (storeId) => (window as any).__debugLiveStore[storeId]._dev.otel.rootSpanContext(),
+              appStoreId,
+            ),
+          ),
       ).pipe(
         Effect.andThen(Schema.decodeUnknownEffect(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))),
       )
@@ -186,9 +192,10 @@ const runTest =
 
             await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
 
-            const tab1ChannelId: string = await tab1.page.evaluate(
-              `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
-            )
+            const tab1ChannelId: string = await tab1.page.evaluate((storeId) => {
+              const store = (window as any).__debugLiveStore[storeId]
+              return `${store.clientId}:${store.sessionId}`
+            }, appStoreId)
             await tab1.devtools.locator(`a:text("${tab1ChannelId}")`).describe('devtools-tab-1:click').click()
 
             const tables = ['uiState (1)', 'todos (1)']
@@ -266,12 +273,14 @@ const runTest =
 
               await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
 
-              const tab1ChannelId: string = await tab1.page.evaluate(
-                `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
-              )
-              const tab2ChannelId: string = await tab2.page.evaluate(
-                `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
-              )
+              const tab1ChannelId: string = await tab1.page.evaluate((storeId) => {
+                const store = (window as any).__debugLiveStore[storeId]
+                return `${store.clientId}:${store.sessionId}`
+              }, appStoreId)
+              const tab2ChannelId: string = await tab2.page.evaluate((storeId) => {
+                const store = (window as any).__debugLiveStore[storeId]
+                return `${store.clientId}:${store.sessionId}`
+              }, appStoreId)
 
               const tables = ['uiState (2)', 'todos (1)']
 
@@ -376,18 +385,18 @@ const shutdownTab = Effect.fn('shutdown-tab')(function* (tab: PW.Page, options?:
 
   const didShutdown = yield* Playwright.withPage(
     () =>
-      tab.evaluate(() => {
-        const store = (window as any).__debugLiveStore?.default
+      tab.evaluate((storeId) => {
+        const store = (window as any).__debugLiveStore?.[storeId]
         if (store === undefined) return false
 
         store.shutdown()
         return true
-      }),
+      }, appStoreId),
     { label: 'shutdown' },
   ).pipe(Effect.timeout(1000))
 
   if (didShutdown === false && options?.expectStore !== false) {
-    yield* Effect.die(new Error('Expected LiveStore debug store to be available for shutdown'))
+    return yield* Effect.die(new Error('Expected LiveStore debug store to be available for shutdown'))
   }
 
   if (didShutdown === true) {

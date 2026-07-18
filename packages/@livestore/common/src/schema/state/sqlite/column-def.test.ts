@@ -1,6 +1,7 @@
+import { TestSchema } from 'effect/testing'
 import { assert, describe, expect, it } from 'vitest'
 
-import { Schema, SchemaAST, Struct, TestSchema } from '@livestore/utils/effect'
+import { Schema, SchemaAST, Struct } from '@livestore/utils/effect'
 
 import * as State from '../mod.ts'
 import { withAutoIncrement, withColumnType, withDefault, withPrimaryKey, withUnique } from './column-annotations.ts'

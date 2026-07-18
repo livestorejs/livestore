@@ -109,19 +109,19 @@ LiveStore release CI must verify:
 - metadata declares a supported DevTools protocol version
 - repacked package shape is valid
 - the artifact does not leak source, sourcemaps, credentials, or local paths
-- node adapter direct-route liveness survives the heartbeat window
+- the exact repacked `@livestore/devtools-vite` package serves the DevTools
+  bundle through Vite
 
-The release artifact liveness scenario must use the exact downloaded
-artifact, not a local workspace build. The Node adapter scenario must replace
-every workspace `@livestore/devtools-vite` resolution path used by the
-fixture, including the transitive package under `@livestore/adapter-node`;
-replacing only the test package's top-level `node_modules` entry is not
-sufficient proof.
+The release artifact liveness scenario must use the exact downloaded artifact,
+not a local workspace build. It must replace every `@livestore/devtools-vite`
+resolution path used by the fixture it runs — including transitive paths such as
+the one under `@livestore/adapter-node`; replacing only an unused top-level
+`node_modules` entry is not sufficient proof.
 
-Direct web session liveness is still required in the normal Playwright
-DevTools suite, but it is not claimed as exact-artifact release proof because
-it does not exercise the repacked `@livestore/devtools-vite` artifact
-selected by the LiveStore manifest.
+Direct web session liveness is still required in the normal Playwright DevTools
+suite, but it is not claimed as exact-artifact release proof because that suite
+exercises the current workspace package graph rather than the repacked
+`@livestore/devtools-vite` artifact selected by the LiveStore manifest.
 
 The liveness scenario must also be independent of developer-machine sponsor
 activation state. Public DevTools artifacts enforce the sponsor/license gate

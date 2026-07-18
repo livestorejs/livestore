@@ -23,7 +23,10 @@
     "plugins": [
       {
         "name": "@effect/language-service",
-        "reportSuggestionsAsWarningsInTsc": true,
+        "ignoreEffectWarningsInTscExitCode": true,
+        "ignoreEffectSuggestionsInTscExitCode": true,
+        "ignoreEffectErrorsInTscExitCode": false,
+        "includeSuggestionsInTsc": true,
         "pipeableMinArgCount": 2,
         "diagnosticSeverity": {
           "missedPipeableOpportunity": "warning",
@@ -34,6 +37,7 @@
       }
     ],
     "rootDir": "./src",
+    "composite": false,
     "moduleResolution": "Bundler",
     "jsx": "preserve",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
@@ -41,6 +45,12 @@
   "include": ["src"],
   "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts", "src/content/_assets/code/**/*"],
   "references": [
+    {
+      "path": "../packages/@livestore/adapter-cloudflare"
+    },
+    {
+      "path": "../packages/@livestore/adapter-web"
+    },
     {
       "path": "../packages/@livestore/common"
     },
@@ -51,7 +61,13 @@
       "path": "../packages/@livestore/react"
     },
     {
+      "path": "../packages/@livestore/sync-cf"
+    },
+    {
       "path": "../packages/@livestore/utils"
+    },
+    {
+      "path": "../packages/@local/astro-tldraw"
     },
     {
       "path": "../packages/@local/astro-twoslash-code"

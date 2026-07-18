@@ -36,6 +36,11 @@ const examplesWorkspaceSettings = {
 }
 
 export const repoPackageExtensions = {
+  '@livestore/devtools-vite': {
+    dependencies: {
+      '@parcel/watcher': '^2.5.6',
+    },
+  },
   'starlight-auto-sidebar': {
     dependencies: {
       astro: '>=6.0.0',

@@ -65,7 +65,7 @@ export const mailboxEvents = {
       type: Schema.Literals(['system', 'user']),
       color: Schema.String.pipe(Schema.NullOr),
       displayOrder: Schema.Number,
-      createdAt: Schema.Date,
+      createdAt: Schema.DateFromString.check(Schema.isDateValid()),
     }),
   }),
 
@@ -76,7 +76,7 @@ export const mailboxEvents = {
       id: Schema.String,
       subject: Schema.String,
       participants: Schema.Array(Schema.String), // Array of email addresses
-      createdAt: Schema.Date,
+      createdAt: Schema.DateFromString.check(Schema.isDateValid()),
     }),
   }),
 
@@ -86,7 +86,7 @@ export const mailboxEvents = {
     schema: Schema.Struct({
       threadId: Schema.String,
       labelId: Schema.String,
-      appliedAt: Schema.Date,
+      appliedAt: Schema.DateFromString.check(Schema.isDateValid()),
     }),
   }),
 
@@ -96,7 +96,7 @@ export const mailboxEvents = {
     schema: Schema.Struct({
       threadId: Schema.String,
       labelId: Schema.String,
-      removedAt: Schema.Date,
+      removedAt: Schema.DateFromString.check(Schema.isDateValid()),
     }),
   }),
 

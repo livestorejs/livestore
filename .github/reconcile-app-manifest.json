@@ -1,0 +1,14 @@
+{
+  "name": "livestore-ruleset-reconciler",
+  "description": "Reconciles the branch ruleset from .github/repo-settings.json. Definition is managed as code; see context/repo-ruleset-sync.",
+  "url": "https://github.com/livestorejs/livestore/tree/main/context/repo-ruleset-sync",
+  "public": false,
+  "hook_attributes": {
+    "active": false
+  },
+  "default_permissions": {
+    "administration": "write",
+    "metadata": "read"
+  },
+  "default_events": []
+}

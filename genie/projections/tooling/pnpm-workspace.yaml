@@ -10,6 +10,9 @@ peerDependencyRules:
     '@effect/experimental': '>=0.58.0'
     '@effect/platform': '>=0.94.2'
     '@effect/rpc': '>=0.73.0'
+    eslint: '>=10.0.0'
+    typescript: '>=6.0.0'
+    vitest: '>=4.0.0'
 
 enableGlobalVirtualStore: true
 
@@ -22,6 +25,10 @@ sideEffectsCache: false
 verifyStoreIntegrity: true
 
 strictStorePkgContentCheck: true
+
+ignoreScripts: true
+
+minimumReleaseAgeExclude: ['@effect/platform', '@types/node', effect]
 
 pmOnFail: ignore
 
@@ -36,12 +43,13 @@ supportedArchitectures:
 
 allowBuilds:
   '@parcel/watcher': true
-  '@myobie/pty': true
-  esbuild: true
-  msgpackr-extract: true
-  node-pty: true
-  sharp: true
-  unix-dgram: true
+  '@myobie/pty': false
+  esbuild: false
+  fsevents: false
+  msgpackr-extract: false
+  node-pty: false
+  sharp: false
+  unix-dgram: false
   '@mixedbread/cli': true
   cbor-extract: true
   dtrace-provider: true
@@ -54,6 +62,9 @@ packageExtensions:
     dependencies:
       '@types/react': 19.2.7
       '@types/react-dom': 19.2.3
+  '@livestore/devtools-vite':
+    dependencies:
+      '@parcel/watcher': ^2.5.6
   starlight-auto-sidebar:
     dependencies:
       astro: '>=5.0.0'

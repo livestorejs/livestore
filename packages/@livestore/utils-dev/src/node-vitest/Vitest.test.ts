@@ -38,6 +38,25 @@ Vitest.describe('Vitest.asProp', () => {
     { fastCheck: { numRuns: 4 } },
   )
 
+  Vitest.asProp(
+    Vitest.live,
+    'converts record-form schemas to arbitraries',
+    {
+      count: Schema.Int,
+      payload: Schema.Struct({
+        label: Schema.String,
+        note: Schema.optional(Schema.String),
+      }),
+    },
+    ({ count, payload }) =>
+      Effect.sync(() => {
+        Vitest.expect(Number.isInteger(count)).toBe(true)
+        Vitest.expect(typeof payload.label).toBe('string')
+        Vitest.expect(payload.note === undefined || typeof payload.note === 'string').toBe(true)
+      }),
+    { fastCheck: { numRuns: 10 } },
+  )
+
   // Failing test - should show initial + shrinking phases
   let alreadyFailed = false
   Vitest.asProp(
