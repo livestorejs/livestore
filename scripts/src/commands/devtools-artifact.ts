@@ -56,6 +56,89 @@ type ArtifactSource = {
   readonly chromeZipSha256?: string
 }
 
+export type DevtoolsArtifactPackageJson = {
+  readonly [key: string]: unknown
+  readonly version?: string
+  readonly dependencies?: Readonly<Record<string, string>>
+  readonly peerDependencies?: Readonly<Record<string, string>>
+  readonly homepage?: string
+  readonly repository?: string | { readonly type?: string; readonly url?: string; readonly directory?: string }
+  readonly bugs?: { readonly url?: string }
+}
+
+const livestoreCorePeerDependencies = ['@livestore/adapter-web', '@livestore/utils'] as const
+
+export const repackDevtoolsPackageJson = ({
+  artifactPackage,
+  version,
+}: {
+  readonly artifactPackage: DevtoolsArtifactPackageJson
+  readonly version: string
+}): DevtoolsArtifactPackageJson => {
+  const watcherVersion = artifactPackage.dependencies?.['@parcel/watcher']
+  if (watcherVersion === undefined) {
+    throw new Error('DevTools artifact is missing required runtime dependency @parcel/watcher')
+  }
+
+  const repackedPackage = {
+    ...artifactPackage,
+    version,
+    repository: {
+      type: 'git',
+      url: 'https://github.com/livestorejs/livestore',
+      directory: 'packages/@livestore/devtools-vite',
+    },
+    homepage: 'https://github.com/livestorejs/livestore/tree/main/packages/@livestore/devtools-vite',
+    bugs: { url: 'https://github.com/livestorejs/livestore/issues' },
+    dependencies: { '@parcel/watcher': watcherVersion },
+    peerDependencies: {
+      ...artifactPackage.peerDependencies,
+      '@livestore/adapter-web': version,
+      '@livestore/utils': version,
+    },
+  } satisfies DevtoolsArtifactPackageJson
+
+  assertRepackedDevtoolsPackageJson({ artifactPackage, repackedPackage, version })
+  return repackedPackage
+}
+
+export const assertRepackedDevtoolsPackageJson = ({
+  artifactPackage,
+  repackedPackage,
+  version,
+}: {
+  readonly artifactPackage: DevtoolsArtifactPackageJson
+  readonly repackedPackage: DevtoolsArtifactPackageJson
+  readonly version: string
+}) => {
+  const repackedPeerDependencies = repackedPackage.peerDependencies ?? {}
+  for (const peerName of livestoreCorePeerDependencies) {
+    if (repackedPeerDependencies[peerName] !== version) {
+      throw new Error(`DevTools repack requires exact peer ${peerName}@${version}`)
+    }
+  }
+
+  for (const [peerName, artifactRange] of Object.entries(artifactPackage.peerDependencies ?? {})) {
+    const expectedRange =
+      livestoreCorePeerDependencies.includes(peerName as (typeof livestoreCorePeerDependencies)[number]) === true
+        ? version
+        : artifactRange
+    if (repackedPeerDependencies[peerName] !== expectedRange) {
+      throw new Error(`DevTools repack changed peer dependency ${peerName}; expected ${expectedRange}`)
+    }
+  }
+
+  const artifactWatcherVersion = artifactPackage.dependencies?.['@parcel/watcher']
+  const repackedDependencies = repackedPackage.dependencies ?? {}
+  if (
+    artifactWatcherVersion === undefined ||
+    Object.keys(repackedDependencies).length !== 1 ||
+    repackedDependencies['@parcel/watcher'] !== artifactWatcherVersion
+  ) {
+    throw new Error('DevTools repack runtime dependencies must contain only the artifact @parcel/watcher version')
+  }
+}
+
 export type DevtoolsArtifactCertification = {
   readonly livestoreVersion: string
   readonly devtoolsBuildId: string
@@ -670,27 +753,8 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
 
   const packageDir = path.join(unpackDir, 'package')
   const packageJsonPath = path.join(packageDir, 'package.json')
-  const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
-    version?: string
-    dependencies?: Record<string, string>
-    homepage?: string
-    repository?: string | { readonly type?: string; readonly url?: string; readonly directory?: string }
-    bugs?: { readonly url?: string }
-  }
-  pkg.version = version
-  pkg.repository = {
-    type: 'git',
-    url: 'https://github.com/livestorejs/livestore',
-    directory: 'packages/@livestore/devtools-vite',
-  }
-  pkg.homepage = 'https://github.com/livestorejs/livestore/tree/main/packages/@livestore/devtools-vite'
-  pkg.bugs = { url: 'https://github.com/livestorejs/livestore/issues' }
-  pkg.dependencies = {
-    ...pkg.dependencies,
-    '@livestore/adapter-web': version,
-    '@livestore/utils': version,
-    vite: '*',
-  }
+  const artifactPackage = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as DevtoolsArtifactPackageJson
+  const pkg = repackDevtoolsPackageJson({ artifactPackage, version })
   writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`)
 
   writeFileSync(
