@@ -111,7 +111,7 @@ of the App secret), with tasks `github:rulesets:{sync,plan,check}` and
   informational, non-gating check.
 - **Gate removal:** the former `ruleset-drift-check` job is removed from `ci.yml`
   — it was never a required check, but its failure set the whole `ci` conclusion
-  to `failure`, which wedged snapshot releases (LS.DEL.REL-DQ2). With no ruleset
+  to `failure`, which wedged snapshot releases (LS.DEL.REL-R07). With no ruleset
   job in `ci`, drift can no longer affect the `ci` conclusion; live drift is
   reconciled by the merge, not policed before it.
 
@@ -131,14 +131,6 @@ workflow. Each repo owns its own `.github/repo-settings.json`.
 - **LS.DEL.REL-DQ1 First contrib release proof:** Exercise the contrib
   release workflow with a dry-run or controlled first release before relying
   on it for routine releases.
-- **LS.DEL.REL-DQ2 Decouple snapshot publishing from the whole `ci`
-  conclusion:** `publish-snapshot-version` gates on `workflow_run.conclusion ==
-  'success'`, so any red `ci` job (even a non-release one) wedges snapshots
-  ([.delta/DELTA-001](./.delta/DELTA-001-snapshot-gated-on-ci-conclusion.md)).
-  Removing the ruleset job from `ci` (see Ruleset Reconciliation) fixed the
-  specific trigger, not the coupling. Should snapshots gate on the specific
-  build/test jobs, or publish on an independent trigger? The ruleset-reconcile
-  absorption recommends promoting this to a normative requirement.
 - **LS.DEL.REL-DQ3 Alchemy `GitHub.App` adoption:** If alchemy ships a
   `GitHub.App` resource ([alchemy-run/alchemy#843](https://github.com/alchemy-run/alchemy/issues/843)),
   the manifest-as-spec + custom drift-check could be replaced by a real resource
@@ -147,3 +139,6 @@ workflow. Each repo owns its own `.github/repo-settings.json`.
   `scripts/src/commands/github.ts` hardcodes `livestorejs/livestore`, so the
   ruleset tasks only target core; the owner/repo must be parameterized before
   `livestore-contrib` can enroll. Deferred to contrib enrollment.
+
+(LS.DEL.REL-DQ2 was promoted 2026-07-18 to requirement LS.DEL.REL-R07 —
+snapshot publishing isolation.)

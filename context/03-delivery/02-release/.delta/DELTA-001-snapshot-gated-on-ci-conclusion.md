@@ -14,16 +14,13 @@ flaky preview deploy, `report-pr-preview`) — silently wedges snapshot releases
 This was the original defect behind the ruleset-reconcile work (#1424): a
 `ruleset-drift-check` failure set the whole `ci` conclusion to `failure` and
 stalled snapshots. Moving ruleset reconciliation out of `ci` (spec §Ruleset
-Reconciliation, LS.DEL.REL-DQ2) removes *that* trigger but not the general
-coupling.
+Reconciliation) removes *that* trigger but not the general coupling this delta
+tracks.
 
 ## VRS
 
-[spec.md](../spec.md) §Open Design Questions LS.DEL.REL-DQ2. The
-ruleset-reconcile absorption (2026-07-18) recommends promoting the
-"snapshots must not gate on whole-`ci` conclusion" rule to a normative
-`LS.DEL.REL` requirement; that promotion is a protected `requirements.md` edit
-pending owner confirmation.
+Violates [requirements.md](../requirements.md) LS.DEL.REL-R07 (snapshot
+publishing isolation, adopted 2026-07-18).
 
 ## Close condition
 

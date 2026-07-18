@@ -41,3 +41,10 @@ the normative contract stays here):
   and release notes state the kind plus a migration path where feasible.
   The user-facing promise lives in `01-product/` LS.PROD-R08. Adopted
   2026-07-16 (interview).
+- **LS.DEL.REL-R07 Snapshot publishing isolation:** Snapshot publishing must
+  not be gated on the whole `ci` run conclusion — a job that does not establish
+  release soundness (governance, preview deploy, reporting) must not be able to
+  wedge a snapshot release. Currently violated (`publish-snapshot-version` keys
+  off `workflow_run.conclusion == 'success'`); tracked in
+  [.delta/DELTA-001](./.delta/DELTA-001-snapshot-gated-on-ci-conclusion.md).
+  Adopted 2026-07-18 (owner-confirmed).

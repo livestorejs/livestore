@@ -46,10 +46,9 @@ Resolved 2026-07-16 (command/intent design session):
   `.decisions/0001-ruleset-reconciliation.md` +
   `.reference/github-app-platform-constraints.md` +
   `ruleset-app-provisioning-runbook.md`; the snapshot-gating divergence →
-  `.delta/DELTA-001-snapshot-gated-on-ci-conclusion.md` + `LS.DEL.REL-DQ2`
-  (promotion to a normative requirement is flagged there, pending owner
-  confirmation of a protected `requirements.md` edit). The flat
-  `context/repo-ruleset-sync/` dir is removed.
+  `.delta/DELTA-001-snapshot-gated-on-ci-conclusion.md`, promoted to the
+  normative requirement `LS.DEL.REL-R07` (snapshot publishing isolation, adopted
+  2026-07-18). The flat `context/repo-ruleset-sync/` dir is removed.
 
 ## Pending (inbound)
 

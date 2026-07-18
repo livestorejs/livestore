@@ -77,7 +77,7 @@ Live drift is now *reconciled by the merge*, not *policed before it*. This
 removes the "governance check wedges releases" failure class structurally.
 Decoupling snapshot publishing from the whole `ci` conclusion (so a governance
 job can never gate a release) remains a separate, still-recommended change
-tracked in [LS.DEL.REL-DQ2](../.delta/DELTA-001-snapshot-gated-on-ci-conclusion.md). A post-apply drift is a
+tracked in [LS.DEL.REL-R07](../.delta/DELTA-001-snapshot-gated-on-ci-conclusion.md). A post-apply drift is a
 real, alertable failure. Cost: a merged ruleset change is enforced on GitHub only
 after the post-merge apply runs, not at merge instant.
 
