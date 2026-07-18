@@ -81,7 +81,7 @@ let
     cd "$DEVENV_ROOT"
 
     : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
-    artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
+    artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}" --require-official-release)
     if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" || -n "''${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
       echo "release:devtools-artifact repack requires LIVESTORE_DEVTOOLS_MANIFEST so release-candidate certification can bind to the selected artifact." >&2
       echo "Use release:devtools-artifact:verify for direct metadata/tarball integrity checks." >&2
@@ -456,7 +456,8 @@ in
       set -euo pipefail
       cd "$DEVENV_ROOT"
 
-      artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
+      artifact_command=verify
+      artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}" --require-official-release)
       if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" || -n "''${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
         : "''${LIVESTORE_DEVTOOLS_METADATA:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
         : "''${LIVESTORE_DEVTOOLS_TARBALL:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
@@ -464,9 +465,12 @@ in
         if [[ -n "''${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
           artifact_args+=(--chrome-zip "$LIVESTORE_DEVTOOLS_CHROME_ZIP")
         fi
+      elif [[ -n "''${LIVESTORE_DEVTOOLS_PREVIOUS_MANIFEST:-}" ]]; then
+        artifact_command=verify-transition
+        artifact_args+=(--previous-manifest "$LIVESTORE_DEVTOOLS_PREVIOUS_MANIFEST")
       fi
 
-      bun scripts/src/commands/devtools-artifact.ts verify "''${artifact_args[@]}"
+      bun scripts/src/commands/devtools-artifact.ts "$artifact_command" "''${artifact_args[@]}"
     '';
     after = [ "pnpm:install" ];
   };
