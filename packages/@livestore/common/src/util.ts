@@ -7,10 +7,19 @@ export type SqlValue = string | number | Uint8Array<ArrayBuffer> | null
 
 export type Bindable = ReadonlyArray<SqlValue> | ParamsObject
 
+/**
+ * Numeric schema for the SQLite `REAL` domain. Unlike `Schema.Finite` it accepts
+ * `Infinity`/`NaN`, because SQLite `REAL` columns can legitimately store them and
+ * bind values / DEFAULT codecs must round-trip those through the devtools/debug
+ * protocol. This is the single carve-out for the SQLite REAL numeric domain — use it
+ * instead of a bare `Schema.Number` so the `schemaNumber` exception lives in one place.
+ */
+// @effect-diagnostics-next-line schemaNumber:off -- see SqliteReal docstring: SQLite REAL permits Infinity/NaN, so Schema.Finite would wrongly reject valid values
+export const SqliteReal = Schema.Number
+
 export const SqlValueSchema = Schema.Union([
   Schema.String,
-  // @effect-diagnostics-next-line schemaNumber:off -- SQL bind values feed SQLite REAL columns, which can legitimately hold Infinity/NaN (matching the field-defs.ts DEFAULT-codec carve-out); Schema.Finite would reject those and break PreparedBindValues round-tripping in the devtools/debug protocol. Keep Schema.Number on purpose.
-  Schema.Number,
+  SqliteReal,
   Schema.Uint8Array as any as Schema.Codec<Uint8Array<ArrayBuffer>>,
   Schema.Null,
 ])
