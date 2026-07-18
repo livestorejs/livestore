@@ -200,16 +200,23 @@ apparatus).
 
 ## Enforcement
 
-The mechanical invariants of this document are enforced by a Vitest suite at
-`tests/package-common/src/intent-layer/intent-layer.test.ts`, which runs in
-the default unit lane (`mono test unit`, CI `test-unit`). It checks: ID
-uniqueness, ID namespace ↔ directory mapping (parsed from the ID Scheme table
-above), `refines:` target resolution, relative-link integrity, spec `Status`
-headers, absence of empty companion dirs, decision-record shape (
-`NNNN-slug.md`, `Status:` line, no committed `.proposed/`), and the maturity
-vocabulary (only `experimental` is a legal marker; `proposal` is rejected —
-see Maturity Markers). Semantic review (testability, decision evidence quality)
-remains human/agent judgment.
+The mechanical invariants of this document are checked by a Vitest suite at
+`tests/package-common/src/intent-layer/intent-layer.test.ts` (`mono test unit`
+locally, and in the CI `test-unit` job). It checks: ID uniqueness, ID namespace
+↔ directory mapping (parsed from the ID Scheme table above), `refines:` target
+resolution, relative-link integrity, spec `Status` headers, absence of empty
+companion dirs, decision-record shape (`NNNN-slug.md`, `Status:` line, no
+committed `.proposed/`), and the maturity vocabulary (only `experimental` is a
+legal marker; `proposal` is rejected — see Maturity Markers). Semantic review
+(testability, decision evidence quality) remains human/agent judgment.
+
+The suite runs in CI but its failures do **not yet hard-block the run**:
+`tests/package-common` sits in the CI runner's `sequentialPackages` group, which
+is executed through `Effect.ignore` (a workaround for flaky `webmesh` tests,
+`scripts/src/commands/test-commands.ts`), so a failing invariant is logged, not
+gated. Making this suite fail the `test-unit` job — by running it as a dedicated
+non-ignored step — is tracked in
+[.delta/DELTA-002-enforcement-not-ci-blocking.md](./.delta/DELTA-002-enforcement-not-ci-blocking.md).
 
 ## Open Design Questions
 
