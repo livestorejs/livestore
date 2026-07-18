@@ -28,9 +28,9 @@ const createColumn = (
       case 'text':
         return Schema.String
       case 'integer':
-        return options.defaultValue === true || options.defaultValue === false ? Schema.Boolean : Schema.Number
+        return options.defaultValue === true || options.defaultValue === false ? Schema.Boolean : Schema.Finite
       case 'real':
-        return Schema.Number
+        return Schema.Finite
       case 'blob':
         return Schema.Uint8ArrayFromBase64
       default:

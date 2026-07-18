@@ -4,15 +4,15 @@ const ProductSchema = Schema.Struct({
   id: Schema.Int.pipe(State.SQLite.withPrimaryKey, State.SQLite.withAutoIncrement),
   sku: Schema.String.pipe(State.SQLite.withUnique),
   name: Schema.String,
-  price: Schema.Number.pipe(State.SQLite.withDefault(0)),
+  price: Schema.Finite.pipe(State.SQLite.withDefault(0)),
   category: Schema.Literals(['electronics', 'clothing', 'books']),
   metadata: Schema.optional(
     Schema.Struct({
-      weight: Schema.Number,
+      weight: Schema.Finite,
       dimensions: Schema.Struct({
-        width: Schema.Number,
-        height: Schema.Number,
-        depth: Schema.Number,
+        width: Schema.Finite,
+        height: Schema.Finite,
+        depth: Schema.Finite,
       }),
     }),
   ),

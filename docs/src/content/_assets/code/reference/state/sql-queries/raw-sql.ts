@@ -16,5 +16,5 @@ const filtered$ = queryDb({
 
 const count$ = queryDb({
   query: sql`select count(*) as count from my_table`,
-  schema: Schema.Struct({ count: Schema.Number }).pipe(Schema.pluck('count'), Schema.Array, Schema.headOrElse()),
+  schema: Schema.Struct({ count: Schema.Finite }).pipe(Schema.pluck('count'), Schema.Array, Schema.headOrElse()),
 })

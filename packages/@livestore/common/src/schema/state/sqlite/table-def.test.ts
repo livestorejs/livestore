@@ -484,7 +484,7 @@ describe('table function overloads', () => {
 
   it('supports discriminated unions with parsed JSON payloads', () => {
     const CircleDataSchema = Schema.Struct({
-      radius: Schema.Number,
+      radius: Schema.Finite,
     })
     const CircleSchema = Schema.Struct({
       kind: Schema.Literal('circle'),
@@ -492,7 +492,7 @@ describe('table function overloads', () => {
     })
 
     const SquareDataSchema = Schema.Struct({
-      sideLength: Schema.Number,
+      sideLength: Schema.Finite,
     })
     const SquareSchema = Schema.Struct({
       kind: Schema.Literal('square'),

@@ -8,7 +8,7 @@ describe('Client Document Optimistic Schema', () => {
   describe('Full Set Operations', () => {
     const valueSchema = Schema.Struct({
       name: Schema.String,
-      age: Schema.Number,
+      age: Schema.Finite,
       email: Schema.String,
     })
 
@@ -54,7 +54,7 @@ describe('Client Document Optimistic Schema', () => {
   describe('Partial Set Operations', () => {
     const valueSchema = Schema.Struct({
       field1: Schema.String,
-      field2: Schema.Number,
+      field2: Schema.Finite,
     })
 
     const defaultValue = { field1: 'default1', field2: 0 }
