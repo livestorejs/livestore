@@ -704,29 +704,23 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           const shouldPrintPlan = plan._tag === 'Some' && plan.value === true
 
           if (shouldPrintPlan === true) {
-            console.log(
-              // @effect-diagnostics-next-line preferSchemaOverJson:off -- indented, ad-hoc plan preview for humans reading CI logs; Schema's JSON codec is compact
-              JSON.stringify(
-                {
-                  branchName,
-                  isPr,
-                  liveStoreVersion,
-                  site,
-                  siteUrl: docsSiteUrl,
-                  build: shouldBuild,
-                  deployTarget:
-                    prAliases !== undefined
-                      ? { _tag: 'pr-aliases', ...prAliases }
-                      : prod === true
-                        ? { _tag: 'prod' }
-                        : { _tag: 'alias', alias: branchAlias },
-                  purgeCdn,
-                  step,
-                },
-                null,
-                2,
-              ),
-            )
+            const planPreview = yield* Schema.encodeEffect(Schema.jsonStringIndented(Schema.Unknown))({
+              branchName,
+              isPr,
+              liveStoreVersion,
+              site,
+              siteUrl: docsSiteUrl,
+              build: shouldBuild,
+              deployTarget:
+                prAliases !== undefined
+                  ? { _tag: 'pr-aliases', ...prAliases }
+                  : prod === true
+                    ? { _tag: 'prod' }
+                    : { _tag: 'alias', alias: branchAlias },
+              purgeCdn,
+              step,
+            }).pipe(Effect.orDie)
+            console.log(planPreview)
             return
           }
 
