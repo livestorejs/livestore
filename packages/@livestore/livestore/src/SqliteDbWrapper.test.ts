@@ -1,3 +1,4 @@
+import * as otel from '@opentelemetry/api'
 import { expect } from 'vitest'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -7,6 +8,27 @@ import { StoreInternalsSymbol } from './store/store-types.ts'
 import { makeTodoMvc } from './utils/tests/fixture.ts'
 
 Vitest.describe('SqliteDbWrapper', () => {
+  Vitest.live('works with the OpenTelemetry API no-op tracer', (_test) =>
+    Effect.gen(function* () {
+      const otelTracer = otel.trace.getTracer('sqlite-wrapper-noop-test')
+      const probeSpan = otelTracer.startSpan('verify-noop-tracer')
+      expect(probeSpan.isRecording()).toBe(false)
+      probeSpan.end()
+
+      // Store creation exercises the configureSQLite execute path.
+      const store = yield* makeTodoMvc({ otelTracer })
+      const sqliteDbWrapper = store[StoreInternalsSymbol].sqliteDbWrapper
+      const { durationMs } = sqliteDbWrapper.cachedExecute('CREATE TABLE noop_timing_test (id INTEGER)', undefined, {
+        hasNoEffects: true,
+      })
+
+      expect(sqliteDbWrapper.select('SELECT 1 AS value')).toEqual([{ value: 1 }])
+      expect(sqliteDbWrapper.debugInfo.queryFrameCount).toBeGreaterThan(0)
+      expect(sqliteDbWrapper.debugInfo.queryFrameDuration).toBeGreaterThanOrEqual(0)
+      expect(durationMs).toBeGreaterThanOrEqual(0)
+    }),
+  )
+
   Vitest.describe('getTablesUsed', () => {
     const getTablesUsed = (query: string) =>
       Effect.gen(function* () {
