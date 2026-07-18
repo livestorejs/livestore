@@ -506,6 +506,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 #### Development Tooling
 
+- **Effect-utils source authority:** Aligned the Nix tooling implementation and source flake so exact megarepo pins cannot evaluate fixed-output hashes against a stale input revision ([#1453](https://github.com/livestorejs/livestore/issues/1453)).
 - **Effect v4 dependency cohort:** Updated the repository-wide Effect v4 dependency family to beta.99 and migrated graph access to the public API while preserving degree-local history traversal ([#1446](https://github.com/livestorejs/livestore/issues/1446)).
 - **Expo source-linked tracing:** Fixed the no-op tracer's intra-package CUID import so Metro can bundle workspace source while preserving Node evaluation ([#1450](https://github.com/livestorejs/livestore/issues/1450)).
 - **Strict peer dep composition:** Added `@effect/vitest` to `utilsEffectPeerDeps` and `@livestore/peer-deps`, and deduplicated the peer-deps package to derive its dependency list from the canonical `utilsEffectPeerDeps` source ([#1107](https://github.com/livestorejs/livestore/issues/1107)).
