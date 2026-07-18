@@ -15,11 +15,11 @@ const toolingWorkspaceRoot = pnpmWorkspaceYaml.root({
 })
 
 /**
- * Tooling install projection for Livestore.
+ * Tooling package-selection projection for Livestore.
  *
- * This extends the core install root with the local/docs/test packages needed by
- * downstream devtools and release workflows while still avoiding the full repo
- * workspace breadth.
+ * This extends the core selection with the local/docs/test packages needed by
+ * downstream devtools and release workflows. The repository root remains the
+ * sole package manifest and lock authority.
  */
 const toolingWorkspaceData = {
   ...toolingWorkspaceRoot.data,
