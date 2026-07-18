@@ -4,6 +4,15 @@
 
 This repository uses [`devenv`](https://devenv.sh) for development environment management. Run `devenv shell` to enter the development environment.
 
+## Intent Layer (`context/`)
+
+`context/` is the project's **intent layer** (a VRS tree) — the always-current source of truth for the system's design: vision, requirements, subsystem contracts (`spec.md`), ontology, decisions, and tracked drift. Read [`context/spec.md`](./context/spec.md) for its structure and conventions (branch layout, ID scheme, maturity markers, enforcement).
+
+- When you change system behavior or a contract, update the owning `context/` node. The docs site (`docs/`) derives from the intent layer and must not contradict it; `context/ontology.md` is the canonical source for terms.
+- Consequential choices → the node's `.decisions/`; confirmed divergence between intent and code → its `.delta/`; open design questions → `open-questions.md`. New/unaccepted proposals live in `contributor-docs/rfcs/`, not in spec bodies — they fold into the owning nodes on acceptance.
+- `vision.md` and `requirements.md` are protected — confirm with a maintainer before editing them; specs, decisions, deltas, and open questions evolve freely.
+- A Vitest suite (`tests/package-common/src/intent-layer/`) checks the tree's mechanical invariants (ID uniqueness, `refines:` resolution, links, decision shape, …); run it and keep it green when editing `context/`.
+
 ## Tooling
 
 - If tools aren't directly in `$PATH`, enter the dev environment first with `devenv shell`.
@@ -86,4 +95,5 @@ Checklist:
 ## Documentation / Examples
 
 - It's critical that the documentation and examples are up to date and accurate. When changing code, make sure to update the documentation and examples.
+- The `docs/` site derives from the intent layer (see Intent Layer above): update the owning `context/` node first, then the derived docs page — divergence between them is a docs bug.
 - For code snippets make sure to follow ./contributor-docs/docs/snippets.md
