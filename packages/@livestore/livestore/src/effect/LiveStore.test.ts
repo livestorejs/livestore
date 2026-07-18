@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest'
 
-import { type OtelTracer, Effect, Layer } from '@livestore/utils/effect'
+import { Effect, Layer } from '@livestore/utils/effect'
 
 import { schema } from '../utils/tests/fixture.ts'
 import { Store, type StoreTagClass } from './LiveStore.ts'
@@ -27,18 +27,23 @@ describe('Store.Tag R channel consistency', () => {
       yield* MainStore.commit()
     })
 
+    const _provided = prog.pipe(Effect.provide(storeLayer))
+    type _R = Effect.Services<typeof _provided>
     /** Providing the store layer must fully eliminate MainStore from R */
-    const _provided: Effect.Effect<void, unknown, OtelTracer.OtelTracer> = prog.pipe(Effect.provide(storeLayer))
-    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- regression test (issue #1103) asserts only the R channel; the error channel is intentionally widened to `unknown` to stay decoupled from the exact error type
-    void _provided
+    type _MainStoreNotInR = StoreTagClass<typeof schema, 'main'> extends _R ? false : true
+    const _check: _MainStoreNotInR = true
+    void _check
   })
 
   it('use() helper R channel is satisfied by the same layer', () => {
     const prog = MainStore.use(({ store }) => Effect.succeed(store))
 
-    const _provided: Effect.Effect<unknown, unknown, OtelTracer.OtelTracer> = prog.pipe(Effect.provide(storeLayer))
-    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- regression test (issue #1103) asserts only the R channel; the success/error channels are intentionally widened to `unknown` to stay decoupled from exact types
-    void _provided
+    const _provided = prog.pipe(Effect.provide(storeLayer))
+    type _R = Effect.Services<typeof _provided>
+    /** Providing the store layer must fully eliminate MainStore from R */
+    type _MainStoreNotInR = StoreTagClass<typeof schema, 'main'> extends _R ? false : true
+    const _check: _MainStoreNotInR = true
+    void _check
   })
 
   it('fromDeferred layer output satisfies the same R channel', () => {
