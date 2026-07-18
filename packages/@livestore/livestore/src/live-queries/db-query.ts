@@ -2,7 +2,6 @@ import * as otel from '@opentelemetry/api'
 
 import type { Bindable, QueryBuilder } from '@livestore/common'
 import {
-  getDurationMsFromSpan,
   getResultSchema,
   isQueryBuilder,
   prepareBindValues,
@@ -359,6 +358,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
           },
           otelContext ?? queryContext.rootOtelContext,
           (span) => {
+            const startTimePerfNow = performance.now()
             const otelContext = otel.trace.setSpan(otel.context.active(), span)
             const { store } = queryContext
 
@@ -434,7 +434,7 @@ Result:`,
 
             span.end()
 
-            const durationMs = getDurationMsFromSpan(span)
+            const durationMs = performance.now() - startTimePerfNow
 
             this.executionTimes.push(durationMs)
 

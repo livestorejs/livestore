@@ -4,8 +4,6 @@ import {
   BoundArray,
   BoundMap,
   type DebugInfo,
-  getDurationMsFromSpan,
-  getStartTimeHighResFromSpan,
   type MutableDebugInfo,
   type PreparedBindValues,
   type PreparedStatement,
@@ -179,6 +177,8 @@ export class SqliteDbWrapper implements SqliteDb {
       { attributes: { 'sql.query': queryStr } },
       options?.otelContext ?? this.otelRootSpanContext,
       (span) => {
+        const startTimePerfNow = performance.now()
+
         try {
           let stmt = this.cachedStmts.get(queryStr)
           if (stmt === undefined) {
@@ -196,7 +196,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
           span.end()
 
-          const durationMs = getDurationMsFromSpan(span)
+          const durationMs = performance.now() - startTimePerfNow
 
           this.debugInfo.queryFrameDuration += durationMs
           this.debugInfo.queryFrameCount++
@@ -208,7 +208,7 @@ export class SqliteDbWrapper implements SqliteDb {
               durationMs,
               rowsCount: undefined,
               queriedTables: new Set(),
-              startTimePerfNow: getStartTimeHighResFromSpan(span),
+              startTimePerfNow,
             })
           }
 
@@ -248,6 +248,8 @@ export class SqliteDbWrapper implements SqliteDb {
       {},
       otelContext ?? this.otelRootSpanContext,
       (span) => {
+        const startTimePerfNow = performance.now()
+
         try {
           span.setAttribute('sql.query', queryStr)
 
@@ -276,7 +278,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
           span.end()
 
-          const durationMs = getDurationMsFromSpan(span)
+          const durationMs = performance.now() - startTimePerfNow
 
           this.debugInfo.queryFrameDuration += durationMs
           this.debugInfo.queryFrameCount++
@@ -289,7 +291,7 @@ export class SqliteDbWrapper implements SqliteDb {
               durationMs,
               rowsCount: result.length,
               queriedTables: queriedTables_,
-              startTimePerfNow: getStartTimeHighResFromSpan(span),
+              startTimePerfNow,
             })
           }
 

@@ -309,6 +309,8 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 #### Core Runtime & Storage
 
+- **OpenTelemetry no-op tracing:** SQLite initialization and live queries now measure debug timing independently of tracer internals, preventing crashes when no OpenTelemetry SDK provider is registered ([#1448](https://github.com/livestorejs/livestore/issues/1448)).
+
 - **Event log lookup optimization:** Improved event log lookup performance for large unsynced logs, speeding startup time ([#1012](https://github.com/livestorejs/livestore/pull/1012)).
 
 - **DevTools protocol versioning:** The app and DevTools now exchange an explicit protocol version during handshake, decoupling DevTools runtime compatibility from package versions. Newer or older DevTools builds connect cleanly to any LiveStore runtime that speaks the same protocol ([#1232](https://github.com/livestorejs/livestore/pull/1232)).

@@ -1,6 +1,5 @@
 import * as otel from '@opentelemetry/api'
 
-import { getDurationMsFromSpan } from '@livestore/common'
 import { Equal, Hash } from '@livestore/utils/effect'
 
 import type { Thunk } from '../reactive.ts'
@@ -137,12 +136,13 @@ export class LiveStoreComputedQuery<TResult> extends LiveStoreQueryBase<TResult>
     this.results$ = this.reactivityGraph.makeThunk(
       (get, setDebugInfo, ctx, otelContext) =>
         ctx.otelTracer.startActiveSpan(`js:${label}`, {}, otelContext ?? ctx.rootOtelContext, (span) => {
+          const startTimePerfNow = performance.now()
           const otelContext = otel.trace.setSpan(otel.context.active(), span)
           const res = fn(makeGetAtomResult(get, ctx, otelContext, this.dependencyQueriesRef))
 
           span.end()
 
-          const durationMs = getDurationMsFromSpan(span)
+          const durationMs = performance.now() - startTimePerfNow
 
           this.executionTimes.push(durationMs)
 
