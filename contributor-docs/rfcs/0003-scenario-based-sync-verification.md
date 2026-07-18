@@ -89,12 +89,14 @@ The proposed system should:
    and network or process faults.
 5. Separate orchestration from visualization through a stable trace protocol.
 6. Evaluate safety, convergence, and liveness through explicit oracles.
-7. Preserve a path from lightweight in-process runs to worker, process,
-   browser, and real-provider execution profiles.
+7. Preserve a path from lightweight in-process participants to worker,
+   process, and browser participants, independently combinable with mock,
+   local, or deployed sync backends.
 8. Let agents construct and modify scenarios without generating large amounts
    of bespoke test code.
 9. Keep the scenario model independent of a particular read-model
-   implementation while exercising SQLite in the initial full-stack profile.
+   implementation while exercising SQLite in the initial full-stack
+   configuration.
 10. Produce self-contained artifacts that explain and replay failures.
 
 ## Non-Goals
@@ -148,12 +150,14 @@ meaning of a run.
 | **Application definition** | Executable module exporting the LiveStore event schema and, when enabled, materializers and state inspection helpers. |
 | **Scenario specification** | Serializable description of participants, workloads, faults, schedule, execution options, and assertions. |
 | **Participant** | A role instantiated by the runner: sync backend, client, leader, or client session. |
-| **Execution profile** | Mapping from participant roles to concrete in-process, worker, process, browser, or provider realizations. |
+| **Participant execution profile** | How client-side roles run: in-process, worker/process, or browser. |
+| **Sync-backend realization** | What the leader synchronizes with: a mock/in-memory backend, a locally running concrete backend, or a deployed backend. |
+| **Execution configuration** | Combination of one participant execution profile, one sync-backend realization, and an optional state profile. |
 | **Workload pattern** | Reusable generator of application actions assigned to one or more clients. |
 | **Fault model** | Controlled changes to connectivity, availability, latency, process lifetime, or capacity. |
 | **Trace** | Ordered stream of scenario actions and observed system transitions. |
 | **Oracle** | Executable rule that turns observed state and trace data into a verdict. |
-| **Run artifact** | Scenario, seed, profile, trace, measurements, snapshots, and oracle results needed to inspect or reproduce one run. |
+| **Run artifact** | Scenario, seed, execution configuration, trace, measurements, snapshots, and oracle results needed to inspect or reproduce one run. |
 
 “Scenario runner” is used instead of “scenario runtime” to avoid confusing the
 orchestrator with LiveStore's own runtime architecture.
@@ -169,7 +173,7 @@ The scenario specification must be able to express:
 | Area | Required information |
 | --- | --- |
 | Identity | Stable scenario name, description, format version, and tags. |
-| Reproduction | Random seed, scheduling mode, and execution profile. |
+| Reproduction | Random seed, scheduling mode, and execution configuration. |
 | Application | Reference to an application definition containing the event schema and optional materializers. |
 | Topology | Sync backend, clients, client sessions, links, and initial connectivity. |
 | Lifecycle | Participants present at start and participants added, restarted, or removed later. |
@@ -235,28 +239,44 @@ restart or remove an existing participant. This is necessary to test initial
 sync, multi-session behavior, recovery, leadership handover, and convergence
 after long offline periods.
 
-### Execution Profiles
+### Execution Configuration
 
-The decision between lightweight simulation and real browser/process
-execution should be represented as profiles, not embedded into scenario
-meaning.
+Client execution and sync-backend integration are orthogonal decisions. A
+scenario selects a participant execution profile and a sync-backend
+realization independently. For example, browser clients can use the mock
+backend, while in-process clients can connect to a deployed backend.
+
+#### Participant Execution Profiles
 
 | Profile | Intended use | Fidelity and cost |
 | --- | --- | --- |
 | **In-process** | Default correctness, generative, and stress exploration. | Real sync state and processors with controlled boundaries; highest determinism and density. |
 | **Worker/process** | Process-boundary, lifecycle, and crash behavior. | Real isolation with moderate startup and coordination cost. |
 | **Browser** | Web adapter, OPFS, Web Locks, worker topology, and browser lifecycle. | High fidelity and cost; fewer participants. |
-| **Provider integration** | Concrete provider transport and deployment behavior. | Highest environmental dependence; focused conformance runs. |
 
-The proposed first profile is in-process execution using the actual
-`SyncState`, `ClientSessionSyncProcessor`, `LeaderSyncProcessor`, mock sync
-backend, eventlog, and SQLite materialization path. This exercises the current
-production-shaped critical sections without requiring one OS process or
-browser per client.
+#### Sync-Backend Realizations
 
-Later profiles must preserve scenario semantics and trace vocabulary. A
-scenario that only uses capabilities supported by several profiles should be
-runnable unchanged across them.
+| Realization | Intended use | Fidelity and cost |
+| --- | --- | --- |
+| **Mock/in-memory** | Deterministic correctness, controlled failures, and high participant counts. | No real transport, deployment platform, authentication, or backend persistence. |
+| **Local concrete backend** | Exercise a real provider client and backend implementation in a local development environment. | Covers serialization, chunking, pagination, streaming/polling, persistence, and reconnection without remote deployment dependence. |
+| **Deployed sync backend** | End-to-end verification against an actual deployed backend. | Adds real authentication, networking, backend persistence, platform limits, and deployment behavior; highest environmental dependence. |
+
+The deployed-backend realization is what this RFC previously called “provider
+integration.” It concerns the leader-to-backend boundary, not where the client
+runs. A browser profile and deployed-backend realization together form the
+highest-fidelity end-to-end configuration, but either can be selected without
+the other.
+
+The proposed first configuration is in-process participants using the actual
+`SyncState`, `ClientSessionSyncProcessor`, and `LeaderSyncProcessor`, together
+with the mock/in-memory sync backend, eventlog, and SQLite materialization
+path. This exercises the current production-shaped critical sections without
+requiring one OS process or browser per client.
+
+Later participant profiles and backend realizations must preserve scenario
+semantics and trace vocabulary. A scenario using capabilities shared by
+several configurations should run unchanged across them.
 
 ### Time and Scheduling
 
@@ -306,7 +326,7 @@ than generate bespoke runner code.
 
 Fault injection should occur at the highest boundary that still exercises the
 behavior under test. The default model must respect the guarantees of the
-selected provider profile.
+selected sync-backend realization.
 
 Initial faults should include:
 
@@ -321,7 +341,7 @@ Initial faults should include:
 
 Message corruption, duplication, or arbitrary reordering should only be
 available when the selected transport can exhibit them or when an explicit
-adversarial transport profile is requested. Otherwise the harness risks
+adversarial backend realization is requested. Otherwise the harness risks
 finding failures in impossible systems.
 
 ### Read Models and SQLite
@@ -335,20 +355,22 @@ Sync correctness and materialized-state correctness are related but distinct:
 
 The scenario model should not define SQLite as part of sync semantics. It
 should select a state profile supplied by the application definition and
-execution profile.
+execution configuration.
 
-The initial full-stack profile should nevertheless include SQLite because the
-current processors integrate materialization into important behavior:
+The initial full-stack state profile should nevertheless include SQLite
+because the current processors integrate materialization into important
+behavior:
 
 - session rebases roll back SQLite changesets;
 - leader pulls and local pushes materialize batches;
 - leader state and eventlog transactions are coordinated; and
 - materializer failures can terminate the runtime.
 
-An eventlog-only profile would isolate the sync protocol, but implementing it
-before the planned sync/read-model separation may create a test-only seam that
-does not represent the running product. The runner boundary should permit that
-profile later without requiring a new scenario language.
+An eventlog-only state profile would isolate the sync protocol, but
+implementing it before the planned sync/read-model separation may create a
+test-only seam that does not represent the running product. The runner boundary
+should permit that state profile later without requiring a new scenario
+language.
 
 ### Trace Protocol
 
@@ -365,7 +387,7 @@ Every trace record should carry:
 - event, batch, request, and causal-parent identifiers where applicable;
 - local, upstream, and backend heads where observed;
 - rebase generation;
-- execution profile and component version information; and
+- execution configuration and component version information; and
 - severity or failure classification.
 
 Initial record families should cover:
@@ -434,7 +456,7 @@ A failed or noteworthy run should produce a self-contained artifact containing:
 
 - the normalized scenario specification;
 - application-definition identity and component versions;
-- execution profile and environment metadata;
+- execution configuration and environment metadata;
 - seed and recorded scheduling decisions;
 - complete or policy-filtered trace;
 - oracle results and failure explanation;
@@ -476,8 +498,9 @@ The architecture can be delivered incrementally:
    minimization.
 4. **Visualization:** live trace transport, saved-run replay, system view,
    timeline view, and participant drill-down.
-5. **Additional fidelity profiles:** workers/processes, browsers, concrete
-   providers, and alternative read models when their product boundaries exist.
+5. **Additional fidelity configurations:** worker/process and browser
+   participant profiles, local and deployed sync backends, and alternative
+   read models when their product boundaries exist.
 6. **Performance use:** wall-clock execution, comparable measurements, and
    scenario-specific budgets integrated with performance verification.
 
@@ -502,9 +525,9 @@ remain possible without making orchestration code the scenario format.
 ### Run every client in a browser or container
 
 This maximizes some forms of fidelity but makes large, deterministic stress
-runs slow and operationally expensive. High-fidelity profiles should validate
-the same scenario semantics selectively; they should not be the minimum unit
-of simulation.
+runs slow and operationally expensive. High-fidelity configurations should
+validate the same scenario semantics selectively; they should not be the
+minimum unit of simulation.
 
 ### Couple the runner and dashboard
 
@@ -516,7 +539,7 @@ use and independent headless execution.
 
 This matches the current implementation but would make the sync verification
 model depend permanently on one read model. SQLite should be the initial
-full-stack profile, not part of the scenario's definition of sync.
+full-stack state profile, not part of the scenario's definition of sync.
 
 ### Omit materialization from the initial runner
 
@@ -535,10 +558,10 @@ and version the serialization.
 ## Open Questions
 
 1. What is the exact minimum component boundary for the first in-process
-   profile, and can the real processors be instantiated without introducing
-   simulation-only abstractions into production code?
+   participant profile, and can the real processors be instantiated without
+   introducing simulation-only abstractions into production code?
 2. Should SQLite materialization be mandatory in version one, or should the
-   first delivery include both eventlog-only and full-stack profiles?
+   first delivery include both eventlog-only and full-stack state profiles?
 3. Which concrete scenario syntax best balances authoring, schema validation,
    comments, composition, and canonical formatting?
 4. What is the smallest application-definition API that supports event
@@ -546,7 +569,7 @@ and version the serialization.
 5. Which scheduling decisions can be made deterministic with virtual time,
    and which host/runtime interleavings must instead be recorded?
 6. At which abstraction should latency and partitions be injected for each
-   execution profile?
+   combination of participant execution profile and sync-backend realization?
 7. What constitutes quiescence when providers can use live pull streams,
    polling, retries, and indefinitely pending events?
 8. Which trace fields are stable public contracts, and which are optional
