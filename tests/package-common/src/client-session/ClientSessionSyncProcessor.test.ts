@@ -5,6 +5,7 @@ import {
   type BootStatus,
   type ClientSession,
   type ClientSessionLeaderThreadProxy,
+  LeaderAheadError,
   makeMockSyncBackend,
   SyncState,
   type UnknownError,
@@ -27,6 +28,7 @@ import {
   Effect,
   Equal,
   Exit,
+  FastCheck,
   FetchHttpClient,
   Fiber,
   Hash,
@@ -36,10 +38,11 @@ import {
   References,
   Result,
   Schema,
-  type Scope,
+  Scope,
   Stream,
   Subscribable,
   SubscriptionRef,
+  TestClock,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
@@ -59,6 +62,85 @@ const withTestCtx = Vitest.makeWithTestCtx({
       FetchHttpClient.layer,
       Layer.succeed(References.MinimumLogLevel, 'Debug'),
     ),
+})
+
+type LeaderEvents = ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy['events']
+type ClientProcessorParams = Parameters<typeof makeClientSessionSyncProcessor>[0]
+
+const makeClientProcessorHarness = Effect.fn(function* ({
+  push,
+  pull = () => Stream.empty,
+  rollback = () => undefined,
+  shutdown = () => Effect.void,
+  leaderPushBatchSize = 1,
+  simulation,
+}: {
+  push: LeaderEvents['push']
+  pull?: LeaderEvents['pull']
+  rollback?: (changeset: Uint8Array<ArrayBuffer>) => void
+  shutdown?: ClientSession['shutdown']
+  leaderPushBatchSize?: number
+  simulation?: ClientProcessorParams['params']['simulation']
+}) {
+  const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
+  const leaderThread: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy = {
+    events: { pull, push, stream: () => Stream.empty },
+    initialState: {
+      leaderHead: EventSequenceNumber.Client.ROOT,
+      migrationsReport: { migrations: [] },
+      storageMode: 'persisted',
+    },
+    export: Effect.die(new Error('not implemented')),
+    getEventlogData: Effect.die(new Error('not implemented')),
+    syncState: Subscribable.make({
+      get: Effect.die(new Error('not implemented')),
+      changes: Stream.empty,
+    }),
+    sendDevtoolsMessage: () => Effect.void,
+    networkStatus: Subscribable.make({
+      get: Effect.die(new Error('not implemented')),
+      changes: Stream.empty,
+    }),
+  }
+
+  const clientSession: ClientSession = {
+    sqliteDb: {} as ClientSession['sqliteDb'],
+    devtools: { enabled: false },
+    clientId: 'client-test',
+    sessionId: 'session-test',
+    lockStatus,
+    shutdown,
+    leaderThread,
+    debugInstanceId: 'test-instance',
+  }
+
+  const processor = yield* makeClientSessionSyncProcessor({
+    schema: schema as LiveStoreSchema,
+    clientSession,
+    materializeEvent: () =>
+      Effect.succeed({
+        writeTables: new Set<string>(),
+        sessionChangeset: { _tag: 'no-op' as const },
+        materializerHash: Option.none<number>(),
+      }),
+    rollback,
+    refreshTables: () => undefined,
+    params: { leaderPushBatchSize, simulation },
+    confirmUnsavedChanges: false,
+  })
+
+  const scope = yield* Scope.make()
+  yield* processor.boot.pipe(Scope.provide(scope))
+
+  const pushIds = Effect.fn(function* (ids: ReadonlyArray<string>) {
+    const encoded = yield* processor.encodeEvents(
+      ids.map((id) => events.todoCreated({ id, text: id, completed: false })),
+    )
+    yield* processor.push(encoded)
+    return encoded
+  })
+
+  return { processor, pushIds, scope }
 })
 
 // TODO use property tests for simulation params
@@ -353,6 +435,384 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         { id: 'client_0', text: 't1', completed: false, deletedAt: null },
         { id: 'backend_0', text: 't2', completed: false, deletedAt: null },
       ])
+    }).pipe(withTestCtx(test)),
+  )
+
+  // TODO(https://github.com/livestorejs/livestore/issues/1437): Re-enable these stricter shutdown specifications
+  // incrementally as the replacement implementation satisfies each invariant.
+  Vitest.it.effect.skip('drains in-flight and queued leader pushes serially on shutdown', (test) =>
+    Effect.gen(function* () {
+      const firstPushStarted = yield* Deferred.make<void>()
+      const persistedBatches: ReadonlyArray<LiveStoreEvent.Client.Encoded>[] = []
+      let isFirstPush = true
+      let activePushCount = 0
+      let maxActivePushCount = 0
+
+      const { pushIds, scope } = yield* makeClientProcessorHarness({
+        push: (batch) =>
+          Effect.gen(function* () {
+            activePushCount++
+            maxActivePushCount = Math.max(maxActivePushCount, activePushCount)
+
+            if (isFirstPush === true) {
+              isFirstPush = false
+              yield* Deferred.succeed(firstPushStarted, undefined)
+              yield* Effect.sleep('1 millis')
+            }
+
+            persistedBatches.push(batch)
+            activePushCount--
+          }),
+      })
+
+      yield* pushIds(['first'])
+      yield* Deferred.await(firstPushStarted)
+      yield* pushIds(['second'])
+      yield* pushIds(['third'])
+
+      // Drive the close fiber until it is waiting for the sleeping leader push, then release that push. This gives
+      // the test an explicit virtual-time happens-before edge without depending on scheduler yields or wall time.
+      const closeFiber = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)
+      yield* TestClock.adjust(0)
+      yield* TestClock.adjust('1 millis')
+      yield* Fiber.join(closeFiber)
+
+      const postShutdownPushExit = yield* Effect.exit(pushIds(['post-shutdown']))
+
+      expect(maxActivePushCount).toBe(1)
+      expect(persistedBatches.map((batch) => batch.map((event) => event.args.id))).toEqual([
+        ['first'],
+        ['second'],
+        ['third'],
+      ])
+      expect(Exit.isFailure(postShutdownPushExit)).toBe(true)
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.asProp(
+    Vitest.live,
+    'preserves event order and batch bounds through graceful shutdown',
+    [
+      FastCheck.integer({ min: 1, max: 5 }),
+      FastCheck.array(FastCheck.integer({ min: 1, max: 4 }), { minLength: 0, maxLength: 6 }),
+    ] as const,
+    ([leaderPushBatchSize, pushGroupSizes], test) =>
+      Effect.gen(function* () {
+        const persistedBatches: ReadonlyArray<LiveStoreEvent.Client.Encoded>[] = []
+
+        const { pushIds, scope } = yield* makeClientProcessorHarness({
+          leaderPushBatchSize,
+          push: (batch) =>
+            Effect.sync(() => {
+              persistedBatches.push(batch)
+            }),
+        })
+
+        const expectedIds: string[] = []
+        for (const groupSize of pushGroupSizes) {
+          const groupIds = Array.from({ length: groupSize }, (_, index) => `event-${expectedIds.length + index}`)
+          expectedIds.push(...groupIds)
+          yield* pushIds(groupIds)
+        }
+
+        yield* Scope.close(scope, Exit.void)
+
+        expect(persistedBatches.flatMap((batch) => batch.map((event) => event.args.id))).toEqual(expectedIds)
+        expect(persistedBatches.every((batch) => batch.length > 0 && batch.length <= leaderPushBatchSize)).toBe(true)
+      }).pipe(withTestCtx(test)),
+    { skip: true, fastCheck: { numRuns: 50 } },
+  )
+
+  for (const shutdownPoint of [
+    '1_before_leader_push_fiber_interrupt',
+    '3_before_rebase_rollback',
+    '5_before_leader_push_fiber_run',
+  ] as const) {
+    Vitest.it.effect.skip(`does not lose rebased pending events when shutdown reaches ${shutdownPoint}`, (test) =>
+      Effect.gen(function* () {
+        const pullQueue = yield* Queue.unbounded<typeof SyncState.PayloadUpstream.Type>()
+        const firstPushStarted = yield* Deferred.make<void>()
+        const persistedIds: string[] = []
+        let pushCallCount = 0
+
+        const { processor, pushIds, scope } = yield* makeClientProcessorHarness({
+          pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+          push: (batch) => {
+            pushCallCount++
+            return pushCallCount === 1
+              ? Deferred.succeed(firstPushStarted, undefined).pipe(Effect.andThen(Effect.never))
+              : Effect.sync(() => persistedIds.push(...batch.map((event) => event.args.id as string)))
+          },
+          simulation: {
+            pull: {
+              '1_before_leader_push_fiber_interrupt': shutdownPoint === '1_before_leader_push_fiber_interrupt' ? 1 : 0,
+              '2_before_leader_push_queue_clear': 0,
+              '3_before_rebase_rollback': shutdownPoint === '3_before_rebase_rollback' ? 1 : 0,
+              '4_before_leader_push_queue_offer': 0,
+              '5_before_leader_push_fiber_run': shutdownPoint === '5_before_leader_push_fiber_run' ? 1 : 0,
+            },
+          },
+        })
+
+        const [localEvent] = yield* pushIds(['local'])
+        localEvent!.meta.sessionChangeset = {
+          _tag: 'sessionChangeset',
+          data: new Uint8Array([1]),
+          debug: {},
+        }
+        yield* Deferred.await(firstPushStarted)
+
+        const [remoteBase] = yield* processor.encodeEvents([
+          events.todoCreated({ id: 'remote', text: 'remote', completed: false }),
+        ])
+        const remoteEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
+          ...remoteBase!,
+          seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
+          parentSeqNum: EventSequenceNumber.Client.ROOT,
+          clientId: 'remote-client',
+          sessionId: 'remote-session',
+        })
+        yield* Queue.offer(pullQueue, SyncState.PayloadUpstreamAdvance.make({ newEvents: [remoteEvent] }))
+
+        // Let rebase reach the selected virtual-time barrier, start shutdown there, then finish the handoff.
+        yield* TestClock.adjust(0)
+        const closeFiber = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)
+        yield* TestClock.adjust(0)
+        yield* TestClock.adjust('1 millis')
+        yield* Fiber.join(closeFiber)
+
+        expect(processor.debug.debugInfo().rebaseCount).toBe(1)
+        expect(persistedIds).toEqual(['local'])
+      }).pipe(withTestCtx(test)),
+    )
+  }
+
+  Vitest.it.effect.skip('interrupts a hung leader push during failed shutdown', (test) =>
+    Effect.gen(function* () {
+      const firstPushStarted = yield* Deferred.make<void>()
+      const firstPushInterrupted = yield* Deferred.make<void>()
+      let shutdownCalls = 0
+      const { pushIds, scope } = yield* makeClientProcessorHarness({
+        shutdown: () =>
+          Effect.sync(() => {
+            shutdownCalls++
+          }),
+        push: () =>
+          Deferred.succeed(firstPushStarted, undefined).pipe(
+            Effect.andThen(Effect.never),
+            Effect.onInterrupt(() => Deferred.succeed(firstPushInterrupted, undefined)),
+          ),
+      })
+
+      yield* pushIds(['blocked'])
+      yield* Deferred.await(firstPushStarted)
+
+      yield* Scope.close(scope, Exit.fail(new Error('test shutdown failure')))
+
+      expect(yield* Deferred.isDone(firstPushInterrupted)).toBe(true)
+      expect(shutdownCalls).toBe(0)
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.it.effect.skip('does not report a successful drain when the leader rejects during shutdown', (test) =>
+    Effect.gen(function* () {
+      const pushStarted = yield* Deferred.make<void>()
+      const rejectPush = yield* Deferred.make<void>()
+      const rejection = new LeaderAheadError({
+        minimumExpectedNum: EventSequenceNumber.Client.ROOT,
+        providedNum: EventSequenceNumber.Client.ROOT,
+        sessionId: 'session-test',
+      })
+      const { pushIds, scope } = yield* makeClientProcessorHarness({
+        push: () =>
+          Deferred.succeed(pushStarted, undefined).pipe(
+            Effect.andThen(Deferred.await(rejectPush)),
+            Effect.andThen(Effect.fail(rejection)),
+          ),
+      })
+
+      yield* pushIds(['rejected'])
+      yield* Deferred.await(pushStarted)
+
+      const closeFiber = yield* Scope.close(scope, Exit.void).pipe(Effect.exit, Effect.forkChild)
+      // Drive close until it ends queue admission and waits for the in-flight leader response.
+      yield* TestClock.adjust(0)
+      yield* Deferred.succeed(rejectPush, undefined)
+      const closeExit = yield* Fiber.join(closeFiber)
+
+      expect(Exit.isFailure(closeExit)).toBe(true)
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.it.effect.skip('fails the drain when pull stops before a leader rejection can recover', (test) =>
+    Effect.gen(function* () {
+      const pullStopped = yield* Deferred.make<void>()
+      const pushStarted = yield* Deferred.make<void>()
+      const rejectPush = yield* Deferred.make<void>()
+      const rejection = new LeaderAheadError({
+        minimumExpectedNum: EventSequenceNumber.Client.ROOT,
+        providedNum: EventSequenceNumber.Client.ROOT,
+        sessionId: 'session-test',
+      })
+      const { pushIds, scope } = yield* makeClientProcessorHarness({
+        pull: () => Stream.never.pipe(Stream.ensuring(Deferred.succeed(pullStopped, undefined))),
+        push: () =>
+          Deferred.succeed(pushStarted, undefined).pipe(
+            Effect.andThen(Deferred.await(rejectPush)),
+            Effect.andThen(Effect.fail(rejection)),
+          ),
+      })
+
+      yield* pushIds(['rejected-after-pull'])
+      yield* Deferred.await(pushStarted)
+
+      const closeFiber = yield* Scope.close(scope, Exit.void).pipe(Effect.exit, Effect.forkChild)
+      yield* Deferred.await(pullStopped)
+      yield* Deferred.succeed(rejectPush, undefined)
+      const closeExit = yield* Fiber.join(closeFiber)
+
+      expect(Exit.isFailure(closeExit)).toBe(true)
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.it.effect.skip('does not treat an unrelated pull advance as recovery from a rejected push', (test) =>
+    Effect.gen(function* () {
+      const pullQueue = yield* Queue.unbounded<typeof SyncState.PayloadUpstream.Type>()
+      const pushReturned = yield* Deferred.make<void>()
+      const rejection = new LeaderAheadError({
+        minimumExpectedNum: EventSequenceNumber.Client.ROOT,
+        providedNum: EventSequenceNumber.Client.ROOT,
+        sessionId: 'session-test',
+      })
+      const { processor, pushIds, scope } = yield* makeClientProcessorHarness({
+        pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+        push: () => Effect.fail(rejection).pipe(Effect.ensuring(Deferred.succeed(pushReturned, undefined))),
+      })
+
+      yield* pushIds(['still-pending'])
+      // Drain the local-push notification so the next observed change belongs to the explicit upstream payload.
+      yield* processor.syncState.changes.pipe(Stream.take(1), Stream.runDrain)
+      yield* Deferred.await(pushReturned)
+      yield* TestClock.adjust(0)
+
+      yield* Queue.offer(pullQueue, SyncState.PayloadUpstreamAdvance.make({ newEvents: [] }))
+      yield* processor.syncState.changes.pipe(Stream.take(1), Stream.runDrain)
+
+      const closeExit = yield* Scope.close(scope, Exit.void).pipe(Effect.exit)
+
+      expect(Exit.isFailure(closeExit)).toBe(true)
+      expect((yield* processor.syncState.get).pending.map((event) => event.args.id)).toEqual(['still-pending'])
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.it.effect.skip('clears a recovered rejection while newer admitted events remain pending', (test) =>
+    Effect.gen(function* () {
+      const pullQueue = yield* Queue.unbounded<typeof SyncState.PayloadUpstream.Type>()
+      const secondPushAccepted = yield* Deferred.make<void>()
+      const firstPushRejected = yield* Deferred.make<void>()
+      const rejection = new LeaderAheadError({
+        minimumExpectedNum: EventSequenceNumber.Client.ROOT,
+        providedNum: EventSequenceNumber.Client.ROOT,
+        sessionId: 'session-test',
+      })
+      let pushCount = 0
+      const { processor, pushIds, scope } = yield* makeClientProcessorHarness({
+        pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+        push: () => {
+          pushCount++
+          return pushCount === 1
+            ? Effect.fail(rejection).pipe(Effect.ensuring(Deferred.succeed(firstPushRejected, undefined)))
+            : Deferred.succeed(secondPushAccepted, undefined).pipe(Effect.asVoid)
+        },
+      })
+
+      const [rejectedEvent] = yield* pushIds(['rejected-prefix'])
+      yield* Deferred.await(firstPushRejected)
+      yield* pushIds(['newer-admitted'])
+      yield* Deferred.await(secondPushAccepted)
+      // Drain both local notifications so the next one proves the upstream confirmation was processed.
+      yield* processor.syncState.changes.pipe(Stream.take(2), Stream.runDrain)
+
+      yield* Queue.offer(pullQueue, SyncState.PayloadUpstreamAdvance.make({ newEvents: [rejectedEvent!] }))
+      yield* processor.syncState.changes.pipe(Stream.take(1), Stream.runDrain)
+
+      const closeExit = yield* Scope.close(scope, Exit.void).pipe(Effect.exit)
+
+      expect(Exit.isSuccess(closeExit)).toBe(true)
+      expect((yield* processor.syncState.get).pending.map((event) => event.args.id)).toEqual(['newer-admitted'])
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.it.effect.skip('propagates a fatal leader push from the graceful drain', (test) =>
+    Effect.gen(function* () {
+      const pushStarted = yield* Deferred.make<void>()
+      const failPush = yield* Deferred.make<void>()
+      const failure = new Error('leader push crashed')
+      const { pushIds, scope } = yield* makeClientProcessorHarness({
+        push: () =>
+          Deferred.succeed(pushStarted, undefined).pipe(
+            Effect.andThen(Deferred.await(failPush)),
+            Effect.andThen(Effect.die(failure)),
+          ),
+      })
+
+      yield* pushIds(['fatal'])
+      yield* Deferred.await(pushStarted)
+
+      const closeFiber = yield* Scope.close(scope, Exit.void).pipe(Effect.exit, Effect.forkChild)
+      yield* TestClock.adjust(0)
+      yield* Deferred.succeed(failPush, undefined)
+      const closeExit = yield* Fiber.join(closeFiber)
+
+      expect(Exit.isFailure(closeExit)).toBe(true)
+      Exit.match(closeExit, {
+        onFailure: (cause) => expect(Cause.squash(cause)).toBe(failure),
+        onSuccess: () => assert.fail('expected graceful drain to fail'),
+      })
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.it.effect.skip('store shutdown timeout stops waiting without cancelling teardown', (test) =>
+    Effect.gen(function* () {
+      const { makeStore } = yield* TestContext
+      const pushStarted = yield* Deferred.make<void>()
+      const releasePush = yield* Deferred.make<void>()
+      const pushCompleted = yield* Deferred.make<void>()
+      const pushInterrupted = yield* Deferred.make<void>()
+
+      const store = yield* makeStore({
+        testing: {
+          overrides: {
+            clientSession: {
+              leaderThreadProxy: (leader) => ({
+                ...leader,
+                events: {
+                  ...leader.events,
+                  push: () =>
+                    Deferred.succeed(pushStarted, undefined).pipe(
+                      Effect.andThen(Deferred.await(releasePush)),
+                      Effect.andThen(Deferred.succeed(pushCompleted, undefined)),
+                      Effect.onInterrupt(() => Deferred.succeed(pushInterrupted, undefined)),
+                    ),
+                },
+              }),
+            },
+          },
+        },
+      })
+
+      store.commit(events.todoCreated({ id: 'blocked', text: 'blocked', completed: false }))
+      yield* Deferred.await(pushStarted)
+
+      const shutdownFiber = yield* store.shutdown().pipe(Effect.forkChild)
+      yield* TestClock.adjust(1000)
+      yield* Fiber.join(shutdownFiber)
+
+      expect(yield* Deferred.isDone(pushCompleted)).toBe(false)
+      expect(yield* Deferred.isDone(pushInterrupted)).toBe(false)
+
+      yield* Deferred.succeed(releasePush, undefined)
+      yield* Deferred.await(pushCompleted)
     }).pipe(withTestCtx(test)),
   )
 
