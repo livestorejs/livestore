@@ -1,6 +1,8 @@
 import { casesHandled } from '@livestore/utils'
 import { Option, Schema } from '@livestore/utils/effect'
 
+import { SqliteReal } from '../../../../../util.ts'
+
 export type SqlDefaultValue = {
   readonly sql: string
 }
@@ -265,8 +267,7 @@ export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(
     }
     case 'real': {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
-      // @effect-diagnostics-next-line schemaNumber:off -- SQLite REAL columns can legitimately store Infinity/NaN, so this public DEFAULT codec must accept them; Schema.Finite would wrongly reject those values. Keep Schema.Number here on purpose.
-      return Schema.Number as Schema.Codec<T>
+      return SqliteReal as Schema.Codec<T>
     }
     case 'blob': {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
