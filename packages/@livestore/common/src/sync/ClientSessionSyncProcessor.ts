@@ -147,7 +147,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     const backgroundLeaderPushing: Effect.Effect<void> = Effect.gen(function* () {
       while (true) {
         const batch = yield* TxQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize).pipe(
-          Effect.catchIf(Cause.isDone, () => Effect.succeed(undefined)),
+          Effect.catchIf(Cause.isDone, () => Effect.void),
         )
         if (batch === undefined) return
 
@@ -314,8 +314,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     exit: Exit.Exit<unknown, unknown>,
   ) {
     if (Exit.isFailure(exit) === true) {
-      yield* TxQueue.end(leaderPushQueue)
       if (pullingFiberHandle !== undefined) yield* FiberHandle.clear(pullingFiberHandle)
+      yield* rebaseOwnership.withPermits(1)(TxQueue.end(leaderPushQueue))
       if (leaderPushingFiberHandle !== undefined) yield* FiberHandle.clear(leaderPushingFiberHandle)
       return
     }
@@ -395,10 +395,12 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     return { writeTables }
   })
 
-  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(
-    function* (encodedEvents) {
+  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')((encodedEvents) =>
+    Effect.gen(function* () {
       if (shutdownStarted === true) {
-        return yield* Effect.die('Cannot push events after the client session sync processor starts shutting down')
+        return yield* Effect.die(
+          new Error('Cannot push events after the client session sync processor starts shutting down'),
+        )
       }
 
       const mergeResult = yield* SyncState.merge({
@@ -422,13 +424,13 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
       })
 
-      const rejectedEvents = yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
-      if (rejectedEvents.length > 0) {
-        return yield* Effect.die('Leader push queue closed while accepting events')
-      }
       syncStateRef.current = mergeResult.newSyncState
       yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
-    },
+      const rejectedEvents = yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
+      if (rejectedEvents.length > 0) {
+        return yield* Effect.die(new Error('Leader push queue closed while accepting events'))
+      }
+    }).pipe(rebaseOwnership.withPermits(1)),
   )
 
   const debugInfo = {

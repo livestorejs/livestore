@@ -13,7 +13,11 @@ import {
 import { Eventlog, makeMaterializeEvent, recreateDb } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
-import { makeClientSessionSyncProcessor, type SyncBackend } from '@livestore/common/sync'
+import {
+  type ClientSessionSyncProcessor,
+  makeClientSessionSyncProcessor,
+  type SyncBackend,
+} from '@livestore/common/sync'
 import { EventFactory } from '@livestore/common/testing'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, StoreInternalsSymbol } from '@livestore/livestore'
@@ -486,6 +490,34 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         ['third'],
       ])
       expect(Exit.isFailure(postShutdownPushExit)).toBe(true)
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.it.effect('publishes local pending state before the leader worker observes the batch', (test) =>
+    Effect.gen(function* () {
+      const observedPendingState = yield* Deferred.make<boolean>()
+      let processorRef: ClientSessionSyncProcessor | undefined
+
+      const { processor, pushIds, close } = yield* makeClientProcessorHarness({
+        push: (batch) =>
+          Effect.gen(function* () {
+            const activeProcessor = processorRef
+            if (activeProcessor === undefined) return yield* Effect.die(new Error('Processor not initialized'))
+            const syncState = yield* activeProcessor.syncState.get
+            yield* Deferred.succeed(
+              observedPendingState,
+              batch.every((event) =>
+                syncState.pending.some((pending) => LiveStoreEvent.Client.isEqualEncoded(pending, event)),
+              ),
+            )
+          }),
+      })
+      processorRef = processor
+
+      yield* pushIds(['local'])
+
+      expect(yield* Deferred.await(observedPendingState)).toBe(true)
+      yield* close()
     }).pipe(withTestCtx(test)),
   )
 
