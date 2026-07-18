@@ -70,6 +70,28 @@ tokens for package publish jobs. Each published `@livestore/*` package must
 trust `livestorejs/livestore` with workflow filename `release.yml` in npm
 package settings.
 
+A successful `ci.yml` run for a repository-owned pull request also publishes
+an immutable candidate for the exact head as
+`0.0.0-snapshot-<40-character-head-sha>`. Forks are excluded.
+The PR job only packs the fixed public package cohort on a GitHub-hosted runner
+without secrets, write permissions, or OIDC. The default-branch `release.yml`
+validation job re-resolves the open PR from the completed run, requires its
+current head to match, validates the run-bound manifest and every tarball, and
+uploads a short-lived immutable artifact for pre-review E2E. Validation also
+creates a custom GitHub attestation that binds the package and manifest digests
+to the exact PR head, source CI run, and trusted release topology.
+
+npm promotion uses the repository's ordinary code-review approval as its only
+manual trust boundary. The approval must name the current head commit; an
+approval for an earlier head does not authorize publication. Approval before CI
+is observed when CI completes, while approval after CI triggers validation from
+the exact successful CI run automatically. The OIDC job rechecks the unchanged
+head and approval immediately before publishing. It never checks out or executes
+the PR head and publishes the validated tarballs directly with scripts disabled
+under the immutable `pr-<number>-<40-character-head-sha>` tag. npm provenance
+identifies this trusted default-branch promotion workflow; the custom candidate
+attestation supplies the separate link back to PR CI.
+
 Snapshot DevTools Chrome ZIPs are uploaded as short-lived workflow artifacts,
 not GitHub Releases. Public GitHub Releases are reserved for dev/stable release
 versions so the releases page remains a user-facing release history rather than

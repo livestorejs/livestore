@@ -132,6 +132,57 @@ export default githubWorkflow({
 
   jobs: {
     'source-policy': livestoreDefaultRefPolicyJob,
+    'pack-pr-snapshot': {
+      if: "github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository",
+      'runs-on': 'ubuntu-24.04',
+      permissions: { contents: 'read' },
+      env: {
+        CACHIX_AUTH_TOKEN: '',
+        SNAPSHOT_OUT_DIR: '${{ github.workspace }}/tmp/pr-snapshot-artifact',
+      },
+      defaults: bashShellDefaults,
+      steps: [
+        {
+          name: 'Checkout exact PR head',
+          uses: 'actions/checkout@v4',
+          with: {
+            ref: '${{ github.event.pull_request.head.sha }}',
+            'persist-credentials': false,
+          },
+        },
+        ...livestoreSetupStepsAfterCheckout,
+        {
+          name: 'Test snapshot artifact boundary',
+          run: 'node --test .github/scripts/pr-snapshot-artifact.test.mjs',
+        },
+        {
+          name: 'Pack exact-SHA snapshot',
+          run: runDevenvTasksBefore('release:snapshot:pack:git-sha'),
+          env: { GIT_SHA: '${{ github.event.pull_request.head.sha }}' },
+        },
+        {
+          name: 'Create snapshot manifest',
+          run: `node .github/scripts/pr-snapshot-artifact.mjs create \\
+  --artifact-dir="$SNAPSHOT_OUT_DIR" \\
+  --topology=scripts/src/generated/release-topology.json \\
+  --repository="$GITHUB_REPOSITORY" \\
+  --pr-number="\${{ github.event.pull_request.number }}" \\
+  --head-sha="\${{ github.event.pull_request.head.sha }}" \\
+  --run-id="$GITHUB_RUN_ID" \\
+  --run-attempt="$GITHUB_RUN_ATTEMPT"`,
+        },
+        {
+          name: 'Upload immutable PR snapshot candidate',
+          uses: 'actions/upload-artifact@v4',
+          with: {
+            name: 'pr-snapshot-${{ github.event.pull_request.head.sha }}',
+            path: '${{ github.workspace }}/tmp/pr-snapshot-artifact/',
+            'if-no-files-found': 'error',
+            'retention-days': 7,
+          },
+        },
+      ],
+    },
     lint: standardCIJob({
       steps: [
         ...livestoreSetupSteps,

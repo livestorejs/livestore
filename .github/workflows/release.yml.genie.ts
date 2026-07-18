@@ -73,7 +73,9 @@ export default githubWorkflow({
     workflow_run: {
       workflows: ['ci'],
       types: ['completed'],
-      branches: ['main'],
+    },
+    pull_request_review: {
+      types: ['submitted'],
     },
     pull_request: {
       paths: releasePlanPaths,
@@ -96,7 +98,329 @@ export default githubWorkflow({
   },
 
   jobs: {
-    'source-policy': livestoreDefaultRefPolicyJob,
+    'source-policy': {
+      ...livestoreDefaultRefPolicyJob,
+      if: "github.event_name != 'pull_request_review'",
+    },
+    'validate-pr-snapshot': {
+      if: "(github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository) || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved' && github.event.pull_request.head.repo.full_name == github.repository)",
+      'runs-on': 'ubuntu-24.04',
+      permissions: {
+        actions: 'read',
+        attestations: 'write',
+        'artifact-metadata': 'write',
+        contents: 'read',
+        'id-token': 'write',
+      },
+      outputs: {
+        'head-sha': '${{ steps.identity.outputs.head-sha }}',
+        'manifest-digest': '${{ steps.validate.outputs.manifest-digest }}',
+        'npm-tag': '${{ steps.validate.outputs.npm-tag }}',
+        'package-count': '${{ steps.validate.outputs.package-count }}',
+        'pr-number': '${{ steps.identity.outputs.pr-number }}',
+        'run-attempt': '${{ steps.identity.outputs.run-attempt }}',
+        'run-id': '${{ steps.identity.outputs.run-id }}',
+        'source-run-url': '${{ steps.identity.outputs.source-run-url }}',
+        'topology-digest': '${{ steps.validate.outputs.topology-digest }}',
+        version: '${{ steps.validate.outputs.version }}',
+      },
+      env: {
+        ARTIFACT_DIR: '${{ github.workspace }}/tmp/pr-snapshot-artifact',
+        CACHIX_AUTH_TOKEN: '',
+        GH_TOKEN: '${{ github.token }}',
+        PUBLISH_LIST: '${{ github.workspace }}/tmp/pr-snapshot-publish-list.tsv',
+      },
+      defaults: bashShellDefaults,
+      steps: [
+        {
+          id: 'identity',
+          name: 'Resolve exact successful CI run and current PR head',
+          run: `set -euo pipefail
+if [ "$GITHUB_EVENT_NAME" = workflow_run ]; then
+  run_id='\${{ github.event.workflow_run.id }}'
+  run_attempt='\${{ github.event.workflow_run.run_attempt }}'
+  head_sha='\${{ github.event.workflow_run.head_sha }}'
+  source_run_url='\${{ github.event.workflow_run.html_url }}'
+  prs_json=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/pulls")
+  test "$(jq 'length' <<<"$prs_json")" = 1
+  pr_number=$(jq -r '.[0].number' <<<"$prs_json")
+else
+  pr_number='\${{ github.event.pull_request.number }}'
+  head_sha='\${{ github.event.pull_request.head.sha }}'
+  runs_json=$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?event=pull_request&status=success&head_sha=$head_sha&per_page=100")
+  run_json=$(jq -c --arg sha "$head_sha" '[.workflow_runs[] | select(.head_sha == $sha and .event == "pull_request" and .conclusion == "success")] | sort_by(.created_at) | reverse | .[0]' <<<"$runs_json")
+  test "$run_json" != null
+  run_id=$(jq -r '.id' <<<"$run_json")
+  run_attempt=$(jq -r '.run_attempt' <<<"$run_json")
+  source_run_url=$(jq -r '.html_url' <<<"$run_json")
+fi
+
+[[ "$pr_number" =~ ^[1-9][0-9]*$ ]]
+[[ "$head_sha" =~ ^[0-9a-f]{40}$ ]]
+[[ "$run_id" =~ ^[1-9][0-9]*$ ]]
+[[ "$run_attempt" =~ ^[1-9][0-9]*$ ]]
+pr_json=$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$pr_number")
+
+test "$(jq -r '.state' <<<"$pr_json")" = open
+test "$(jq -r '.base.ref' <<<"$pr_json")" = main
+test "$(jq -r '.head.repo.full_name' <<<"$pr_json")" = "$GITHUB_REPOSITORY"
+test "$(jq -r '.head.sha' <<<"$pr_json")" = "$head_sha"
+
+echo "head-sha=$head_sha" >> "$GITHUB_OUTPUT"
+echo "pr-number=$pr_number" >> "$GITHUB_OUTPUT"
+echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
+echo "run-attempt=$run_attempt" >> "$GITHUB_OUTPUT"
+echo "source-run-url=$source_run_url" >> "$GITHUB_OUTPUT"`,
+        },
+        {
+          name: 'Checkout trusted validator only',
+          uses: 'actions/checkout@v4',
+          with: {
+            ref: '${{ github.sha }}',
+            'persist-credentials': false,
+            'sparse-checkout': `.github/scripts/pr-snapshot-artifact.mjs
+scripts/src/generated/release-topology.json`,
+          },
+        },
+        {
+          name: 'Use pinned Node validator runtime',
+          uses: 'actions/setup-node@v4',
+          with: {
+            'node-version': '24.15.0',
+          },
+        },
+        {
+          name: 'Download exact-run snapshot candidate',
+          uses: 'actions/download-artifact@v4',
+          with: {
+            name: 'pr-snapshot-${{ steps.identity.outputs.head-sha }}',
+            path: '${{ github.workspace }}/tmp/pr-snapshot-artifact',
+            'github-token': '${{ github.token }}',
+            'run-id': '${{ steps.identity.outputs.run-id }}',
+          },
+        },
+        {
+          id: 'validate',
+          name: 'Validate immutable snapshot candidate',
+          env: {
+            EXPECTED_HEAD_SHA: '${{ steps.identity.outputs.head-sha }}',
+            EXPECTED_PR_NUMBER: '${{ steps.identity.outputs.pr-number }}',
+            EXPECTED_RUN_ID: '${{ steps.identity.outputs.run-id }}',
+            EXPECTED_RUN_ATTEMPT: '${{ steps.identity.outputs.run-attempt }}',
+          },
+          run: `set -euo pipefail
+result=$(node .github/scripts/pr-snapshot-artifact.mjs validate \\
+  --artifact-dir="$ARTIFACT_DIR" \\
+  --topology=scripts/src/generated/release-topology.json \\
+  --repository="$GITHUB_REPOSITORY" \\
+  --pr-number="$EXPECTED_PR_NUMBER" \\
+  --head-sha="$EXPECTED_HEAD_SHA" \\
+  --run-id="$EXPECTED_RUN_ID" \\
+  --run-attempt="$EXPECTED_RUN_ATTEMPT" \\
+  --publish-list="$PUBLISH_LIST")
+echo "version=$(jq -r '.version' <<<"$result")" >> "$GITHUB_OUTPUT"
+echo "manifest-digest=$(jq -r '.manifestDigest' <<<"$result")" >> "$GITHUB_OUTPUT"
+echo "topology-digest=$(jq -r '.topologyDigest' <<<"$result")" >> "$GITHUB_OUTPUT"
+echo "npm-tag=$(jq -r '.npmTag' <<<"$result")" >> "$GITHUB_OUTPUT"
+echo "package-count=$(jq -r '.packageCount' <<<"$result")" >> "$GITHUB_OUTPUT"
+cp "$PUBLISH_LIST" "$ARTIFACT_DIR/trusted-publish-list.tsv"`,
+        },
+        {
+          name: 'Write trusted snapshot attestation predicate',
+          env: {
+            HEAD_SHA: '${{ steps.identity.outputs.head-sha }}',
+            MANIFEST_DIGEST: '${{ steps.validate.outputs.manifest-digest }}',
+            PR_NUMBER: '${{ steps.identity.outputs.pr-number }}',
+            SOURCE_RUN_ATTEMPT: '${{ steps.identity.outputs.run-attempt }}',
+            SOURCE_RUN_ID: '${{ steps.identity.outputs.run-id }}',
+            TOPOLOGY_DIGEST: '${{ steps.validate.outputs.topology-digest }}',
+          },
+          run: `jq -n \
+  --arg repository "$GITHUB_REPOSITORY" \
+  --argjson prNumber "$PR_NUMBER" \
+  --arg headSha "$HEAD_SHA" \
+  --argjson sourceRunId "$SOURCE_RUN_ID" \
+  --argjson sourceRunAttempt "$SOURCE_RUN_ATTEMPT" \
+  --arg manifestSha256 "$MANIFEST_DIGEST" \
+  --arg topologySha256 "$TOPOLOGY_DIGEST" \
+  '{repository, prNumber, headSha, sourceRunId, sourceRunAttempt, manifestSha256, topologySha256}' \
+  > "$RUNNER_TEMP/pr-snapshot-attestation.json"`,
+        },
+        {
+          name: 'Attest validated snapshot candidate',
+          uses: 'actions/attest@v4',
+          with: {
+            'subject-path': ['${{ env.ARTIFACT_DIR }}/*.tgz', '${{ env.ARTIFACT_DIR }}/manifest.json'].join('\n'),
+            'predicate-type': 'https://livestore.dev/attestations/pr-snapshot-candidate/v1',
+            'predicate-path': '${{ runner.temp }}/pr-snapshot-attestation.json',
+          },
+        },
+        {
+          name: 'Upload validated promotion artifact',
+          uses: 'actions/upload-artifact@v4',
+          with: {
+            name: 'validated-pr-snapshot-${{ steps.identity.outputs.head-sha }}-${{ steps.identity.outputs.run-id }}',
+            path: '${{ github.workspace }}/tmp/pr-snapshot-artifact/',
+            'if-no-files-found': 'error',
+            'retention-days': 1,
+          },
+        },
+      ],
+    },
+    'authorize-pr-snapshot': {
+      needs: ['validate-pr-snapshot'],
+      'runs-on': 'ubuntu-24.04',
+      permissions: { contents: 'read' },
+      outputs: { authorized: '${{ steps.approval.outputs.authorized }}' },
+      defaults: bashShellDefaults,
+      steps: [
+        {
+          id: 'approval',
+          name: 'Require ordinary approval for the unchanged head',
+          env: {
+            EXPECTED_HEAD_SHA: '${{ needs.validate-pr-snapshot.outputs.head-sha }}',
+            GH_TOKEN: '${{ github.token }}',
+            PR_NUMBER: '${{ needs.validate-pr-snapshot.outputs.pr-number }}',
+          },
+          run: `set -euo pipefail
+pr_json=$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
+reviews_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews?per_page=100" --slurp | jq -s 'flatten')
+authorized=false
+if [ "$(jq -r '.state' <<<"$pr_json")" = open ] && \
+   [ "$(jq -r '.draft' <<<"$pr_json")" = false ] && \
+   [ "$(jq -r '.base.ref' <<<"$pr_json")" = main ] && \
+   [ "$(jq -r '.head.repo.full_name' <<<"$pr_json")" = "$GITHUB_REPOSITORY" ] && \
+   [ "$(jq -r '.head.sha' <<<"$pr_json")" = "$EXPECTED_HEAD_SHA" ] && \
+   jq -e --arg sha "$EXPECTED_HEAD_SHA" 'any(.[]; .state == "APPROVED" and .commit_id == $sha)' <<<"$reviews_json" >/dev/null; then
+  authorized=true
+fi
+echo "authorized=$authorized" >> "$GITHUB_OUTPUT"
+echo "Snapshot promotion authorized: $authorized" >> "$GITHUB_STEP_SUMMARY"`,
+        },
+      ],
+    },
+    'publish-pr-snapshot': {
+      if: "needs.authorize-pr-snapshot.outputs.authorized == 'true'",
+      needs: ['validate-pr-snapshot', 'authorize-pr-snapshot'],
+      'runs-on': 'ubuntu-24.04',
+      concurrency: {
+        group: 'pr-snapshot-${{ needs.validate-pr-snapshot.outputs.pr-number }}',
+        'cancel-in-progress': false,
+      },
+      permissions: {
+        actions: 'read',
+        contents: 'read',
+        'id-token': 'write',
+      },
+      env: {
+        ARTIFACT_DIR: '${{ github.workspace }}/tmp/validated-pr-snapshot',
+        CACHIX_AUTH_TOKEN: '',
+        GH_TOKEN: '${{ github.token }}',
+        PUBLISH_LIST: '${{ github.workspace }}/tmp/validated-pr-snapshot/trusted-publish-list.tsv',
+      },
+      defaults: bashShellDefaults,
+      steps: [
+        {
+          name: 'Use pinned npm trusted-publishing client',
+          uses: 'actions/setup-node@v4',
+          with: {
+            'node-version': '24.15.0',
+            'registry-url': 'https://registry.npmjs.org',
+          },
+        },
+        {
+          name: 'Download validated promotion artifact',
+          uses: 'actions/download-artifact@v4',
+          with: {
+            name: 'validated-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}',
+            path: '${{ github.workspace }}/tmp/validated-pr-snapshot',
+          },
+        },
+        {
+          name: 'Recheck unchanged-head approval before OIDC publication',
+          env: {
+            EXPECTED_HEAD_SHA: '${{ needs.validate-pr-snapshot.outputs.head-sha }}',
+            PR_NUMBER: '${{ needs.validate-pr-snapshot.outputs.pr-number }}',
+          },
+          run: `set -euo pipefail
+pr_json=$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
+reviews_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews?per_page=100" --slurp | jq -s 'flatten')
+test "$(jq -r '.state' <<<"$pr_json")" = open
+test "$(jq -r '.draft' <<<"$pr_json")" = false
+test "$(jq -r '.head.sha' <<<"$pr_json")" = "$EXPECTED_HEAD_SHA"
+jq -e --arg sha "$EXPECTED_HEAD_SHA" 'any(.[]; .state == "APPROVED" and .commit_id == $sha)' <<<"$reviews_json" >/dev/null`,
+        },
+        {
+          name: 'Verify promotion handoff',
+          env: { EXPECTED_MANIFEST_DIGEST: '${{ needs.validate-pr-snapshot.outputs.manifest-digest }}' },
+          run: `set -euo pipefail
+test -f "$ARTIFACT_DIR/manifest.json"
+test -f "$PUBLISH_LIST"
+actual_manifest_digest=$(sha256sum "$ARTIFACT_DIR/manifest.json" | cut -d' ' -f1)
+test "$actual_manifest_digest" = "$EXPECTED_MANIFEST_DIGEST"
+jq -r '.packages[] | [.name, .file] | @tsv' "$ARTIFACT_DIR/manifest.json" > "$RUNNER_TEMP/expected-publish-list.tsv"
+cmp "$RUNNER_TEMP/expected-publish-list.tsv" "$PUBLISH_LIST"
+jq -r '.packages[] | [.file, .sha256] | @tsv' "$ARTIFACT_DIR/manifest.json" |
+  while IFS=$'\t' read -r file expected_sha256; do
+    [[ "$file" =~ ^[a-zA-Z0-9._-]+[.]tgz$ ]]
+    actual_sha256=$(sha256sum "$ARTIFACT_DIR/$file" | cut -d' ' -f1)
+    test "$actual_sha256" = "$expected_sha256"
+  done
+if [ -n "\${NODE_AUTH_TOKEN:-}" ] || [ -n "\${NPM_TOKEN:-}" ]; then
+  echo "PR snapshot publishing must use npm trusted publishing; token auth is not allowed." >&2
+  exit 1
+fi`,
+        },
+        {
+          name: 'Publish exact-SHA package cohort',
+          env: {
+            SNAPSHOT_TAG: '${{ needs.validate-pr-snapshot.outputs.npm-tag }}',
+            SNAPSHOT_VERSION: '${{ needs.validate-pr-snapshot.outputs.version }}',
+          },
+          run: `set -euo pipefail
+while IFS=$'\t' read -r package_name file; do
+  test -n "$package_name"
+  test -n "$file"
+  tarball="$ARTIFACT_DIR/$file"
+  local_sha1=$(sha1sum "$tarball" | cut -d' ' -f1)
+  if remote_sha1=$(npm view "$package_name@$SNAPSHOT_VERSION" dist.shasum --json --registry=https://registry.npmjs.org 2>/dev/null); then
+    remote_sha1=$(jq -r . <<<"$remote_sha1")
+    if [ "$remote_sha1" != "$local_sha1" ]; then
+      echo "$package_name@$SNAPSHOT_VERSION already exists with a different tarball digest" >&2
+      exit 1
+    fi
+    echo "$package_name@$SNAPSHOT_VERSION already matches candidate; skipping"
+    continue
+  fi
+  npm publish "$tarball" --registry=https://registry.npmjs.org --tag="$SNAPSHOT_TAG" --access=public --ignore-scripts --provenance
+done < "$PUBLISH_LIST"`,
+        },
+        {
+          name: 'Record snapshot provenance',
+          env: {
+            SNAPSHOT_VERSION: '${{ needs.validate-pr-snapshot.outputs.version }}',
+            MANIFEST_DIGEST: '${{ needs.validate-pr-snapshot.outputs.manifest-digest }}',
+            PACKAGE_COUNT: '${{ needs.validate-pr-snapshot.outputs.package-count }}',
+            PR_NUMBER: '${{ needs.validate-pr-snapshot.outputs.pr-number }}',
+            SNAPSHOT_TAG: '${{ needs.validate-pr-snapshot.outputs.npm-tag }}',
+            SOURCE_RUN_URL: '${{ needs.validate-pr-snapshot.outputs.source-run-url }}',
+          },
+          run: `cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+## Repository-owned PR snapshot
+
+- PR: #$PR_NUMBER
+- Head: \`\${{ needs.validate-pr-snapshot.outputs.head-sha }}\`
+- Version: \`$SNAPSHOT_VERSION\`
+- Immutable npm tag: \`$SNAPSHOT_TAG\`
+- Packages: $PACKAGE_COUNT
+- Manifest SHA-256: \`$MANIFEST_DIGEST\`
+- Source CI run: $SOURCE_RUN_URL
+- Candidate attestation: binds the validated package and manifest digests to the exact PR head and source CI run.
+- npm provenance: identifies this trusted default-branch promotion workflow; it does not claim that the PR CI job held npm publishing authority.
+EOF`,
+        },
+      ],
+    },
     'create-release-pr': {
       if: "github.event_name == 'workflow_dispatch' && inputs.mode == 'create-release-pr'",
       'runs-on': 'ubuntu-latest',
