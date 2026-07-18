@@ -579,6 +579,9 @@ jobs:
           set -euo pipefail
           previous_manifest="$RUNNER_TEMP/devtools-artifact.previous.json"
           if [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ]; then
+            # actions/checkout uses a shallow PR merge checkout, so the declared base
+            # commit is not guaranteed to exist locally.
+            git fetch --no-tags --depth=1 origin "$PR_BASE_SHA"
             git show "$PR_BASE_SHA:release/devtools-artifact.json" > "$previous_manifest"
             if ! cmp -s "$previous_manifest" release/devtools-artifact.json; then
               echo "LIVESTORE_DEVTOOLS_PREVIOUS_MANIFEST=$previous_manifest" >> "$GITHUB_ENV"
