@@ -8,8 +8,19 @@ LiveStore synchronizes one ordered event history across clients through two
 boundaries:
 
 ```text
-client session ── local push / advance / rebase ── leader
-leader         ── provider pull / push            ── sync backend
++-------------------------------- Client --------------------------------+
+|                                                                        |
+|  +----------------+      local push       +----------------+           |
+|  | Client session | --------------------> |     Leader     |           |
+|  |                | <-------------------- |                |           |
+|  +----------------+    advance / rebase   +----------------+           |
+|                                                |       ^               |
++------------------------------------------------|-------|---------------+
+                                                 | push  | pull stream
+                                                 v       |
+                                          +------------------+
+                                          |   Sync backend   |
+                                          +------------------+
 ```
 
 The same `SyncState` merge model governs both boundaries. The client-session
