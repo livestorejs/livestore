@@ -104,14 +104,15 @@ The live root workspace disables injected workspace package snapshots:
 
 ```yaml
 injectWorkspacePackages: false
-enableGlobalVirtualStore: true
-storeDir: .devenv/pnpm-store-pure-v1
+packageImportMethod: auto
 ```
 
 Generated package-closure projections may still use injected snapshots for
 Nix/FOD dependency preparation. The distinction prevents duplicate LiveStore
 package identities in the live TypeScript workspace (LS.DEL.COMP-R08) while
-preserving prepared dependency determinism.
+preserving prepared dependency determinism. Live roots keep their dependency
+graphs and `node_modules/.pnpm` virtual stores root-local while reusing the
+host-user pnpm Store Cache defined by effect-utils' storage authority.
 
 Publish-time rewriting of `workspace:*` to exact versions is
 [../02-release/](../02-release/spec.md)'s contract.

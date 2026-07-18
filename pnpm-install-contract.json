@@ -1,47 +1,6 @@
 {
   "contract": "livestore/pnpm-install-contract",
-  "dependencyMaterializationProfile": {
-    "buck2Boundary": {
-      "consumesEvidence": true,
-      "ownsLiveMaterialization": false
-    },
-    "identityInputs": [
-      "packageManager",
-      "gvsLinkContract",
-      "installPolicy",
-      "storeContract",
-      "workspaceManifestContract"
-    ],
-    "nativeBuildPolicyInputs": {
-      "allowBuilds": "gvsLinkContract.allowBuilds",
-      "compilerEnv": ["CC", "CXX"]
-    },
-    "schema": "dependency-materialization-profile/v0",
-    "supportedTraits": {
-      "ciJobLocal": {
-        "gcAuthority": "profile-local",
-        "mutableState": "job-local",
-        "repairAuthority": "ci-job"
-      },
-      "darwinSplitCas": {
-        "gcAuthority": "shared-pool-coordinator",
-        "mutableState": "profile-local",
-        "repairAuthority": "devenv",
-        "sharedContent": "store/v11/files"
-      },
-      "isolated": {
-        "gcAuthority": "profile-local",
-        "mutableState": "profile-local",
-        "repairAuthority": "devenv"
-      },
-      "nixPreparedDeps": {
-        "gcAuthority": "nix-store",
-        "mutableState": "none",
-        "repairAuthority": "evergreen-fod"
-      }
-    }
-  },
-  "gvsLinkContract": {
+  "dependencyGraphContract": {
     "allowBuilds": {
       "@mixedbread/cli": true,
       "@myobie/pty": false,
@@ -90,12 +49,57 @@
       "version": "11.8.0"
     }
   },
+  "dependencyMaterializationProfile": {
+    "buck2Boundary": {
+      "consumesEvidence": true,
+      "ownsLiveMaterialization": false
+    },
+    "identityInputs": [
+      "packageManager",
+      "dependencyGraphContract",
+      "installPolicy",
+      "storeContract",
+      "workspaceManifestContract"
+    ],
+    "nativeBuildPolicyInputs": {
+      "allowBuilds": "dependencyGraphContract.allowBuilds",
+      "compilerEnv": ["CC", "CXX"]
+    },
+    "schema": "dependency-materialization-profile/v0",
+    "supportedTraits": {
+      "ciJobLocal": {
+        "gcAuthority": "profile-local",
+        "mutableState": "job-local",
+        "repairAuthority": "ci-job"
+      },
+      "hostUserStoreCache": {
+        "gcAuthority": "host-fleet-maintenance",
+        "mutableState": "materialization-root-and-host-user-cache",
+        "repairAuthority": "materialization-root",
+        "sharedContent": "complete-pnpm-store-cache"
+      },
+      "nixPreparedDeps": {
+        "gcAuthority": "nix-store",
+        "mutableState": "none",
+        "repairAuthority": "evergreen-fod"
+      }
+    }
+  },
   "installPolicy": {
     "dedupePeerDependents": true,
     "ignoreScripts": true,
     "minimumReleaseAgeExclude": ["@effect/platform", "@types/node", "effect"],
     "optimisticRepeatInstall": false,
-    "packageImportMethod": "auto",
+    "packageImportMethod": {
+      "live": {
+        "linuxSameDeviceRequired": true,
+        "method": "auto",
+        "owner": "pnpm"
+      },
+      "nixPreparedDependencies": {
+        "scope": "independent-builder-policy"
+      }
+    },
     "pmOnFail": "ignore",
     "sideEffectsCache": false,
     "strictPeerDependencies": false,
@@ -114,27 +118,38 @@
       "consumeContractArtifact": true
     },
     "nixIntegration": {
-      "fixedOutputDependencyPrepUsesLiveGlobalVirtualStore": false,
-      "liveInstallUsesGlobalVirtualStore": true
+      "fixedOutputDependencyPrepUsesSameVirtualStoreScope": true,
+      "liveVirtualStoreScope": "materialization-root"
     },
     "pnpmStoreOwnership": {
-      "filesLifecycle": "pnpm-owned content-addressed files store",
-      "linksLifecycle": "pnpm-owned rebuildable dependency-graph projection",
-      "projectsLifecycle": "pnpm-owned store prune reachability registry"
+      "cacheLifecycle": "pnpm-owned disposable Store Cache",
+      "derivedIndexLifecycle": "shared only inside one same-user trust boundary",
+      "virtualStoreLifecycle": "Materialization-Root-owned rebuildable dependency graph"
     }
   },
   "packageManager": {
     "name": "pnpm",
     "version": "11.8.0"
   },
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "storeContract": {
-    "globalVirtualStore": {},
+    "ci": {
+      "scope": "job"
+    },
     "layoutVersion": "v11",
+    "localDevelopment": {
+      "contentAddressedFiles": "shared",
+      "defaultPath": "~/.local/share/pnpm/store-shared-v1",
+      "derivedIndex": "shared-pnpm-owned",
+      "pathOverrideEnvironmentVariable": "PNPM_SHARED_STORE_DIR",
+      "scope": "host-user",
+      "trustBoundary": "same-os-user"
+    },
     "owner": "pnpm",
-    "sharedFilesStore": {
-      "disabledInCi": true,
-      "enabledForLocalDev": true
+    "virtualStore": {
+      "global": false,
+      "path": "node_modules/.pnpm",
+      "scope": "materialization-root"
     }
   },
   "workspaceManifestContract": {
