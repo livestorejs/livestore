@@ -285,9 +285,11 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
             }
 
             // Write back to file with consistent formatting
+            const encodedPackageJson = yield* Schema.encodeEffect(Schema.jsonStringIndented(Schema.Unknown))(
+              updatedPackageJson,
+            ).pipe(Effect.orDie)
             yield* Effect.try({
-              // @effect-diagnostics-next-line preferSchemaOverJson:off -- package.json is committed and diffed, so it must stay indented; Schema's JSON codec is compact
-              try: () => fs.writeFileSync(packageJsonPath, `${JSON.stringify(updatedPackageJson, null, 2)}\n`),
+              try: () => fs.writeFileSync(packageJsonPath, `${encodedPackageJson}\n`),
               catch: () => new UpdateDepsError({ message: `Failed to write ${packageJsonPath}` }),
             })
 
