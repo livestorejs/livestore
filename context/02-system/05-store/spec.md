@@ -74,9 +74,11 @@ per-commit root span with links.
 ## Lifecycle
 
 - Every public operation guards on `isShutdown` (`checkShutdown`).
-- `shutdown` closes the store's `lifetimeScope` with a 1s timeout + warning
-  (`create-store.ts:336-342`); intentional shutdown is distinguished from
-  failure via the Exit cause (LS.SYS.STORE-R07).
+- `shutdown` first drains admitted client-session events to the leader, then
+  closes the store's `lifetimeScope`. Its 1s timeout limits how long the caller
+  waits without cancelling cleanup; intentional shutdown is distinguished
+  from failure via the Exit cause (LS.SYS.STORE-R07,
+  LS.SYS.SYNC.PROC-R03).
 - During boot, `batchUpdates` is the identity function and is swapped to the
   adapter-provided implementation after boot (`create-store.ts:399,430`) —
   events committed during boot are unbatched.
