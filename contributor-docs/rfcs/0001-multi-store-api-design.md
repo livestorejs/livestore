@@ -1,5 +1,12 @@
 # Multi-Store API Design
 
+> **Status: implemented — folded into the intent layer (2026-07-17).** The
+> multi-store API is shipped; its durable contract lives at
+> [`context/02-system/05-store/`](../../context/02-system/05-store/spec.md),
+> which records where the shipped implementation diverged from this proposal.
+> This RFC is retained as a historical record (see the fold-in rule in
+> `context/05-contributing/`).
+
 ## Context
 
 ### Current LiveStore Architecture

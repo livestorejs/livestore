@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { State } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
 
+/** Verifies: LS.SYS.STATE.SQLITE-R07 */
 describe('Client Document Optimistic Schema', () => {
   describe('Full Set Operations', () => {
     const valueSchema = Schema.Struct({

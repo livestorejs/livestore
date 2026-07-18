@@ -17,6 +17,7 @@ import { __resetUseRcResourceCache } from './useRcResource.ts'
 // const strictMode = process.env.REACT_STRICT_MODE !== undefined
 
 // NOTE running tests concurrently doesn't work with the default global db graph
+/** Verifies: LS.SYS.INT.REACT-R01, LS.SYS.STATE.SQLITE-R07 */
 Vitest.describe('useClientDocument', () => {
   beforeEach(() => {
     __resetUseRcResourceCache()

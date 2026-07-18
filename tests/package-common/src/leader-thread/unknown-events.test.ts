@@ -21,6 +21,7 @@ import { PlatformNode } from '@livestore/utils/node'
 // materialization paths, ensuring events are either skipped, logged, or cause
 // structured failures according to the selected strategy.
 
+/** Verifies: LS.SYS.EVT-R04 */
 Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
   Vitest.live('warn strategy keeps event in log and continues', (test) =>
     Effect.gen(function* () {

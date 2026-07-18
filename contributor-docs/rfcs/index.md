@@ -55,3 +55,13 @@ Once the RFC has been reviewed and refined:
 
 - Merge the PR to formally accept the RFC
 - Implementation can begin
+
+### 4. Fold into the intent layer
+
+Once an accepted RFC is implemented, its durable content moves into the
+intent layer (`context/`): contracts land as requirements/spec clauses in
+the owning nodes, and the decision — including rejected alternatives — is
+recorded under the owning node's `.decisions/`, citing the RFC. The RFC
+itself remains as a historical record and is no longer updated. See
+[`context/05-contributing/spec.md`](../../context/05-contributing/spec.md)
+for the normative rule.

@@ -8,6 +8,7 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
+/** Verifies: LS.SYS.STATE.SQLITE-R01 */
 Vitest.describe('SQLite State', () => {
   Vitest.describe('DB Schema', () => {
     const setup = (tableDef: State.SQLite.TableDef.Any) =>

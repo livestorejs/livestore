@@ -57,6 +57,7 @@ const runFirstNonEmpty = <T, E, R>(stream: Stream.Stream<SyncBackend.PullResItem
   )
 
 // TODO come up with a way to target specific providers individually
+/** Verifies: LS.SYS.SYNC-R02, LS.SYS.SYNC-R03, LS.SYS.SYNC-R04, LS.SYS.SYNC-R05, LS.SYS.SYNC.CF-R05, LS.SYS.VER.CONF-R01 */
 Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, ({ layer, name }) => {
   let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
   let runtimeContext: Context.Context<RuntimeServices>

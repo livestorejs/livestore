@@ -15,21 +15,21 @@ There is currently no specific timeline for a 1.0 release but we are making good
 
 ### On breaking changes
 
-While LiveStore is in beta there can be three kinds of breaking changes:
+While LiveStore is in beta, minor releases can contain three kinds of breaking changes (patch releases don't contain breaking changes):
 
 - Breaking API changes
-- Client storage format changes (whenever `liveStoreStorageFormatVersion` is updated)
+- Client storage format changes (whenever `liveStoreStorageFormatVersion` is updated, persisted local data is reset and rebuilt)
 - Sync backend storage format changes (e.g. when a sync backend implementation changes the way how it stores data)
 
-We try our best to minimize breaking changes and to provide a migration path whenever possible.
+Release notes classify each breaking change by kind. We try our best to minimize breaking changes and to provide a migration path whenever possible.
 
 ## Roadmap
 
 See [GitHub issues](https://github.com/livestorejs/livestore/issues) for more details. Get in touch if you have any questions or feedback.
 
-### 2025 Q3
+### Current focus
 
-- Adapter bug fixes & stability improvements
+- Reliability and stability improvements across adapters
 - Performance improvements
   - Syncing latency & throughput
 - More testing

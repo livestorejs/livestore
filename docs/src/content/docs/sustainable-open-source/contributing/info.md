@@ -73,7 +73,7 @@ pnpm exec changeset add --empty
 
 See [`.changeset/README.md`](https://github.com/livestorejs/livestore/tree/main/.changeset#readme)
 for the short contributor-facing rule and
-[`contributor-docs/release-workflows.md`](https://github.com/livestorejs/livestore/blob/main/contributor-docs/release-workflows.md)
+[`context/03-delivery/02-release/release-workflows-runbook.md`](https://github.com/livestorejs/livestore/blob/main/context/03-delivery/02-release/release-workflows-runbook.md)
 for the maintainer release workflow.
 
 ## Guiding principles {#guiding-principles}
