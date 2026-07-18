@@ -21,6 +21,11 @@ on:
         required: false
         default: ''
         type: string
+      ci_run_id:
+        description: Exact successful PR CI run selector for trusted snapshot promotion
+        required: false
+        default: '0'
+        type: string
       mode:
         description: Release workflow mode
         required: true
@@ -456,16 +461,24 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_WORKFLOW_REF" = "$GITHUB_REPOSITORY/.github/workflows/release.yml@refs/heads/main"
-          prs_json=$(gh api graphql   -f query='query($owner:String!,$name:String!){repository(owner:$owner,name:$name){pullRequests(first:100,states:OPEN,orderBy:{field:UPDATED_AT,direction:DESC}){nodes{number isDraft reviewDecision baseRefName headRefOid headRepository{nameWithOwner}}}}}'   -f owner="${GITHUB_REPOSITORY%%/*}"   -f name="${GITHUB_REPOSITORY#*/}")
-
-          jq -r --arg repository "$GITHUB_REPOSITORY"   '.data.repository.pullRequests.nodes[] | select(.isDraft == false and .reviewDecision == "APPROVED" and .baseRefName == "main" and .headRepository.nameWithOwner == $repository) | [.number, .headRefOid] | @tsv'   <<<"$prs_json" |
-          while IFS=$'	' read -r pr_number head_sha; do
+          prs_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls?state=open&base=main&per_page=100" --slurp)
+          jq -r --arg repository "$GITHUB_REPOSITORY"   '.[][] | select(.draft == false and .base.ref == "main" and .head.repo.full_name == $repository) | [.number, .head.sha, .head.ref] | @tsv'   <<<"$prs_json" |
+          while IFS=$'	' read -r pr_number head_sha head_ref; do
             [[ "$pr_number" =~ ^[1-9][0-9]*$ ]]
             [[ "$head_sha" =~ ^[0-9a-f]{40}$ ]]
+            test -n "$head_ref"
+            review_json=$(gh api graphql     -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewDecision}}}'     -f owner="${GITHUB_REPOSITORY%%/*}"     -f name="${GITHUB_REPOSITORY#*/}"     -F number="$pr_number")
+            if [ "$(jq -r '.data.repository.pullRequest.reviewDecision // ""' <<<"$review_json")" != APPROVED ]; then
+              continue
+            fi
+
             version="0.0.0-snapshot-pr.$pr_number.$head_sha"
+            snapshot_tag="pr-$pr_number-$head_sha"
             complete=true
             while IFS= read -r package_name; do
-              if ! npm view "$package_name@$version" version --json --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+              remote_version=$(npm view "$package_name@$version" version --json --registry=https://registry.npmjs.org 2>/dev/null | jq -r . || true)
+              remote_tag=$(npm view "$package_name" dist-tags --json --registry=https://registry.npmjs.org 2>/dev/null | jq -r --arg tag "$snapshot_tag" '.[$tag] // empty' || true)
+              if [ "$remote_version" != "$version" ] || [ "$remote_tag" != "$version" ]; then
                 complete=false
                 break
               fi
@@ -474,7 +487,31 @@ jobs:
               echo "PR #$pr_number snapshot cohort is already complete"
               continue
             fi
-            gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main     -f mode=promote-pr-snapshot     -f npm_tag=latest     -f pr_number="$pr_number"     -f head_sha="$head_sha"
+
+            selected_run_id=''
+            runs_json=$(gh api --paginate --method GET "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs"     -f event=pull_request     -f status=success     -f branch="$head_ref"     -F per_page=100     --slurp)
+            while IFS= read -r candidate_run_id; do
+              [[ "$candidate_run_id" =~ ^[1-9][0-9]*$ ]]
+              jobs_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/runs/$candidate_run_id/jobs?filter=all&per_page=100" --slurp)
+              pack_job=$(jq -c '[.[] | .jobs[] | select(.name == "pack-pr-snapshot" and .conclusion == "success")] | sort_by(.run_attempt) | last' <<<"$jobs_json")
+              if [ "$pack_job" = null ]; then
+                continue
+              fi
+              pack_attempt=$(jq -r '.run_attempt' <<<"$pack_job")
+              [[ "$pack_attempt" =~ ^[1-9][0-9]*$ ]]
+              artifact_name="pr-snapshot-$head_sha-$pack_attempt"
+              artifacts_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/runs/$candidate_run_id/artifacts?per_page=100" --slurp)
+              if ! jq -e --arg name "$artifact_name" 'any(.[] | .artifacts[]; .name == $name and .expired == false)' <<<"$artifacts_json" >/dev/null; then
+                continue
+              fi
+              selected_run_id="$candidate_run_id"
+              break
+            done < <(jq -r --arg sha "$head_sha" --argjson pr_number "$pr_number"     '[.[] | .workflow_runs[] | select(.event == "pull_request" and .conclusion == "success" and .head_repository.full_name == env.GITHUB_REPOSITORY and any(.pull_requests[]?; .number == $pr_number and .head.sha == $sha))] | sort_by(.created_at) | reverse | .[].id'     <<<"$runs_json")
+            if [ -z "$selected_run_id" ]; then
+              echo "PR #$pr_number has no exact successful pack artifact yet; skipping"
+              continue
+            fi
+            gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main     -f mode=promote-pr-snapshot     -f npm_tag=latest     -f pr_number="$pr_number"     -f head_sha="$head_sha"     -f ci_run_id="$selected_run_id"
           done
   validate-pr-snapshot:
     if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'promote-pr-snapshot')
@@ -512,25 +549,30 @@ jobs:
           [[ "$GITHUB_WORKFLOW_SHA" =~ ^[0-9a-f]{40}$ ]]
           if [ "$GITHUB_EVENT_NAME" = workflow_run ]; then
             run_id='${{ github.event.workflow_run.id }}'
-            head_sha='${{ github.event.workflow_run.head_sha }}'
-            source_run_url='${{ github.event.workflow_run.html_url }}'
-            prs_json=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/pulls")
-            test "$(jq 'length' <<<"$prs_json")" = 1
-            pr_number=$(jq -r '.[0].number' <<<"$prs_json")
           else
             test "$GITHUB_EVENT_NAME" = workflow_dispatch
             pr_number='${{ inputs.pr_number }}'
             head_sha='${{ inputs.head_sha }}'
-            runs_json=$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?event=pull_request&status=success&head_sha=$head_sha&per_page=100")
-            run_json=$(jq -c --arg sha "$head_sha" '[.workflow_runs[] | select(.head_sha == $sha and .event == "pull_request" and .conclusion == "success")] | sort_by(.created_at) | reverse | .[0]' <<<"$runs_json")
-            test "$run_json" != null
-            run_id=$(jq -r '.id' <<<"$run_json")
-            source_run_url=$(jq -r '.html_url' <<<"$run_json")
+            run_id='${{ inputs.ci_run_id }}'
           fi
 
+          [[ "$run_id" =~ ^[1-9][0-9]*$ ]]
+          run_json=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id")
+          test "$(jq -r '.event' <<<"$run_json")" = pull_request
+          test "$(jq -r '.status' <<<"$run_json")" = completed
+          test "$(jq -r '.conclusion' <<<"$run_json")" = success
+          test "$(jq -r '.head_repository.full_name' <<<"$run_json")" = "$GITHUB_REPOSITORY"
+          test "$(jq -r '.path' <<<"$run_json")" = .github/workflows/ci.yml
+          if [ "$GITHUB_EVENT_NAME" = workflow_run ]; then
+            test "$(jq '.pull_requests | length' <<<"$run_json")" = 1
+            pr_number=$(jq -r '.pull_requests[0].number' <<<"$run_json")
+            head_sha=$(jq -r '.pull_requests[0].head.sha' <<<"$run_json")
+          else
+            jq -e --arg sha "$head_sha" --argjson pr_number "$pr_number"     'any(.pull_requests[]?; .number == $pr_number and .head.sha == $sha)' <<<"$run_json" >/dev/null
+          fi
           [[ "$pr_number" =~ ^[1-9][0-9]*$ ]]
           [[ "$head_sha" =~ ^[0-9a-f]{40}$ ]]
-          [[ "$run_id" =~ ^[1-9][0-9]*$ ]]
+          source_run_url=$(jq -r '.html_url' <<<"$run_json")
           jobs_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?filter=all&per_page=100" --slurp)
           pack_job=$(jq -c '[.[] | .jobs[] | select(.name == "pack-pr-snapshot" and .conclusion == "success")] | sort_by(.run_attempt) | last' <<<"$jobs_json")
           test "$pack_job" != null
@@ -774,6 +816,35 @@ jobs:
             fi
             npm publish "$tarball" --registry=https://registry.npmjs.org --tag="$SNAPSHOT_TAG" --access=public --ignore-scripts --provenance
           done < "$PUBLISH_LIST"
+      - name: Verify complete immutable registry cohort
+        env:
+          SNAPSHOT_TAG: ${{ needs.validate-pr-snapshot.outputs.npm-tag }}
+          SNAPSHOT_VERSION: ${{ needs.validate-pr-snapshot.outputs.version }}
+        run: |
+          set -euo pipefail
+          verified=0
+          while IFS=$'	' read -r package_name file; do
+            tarball="$ARTIFACT_DIR/$file"
+            local_integrity="sha512-$(openssl dgst -sha512 -binary "$tarball" | base64 -w0)"
+            matched=false
+            for attempt in $(seq 1 12); do
+              remote_version=$(npm view "$package_name@$SNAPSHOT_VERSION" version --json --registry=https://registry.npmjs.org 2>/dev/null | jq -r . || true)
+              remote_integrity=$(npm view "$package_name@$SNAPSHOT_VERSION" dist.integrity --json --registry=https://registry.npmjs.org 2>/dev/null | jq -r . || true)
+              remote_tag=$(npm view "$package_name" dist-tags --json --registry=https://registry.npmjs.org 2>/dev/null | jq -r --arg tag "$SNAPSHOT_TAG" '.[$tag] // empty' || true)
+              if [ "$remote_version" = "$SNAPSHOT_VERSION" ] &&        [ "$remote_integrity" = "$local_integrity" ] &&        [ "$remote_tag" = "$SNAPSHOT_VERSION" ]; then
+                matched=true
+                break
+              fi
+              sleep 5
+            done
+            if [ "$matched" != true ]; then
+              echo "Registry verification failed for $package_name@$SNAPSHOT_VERSION" >&2
+              exit 1
+            fi
+            verified=$((verified + 1))
+          done < "$PUBLISH_LIST"
+          test "$verified" = '${{ needs.validate-pr-snapshot.outputs.package-count }}'
+          echo "Verified $verified package versions, immutable tags, and SHA-512 integrities." >> "$GITHUB_STEP_SUMMARY"
       - name: Record snapshot provenance
         env:
           SNAPSHOT_VERSION: ${{ needs.validate-pr-snapshot.outputs.version }}

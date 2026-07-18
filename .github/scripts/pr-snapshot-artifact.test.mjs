@@ -9,6 +9,7 @@ import {
   createManifest,
   hasCurrentHeadApproval,
   isAuthorizedReviewState,
+  selectEligibleProducerRun,
   snapshotTag,
   snapshotVersion,
   successfulProducerAttempt,
@@ -167,8 +168,13 @@ test('generated promotion workflow is anchored to trusted main', async () => {
   assert.match(dispatch, /actions: write/)
   assert.doesNotMatch(dispatch, /id-token: write/)
   assert.match(dispatch, /gh workflow run release\.yml.*--ref main/s)
-  assert.match(dispatch, /reviewDecision == "APPROVED"/)
-  assert.match(dispatch, /headRepository\.nameWithOwner/)
+  assert.match(dispatch, /pulls\?state=open&base=main&per_page=100.*--slurp/)
+  assert.match(dispatch, /pullRequest\(number:\$number\)\{reviewDecision\}/)
+  assert.match(dispatch, /reviewDecision.*APPROVED/s)
+  assert.match(dispatch, /any\(\.pull_requests\[\]\?; \.number == \$pr_number and \.head\.sha == \$sha\)/)
+  assert.match(dispatch, /pack-pr-snapshot.*conclusion == "success"/s)
+  assert.match(dispatch, /artifacts\?per_page=100.*expired == false/s)
+  assert.match(dispatch, /ci_run_id="\$selected_run_id"/)
 
   const checkoutStart = workflow.indexOf('- name: Checkout trusted validator only')
   const checkoutEnd = workflow.indexOf('\n      - name: Use pinned Node validator runtime', checkoutStart)
@@ -198,8 +204,15 @@ test('generated promotion workflow is anchored to trusted main', async () => {
   assert.match(publish, /npm publish/)
   assert.match(workflow.slice(validateStart, attestStart), /jobs\?filter=all/)
   assert.match(workflow.slice(validateStart, attestStart), /sort_by\(\.run_attempt\) \| last/)
+  assert.match(workflow.slice(validateStart, attestStart), /inputs\.ci_run_id/)
+  assert.match(workflow.slice(validateStart, attestStart), /\.pull_requests\[0\]\.head\.sha/)
   assert.match(workflow, /validated-pr-snapshot-.*release-run-attempt/)
   assert.match(workflow, /promotion-pr-snapshot-.*promotion-attempt/)
+
+  assert.match(publish, /Verify complete immutable registry cohort/)
+  assert.match(publish, /dist\.integrity/)
+  assert.match(publish, /dist-tags/)
+  assert.match(publish, /needs\.validate-pr-snapshot\.outputs\.package-count/)
 
   const ciWorkflow = await readFile(new URL('../workflows/ci.yml', import.meta.url), 'utf8')
   assert.match(
@@ -249,6 +262,38 @@ test('selects the successful producer attempt when only failed jobs were rerun',
     }),
     2,
   )
+})
+
+test('selects an exact PR-associated run when multiple PRs share a head SHA', () => {
+  const headSha = 'a'.repeat(40)
+  const artifact = (attempt) => ({ name: `pr-snapshot-${headSha}-${attempt}`, expired: false })
+  const runs = [
+    {
+      id: 100,
+      headSha: 'c'.repeat(40),
+      event: 'pull_request',
+      conclusion: 'success',
+      pullRequests: [{ number: 41, headSha }],
+      packAttempt: 1,
+      artifacts: [artifact(1)],
+      createdAt: '2026-07-18T10:00:00Z',
+    },
+    {
+      id: 101,
+      headSha: 'd'.repeat(40),
+      event: 'pull_request',
+      conclusion: 'success',
+      pullRequests: [{ number: 42, headSha }],
+      packAttempt: 2,
+      artifacts: [artifact(2)],
+      createdAt: '2026-07-18T09:00:00Z',
+    },
+  ]
+
+  assert.equal(selectEligibleProducerRun({ runs, prNumber: 42, headSha })?.id, 101)
+  assert.equal(selectEligibleProducerRun({ runs, prNumber: 43, headSha }), null)
+  runs[1].artifacts[0].expired = true
+  assert.equal(selectEligibleProducerRun({ runs, prNumber: 42, headSha }), null)
 })
 
 test('rejects a tarball changed after manifest creation', async () => {

@@ -122,6 +122,30 @@ export const successfulProducerAttempt = ({ jobs, jobName }) => {
   return Math.max(...matches.map((job) => positiveInteger(job.run_attempt, `${jobName} run attempt`)))
 }
 
+export const selectEligibleProducerRun = ({ runs, prNumber, headSha }) => {
+  const parsedPrNumber = positiveInteger(prNumber, 'PR number')
+  if (shaPattern.test(headSha) === false) fail(`Invalid head SHA: ${headSha}`)
+  if (Array.isArray(runs) === false) fail('Workflow runs response is not an array')
+
+  return (
+    runs
+      .filter(
+        (run) =>
+          run?.event === 'pull_request' &&
+          run?.conclusion === 'success' &&
+          run.pullRequests?.some(
+            (pullRequest) => pullRequest?.number === parsedPrNumber && pullRequest?.headSha === headSha,
+          ) === true &&
+          Number.isSafeInteger(run.packAttempt) === true &&
+          run.packAttempt > 0 &&
+          run.artifacts?.some(
+            (artifact) => artifact?.name === `pr-snapshot-${headSha}-${run.packAttempt}` && artifact?.expired === false,
+          ) === true,
+      )
+      .toSorted((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))[0] ?? null
+  )
+}
+
 export const hasCurrentHeadApproval = ({ headSha, currentHeadSha, reviews }) => {
   if (shaPattern.test(headSha) === false || shaPattern.test(currentHeadSha) === false) return false
   if (headSha !== currentHeadSha || Array.isArray(reviews) === false) return false
