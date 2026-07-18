@@ -118,8 +118,8 @@ export const snapshotVersion = ({ prNumber, headSha }) => {
 export const successfulProducerAttempt = ({ jobs, jobName }) => {
   if (Array.isArray(jobs) === false) fail('Workflow jobs response is not an array')
   const matches = jobs.filter((job) => job?.name === jobName && job?.conclusion === 'success')
-  if (matches.length !== 1) fail(`Expected exactly one successful ${jobName} job, found ${matches.length}`)
-  return positiveInteger(matches[0].run_attempt, `${jobName} run attempt`)
+  if (matches.length === 0) fail(`Expected at least one successful ${jobName} job`)
+  return Math.max(...matches.map((job) => positiveInteger(job.run_attempt, `${jobName} run attempt`)))
 }
 
 export const hasCurrentHeadApproval = ({ headSha, currentHeadSha, reviews }) => {

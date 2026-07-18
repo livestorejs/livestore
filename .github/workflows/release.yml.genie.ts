@@ -157,10 +157,10 @@ fi
 [[ "$pr_number" =~ ^[1-9][0-9]*$ ]]
 [[ "$head_sha" =~ ^[0-9a-f]{40}$ ]]
 [[ "$run_id" =~ ^[1-9][0-9]*$ ]]
-jobs_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?filter=latest&per_page=100" --slurp)
-pack_jobs=$(jq -c '[.[] | .jobs[] | select(.name == "pack-pr-snapshot" and .conclusion == "success")]' <<<"$jobs_json")
-test "$(jq 'length' <<<"$pack_jobs")" = 1
-run_attempt=$(jq -r '.[0].run_attempt' <<<"$pack_jobs")
+jobs_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?filter=all&per_page=100" --slurp)
+pack_job=$(jq -c '[.[] | .jobs[] | select(.name == "pack-pr-snapshot" and .conclusion == "success")] | sort_by(.run_attempt) | last' <<<"$jobs_json")
+test "$pack_job" != null
+run_attempt=$(jq -r '.run_attempt' <<<"$pack_job")
 [[ "$run_attempt" =~ ^[1-9][0-9]*$ ]]
 pr_json=$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$pr_number")
 

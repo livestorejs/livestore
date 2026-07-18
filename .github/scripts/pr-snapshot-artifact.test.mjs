@@ -186,7 +186,8 @@ test('generated review workflow checks out only its trusted workflow commit', as
   assert.match(publish, /\.head\.repo\.full_name/)
   assert.doesNotMatch(publish, /npm dist-tag/)
   assert.match(publish, /npm publish/)
-  assert.match(workflow.slice(validateStart, attestStart), /pack-pr-snapshot.*conclusion == "success"/s)
+  assert.match(workflow.slice(validateStart, attestStart), /jobs\?filter=all/)
+  assert.match(workflow.slice(validateStart, attestStart), /sort_by\(\.run_attempt\) \| last/)
   assert.match(workflow, /validated-pr-snapshot-.*release-run-attempt/)
   assert.match(workflow, /promotion-pr-snapshot-.*promotion-attempt/)
 
@@ -226,6 +227,17 @@ test('selects the successful producer attempt when only failed jobs were rerun',
       ],
     }),
     1,
+  )
+
+  assert.equal(
+    successfulProducerAttempt({
+      jobName: 'pack-pr-snapshot',
+      jobs: [
+        { name: 'pack-pr-snapshot', conclusion: 'success', run_attempt: 1 },
+        { name: 'pack-pr-snapshot', conclusion: 'success', run_attempt: 2 },
+      ],
+    }),
+    2,
   )
 })
 
