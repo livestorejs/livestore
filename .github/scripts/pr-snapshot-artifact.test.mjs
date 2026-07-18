@@ -169,9 +169,30 @@ test('generated review workflow checks out only its trusted workflow commit', as
   const validateStart = workflow.indexOf('\n  validate-pr-snapshot:')
   const attestStart = workflow.indexOf('\n  attest-pr-snapshot:', validateStart)
   const authorizeStart = workflow.indexOf('\n  authorize-pr-snapshot:', attestStart)
+  const publishStart = workflow.indexOf('\n  publish-pr-snapshot:', authorizeStart)
+  const nextJobStart = workflow.indexOf('\n  create-release-pr:', publishStart)
   assert.match(workflow.slice(validateStart, attestStart), /GITHUB_WORKFLOW_REF.*refs\/heads\/main/)
   assert.doesNotMatch(workflow.slice(validateStart, attestStart), /id-token: write/)
+  assert.match(workflow.slice(validateStart, attestStart), /pull-requests: read/)
   assert.match(workflow.slice(attestStart, authorizeStart), /id-token: write/)
+  assert.match(workflow.slice(authorizeStart, publishStart), /pull-requests: read/)
+
+  const publish = workflow.slice(publishStart, nextJobStart)
+  assert.match(publish, /pull-requests: read/)
+  assert.match(publish, /group: 'pr-snapshot-\$\{\{ needs\.validate-pr-snapshot\.outputs\.head-sha \}\}'/)
+  assert.match(publish, /\.base\.ref/)
+  assert.match(publish, /\.head\.repo\.full_name/)
+  assert.match(publish, /npm dist-tag add/)
+
+  const ciWorkflow = await readFile(new URL('../workflows/ci.yml', import.meta.url), 'utf8')
+  assert.match(
+    ciWorkflow,
+    /name: 'pr-snapshot-\$\{\{ github\.event\.pull_request\.head\.sha \}\}-\$\{\{ github\.run_attempt \}\}'/,
+  )
+  assert.match(
+    workflow.slice(validateStart, attestStart),
+    /name: 'pr-snapshot-\$\{\{ steps\.identity\.outputs\.head-sha \}\}-\$\{\{ steps\.identity\.outputs\.run-attempt \}\}'/,
+  )
 })
 
 test('derives an immutable tag for each PR head cohort', () => {

@@ -567,7 +567,7 @@ jobs:
       - name: Upload immutable PR snapshot candidate
         uses: actions/upload-artifact@v4
         with:
-          name: 'pr-snapshot-${{ github.event.pull_request.head.sha }}'
+          name: 'pr-snapshot-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}'
           path: '${{ github.workspace }}/tmp/pr-snapshot-artifact/'
           if-no-files-found: error
           retention-days: 7

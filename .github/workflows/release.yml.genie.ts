@@ -108,6 +108,7 @@ export default githubWorkflow({
       permissions: {
         actions: 'read',
         contents: 'read',
+        'pull-requests': 'read',
       },
       outputs: {
         'head-sha': '${{ steps.identity.outputs.head-sha }}',
@@ -192,7 +193,7 @@ scripts/src/generated/release-topology.json`,
           name: 'Download exact-run snapshot candidate',
           uses: 'actions/download-artifact@v4',
           with: {
-            name: 'pr-snapshot-${{ steps.identity.outputs.head-sha }}',
+            name: 'pr-snapshot-${{ steps.identity.outputs.head-sha }}-${{ steps.identity.outputs.run-attempt }}',
             path: '${{ github.workspace }}/tmp/pr-snapshot-artifact',
             'github-token': '${{ github.token }}',
             'run-id': '${{ steps.identity.outputs.run-id }}',
@@ -307,7 +308,7 @@ jq -n \
     'authorize-pr-snapshot': {
       needs: ['validate-pr-snapshot'],
       'runs-on': 'ubuntu-24.04',
-      permissions: { contents: 'read' },
+      permissions: { contents: 'read', 'pull-requests': 'read' },
       outputs: { authorized: '${{ steps.approval.outputs.authorized }}' },
       defaults: bashShellDefaults,
       steps: [
@@ -348,13 +349,14 @@ echo "Snapshot promotion authorized: $authorized" >> "$GITHUB_STEP_SUMMARY"`,
       needs: ['validate-pr-snapshot', 'attest-pr-snapshot', 'authorize-pr-snapshot'],
       'runs-on': 'ubuntu-24.04',
       concurrency: {
-        group: 'pr-snapshot-${{ needs.validate-pr-snapshot.outputs.pr-number }}',
+        group: 'pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}',
         'cancel-in-progress': false,
       },
       permissions: {
         actions: 'read',
         contents: 'read',
         'id-token': 'write',
+        'pull-requests': 'read',
       },
       env: {
         ARTIFACT_DIR: '${{ github.workspace }}/tmp/validated-pr-snapshot',
@@ -397,6 +399,8 @@ review_decision=$(gh api graphql \
   --jq '.data.repository.pullRequest.reviewDecision')
 test "$(jq -r '.state' <<<"$pr_json")" = open
 test "$(jq -r '.draft' <<<"$pr_json")" = false
+test "$(jq -r '.base.ref' <<<"$pr_json")" = main
+test "$(jq -r '.head.repo.full_name' <<<"$pr_json")" = "$GITHUB_REPOSITORY"
 test "$(jq -r '.head.sha' <<<"$pr_json")" = "$EXPECTED_HEAD_SHA"
 test "$review_decision" = APPROVED
 jq -e --arg sha "$EXPECTED_HEAD_SHA" 'any(.[]; .state == "APPROVED" and .commit_id == $sha)' <<<"$reviews_json" >/dev/null`,
@@ -441,6 +445,7 @@ while IFS=$'\t' read -r package_name file; do
       exit 1
     fi
     echo "$package_name@$SNAPSHOT_VERSION already matches candidate; skipping"
+    npm dist-tag add "$package_name@$SNAPSHOT_VERSION" "$SNAPSHOT_TAG" --registry=https://registry.npmjs.org
     continue
   fi
   npm publish "$tarball" --registry=https://registry.npmjs.org --tag="$SNAPSHOT_TAG" --access=public --ignore-scripts --provenance
