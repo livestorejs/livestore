@@ -3,7 +3,7 @@
 Role: `02-processors/` owns the two drivers of the merge core: the
 `LeaderSyncProcessor` (leader⇄backend plus applying session pushes) and the
 `ClientSessionSyncProcessor` (session⇄leader). Queueing, batching, retry,
-precedence, and cursor semantics live here; *where* the processors run is
+precedence, and cursor semantics live here; _where_ the processors run is
 `../../04-runtime/`'s concern (LS.SYS.SYNC.SS-R04).
 
 ## Context
@@ -26,6 +26,12 @@ Builds on [../requirements.md](../requirements.md) and
   precedence when both contend (spec: [Leader Sync
   Processor](./spec.md#leader-sync-processor)). Adopted 2026-07-16
   (interview). `refines: LS.SYS.SYNC-R01`
+- **LS.SYS.SYNC.PROC-R03 Orderly session drain:** Successful orderly Store
+  shutdown closes client-session admission and sends every admitted event to
+  the leader in FIFO order within configured batch bounds. A rejected or fatal
+  leader push fails the drain instead of claiming durability. Failed shutdown
+  may interrupt blocked processor work. Adopted 2026-07-18 (#1437).
+  `refines: LS.SYS.STORE-R07`
 
 Further processor requirements (e.g. the crash-atomicity contract of batch
 materialization) remain open pending `LS.SYS.STATE-DQ2`;

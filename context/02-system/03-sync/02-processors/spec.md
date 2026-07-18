@@ -98,8 +98,15 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   (`meta.sessionChangeset`, then mark `unset`) → re-offer rebased pending
   → restart the push fiber. Sequencing is what the built-in simulation
   harness perturbs (`simSleep` hooks at 5 labeled points, `:83-86,
-  414-422`; `SIMULATION_ENABLED` is hardcoded `true` with a build-macro
+414-422`; `SIMULATION_ENABLED` is hardcoded `true` with a build-macro
   TODO, `:410-411`).
+- **Shutdown drain:** orderly shutdown closes new `push()` admission, stops
+  pull processing while holding the same state-ownership permit, ends the push
+  queue, and awaits its sole worker. Success therefore means all admitted
+  events reached the leader; an unresolved rejection or fatal push fails the
+  drain. Failed shutdown interrupts the pull and push workers. Store-level
+  timeout stops waiting without cancelling this cleanup
+  (LS.SYS.SYNC.PROC-R03).
 - **Observability** (`:98-99, 358-361`): sync-state updates surface via a
   separate queue explicitly not relied on for correctness; a devtools
   latch can pause upstream application (`:152-153`).
