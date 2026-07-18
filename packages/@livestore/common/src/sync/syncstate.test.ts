@@ -423,7 +423,7 @@ Vitest.describe('syncstate', () => {
               id: Schema.String,
               flag: Schema.optional(Schema.Boolean),
             })
-            const localArgs = Schema.encodeUnknownSync(argsSchema)({ id: 'abc' } as any)
+            const localArgs = yield* Schema.encodeUnknownEffect(argsSchema)({ id: 'abc' } as any).pipe(Effect.orDie)
             const wireArgs = JSON.parse(JSON.stringify(localArgs))
 
             const localPending = new LiveStoreEvent.Client.EncodedWithMeta({
@@ -686,20 +686,20 @@ const expectEventArraysEqual = (
   })
 }
 
-const expectAdvance: (
-  result: typeof SyncState.MergeResult.Type,
-) => asserts result is typeof SyncState.MergeResultAdvance.Type = (result) => {
+const expectAdvance: (result: typeof SyncState.MergeResult.Type) => asserts result is SyncState.MergeResultAdvance = (
+  result,
+) => {
   expect(result._tag).toBe('advance')
 }
 
-const expectRebase: (
-  result: typeof SyncState.MergeResult.Type,
-) => asserts result is typeof SyncState.MergeResultRebase.Type = (result) => {
+const expectRebase: (result: typeof SyncState.MergeResult.Type) => asserts result is SyncState.MergeResultRebase = (
+  result,
+) => {
   expect(result._tag, `Expected rebase, got ${result._tag}`).toBe('rebase')
 }
 
-const expectReject: (
-  result: typeof SyncState.MergeResult.Type,
-) => asserts result is typeof SyncState.MergeResultReject.Type = (result) => {
+const expectReject: (result: typeof SyncState.MergeResult.Type) => asserts result is SyncState.MergeResultReject = (
+  result,
+) => {
   expect(result._tag).toBe('reject')
 }

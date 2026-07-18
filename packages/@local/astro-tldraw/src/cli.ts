@@ -301,7 +301,7 @@ const watchDiagramsInternal = (
     const fs = yield* FileSystem.FileSystem
     const paths = resolveCachePaths(options.projectRoot)
 
-    const diagramsRootExists = yield* fs.exists(paths.diagramsRoot).pipe(Effect.catch(() => Effect.succeed(false)))
+    const diagramsRootExists = yield* fs.exists(paths.diagramsRoot).pipe(Effect.orElseSucceed(() => false))
 
     if (diagramsRootExists === false) {
       yield* Effect.logWarning(`Diagrams watch: diagrams root does not exist at ${paths.diagramsRoot}`)

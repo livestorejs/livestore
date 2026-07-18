@@ -104,12 +104,15 @@ const baseTsconfigCompilerOptions = {
   ...baseTsconfigCompilerOptionsWithoutDefaults,
   // LIVE-MIGRATION BRIDGE tsgo-strict-gate — DELETE at contraction — see live-migrations registry
   // Advisory gate: Effect warnings and suggestions remain visible without failing the exit code.
+  // LiveStore-specific: the internal @livestore/utils duplicate-package diagnostics are an
+  // LSP workspace-resolution artifact (not real duplication), so they are allowed here.
   plugins: [
     {
       ...effectUtilsBaseTsconfigCompilerOptions.plugins[0],
       ignoreEffectWarningsInTscExitCode: true,
       ignoreEffectSuggestionsInTscExitCode: true,
       ignoreEffectErrorsInTscExitCode: false,
+      allowedDuplicatedPackages: ['@livestore/utils'],
     },
   ],
   // LIVE-MIGRATION END tsgo-strict-gate

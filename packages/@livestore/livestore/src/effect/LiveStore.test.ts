@@ -40,9 +40,7 @@ describe('Store.Tag R channel consistency', () => {
   })
 
   it('fromDeferred layer output satisfies the same R channel', () => {
-    const prog = Effect.gen(function* () {
-      yield* MainStore
-    })
+    const prog = MainStore
 
     /** fromDeferred + DeferredLayer should satisfy MainStore in R */
     const _provided = prog.pipe(Effect.provide(Layer.merge(MainStore.fromDeferred, MainStore.DeferredLayer)))

@@ -274,7 +274,7 @@ const runWithLogging = ({
 
       // Dump any buffered data and finish both stream fibers before we return.
       const flushOutputs = Effect.gen(function* () {
-        const stillRunning = yield* runningProcess.isRunning.pipe(Effect.catch(() => Effect.succeed(false)))
+        const stillRunning = yield* runningProcess.isRunning.pipe(Effect.orElseSucceed(() => false))
         if (stillRunning === true) {
           yield* Effect.ignore(runningProcess.kill())
         }
