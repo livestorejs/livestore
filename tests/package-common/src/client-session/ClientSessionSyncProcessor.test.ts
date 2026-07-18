@@ -8,7 +8,7 @@ import {
   LeaderAheadError,
   makeMockSyncBackend,
   SyncState,
-  type UnknownError,
+  UnknownError,
 } from '@livestore/common'
 import { Eventlog, makeMaterializeEvent, recreateDb } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -604,7 +604,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       yield* pushIds(['blocked'])
       yield* Deferred.await(firstPushStarted)
 
-      yield* Scope.close(scope, Exit.fail(new Error('test shutdown failure')))
+      yield* Scope.close(scope, Exit.fail(new UnknownError({ cause: new Error('test shutdown failure') })))
 
       expect(yield* Deferred.isDone(firstPushInterrupted)).toBe(true)
       expect(shutdownCalls).toBe(0)

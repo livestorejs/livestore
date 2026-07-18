@@ -139,7 +139,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     const backgroundLeaderPushing: Effect.Effect<void> = Effect.gen(function* () {
       while (true) {
         const batch = yield* TxQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize).pipe(
-          Effect.catchIf(Cause.isDone, () => Effect.succeed(undefined)),
+          Effect.catchIf(Cause.isDone, () => Effect.void),
         )
         if (batch === undefined) return
 
