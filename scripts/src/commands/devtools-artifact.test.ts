@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest'
 import {
   type ArtifactManifest,
   type ArtifactMetadata,
+  assertRepackedDevtoolsPackageJson,
   assertCertifiedDevtoolsArtifactForLivestore,
   assertUncertifiedRepackMode,
   containsForbiddenPattern,
   type DevtoolsArtifactCertification,
   forbiddenPatterns,
+  repackDevtoolsPackageJson,
 } from './devtools-artifact.ts'
 
 const metadata: ArtifactMetadata = {
@@ -213,5 +215,61 @@ describe('artifact forbidden text patterns', () => {
     expect(containsForbiddenText('HOME: "/home/web_user"')).toBe(false)
     expect(containsForbiddenText('source: "/home/alice/project/src/file.ts"')).toBe(true)
     expect(containsForbiddenText('source: "/Users/alice/project/src/file.ts"')).toBe(true)
+  })
+})
+
+describe('repackDevtoolsPackageJson', () => {
+  const artifactPackage = {
+    name: '@livestore/devtools-vite',
+    version: '0.4.0-dev.24',
+    dependencies: {
+      '@livestore/adapter-web': '0.4.0-dev.24',
+      '@livestore/utils': '0.4.0-dev.24',
+      '@parcel/watcher': '^2.5.0',
+      vite: '*',
+    },
+    peerDependencies: {
+      '@livestore/adapter-web': '0.4.0-dev.24',
+      '@livestore/utils': '0.4.0-dev.24',
+      vite: '^7.3.1 || ^8.0.16',
+    },
+  }
+
+  it.each(['0.0.0-snapshot-abc123', '0.4.0-dev.25'])('preserves peer ranges for target %s', (version) => {
+    const repackedPackage = repackDevtoolsPackageJson({ artifactPackage, version })
+
+    expect(repackedPackage.peerDependencies).toEqual({
+      '@livestore/adapter-web': version,
+      '@livestore/utils': version,
+      vite: '^7.3.1 || ^8.0.16',
+    })
+    expect(repackedPackage.dependencies).toEqual({ '@parcel/watcher': '^2.5.0' })
+  })
+
+  it('rejects repacked manifests whose core peers are not exact', () => {
+    expect(() =>
+      assertRepackedDevtoolsPackageJson({
+        artifactPackage,
+        repackedPackage: {
+          ...artifactPackage,
+          dependencies: { '@parcel/watcher': '^2.5.0' },
+          peerDependencies: {
+            ...artifactPackage.peerDependencies,
+            '@livestore/adapter-web': '^0.4.0',
+            '@livestore/utils': '0.4.0-dev.25',
+          },
+        },
+        version: '0.4.0-dev.25',
+      }),
+    ).toThrow(/requires exact peer @livestore\/adapter-web@0\.4\.0-dev\.25/)
+  })
+
+  it('rejects artifacts without the externalized watcher runtime dependency', () => {
+    expect(() =>
+      repackDevtoolsPackageJson({
+        artifactPackage: { ...artifactPackage, dependencies: {} },
+        version: '0.4.0-dev.25',
+      }),
+    ).toThrow(/missing required runtime dependency @parcel\/watcher/)
   })
 })
