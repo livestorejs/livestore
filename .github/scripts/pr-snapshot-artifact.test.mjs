@@ -10,6 +10,8 @@ import {
   hasCurrentHeadApproval,
   isAuthorizedReviewState,
   snapshotTag,
+  snapshotVersion,
+  successfulProducerAttempt,
   validateManifest,
 } from './pr-snapshot-artifact.mjs'
 
@@ -52,7 +54,7 @@ const fixture = async () => {
   await mkdir(artifactDir)
   const topologyPath = path.join(dir, 'topology.json')
   const headSha = 'a'.repeat(40)
-  const version = `0.0.0-snapshot-${headSha}`
+  const version = `0.0.0-snapshot-pr.42.${headSha}`
   const packageNames = ['@livestore/a', '@livestore/b']
   await writeFile(topologyPath, JSON.stringify({ publishablePackageNames: packageNames }))
   for (const name of packageNames) {
@@ -182,7 +184,11 @@ test('generated review workflow checks out only its trusted workflow commit', as
   assert.match(publish, /group: 'pr-snapshot-\$\{\{ needs\.validate-pr-snapshot\.outputs\.head-sha \}\}'/)
   assert.match(publish, /\.base\.ref/)
   assert.match(publish, /\.head\.repo\.full_name/)
-  assert.match(publish, /npm dist-tag add/)
+  assert.doesNotMatch(publish, /npm dist-tag/)
+  assert.match(publish, /npm publish/)
+  assert.match(workflow.slice(validateStart, attestStart), /pack-pr-snapshot.*conclusion == "success"/s)
+  assert.match(workflow, /validated-pr-snapshot-.*release-run-attempt/)
+  assert.match(workflow, /promotion-pr-snapshot-.*promotion-attempt/)
 
   const ciWorkflow = await readFile(new URL('../workflows/ci.yml', import.meta.url), 'utf8')
   assert.match(
@@ -204,6 +210,23 @@ test('derives an immutable tag for each PR head cohort', () => {
   assert.notEqual(firstTag, snapshotTag({ prNumber: 42, headSha: secondHead }))
   assert.notEqual(firstTag, snapshotTag({ prNumber: 43, headSha: firstHead }))
   assert.notEqual(firstTag, 'snapshot')
+  assert.notEqual(
+    snapshotVersion({ prNumber: 42, headSha: firstHead }),
+    snapshotVersion({ prNumber: 43, headSha: firstHead }),
+  )
+})
+
+test('selects the successful producer attempt when only failed jobs were rerun', () => {
+  assert.equal(
+    successfulProducerAttempt({
+      jobName: 'pack-pr-snapshot',
+      jobs: [
+        { name: 'pack-pr-snapshot', conclusion: 'success', run_attempt: 1 },
+        { name: 'lint', conclusion: 'success', run_attempt: 2 },
+      ],
+    }),
+    1,
+  )
 })
 
 test('rejects a tarball changed after manifest creation', async () => {

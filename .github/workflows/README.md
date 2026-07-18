@@ -72,7 +72,7 @@ package settings.
 
 A successful `ci.yml` run for a repository-owned pull request also publishes
 an immutable candidate for the exact head as
-`0.0.0-snapshot-<40-character-head-sha>`. Forks are excluded.
+`0.0.0-snapshot-pr.<number>.<40-character-head-sha>`. Forks are excluded.
 The PR job only packs the fixed public package cohort on a GitHub-hosted runner
 without secrets, write permissions, or OIDC. The default-branch `release.yml`
 validation job re-resolves the open PR from the completed run, requires its

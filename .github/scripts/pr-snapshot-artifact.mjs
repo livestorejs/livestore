@@ -109,6 +109,19 @@ export const snapshotTag = ({ prNumber, headSha }) => {
   return `pr-${parsedPrNumber}-${headSha}`
 }
 
+export const snapshotVersion = ({ prNumber, headSha }) => {
+  const parsedPrNumber = positiveInteger(prNumber, 'PR number')
+  if (shaPattern.test(headSha) === false) fail(`Invalid head SHA: ${headSha}`)
+  return `0.0.0-snapshot-pr.${parsedPrNumber}.${headSha}`
+}
+
+export const successfulProducerAttempt = ({ jobs, jobName }) => {
+  if (Array.isArray(jobs) === false) fail('Workflow jobs response is not an array')
+  const matches = jobs.filter((job) => job?.name === jobName && job?.conclusion === 'success')
+  if (matches.length !== 1) fail(`Expected exactly one successful ${jobName} job, found ${matches.length}`)
+  return positiveInteger(matches[0].run_attempt, `${jobName} run attempt`)
+}
+
 export const hasCurrentHeadApproval = ({ headSha, currentHeadSha, reviews }) => {
   if (shaPattern.test(headSha) === false || shaPattern.test(currentHeadSha) === false) return false
   if (headSha !== currentHeadSha || Array.isArray(reviews) === false) return false
@@ -177,7 +190,8 @@ export const createManifest = async ({
   runAttempt,
 }) => {
   if (shaPattern.test(headSha) === false) fail(`Invalid head SHA: ${headSha}`)
-  const version = `0.0.0-snapshot-${headSha}`
+  const parsedPrNumber = positiveInteger(prNumber, 'PR number')
+  const version = snapshotVersion({ prNumber: parsedPrNumber, headSha })
   const { packageNames, topologyDigest } = await readTopology(topologyPath)
   const files = (await readdir(artifactDir))
     .filter((file) => file.endsWith('.tgz'))
@@ -217,7 +231,7 @@ export const createManifest = async ({
   const manifest = {
     schemaVersion: 1,
     repository,
-    prNumber: positiveInteger(prNumber, 'PR number'),
+    prNumber: parsedPrNumber,
     headSha,
     runId: positiveInteger(runId, 'run ID'),
     runAttempt: positiveInteger(runAttempt, 'run attempt'),
@@ -261,11 +275,12 @@ export const validateManifest = async ({
     'Manifest',
   )
 
-  const expectedVersion = `0.0.0-snapshot-${headSha}`
+  const parsedPrNumber = positiveInteger(prNumber, 'PR number')
+  const expectedVersion = snapshotVersion({ prNumber: parsedPrNumber, headSha })
   const expectedIdentity = {
     schemaVersion: 1,
     repository,
-    prNumber: positiveInteger(prNumber, 'PR number'),
+    prNumber: parsedPrNumber,
     headSha,
     runId: positiveInteger(runId, 'run ID'),
     runAttempt: positiveInteger(runAttempt, 'run attempt'),

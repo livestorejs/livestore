@@ -423,8 +423,9 @@ in
       exec = ''
         set -euo pipefail
         : "''${GIT_SHA:?GIT_SHA is required}"
+        : "''${PR_NUMBER:?PR_NUMBER is required}"
         : "''${SNAPSHOT_OUT_DIR:?SNAPSHOT_OUT_DIR is required}"
-        mono release snapshot-pack --git-sha="$GIT_SHA" --out-dir="$SNAPSHOT_OUT_DIR"
+        mono release snapshot-pack --git-sha="$GIT_SHA" --pr-number="$PR_NUMBER" --out-dir="$SNAPSHOT_OUT_DIR"
       '';
       after = [ "setup:strict" ];
     };

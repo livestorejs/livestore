@@ -158,7 +158,10 @@ export default githubWorkflow({
         {
           name: 'Pack exact-SHA snapshot',
           run: runDevenvTasksBefore('release:snapshot:pack:git-sha'),
-          env: { GIT_SHA: '${{ github.event.pull_request.head.sha }}' },
+          env: {
+            GIT_SHA: '${{ github.event.pull_request.head.sha }}',
+            PR_NUMBER: '${{ github.event.pull_request.number }}',
+          },
         },
         {
           name: 'Create snapshot manifest',

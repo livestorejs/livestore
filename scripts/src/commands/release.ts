@@ -661,11 +661,13 @@ export const releaseSnapshot = Effect.fn(function* ({
 
 export const packSnapshot = Effect.fn(function* ({
   gitSha,
+  prNumber,
   cwd,
   outDir,
   tscBin = 'tsc',
 }: {
   gitSha: string
+  prNumber: number
   cwd: string
   outDir: string
   tscBin?: string
@@ -675,8 +677,11 @@ export const packSnapshot = Effect.fn(function* ({
       new Error(`Snapshot Git SHA must be exactly 40 lowercase hexadecimal characters: ${gitSha}`),
     )
   }
+  if (Number.isSafeInteger(prNumber) === false || prNumber < 1) {
+    return yield* Effect.fail(new Error(`Snapshot PR number must be a positive integer: ${prNumber}`))
+  }
 
-  const version = `0.0.0-snapshot-${gitSha}`
+  const version = `0.0.0-snapshot-pr.${prNumber}.${gitSha}`
   const packages = yield* listSnapshotPackages(cwd)
 
   if (packages.length === 0) {
@@ -721,6 +726,7 @@ export const packSnapshotCommand = Cli.Command.make(
   'snapshot-pack',
   {
     gitSha: Cli.Flag.string('git-sha'),
+    prNumber: Cli.Flag.integer('pr-number'),
     outDir: Cli.Flag.string('out-dir'),
     cwd: Cli.Flag.string('cwd').pipe(
       Cli.Flag.withDefault(
@@ -729,9 +735,10 @@ export const packSnapshotCommand = Cli.Command.make(
     ),
     tscBin: Cli.Flag.string('tsc-bin').pipe(Cli.Flag.optional),
   },
-  ({ gitSha, outDir, cwd, tscBin }) =>
+  ({ gitSha, prNumber, outDir, cwd, tscBin }) =>
     packSnapshot({
       gitSha,
+      prNumber,
       cwd,
       outDir,
       ...(tscBin._tag === 'Some' ? { tscBin: tscBin.value } : {}),

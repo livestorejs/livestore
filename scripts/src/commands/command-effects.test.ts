@@ -33,6 +33,7 @@ describe('command Effect operations', () => {
     const operation = packSnapshot({
       cwd: '/tmp/livestore',
       gitSha: 'a'.repeat(40),
+      prNumber: 42,
       outDir: '/tmp/livestore-snapshot',
       tscBin: 'tsc',
     })

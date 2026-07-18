@@ -116,6 +116,7 @@ export default githubWorkflow({
         'npm-tag': '${{ steps.validate.outputs.npm-tag }}',
         'package-count': '${{ steps.validate.outputs.package-count }}',
         'pr-number': '${{ steps.identity.outputs.pr-number }}',
+        'release-run-attempt': '${{ steps.validate.outputs.release-run-attempt }}',
         'run-attempt': '${{ steps.identity.outputs.run-attempt }}',
         'run-id': '${{ steps.identity.outputs.run-id }}',
         'source-run-url': '${{ steps.identity.outputs.source-run-url }}',
@@ -138,7 +139,6 @@ test "$GITHUB_WORKFLOW_REF" = "$GITHUB_REPOSITORY/.github/workflows/release.yml@
 [[ "$GITHUB_WORKFLOW_SHA" =~ ^[0-9a-f]{40}$ ]]
 if [ "$GITHUB_EVENT_NAME" = workflow_run ]; then
   run_id='\${{ github.event.workflow_run.id }}'
-  run_attempt='\${{ github.event.workflow_run.run_attempt }}'
   head_sha='\${{ github.event.workflow_run.head_sha }}'
   source_run_url='\${{ github.event.workflow_run.html_url }}'
   prs_json=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/pulls")
@@ -151,13 +151,16 @@ else
   run_json=$(jq -c --arg sha "$head_sha" '[.workflow_runs[] | select(.head_sha == $sha and .event == "pull_request" and .conclusion == "success")] | sort_by(.created_at) | reverse | .[0]' <<<"$runs_json")
   test "$run_json" != null
   run_id=$(jq -r '.id' <<<"$run_json")
-  run_attempt=$(jq -r '.run_attempt' <<<"$run_json")
   source_run_url=$(jq -r '.html_url' <<<"$run_json")
 fi
 
 [[ "$pr_number" =~ ^[1-9][0-9]*$ ]]
 [[ "$head_sha" =~ ^[0-9a-f]{40}$ ]]
 [[ "$run_id" =~ ^[1-9][0-9]*$ ]]
+jobs_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?filter=latest&per_page=100" --slurp)
+pack_jobs=$(jq -c '[.[] | .jobs[] | select(.name == "pack-pr-snapshot" and .conclusion == "success")]' <<<"$jobs_json")
+test "$(jq 'length' <<<"$pack_jobs")" = 1
+run_attempt=$(jq -r '.[0].run_attempt' <<<"$pack_jobs")
 [[ "$run_attempt" =~ ^[1-9][0-9]*$ ]]
 pr_json=$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$pr_number")
 
@@ -223,13 +226,14 @@ echo "manifest-digest=$(jq -r '.manifestDigest' <<<"$result")" >> "$GITHUB_OUTPU
 echo "topology-digest=$(jq -r '.topologyDigest' <<<"$result")" >> "$GITHUB_OUTPUT"
 echo "npm-tag=$(jq -r '.npmTag' <<<"$result")" >> "$GITHUB_OUTPUT"
 echo "package-count=$(jq -r '.packageCount' <<<"$result")" >> "$GITHUB_OUTPUT"
+echo "release-run-attempt=$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
 cp "$PUBLISH_LIST" "$ARTIFACT_DIR/trusted-publish-list.tsv"`,
         },
         {
           name: 'Upload validated snapshot candidate',
           uses: 'actions/upload-artifact@v4',
           with: {
-            name: 'validated-pr-snapshot-${{ steps.identity.outputs.head-sha }}-${{ steps.identity.outputs.run-id }}',
+            name: 'validated-pr-snapshot-${{ steps.identity.outputs.head-sha }}-${{ steps.identity.outputs.run-id }}-${{ steps.validate.outputs.release-run-attempt }}',
             path: '${{ github.workspace }}/tmp/pr-snapshot-artifact/',
             'if-no-files-found': 'error',
             'retention-days': 1,
@@ -252,16 +256,18 @@ cp "$PUBLISH_LIST" "$ARTIFACT_DIR/trusted-publish-list.tsv"`,
         CACHIX_AUTH_TOKEN: '',
       },
       defaults: bashShellDefaults,
+      outputs: { 'promotion-attempt': '${{ steps.handoff.outputs.promotion-attempt }}' },
       steps: [
         {
           name: 'Download validated snapshot candidate',
           uses: 'actions/download-artifact@v4',
           with: {
-            name: 'validated-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}',
+            name: 'validated-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}-${{ needs.validate-pr-snapshot.outputs.release-run-attempt }}',
             path: '${{ github.workspace }}/tmp/validated-pr-snapshot',
           },
         },
         {
+          id: 'handoff',
           name: 'Verify validated artifact identity and write predicate',
           env: {
             HEAD_SHA: '${{ needs.validate-pr-snapshot.outputs.head-sha }}',
@@ -273,6 +279,7 @@ cp "$PUBLISH_LIST" "$ARTIFACT_DIR/trusted-publish-list.tsv"`,
           },
           run: `set -euo pipefail
 test "$(sha256sum "$ARTIFACT_DIR/manifest.json" | cut -d' ' -f1)" = "$MANIFEST_DIGEST"
+echo "promotion-attempt=$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
 jq -n \
   --arg repository "$GITHUB_REPOSITORY" \
   --argjson prNumber "$PR_NUMBER" \
@@ -297,7 +304,7 @@ jq -n \
           name: 'Upload attested promotion artifact',
           uses: 'actions/upload-artifact@v4',
           with: {
-            name: 'promotion-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}-${{ github.run_id }}',
+            name: 'promotion-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}-${{ steps.handoff.outputs.promotion-attempt }}',
             path: '${{ github.workspace }}/tmp/validated-pr-snapshot/',
             'if-no-files-found': 'error',
             'retention-days': 1,
@@ -378,7 +385,7 @@ echo "Snapshot promotion authorized: $authorized" >> "$GITHUB_STEP_SUMMARY"`,
           name: 'Download validated promotion artifact',
           uses: 'actions/download-artifact@v4',
           with: {
-            name: 'promotion-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}-${{ github.run_id }}',
+            name: 'promotion-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}-${{ needs.attest-pr-snapshot.outputs.promotion-attempt }}',
             path: '${{ github.workspace }}/tmp/validated-pr-snapshot',
           },
         },
@@ -445,7 +452,6 @@ while IFS=$'\t' read -r package_name file; do
       exit 1
     fi
     echo "$package_name@$SNAPSHOT_VERSION already matches candidate; skipping"
-    npm dist-tag add "$package_name@$SNAPSHOT_VERSION" "$SNAPSHOT_TAG" --registry=https://registry.npmjs.org
     continue
   fi
   npm publish "$tarball" --registry=https://registry.npmjs.org --tag="$SNAPSHOT_TAG" --access=public --ignore-scripts --provenance
