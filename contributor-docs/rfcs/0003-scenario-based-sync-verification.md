@@ -229,10 +229,11 @@ A scenario may define several clients sharing one backend. Each client owns a
 leader and one or more sessions. Version one may instantiate one session per
 client while retaining the distinction in the semantic model.
 
-The runner must be able to add a client after the scenario has started and to
+After a scenario has started, the runner must be able to add a new client or
+add another client session to an existing client. It must also be able to
 restart or remove an existing participant. This is necessary to test initial
-sync, recovery, leadership handover, and convergence after long offline
-periods.
+sync, multi-session behavior, recovery, leadership handover, and convergence
+after long offline periods.
 
 ### Execution Profiles
 
