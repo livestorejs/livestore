@@ -1,6 +1,5 @@
 import docsPkg from './docs/package.json.genie.ts'
 import docsCodeSnippetsPkg from './docs/src/content/_assets/code/package.json.genie.ts'
-import { memberPathsForProjection, type LivestorePackageProjection } from './genie/repo-topology.ts'
 import { catalog, packageJson } from './genie/repo.ts'
 import adapterCloudflarePkg from './packages/@livestore/adapter-cloudflare/package.json.genie.ts'
 import adapterWebPkg from './packages/@livestore/adapter-web/package.json.genie.ts'
@@ -58,50 +57,6 @@ export const rootWorkspacePackages = [
   testsPerfPkg,
   testsSyncProviderPkg,
   testsWaSqlitePkg,
-] as const
-
-const workspacePackagesByMemberPath = new Map(
-  rootWorkspacePackages.map((workspacePackage) => [workspacePackage.meta.workspace.memberPath, workspacePackage]),
-)
-
-const packagesForLivestoreProjection = (projection: Extract<LivestorePackageProjection, 'core' | 'tooling'>) =>
-  memberPathsForProjection(projection).map((memberPath) => {
-    const workspacePackage = workspacePackagesByMemberPath.get(memberPath)
-    if (workspacePackage === undefined) {
-      throw new Error(`Missing workspace package for topology member path: ${memberPath}`)
-    }
-    return workspacePackage
-  })
-
-/**
- * Livestore core workspace packages.
- *
- * This is the package-selection projection emitted under
- * `genie/projections/core/`. It is not a dependency Materialization Root: the
- * repository root remains the sole package manifest and lock authority.
- * The selection follows the topology `core` projection instead of filtering
- * the current pre-split root package list by path.
- */
-export const coreWorkspacePackages = packagesForLivestoreProjection('core')
-
-/**
- * Livestore tooling workspace packages.
- *
- * This extends the core package selection with the local/docs/tooling packages
- * needed by downstream devtools and release workflows without declaring a
- * second package manifest or lock authority.
- */
-export const toolingWorkspacePackages = [
-  ...packagesForLivestoreProjection('tooling'),
-  docsPkg,
-  docsCodeSnippetsPkg,
-  astroTldrawPkg,
-  astroTwoslashCodePkg,
-  localSharedPkg,
-  scriptsPkg,
-  testsIntegrationPkg,
-  testsPackageCommonPkg,
-  testsSyncProviderPkg,
 ] as const
 
 const rootWorkspaceBase = packageJson.aggregateFromPackages({
