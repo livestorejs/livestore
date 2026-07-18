@@ -11,11 +11,12 @@ const coreWorkspaceRoot = pnpmWorkspaceYaml.root({
 })
 
 /**
- * Core install projection for Livestore.
+ * Core package-selection projection for Livestore.
  *
- * This keeps the full repo workspace authoritative while exposing a smaller
- * install root for downstream consumers and CI tasks that do not need examples,
- * docs, tests, scripts, or local demos.
+ * This keeps the repository root authoritative while exposing a smaller member
+ * selection to downstream consumers. This directory intentionally has no
+ * package manifest or lockfile and must not be treated as a Materialization
+ * Root.
  */
 const coreWorkspaceData = {
   ...coreWorkspaceRoot.data,
