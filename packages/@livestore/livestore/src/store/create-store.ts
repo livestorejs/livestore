@@ -328,12 +328,17 @@ export const createStore = <
         })
 
       const services = yield* Effect.context<Scope.Scope>()
+      let shutdownSyncProcessor: ((exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>) | undefined
 
       const shutdown = (
         exit: Exit.Exit<IntentionalShutdownCause, UnknownError | MaterializeError | BackendIdMismatchError>,
       ) =>
         Effect.gen(function* () {
-          yield* Scope.close(lifetimeScope, exit).pipe(
+          const closeFiber = yield* (shutdownSyncProcessor?.(exit) ?? Effect.void).pipe(
+            Effect.ensuring(Scope.close(lifetimeScope, exit)),
+            Effect.forkDetach,
+          )
+          yield* Fiber.join(closeFiber).pipe(
             Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
             Effect.timeout(1000),
             Effect.catchTag('TimeoutError', () =>
@@ -404,6 +409,7 @@ export const createStore = <
           ...omitUndefineds({ simulation: params?.simulation }),
         },
       })
+      shutdownSyncProcessor = store[StoreInternalsSymbol].syncProcessor.shutdown
 
       // Starts background fibers (syncing, event processing, etc) for store
       yield* store[StoreInternalsSymbol].boot
