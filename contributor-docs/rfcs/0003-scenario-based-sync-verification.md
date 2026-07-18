@@ -4,53 +4,29 @@
 
 ## Context
 
-LiveStore synchronizes one ordered event history across clients through two
-boundaries:
+Improving LiveStore's stability requires reproducible evidence about how the
+complete sync system behaves under sustained and adverse conditions. Existing
+focused tests remain necessary; this RFC adds a higher-level way to stress-test
+system-wide correctness.
 
-```text
-+-------------------------------- Client --------------------------------+
-|                                                                        |
-|  +----------------+      local push       +----------------+           |
-|  | Client session | --------------------> |     Leader     |           |
-|  |                | <-------------------- |                |           |
-|  +----------------+    advance / rebase   +----------------+           |
-|                                                |       ^               |
-+------------------------------------------------|-------|---------------+
-                                                 | push  | pull stream
-                                                 v       |
-                                          +------------------+
-                                          |   Sync backend   |
-                                          +------------------+
-```
+Scenarios encode multiple clients and sessions, evolving topologies, workloads,
+faults, and recovery. They can use real client runtimes and sync backends for
+fidelity, or shallower in-process and mock profiles for greater control and
+scale. The same scenario should be reproducible across compatible profiles and
+evaluated through explicit correctness oracles.
 
-The same `SyncState` merge model governs both boundaries. The client-session
-and leader sync processors add the queues, batching, retry, cursor tracking,
-materialization, and rebase critical sections that drive the model in the
-running system. The sync backend is the central ordering authority.
-
-The current verification architecture has separate unit, package-integration,
-browser-integration, sync-provider, SQLite-substrate, and performance lanes.
-It also has several targeted simulation facilities:
-
-- [`ClientSessionSyncProcessor`](../../packages/@livestore/common/src/sync/ClientSessionSyncProcessor.ts)
-  exposes timing controls around selected rebase steps.
-- [`mock-sync-backend.ts`](../../packages/@livestore/common/src/sync/mock-sync-backend.ts)
-  supports connection changes and controlled pull/push failures.
-- Processor tests manually construct individual concurrency and recovery
-  sequences.
-- The performance suites collect latency and memory measurements in browser
-  applications.
-
-These mechanisms verify specific cases, but they do not form a unified system
-for defining a topology, generating activity, applying faults, running real
-sync components, evaluating convergence, and explaining the result.
+Visualization is a first-class part of this stability work. Each run emits a
+causal trace for headless verification and live or replayed exploration of the
+topology, event flow, sync state, rebases, queues, and failures. Encoding,
+verification, and visualization remain different views of the same scenario
+and trace model.
 
 The current contracts are documented in the intent layer under
 [`context/02-system/09-verification/`](../../context/02-system/09-verification/spec.md).
-This RFC proposes new architecture and therefore remains the sole design
-source until it is accepted and its durable contracts are folded into that
-intent layer. Missing implementation is then tracked explicitly as intent-layer
-deltas.
+Those contracts remain authoritative. This RFC is the proposal source only for
+the additional scenario-based layer. On acceptance, its durable contracts fold
+into a new `06-scenarios/` child alongside the existing verification children;
+missing implementation is then tracked explicitly as intent-layer deltas.
 
 ## Problem
 
@@ -89,7 +65,8 @@ The proposed system should:
    practical.
 4. Support dynamic participants, scripted actions, reusable workload patterns,
    and network or process faults.
-5. Separate orchestration from visualization through a stable trace protocol.
+5. Make live and replay visualization a first-class scenario capability while
+   keeping headless execution authoritative through a stable trace protocol.
 6. Evaluate safety, convergence, and liveness through explicit oracles.
 7. Preserve a path from lightweight in-process participants to worker,
    process, and browser participants, independently combinable with mock,
