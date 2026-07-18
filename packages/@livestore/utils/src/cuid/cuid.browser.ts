@@ -25,14 +25,14 @@ const pad = (num: number | string, size: number) => {
   return s.slice(s.length - size)
 }
 
-const env = typeof window === 'object' ? window : self
+const env = typeof window === 'object' ? window : globalThis
 const globalCount = Object.keys(env).length
 
 // To make it work in React Native https://github.com/paralleldrive/cuid/issues/54#issuecomment-222957293
 const clientId =
-  navigator.product === 'ReactNative'
+  globalThis.navigator?.product === 'ReactNative'
     ? 'rn'
-    : pad(navigator.userAgent.length.toString(36) + globalCount.toString(36), 4)
+    : pad((globalThis.navigator?.userAgent.length ?? 0).toString(36) + globalCount.toString(36), 4)
 
 const fingerprint = () => clientId
 

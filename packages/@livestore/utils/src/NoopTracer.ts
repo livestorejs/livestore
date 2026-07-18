@@ -1,6 +1,6 @@
 import type * as otel from '@opentelemetry/api'
 
-import { cuid } from '@livestore/utils/cuid'
+import { cuid } from './cuid/cuid.browser.ts'
 
 export const makeNoopSpan = () => {
   const performanceStartTime = performance.now()
