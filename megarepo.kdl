@@ -1,5 +1,5 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils#main"
+    effect-utils "overengineeringstudio/effect-utils#87d5ac1ee62d58d75768a0585c10cbbff0302489"
     effect "effect-ts/effect"
     livestore-contrib "livestorejs/livestore-contrib"
 }
