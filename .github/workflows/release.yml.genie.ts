@@ -107,10 +107,7 @@ export default githubWorkflow({
       'runs-on': 'ubuntu-24.04',
       permissions: {
         actions: 'read',
-        attestations: 'write',
-        'artifact-metadata': 'write',
         contents: 'read',
-        'id-token': 'write',
       },
       outputs: {
         'head-sha': '${{ steps.identity.outputs.head-sha }}',
@@ -136,6 +133,8 @@ export default githubWorkflow({
           id: 'identity',
           name: 'Resolve exact successful CI run and current PR head',
           run: `set -euo pipefail
+test "$GITHUB_WORKFLOW_REF" = "$GITHUB_REPOSITORY/.github/workflows/release.yml@refs/heads/main"
+[[ "$GITHUB_WORKFLOW_SHA" =~ ^[0-9a-f]{40}$ ]]
 if [ "$GITHUB_EVENT_NAME" = workflow_run ]; then
   run_id='\${{ github.event.workflow_run.id }}'
   run_attempt='\${{ github.event.workflow_run.run_attempt }}'
@@ -176,7 +175,7 @@ echo "source-run-url=$source_run_url" >> "$GITHUB_OUTPUT"`,
           name: 'Checkout trusted validator only',
           uses: 'actions/checkout@v4',
           with: {
-            ref: '${{ github.sha }}',
+            ref: '${{ github.workflow_sha }}',
             'persist-credentials': false,
             'sparse-checkout': `.github/scripts/pr-snapshot-artifact.mjs
 scripts/src/generated/release-topology.json`,
@@ -226,16 +225,54 @@ echo "package-count=$(jq -r '.packageCount' <<<"$result")" >> "$GITHUB_OUTPUT"
 cp "$PUBLISH_LIST" "$ARTIFACT_DIR/trusted-publish-list.tsv"`,
         },
         {
-          name: 'Write trusted snapshot attestation predicate',
-          env: {
-            HEAD_SHA: '${{ steps.identity.outputs.head-sha }}',
-            MANIFEST_DIGEST: '${{ steps.validate.outputs.manifest-digest }}',
-            PR_NUMBER: '${{ steps.identity.outputs.pr-number }}',
-            SOURCE_RUN_ATTEMPT: '${{ steps.identity.outputs.run-attempt }}',
-            SOURCE_RUN_ID: '${{ steps.identity.outputs.run-id }}',
-            TOPOLOGY_DIGEST: '${{ steps.validate.outputs.topology-digest }}',
+          name: 'Upload validated snapshot candidate',
+          uses: 'actions/upload-artifact@v4',
+          with: {
+            name: 'validated-pr-snapshot-${{ steps.identity.outputs.head-sha }}-${{ steps.identity.outputs.run-id }}',
+            path: '${{ github.workspace }}/tmp/pr-snapshot-artifact/',
+            'if-no-files-found': 'error',
+            'retention-days': 1,
           },
-          run: `jq -n \
+        },
+      ],
+    },
+    'attest-pr-snapshot': {
+      needs: ['validate-pr-snapshot'],
+      'runs-on': 'ubuntu-24.04',
+      permissions: {
+        actions: 'read',
+        attestations: 'write',
+        'artifact-metadata': 'write',
+        contents: 'read',
+        'id-token': 'write',
+      },
+      env: {
+        ARTIFACT_DIR: '${{ github.workspace }}/tmp/validated-pr-snapshot',
+        CACHIX_AUTH_TOKEN: '',
+      },
+      defaults: bashShellDefaults,
+      steps: [
+        {
+          name: 'Download validated snapshot candidate',
+          uses: 'actions/download-artifact@v4',
+          with: {
+            name: 'validated-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}',
+            path: '${{ github.workspace }}/tmp/validated-pr-snapshot',
+          },
+        },
+        {
+          name: 'Verify validated artifact identity and write predicate',
+          env: {
+            HEAD_SHA: '${{ needs.validate-pr-snapshot.outputs.head-sha }}',
+            MANIFEST_DIGEST: '${{ needs.validate-pr-snapshot.outputs.manifest-digest }}',
+            PR_NUMBER: '${{ needs.validate-pr-snapshot.outputs.pr-number }}',
+            SOURCE_RUN_ATTEMPT: '${{ needs.validate-pr-snapshot.outputs.run-attempt }}',
+            SOURCE_RUN_ID: '${{ needs.validate-pr-snapshot.outputs.run-id }}',
+            TOPOLOGY_DIGEST: '${{ needs.validate-pr-snapshot.outputs.topology-digest }}',
+          },
+          run: `set -euo pipefail
+test "$(sha256sum "$ARTIFACT_DIR/manifest.json" | cut -d' ' -f1)" = "$MANIFEST_DIGEST"
+jq -n \
   --arg repository "$GITHUB_REPOSITORY" \
   --argjson prNumber "$PR_NUMBER" \
   --arg headSha "$HEAD_SHA" \
@@ -256,11 +293,11 @@ cp "$PUBLISH_LIST" "$ARTIFACT_DIR/trusted-publish-list.tsv"`,
           },
         },
         {
-          name: 'Upload validated promotion artifact',
+          name: 'Upload attested promotion artifact',
           uses: 'actions/upload-artifact@v4',
           with: {
-            name: 'validated-pr-snapshot-${{ steps.identity.outputs.head-sha }}-${{ steps.identity.outputs.run-id }}',
-            path: '${{ github.workspace }}/tmp/pr-snapshot-artifact/',
+            name: 'promotion-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}-${{ github.run_id }}',
+            path: '${{ github.workspace }}/tmp/validated-pr-snapshot/',
             'if-no-files-found': 'error',
             'retention-days': 1,
           },
@@ -285,12 +322,19 @@ cp "$PUBLISH_LIST" "$ARTIFACT_DIR/trusted-publish-list.tsv"`,
           run: `set -euo pipefail
 pr_json=$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
 reviews_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews?per_page=100" --slurp | jq -s 'flatten')
+owner="\${GITHUB_REPOSITORY%%/*}"
+name="\${GITHUB_REPOSITORY#*/}"
+review_decision=$(gh api graphql \
+  -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewDecision}}}' \
+  -f owner="$owner" -f name="$name" -F number="$PR_NUMBER" \
+  --jq '.data.repository.pullRequest.reviewDecision')
 authorized=false
 if [ "$(jq -r '.state' <<<"$pr_json")" = open ] && \
    [ "$(jq -r '.draft' <<<"$pr_json")" = false ] && \
    [ "$(jq -r '.base.ref' <<<"$pr_json")" = main ] && \
    [ "$(jq -r '.head.repo.full_name' <<<"$pr_json")" = "$GITHUB_REPOSITORY" ] && \
    [ "$(jq -r '.head.sha' <<<"$pr_json")" = "$EXPECTED_HEAD_SHA" ] && \
+   [ "$review_decision" = APPROVED ] && \
    jq -e --arg sha "$EXPECTED_HEAD_SHA" 'any(.[]; .state == "APPROVED" and .commit_id == $sha)' <<<"$reviews_json" >/dev/null; then
   authorized=true
 fi
@@ -301,7 +345,7 @@ echo "Snapshot promotion authorized: $authorized" >> "$GITHUB_STEP_SUMMARY"`,
     },
     'publish-pr-snapshot': {
       if: "needs.authorize-pr-snapshot.outputs.authorized == 'true'",
-      needs: ['validate-pr-snapshot', 'authorize-pr-snapshot'],
+      needs: ['validate-pr-snapshot', 'attest-pr-snapshot', 'authorize-pr-snapshot'],
       'runs-on': 'ubuntu-24.04',
       concurrency: {
         group: 'pr-snapshot-${{ needs.validate-pr-snapshot.outputs.pr-number }}',
@@ -332,7 +376,7 @@ echo "Snapshot promotion authorized: $authorized" >> "$GITHUB_STEP_SUMMARY"`,
           name: 'Download validated promotion artifact',
           uses: 'actions/download-artifact@v4',
           with: {
-            name: 'validated-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}',
+            name: 'promotion-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}-${{ github.run_id }}',
             path: '${{ github.workspace }}/tmp/validated-pr-snapshot',
           },
         },
@@ -345,9 +389,16 @@ echo "Snapshot promotion authorized: $authorized" >> "$GITHUB_STEP_SUMMARY"`,
           run: `set -euo pipefail
 pr_json=$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
 reviews_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews?per_page=100" --slurp | jq -s 'flatten')
+owner="\${GITHUB_REPOSITORY%%/*}"
+name="\${GITHUB_REPOSITORY#*/}"
+review_decision=$(gh api graphql \
+  -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewDecision}}}' \
+  -f owner="$owner" -f name="$name" -F number="$PR_NUMBER" \
+  --jq '.data.repository.pullRequest.reviewDecision')
 test "$(jq -r '.state' <<<"$pr_json")" = open
 test "$(jq -r '.draft' <<<"$pr_json")" = false
 test "$(jq -r '.head.sha' <<<"$pr_json")" = "$EXPECTED_HEAD_SHA"
+test "$review_decision" = APPROVED
 jq -e --arg sha "$EXPECTED_HEAD_SHA" 'any(.[]; .state == "APPROVED" and .commit_id == $sha)' <<<"$reviews_json" >/dev/null`,
         },
         {

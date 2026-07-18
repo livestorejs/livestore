@@ -77,13 +77,17 @@ The PR job only packs the fixed public package cohort on a GitHub-hosted runner
 without secrets, write permissions, or OIDC. The default-branch `release.yml`
 validation job re-resolves the open PR from the completed run, requires its
 current head to match, validates the run-bound manifest and every tarball, and
-uploads a short-lived immutable artifact for pre-review E2E. Validation also
-creates a custom GitHub attestation that binds the package and manifest digests
-to the exact PR head, source CI run, and trusted release topology.
+uploads a short-lived immutable artifact for pre-review E2E. This parser job has
+no OIDC permission. A separate job hashes the validated handoff without parsing
+package archives and creates a custom GitHub attestation that binds the package
+and manifest digests to the exact PR head, source CI run, and trusted release
+topology.
 
-npm promotion uses the repository's ordinary code-review approval as its only
-manual trust boundary. The approval must name the current head commit; an
-approval for an earlier head does not authorize publication. Approval before CI
+npm promotion uses the repository's ordinary required code-review decision as
+its only manual trust boundary. GitHub's authoritative review decision must be
+`APPROVED`, and a counting approval must name the current head commit. An
+approval for an earlier head, a non-counting approval, or a later changes request
+does not authorize publication. Approval before CI
 is observed when CI completes, while approval after CI triggers validation from
 the exact successful CI run automatically. The OIDC job rechecks the unchanged
 head and approval immediately before publishing. It never checks out or executes

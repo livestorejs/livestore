@@ -5,7 +5,13 @@ import path from 'node:path'
 import test from 'node:test'
 import { gzipSync } from 'node:zlib'
 
-import { createManifest, hasCurrentHeadApproval, snapshotTag, validateManifest } from './pr-snapshot-artifact.mjs'
+import {
+  createManifest,
+  hasCurrentHeadApproval,
+  isAuthorizedReviewState,
+  snapshotTag,
+  validateManifest,
+} from './pr-snapshot-artifact.mjs'
 
 const writeOctal = (header, start, length, value) => {
   const encoded = value.toString(8).padStart(length - 1, '0')
@@ -112,6 +118,60 @@ test('requires an approval for the unchanged head', () => {
     }),
     true,
   )
+})
+
+test('requires the authoritative required-review decision', () => {
+  const headSha = 'a'.repeat(40)
+  const approvedReview = { state: 'APPROVED', commit_id: headSha }
+
+  assert.equal(
+    isAuthorizedReviewState({
+      headSha,
+      currentHeadSha: headSha,
+      reviewDecision: 'REVIEW_REQUIRED',
+      reviews: [approvedReview],
+    }),
+    false,
+    'a non-counting approval must not authorize',
+  )
+  assert.equal(
+    isAuthorizedReviewState({
+      headSha,
+      currentHeadSha: headSha,
+      reviewDecision: 'CHANGES_REQUESTED',
+      reviews: [approvedReview, { state: 'CHANGES_REQUESTED', commit_id: headSha }],
+    }),
+    false,
+    'a later changes-requested decision must not authorize',
+  )
+  assert.equal(
+    isAuthorizedReviewState({
+      headSha,
+      currentHeadSha: headSha,
+      reviewDecision: 'APPROVED',
+      reviews: [approvedReview],
+    }),
+    true,
+  )
+})
+
+test('generated review workflow checks out only its trusted workflow commit', async () => {
+  const workflow = await readFile(new URL('../workflows/release.yml', import.meta.url), 'utf8')
+  assert.match(workflow, /pull_request_review:/)
+  const checkoutStart = workflow.indexOf('- name: Checkout trusted validator only')
+  const checkoutEnd = workflow.indexOf('\n      - name: Use pinned Node validator runtime', checkoutStart)
+  assert.notEqual(checkoutStart, -1)
+  assert.notEqual(checkoutEnd, -1)
+  const checkout = workflow.slice(checkoutStart, checkoutEnd)
+  assert.match(checkout, /ref: \$\{\{ github\.workflow_sha \}\}/)
+  assert.doesNotMatch(checkout, /github\.sha|head-sha/)
+
+  const validateStart = workflow.indexOf('\n  validate-pr-snapshot:')
+  const attestStart = workflow.indexOf('\n  attest-pr-snapshot:', validateStart)
+  const authorizeStart = workflow.indexOf('\n  authorize-pr-snapshot:', attestStart)
+  assert.match(workflow.slice(validateStart, attestStart), /GITHUB_WORKFLOW_REF.*refs\/heads\/main/)
+  assert.doesNotMatch(workflow.slice(validateStart, attestStart), /id-token: write/)
+  assert.match(workflow.slice(attestStart, authorizeStart), /id-token: write/)
 })
 
 test('derives an immutable tag for each PR head cohort', () => {

@@ -115,6 +115,9 @@ export const hasCurrentHeadApproval = ({ headSha, currentHeadSha, reviews }) => 
   return reviews.some((review) => review?.state === 'APPROVED' && review?.commit_id === headSha)
 }
 
+export const isAuthorizedReviewState = ({ headSha, currentHeadSha, reviewDecision, reviews }) =>
+  reviewDecision === 'APPROVED' && hasCurrentHeadApproval({ headSha, currentHeadSha, reviews })
+
 const validatePackageManifest = ({ packageJson, expectedName, expectedVersion, packageNames }) => {
   if (packageJson.name !== expectedName)
     fail(`Package name mismatch: expected ${expectedName}, got ${packageJson.name}`)
