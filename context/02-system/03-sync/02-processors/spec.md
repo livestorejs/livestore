@@ -80,8 +80,8 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
 `sync/ClientSessionSyncProcessor.ts`. One unbounded STM `leaderPushQueue`
 (`:104`) decouples `push()` (synchronous commit path) from leader I/O:
 
-- **Push** (`:341-343`): merge into local sync state, enqueue the merge's
-  `newEvents`; a background fiber drains
+- **Push** (`:341-343`): synchronously merge into local sync state and enqueue
+  the merge's `newEvents` without waiting for pull/rebase ownership; a background fiber drains
   `takeBetween(1, leaderPushBatchSize)` and pushes to the leader (`:128-129`).
   Coalescing is opportunistic (whatever accumulated while the previous
   push was in flight); there is no time-based debounce. A rejected push

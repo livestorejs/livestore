@@ -180,13 +180,12 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     const backgroundPulling = Stream.suspend(() =>
       clientSession.leaderThread.events.pull({ cursor: syncStateRef.current.upstreamHead }),
     ).pipe(
+      Stream.tap(() =>
+        clientSession.devtools.enabled === true ? clientSession.devtools.pullLatch.await : Effect.void,
+      ),
       Stream.tap(({ payload }) =>
         Effect.gen(function* () {
           // yield* Effect.logDebug('ClientSessionSyncProcessor:pull', payload)
-
-          if (clientSession.devtools.enabled === true) {
-            yield* clientSession.devtools.pullLatch.await
-          }
 
           const rejectionAtPullStart = unresolvedRejection
           const mergeResult = yield* SyncState.merge({
@@ -395,8 +394,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     return { writeTables }
   })
 
-  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')((encodedEvents) =>
-    Effect.gen(function* () {
+  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(
+    function* (encodedEvents) {
       if (shutdownStarted === true) {
         return yield* Effect.die(
           new Error('Cannot push events after the client session sync processor starts shutting down'),
@@ -430,7 +429,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       if (rejectedEvents.length > 0) {
         return yield* Effect.die(new Error('Leader push queue closed while accepting events'))
       }
-    }).pipe(rebaseOwnership.withPermits(1)),
+    },
   )
 
   const debugInfo = {
