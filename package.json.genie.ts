@@ -1,11 +1,10 @@
 import docsPkg from './docs/package.json.genie.ts'
 import docsCodeSnippetsPkg from './docs/src/content/_assets/code/package.json.genie.ts'
-import { memberPathsForProjection, type LivestorePackageProjection } from './genie/repo-topology.ts'
 import { catalog, packageJson } from './genie/repo.ts'
 import adapterCloudflarePkg from './packages/@livestore/adapter-cloudflare/package.json.genie.ts'
 import adapterWebPkg from './packages/@livestore/adapter-web/package.json.genie.ts'
-import commonPkg from './packages/@livestore/common/package.json.genie.ts'
 import commonCfPkg from './packages/@livestore/common-cf/package.json.genie.ts'
+import commonPkg from './packages/@livestore/common/package.json.genie.ts'
 import effectPlaywrightPkg from './packages/@livestore/effect-playwright/package.json.genie.ts'
 import frameworkToolkitPkg from './packages/@livestore/framework-toolkit/package.json.genie.ts'
 import livestorePkg from './packages/@livestore/livestore/package.json.genie.ts'
@@ -13,8 +12,8 @@ import peerDepsPkg from './packages/@livestore/peer-deps/package.json.genie.ts'
 import reactPkg from './packages/@livestore/react/package.json.genie.ts'
 import sqliteWasmPkg from './packages/@livestore/sqlite-wasm/package.json.genie.ts'
 import syncCfPkg from './packages/@livestore/sync-cf/package.json.genie.ts'
-import utilsPkg from './packages/@livestore/utils/package.json.genie.ts'
 import utilsDevPkg from './packages/@livestore/utils-dev/package.json.genie.ts'
+import utilsPkg from './packages/@livestore/utils/package.json.genie.ts'
 import waSqlitePkg from './packages/@livestore/wa-sqlite/package.json.genie.ts'
 import webmeshPkg from './packages/@livestore/webmesh/package.json.genie.ts'
 import astroTldrawPkg from './packages/@local/astro-tldraw/package.json.genie.ts'
@@ -24,8 +23,8 @@ import localSharedPkg from './packages/@local/shared/package.json.genie.ts'
 import scriptsPkg from './scripts/package.json.genie.ts'
 import testsIntegrationPkg from './tests/integration/package.json.genie.ts'
 import testsPackageCommonPkg from './tests/package-common/package.json.genie.ts'
-import testsPerfPkg from './tests/perf/package.json.genie.ts'
 import testsPerfEventlogPkg from './tests/perf-eventlog/package.json.genie.ts'
+import testsPerfPkg from './tests/perf/package.json.genie.ts'
 import testsSyncProviderPkg from './tests/sync-provider/package.json.genie.ts'
 import testsWaSqlitePkg from './tests/wa-sqlite/package.json.genie.ts'
 
@@ -58,49 +57,6 @@ export const rootWorkspacePackages = [
   testsPerfPkg,
   testsSyncProviderPkg,
   testsWaSqlitePkg,
-] as const
-
-const workspacePackagesByMemberPath = new Map(
-  rootWorkspacePackages.map((workspacePackage) => [workspacePackage.meta.workspace.memberPath, workspacePackage]),
-)
-
-const packagesForLivestoreProjection = (projection: Extract<LivestorePackageProjection, 'core' | 'tooling'>) =>
-  memberPathsForProjection(projection).map((memberPath) => {
-    const workspacePackage = workspacePackagesByMemberPath.get(memberPath)
-    if (workspacePackage === undefined) {
-      throw new Error(`Missing workspace package for topology member path: ${memberPath}`)
-    }
-    return workspacePackage
-  })
-
-/**
- * Livestore core workspace packages.
- *
- * This is the install-projection used by the core workspace root in
- * `genie/projections/core/`.
- * It follows the topology `core` projection instead of filtering the current
- * pre-split root package list by path.
- */
-export const coreWorkspacePackages = packagesForLivestoreProjection('core')
-
-/**
- * Livestore tooling workspace packages.
- *
- * This extends the core projection with the local/docs/tooling packages needed
- * by downstream devtools and release workflows without pulling in the full repo
- * workspace breadth.
- */
-export const toolingWorkspacePackages = [
-  ...packagesForLivestoreProjection('tooling'),
-  docsPkg,
-  docsCodeSnippetsPkg,
-  astroTldrawPkg,
-  astroTwoslashCodePkg,
-  localSharedPkg,
-  scriptsPkg,
-  testsIntegrationPkg,
-  testsPackageCommonPkg,
-  testsSyncProviderPkg,
 ] as const
 
 const rootWorkspaceBase = packageJson.aggregateFromPackages({

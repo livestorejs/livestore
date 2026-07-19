@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "348be5df590265d02d6a5bc11b5b4990b8f0157e",
+      "ref": "schickling-assistant/2026-07-17-pnpm-projection-authority",
+      "commit": "091577cfb10376db66a7a9395e858f4915b46dde",
       "pinned": true,
-      "lockedAt": "2026-07-15T13:22:56.365Z"
+      "lockedAt": "2026-07-18T19:28:01.055Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",

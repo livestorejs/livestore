@@ -46,18 +46,13 @@ export {
   livestoreCurrentPackageNames,
   livestoreEffectUtilsPackageNames,
   livestorePackageTopology,
-  materializedMemberPathsForProjection,
-  memberPathsForProjection,
   packageDescriptorForPackageName,
   packageDirForPackageName,
   packageJsonNameForPackageName,
   packageNamesForOwner,
-  packageNamesForProjection,
   workspaceCatalogForPackageNames,
-  workspaceCatalogForProjection,
   type LivestorePackageName,
   type LivestorePackageOwner,
-  type LivestorePackageProjection,
   type LivestorePackageTopologyEntry,
 } from './repo-topology.ts'
 
