@@ -607,6 +607,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       yield* pushIds(['blocked'])
       yield* Deferred.await(firstPushStarted)
 
+      // @effect-diagnostics-next-line globalErrorInEffectFailure:off -- test-only synthetic shutdown failure fed to Scope.close; a tagged error adds no value for this throwaway test signal
       yield* Scope.close(scope, Exit.fail(new Error('test shutdown failure')))
 
       expect(yield* Deferred.isDone(firstPushInterrupted)).toBe(true)
