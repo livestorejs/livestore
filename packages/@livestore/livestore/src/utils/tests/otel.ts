@@ -37,10 +37,7 @@ const buildSimplifiedRootSpans = (
     omitEmpty({
       _name: span.span.name,
       attributes: mapAttributesfn(span.span.attributes),
-      children: span.children
-        .filter((_) => _.span.name !== 'createStore:makeAdapter')
-        // .sort((a, b) => compareHrTime(a.span.startTime, b.span.startTime))
-        .map(simplifySpanRec),
+      children: normalizeChildren(span).map(simplifySpanRec),
     })
 
   return rootSpanDataList.map((rootSpanData) => {
@@ -68,10 +65,18 @@ export const getAllSimplifiedRootSpans = (
   return buildSimplifiedRootSpans(exporter, rootSpanName, mapAttributes)
 }
 
-// const compareHrTime = (a: [number, numndber], b: [number, number]) => {
-//   if (a[0] !== b[0]) return a[0] - b[0]
-//   return a[1] - b[1]
-// }
+const compareHrTime = (a: [number, number], b: [number, number]) => {
+  if (a[0] !== b[0]) return a[0] - b[0]
+  return a[1] - b[1]
+}
+
+const normalizeChildren = (span: NestedSpan): NestedSpan[] => {
+  const children = span.children.filter((_) => _.span.name !== 'createStore:makeAdapter')
+  if (span.span.name === 'client-session-sync-processor:boot') {
+    children.sort((a, b) => compareHrTime(a.span.startTime, b.span.startTime))
+  }
+  return children
+}
 
 const omitEmpty = (obj: any) => {
   const result: any = {}
