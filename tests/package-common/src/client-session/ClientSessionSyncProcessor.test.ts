@@ -880,51 +880,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.it.effect('scope disposal drains admitted leader pushes before closing the store', (test) =>
-    Effect.gen(function* () {
-      const { makeStore } = yield* TestContext
-      const pushStarted = yield* Deferred.make<void>()
-      const releasePush = yield* Deferred.make<void>()
-      const pushCompleted = yield* Deferred.make<void>()
-      const pushInterrupted = yield* Deferred.make<void>()
-      const storeScope = yield* Scope.make()
-
-      const store = yield* makeStore({
-        testing: {
-          overrides: {
-            clientSession: {
-              leaderThreadProxy: (leader) => ({
-                ...leader,
-                events: {
-                  ...leader.events,
-                  push: () =>
-                    Deferred.succeed(pushStarted, undefined).pipe(
-                      Effect.andThen(Deferred.await(releasePush)),
-                      Effect.andThen(Deferred.succeed(pushCompleted, undefined)),
-                      Effect.onInterrupt(() => Deferred.succeed(pushInterrupted, undefined)),
-                    ),
-                },
-              }),
-            },
-          },
-        },
-      }).pipe(Scope.provide(storeScope))
-
-      store.commit(events.todoCreated({ id: 'scoped', text: 'scoped', completed: false }))
-      yield* Deferred.await(pushStarted)
-
-      const closeFiber = yield* Scope.close(storeScope, Exit.void).pipe(Effect.forkChild)
-      yield* Effect.yieldNow
-      expect(yield* Deferred.isDone(pushInterrupted)).toBe(false)
-
-      yield* Deferred.succeed(releasePush, undefined)
-      yield* Fiber.join(closeFiber)
-
-      expect(yield* Deferred.isDone(pushCompleted)).toBe(true)
-      expect(yield* Deferred.isDone(pushInterrupted)).toBe(false)
-    }).pipe(withTestCtx(test)),
-  )
-
   /**
    * Regression guard for https://github.com/livestorejs/livestore/issues/744:
    * `ClientSessionSyncProcessor.push` must carry the current rebase generation into both

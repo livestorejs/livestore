@@ -38,6 +38,8 @@ exports[`otel > QueryBuilder subscription - async iterator 1`] = `
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
           },
         },
       ],
@@ -91,14 +93,6 @@ exports[`otel > QueryBuilder subscription - async iterator 1`] = `
               ],
             },
           ],
-        },
-      ],
-    },
-    {
-      "_name": "@livestore/livestore:shutdown",
-      "children": [
-        {
-          "_name": "client-session-sync-processor:shutdown",
         },
       ],
     },
@@ -189,6 +183,8 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
           },
         },
       ],
@@ -242,14 +238,6 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1
               ],
             },
           ],
-        },
-      ],
-    },
-    {
-      "_name": "@livestore/livestore:shutdown",
-      "children": [
-        {
-          "_name": "client-session-sync-processor:shutdown",
         },
       ],
     },
@@ -340,6 +328,8 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
           },
         },
       ],
@@ -393,14 +383,6 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
               ],
             },
           ],
-        },
-      ],
-    },
-    {
-      "_name": "@livestore/livestore:shutdown",
-      "children": [
-        {
-          "_name": "client-session-sync-processor:shutdown",
         },
       ],
     },
@@ -491,6 +473,8 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
           },
         },
       ],
@@ -544,14 +528,6 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
               ],
             },
           ],
-        },
-      ],
-    },
-    {
-      "_name": "@livestore/livestore:shutdown",
-      "children": [
-        {
-          "_name": "client-session-sync-processor:shutdown",
         },
       ],
     },
@@ -642,6 +618,8 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
           },
         },
       ],
@@ -695,14 +673,6 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
               ],
             },
           ],
-        },
-      ],
-    },
-    {
-      "_name": "@livestore/livestore:shutdown",
-      "children": [
-        {
-          "_name": "client-session-sync-processor:shutdown",
         },
       ],
     },
@@ -793,13 +763,8 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-          },
-        },
-        {
-          "_name": "@livestore/common:LeaderSyncProcessor:push",
-          "attributes": {
-            "batch": "undefined",
-            "batchSize": 1,
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
           },
         },
       ],
@@ -879,14 +844,6 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
               ],
             },
           ],
-        },
-      ],
-    },
-    {
-      "_name": "@livestore/livestore:shutdown",
-      "children": [
-        {
-          "_name": "client-session-sync-processor:shutdown",
         },
       ],
     },
@@ -1017,6 +974,8 @@ exports[`otel > otel 3`] = `
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
           },
         },
       ],
@@ -1060,14 +1019,6 @@ exports[`otel > otel 3`] = `
               },
             },
           ],
-        },
-      ],
-    },
-    {
-      "_name": "@livestore/livestore:shutdown",
-      "children": [
-        {
-          "_name": "client-session-sync-processor:shutdown",
         },
       ],
     },
@@ -1330,6 +1281,8 @@ exports[`otel > with thunks 7`] = `
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
           },
         },
       ],
@@ -1379,14 +1332,6 @@ exports[`otel > with thunks 7`] = `
               },
             },
           ],
-        },
-      ],
-    },
-    {
-      "_name": "@livestore/livestore:shutdown",
-      "children": [
-        {
-          "_name": "client-session-sync-processor:shutdown",
         },
       ],
     },
@@ -1477,6 +1422,8 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
           },
         },
       ],
@@ -1526,14 +1473,6 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
               },
             },
           ],
-        },
-      ],
-    },
-    {
-      "_name": "@livestore/livestore:shutdown",
-      "children": [
-        {
-          "_name": "client-session-sync-processor:shutdown",
         },
       ],
     },

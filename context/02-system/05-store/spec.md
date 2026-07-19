@@ -79,9 +79,6 @@ per-commit root span with links.
   waits without cancelling cleanup; intentional shutdown is distinguished
   from failure via the Exit cause (LS.SYS.STORE-R07,
   LS.SYS.SYNC.PROC-R03).
-- Explicit shutdown, owning-scope finalization, registry disposal, and
-  `AbortSignal` disposal converge on that same idempotent drain-before-close
-  path. Disposal before initialization falls back to closing the lifetime scope.
 - During boot, `batchUpdates` is the identity function and is swapped to the
   adapter-provided implementation after boot (`create-store.ts:399,430`) —
   events committed during boot are unbatched.

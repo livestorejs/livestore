@@ -7,7 +7,7 @@ import {
   type ClientSession,
   type ClientSessionDevtoolsChannel,
   type ClientSessionSyncProcessorSimulationParams,
-  IntentionalShutdownCause,
+  type IntentionalShutdownCause,
   type MaterializeError,
   type MigrationsReport,
   provideOtel,
@@ -294,11 +294,10 @@ export const createStore = <
 > =>
   Effect.gen(function* () {
     const lifetimeScope = yield* Scope.make()
-    let shutdownStore: ((exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>) | undefined
 
     yield* validateStoreId(storeId)
 
-    yield* Effect.addFinalizer((exit) => shutdownStore?.(exit) ?? Scope.close(lifetimeScope, exit))
+    yield* Effect.addFinalizer((_) => Scope.close(lifetimeScope, _))
 
     const debugInstanceId = debug?.instanceId ?? nanoid(10)
     const resolvedSyncPayloadSchema = (syncPayloadSchema ?? Schema.Json) as TSyncPayloadSchema
@@ -360,13 +359,6 @@ export const createStore = <
           // we want to detach the shutdown effect so it's not interrupted by itself
           Effect.runFork,
           Fiber.join,
-        )
-      shutdownStore = (exit) =>
-        shutdown(
-          Exit.match(exit, {
-            onFailure: (cause) => Exit.fail(UnknownError.make({ cause })),
-            onSuccess: () => Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })),
-          }),
         )
 
       const syncPayloadEncoded =
