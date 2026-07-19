@@ -318,6 +318,12 @@ const toErrorMessage = (cause: unknown) => (cause instanceof Error ? cause.messa
 const base64Url = (input: Buffer | string) =>
   (Buffer.isBuffer(input) === true ? input : Buffer.from(input)).toString('base64url')
 
+/** Failures while authenticating to, or reading, the live GitHub App definition. */
+class GitHubAppError extends Schema.TaggedErrorClass<GitHubAppError>()('GitHubAppError', {
+  message: Schema.String,
+  cause: Schema.optional(Schema.Defect()),
+}) {}
+
 /**
  * Mints a short-lived GitHub App JWT (RS256) to authenticate `GET /app`.
  * `iat` is backdated 60s to tolerate clock skew; GitHub rejects `exp` beyond 10 minutes.
@@ -326,13 +332,15 @@ const mintAppJwt = ({ appId, privateKeyPem }: { appId: string; privateKeyPem: st
   Effect.try({
     try: () => {
       const nowSec = Math.floor(Date.now() / 1000)
+      // @effect-diagnostics-next-line preferSchemaOverJson:off -- JWT (RFC 7519) header is signed as canonical compact JSON; a Schema codec adds no safety for this fixed literal
       const header = base64Url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
+      // @effect-diagnostics-next-line preferSchemaOverJson:off -- JWT (RFC 7519) claims are signed as canonical compact JSON; a Schema codec adds no safety for this fixed literal
       const payload = base64Url(JSON.stringify({ iat: nowSec - 60, exp: nowSec + 540, iss: appId }))
       const signer = crypto.createSign('RSA-SHA256')
       signer.update(`${header}.${payload}`)
       return `${header}.${payload}.${base64Url(signer.sign(privateKeyPem))}`
     },
-    catch: (cause) => new Error(`Failed to mint App JWT: ${toErrorMessage(cause)}`),
+    catch: (cause) => new GitHubAppError({ message: 'Failed to mint App JWT', cause }),
   })
 
 const fetchLiveApp = (jwt: string) =>
@@ -347,11 +355,12 @@ const fetchLiveApp = (jwt: string) =>
         },
       })
       if (response.ok === false) {
-        throw new Error(`GET /app failed: ${response.status} ${await response.text()}`)
+        throw new GitHubAppError({ message: `GET /app failed: ${response.status} ${await response.text()}` })
       }
       return (await response.json()) as unknown
     },
-    catch: (cause) => new Error(toErrorMessage(cause)),
+    catch: (cause) =>
+      cause instanceof GitHubAppError ? cause : new GitHubAppError({ message: toErrorMessage(cause), cause }),
   })
 
 /** Compares the manifest's requested permissions/events against the live App definition. */

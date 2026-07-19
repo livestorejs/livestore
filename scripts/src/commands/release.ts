@@ -24,6 +24,14 @@ class PackageJsonParseError extends Schema.TaggedErrorClass<PackageJsonParseErro
   cause: Schema.Defect(),
 }) {}
 
+/** Expected failures in the release/publish flow (validation, packing, npm state). */
+class ReleaseError extends Schema.TaggedErrorClass<ReleaseError>()('ReleaseError', {
+  message: Schema.String,
+}) {}
+
+/** Module-scoped JSON decoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
+const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
+
 type TDependencyField = 'dependencies' | 'devDependencies' | 'peerDependencies' | 'optionalDependencies'
 
 type TMutablePackageJson = {
@@ -57,9 +65,11 @@ const validateReleaseVersion = (version: string) =>
   Effect.sync(() => semver.valid(version)).pipe(
     Effect.flatMap((validVersion) =>
       validVersion === null
-        ? Effect.fail(new Error(`Invalid npm semver version: ${version}`))
+        ? Effect.fail(new ReleaseError({ message: `Invalid npm semver version: ${version}` }))
         : version.includes('-snapshot-') === true
-          ? Effect.fail(new Error(`Stable release versions must not use snapshot versions: ${version}`))
+          ? Effect.fail(
+              new ReleaseError({ message: `Stable release versions must not use snapshot versions: ${version}` }),
+            )
           : Effect.succeed(validVersion),
     ),
   )
@@ -177,7 +187,7 @@ const readReleasePlan = (cwd: string, planPath: string) =>
     const fsEffect = yield* FileSystem.FileSystem
     const absolutePlanPath = planPath.startsWith('/') === true ? planPath : `${cwd}/${planPath}`
     const content = yield* fsEffect.readFileString(absolutePlanPath)
-    const plan = yield* Schema.decodeUnknownEffect(ReleasePlan)(JSON.parse(content))
+    const plan = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(ReleasePlan))(content)
     yield* validateReleasePlan(plan)
     return plan
   })
@@ -187,7 +197,8 @@ const writeReleasePlan = (cwd: string, plan: TReleasePlan) =>
     yield* validateReleasePlan(plan)
     const fsEffect = yield* FileSystem.FileSystem
     yield* fsEffect.makeDirectory(`${cwd}/release`, { recursive: true })
-    yield* fsEffect.writeFileString(releasePlanPath(cwd), `${JSON.stringify(plan, null, 2)}\n`)
+    const encodedPlan = yield* Schema.encodeEffect(Schema.jsonStringIndented(ReleasePlan))(plan).pipe(Effect.orDie)
+    yield* fsEffect.writeFileString(releasePlanPath(cwd), `${encodedPlan}\n`)
   })
 
 /**
@@ -245,7 +256,7 @@ export const rewriteSnapshotInternalDependencyRanges = ({
       const packageJson = yield* fsEffect.readFileString(packageJsonPath).pipe(
         Effect.flatMap((content) =>
           Effect.try({
-            try: () => JSON.parse(content) as TMutablePackageJson,
+            try: () => jsonParse(content) as TMutablePackageJson,
             catch: (cause) => new PackageJsonParseError({ message: `Failed to parse ${packageJsonPath}`, cause }),
           }),
         ),
@@ -274,7 +285,10 @@ export const rewriteSnapshotInternalDependencyRanges = ({
 
       if (rewriteCount === 0) continue
 
-      yield* fsEffect.writeFileString(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
+      const encodedPackageJson = yield* Schema.encodeEffect(Schema.jsonStringIndented(Schema.Unknown))(
+        packageJson,
+      ).pipe(Effect.orDie)
+      yield* fsEffect.writeFileString(packageJsonPath, `${encodedPackageJson}\n`)
       yield* Effect.log(`Pinned ${rewriteCount} internal snapshot dependency range(s) in ${packageName}`)
     }
   })
@@ -290,7 +304,7 @@ const listSnapshotPackages = (cwd: string) =>
     const topology = yield* fsEffect.readFileString(`${cwd}/scripts/src/generated/release-topology.json`).pipe(
       Effect.flatMap((content) =>
         Effect.try({
-          try: () => JSON.parse(content) as TReleaseTopology,
+          try: () => jsonParse(content) as TReleaseTopology,
           catch: (cause) =>
             new PackageJsonParseError({
               message: 'Failed to parse scripts/src/generated/release-topology.json',
@@ -310,7 +324,7 @@ const listSnapshotPackages = (cwd: string) =>
       const pkgResult = yield* fsEffect.readFileString(packageJsonPath).pipe(
         Effect.flatMap((content) =>
           Effect.try({
-            try: () => JSON.parse(content) as { name?: unknown; private?: unknown },
+            try: () => jsonParse(content) as { name?: unknown; private?: unknown },
             catch: (cause) => new PackageJsonParseError({ message: `Failed to parse ${packageJsonPath}`, cause }),
           }),
         ),
@@ -414,9 +428,9 @@ const packPackageForPublish = ({ cwd, pkg, version }: { cwd: string; pkg: string
 
     const tarballs = (yield* fsEffect.readDirectory(packDir)).filter((entry) => entry.endsWith('.tgz'))
     if (tarballs.length !== 1) {
-      return yield* Effect.fail(
-        new Error(`Expected exactly one packed tarball for ${pkg}@${version}, found ${tarballs.length}`),
-      )
+      return yield* new ReleaseError({
+        message: `Expected exactly one packed tarball for ${pkg}@${version}, found ${tarballs.length}`,
+      })
     }
 
     return `${packDir}/${tarballs[0]}`
@@ -473,7 +487,7 @@ const publishReleasePackages = ({
 
       if (alreadyPublished === true) {
         if (dryRun === true || allowExisting === false) {
-          return yield* Effect.fail(new Error(`${pkg}@${version} already exists on npm`))
+          return yield* new ReleaseError({ message: `${pkg}@${version} already exists on npm` })
         }
 
         yield* Effect.log(`${pkg}@${version} already published, skipping`)

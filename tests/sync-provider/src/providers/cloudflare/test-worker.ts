@@ -19,6 +19,7 @@ import {
   KeyValueStore,
   Layer,
   RpcServer,
+  Schema,
   Scope,
   Stream,
   SubscriptionRef,
@@ -29,6 +30,9 @@ import { DoRpcProxyRpcs } from './do-rpc-proxy-schema.ts'
 declare class Request extends CfDeclare.Request {}
 declare class Response extends CfDeclare.Response {}
 declare class WebSocketPair extends CfDeclare.WebSocketPair {}
+
+/** Module-scoped JSON decoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
+const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
 
 export interface Env {
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface>
@@ -77,7 +81,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
           capacity: Number.POSITIVE_INFINITY,
           lookup: (key: string) =>
             Effect.gen({ self: this }, function* () {
-              const { clientId, storeId, payload } = JSON.parse(key) as SyncBackendArgs
+              const { clientId, storeId, payload } = jsonParse(key) as SyncBackendArgs
 
               return yield* makeDoRpcSync({
                 syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),

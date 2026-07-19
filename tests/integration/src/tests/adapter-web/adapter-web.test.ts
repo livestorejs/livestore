@@ -6,8 +6,13 @@ import { expect } from 'vitest'
 import { BrowserContext, browserContextLayer } from '@livestore/effect-playwright'
 import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Duration, Effect, FetchHttpClient, HttpClient, Layer, Schedule } from '@livestore/utils/effect'
+import { Duration, Effect, FetchHttpClient, HttpClient, Layer, Schedule, Schema } from '@livestore/utils/effect'
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
+
+/** The dev server did not become reachable within the readiness retry budget. */
+class DevServerNotReadyError extends Schema.TaggedErrorClass<DevServerNotReadyError>()('DevServerNotReadyError', {
+  cause: Schema.Defect(),
+}) {}
 
 const testDir = path.dirname(fileURLToPath(import.meta.url))
 const integrationRoot = path.resolve(testDir, '../../..')
@@ -54,7 +59,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       const httpClient = HttpClient.filterStatusOk(yield* HttpClient.HttpClient)
       yield* httpClient.head(appUrl('/')).pipe(
         Effect.retry(Schedule.exponentialBackoff10Sec),
-        Effect.mapError((error) => new Error('Dev server did not start in time', { cause: error })),
+        Effect.mapError((error) => new DevServerNotReadyError({ cause: error })),
       )
 
       const { browserContext } = yield* BrowserContext
@@ -126,7 +131,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       const httpClient = HttpClient.filterStatusOk(yield* HttpClient.HttpClient)
       yield* httpClient.head(appUrl('/')).pipe(
         Effect.retry(Schedule.exponentialBackoff10Sec),
-        Effect.mapError((error) => new Error('Dev server did not start in time', { cause: error })),
+        Effect.mapError((error) => new DevServerNotReadyError({ cause: error })),
       )
 
       const { browserContext } = yield* BrowserContext
@@ -188,7 +193,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       const httpClient = HttpClient.filterStatusOk(yield* HttpClient.HttpClient)
       yield* httpClient.head(appUrl('/')).pipe(
         Effect.retry(Schedule.exponentialBackoff10Sec),
-        Effect.mapError((error) => new Error('Dev server did not start in time', { cause: error })),
+        Effect.mapError((error) => new DevServerNotReadyError({ cause: error })),
       )
 
       const { browserContext } = yield* BrowserContext

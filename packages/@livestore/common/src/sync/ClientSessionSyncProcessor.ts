@@ -120,7 +120,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   let leaderPushingFiberHandle: FiberHandle.FiberHandle<void, never> | undefined
   let pullingFiberHandle: FiberHandle.FiberHandle<void, never> | undefined
 
-  const boot: ClientSessionSyncProcessor['boot'] = Effect.fn('client-session-sync-processor:boot')(function* () {
+  const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
     if (
       confirmUnsavedChanges === true &&
       typeof window !== 'undefined' &&
@@ -306,9 +306,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       Effect.withSpan('client-session-sync-processor:pull'),
       Effect.tapCauseLogPretty,
     )
-
     yield* FiberHandle.run(pullingHandle, backgroundPulling)
-  })()
+  }).pipe(Effect.withSpan('client-session-sync-processor:boot'))
 
   const runShutdown = Effect.fn('client-session-sync-processor:shutdown')(function* (
     exit: Exit.Exit<unknown, unknown>,
