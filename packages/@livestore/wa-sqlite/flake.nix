@@ -16,9 +16,12 @@
         sqliteCommit = "8ed5e7365e6f12f427910188bbf6b254daad2ef6";
 
         # Keep src/extension-functions.c in sync with the SQLite contrib source used
-        # by Makefile's EXTENSION_FUNCTIONS_SHA3 when refreshing SQLite. The file is
-        # vendored instead of fetched here because sqlite.org contrib downloads have
-        # failed TLS validation in Nix fetchers on clean CI runners.
+        # by Makefile's EXTENSION_FUNCTIONS_SHA3 when refreshing SQLite. The Nix
+        # build validates the vendored file before copying it because Makefile's
+        # vpath order resolves extension-functions.c from src/ before the cache
+        # rule that normally performs the hash check. The file is vendored instead
+        # of fetched here because sqlite.org contrib downloads have failed TLS
+        # validation in Nix fetchers on clean CI runners.
         #
         # Refresh checklist:
         # - download https://www.sqlite.org/contrib/download/extension-functions.c?get=25
@@ -96,6 +99,14 @@
             mkdir -p cache/version-${version}
             cp -r ./sqlite-src/* ./cache/version-${version}
 
+            extensionFunctionsSha3="$(openssl dgst -sha3-256 -r ./src/extension-functions.c | sed -e 's/\s.*//')"
+            expectedExtensionFunctionsSha3="$(sed -n 's/^EXTENSION_FUNCTIONS_SHA3 = //p' Makefile)"
+            if [ "$extensionFunctionsSha3" != "$expectedExtensionFunctionsSha3" ]; then
+              echo "src/extension-functions.c does not match Makefile EXTENSION_FUNCTIONS_SHA3" >&2
+              echo "got:      $extensionFunctionsSha3" >&2
+              echo "expected: $expectedExtensionFunctionsSha3" >&2
+              exit 1
+            fi
             cp ./src/extension-functions.c ./cache/extension-functions.c
 
             # Since we provide the source code via Nix, we don't need to download it
