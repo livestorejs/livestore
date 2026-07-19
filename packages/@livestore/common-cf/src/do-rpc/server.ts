@@ -18,6 +18,18 @@ import {
 
 import type * as CfTypes from '../cf-types.ts'
 
+/**
+ * The erased dynamic RPC schemas (`Rpc.exitSchema(...) as Schema.Top`, `rpc.payloadSchema`) are
+ * plain data — they need NO decoding/encoding services. `Schema.Top` types those service channels
+ * as `unknown`, which surfaces as `unknown` in the requirements channel of `encode/decodeUnknownEffect`
+ * (anyUnknownInErrorContext / TS377030). Assert the true `never` services in ONE place.
+ *
+ * TODO(effect): revisit if a cleaner/idiomatic API lands — https://github.com/Effect-TS/effect/issues/6489
+ */
+const erasedJsonCodec = (schema: Schema.Top) =>
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- erased RPC data schemas require no codec services
+  Schema.toCodecJson(schema as Schema.Codec<unknown, unknown, never, never>)
+
 export interface ClientDoWithRpcCallback {
   __DURABLE_OBJECT_BRAND: never
   syncUpdateRpc: (payload: Uint8Array<ArrayBuffer>) => Promise<void>
@@ -85,8 +97,7 @@ export const toDurableObjectHandler =
           continue
         }
 
-        // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Schema.toCodecJson` on the erased dynamic payload schema surfaces `unknown` requirements; the context is supplied at runtime via `Effect.provideContext(entry.context)`
-        const payloadResult = yield* Schema.decodeUnknownEffect(Schema.toCodecJson(rpc.payloadSchema))(
+        const payloadResult = yield* Schema.decodeUnknownEffect(erasedJsonCodec(rpc.payloadSchema))(
           request.payload,
         ).pipe(Effect.provideContext(entry.context), Effect.result)
 
@@ -96,8 +107,7 @@ export const toDurableObjectHandler =
           // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
           const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
           const rawExit = Exit.die(payloadResult.failure.issue.toString())
-          // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Schema.toCodecJson` on the erased `Schema.Top` exit schema surfaces `unknown` requirements; the context is supplied at runtime via `Effect.provideContext(entry.context)`
-          const encodedExit = yield* Schema.encodeUnknownEffect(Schema.toCodecJson(exitSchema))(rawExit).pipe(
+          const encodedExit = yield* Schema.encodeUnknownEffect(erasedJsonCodec(exitSchema))(rawExit).pipe(
             Effect.provideContext(entry.context),
           )
           responses.push({
@@ -146,8 +156,7 @@ export const toDurableObjectHandler =
           if (exitSchema !== undefined) {
             // Use schema encoding for proper serialization
             const rawExit = Exit.succeed(value)
-            // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Schema.toCodecJson` on the erased `Schema.Top` exit schema surfaces `unknown` requirements; the effect runs under the provided `options.layer`
-            encodedExit = yield* Schema.encodeUnknownEffect(Schema.toCodecJson(exitSchema))(rawExit)
+            encodedExit = yield* Schema.encodeUnknownEffect(erasedJsonCodec(exitSchema))(rawExit)
           } else {
             // Fallback to direct exit
             encodedExit = Exit.succeed(value)
@@ -169,8 +178,7 @@ export const toDurableObjectHandler =
               if (exitSchema !== undefined) {
                 // Use schema encoding for proper serialization
                 const rawExit = Exit.failCause(cause)
-                // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Schema.toCodecJson` on the erased `Schema.Top` exit schema surfaces `unknown` requirements; the effect runs under the provided `options.layer`
-                encodedExit = yield* Schema.encodeUnknownEffect(Schema.toCodecJson(exitSchema))(rawExit)
+                encodedExit = yield* Schema.encodeUnknownEffect(erasedJsonCodec(exitSchema))(rawExit)
               } else {
                 // Fallback to direct exit
                 encodedExit = Exit.failCause(cause)
@@ -299,7 +307,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
           const rawExit = Exit.void
           // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
           const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
-          const encodedExit = yield* Schema.encodeUnknownEffect(Schema.toCodecJson(exitSchema))(rawExit)
+          const encodedExit = yield* Schema.encodeUnknownEffect(erasedJsonCodec(exitSchema))(rawExit)
 
           const exitMessage = {
             _tag: 'Exit' as const,
@@ -318,7 +326,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
               const rawExit = Exit.failCause(cause)
               // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
               const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
-              const encodedExit = yield* Schema.encodeUnknownEffect(Schema.toCodecJson(exitSchema))(rawExit)
+              const encodedExit = yield* Schema.encodeUnknownEffect(erasedJsonCodec(exitSchema))(rawExit)
 
               const exitMessage = {
                 _tag: 'Exit' as const,
