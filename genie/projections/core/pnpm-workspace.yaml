@@ -14,11 +14,7 @@ peerDependencyRules:
     typescript: '>=6.0.0'
     vitest: '>=4.0.0'
 
-enableGlobalVirtualStore: true
-
-storeDir: .devenv/pnpm-store-pure-v1
-
-packageImportMethod: clone-or-copy
+packageImportMethod: auto
 
 sideEffectsCache: false
 

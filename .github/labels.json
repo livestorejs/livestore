@@ -1,0 +1,460 @@
+{
+  "labels": [
+    {
+      "name": "adapter:cf-worker",
+      "color": "aaaaaa",
+      "description": "Cloudflare Worker adapter · Set: manual"
+    },
+    {
+      "name": "adapter:electron",
+      "color": "aaaaaa",
+      "description": "Electron adapter · Set: manual"
+    },
+    {
+      "name": "adapter:expo",
+      "color": "0e4046",
+      "description": "Expo / React Native adapter · Set: manual"
+    },
+    {
+      "name": "adapter:node",
+      "color": "417e38",
+      "description": "Node adapter · Set: manual"
+    },
+    {
+      "name": "adapter:tauri",
+      "color": "a179c5",
+      "description": "Tauri adapter · Set: manual"
+    },
+    {
+      "name": "adapter:web",
+      "color": "e5760f",
+      "description": "Web adapter (browser / worker) · Set: manual"
+    },
+    {
+      "name": "api",
+      "color": "ededed",
+      "description": "Public API surface · Set: manual"
+    },
+    {
+      "name": "area:ci",
+      "color": "1d76db",
+      "description": "CI workflows, runners, and pipeline configuration · Set: manual"
+    },
+    {
+      "name": "area:devenv",
+      "color": "1d76db",
+      "description": "devenv tasks, inputs, and environment configuration · Set: manual"
+    },
+    {
+      "name": "area:effect",
+      "color": "1d76db",
+      "description": "Effect framework usage · Set: manual"
+    },
+    {
+      "name": "area:megarepo",
+      "color": "1d76db",
+      "description": "megarepo CLI and conventions · Set: manual"
+    },
+    {
+      "name": "area:nix",
+      "color": "1d76db",
+      "description": "Nix flakes, derivations, FOD hashes, builders · Set: manual"
+    },
+    {
+      "name": "area:storybook",
+      "color": "1d76db",
+      "description": "Storybook configuration and stories · Set: manual"
+    },
+    {
+      "name": "area:tooling",
+      "color": "1d76db",
+      "description": "Developer tooling, scripts, and utilities · Set: manual"
+    },
+    {
+      "name": "area:typescript",
+      "color": "1d76db",
+      "description": "TypeScript code, tsconfig, and type definitions · Set: manual"
+    },
+    {
+      "name": "breaking-change",
+      "color": "b60205",
+      "description": "Breaking change · Set: manual"
+    },
+    {
+      "name": "ci:deploy-docs",
+      "color": "0e8a16",
+      "description": "Trigger docs deployment for fork PRs · Set: manual"
+    },
+    {
+      "name": "cli",
+      "color": "d23bad",
+      "description": "CLI · Set: manual"
+    },
+    {
+      "name": "commands",
+      "color": "1d76db",
+      "description": "Commands API · Set: manual"
+    },
+    {
+      "name": "compatibility",
+      "color": "e569ae",
+      "description": "Compatibility · Set: manual"
+    },
+    {
+      "name": "contributor-experience",
+      "color": "ededed",
+      "description": "Contributor experience · Set: manual"
+    },
+    {
+      "name": "cross-store",
+      "color": "6b8e23",
+      "description": "Cross-store communication and synchronization · Set: manual"
+    },
+    {
+      "name": "design decision",
+      "color": "4d75c6",
+      "description": "Design decision / RFC · Set: manual"
+    },
+    {
+      "name": "devtools",
+      "color": "95b190",
+      "description": "Devtools · Set: manual"
+    },
+    {
+      "name": "DX",
+      "color": "516c68",
+      "description": "Developer experience · Set: manual"
+    },
+    {
+      "name": "encryption",
+      "color": "79abc2",
+      "description": "Encryption · Set: manual"
+    },
+    {
+      "name": "ergonomics",
+      "color": "aaaaaa",
+      "description": "API ergonomics · Set: manual"
+    },
+    {
+      "name": "error-handling",
+      "color": "aaaaaa",
+      "description": "Error handling · Set: manual"
+    },
+    {
+      "name": "event-sourcing",
+      "color": "379fa5",
+      "description": "Event sourcing / eventlog · Set: manual"
+    },
+    {
+      "name": "example",
+      "color": "2484b8",
+      "description": "Example app · Set: manual"
+    },
+    {
+      "name": "examples",
+      "color": "ededed",
+      "description": "Examples · Set: manual"
+    },
+    {
+      "name": "experiment",
+      "color": "49eee7",
+      "description": "Bounded experiment / spike · Set: manual"
+    },
+    {
+      "name": "exploration",
+      "color": "ededed",
+      "description": "Open-ended exploration · Set: manual"
+    },
+    {
+      "name": "feedback-wanted",
+      "color": "d27a82",
+      "description": "Feedback wanted · Set: manual"
+    },
+    {
+      "name": "has-workaround",
+      "color": "aaaaaa",
+      "description": "Has a known workaround · Set: manual"
+    },
+    {
+      "name": "infrastructure",
+      "color": "ededed",
+      "description": "Repo infrastructure · Set: manual"
+    },
+    {
+      "name": "integration",
+      "color": "ededed",
+      "description": "Framework integration (general) · Set: manual"
+    },
+    {
+      "name": "integration:react",
+      "color": "f59f2a",
+      "description": "React integration · Set: manual"
+    },
+    {
+      "name": "integration:redwood",
+      "color": "aaaaaa",
+      "description": "RedwoodJS integration · Set: manual"
+    },
+    {
+      "name": "integration:solid",
+      "color": "aedf23",
+      "description": "Solid integration · Set: manual"
+    },
+    {
+      "name": "integration:svelte",
+      "color": "aaaaaa",
+      "description": "Svelte integration · Set: manual"
+    },
+    {
+      "name": "migrations",
+      "color": "aec97d",
+      "description": "Schema / data migrations · Set: manual"
+    },
+    {
+      "name": "mono-cli",
+      "color": "ededed",
+      "description": "mono CLI · Set: manual"
+    },
+    {
+      "name": "needs-info",
+      "color": "fef2c0",
+      "description": "More information needed · Set: manual"
+    },
+    {
+      "name": "needs-repro",
+      "color": "1382d1",
+      "description": "Needs a reproduction · Set: manual"
+    },
+    {
+      "name": "optimization",
+      "color": "aaaaaa",
+      "description": "Optimization · Set: manual"
+    },
+    {
+      "name": "origin:agent",
+      "color": "6f42c1",
+      "description": "Filed or primarily produced by an AI agent · Set: AI agent or manual"
+    },
+    {
+      "name": "origin:janitor",
+      "color": "6f42c1",
+      "description": "Filed by janitor automation · Set: janitor-cli"
+    },
+    {
+      "name": "otel",
+      "color": "80bbda",
+      "description": "OpenTelemetry · Set: manual"
+    },
+    {
+      "name": "performance",
+      "color": "71b373",
+      "description": "Performance · Set: manual"
+    },
+    {
+      "name": "queries",
+      "color": "0e7203",
+      "description": "Queries · Set: manual"
+    },
+    {
+      "name": "query-builder",
+      "color": "aaaaaa",
+      "description": "Query builder · Set: manual"
+    },
+    {
+      "name": "schema",
+      "color": "aaaaaa",
+      "description": "Schema / state definition · Set: manual"
+    },
+    {
+      "name": "setup",
+      "color": "1df145",
+      "description": "Setup / getting started · Set: manual"
+    },
+    {
+      "name": "sqlite",
+      "color": "044a64",
+      "description": "SQLite / storage engine · Set: manual"
+    },
+    {
+      "name": "state:blocked",
+      "color": "6e7781",
+      "description": "Blocked on an external dependency or decision · Set: manual"
+    },
+    {
+      "name": "state:declined",
+      "color": "6e7781",
+      "description": "Reviewed and declined; will not be acted on · Set: manual"
+    },
+    {
+      "name": "state:duplicate",
+      "color": "6e7781",
+      "description": "Duplicate of an existing item; tracked elsewhere · Set: manual"
+    },
+    {
+      "name": "state:needs-research",
+      "color": "6e7781",
+      "description": "Needs research / investigation before scope or approach is clear · Set: manual"
+    },
+    {
+      "name": "state:triage",
+      "color": "6e7781",
+      "description": "Needs classification or owner decision · Set: manual"
+    },
+    {
+      "name": "syncing",
+      "color": "a7f49d",
+      "description": "Sync engine and protocol · Set: manual"
+    },
+    {
+      "name": "syncing:cf",
+      "color": "aaaaaa",
+      "description": "Cloudflare sync provider · Set: manual"
+    },
+    {
+      "name": "syncing:electric",
+      "color": "f62dc9",
+      "description": "ElectricSQL sync provider · Set: manual"
+    },
+    {
+      "name": "testing",
+      "color": "5d3ac4",
+      "description": "Testing · Set: manual"
+    },
+    {
+      "name": "type:agent-tooling",
+      "color": "1f8fb8",
+      "description": "Agent, automation, AI workflow, or developer-agent tooling · Set: manual"
+    },
+    {
+      "name": "type:bug",
+      "color": "d73a4a",
+      "description": "Something broken or a regression · Set: manual"
+    },
+    {
+      "name": "type:chore",
+      "color": "bfd4e2",
+      "description": "Maintenance, cleanup, dependencies, or CI · Set: manual"
+    },
+    {
+      "name": "type:docs",
+      "color": "0075ca",
+      "description": "Documentation-only change or documentation task · Set: manual"
+    },
+    {
+      "name": "type:epic",
+      "color": "8250df",
+      "description": "Large tracking issue with child tasks · Set: manual"
+    },
+    {
+      "name": "type:feature",
+      "color": "0e8a16",
+      "description": "New user-visible or system capability · Set: manual"
+    },
+    {
+      "name": "type:incident",
+      "color": "b60205",
+      "description": "Live or recent operational incident · Set: manual or andon CLI"
+    },
+    {
+      "name": "type:rca",
+      "color": "5319e7",
+      "description": "Root-cause analysis or investigation record · Set: manual"
+    },
+    {
+      "name": "type:refactor",
+      "color": "c5def5",
+      "description": "Behavior-preserving code restructuring · Set: manual"
+    },
+    {
+      "name": "type:task",
+      "color": "cdc5e2",
+      "description": "Scoped implementation/follow-up work (not bug/feature/docs/incident/RCA/epic) · Set: manual"
+    },
+    {
+      "name": "vite-plugin",
+      "color": "907c03",
+      "description": "Vite plugin · Set: manual"
+    },
+    {
+      "name": "web:ssr",
+      "color": "f2e7f6",
+      "description": "SSR / server rendering · Set: manual"
+    },
+    {
+      "name": "webmesh",
+      "color": "aaaaaa",
+      "description": "Webmesh transport · Set: manual"
+    },
+    {
+      "name": "website",
+      "color": "aaaaaa",
+      "description": "Website / docs site · Set: manual"
+    }
+  ],
+  "deprecated": [
+    "bug",
+    "documentation",
+    "duplicate",
+    "enhancement",
+    "invalid",
+    "mq:agent-active",
+    "mq:blocked",
+    "mq:ci-admitted",
+    "mq:enrolled",
+    "mq:merge-held",
+    "mq:needs-agent",
+    "mq:needs-human",
+    "mq:priority-0",
+    "mq:priority-1",
+    "mq:priority-10",
+    "mq:priority-100",
+    "mq:priority-20",
+    "mq:priority-30",
+    "mq:queue-head",
+    "mq:status",
+    "question",
+    "wontfix"
+  ],
+  "legacyMigrations": [
+    {
+      "from": "blocked-upstream",
+      "to": "state:blocked"
+    },
+    {
+      "from": "bug",
+      "to": "type:bug"
+    },
+    {
+      "from": "ci",
+      "to": "area:ci"
+    },
+    {
+      "from": "docs",
+      "to": "type:docs"
+    },
+    {
+      "from": "documentation",
+      "to": "type:docs"
+    },
+    {
+      "from": "effect",
+      "to": "area:effect"
+    },
+    {
+      "from": "enhancement",
+      "to": "type:feature"
+    },
+    {
+      "from": "needs-research",
+      "to": "state:needs-research"
+    },
+    {
+      "from": "refactor",
+      "to": "type:refactor"
+    },
+    {
+      "from": "tooling",
+      "to": "area:tooling"
+    }
+  ]
+}

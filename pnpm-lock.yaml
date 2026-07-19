@@ -26,7 +26,7 @@ overrides:
   '@tanstack/start-server-core': 1.145.7
   '@tanstack/start-client-core': 1.145.7
 
-packageExtensionsChecksum: sha256-6QRcYLQaei02Zt3wQj7DyvIhJqzSdeJ8crzELgh/JTI=
+packageExtensionsChecksum: sha256-3AN3Jmlp4NTZShupTave7A7boFs1CLxO47lvh/A45h8=
 
 importers:
 
@@ -28001,8 +28001,6 @@ snapshots:
 
   react-error-boundary@6.1.1(react@19.2.3):
     dependencies:
-      '@types/react': 19.2.7
-      '@types/react-dom': 19.2.3(@types/react@19.2.7)
       react: 19.2.3
 
   react-icons@5.5.0(react@19.2.3):

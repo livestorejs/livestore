@@ -64,12 +64,6 @@
           "@parcel/watcher": "^2.5.6"
         }
       },
-      "react-error-boundary": {
-        "dependencies": {
-          "@types/react": "19.2.7",
-          "@types/react-dom": "19.2.3"
-        }
-      },
       "starlight-auto-sidebar": {
         "dependencies": {
           "astro": ">=6.0.0"
@@ -101,7 +95,7 @@
     "ignoreScripts": true,
     "minimumReleaseAgeExclude": ["@effect/platform", "@types/node", "effect"],
     "optimisticRepeatInstall": false,
-    "packageImportMethod": "clone-or-copy",
+    "packageImportMethod": "auto",
     "pmOnFail": "ignore",
     "sideEffectsCache": false,
     "strictPeerDependencies": false,
@@ -135,16 +129,13 @@
   },
   "schemaVersion": 1,
   "storeContract": {
-    "globalVirtualStore": {
-      "enabled": true
-    },
+    "globalVirtualStore": {},
     "layoutVersion": "v11",
     "owner": "pnpm",
     "sharedFilesStore": {
       "disabledInCi": true,
       "enabledForLocalDev": true
-    },
-    "storeDir": ".devenv/pnpm-store-pure-v1"
+    }
   },
   "workspaceManifestContract": {
     "injectWorkspacePackages": false,

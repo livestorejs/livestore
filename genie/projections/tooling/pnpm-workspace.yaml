@@ -14,11 +14,7 @@ peerDependencyRules:
     typescript: '>=6.0.0'
     vitest: '>=4.0.0'
 
-enableGlobalVirtualStore: true
-
-storeDir: .devenv/pnpm-store-pure-v1
-
-packageImportMethod: clone-or-copy
+packageImportMethod: auto
 
 sideEffectsCache: false
 
@@ -58,10 +54,6 @@ allowBuilds:
   workerd: true
 
 packageExtensions:
-  react-error-boundary:
-    dependencies:
-      '@types/react': 19.2.7
-      '@types/react-dom': 19.2.3
   '@livestore/devtools-vite':
     dependencies:
       '@parcel/watcher': ^2.5.6
