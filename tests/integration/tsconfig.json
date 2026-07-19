@@ -23,8 +23,8 @@
     "plugins": [
       {
         "name": "@effect/language-service",
-        "ignoreEffectWarningsInTscExitCode": true,
-        "ignoreEffectSuggestionsInTscExitCode": true,
+        "ignoreEffectWarningsInTscExitCode": false,
+        "ignoreEffectSuggestionsInTscExitCode": false,
         "ignoreEffectErrorsInTscExitCode": false,
         "includeSuggestionsInTsc": true,
         "pipeableMinArgCount": 2,
@@ -33,7 +33,8 @@
           "schemaUnionOfLiterals": "warning",
           "anyUnknownInErrorContext": "warning",
           "preferSchemaOverJson": "warning"
-        }
+        },
+        "allowedDuplicatedPackages": ["@livestore/utils"]
       }
     ],
     "composite": true,

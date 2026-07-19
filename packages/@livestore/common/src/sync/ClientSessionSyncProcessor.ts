@@ -103,7 +103,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
   const leaderPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
 
-  const boot: ClientSessionSyncProcessor['boot'] = Effect.fn('client-session-sync-processor:boot')(function* () {
+  const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
     if (
       confirmUnsavedChanges === true &&
       typeof window !== 'undefined' &&
@@ -263,7 +263,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
-  })()
+  }).pipe(Effect.withSpan('client-session-sync-processor:boot'))
 
   const encodeEvents: ClientSessionSyncProcessor['encodeEvents'] = Effect.fn(
     'client-session-sync-processor:encode-events',
@@ -278,17 +278,18 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           rebaseGeneration: baseEventSequenceNumber.rebaseGeneration,
         })
         baseEventSequenceNumber = nextNumPair.seqNum
-        return new LiveStoreEvent.Client.EncodedWithMeta(
-          Schema.encodeUnknownSync(eventSchema)({
-            name,
-            // Client-document events expose SessionIdSymbol as an input placeholder, but encoded events are persisted
-            // and replayed by concrete id. Resolve during schema encoding so commit never mutates the caller's event.
-            args: resolveSessionIdSymbolInEventArgs(args, clientSession.sessionId),
-            ...nextNumPair,
-            clientId: clientSession.clientId,
-            sessionId: clientSession.sessionId,
-          }),
-        )
+        // Encoding known-valid domain data: an encode failure is an invariant violation (a defect),
+        // so `Effect.orDie` is the correct modeling — it keeps the typed error channel narrow.
+        const encoded = yield* Schema.encodeUnknownEffect(eventSchema)({
+          name,
+          // Client-document events expose SessionIdSymbol as an input placeholder, but encoded events are persisted
+          // and replayed by concrete id. Resolve during schema encoding so commit never mutates the caller's event.
+          args: resolveSessionIdSymbolInEventArgs(args, clientSession.sessionId),
+          ...nextNumPair,
+          clientId: clientSession.clientId,
+          sessionId: clientSession.sessionId,
+        }).pipe(Effect.orDie)
+        return new LiveStoreEvent.Client.EncodedWithMeta(encoded)
       }),
     )
   })

@@ -33,6 +33,9 @@ const Response = CfDeclare.Response
 const WebSocketPair = CfDeclare.WebSocketPair
 const WebSocketRequestResponsePair = CfDeclare.WebSocketRequestResponsePair
 
+/** Module-scoped JSON encoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
+
 const DurableObjectBase = DurableObject as any as new (
   state: CfTypes.DurableObjectState,
   env: Env,
@@ -166,9 +169,16 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
           // Since we're using websocket hibernation, we need to remember the storeId for subsequent `webSocketMessage` calls
           // Also store forwarded headers so they're available after hibernation resume
-          server.serializeAttachment(
-            Schema.encodeSync(WebSocketAttachmentSchema)({ storeId, payload, pullRequestIds: [], headers }),
-          )
+          // Encoding known-valid domain data: an encode failure is an invariant violation (a defect),
+          // so `Effect.orDie` is the correct modeling. serializeAttachment takes the value synchronously,
+          // so resolve the encoded value first, then pass it in.
+          const attachment = yield* Schema.encodeEffect(WebSocketAttachmentSchema)({
+            storeId,
+            payload,
+            pullRequestIds: [],
+            headers,
+          }).pipe(Effect.orDie)
+          server.serializeAttachment(attachment)
 
           // See https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server
 
@@ -176,10 +186,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
           // Ping requests are sent by Effect RPC internally
           this.ctx.setWebSocketAutoResponse(
-            new WebSocketRequestResponsePair(
-              JSON.stringify(RpcMessage.constPing),
-              JSON.stringify(RpcMessage.constPong),
-            ),
+            new WebSocketRequestResponsePair(jsonStringify(RpcMessage.constPing), jsonStringify(RpcMessage.constPong)),
           )
 
           return new Response(null, {

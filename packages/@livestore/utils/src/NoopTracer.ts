@@ -3,10 +3,7 @@ import type * as otel from '@opentelemetry/api'
 import { cuid } from '@livestore/utils/cuid'
 
 export const makeNoopSpan = () => {
-  const performanceStartTime = performance.now()
-
   const spanImpl = {
-    _performanceStartTime: performanceStartTime,
     setAttribute: () => null,
     setAttributes: () => null,
     addEvent: () => null,
@@ -14,20 +11,13 @@ export const makeNoopSpan = () => {
     setStatus: () => null,
     updateName: () => null,
     recordException: () => null,
-    end: () => {
-      const endTime = performance.now()
-      const duration = endTime - performanceStartTime
-      const durationSecs = duration / 1000
-      const durationRestNs = (duration % 1000) * 1_000_000
-      spanImpl._duration = [durationSecs, durationRestNs] as [number, number]
-    },
+    end: () => null,
     spanContext: () => {
       return {
         traceId: `livestore-noop-trace-id${cuid()}`,
         spanId: `livestore-noop-span-id${cuid()}`,
       }
     },
-    _duration: [0, 0] as [number, number],
   }
 
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- noop otel.Span implementation; only implements the subset needed by LiveStore

@@ -1,4 +1,4 @@
-import { Effect, FileSystem } from '@livestore/utils/effect'
+import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 
 /**
  * Marker prefix recognized by effect-utils' workflow-reporting collector.
@@ -6,6 +6,9 @@ import { Effect, FileSystem } from '@livestore/utils/effect'
  * `@overeng/genie/runtime/workflow-reporting/mod.ts`.
  */
 export const workflowReportRecordLineMarker = 'WORKFLOW_REPORT_V1: '
+
+/** Module-scoped JSON encoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
 
 /**
  * Schema-compatible shape for a single record. We intentionally keep this as a
@@ -39,7 +42,7 @@ export interface WorkflowReportRecord {
  */
 export const emitWorkflowReportRecord = (record: WorkflowReportRecord) =>
   Effect.gen(function* () {
-    const line = `${workflowReportRecordLineMarker}${JSON.stringify(record)}`
+    const line = `${workflowReportRecordLineMarker}${jsonStringify(record)}`
     console.log(line)
 
     const outputPath = process.env.WORKFLOW_REPORT_OUTPUT_FILE

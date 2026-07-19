@@ -4,6 +4,14 @@ This project does not use code from [SQL.js](https://sql.js.org/#/), but is insp
 
 This project uses or derives material from the following sources.
 
+## [SQLite extension-functions.c](https://www.sqlite.org/contrib)
+
+This package vendors `src/extension-functions.c` from the SQLite contrib archive
+entry `extension-functions.c?get=25` so Nix builds do not depend on live
+downloads from sqlite.org. When refreshing the SQLite build inputs, compare the
+vendored file against the contrib source and keep it aligned with
+`Makefile`'s `EXTENSION_FUNCTIONS_SHA3`.
+
 ## [sqlite-wasm](https://github.com/mandel59/sqlite-wasm)
 
 Copyright 2017 Ryusei Yamaguchi

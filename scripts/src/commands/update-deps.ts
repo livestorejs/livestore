@@ -285,8 +285,11 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
             }
 
             // Write back to file with consistent formatting
+            const encodedPackageJson = yield* Schema.encodeEffect(Schema.jsonStringIndented(Schema.Unknown))(
+              updatedPackageJson,
+            ).pipe(Effect.orDie)
             yield* Effect.try({
-              try: () => fs.writeFileSync(packageJsonPath, `${JSON.stringify(updatedPackageJson, null, 2)}\n`),
+              try: () => fs.writeFileSync(packageJsonPath, `${encodedPackageJson}\n`),
               catch: () => new UpdateDepsError({ message: `Failed to write ${packageJsonPath}` }),
             })
 
@@ -383,7 +386,7 @@ export const updateDepsCommand = Cli.Command.make(
       const expoExamples = yield* cmdText('find examples -name "expo" -type d -o -name "*expo*" -type d').pipe(
         Effect.provide(LivestoreWorkspace.toCwd()),
         Effect.map((output) => output.trim().split('\n').filter(Boolean)),
-        Effect.catch(() => Effect.succeed([])),
+        Effect.orElseSucceed(() => []),
       )
 
       for (const exampleDir of expoExamples) {

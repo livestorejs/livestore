@@ -19,6 +19,8 @@ export class DockerComposeError extends Schema.TaggedErrorClass<DockerComposeErr
 )('DockerComposeError', {
   cause: Schema.Defect(),
   note: Schema.String,
+  /** Compose env of the failed invocation, if any — structured instead of string-formatted into `note`. */
+  env: Schema.optional(Schema.Record(Schema.String, Schema.String)),
 }) {}
 
 export interface Options {
@@ -165,7 +167,8 @@ export const make = (args: Options) =>
       if (Number(exitCode) !== 0) {
         return yield* new DockerComposeError({
           cause: new Error(`Docker compose exited with code ${exitCode}`),
-          note: `Docker Compose failed to start with exit code ${exitCode}. Env: ${JSON.stringify(options.env)}`,
+          note: `Docker Compose failed to start with exit code ${exitCode}`,
+          env: options.env,
         })
       }
 
@@ -280,7 +283,7 @@ const performHealthCheck = ({
 
     const checkHealth = spawner.exitCode(ChildProcess.make('curl', ['-f', '-s', url])).pipe(
       Effect.map((code: number) => code === 0),
-      Effect.catch(() => Effect.succeed(false)),
+      Effect.orElseSucceed(() => false),
     )
 
     const healthCheck = checkHealth.pipe(

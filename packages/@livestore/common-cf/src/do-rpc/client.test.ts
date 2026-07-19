@@ -7,11 +7,11 @@ import { toDurableObjectHandler } from './server.ts'
 
 class Rpcs extends RpcGroup.make(
   Rpc.make('BigStream', {
-    payload: Schema.Struct({ n: Schema.Number }),
+    payload: Schema.Struct({ n: Schema.Finite }),
     success: Schema.Struct({
-      seqNum: Schema.Number,
+      seqNum: Schema.Finite,
       name: Schema.String,
-      args: Schema.Struct({ a: Schema.Number, b: Schema.String }),
+      args: Schema.Struct({ a: Schema.Finite, b: Schema.String }),
     }),
     stream: true,
   }),

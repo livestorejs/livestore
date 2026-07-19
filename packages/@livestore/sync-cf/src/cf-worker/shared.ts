@@ -182,7 +182,7 @@ export const WebSocketAttachmentSchema = Schema.fromJsonString(
     storeId: Schema.String,
     // Different for each websocket connection
     payload: Schema.optional(Schema.Json),
-    pullRequestIds: Schema.Array(Schema.Union([Schema.String, Schema.Number])),
+    pullRequestIds: Schema.Array(Schema.Union([Schema.String, Schema.Finite])),
     // Headers forwarded from the initial request (via forwardHeaders option)
     headers: Schema.optional(Schema.Record(Schema.String, Schema.String)),
   }),

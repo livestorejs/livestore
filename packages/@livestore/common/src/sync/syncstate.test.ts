@@ -7,6 +7,10 @@ import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import * as SyncState from './syncstate.ts'
 
+/** Module-scoped JSON codecs; keeping the sync codecs out of Effect generators avoids `schemaSyncInEffect`. */
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
+const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
+
 const makeTestEvent = ({
   seqNum,
   parentSeqNum,
@@ -423,8 +427,8 @@ Vitest.describe('syncstate', () => {
               id: Schema.String,
               flag: Schema.optional(Schema.Boolean),
             })
-            const localArgs = Schema.encodeUnknownSync(argsSchema)({ id: 'abc' } as any)
-            const wireArgs = JSON.parse(JSON.stringify(localArgs))
+            const localArgs = yield* Schema.encodeUnknownEffect(argsSchema)({ id: 'abc' } as any).pipe(Effect.orDie)
+            const wireArgs = jsonParse(jsonStringify(localArgs))
 
             const localPending = new LiveStoreEvent.Client.EncodedWithMeta({
               seqNum: e1_0.seqNum,
@@ -686,20 +690,20 @@ const expectEventArraysEqual = (
   })
 }
 
-const expectAdvance: (
-  result: typeof SyncState.MergeResult.Type,
-) => asserts result is typeof SyncState.MergeResultAdvance.Type = (result) => {
+const expectAdvance: (result: typeof SyncState.MergeResult.Type) => asserts result is SyncState.MergeResultAdvance = (
+  result,
+) => {
   expect(result._tag).toBe('advance')
 }
 
-const expectRebase: (
-  result: typeof SyncState.MergeResult.Type,
-) => asserts result is typeof SyncState.MergeResultRebase.Type = (result) => {
+const expectRebase: (result: typeof SyncState.MergeResult.Type) => asserts result is SyncState.MergeResultRebase = (
+  result,
+) => {
   expect(result._tag, `Expected rebase, got ${result._tag}`).toBe('rebase')
 }
 
-const expectReject: (
-  result: typeof SyncState.MergeResult.Type,
-) => asserts result is typeof SyncState.MergeResultReject.Type = (result) => {
+const expectReject: (result: typeof SyncState.MergeResult.Type) => asserts result is SyncState.MergeResultReject = (
+  result,
+) => {
   expect(result._tag).toBe('reject')
 }

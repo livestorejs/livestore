@@ -44,15 +44,15 @@ const PROD_DEPLOY_STATE_FILE = `${PROD_DEPLOY_STATE_DIR}/deploy-state.json`
  */
 class DocsPhaseTimeoutError extends Schema.TaggedErrorClass<DocsPhaseTimeoutError>()('DocsPhaseTimeoutError', {
   phase: Schema.String,
-  durationMs: Schema.Number,
+  durationMs: Schema.Finite,
 }) {}
 
 class DocsDeployProbeError extends Schema.TaggedErrorClass<DocsDeployProbeError>()('DocsDeployProbeError', {
   label: Schema.String,
   path: Schema.String,
   message: Schema.String,
-  expectedStatus: Schema.Array(Schema.Number),
-  actualStatus: Schema.Number,
+  expectedStatus: Schema.Array(Schema.Finite),
+  actualStatus: Schema.Finite,
   expectedLocationPath: Schema.optional(Schema.String),
   actualLocation: Schema.optional(Schema.String),
   cause: Schema.optional(Schema.Defect()),
@@ -69,6 +69,9 @@ const ProdDeployStateSchema = Schema.Struct({
   runId: Schema.optional(Schema.String),
 })
 type ProdDeployState = typeof ProdDeployStateSchema.Type
+
+/** Module-scoped JSON encoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
+const encodeProdDeployState = Schema.encodeSync(Schema.fromJsonString(ProdDeployStateSchema))
 
 const docsSnippetsCommand = createSnippetsCommand({ projectRoot: docsPath })
 
@@ -314,7 +317,7 @@ const docsBuildCommand = Cli.Command.make(
 const writeProdDeployState = (state: ProdDeployState) =>
   Effect.sync(() => {
     fs.mkdirSync(PROD_DEPLOY_STATE_DIR, { recursive: true })
-    fs.writeFileSync(PROD_DEPLOY_STATE_FILE, JSON.stringify(state, null, 2))
+    fs.writeFileSync(PROD_DEPLOY_STATE_FILE, encodeProdDeployState(state))
   }).pipe(Effect.withSpan('docs.deploy.state.write', { attributes: { path: PROD_DEPLOY_STATE_FILE } }))
 
 const readProdDeployState = Effect.gen(function* () {
@@ -701,28 +704,23 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           const shouldPrintPlan = plan._tag === 'Some' && plan.value === true
 
           if (shouldPrintPlan === true) {
-            console.log(
-              JSON.stringify(
-                {
-                  branchName,
-                  isPr,
-                  liveStoreVersion,
-                  site,
-                  siteUrl: docsSiteUrl,
-                  build: shouldBuild,
-                  deployTarget:
-                    prAliases !== undefined
-                      ? { _tag: 'pr-aliases', ...prAliases }
-                      : prod === true
-                        ? { _tag: 'prod' }
-                        : { _tag: 'alias', alias: branchAlias },
-                  purgeCdn,
-                  step,
-                },
-                null,
-                2,
-              ),
-            )
+            const planPreview = yield* Schema.encodeEffect(Schema.jsonStringIndented(Schema.Unknown))({
+              branchName,
+              isPr,
+              liveStoreVersion,
+              site,
+              siteUrl: docsSiteUrl,
+              build: shouldBuild,
+              deployTarget:
+                prAliases !== undefined
+                  ? { _tag: 'pr-aliases', ...prAliases }
+                  : prod === true
+                    ? { _tag: 'prod' }
+                    : { _tag: 'alias', alias: branchAlias },
+              purgeCdn,
+              step,
+            }).pipe(Effect.orDie)
+            console.log(planPreview)
             return
           }
 

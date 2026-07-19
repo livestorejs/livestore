@@ -3,7 +3,7 @@
 This dist directory was built with the following configuration:
 
 ## Build Environment
-- **Built on:** 2026-02-10 16:25:57 UTC
+- **Built on:** 2026-07-19 14:44:21 UTC
 - **Emscripten:** emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 4.0.23-git
 - **SQLite Version:** 3.50.4
 - **SQLite Commit:** 8ed5e7365e6f12f427910188bbf6b254daad2ef6
@@ -44,20 +44,20 @@ Generated via: `nix build .#wa-sqlite-livestore`
 ## File Sizes
 
 ### Standard Build Sizes
-- **wa-sqlite-async.mjs**: 113K (gzip: 27.4K, brotli: 23.9K)
-- **wa-sqlite-jspi.mjs**: 115K (gzip: 26.9K, brotli: 23.3K)
-- **wa-sqlite.mjs**: 107K (gzip: 25.8K, brotli: 22.6K)
-- **wa-sqlite.node.mjs**: 108K (gzip: 25.9K, brotli: 22.7K)
-- **wa-sqlite-async.wasm**: 1.3M (gzip: 453.1K, brotli: 357.9K)
-- **wa-sqlite-jspi.wasm**: 611K (gzip: 298.0K, brotli: 256.3K)
-- **wa-sqlite.node.wasm**: 605K (gzip: 296.4K, brotli: 254.8K)
-- **wa-sqlite.wasm**: 605K (gzip: 296.4K, brotli: 254.8K)
+- **wa-sqlite-async.mjs**: 114K (gzip: 27.6K, brotli: 24.1K)
+- **wa-sqlite-jspi.mjs**: 116K (gzip: 27.1K, brotli: 23.5K)
+- **wa-sqlite.mjs**: 108K (gzip: 26.0K, brotli: 22.7K)
+- **wa-sqlite.node.mjs**: 109K (gzip: 26.1K, brotli: 22.8K)
+- **wa-sqlite-async.wasm**: 1.3M (gzip: 453.3K, brotli: 358.1K)
+- **wa-sqlite-jspi.wasm**: 611K (gzip: 298.1K, brotli: 256.6K)
+- **wa-sqlite.node.wasm**: 605K (gzip: 296.5K, brotli: 255.0K)
+- **wa-sqlite.wasm**: 605K (gzip: 296.5K, brotli: 255.0K)
 
 ### FTS5 Variant Sizes
-- **fts5/wa-sqlite.mjs**: 107K (gzip: 25.8K, brotli: 22.5K)
-- **fts5/wa-sqlite.node.mjs**: 108K (gzip: 26.0K, brotli: 22.7K)
-- **fts5/wa-sqlite.node.wasm**: 719K (gzip: 352.2K, brotli: 303.4K)
-- **fts5/wa-sqlite.wasm**: 719K (gzip: 352.2K, brotli: 303.4K)
+- **fts5/wa-sqlite.mjs**: 108K (gzip: 26.0K, brotli: 22.7K)
+- **fts5/wa-sqlite.node.mjs**: 109K (gzip: 26.1K, brotli: 22.9K)
+- **fts5/wa-sqlite.node.wasm**: 719K (gzip: 352.4K, brotli: 303.7K)
+- **fts5/wa-sqlite.wasm**: 719K (gzip: 352.4K, brotli: 303.7K)
 
 ## Notes
 - All builds include session extension for data synchronization
