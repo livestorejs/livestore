@@ -1,3 +1,6 @@
+import { copyFile, mkdir, rm } from 'node:fs/promises'
+import path from 'node:path'
+
 import semver from 'semver'
 
 import { shouldNeverHappen } from '@livestore/utils'
@@ -379,8 +382,10 @@ const formatReleaseSummaryMarkdown = ({
 const restoreGeneratedReleaseFiles = (cwd: string) =>
   Effect.gen(function* () {
     /** Restore original dev versions (read-only) and verify files are in sync. */
-    yield* cmd('DT_PASSTHROUGH=1 genie', { shell: true }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-    yield* cmd('DT_PASSTHROUGH=1 genie --check', { shell: true }).pipe(
+    yield* cmd('DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 genie', { shell: true }).pipe(
+      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
+    )
+    yield* cmd('DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 genie --check', { shell: true }).pipe(
       Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
   }).pipe(
@@ -403,9 +408,9 @@ const packPackageForPublish = ({ cwd, pkg, version }: { cwd: string; pkg: string
      * `publishConfig`. `pnpm pack` materializes those mappings into the tarball;
      * plain `npm publish <directory>` would publish the source mappings instead.
      */
-    yield* cmd(`DT_PASSTHROUGH=1 pnpm --dir ${pkgDir} pack --pack-destination ${packDir}`, { shell: true }).pipe(
-      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
-    )
+    yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 pnpm --dir ${pkgDir} pack --pack-destination ${packDir}`, {
+      shell: true,
+    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 
     const tarballs = (yield* fsEffect.readDirectory(packDir)).filter((entry) => entry.endsWith('.tgz'))
     if (tarballs.length !== 1) {
@@ -442,16 +447,16 @@ const publishReleasePackages = ({
      * TODO: Replace CLI invocations with genie SDK once skipValidation is available
      * (https://github.com/overengineeringstudio/effect-utils/issues/196)
      */
-    yield* cmd(`DT_PASSTHROUGH=1 LIVESTORE_RELEASE_VERSION=${version} genie --writeable`, { shell: true }).pipe(
-      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
-    )
+    yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 LIVESTORE_RELEASE_VERSION=${version} genie --writeable`, {
+      shell: true,
+    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 
     yield* rewriteSnapshotInternalDependencyRanges({ cwd, snapshotPackages: packages, snapshotVersion: version })
 
     /** Rebuild TypeScript so dist/ picks up the release version from package.json (emit-only, type checking is separate). */
-    yield* cmd(`DT_PASSTHROUGH=1 ${tscBin} --build tsconfig.dev.json --noCheck`, { shell: true }).pipe(
-      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
-    )
+    yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 ${tscBin} --build tsconfig.dev.json --noCheck`, {
+      shell: true,
+    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 
     for (const pkg of packages) {
       const pkgDir = `${cwd}/packages/${pkg}`
@@ -490,7 +495,7 @@ const publishReleasePackages = ({
         Effect.as(true),
         Effect.catchTag('CmdError', () => Effect.succeed(false)),
       )
-      yield* cmd(`DT_PASSTHROUGH=1 ${publishArgs.join(' ')}`, { shell: true }).pipe(
+      yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 ${publishArgs.join(' ')}`, { shell: true }).pipe(
         Effect.provide(cwdLayer),
         Effect.catchTag('CmdError', (error) => {
           if (isCI === false || dryRun === true || isSnapshotVersion(version) === false) return Effect.fail(error)
@@ -654,6 +659,92 @@ export const releaseSnapshot = Effect.fn(function* ({
   })
 })
 
+export const packSnapshot = Effect.fn(function* ({
+  gitSha,
+  prNumber,
+  cwd,
+  outDir,
+  tscBin = 'tsc',
+}: {
+  gitSha: string
+  prNumber: number
+  cwd: string
+  outDir: string
+  tscBin?: string
+}) {
+  if (/^[0-9a-f]{40}$/.test(gitSha) === false) {
+    return yield* Effect.fail(
+      new Error(`Snapshot Git SHA must be exactly 40 lowercase hexadecimal characters: ${gitSha}`),
+    )
+  }
+  if (Number.isSafeInteger(prNumber) === false || prNumber < 1) {
+    return yield* Effect.fail(new Error(`Snapshot PR number must be a positive integer: ${prNumber}`))
+  }
+
+  const version = `0.0.0-snapshot-pr.${prNumber}.${gitSha}`
+  const packages = yield* listSnapshotPackages(cwd)
+
+  if (packages.length === 0) {
+    return yield* Effect.fail(new Error('Snapshot package topology is empty'))
+  }
+
+  yield* Effect.tryPromise({
+    try: async () => {
+      await rm(outDir, { recursive: true, force: true })
+      await mkdir(outDir, { recursive: true })
+    },
+    catch: (cause) => new Error(`Failed to prepare snapshot artifact directory ${outDir}`, { cause }),
+  })
+
+  const tarballs = yield* Effect.gen(function* () {
+    yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 LIVESTORE_RELEASE_VERSION=${version} genie --writeable`, {
+      shell: true,
+    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+    yield* rewriteSnapshotInternalDependencyRanges({ cwd, snapshotPackages: packages, snapshotVersion: version })
+    yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 ${tscBin} --build tsconfig.dev.json --noCheck`, {
+      shell: true,
+    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+
+    return yield* Effect.forEach(packages, (pkg) => packPackageForPublish({ cwd, pkg, version }), {
+      concurrency: 1,
+    })
+  }).pipe(Effect.ensuring(restoreGeneratedReleaseFiles(cwd)))
+
+  yield* Effect.tryPromise({
+    try: async () => {
+      for (const tarball of tarballs) {
+        await copyFile(tarball, path.join(outDir, path.basename(tarball)))
+      }
+    },
+    catch: (cause) => new Error(`Failed to stage snapshot tarballs in ${outDir}`, { cause }),
+  })
+
+  yield* Effect.log(`Packed ${tarballs.length} package(s) as ${version} in ${outDir}`)
+})
+
+export const packSnapshotCommand = Cli.Command.make(
+  'snapshot-pack',
+  {
+    gitSha: Cli.Flag.string('git-sha'),
+    prNumber: Cli.Flag.integer('pr-number'),
+    outDir: Cli.Flag.string('out-dir'),
+    cwd: Cli.Flag.string('cwd').pipe(
+      Cli.Flag.withDefault(
+        process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
+      ),
+    ),
+    tscBin: Cli.Flag.string('tsc-bin').pipe(Cli.Flag.optional),
+  },
+  ({ gitSha, prNumber, outDir, cwd, tscBin }) =>
+    packSnapshot({
+      gitSha,
+      prNumber,
+      cwd,
+      outDir,
+      ...(tscBin._tag === 'Some' ? { tscBin: tscBin.value } : {}),
+    }),
+)
+
 export const releaseSnapshotCommand = Cli.Command.make(
   'snapshot',
   {
@@ -705,6 +796,7 @@ export const releaseCommand = Cli.Command.make('release').pipe(
     releasePlanCommand,
     releaseStableCommand,
     releaseSnapshotCommand,
+    packSnapshotCommand,
     releaseNotesExtractCommand,
   ]),
 )

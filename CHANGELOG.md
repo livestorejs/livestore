@@ -6,6 +6,12 @@
 > for more info. LiveStore is following a semver-like release strategy where
 > breaking changes are released in minor versions before the 1.0 release.
 
+## Unreleased
+
+### Changed
+
+- Removed redundant devenv package entries now owned by the task guard modules.
+
 ## 0.4.0 - 2026-06-02
 
 > **Installing v0.4.0:** Make sure all LiveStore packages use the same version:

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { Effect } from '@livestore/utils/effect'
 
 import { exportMarkdown } from './docs-export.ts'
-import { releaseSnapshot } from './release.ts'
+import { packSnapshot, releaseSnapshot } from './release.ts'
 
 describe('command Effect operations', () => {
   it('exposes markdown export as a lazy Effect with plain-value options', () => {
@@ -23,6 +23,18 @@ describe('command Effect operations', () => {
       version: '0.0.0-snapshot-abc123',
       dryRun: true,
       yes: true,
+      tscBin: 'tsc',
+    })
+
+    expect(Effect.isEffect(operation)).toBe(true)
+  })
+
+  it('exposes snapshot packing as a lazy Effect without publishing options', () => {
+    const operation = packSnapshot({
+      cwd: '/tmp/livestore',
+      gitSha: 'a'.repeat(40),
+      prNumber: 42,
+      outDir: '/tmp/livestore-snapshot',
       tscBin: 'tsc',
     })
 
