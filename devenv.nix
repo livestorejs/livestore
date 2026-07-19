@@ -406,8 +406,6 @@ in
   ];
 
   packages = [
-    (lib.lowPrio pnpmPkg)
-    (lib.lowPrio effectTsgo)
     pkgs.bun
     pkgs.nodejs_24
     oxlintWithPlugins

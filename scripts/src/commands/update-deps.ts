@@ -285,8 +285,11 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
             }
 
             // Write back to file with consistent formatting
+            const encodedPackageJson = yield* Schema.encodeEffect(Schema.jsonStringIndented(Schema.Unknown))(
+              updatedPackageJson,
+            ).pipe(Effect.orDie)
             yield* Effect.try({
-              try: () => fs.writeFileSync(packageJsonPath, `${JSON.stringify(updatedPackageJson, null, 2)}\n`),
+              try: () => fs.writeFileSync(packageJsonPath, `${encodedPackageJson}\n`),
               catch: () => new UpdateDepsError({ message: `Failed to write ${packageJsonPath}` }),
             })
 
