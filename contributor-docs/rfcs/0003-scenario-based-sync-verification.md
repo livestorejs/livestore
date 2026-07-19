@@ -912,6 +912,50 @@ The remaining design questions become `LS.SYS.VER.SCEN-DQ*` questions in the
 new node. After the fold-in, this RFC remains the historical proposal and is no
 longer updated as the implementation evolves.
 
+### Repository Placement
+
+The initial implementation should live as one isolated private workspace
+project under `tests/scenarios/`. It should not be a published `@livestore`
+package or an export of `@livestore/livestore`. The workspace may have a private
+`package.json` such as `@local/tests-scenarios` to define its dependencies,
+commands, and build boundary; this is repository tooling rather than a
+separately versioned product package.
+
+A recommended initial layout is:
+
+```text
+tests/scenarios/
+├── src/
+│   ├── model/          # application definitions, scenario AST, and plans
+│   ├── runner/         # orchestration, scheduling, and lifecycle
+│   ├── hosts/          # host contract and execution-profile realizations
+│   ├── backends/       # mock, local, and deployed backend realizations
+│   ├── trace/
+│   ├── oracles/
+│   ├── artifacts/
+│   └── cli/
+├── corpus/             # reviewed scenarios and fixture applications
+├── visualizer/         # live and artifact-replay UI
+└── tests/              # runner and host-conformance tests
+```
+
+The exact internal directories may evolve, but the dependency direction is a
+stable constraint:
+
+```text
+tests/scenarios  ── uses ──▶  @livestore/*
+
+@livestore/*     ── must not depend on ──▶  tests/scenarios
+```
+
+Product packages continue to own the LiveStore behavior being exercised. If a
+profile needs a control or observation seam that existing Store, Adapter, or
+sync interfaces cannot provide, the smallest general hook should be added to
+the owning product package, using an explicit internal testing export when it
+is not a product API. Scenario orchestration, profile logic, fault composition,
+trace normalization, and visualization remain inside `tests/scenarios/` rather
+than being distributed across the system under test.
+
 ## Delivery Sequence
 
 The architecture can be delivered incrementally:
