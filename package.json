@@ -32,17 +32,6 @@
     "tests/sync-provider",
     "tests/wa-sqlite"
   ],
-  "scripts": {
-    "changeset": "changeset",
-    "changeset:status": "changeset status",
-    "changeset:version": "changeset version"
-  },
-  "devDependencies": {
-    "@changesets/cli": "^2.31.0",
-    "@types/node": "25.3.3",
-    "typescript": "6.0.3",
-    "vitest": "4.1.9"
-  },
   "packageManager": "pnpm@11.8.0",
   "$genie": {
     "source": "package.json.genie.ts",

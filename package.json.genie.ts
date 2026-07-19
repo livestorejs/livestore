@@ -1,7 +1,7 @@
 import docsPkg from './docs/package.json.genie.ts'
 import docsCodeSnippetsPkg from './docs/src/content/_assets/code/package.json.genie.ts'
 import { memberPathsForProjection, type LivestorePackageProjection } from './genie/repo-topology.ts'
-import { catalog, packageJson } from './genie/repo.ts'
+import { packageJson } from './genie/repo.ts'
 import adapterCloudflarePkg from './packages/@livestore/adapter-cloudflare/package.json.genie.ts'
 import adapterWebPkg from './packages/@livestore/adapter-web/package.json.genie.ts'
 import commonPkg from './packages/@livestore/common/package.json.genie.ts'
@@ -103,50 +103,12 @@ export const toolingWorkspacePackages = [
   testsSyncProviderPkg,
 ] as const
 
-const rootWorkspaceBase = packageJson.aggregateFromPackages({
+const rootWorkspace = packageJson.aggregateFromPackages({
   packages: rootWorkspacePackages,
   name: 'livestore-workspace',
   repoName: 'livestore',
   extraMembers: ['examples/*'],
 })
-
-const rootWorkspaceExtraFields = {
-  scripts: {
-    changeset: 'changeset',
-    'changeset:status': 'changeset status',
-    'changeset:version': 'changeset version',
-  },
-  devDependencies: {
-    '@changesets/cli': '^2.31.0',
-    ...catalog.pick('@types/node', 'typescript', 'vitest'),
-  },
-} as const
-
-const rootWorkspace = {
-  ...rootWorkspaceBase,
-  data: {
-    ...rootWorkspaceBase.data,
-    ...rootWorkspaceExtraFields,
-  },
-  stringify: (ctx: Parameters<typeof rootWorkspaceBase.stringify>[0]) => {
-    const generated = JSON.parse(rootWorkspaceBase.stringify(ctx))
-    return `${JSON.stringify(
-      {
-        ...generated,
-        scripts: {
-          ...generated.scripts,
-          ...rootWorkspaceExtraFields.scripts,
-        },
-        devDependencies: {
-          ...generated.devDependencies,
-          ...rootWorkspaceExtraFields.devDependencies,
-        },
-      },
-      null,
-      2,
-    )}\n`
-  },
-} satisfies typeof rootWorkspaceBase
 
 export const rootWorkspaceMemberPaths = rootWorkspace.data.workspaces
 

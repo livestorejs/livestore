@@ -9,6 +9,14 @@ import { baseTsconfigCompilerOptions, domLib, reactJsx, tsconfigJson } from '../
 export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
+    // The standalone docs snippets intentionally span the legacy Effect 3 and
+    // current Effect 4 examples, so both @effect/platform lines are expected.
+    plugins: [
+      {
+        ...baseTsconfigCompilerOptions.plugins[0],
+        allowedDuplicatedPackages: ['@livestore/utils', '@effect/platform'],
+      },
+    ],
     lib: [...domLib],
     rootDir: './',
     ...reactJsx,
