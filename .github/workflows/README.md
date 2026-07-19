@@ -95,9 +95,15 @@ dispatched run treats PR and head inputs only as selectors, then resolves and
 validates the exact successful CI producer again. The OIDC job rechecks the unchanged
 head and approval immediately before publishing. It never checks out or executes
 the PR head and publishes the validated tarballs directly with scripts disabled
-under the immutable `pr-<number>-<40-character-head-sha>` tag. npm provenance
-identifies this trusted default-branch promotion workflow; the custom candidate
-attestation supplies the separate link back to PR CI.
+under the deterministic `pr-<number>-<40-character-head-sha>` tag. Exact package
+versions and registry digests are the immutable cohort identity. The mutable npm
+tag is convenience metadata: retries accept it when absent, reject it when bound
+to another version, and do not introduce a long-lived token to repair it because
+npm trusted publishing authenticates publish operations only. A trusted
+verification receipt is uploaded only after every registry integrity matches the
+validated candidate; the scheduler redispatches until that exact PR head, CI run,
+and pack attempt receipt exists. npm provenance identifies this trusted default-branch promotion
+workflow; the custom candidate attestation supplies the separate link back to PR CI.
 
 Snapshot DevTools Chrome ZIPs are uploaded as short-lived workflow artifacts,
 not GitHub Releases. Public GitHub Releases are reserved for dev/stable release

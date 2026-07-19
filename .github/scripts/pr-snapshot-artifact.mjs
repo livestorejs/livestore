@@ -155,6 +155,30 @@ export const hasCurrentHeadApproval = ({ headSha, currentHeadSha, reviews }) => 
 export const isAuthorizedReviewState = ({ headSha, currentHeadSha, reviewDecision, reviews }) =>
   reviewDecision === 'APPROVED' && hasCurrentHeadApproval({ headSha, currentHeadSha, reviews })
 
+export const assessRegistryCohort = ({ expectedVersion, packageStates, hasVerifiedReceipt }) => {
+  if (typeof expectedVersion !== 'string' || expectedVersion === '') fail('Expected registry version is required')
+  if (Array.isArray(packageStates) === false || packageStates.length === 0) fail('Registry package states are required')
+  if (typeof hasVerifiedReceipt !== 'boolean') fail('Verified receipt state must be boolean')
+
+  for (const state of packageStates) {
+    if (
+      state === null ||
+      typeof state !== 'object' ||
+      typeof state.name !== 'string' ||
+      typeof state.version !== 'string' ||
+      typeof state.tag !== 'string'
+    ) {
+      fail('Invalid registry package state')
+    }
+    if (state.tag !== '' && state.tag !== expectedVersion) {
+      return { action: 'conflict', packageName: state.name, conflictingVersion: state.tag }
+    }
+  }
+
+  const allVersionsPresent = packageStates.every((state) => state.version === expectedVersion)
+  return allVersionsPresent === true && hasVerifiedReceipt === true ? { action: 'complete' } : { action: 'dispatch' }
+}
+
 const validatePackageManifest = ({ packageJson, expectedName, expectedVersion, packageNames }) => {
   if (packageJson.name !== expectedName)
     fail(`Package name mismatch: expected ${expectedName}, got ${packageJson.name}`)
@@ -404,6 +428,12 @@ if (process.argv[1] !== undefined && fileURLToPath(import.meta.url) === path.res
       ? await createManifest(common)
       : mode === 'validate'
         ? await validateManifest({ ...common, publishListPath: args['publish-list'] })
-        : fail(`Unknown mode: ${mode}`)
+        : mode === 'assess-registry'
+          ? assessRegistryCohort({
+              expectedVersion: args.version,
+              packageStates: JSON.parse(await readFile(args['state-file'], 'utf8')),
+              hasVerifiedReceipt: args['verified-receipt'] === 'true',
+            })
+          : fail(`Unknown mode: ${mode}`)
   process.stdout.write(`${JSON.stringify(result)}\n`)
 }
