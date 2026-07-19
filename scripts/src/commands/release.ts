@@ -9,6 +9,7 @@ import { Effect, FileSystem, Result, Schedule, Schema } from '@livestore/utils/e
 import { Cli } from '@livestore/utils/node'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
+import { repackDevtoolsSnapshotArtifact } from './devtools-artifact.ts'
 
 export type ReleaseSnapshotOptions = {
   readonly cwd: string
@@ -54,7 +55,22 @@ type TReleasePlan = (typeof ReleasePlan)['Type']
 
 type TReleaseTopology = {
   publishablePackages: readonly { name: string; dir: string }[]
+  externalSnapshotPackages: readonly { name: string; manifest: string }[]
 }
+
+const readReleaseTopology = (cwd: string) =>
+  Effect.gen(function* () {
+    const fsEffect = yield* FileSystem.FileSystem
+    const content = yield* fsEffect.readFileString(`${cwd}/scripts/src/generated/release-topology.json`)
+    return yield* Effect.try({
+      try: () => jsonParse(content) as TReleaseTopology,
+      catch: (cause) =>
+        new PackageJsonParseError({
+          message: 'Failed to parse scripts/src/generated/release-topology.json',
+          cause,
+        }),
+    })
+  })
 
 const toErrorMessage = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause))
 
@@ -302,18 +318,7 @@ export const rewriteSnapshotInternalDependencyRanges = ({
 const listSnapshotPackages = (cwd: string) =>
   Effect.gen(function* () {
     const fsEffect = yield* FileSystem.FileSystem
-    const topology = yield* fsEffect.readFileString(`${cwd}/scripts/src/generated/release-topology.json`).pipe(
-      Effect.flatMap((content) =>
-        Effect.try({
-          try: () => jsonParse(content) as TReleaseTopology,
-          catch: (cause) =>
-            new PackageJsonParseError({
-              message: 'Failed to parse scripts/src/generated/release-topology.json',
-              cause,
-            }),
-        }),
-      ),
-    )
+    const topology = yield* readReleaseTopology(cwd)
     const packages: string[] = []
 
     for (const { dir, name: expectedName } of topology.publishablePackages) {
@@ -435,6 +440,38 @@ const packPackageForPublish = ({ cwd, pkg, version }: { cwd: string; pkg: string
     }
 
     return `${packDir}/${tarballs[0]}`
+  })
+
+const packExternalSnapshotPackage = ({
+  cwd,
+  descriptor,
+  version,
+}: {
+  cwd: string
+  descriptor: TReleaseTopology['externalSnapshotPackages'][number]
+  version: string
+}) =>
+  Effect.gen(function* () {
+    if (descriptor.name !== '@livestore/devtools-vite') {
+      return yield* new ReleaseError({ message: `Unsupported external snapshot package: ${descriptor.name}` })
+    }
+
+    const fsEffect = yield* FileSystem.FileSystem
+    const workDir = `${cwd}/tmp/release-pack/${version}/livestore-devtools-vite-artifact`
+    yield* fsEffect.remove(workDir, { recursive: true }).pipe(Effect.catch(() => Effect.void))
+    yield* fsEffect.makeDirectory(workDir, { recursive: true })
+
+    const result = yield* Effect.tryPromise({
+      try: () =>
+        repackDevtoolsSnapshotArtifact({
+          manifest: `${cwd}/${descriptor.manifest}`,
+          outDir: workDir,
+          version,
+        }),
+      catch: (cause) =>
+        new ReleaseError({ message: `Failed to repack external snapshot package ${descriptor.name}`, cause }),
+    })
+    return result.repackedPath
   })
 
 const publishReleasePackages = ({
@@ -698,6 +735,7 @@ export const packSnapshot = Effect.fn(function* ({
 
   const version = `0.0.0-snapshot-pr.${prNumber}.${gitSha}`
   const packages = yield* listSnapshotPackages(cwd)
+  const topology = yield* readReleaseTopology(cwd)
 
   if (packages.length === 0) {
     return yield* new ReleaseError({ message: 'Snapshot package topology is empty' })
@@ -711,7 +749,7 @@ export const packSnapshot = Effect.fn(function* ({
     catch: (cause) => new ReleaseError({ message: `Failed to prepare snapshot artifact directory ${outDir}`, cause }),
   })
 
-  const tarballs = yield* Effect.gen(function* () {
+  const coreTarballs = yield* Effect.gen(function* () {
     yield* cmd(`DT_PASSTHROUGH=1 DEVENV_TASK_PASSTHROUGH=1 LIVESTORE_RELEASE_VERSION=${version} genie --writeable`, {
       shell: true,
     }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
@@ -724,6 +762,13 @@ export const packSnapshot = Effect.fn(function* ({
       concurrency: 1,
     })
   }).pipe(Effect.ensuring(restoreGeneratedReleaseFiles(cwd)))
+
+  const externalTarballs = yield* Effect.forEach(
+    topology.externalSnapshotPackages,
+    (descriptor) => packExternalSnapshotPackage({ cwd, descriptor, version }),
+    { concurrency: 1 },
+  )
+  const tarballs = [...coreTarballs, ...externalTarballs]
 
   yield* Effect.tryPromise({
     try: async () => {

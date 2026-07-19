@@ -73,5 +73,28 @@
     "@livestore/wa-sqlite",
     "@livestore/webmesh"
   ],
+  "externalSnapshotPackages": [
+    {
+      "name": "@livestore/devtools-vite",
+      "manifest": "release/devtools-artifact.json"
+    }
+  ],
+  "snapshotPackageNames": [
+    "@livestore/adapter-cloudflare",
+    "@livestore/adapter-web",
+    "@livestore/common",
+    "@livestore/common-cf",
+    "@livestore/devtools-vite",
+    "@livestore/framework-toolkit",
+    "@livestore/livestore",
+    "@livestore/peer-deps",
+    "@livestore/react",
+    "@livestore/sqlite-wasm",
+    "@livestore/sync-cf",
+    "@livestore/utils",
+    "@livestore/utils-dev",
+    "@livestore/wa-sqlite",
+    "@livestore/webmesh"
+  ],
   "changesetsIgnoredPackageNames": ["@livestore/effect-playwright"]
 }

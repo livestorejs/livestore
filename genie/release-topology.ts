@@ -18,4 +18,11 @@ const ignoredLivestorePackages = rootWorkspacePackages
 
 export const publishableLivestorePackageDescriptors = publishableLivestorePackages
 export const publishableLivestorePackageJsonNames = publishableLivestorePackages.map((pkg) => pkg.name)
+export const externalSnapshotPackageDescriptors = [
+  { name: '@livestore/devtools-vite', manifest: 'release/devtools-artifact.json' },
+] as const
+export const snapshotLivestorePackageJsonNames = [
+  ...publishableLivestorePackageJsonNames,
+  ...externalSnapshotPackageDescriptors.map(({ name }) => name),
+].toSorted()
 export const changesetsIgnoredPackageJsonNames = ignoredLivestorePackages

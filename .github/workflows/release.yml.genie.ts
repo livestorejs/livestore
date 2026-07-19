@@ -230,7 +230,7 @@ while IFS=$'\t' read -r pr_number head_sha head_ref; do
     jq --arg name "$package_name" --arg version "$remote_version" --arg tag "$remote_tag" \
       '. + [{name: $name, version: $version, tag: $tag}]' "$registry_state_file" > "$registry_state_file.next"
     mv "$registry_state_file.next" "$registry_state_file"
-  done < <(jq -r '.publishablePackageNames[]' scripts/src/generated/release-topology.json)
+  done < <(jq -r '.snapshotPackageNames[]' scripts/src/generated/release-topology.json)
 
   assessment=$(node .github/scripts/pr-snapshot-artifact.mjs assess-registry \
     --state-file="$registry_state_file" \
