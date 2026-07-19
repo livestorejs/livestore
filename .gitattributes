@@ -2,6 +2,11 @@
 # These are test fixtures with generated data, not actual source code
 packages/@livestore/wa-sqlite/demo/benchmarks/*.sql linguist-vendored
 
+# Preserve the SQLite contrib source bytes: the wa-sqlite Makefile verifies this
+# file with EXTENSION_FUNCTIONS_SHA3, so whitespace cleanup would change the
+# lifecycle contract instead of just formatting vendored code.
+packages/@livestore/wa-sqlite/src/extension-functions.c linguist-vendored -whitespace
+
 # Genie-generated files - collapse in GitHub PR diffs
 # These files are generated from *.genie.ts sources
 package.json linguist-generated=true
