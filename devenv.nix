@@ -324,6 +324,8 @@ in
     inputs.playwright.devenvModules.default
     # Shared task modules from effect-utils
     taskModules.genie
+    # gh:apply-labels / gh:check-labels — reconcile .github/labels.json with live labels.
+    (taskModules.gh-labels { repo = "livestorejs/livestore"; })
     (taskModules.megarepo { syncAll = !ci; })
     (taskModules.ts {
       tsconfigFile = "tsconfig.dev.json";

@@ -55,10 +55,6 @@ overrides:
   '@tanstack/start-client-core': 1.145.7
 
 packageExtensions:
-  react-error-boundary:
-    dependencies:
-      '@types/react': 19.2.7
-      '@types/react-dom': 19.2.3
   '@livestore/devtools-vite':
     dependencies:
       '@parcel/watcher': ^2.5.6
@@ -104,11 +100,7 @@ strictPeerDependencies: false
 
 injectWorkspacePackages: false
 
-enableGlobalVirtualStore: true
-
-storeDir: .devenv/pnpm-store-pure-v1
-
-packageImportMethod: clone-or-copy
+packageImportMethod: auto
 
 optimisticRepeatInstall: false
 
