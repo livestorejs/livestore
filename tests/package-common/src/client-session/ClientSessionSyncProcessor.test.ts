@@ -36,6 +36,7 @@ import {
   FetchHttpClient,
   Fiber,
   Hash,
+  Latch,
   Layer,
   Option,
   Queue,
@@ -76,6 +77,7 @@ const makeClientProcessorHarness = Effect.fn(function* ({
   pull = () => Stream.empty,
   rollback = () => undefined,
   shutdown = () => Effect.void,
+  devtools = { enabled: false },
   leaderPushBatchSize = 1,
   simulation,
 }: {
@@ -83,6 +85,7 @@ const makeClientProcessorHarness = Effect.fn(function* ({
   pull?: LeaderEvents['pull']
   rollback?: (changeset: Uint8Array<ArrayBuffer>) => void
   shutdown?: ClientSession['shutdown']
+  devtools?: ClientSession['devtools']
   leaderPushBatchSize?: number
   simulation?: ClientProcessorParams['params']['simulation']
 }) {
@@ -109,7 +112,7 @@ const makeClientProcessorHarness = Effect.fn(function* ({
 
   const clientSession: ClientSession = {
     sqliteDb: {} as ClientSession['sqliteDb'],
-    devtools: { enabled: false },
+    devtools,
     clientId: 'client-test',
     sessionId: 'session-test',
     lockStatus,
@@ -493,6 +496,35 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
+  Vitest.it.effect('admits synchronous pushes while pull waits on the devtools latch', (test) =>
+    Effect.gen(function* () {
+      const pullLatch = yield* Latch.make(false)
+      const pushLatch = yield* Latch.make(true)
+      const pullStarted = yield* Deferred.make<void>()
+
+      const { processor, close } = yield* makeClientProcessorHarness({
+        devtools: { enabled: true, pullLatch, pushLatch },
+        pull: () =>
+          Stream.fromEffect(
+            Deferred.succeed(pullStarted, undefined).pipe(
+              Effect.as({ payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [] }) }),
+            ),
+          ),
+        push: () => Effect.void,
+      })
+      yield* Deferred.await(pullStarted)
+      yield* Effect.yieldNow
+
+      const localEvents = yield* processor.encodeEvents([
+        events.todoCreated({ id: 'local', text: 'local', completed: false }),
+      ])
+      const pushExit = yield* Effect.sync(() => Effect.runSyncExit(processor.push(localEvents)))
+
+      expect(Exit.isSuccess(pushExit)).toBe(true)
+      yield* close()
+    }).pipe(withTestCtx(test)),
+  )
+
   Vitest.it.effect('publishes local pending state before the leader worker observes the batch', (test) =>
     Effect.gen(function* () {
       const observedPendingState = yield* Deferred.make<boolean>()
@@ -639,6 +671,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       yield* pushIds(['blocked'])
       yield* Deferred.await(firstPushStarted)
 
+      // @effect-diagnostics-next-line globalErrorInEffectFailure:off -- test-only synthetic shutdown failure fed to close; a tagged error adds no value for this throwaway test signal
       yield* close(Exit.fail(new Error('test shutdown failure')))
 
       expect(yield* Deferred.isDone(firstPushInterrupted)).toBe(true)
