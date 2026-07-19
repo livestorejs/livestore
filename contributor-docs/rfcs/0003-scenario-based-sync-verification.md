@@ -69,8 +69,8 @@ The proposed system should:
    keeping headless execution authoritative through a stable trace protocol.
 6. Evaluate safety, convergence, and liveness through explicit oracles.
 7. Preserve a path from lightweight in-process participants to worker,
-   process, and browser participants, independently combinable with mock,
-   local, or deployed sync backends.
+   process, and browser participants while keeping backend realization a
+   separate choice without requiring every profile/backend combination.
 8. Let agents construct and modify scenarios without generating large amounts
    of bespoke test code.
 9. Keep the scenario model independent of a particular read-model
@@ -105,7 +105,7 @@ same trace.
 scenario source
       │
       ▼
-scenario parser + validator
+scenario compiler + validator
       │
       ▼
 scenario runner ─────── controls ──────┬─ participants
@@ -119,8 +119,8 @@ scenario runner ─────── controls ──────┬─ particip
 ```
 
 The scenario semantics, runner, trace, and oracles are distinct contracts.
-This allows the file format and visualization to evolve without changing the
-meaning of a run.
+This allows the typed authoring API, artifact encoding, and visualization to
+evolve without changing the meaning of a run.
 
 The runner controls clients and sessions only through a transport-neutral
 participant-host contract. Commands, acknowledgements, application actions,
@@ -155,9 +155,36 @@ orchestrator with LiveStore's own runtime architecture.
 
 ### Scenario Semantic Model
 
-The first version should use one scenario file. It may reference executable
-application definitions and named workload libraries, but all run-specific
-configuration should remain visible in that file.
+The primary authoring surface is a TypeScript module using Effect Schema-backed
+constructors. YAML, JSON, and TOML are not primary authoring formats. The module
+constructs declarative data rather than acting as an arbitrary `Effect` program:
+scenario actions, timing, branching conditions, faults, and assertions must be
+represented in a versioned scenario AST that can be inspected before execution.
+
+The authoring model has three layers:
+
+```text
+TypeScript scenario source
+        │
+        ▼
+Effect Schema validation and normalization
+        │
+        ▼
+versioned, serializable scenario AST
+        ├─ runner
+        ├─ run artifact and replay
+        ├─ agent authoring and validation
+        └─ live or replay visualizer
+```
+
+The encoded AST may use JSON as an artifact or transport representation, but
+contributors author the typed TypeScript source. This preserves composition,
+autocomplete, comments, and direct reuse of LiveStore types without allowing
+arbitrary program behavior to escape the reproducibility boundary.
+
+The first version uses one scenario module. It may reference an executable
+application definition and named workload libraries, but all run-specific
+configuration remains visible in that module.
 
 The scenario specification must be able to express:
 
@@ -165,7 +192,7 @@ The scenario specification must be able to express:
 | --- | --- |
 | Identity | Stable scenario name, description, format version, and tags. |
 | Reproduction | Random seed, scheduling mode, and execution configuration. |
-| Application | Reference to an application definition containing the event schema and optional materializers. |
+| Application | Reference to an application definition wrapping the actual LiveStore schema plus optional higher-level actions and state inspectors. |
 | Topology | Sync backend, clients, client sessions, links, and initial connectivity. |
 | Lifecycle | Participants present at start and participants added, restarted, or removed later. |
 | Workloads | Explicit actions and reusable parameterized activity patterns assigned to clients. |
@@ -175,37 +202,198 @@ The scenario specification must be able to express:
 | Assertions | Safety, convergence, liveness, state, and optional performance oracles. |
 | Capture | Trace detail, state snapshots, and measurement options. |
 
-This RFC intentionally defines the semantic model before selecting YAML,
-JSON, TOML, or another concrete syntax. A concrete grammar is useful only
-after the concepts and their composition rules are stable.
+The exact constructor names below are provisional. They illustrate the typed
+structure rather than fixing a final API:
 
-### Application and Event Schemas
+```ts
+const scenario = Scenario.forApplication(application)
 
-“Application schema” and “scenario format schema” are separate concepts:
+export default scenario.define({
+  id: 'offline-writer-recovery',
+  execution: {
+    requires: ['multiple-clients', 'disconnect', 'logical-time'],
+  },
+  topology: Topology.initial({
+    backend: Backend.mock('sync'),
+    clients: [
+      Client.define('client-a', {
+        sessions: [Session.define('session-a')],
+      }),
+    ],
+  }),
+  plan: Plan.sequence(
+    Phase.define('initial activity', [
+      scenario.commit(
+        Session.ref('client-a', 'session-a'),
+        events.todoCreated({ id: 'todo-1', text: 'Before disconnect' }),
+      ),
+    ]),
+    Phase.define('offline activity', [
+      Step.disconnect(Client.ref('client-a')),
+      Step.repeat({
+        target: Session.ref('client-a', 'session-a'),
+        every: Duration.seconds(1),
+        count: 10,
+        action: application.actions.createGeneratedTodo({
+          text: Generator.string,
+        }),
+      }),
+      Step.after(
+        Duration.seconds(30),
+        Step.reconnect(Client.ref('client-a')),
+      ),
+    ]),
+    Phase.settle({
+      participants: [Client.ref('client-a')],
+      timeout: Duration.seconds(20),
+    }),
+  ),
+  oracles: [
+    Oracle.noEventLoss(),
+    Oracle.eventlogConvergence(),
+    Oracle.stateConvergence(application.state.todos),
+  ],
+})
+```
 
-- The **application schema** defines the actual LiveStore events accepted by
-  the clients and, for full-stack runs, their materializers.
-- The **scenario format schema** validates the serialized scenario document.
+### Application Definition
 
-The scenario should reference an executable TypeScript application definition
-rather than attempt to reproduce arbitrary Effect Schema definitions in a text
-format. That module can expose:
+The application definition wraps a concrete `LiveStoreSchema`; it does not
+redeclare an application event schema or a scenario-specific materializer map.
+Its generic type is inferred from the actual schema returned by `makeSchema`:
 
-- the LiveStore schema;
-- named event constructors or higher-level application actions;
-- optional materializers and read-model inspection;
-- value generators used by workload patterns; and
-- canonical state normalization or hashing for convergence checks.
+```ts
+export const tables = {
+  todos: State.SQLite.table({
+    name: 'todos',
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      text: State.SQLite.text({ default: '' }),
+      completed: State.SQLite.boolean({ default: false }),
+    },
+  }),
+}
 
-Scenario actions are named, serializable commands validated against the
-referenced application definition before execution. The participant host loads
-that definition and dispatches each command through the real `Store` API in the
-target session. The runner never calls a participant's `Store` directly. This
-keeps the same application-action protocol usable when the target moves from
-the in-process host to a worker, process, or browser host. Deliberately invalid
-application events or malformed wire payloads should require an explicit
-adversarial mode so normal scenarios do not accidentally test behavior outside
-the protocol contract.
+export const events = {
+  todoCreated: Events.synced({
+    name: 'v1.TodoCreated',
+    schema: Schema.Struct({
+      id: Schema.String,
+      text: Schema.String,
+    }),
+  }),
+}
+
+const materializers = State.SQLite.materializers(events, {
+  'v1.TodoCreated': ({ id, text }) =>
+    tables.todos.insert({ id, text, completed: false }),
+})
+
+const state = State.SQLite.makeState({ tables, materializers })
+const schema = makeSchema({ events, state })
+
+export const application = Scenario.Application.define({
+  id: 'todo-app',
+  schema,
+  actions: ({ action }) => ({
+    createGeneratedTodo: action({
+      input: Schema.Struct({ text: Schema.String }),
+      run: ({ store, input, random }) =>
+        Effect.sync(() =>
+          store.commit(
+            events.todoCreated({ id: random.uuid(), text: input.text }),
+          ),
+        ),
+    }),
+  }),
+  state: ({ inspector }) => ({
+    todos: inspector({
+      output: Schema.Array(
+        Schema.Struct({
+          id: Schema.String,
+          text: Schema.String,
+          completed: Schema.Boolean,
+        }),
+      ),
+      read: ({ store }) => store.query(tables.todos.select()),
+    }),
+  }),
+})
+```
+
+Conceptually, `Application.define` produces an
+`ApplicationDefinition<TSchema, TActions, TStateInspectors>`. Higher-level
+actions and state inspectors receive `Store<TSchema>`. Direct event steps accept
+`LiveStoreEvent.Input.ForSchema<TSchema>`, and runtime decoding uses
+`LiveStoreEvent.Input.makeSchema(schema)`. The scenario therefore inherits the
+real event argument types, encoded forms, client-only/synced metadata, Store
+type, and database schema instead of maintaining parallel definitions.
+
+The application definition is an executable dependency, not content embedded
+in the serializable scenario AST. The AST records its stable identity together
+with named actions and their encoded inputs. Reproduction loads the matching
+definition from the recorded source revision and rejects an identity or schema
+mismatch.
+
+All schema events are available as direct commit steps by default. An
+application may optionally restrict that surface or add named higher-level
+actions for multi-event transactions and application workflows. Named action
+functions execute inside the participant host; only their stable name and
+Effect Schema-encoded input enter the scenario AST.
+
+The `action` constructor infers direct inputs and compatible generator
+expressions from its Effect Schema, so invalid values fail during authoring or
+AST decoding rather than inside a run. Action handlers use runner-provided
+seeded randomness and time when reproducibility is required. Any additional
+external service must be declared as a capability; an uncontrolled external
+effect cannot claim deterministic replay.
+
+Materializers remain part of the normal LiveStore schema construction:
+`State.SQLite.materializers` infers each handler input from its real event
+definition and requires a handler for each non-derived event. During a run, the
+participant host invokes the real `Store`, so normal session and leader
+materialization, SQLite changesets, rollback, hash checking, transactions, and
+materializer failures are exercised. The runner never invokes or reimplements a
+materializer.
+
+State inspectors are distinct from materializers. A materializer derives state
+from events; an inspector reads already-materialized state and returns an Effect
+Schema-encoded normalized value for convergence, rematerialization, artifacts,
+and cross-profile comparison. Rematerialization replays the authoritative
+eventlog through the same application schema and materializers into a fresh
+state database before applying the inspector.
+
+### Plan and Step Model
+
+The scenario plan is a declarative tree of typed steps. Its initial stable step
+families are:
+
+| Step family | Examples |
+| --- | --- |
+| Application | Commit a schema event or invoke a named application action. |
+| Participant lifecycle | Add a client or session; stop or restart a session, client, or leader. |
+| Connectivity and faults | Disconnect a link, partition a client, make a backend unavailable, or heal a fault. |
+| Workload | Run a named seeded pattern, repeat an action, or generate a burst. |
+| Scheduling | Sequence, run in parallel, run at/after a logical time, repeat, or wait for a declared condition. |
+| Settlement | Stop workloads, heal declared faults, establish a convergence group, and evaluate a settlement barrier. |
+
+The corresponding normalized representation is an Effect Schema tagged union,
+not a collection of callbacks. Initial scheduling combinators are `sequence`,
+`parallel`, `at`, `after`, `repeat`, `waitUntil`, `phase`, and `settle`.
+Arbitrary `Effect.sleep` calls and predicate closures are not scenario syntax;
+time and observable conditions must be explicit AST nodes so the runner can
+validate, record, replay, and visualize them.
+
+The model distinguishes instructions from observations. “Add client A” is a
+participant-lifecycle instruction; “disconnect client A” is a connectivity
+fault; “stop client A” is participant termination; and “client A reported
+offline” is an observation in the trace. A scenario may wait for the observation
+after issuing the instruction, but it must not treat the request as proof that
+the requested state took effect.
+
+Workload nodes remain compact rather than expanding thousands of actions in the
+source. The runner expands them deterministically from the recorded seed and
+records every emitted application action in the trace.
 
 ### Topology Model
 
@@ -240,7 +428,10 @@ after long offline periods.
 Client execution and sync-backend integration are orthogonal decisions. A
 scenario selects a participant execution profile and a sync-backend
 realization independently. For example, browser clients can use the mock
-backend, while in-process clients can connect to a deployed backend.
+backend, while in-process clients can connect to a deployed backend. This is a
+semantic separation, not a requirement to implement the complete Cartesian
+product: profile/backend combinations should be added when they provide useful
+evidence.
 
 #### Participant-Host Boundary
 
@@ -256,6 +447,11 @@ must support:
 - advertising profile capabilities before a run starts; and
 - emitting the normalized trace without exposing participant implementation
   objects to the runner.
+
+This contract is a thin control and observation boundary, not a promise of
+feature parity. Profiles implement and advertise the capabilities they can
+provide; they do not need to expose identical scheduling, fault injection,
+storage, or lifecycle controls.
 
 Participants and control operations use stable scenario-level identifiers.
 Scenarios declare the capabilities they require, and the runner rejects an
@@ -278,6 +474,24 @@ different execution profiles.
 | **Worker/process** | Process-boundary, lifecycle, and crash behavior. | Real isolation with moderate startup and coordination cost. |
 | **Browser** | Web adapter, OPFS, Web Locks, worker topology, and browser lifecycle. | High fidelity and cost; fewer participants. |
 
+The profiles answer different verification questions:
+
+```text
+In-process:
+  Is the composed sync system correct under this workload,
+  ordering, fault sequence, and topology?
+
+Platform-realized:
+  Does that correctness survive real transport, persistence,
+  leadership, isolation, and lifecycle boundaries?
+```
+
+The relationship is intentionally asymmetric. The in-process profile is the
+primary engine for dense, controlled correctness and stress exploration;
+platform-realized profiles selectively calibrate that evidence against real
+runtime boundaries. They are not duplicate engines with identical feature
+coverage.
+
 #### Sync-Backend Realizations
 
 | Realization | Intended use | Fidelity and cost |
@@ -292,7 +506,7 @@ runs. A browser profile and deployed-backend realization together form the
 highest-fidelity end-to-end configuration, but either can be selected without
 the other.
 
-The first authoritative configuration is a production-shaped in-process host.
+The first delivery configuration is a production-shaped in-process host.
 Each client has one actual leader and one or more actual client sessions. Each
 session owns a real `Store`, `ClientSessionSyncProcessor`, and in-memory SQLite
 state database; the sessions share the client's real `LeaderSyncProcessor`,
@@ -302,7 +516,7 @@ the current production-shaped critical sections without requiring one OS
 process or browser per client.
 
 Direct processor-only harnesses may remain useful as a subordinate testing
-profile, but they do not satisfy the authoritative in-process scenario profile
+profile, but they do not satisfy the controlled in-process scenario profile
 by themselves because they bypass Store and participant lifecycle behavior.
 
 Later participant profiles and backend realizations must preserve scenario
@@ -312,12 +526,13 @@ several configurations should run unchanged across them.
 #### Profile Conformance and Calibration
 
 Every participant execution profile must pass one shared host-conformance suite
-covering client and session creation, named action dispatch, lifecycle control,
-capability rejection, stable participant identities, required core trace
-records, fault/control failure reporting, and valid run artifacts.
+for the capabilities it claims. The suite covers client and session creation,
+named action dispatch, lifecycle control, capability rejection, stable
+participant identities, required core trace records, fault/control failure
+reporting, and valid run artifacts.
 
-A maintained calibration corpus then runs unchanged across the in-process and
-browser profiles using only their shared capabilities. It covers at least
+A deliberately small calibration corpus then runs unchanged across the
+in-process and browser profiles using only their shared capabilities. It covers
 initial sync, single and concurrent writers, offline accumulation and reconnect,
 backend outage and recovery, multiple sessions, participant restart, rebase
 after remote progress, settlement, and state convergence.
@@ -355,7 +570,7 @@ the minimum guarantee for every execution profile: it recreates application
 actions, generated values, workload parameters, requested timings, and fault
 choices, but does not by itself promise the same host interleaving.
 
-The authoritative in-process correctness profile must additionally support
+The controlled in-process correctness profile must additionally support
 controlled boundary record/replay. The runner records the order in which it:
 
 - dispatches scenario actions and lifecycle operations;
@@ -445,7 +660,7 @@ configuration. Eventlog convergence is available independently of state
 assertions; state convergence and rematerialization are optional oracle
 families that require compatible state-inspection capabilities.
 
-The first authoritative in-process profile requires SQLite materialization for
+The first in-process profile requires SQLite materialization for
 every participant because the current processors integrate it into important
 behavior:
 
@@ -585,7 +800,7 @@ backend-confirmed, explicitly rejected, or reach a terminal failure that the
 scenario permits. Expiry of the settlement timeout while an event remains
 pending is a liveness failure.
 
-The authoritative in-process profile confirms stability through an explicit
+The controlled in-process profile confirms stability through an explicit
 settlement barrier: it releases boundary work due under the selected schedule,
 advances logical time until no immediately due controlled work can change the
 verdict, observes every expected participant at `H`, confirms that the backend
@@ -637,7 +852,8 @@ reliable reproduction.
 
 ### Agent Authoring
 
-The scenario format should be straightforward for both humans and agents:
+The scenario authoring API should be straightforward for both humans and
+agents:
 
 - machine-readable schema with useful validation errors;
 - stable names for participants, phases, patterns, faults, and oracles;
@@ -669,7 +885,7 @@ context/02-system/09-verification/
 
 The node is titled **Scenario-Based Sync Verification** and uses the
 `LS.SYS.VER.SCEN-*` namespace. `06-scenarios` is preferred over
-`06-simulation` because the authoritative profiles exercise real LiveStore
+`06-simulation` because the defined profiles exercise real LiveStore
 components rather than a separate behavioral model.
 
 The scenarios node owns the scenario semantics, participant-host contract,
@@ -701,7 +917,8 @@ longer updated as the implementation evolves.
 The architecture can be delivered incrementally:
 
 1. **Semantic model:** settle participants, scheduling, workloads, faults,
-   trace vocabulary, and oracle definitions; select the concrete file format.
+   trace vocabulary, oracle definitions, the typed authoring API, and the
+   normalized scenario AST.
 2. **Headless in-process runner:** participant-host conformance suite,
    production-shaped in-process host, real sync processors, mock backend,
    SQLite, explicit actions, basic disconnect/reconnect faults, convergence
@@ -729,12 +946,15 @@ part of the strategy. Alone they do not exercise queues, batching, retries,
 cursors, processor precedence, materialization, or runtime boundaries—the
 areas where many difficult failures occur.
 
-### Encode every scenario directly in TypeScript
+### Author scenarios as arbitrary TypeScript or Effect programs
 
-This provides maximum freedom and immediate access to internal APIs. It also
-makes scenarios difficult to inspect, generate, validate, replay, migrate, and
-visualize uniformly. Executable application definitions and extension points
-remain possible without making orchestration code the scenario format.
+This provides maximum freedom and immediate access to internal APIs, but hides
+control flow, timing, randomness, and I/O inside executable code. Such programs
+cannot be inspected, serialized, migrated, replayed, or visualized uniformly.
+The chosen TypeScript authoring surface therefore constructs only typed,
+Effect Schema-backed declarative nodes. Effect remains available behind named
+application actions and inside the runner, but it is not the scenario's
+orchestration language.
 
 ### Run every client in a browser or container
 
@@ -762,19 +982,21 @@ transaction, and failure behavior. Until sync and read models are separated in
 the product, the initial profile should exercise SQLite while reporting sync
 and state oracles separately.
 
-### Begin by fixing a complete YAML/JSON grammar
+### Use YAML or JSON as the primary authoring format
 
-A concrete syntax makes examples tangible, but choosing it before settling
-participants, scheduling, workload composition, faults, and oracle semantics
-would encode accidental decisions. Define the semantic model first, then choose
-and version the serialization.
+These formats are portable, but they would duplicate application and Effect
+Schema types, weaken inference and composition, and make reuse of a real
+LiveStore schema awkward. The normalized scenario AST still has a versioned,
+machine-readable encoding—JSON may be used for artifacts and transport—but
+contributors author scenarios through the typed TypeScript constructors.
 
 ## Open Questions
 
-1. Which concrete scenario syntax best balances authoring, schema validation,
-   comments, composition, and canonical formatting?
-2. What is the smallest application-definition API that supports event
-   construction, generated values, materialization, and state comparison?
+1. What exact TypeScript constructor and combinator API makes the schema-backed
+   scenario AST concise while preserving static inspection and canonical
+   formatting?
+2. What exact API should expose optional higher-level actions, state inspectors,
+   and event-surface restrictions from an `ApplicationDefinition<TSchema>`?
 3. At which abstraction should latency and partitions be injected for each
    combination of participant execution profile and sync-backend realization?
 4. How should large traces be sampled, compressed, or streamed without losing
@@ -782,6 +1004,6 @@ and version the serialization.
 5. When should invalid application events, malformed protocol payloads, and
    impossible transport behavior become supported adversarial modes?
 6. How should failing generated scenarios be minimized while preserving the
-    causal interleaving that triggered the failure?
+   causal interleaving that triggered the failure?
 7. Which correctness scenarios can also produce trustworthy performance
     evidence, and which require a separate wall-clock configuration?
