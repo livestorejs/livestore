@@ -10,6 +10,7 @@
 
 ### Changed
 
+- Adopted the effect-utils TypeScript check/emit graph split and tsgo-based emit task.
 - Removed redundant devenv package entries now owned by the task guard modules.
 
 ## 0.4.0 - 2026-06-02

@@ -34,7 +34,7 @@
           "anyUnknownInErrorContext": "warning",
           "preferSchemaOverJson": "warning"
         },
-        "allowedDuplicatedPackages": ["@livestore/utils"]
+        "allowedDuplicatedPackages": ["@livestore/utils", "@effect/platform"]
       }
     ],
     "rootDir": "./",

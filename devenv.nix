@@ -328,9 +328,8 @@ in
     (taskModules.gh-labels { repo = "livestorejs/livestore"; })
     (taskModules.megarepo { syncAll = !ci; })
     (taskModules.ts {
-      tsconfigFile = "tsconfig.dev.json";
+      tsconfigFile = "tsconfig.check.json";
       tsBinPkg = effectTsgo;
-      tscBin = "$DEVENV_ROOT/node_modules/.bin/tsc";
     })
     (taskModules.check {
       hasTests = false;
@@ -370,7 +369,7 @@ in
       # TODO(oep-1n3.10): Keep wa-sqlite unmanaged by Genie for now.
       # Effect-utils now supports exclusions for the coverage check.
       genieCoverageExcludes = [ "packages/@livestore/wa-sqlite/" ];
-      tsconfig = "tsconfig.dev.json";
+      tsconfig = "tsconfig.check.json";
     })
     (taskModules.pnpm {
       packages = pnpmPackages;

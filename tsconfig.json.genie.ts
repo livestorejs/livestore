@@ -3,7 +3,7 @@ import { baseTsconfigCompilerOptions, tsconfigJson } from './genie/repo.ts'
 /**
  * Root TypeScript check config for repository-level tooling files.
  *
- * Package source is checked through `tsconfig.dev.json`. This config adds the
+ * Package source is checked through `tsconfig.check.json`. This config adds the
  * tool configs that live outside package `src` roots without pulling docs into
  * the TypeScript project graph; docs remain covered by Astro's checker.
  */

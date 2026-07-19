@@ -1,0 +1,97 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.check.json.genie.ts
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./docs/src/content/_assets/code"
+    },
+    {
+      "path": "./examples/cloudflare-todomvc"
+    },
+    {
+      "path": "./examples/tutorial-starter"
+    },
+    {
+      "path": "./examples/web-email-client"
+    },
+    {
+      "path": "./examples/web-linearlite"
+    },
+    {
+      "path": "./examples/web-todomvc"
+    },
+    {
+      "path": "./examples/web-todomvc-script"
+    },
+    {
+      "path": "./examples/web-todomvc-sync-cf"
+    },
+    {
+      "path": "./packages/@livestore/adapter-cloudflare"
+    },
+    {
+      "path": "./packages/@livestore/adapter-web"
+    },
+    {
+      "path": "./packages/@livestore/common"
+    },
+    {
+      "path": "./packages/@livestore/common-cf"
+    },
+    {
+      "path": "./packages/@livestore/effect-playwright"
+    },
+    {
+      "path": "./packages/@livestore/framework-toolkit"
+    },
+    {
+      "path": "./packages/@livestore/livestore"
+    },
+    {
+      "path": "./packages/@livestore/react"
+    },
+    {
+      "path": "./packages/@livestore/sqlite-wasm"
+    },
+    {
+      "path": "./packages/@livestore/sync-cf"
+    },
+    {
+      "path": "./packages/@livestore/utils"
+    },
+    {
+      "path": "./packages/@livestore/utils-dev"
+    },
+    {
+      "path": "./packages/@livestore/webmesh"
+    },
+    {
+      "path": "./packages/@local/astro-tldraw"
+    },
+    {
+      "path": "./packages/@local/astro-twoslash-code"
+    },
+    {
+      "path": "./packages/@local/shared"
+    },
+    {
+      "path": "./scripts"
+    },
+    {
+      "path": "./tests/integration"
+    },
+    {
+      "path": "./tests/package-common"
+    },
+    {
+      "path": "./tests/perf"
+    },
+    {
+      "path": "./tests/sync-provider"
+    },
+    {
+      "path": "./tests/wa-sqlite"
+    }
+  ]
+}
