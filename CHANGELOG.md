@@ -512,6 +512,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 #### Development Tooling
 
+- **Effect v4 dependency cohort:** Updated the repository-wide Effect v4 dependency family to beta.99 and migrated graph access to the public API while preserving degree-local history traversal ([#1446](https://github.com/livestorejs/livestore/issues/1446)).
 - **Strict peer dep composition:** Added `@effect/vitest` to `utilsEffectPeerDeps` and `@livestore/peer-deps`, and deduplicated the peer-deps package to derive its dependency list from the canonical `utilsEffectPeerDeps` source ([#1107](https://github.com/livestorejs/livestore/issues/1107)).
 - **Hosted example link validation:** Maintainers now have a shared deployment metadata source and `mono examples validate-links` check so docs and example deployments can catch stale first-party demo URLs before publishing ([#1244](https://github.com/livestorejs/livestore/issues/1244)).
 - **Chrome DevTools extension assets restored:** Restored `qrcode-generator` 2.0.4 in `@livestore/utils` and included the Chrome DevTools extension assets in the release artifact flow so the published DevTools package contains the Chrome extension build alongside the Vite plugin ([#1215](https://github.com/livestorejs/livestore/pull/1215)).

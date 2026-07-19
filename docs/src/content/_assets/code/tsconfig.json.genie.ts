@@ -9,6 +9,17 @@ import { baseTsconfigCompilerOptions, domLib, reactJsx, tsconfigJson } from '../
 export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
+    // This fixture project intentionally composes current workspace packages with
+    // published LiveStore/Effect Atom packages that use an older @effect/platform.
+    plugins: [
+      {
+        ...baseTsconfigCompilerOptions.plugins[0],
+        allowedDuplicatedPackages: [
+          ...baseTsconfigCompilerOptions.plugins[0].allowedDuplicatedPackages,
+          '@effect/platform',
+        ],
+      },
+    ],
     lib: [...domLib],
     rootDir: './',
     ...reactJsx,

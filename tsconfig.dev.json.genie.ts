@@ -1,11 +1,23 @@
-import { tsconfigJson } from './genie/repo.ts'
+import { baseTsconfigCompilerOptions, tsconfigJson } from './genie/repo.ts'
 
 /**
  * Root tsconfig for development builds.
  * References all packages, examples, tests, docs, and scripts for composite builds.
  */
 export default tsconfigJson({
-  compilerOptions: {},
+  compilerOptions: {
+    // The referenced docs fixture project intentionally composes current workspace
+    // packages with published packages that use an older @effect/platform.
+    plugins: [
+      {
+        ...baseTsconfigCompilerOptions.plugins[0],
+        allowedDuplicatedPackages: [
+          ...baseTsconfigCompilerOptions.plugins[0].allowedDuplicatedPackages,
+          '@effect/platform',
+        ],
+      },
+    ],
+  },
   include: [],
   references: [
     // NOTE: docs is excluded from project references - use `astro check` instead
