@@ -137,21 +137,33 @@ message transport without changing scenario semantics.
 | --- | --- |
 | **Application definition** | Executable module exporting the LiveStore event schema and, when enabled, materializers and state inspection helpers. |
 | **Scenario specification** | Serializable description of participants, workloads, faults, schedule, execution options, and assertions. |
-| **Participant** | A role instantiated by the runner: sync backend, client, leader, or client session. |
+| **Scenario participant** | A client or client session instantiated and managed by the runner. |
 | **Participant host** | Execution-profile implementation that creates and controls clients and sessions behind the serializable runner-control and trace boundary. |
 | **Participant execution profile** | How client-side roles run: in-process, worker/process, or browser. |
 | **Sync-backend realization** | What the leader synchronizes with: a mock/in-memory backend, a locally running concrete backend, or a deployed backend. |
 | **Execution configuration** | Combination of one participant execution profile, one sync-backend realization, and an optional state profile. |
 | **Workload pattern** | Reusable generator of application actions assigned to one or more clients. |
 | **Fault model** | Controlled changes to connectivity, availability, latency, process lifetime, or capacity. |
-| **Convergence group** | Participants that a settle phase requires to reach the same authoritative eventlog and, when requested, equivalent state. |
+| **Convergence group** | Scenario participants that a settle phase requires to reach the same authoritative eventlog and, when requested, equivalent state. |
 | **Settlement barrier** | Profile-appropriate confirmation that convergence predicates form a stable fixed point even if background streams or future polling remain active. |
-| **Trace** | Ordered stream of scenario actions and observed system transitions. |
-| **Oracle** | Executable rule that turns observed state and trace data into a verdict. |
-| **Run artifact** | Scenario, seed, execution configuration, trace, measurements, snapshots, and oracle results needed to inspect or reproduce one run. |
+| **Scenario trace** | Ordered, versioned semantic stream of scenario instructions, acknowledgements, observations, and verdicts. |
+| **Scenario oracle** | Executable rule that turns observed state and scenario-trace data into a verdict. |
+| **Scenario run artifact** | Scenario, seed, execution configuration, trace, measurements, snapshots, and oracle results needed to inspect or reproduce one run. |
 
 “Scenario runner” is used instead of “scenario runtime” to avoid confusing the
 orchestrator with LiveStore's own runtime architecture.
+
+Within this RFC's scenario context, “trace,” “oracle,” and “run artifact” are
+short forms of the scenario-prefixed canonical terms above. A scenario trace
+is distinct from an OpenTelemetry trace; OTel spans may appear only as
+namespaced diagnostic extensions.
+
+A client is the stable top-level participant. It owns shared local data, one
+active leader role, and one or more client-session participants. The leader is
+a controllable and observable role within the client, not a separate scenario
+participant; leadership restart or handover does not change the client's
+identity. The sync backend is a separate topology component selected through a
+sync-backend realization, not a scenario participant.
 
 ### Scenario Semantic Model
 
@@ -194,7 +206,7 @@ The scenario specification must be able to express:
 | Reproduction | Random seed, scheduling mode, and execution configuration. |
 | Application | Reference to an application definition wrapping the actual LiveStore schema plus optional higher-level actions and state inspectors. |
 | Topology | Sync backend, clients, client sessions, links, and initial connectivity. |
-| Lifecycle | Participants present at start and participants added, restarted, or removed later. |
+| Lifecycle | Participants and roles present at start and those added, restarted, or removed later. |
 | Workloads | Explicit actions and reusable parameterized activity patterns assigned to clients. |
 | Schedule | Actions triggered by logical time, prior actions, observed conditions, or phase boundaries. |
 | Faults | Backend outages, partitions, latency, constrained throughput, process death, and recovery. |
@@ -371,7 +383,7 @@ families are:
 | Step family | Examples |
 | --- | --- |
 | Application | Commit a schema event or invoke a named application action. |
-| Participant lifecycle | Add a client or session; stop or restart a session, client, or leader. |
+| Participant/role lifecycle | Add a client or session; stop or restart a session, client, or leader role. |
 | Connectivity and faults | Disconnect a link, partition a client, make a backend unavailable, or heal a fault. |
 | Workload | Run a named seeded pattern, repeat an action, or generate a burst. |
 | Scheduling | Sequence, run in parallel, run at/after a logical time, repeat, or wait for a declared condition. |
@@ -488,9 +500,9 @@ Platform-realized:
 
 The relationship is intentionally asymmetric. The in-process profile is the
 primary engine for dense, controlled correctness and stress exploration;
-platform-realized profiles selectively calibrate that evidence against real
-runtime boundaries. They are not duplicate engines with identical feature
-coverage.
+platform-realized profiles add evidence about real runtime boundaries. They
+are not duplicate engines with identical feature coverage, and their runs are
+not required to match in-process runs one-to-one.
 
 #### Sync-Backend Realizations
 
@@ -523,7 +535,7 @@ Later participant profiles and backend realizations must preserve scenario
 semantics and trace vocabulary. A scenario using capabilities shared by
 several configurations should run unchanged across them.
 
-#### Profile Conformance and Calibration
+#### Profile Conformance and Cross-Profile Evidence
 
 Every participant execution profile must pass one shared host-conformance suite
 for the capabilities it claims. The suite covers client and session creation,
@@ -531,29 +543,27 @@ named action dispatch, lifecycle control, capability rejection, stable
 participant identities, required core trace records, fault/control failure
 reporting, and valid run artifacts.
 
-A deliberately small calibration corpus then runs unchanged across the
-in-process and browser profiles using only their shared capabilities. It covers
-initial sync, single and concurrent writers, offline accumulation and reconnect,
-backend outage and recovery, multiple sessions, participant restart, rebase
-after remote progress, settlement, and state convergence.
+A scenario whose required capabilities are shared by several profiles should
+run unchanged across them. Each result and artifact identifies its execution
+profile and makes claims only about that profile; successful in-process
+execution does not claim browser, worker, process, or deployed-backend fidelity.
 
-Cross-profile calibration compares semantic outcomes rather than byte-identical
-executions. The profiles must satisfy equivalent safety, pending-resolution,
-convergence, and requested state oracles; preserve the same accepted event set;
-and emit the required stable trace families. Timing, diagnostics, retry counts,
-and exact trace order need not match. Exact eventlog order is compared only when
-the scenario defines that order; genuinely concurrent runs may produce
-different valid authoritative orders.
+Cross-profile comparison is optional and scenario-specific. When requested,
+the comparison declares which semantic properties should agree, such as the
+accepted event set, selected oracle verdicts, or normalized state. Timing,
+diagnostics, retry counts, exact trace order, and unconstrained concurrent
+event order need not match. A failure in a platform-realized profile is useful
+evidence about that configuration even when the in-process run succeeds; it is
+not automatically a host-conformance failure or proof that the profiles should
+have produced identical executions.
 
-The browser profile is the platform-fidelity calibration target because it
-exercises the web adapter, worker topology, Web Locks, OPFS, and browser
-lifecycle. A worker/process profile helps isolate transport and lifecycle
-differences but does not substitute for browser calibration.
-
-The in-process profile may be delivered and used before the browser host exists.
-Until browser calibration is available, its artifacts identify the evidence as
-in-process and do not claim browser-platform fidelity. Adding the browser host
-must not require changing the portable scenario corpus or oracle semantics.
+A browser profile can add evidence about the web adapter, worker topology, Web
+Locks, OPFS, and browser lifecycle. A worker/process profile can add evidence
+about transport and lifecycle isolation. Neither profile nor a mandatory
+cross-profile corpus is required for the initial in-process subsystem to be
+complete. Adding a profile must preserve the portable scenario semantics,
+host-control contract, and stable trace families for the capabilities it
+claims.
 
 ### Time and Scheduling
 
@@ -660,9 +670,9 @@ configuration. Eventlog convergence is available independently of state
 assertions; state convergence and rematerialization are optional oracle
 families that require compatible state-inspection capabilities.
 
-The first in-process profile requires SQLite materialization for
-every participant because the current processors integrate it into important
-behavior:
+The first in-process profile requires SQLite materialization across each
+Client's leader role and Client sessions because the current processors
+integrate it into important behavior:
 
 - session rebases roll back SQLite changesets;
 - leader pulls and local pushes materialize batches;
@@ -879,6 +889,8 @@ context/02-system/09-verification/
     ├── intuition.md
     ├── requirements.md
     ├── spec.md
+    ├── .decisions/
+    │   └── 0001-declarative-scenario-verification.md
     └── .delta/
         └── DELTA-001-scenario-verification-not-built.md
 ```
@@ -891,7 +903,7 @@ components rather than a separate behavioral model.
 The scenarios node owns the scenario semantics, participant-host contract,
 execution-profile and backend-realization composition, workloads, fault
 semantics, reproduction guarantees, settlement, trace protocol, oracle
-composition, artifacts, profile conformance, cross-profile calibration, and
+composition, artifacts, profile conformance, cross-profile evidence, and
 runner/visualizer separation.
 
 The existing verification children retain their current responsibilities:
@@ -904,9 +916,13 @@ scenario-runner requirements.
 
 The fold-in also registers the child and namespace in the verification parent
 and root intent-layer structure, adds accepted scenario terminology to
-`context/ontology.md`, and records architectural acceptance in
-`context/.decisions/` with this RFC as evidence. The initial delta records that
+`context/ontology.md`, and records architectural acceptance in the scenarios
+node's `.decisions/` with this RFC as evidence. The initial delta records that
 the accepted runner and profiles are not yet implemented.
+
+That initial delta is an umbrella for the wholly absent subsystem. When the
+first implementation lands, it closes and any still-missing accepted contracts
+move into narrower deltas owned by this node.
 
 The remaining design questions become `LS.SYS.VER.SCEN-DQ*` questions in the
 new node. After the fold-in, this RFC remains the historical proposal and is no
@@ -966,16 +982,16 @@ The architecture can be delivered incrementally:
 2. **Headless in-process runner:** participant-host conformance suite,
    production-shaped in-process host, real sync processors, mock backend,
    SQLite, explicit actions, basic disconnect/reconnect faults, convergence
-   oracles, portable calibration scenarios, and reproducible artifacts.
+   oracles, portable scenarios, and reproducible artifacts.
 3. **Generated stress scenarios:** reusable workloads, seeded scheduling,
    conditional actions, richer faults, resource observations, and failure
    minimization.
 4. **Visualization:** live trace transport, saved-run replay, system view,
    timeline view, and participant drill-down.
 5. **Additional fidelity configurations:** worker/process and browser
-   participant profiles, shared host-conformance runs, cross-profile calibration,
-   local and deployed sync backends, and alternative state profiles when their
-   product boundaries exist.
+   participant profiles, shared host-conformance runs, optional cross-profile
+   comparisons, local and deployed sync backends, and alternative state
+   profiles when their product boundaries exist.
 6. **Performance use:** wall-clock execution, comparable measurements, and
    scenario-specific budgets integrated with performance verification.
 
