@@ -456,14 +456,24 @@ jobs:
         with:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
-          sparse-checkout: scripts/src/generated/release-topology.json
+          sparse-checkout: |
+            .github/scripts/pr-snapshot-artifact.mjs
+            scripts/src/generated/release-topology.json
       - name: Dispatch incomplete approved cohorts to trusted main workflow
         run: |
           set -euo pipefail
           test "$GITHUB_WORKFLOW_REF" = "$GITHUB_REPOSITORY/.github/workflows/release.yml@refs/heads/main"
           prs_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls?state=open&base=main&per_page=100" --slurp)
-          jq -r --arg repository "$GITHUB_REPOSITORY"   '.[][] | select(.draft == false and .base.ref == "main" and .head.repo.full_name == $repository) | [.number, .head.sha, .head.ref] | @tsv'   <<<"$prs_json" |
+          release_workflow_id=$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/release.yml" --jq .id)
+          [[ "$release_workflow_id" =~ ^[1-9][0-9]*$ ]]
+          scan_failed=false
           while IFS=$'	' read -r pr_number head_sha head_ref; do
+            cohort_failed=false
+            verified_receipt=false
+            registry_state_file="$RUNNER_TEMP/registry-state-$pr_number.json"
+            printf '[]
+          ' > "$registry_state_file"
+
             [[ "$pr_number" =~ ^[1-9][0-9]*$ ]]
             [[ "$head_sha" =~ ^[0-9a-f]{40}$ ]]
             test -n "$head_ref"
@@ -474,21 +484,9 @@ jobs:
 
             version="0.0.0-snapshot-pr.$pr_number.$head_sha"
             snapshot_tag="pr-$pr_number-$head_sha"
-            complete=true
-            while IFS= read -r package_name; do
-              remote_version=$(npm view "$package_name@$version" version --json --registry=https://registry.npmjs.org 2>/dev/null | jq -r . || true)
-              remote_tag=$(npm view "$package_name" dist-tags --json --registry=https://registry.npmjs.org 2>/dev/null | jq -r --arg tag "$snapshot_tag" '.[$tag] // empty' || true)
-              if [ "$remote_version" != "$version" ] || [ "$remote_tag" != "$version" ]; then
-                complete=false
-                break
-              fi
-            done < <(jq -r '.publishablePackageNames[]' scripts/src/generated/release-topology.json)
-            if [ "$complete" = true ]; then
-              echo "PR #$pr_number snapshot cohort is already complete"
-              continue
-            fi
 
             selected_run_id=''
+            selected_pack_attempt=''
             runs_json=$(gh api --paginate --method GET "/repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs"     -f event=pull_request     -f status=success     -f branch="$head_ref"     -F per_page=100     --slurp)
             while IFS= read -r candidate_run_id; do
               [[ "$candidate_run_id" =~ ^[1-9][0-9]*$ ]]
@@ -505,14 +503,57 @@ jobs:
                 continue
               fi
               selected_run_id="$candidate_run_id"
+              selected_pack_attempt="$pack_attempt"
               break
             done < <(jq -r --arg sha "$head_sha" --argjson pr_number "$pr_number"     '[.[] | .workflow_runs[] | select(.event == "pull_request" and .conclusion == "success" and .head_repository.full_name == env.GITHUB_REPOSITORY and any(.pull_requests[]?; .number == $pr_number and .head.sha == $sha))] | sort_by(.created_at) | reverse | .[].id'     <<<"$runs_json")
             if [ -z "$selected_run_id" ]; then
               echo "PR #$pr_number has no exact successful pack artifact yet; skipping"
               continue
             fi
+
+            receipt_name="verified-pr-snapshot-$head_sha-$selected_run_id-$selected_pack_attempt"
+            receipts_json=$(gh api --paginate --method GET "/repos/$GITHUB_REPOSITORY/actions/artifacts"     -f name="$receipt_name"     -F per_page=100     --slurp)
+            while IFS= read -r receipt_run_id; do
+              [[ "$receipt_run_id" =~ ^[1-9][0-9]*$ ]]
+              receipt_run=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$receipt_run_id")
+              if [ "$(jq -r .workflow_id <<<"$receipt_run")" = "$release_workflow_id" ] &&        [ "$(jq -r .event <<<"$receipt_run")" = workflow_dispatch ] &&        [ "$(jq -r .head_branch <<<"$receipt_run")" = main ] &&        [ "$(jq -r .conclusion <<<"$receipt_run")" = success ]; then
+                verified_receipt=true
+                break
+              fi
+            done < <(jq -r --arg name "$receipt_name" '.[] | .artifacts[]? | select(.name == $name and .expired == false) | .workflow_run.id' <<<"$receipts_json")
+
+            while IFS= read -r package_name; do
+              remote_version=$(npm view "$package_name@$version" version --json --registry=https://registry.npmjs.org 2>/dev/null | jq -r . || true)
+              remote_tag=$(npm view "$package_name" dist-tags --json --registry=https://registry.npmjs.org 2>/dev/null | jq -r --arg tag "$snapshot_tag" '.[$tag] // empty' || true)
+              jq --arg name "$package_name" --arg version "$remote_version" --arg tag "$remote_tag"       '. + [{name: $name, version: $version, tag: $tag}]' "$registry_state_file" > "$registry_state_file.next"
+              mv "$registry_state_file.next" "$registry_state_file"
+            done < <(jq -r '.publishablePackageNames[]' scripts/src/generated/release-topology.json)
+
+            assessment=$(node .github/scripts/pr-snapshot-artifact.mjs assess-registry     --state-file="$registry_state_file"     --version="$version"     --verified-receipt="$verified_receipt")
+            action=$(jq -r .action <<<"$assessment")
+            if [ "$action" = conflict ]; then
+              package_name=$(jq -r .packageName <<<"$assessment")
+              conflicting_version=$(jq -r .conflictingVersion <<<"$assessment")
+              echo "::error::PR #$pr_number package $package_name tag $snapshot_tag points to unexpected version $conflicting_version"
+              cohort_failed=true
+            elif [ "$action" = complete ]; then
+              echo "PR #$pr_number snapshot cohort has a trusted verification receipt"
+              continue
+            elif [ "$action" != dispatch ]; then
+              echo "Unknown registry assessment action: $action" >&2
+              cohort_failed=true
+            fi
+
+            if [ "$cohort_failed" = true ]; then
+              scan_failed=true
+              continue
+            fi
+
             gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main     -f mode=promote-pr-snapshot     -f npm_tag=latest     -f pr_number="$pr_number"     -f head_sha="$head_sha"     -f ci_run_id="$selected_run_id"
-          done
+          done < <(jq -r --arg repository "$GITHUB_REPOSITORY"   '.[][] | select(.draft == false and .base.ref == "main" and .head.repo.full_name == $repository) | [.number, .head.sha, .head.ref] | @tsv'   <<<"$prs_json")
+          if [ "$scan_failed" = true ]; then
+            exit 1
+          fi
   validate-pr-snapshot:
     if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'promote-pr-snapshot')
     runs-on: ubuntu-24.04
@@ -811,6 +852,14 @@ jobs:
                 echo "$package_name@$SNAPSHOT_VERSION already exists with a different tarball digest" >&2
                 exit 1
               fi
+              remote_tag=$(npm view "$package_name" dist-tags --json --registry=https://registry.npmjs.org 2>/dev/null | jq -r --arg tag "$SNAPSHOT_TAG" '.[$tag] // empty' || true)
+              if [ -n "$remote_tag" ] && [ "$remote_tag" != "$SNAPSHOT_VERSION" ]; then
+                echo "$package_name tag $SNAPSHOT_TAG points to unexpected version $remote_tag" >&2
+                exit 1
+              fi
+              if [ -z "$remote_tag" ]; then
+                echo "::warning::$package_name@$SNAPSHOT_VERSION matches the candidate but mutable tag $SNAPSHOT_TAG is absent; OIDC publishing cannot repair dist-tags"
+              fi
               echo "$package_name@$SNAPSHOT_VERSION already matches candidate; skipping"
               continue
             fi
@@ -831,7 +880,11 @@ jobs:
               remote_version=$(npm view "$package_name@$SNAPSHOT_VERSION" version --json --registry=https://registry.npmjs.org 2>/dev/null | jq -r . || true)
               remote_integrity=$(npm view "$package_name@$SNAPSHOT_VERSION" dist.integrity --json --registry=https://registry.npmjs.org 2>/dev/null | jq -r . || true)
               remote_tag=$(npm view "$package_name" dist-tags --json --registry=https://registry.npmjs.org 2>/dev/null | jq -r --arg tag "$SNAPSHOT_TAG" '.[$tag] // empty' || true)
-              if [ "$remote_version" = "$SNAPSHOT_VERSION" ] &&        [ "$remote_integrity" = "$local_integrity" ] &&        [ "$remote_tag" = "$SNAPSHOT_VERSION" ]; then
+              if [ -n "$remote_tag" ] && [ "$remote_tag" != "$SNAPSHOT_VERSION" ]; then
+                echo "$package_name tag $SNAPSHOT_TAG points to unexpected version $remote_tag" >&2
+                exit 1
+              fi
+              if [ "$remote_version" = "$SNAPSHOT_VERSION" ] &&        [ "$remote_integrity" = "$local_integrity" ]; then
                 matched=true
                 break
               fi
@@ -844,7 +897,24 @@ jobs:
             verified=$((verified + 1))
           done < "$PUBLISH_LIST"
           test "$verified" = '${{ needs.validate-pr-snapshot.outputs.package-count }}'
-          echo "Verified $verified package versions, immutable tags, and SHA-512 integrities." >> "$GITHUB_STEP_SUMMARY"
+          echo "Verified $verified immutable package versions and SHA-512 integrities; tag bindings are present or absent, never conflicting." >> "$GITHUB_STEP_SUMMARY"
+      - name: Write trusted verification receipt
+        env:
+          HEAD_SHA: ${{ needs.validate-pr-snapshot.outputs.head-sha }}
+          MANIFEST_DIGEST: ${{ needs.validate-pr-snapshot.outputs.manifest-digest }}
+          PR_NUMBER: ${{ needs.validate-pr-snapshot.outputs.pr-number }}
+          SNAPSHOT_VERSION: ${{ needs.validate-pr-snapshot.outputs.version }}
+          SOURCE_RUN_ATTEMPT: ${{ needs.validate-pr-snapshot.outputs.run-attempt }}
+          SOURCE_RUN_ID: ${{ needs.validate-pr-snapshot.outputs.run-id }}
+        run: jq -n   --arg repository "$GITHUB_REPOSITORY"   --argjson prNumber "$PR_NUMBER"   --arg headSha "$HEAD_SHA"   --argjson sourceRunId "$SOURCE_RUN_ID"   --argjson sourceRunAttempt "$SOURCE_RUN_ATTEMPT"   --arg version "$SNAPSHOT_VERSION"   --arg manifestSha256 "$MANIFEST_DIGEST"   '{repository, prNumber, headSha, sourceRunId, sourceRunAttempt, version, manifestSha256}'   > "$RUNNER_TEMP/verified-pr-snapshot.json"
+      - name: Upload trusted verification receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'verified-pr-snapshot-${{ needs.validate-pr-snapshot.outputs.head-sha }}-${{ needs.validate-pr-snapshot.outputs.run-id }}-${{ needs.validate-pr-snapshot.outputs.run-attempt }}'
+          path: '${{ runner.temp }}/verified-pr-snapshot.json'
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
       - name: Record snapshot provenance
         env:
           SNAPSHOT_VERSION: ${{ needs.validate-pr-snapshot.outputs.version }}
@@ -860,7 +930,7 @@ jobs:
           - PR: #$PR_NUMBER
           - Head: `${{ needs.validate-pr-snapshot.outputs.head-sha }}`
           - Version: `$SNAPSHOT_VERSION`
-          - Immutable npm tag: `$SNAPSHOT_TAG`
+          - Publish-time npm tag (best-effort mutable metadata): `$SNAPSHOT_TAG`
           - Packages: $PACKAGE_COUNT
           - Manifest SHA-256: `$MANIFEST_DIGEST`
           - Source CI run: $SOURCE_RUN_URL
