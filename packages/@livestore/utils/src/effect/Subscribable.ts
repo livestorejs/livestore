@@ -46,6 +46,7 @@ const Proto: Omit<Subscribable<unknown, unknown, unknown>, 'get' | 'changes'> = 
   Effectable.Prototype<Subscribable<unknown, unknown, unknown>>({
     label: 'Subscribable',
     evaluate() {
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- vendored fork; this shared prototype is generic over all A, E, R, so `unknown` in the error/requirements channels is structural, not a real error type
       return this.get
     },
   }),

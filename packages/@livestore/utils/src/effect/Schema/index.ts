@@ -41,6 +41,24 @@ export const pluck =
     ) as unknown as PluckSchema<Fields, K & keyof Fields>
   }
 
+/**
+ * Like {@link fromJsonString}, but the ENCODED form is an *indented* JSON string
+ * (default 2-space) instead of compact — for committed/human-read JSON files
+ * (package.json, release plans, CI previews) that must stay diff-friendly while
+ * still round-tripping through the schema. `fromJsonString` hardcodes a compact
+ * `stringifyJson()`; we compose the schema's encoded side with an indenting one.
+ *
+ * Use a concrete schema for known shapes (adds validation) or `Schema.Unknown`
+ * for open-ended ones (the indented analogue of `UnknownFromJsonString`).
+ */
+export const jsonStringIndented = <S extends Schema.Top>(schema: S, space: number | string = 2) =>
+  schema.pipe(
+    Schema.encodeTo(Schema.String, {
+      decode: SchemaGetter.parseJson(),
+      encode: SchemaGetter.stringifyJson({ space }),
+    }),
+  )
+
 export const head = <S extends Schema.Top>(
   array: Schema.$Array<S>,
 ): Schema.decodeTo<Schema.Option<Schema.toType<S>>, Schema.$Array<S>> =>
