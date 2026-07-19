@@ -27,6 +27,7 @@ class PackageJsonParseError extends Schema.TaggedErrorClass<PackageJsonParseErro
 /** Expected failures in the release/publish flow (validation, packing, npm state). */
 class ReleaseError extends Schema.TaggedErrorClass<ReleaseError>()('ReleaseError', {
   message: Schema.String,
+  cause: Schema.optional(Schema.Defect()),
 }) {}
 
 /** Module-scoped JSON decoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
@@ -687,19 +688,19 @@ export const packSnapshot = Effect.fn(function* ({
   tscBin?: string
 }) {
   if (/^[0-9a-f]{40}$/.test(gitSha) === false) {
-    return yield* Effect.fail(
-      new Error(`Snapshot Git SHA must be exactly 40 lowercase hexadecimal characters: ${gitSha}`),
-    )
+    return yield* new ReleaseError({
+      message: `Snapshot Git SHA must be exactly 40 lowercase hexadecimal characters: ${gitSha}`,
+    })
   }
   if (Number.isSafeInteger(prNumber) === false || prNumber < 1) {
-    return yield* Effect.fail(new Error(`Snapshot PR number must be a positive integer: ${prNumber}`))
+    return yield* new ReleaseError({ message: `Snapshot PR number must be a positive integer: ${prNumber}` })
   }
 
   const version = `0.0.0-snapshot-pr.${prNumber}.${gitSha}`
   const packages = yield* listSnapshotPackages(cwd)
 
   if (packages.length === 0) {
-    return yield* Effect.fail(new Error('Snapshot package topology is empty'))
+    return yield* new ReleaseError({ message: 'Snapshot package topology is empty' })
   }
 
   yield* Effect.tryPromise({
@@ -707,7 +708,7 @@ export const packSnapshot = Effect.fn(function* ({
       await rm(outDir, { recursive: true, force: true })
       await mkdir(outDir, { recursive: true })
     },
-    catch: (cause) => new Error(`Failed to prepare snapshot artifact directory ${outDir}`, { cause }),
+    catch: (cause) => new ReleaseError({ message: `Failed to prepare snapshot artifact directory ${outDir}`, cause }),
   })
 
   const tarballs = yield* Effect.gen(function* () {
@@ -730,7 +731,7 @@ export const packSnapshot = Effect.fn(function* ({
         await copyFile(tarball, path.join(outDir, path.basename(tarball)))
       }
     },
-    catch: (cause) => new Error(`Failed to stage snapshot tarballs in ${outDir}`, { cause }),
+    catch: (cause) => new ReleaseError({ message: `Failed to stage snapshot tarballs in ${outDir}`, cause }),
   })
 
   yield* Effect.log(`Packed ${tarballs.length} package(s) as ${version} in ${outDir}`)
