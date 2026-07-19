@@ -95,9 +95,9 @@ const parsePackage = (tarball) => {
 const readTopology = async (topologyPath) => {
   const bytes = await readFile(topologyPath)
   const topology = JSON.parse(bytes.toString('utf8'))
-  const names = topology.publishablePackageNames
+  const names = topology.snapshotPackageNames
   if (Array.isArray(names) === false || names.length === 0 || names.some((name) => typeof name !== 'string') === true) {
-    fail('Trusted release topology has no valid publishablePackageNames')
+    fail('Trusted release topology has no valid snapshotPackageNames')
   }
   if (new Set(names).size !== names.length) fail('Trusted release topology contains duplicate package names')
   return { packageNames: [...names].toSorted((a, b) => a.localeCompare(b)), topologyDigest: sha256(bytes) }
@@ -211,6 +211,27 @@ const validatePackageManifest = ({ packageJson, expectedName, expectedVersion, p
         fail(`${expectedName} has non-exact ${field} entry ${name}@${spec}`)
       }
     }
+  }
+
+  if (expectedName === '@livestore/devtools-vite') {
+    validateDevtoolsPackageManifest({ packageJson, expectedVersion })
+  }
+}
+
+const validateDevtoolsPackageManifest = ({ packageJson, expectedVersion }) => {
+  const peerDependencies = packageJson.peerDependencies ?? {}
+  for (const peerName of ['@livestore/adapter-web', '@livestore/utils']) {
+    if (peerDependencies[peerName] !== expectedVersion) {
+      fail(`DevTools snapshot requires exact peer ${peerName}@${expectedVersion}`)
+    }
+  }
+  if (typeof peerDependencies.vite !== 'string' || peerDependencies.vite.length === 0) {
+    fail('DevTools snapshot requires a non-empty Vite peer dependency range')
+  }
+
+  const dependencies = packageJson.dependencies ?? {}
+  if (Object.keys(dependencies).length !== 1 || typeof dependencies['@parcel/watcher'] !== 'string') {
+    fail('DevTools snapshot runtime dependencies must contain only @parcel/watcher')
   }
 }
 

@@ -83,23 +83,39 @@ const tar = (entries) => {
   return gzipSync(Buffer.concat(chunks))
 }
 
-const fixture = async () => {
+const fixture = async ({ includeDevtools = false } = {}) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'livestore-pr-snapshot-'))
   const artifactDir = path.join(dir, 'artifact')
   await mkdir(artifactDir)
   const topologyPath = path.join(dir, 'topology.json')
   const headSha = 'a'.repeat(40)
   const version = `0.0.0-snapshot-pr.42.${headSha}`
-  const packageNames = ['@livestore/a', '@livestore/b']
-  await writeFile(topologyPath, JSON.stringify({ publishablePackageNames: packageNames }))
+  const packageNames = [
+    '@livestore/a',
+    '@livestore/b',
+    ...(includeDevtools === true ? ['@livestore/devtools-vite'] : []),
+  ]
+  await writeFile(topologyPath, JSON.stringify({ snapshotPackageNames: packageNames }))
   for (const name of packageNames) {
     const file = `${name.slice('@livestore/'.length)}.tgz`
-    const packageJson = {
-      name,
-      version,
-      dependencies: name.endsWith('/b') === true ? { '@livestore/a': version } : {},
-      scripts: { test: 'node --test' },
-    }
+    const packageJson =
+      name === '@livestore/devtools-vite'
+        ? {
+            name,
+            version,
+            dependencies: { '@parcel/watcher': '^2.5.0' },
+            peerDependencies: {
+              '@livestore/adapter-web': version,
+              '@livestore/utils': version,
+              vite: '^7.3.1 || ^8.0.16',
+            },
+          }
+        : {
+            name,
+            version,
+            dependencies: name.endsWith('/b') === true ? { '@livestore/a': version } : {},
+            scripts: { test: 'node --test' },
+          }
     await writeFile(
       path.join(artifactDir, file),
       tar([
@@ -138,6 +154,56 @@ test('creates and validates an exact-run package cohort', async () => {
   assert.equal(result.packageCount, 2)
   assert.match(result.manifestDigest, /^[0-9a-f]{64}$/)
   assert.equal(await readFile(publishListPath, 'utf8'), '@livestore/a\ta.tgz\n@livestore/b\tb.tgz\n')
+})
+
+test('requires the repacked DevTools dependency boundary', async () => {
+  const { dir, topologyPath, headSha, version } = await fixture({ includeDevtools: true })
+  const devtoolsPath = path.join(dir, 'devtools-vite.tgz')
+
+  const writeDevtools = async (packageJson) =>
+    writeFile(devtoolsPath, tar([['package/package.json', JSON.stringify(packageJson)]]))
+
+  await writeDevtools({
+    name: '@livestore/devtools-vite',
+    version,
+    dependencies: { '@parcel/watcher': '^2.5.0' },
+    peerDependencies: { '@livestore/adapter-web': version, vite: '^7.3.1 || ^8.0.16' },
+  })
+  await assert.rejects(
+    createManifest({
+      artifactDir: dir,
+      topologyPath,
+      repository: 'livestorejs/livestore',
+      prNumber: 42,
+      headSha,
+      runId: 100,
+      runAttempt: 1,
+    }),
+    /requires exact peer @livestore\/utils/,
+  )
+
+  await writeDevtools({
+    name: '@livestore/devtools-vite',
+    version,
+    dependencies: { '@livestore/adapter-web': version, '@parcel/watcher': '^2.5.0', vite: '*' },
+    peerDependencies: {
+      '@livestore/adapter-web': version,
+      '@livestore/utils': version,
+      vite: '^7.3.1 || ^8.0.16',
+    },
+  })
+  await assert.rejects(
+    createManifest({
+      artifactDir: dir,
+      topologyPath,
+      repository: 'livestorejs/livestore',
+      prNumber: 42,
+      headSha,
+      runId: 100,
+      runAttempt: 1,
+    }),
+    /runtime dependencies must contain only @parcel\/watcher/,
+  )
 })
 
 test('requires an approval for the unchanged head', () => {
@@ -214,6 +280,7 @@ test('generated promotion workflow is anchored to trusted main', async () => {
   assert.match(dispatch, /assess-registry.*--verified-receipt="\$verified_receipt"/s)
   assert.match(dispatch, /cohort_failed=true.*scan_failed=true.*continue/s)
   assert.match(dispatch, /if \[ "\$scan_failed" = true \]; then\s+exit 1/s)
+  assert.match(dispatch, /\.snapshotPackageNames\[\]/)
 
   const checkoutStart = workflow.indexOf('- name: Checkout trusted validator only')
   const checkoutEnd = workflow.indexOf('\n      - name: Use pinned Node validator runtime', checkoutStart)
@@ -270,6 +337,18 @@ test('generated promotion workflow is anchored to trusted main', async () => {
     workflow.slice(validateStart, attestStart),
     /name: 'pr-snapshot-\$\{\{ steps\.identity\.outputs\.head-sha \}\}-\$\{\{ steps\.identity\.outputs\.run-attempt \}\}'/,
   )
+})
+
+test('generated snapshot topology includes externally repacked DevTools', async () => {
+  const topology = JSON.parse(
+    await readFile(new URL('../../scripts/src/generated/release-topology.json', import.meta.url), 'utf8'),
+  )
+
+  assert.equal(topology.publishablePackageNames.includes('@livestore/devtools-vite'), false)
+  assert.equal(topology.snapshotPackageNames.includes('@livestore/devtools-vite'), true)
+  assert.deepEqual(topology.externalSnapshotPackages, [
+    { name: '@livestore/devtools-vite', manifest: 'release/devtools-artifact.json' },
+  ])
 })
 
 test('derives a deterministic publish-time tag for each PR head cohort', () => {
