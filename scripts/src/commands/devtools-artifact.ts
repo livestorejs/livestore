@@ -723,6 +723,23 @@ const publishChromeZipReleaseAsset = (version: string, assetPath: string) => {
   run(['gh', 'release', 'upload', tag, assetPath, '--repo', repo, '--clobber'])
 }
 
+export const repackDevtoolsSnapshotArtifact = ({
+  manifest,
+  outDir,
+  version,
+}: {
+  readonly manifest: string
+  readonly outDir: string
+  readonly version: string
+}) =>
+  repackArtifact(
+    new Map([
+      ['manifest', manifest],
+      ['out-dir', outDir],
+      ['version', version],
+    ]),
+  )
+
 const repackArtifact = async (flags: Map<string, string | true>) => {
   const version = readFlag(flags, 'version')
   if (version === undefined) throw new Error('--version is required')
@@ -820,7 +837,9 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
     }
   }
 
-  console.log(JSON.stringify({ repackedPath, sha256: sha256(repackedPath), chromeZipPath }, null, 2))
+  const result = { repackedPath, sha256: sha256(repackedPath), chromeZipPath }
+  console.log(JSON.stringify(result, null, 2))
+  return result
 }
 
 const main = async () => {
