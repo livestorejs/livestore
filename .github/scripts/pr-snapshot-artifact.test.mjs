@@ -6,6 +6,7 @@ import test from 'node:test'
 import { gzipSync } from 'node:zlib'
 
 import {
+  assessRegistryCohort,
   createManifest,
   hasCurrentHeadApproval,
   isAuthorizedReviewState,
@@ -15,6 +16,39 @@ import {
   successfulProducerAttempt,
   validateManifest,
 } from './pr-snapshot-artifact.mjs'
+
+test('requires a trusted verification receipt before declaring a registry cohort complete', () => {
+  const version = `0.0.0-snapshot-pr.42.${'a'.repeat(40)}`
+  const matching = [
+    { name: '@livestore/common', version, tag: '' },
+    { name: '@livestore/utils', version, tag: version },
+  ]
+
+  assert.deepEqual(
+    assessRegistryCohort({ expectedVersion: version, packageStates: matching, hasVerifiedReceipt: false }),
+    { action: 'dispatch' },
+  )
+  assert.deepEqual(
+    assessRegistryCohort({ expectedVersion: version, packageStates: matching, hasVerifiedReceipt: true }),
+    { action: 'complete' },
+  )
+  assert.deepEqual(
+    assessRegistryCohort({
+      expectedVersion: version,
+      packageStates: [{ name: '@livestore/common', version: '', tag: '' }],
+      hasVerifiedReceipt: true,
+    }),
+    { action: 'dispatch' },
+  )
+  assert.deepEqual(
+    assessRegistryCohort({
+      expectedVersion: version,
+      packageStates: [{ name: '@livestore/common', version, tag: 'another-version' }],
+      hasVerifiedReceipt: true,
+    }),
+    { action: 'conflict', packageName: '@livestore/common', conflictingVersion: 'another-version' },
+  )
+})
 
 const writeOctal = (header, start, length, value) => {
   const encoded = value.toString(8).padStart(length - 1, '0')
@@ -175,6 +209,11 @@ test('generated promotion workflow is anchored to trusted main', async () => {
   assert.match(dispatch, /pack-pr-snapshot.*conclusion == "success"/s)
   assert.match(dispatch, /artifacts\?per_page=100.*expired == false/s)
   assert.match(dispatch, /ci_run_id="\$selected_run_id"/)
+  assert.match(dispatch, /selected_pack_attempt="\$pack_attempt"/)
+  assert.match(dispatch, /verified-pr-snapshot-\$head_sha-\$selected_run_id-\$selected_pack_attempt/)
+  assert.match(dispatch, /assess-registry.*--verified-receipt="\$verified_receipt"/s)
+  assert.match(dispatch, /cohort_failed=true.*scan_failed=true.*continue/s)
+  assert.match(dispatch, /if \[ "\$scan_failed" = true \]; then\s+exit 1/s)
 
   const checkoutStart = workflow.indexOf('- name: Checkout trusted validator only')
   const checkoutEnd = workflow.indexOf('\n      - name: Use pinned Node validator runtime', checkoutStart)
@@ -212,7 +251,15 @@ test('generated promotion workflow is anchored to trusted main', async () => {
   assert.match(publish, /Verify complete immutable registry cohort/)
   assert.match(publish, /dist\.integrity/)
   assert.match(publish, /dist-tags/)
+  assert.match(publish, /\[ -n "\$remote_tag" \].*\[ "\$remote_tag" != "\$SNAPSHOT_VERSION" \]/s)
+  assert.match(publish, /mutable tag \$SNAPSHOT_TAG is absent; OIDC publishing cannot repair dist-tags/)
+  assert.match(publish, /\[ "\$remote_integrity" = "\$local_integrity" \]/)
+  assert.doesNotMatch(publish, /\[ "\$remote_tag" = "\$SNAPSHOT_VERSION" \]/)
   assert.match(publish, /needs\.validate-pr-snapshot\.outputs\.package-count/)
+  assert.match(publish, /Upload trusted verification receipt/)
+  assert.match(publish, /verified-pr-snapshot-.*outputs\.head-sha.*outputs\.run-id.*outputs\.run-attempt/s)
+  assert.match(publish, /sourceRunAttempt/)
+  assert.match(publish, /overwrite: true/)
 
   const ciWorkflow = await readFile(new URL('../workflows/ci.yml', import.meta.url), 'utf8')
   assert.match(
@@ -225,7 +272,7 @@ test('generated promotion workflow is anchored to trusted main', async () => {
   )
 })
 
-test('derives an immutable tag for each PR head cohort', () => {
+test('derives a deterministic publish-time tag for each PR head cohort', () => {
   const firstHead = 'a'.repeat(40)
   const secondHead = 'b'.repeat(40)
   const firstTag = snapshotTag({ prNumber: 42, headSha: firstHead })
