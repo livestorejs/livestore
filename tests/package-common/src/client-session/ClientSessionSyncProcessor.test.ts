@@ -36,6 +36,7 @@ import {
   FetchHttpClient,
   Fiber,
   Hash,
+  Latch,
   Layer,
   Option,
   Queue,
@@ -76,6 +77,7 @@ const makeClientProcessorHarness = Effect.fn(function* ({
   pull = () => Stream.empty,
   rollback = () => undefined,
   shutdown = () => Effect.void,
+  devtools = { enabled: false },
   leaderPushBatchSize = 1,
   simulation,
 }: {
@@ -83,6 +85,7 @@ const makeClientProcessorHarness = Effect.fn(function* ({
   pull?: LeaderEvents['pull']
   rollback?: (changeset: Uint8Array<ArrayBuffer>) => void
   shutdown?: ClientSession['shutdown']
+  devtools?: ClientSession['devtools']
   leaderPushBatchSize?: number
   simulation?: ClientProcessorParams['params']['simulation']
 }) {
@@ -109,7 +112,7 @@ const makeClientProcessorHarness = Effect.fn(function* ({
 
   const clientSession: ClientSession = {
     sqliteDb: {} as ClientSession['sqliteDb'],
-    devtools: { enabled: false },
+    devtools,
     clientId: 'client-test',
     sessionId: 'session-test',
     lockStatus,
@@ -521,6 +524,35 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
+  Vitest.it.effect('admits synchronous pushes while pull waits on the devtools latch', (test) =>
+    Effect.gen(function* () {
+      const pullLatch = yield* Latch.make(false)
+      const pushLatch = yield* Latch.make(true)
+      const pullStarted = yield* Deferred.make<void>()
+
+      const { processor, close } = yield* makeClientProcessorHarness({
+        devtools: { enabled: true, pullLatch, pushLatch },
+        pull: () =>
+          Stream.fromEffect(
+            Deferred.succeed(pullStarted, undefined).pipe(
+              Effect.as({ payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [] }) }),
+            ),
+          ),
+        push: () => Effect.void,
+      })
+      yield* Deferred.await(pullStarted)
+      yield* Effect.yieldNow
+
+      const localEvents = yield* processor.encodeEvents([
+        events.todoCreated({ id: 'local', text: 'local', completed: false }),
+      ])
+      const pushExit = yield* Effect.sync(() => Effect.runSyncExit(processor.push(localEvents)))
+
+      expect(Exit.isSuccess(pushExit)).toBe(true)
+      yield* close()
+    }).pipe(withTestCtx(test)),
+  )
+
   Vitest.asProp(
     Vitest.live,
     'preserves event order and batch bounds through graceful shutdown',
@@ -845,6 +877,51 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       yield* Deferred.succeed(releasePush, undefined)
       yield* Deferred.await(pushCompleted)
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.it.effect('scope disposal drains admitted leader pushes before closing the store', (test) =>
+    Effect.gen(function* () {
+      const { makeStore } = yield* TestContext
+      const pushStarted = yield* Deferred.make<void>()
+      const releasePush = yield* Deferred.make<void>()
+      const pushCompleted = yield* Deferred.make<void>()
+      const pushInterrupted = yield* Deferred.make<void>()
+      const storeScope = yield* Scope.make()
+
+      const store = yield* makeStore({
+        testing: {
+          overrides: {
+            clientSession: {
+              leaderThreadProxy: (leader) => ({
+                ...leader,
+                events: {
+                  ...leader.events,
+                  push: () =>
+                    Deferred.succeed(pushStarted, undefined).pipe(
+                      Effect.andThen(Deferred.await(releasePush)),
+                      Effect.andThen(Deferred.succeed(pushCompleted, undefined)),
+                      Effect.onInterrupt(() => Deferred.succeed(pushInterrupted, undefined)),
+                    ),
+                },
+              }),
+            },
+          },
+        },
+      }).pipe(Scope.provide(storeScope))
+
+      store.commit(events.todoCreated({ id: 'scoped', text: 'scoped', completed: false }))
+      yield* Deferred.await(pushStarted)
+
+      const closeFiber = yield* Scope.close(storeScope, Exit.void).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      expect(yield* Deferred.isDone(pushInterrupted)).toBe(false)
+
+      yield* Deferred.succeed(releasePush, undefined)
+      yield* Fiber.join(closeFiber)
+
+      expect(yield* Deferred.isDone(pushCompleted)).toBe(true)
+      expect(yield* Deferred.isDone(pushInterrupted)).toBe(false)
     }).pipe(withTestCtx(test)),
   )
 
