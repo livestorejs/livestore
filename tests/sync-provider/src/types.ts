@@ -15,7 +15,7 @@ export class SyncProviderImpl extends Context.Service<
     ) => ReturnType<SyncBackend.SyncBackendConstructor<any>>
     turnBackendOffline: Effect.Effect<void>
     turnBackendOnline: Effect.Effect<void>
-    providerSpecific: any
+    providerSpecific: { port?: number }
   }
 >()('SyncProviderImpl') {}
 
