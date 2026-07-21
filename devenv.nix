@@ -5,14 +5,20 @@
   ...
 }:
 let
-  # Prefer the megarepo-materialized effect-utils checkout when present so the
-  # downstream shell/task CLIs match the exact generator sources imported from
-  # ./repos/effect-utils during CI and local megarepo workflows.
-  effectUtils =
-    if builtins.pathExists ./repos/effect-utils/flake.nix then
-      builtins.getFlake (toString ./repos/effect-utils)
-    else
-      inputs.effect-utils;
+  # Resolve effect-utils from the pinned flake input, never from the
+  # megarepo-materialized checkout.
+  #
+  # This previously preferred ./repos/effect-utils so the shell/task CLIs would
+  # match the generator sources imported from that same checkout. That coupling
+  # is already guaranteed elsewhere: `mr:lock-sync-check` keeps devenv.lock in
+  # step with megarepo.lock, so the pinned input *is* the locked member revision.
+  # Reading the checkout added nothing but a dependency on untracked state —
+  # `repos/` is gitignored, so a git-clean tree says nothing about whether
+  # members match the lock, and a drifted checkout made evaluation fail with an
+  # opaque missing attribute before the shell could be entered (#1467).
+  #
+  # Every other megarepo member already resolves effect-utils this way.
+  effectUtils = inputs.effect-utils;
   effectUtilsPackages = effectUtils.packages.${pkgs.system};
   effectTsgo = effectUtilsPackages.effect-tsgo;
   taskModules = effectUtils.devenvModules.tasks;
