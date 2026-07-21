@@ -19,11 +19,13 @@ absorbed surfaces per root DELTA-001).
 
 - **LS.CONTRIB-R01 RFC gate:** Significant changes to public APIs or core
   architecture are proposed as RFCs before implementation.
-- **LS.CONTRIB-R02 Fold-in rule:** When an RFC is accepted and its
-  implementation lands, its durable content is folded into the owning VRS
-  nodes (requirements/spec clauses; choices and rejected alternatives as
-  decision records citing the RFC). The RFC then becomes a historical record
-  and is never updated to track reality. `refines: LS-R15`
+- **LS.CONTRIB-R02 Fold-in rule:** When an RFC is accepted, its durable content
+  is folded into the owning VRS nodes (requirements/spec clauses; choices and
+  rejected alternatives as decision records citing the RFC). Any accepted
+  contract that is not yet implemented is represented by a `.delta/` record
+  with an explicit close condition; each delta is closed as the implementation
+  and its required evidence land. The RFC then becomes a historical record and
+  is never updated to track reality. `refines: LS-R15`
 
 ### Contribution workflow
 
