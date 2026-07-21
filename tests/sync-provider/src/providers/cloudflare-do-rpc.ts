@@ -44,7 +44,7 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
           })(args),
         turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
         turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
-        providerSpecific: {},
+        providerSpecific: { port: server.port },
       }
     }),
   ).pipe(
