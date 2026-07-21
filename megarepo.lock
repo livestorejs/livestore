@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "f007561eb40e1a4c3a0fad3adafb14cd420bafc0",
+      "ref": "schickling-assistant/2026-07-21-megarepo-member-lockstep",
+      "commit": "73f8b93fcd5bc227b614a7c423a0ebfe5d505886",
       "pinned": true,
-      "lockedAt": "2026-07-19T14:46:24.673Z"
+      "lockedAt": "2026-07-21T10:01:52.904Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",

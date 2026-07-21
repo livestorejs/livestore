@@ -7,9 +7,14 @@ inputs:
       nixpkgs:
         follows: nixpkgs
   playwright:
-    url: github:overengineeringstudio/effect-utils/main?dir=nix/playwright-flake
+    # TEMPORARY (megarepo alignment phase 1): tracks the same effect-utils PR
+    # branch as the `effect-utils` input so both stay lock-synced. Retarget to
+    # `main` together once that PR merges.
+    url: github:overengineeringstudio/effect-utils/schickling-assistant/2026-07-21-megarepo-member-lockstep?dir=nix/playwright-flake
     inputs:
       nixpkgs:
         follows: nixpkgs
   effect-utils:
-    url: github:overengineeringstudio/effect-utils/main
+    # TEMPORARY (megarepo alignment phase 1): pinned to the upstream PR branch
+    # that adds `lib.megarepoMember`. Retarget to `main` once that PR merges.
+    url: github:overengineeringstudio/effect-utils/schickling-assistant/2026-07-21-megarepo-member-lockstep

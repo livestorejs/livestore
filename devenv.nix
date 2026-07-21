@@ -8,11 +8,20 @@ let
   # Prefer the megarepo-materialized effect-utils checkout when present so the
   # downstream shell/task CLIs match the exact generator sources imported from
   # ./repos/effect-utils during CI and local megarepo workflows.
+  #
+  # Resolved through the shared helper so that a checkout which has drifted from
+  # megarepo.lock fails with an actionable error instead of an opaque missing
+  # attribute during evaluation (livestorejs/livestore#1467). The helper is loaded
+  # from the pinned input rather than the checkout, since resolving the checkout
+  # is precisely what it decides. Tracking worktrees (`mr config pin ... -c <ref>`)
+  # are left alone so co-development keeps working.
   effectUtils =
-    if builtins.pathExists ./repos/effect-utils/flake.nix then
-      builtins.getFlake (toString ./repos/effect-utils)
-    else
-      inputs.effect-utils;
+    (inputs.effect-utils.lib.megarepoMember { inherit lib; }).resolve {
+      name = "effect-utils";
+      memberPath = ./repos/effect-utils;
+      lockFile = ./megarepo.lock;
+      pinned = inputs.effect-utils;
+    };
   effectUtilsPackages = effectUtils.packages.${pkgs.system};
   effectTsgo = effectUtilsPackages.effect-tsgo;
   taskModules = effectUtils.devenvModules.tasks;
@@ -330,7 +339,6 @@ in
     (taskModules.ts {
       tsconfigFile = "tsconfig.dev.json";
       tsBinPkg = effectTsgo;
-      tscBin = "$DEVENV_ROOT/node_modules/.bin/tsc";
     })
     (taskModules.check {
       hasTests = false;

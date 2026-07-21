@@ -1,5 +1,5 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils#main"
+    effect-utils "overengineeringstudio/effect-utils#schickling-assistant/2026-07-21-megarepo-member-lockstep"
     effect "effect-ts/effect"
     livestore-contrib "livestorejs/livestore-contrib"
 }
