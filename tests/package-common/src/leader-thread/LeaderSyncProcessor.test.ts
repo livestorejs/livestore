@@ -116,6 +116,41 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     }).pipe(withTestCtx()(test)),
   )
 
+  Vitest.live('retains leader materialization metadata for pending local events', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+      const sourceSessionChangeset = Uint8Array.from([255])
+
+      yield* testContext.mockSyncBackend.disconnect
+
+      const localEvent = new LiveStoreEvent.Client.EncodedWithMeta({
+        ...LiveStoreEvent.Global.toClientEncoded(
+          testContext.eventFactory.todoCreated.next({ id: 'local', text: 'local', completed: false }),
+        ),
+      })
+      localEvent.meta.sessionChangeset = {
+        _tag: 'sessionChangeset',
+        data: sourceSessionChangeset,
+        debug: undefined,
+      }
+
+      yield* leaderThreadCtx.syncProcessor.push([localEvent])
+
+      const downstreamItem = yield* Queue.take(testContext.pullQueue)
+      assert(downstreamItem.payload._tag === 'upstream-advance')
+
+      const retainedEvent = (yield* leaderThreadCtx.syncProcessor.syncState.get).pending[0]!
+      const publishedEvent = downstreamItem.payload.newEvents[0]!
+      assert(retainedEvent.meta.sessionChangeset._tag === 'sessionChangeset')
+      assert(publishedEvent.meta.sessionChangeset._tag === 'sessionChangeset')
+
+      expect([...retainedEvent.meta.sessionChangeset.data]).toEqual([...publishedEvent.meta.sessionChangeset.data])
+      expect([...retainedEvent.meta.sessionChangeset.data]).not.toEqual([...sourceSessionChangeset])
+      expect(retainedEvent.meta.materializerHashLeader).toEqual(publishedEvent.meta.materializerHashLeader)
+    }).pipe(withTestCtx()(test)),
+  )
+
   Vitest.live('non-live paginated pull does not stall local pushes', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
