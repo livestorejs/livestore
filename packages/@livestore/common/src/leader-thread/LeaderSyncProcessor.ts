@@ -372,6 +372,22 @@ export const make = Effect.fnUntraced(function* ({
           }
         }
 
+        yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
+
+        // SyncState constructors clone events, so materializing `newEvents` does not update the
+        // corresponding retained pending events. Rollback metadata retained by the leader must
+        // come from the leader database, not from whichever client session originated the push.
+        for (const materializedEvent of mergeResult.newEvents) {
+          const pendingEvent = yield* Effect.fromNullishOr(
+            mergeResult.newSyncState.pending.find((event) =>
+              LiveStoreEvent.Client.isEqualEncoded(event, materializedEvent),
+            ),
+          ).pipe(Effect.orDieDebugger)
+
+          pendingEvent.meta.sessionChangeset = materializedEvent.meta.sessionChangeset
+          pendingEvent.meta.materializerHashLeader = materializedEvent.meta.materializerHashLeader
+        }
+
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
         yield* connectedClientSessionPullQueues.offer({
@@ -388,8 +404,6 @@ export const make = Effect.fnUntraced(function* ({
         const globalOrUnknownEvents = mergeResult.newEvents.filter((e) => !isClientOnlyEvent(e))
 
         yield* TxQueue.offerAll(syncBackendPushQueue, globalOrUnknownEvents)
-
-        yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
       }).pipe(localPushBackendPullMutex.withPermits(1))
     }
   })
