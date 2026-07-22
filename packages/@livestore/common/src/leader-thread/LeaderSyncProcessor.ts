@@ -372,10 +372,19 @@ export const make = Effect.fnUntraced(function* ({
           }
         }
 
+        // A local push appends accepted events after the existing pending events. Materialize that
+        // retained suffix so leader rollback metadata stays on the canonical events used by a later rebase.
+        const newPendingEvents = mergeResult.newSyncState.pending.slice(syncState.pending.length)
+        if (newPendingEvents.length !== mergeResult.newEvents.length) {
+          return yield* Effect.dieDebugger('Local push events must be retained in pending state')
+        }
+
+        yield* materializeEventsBatch({ batchItems: newPendingEvents, deferreds })
+
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
         yield* connectedClientSessionPullQueues.offer({
-          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }),
+          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: newPendingEvents }),
           leaderHead: mergeResult.newSyncState.localHead,
         })
 
@@ -385,11 +394,9 @@ export const make = Effect.fnUntraced(function* ({
         })
 
         // Don't sync client-only events
-        const globalOrUnknownEvents = mergeResult.newEvents.filter((e) => !isClientOnlyEvent(e))
+        const globalOrUnknownEvents = newPendingEvents.filter((e) => !isClientOnlyEvent(e))
 
         yield* TxQueue.offerAll(syncBackendPushQueue, globalOrUnknownEvents)
-
-        yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
       }).pipe(localPushBackendPullMutex.withPermits(1))
     }
   })
