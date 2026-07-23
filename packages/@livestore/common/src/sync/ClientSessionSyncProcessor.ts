@@ -1,6 +1,8 @@
 /// <reference lib="dom" />
 import { LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
 import {
+  Cause,
+  Deferred,
   Effect,
   Exit,
   Filter,
@@ -8,6 +10,7 @@ import {
   Option,
   Queue,
   Schema,
+  Semaphore,
   type Scope,
   Stream,
   Subscribable,
@@ -101,7 +104,21 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
-  const leaderPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
+  const leaderPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta, Cause.Done>()
+  const rebaseOwnership = yield* Semaphore.make(1)
+  const shutdownDone = yield* Deferred.make<void>()
+  const drainStartedSignal = yield* Deferred.make<void>()
+  const rejectionObserved = yield* Deferred.make<void>()
+  let shutdownStarted = false
+  let terminalPushCause: Cause.Cause<never> | undefined
+  let unresolvedRejection:
+    | {
+        readonly error: Error
+        readonly events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
+      }
+    | undefined
+  let leaderPushingFiberHandle: FiberHandle.FiberHandle<void, never> | undefined
+  let pullingFiberHandle: FiberHandle.FiberHandle<void, never> | undefined
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
     if (
@@ -122,37 +139,55 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       )
     }
 
-    const leaderPushingFiberHandle = yield* FiberHandle.make()
+    const leaderPushingHandle = yield* FiberHandle.make<void, never>()
+    const pullingHandle = yield* FiberHandle.make<void, never>()
+    leaderPushingFiberHandle = leaderPushingHandle
+    pullingFiberHandle = pullingHandle
 
-    const backgroundLeaderPushing = Effect.gen(function* () {
-      const batch = yield* TxQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
-      yield* clientSession.leaderThread.events.push(batch).pipe(
-        Effect.catchIf(isRejectedPushError, () => {
-          debugInfo.rejectCount++
-          return TxQueue.clear(leaderPushQueue)
-        }),
-      )
+    const backgroundLeaderPushing: Effect.Effect<void> = Effect.gen(function* () {
+      while (true) {
+        const batch = yield* TxQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize).pipe(
+          Effect.catchIf(Cause.isDone, () => Effect.void),
+        )
+        if (batch === undefined) return
+
+        yield* clientSession.leaderThread.events.push(batch).pipe(
+          Effect.catchIf(isRejectedPushError, (error) => {
+            debugInfo.rejectCount++
+            if (shutdownStarted === true) return Effect.die(error)
+
+            unresolvedRejection = { error, events: batch }
+            return TxQueue.clear(leaderPushQueue).pipe(Effect.andThen(Deferred.succeed(rejectionObserved, undefined)))
+          }),
+        )
+      }
     }).pipe(
-      Effect.forever,
       Effect.interruptible,
       Effect.tapCauseLogPretty,
-      Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
+      Effect.catchCause((cause) => {
+        if (Cause.hasInterruptsOnly(cause) === true) return Effect.void
+
+        terminalPushCause ??= cause
+        return shutdownStarted === true
+          ? Effect.void
+          : clientSession.shutdown(Exit.failCause(cause)).pipe(Effect.forkDetach, Effect.asVoid)
+      }),
     )
 
-    yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+    yield* FiberHandle.run(leaderPushingHandle, backgroundLeaderPushing)
 
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
-    yield* Stream.suspend(() =>
+    const backgroundPulling = Stream.suspend(() =>
       clientSession.leaderThread.events.pull({ cursor: syncStateRef.current.upstreamHead }),
     ).pipe(
+      Stream.tap(() =>
+        clientSession.devtools.enabled === true ? clientSession.devtools.pullLatch.await : Effect.void,
+      ),
       Stream.tap(({ payload }) =>
         Effect.gen(function* () {
           // yield* Effect.logDebug('ClientSessionSyncProcessor:pull', payload)
 
-          if (clientSession.devtools.enabled === true) {
-            yield* clientSession.devtools.pullLatch.await
-          }
-
+          const rejectionAtPullStart = unresolvedRejection
           const mergeResult = yield* SyncState.merge({
             syncState: syncStateRef.current,
             payload,
@@ -180,7 +215,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
             if (SIMULATION_ENABLED === true) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
 
-            yield* FiberHandle.clear(leaderPushingFiberHandle)
+            yield* FiberHandle.clear(leaderPushingHandle)
 
             if (SIMULATION_ENABLED === true) yield* simSleep('pull', '2_before_leader_push_queue_clear')
 
@@ -211,7 +246,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
             if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
 
-            yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+            yield* FiberHandle.run(leaderPushingHandle, backgroundLeaderPushing)
           } else {
             yield* Effect.spanEvent('merge:pull:advance', {
               payloadTag: payload._tag,
@@ -221,6 +256,14 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
             })
 
             debugInfo.advanceCount++
+          }
+
+          if (
+            rejectionAtPullStart !== undefined &&
+            unresolvedRejection === rejectionAtPullStart &&
+            isRejectedBatchRecovered(rejectionAtPullStart.events, mergeResult.newSyncState.pending) === true
+          ) {
+            unresolvedRejection = undefined
           }
 
           if (mergeResult.newEvents.length === 0) {
@@ -252,6 +295,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           // We're only triggering the sync state update after all events have been materialized
           yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
         }).pipe(
+          rebaseOwnership.withPermits(1),
           Effect.tapCauseLogPretty,
           Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
         ),
@@ -261,9 +305,43 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       Effect.interruptible,
       Effect.withSpan('client-session-sync-processor:pull'),
       Effect.tapCauseLogPretty,
-      Effect.forkScoped,
     )
+    yield* FiberHandle.run(pullingHandle, backgroundPulling)
   }).pipe(Effect.withSpan('client-session-sync-processor:boot'))
+
+  const runShutdown = Effect.fn('client-session-sync-processor:shutdown')(function* (
+    exit: Exit.Exit<unknown, unknown>,
+  ) {
+    if (Exit.isFailure(exit) === true) {
+      if (pullingFiberHandle !== undefined) yield* FiberHandle.clear(pullingFiberHandle)
+      yield* rebaseOwnership.withPermits(1)(TxQueue.end(leaderPushQueue))
+      if (leaderPushingFiberHandle !== undefined) yield* FiberHandle.clear(leaderPushingFiberHandle)
+      return
+    }
+
+    yield* rebaseOwnership.withPermits(1)(
+      Effect.gen(function* () {
+        if (pullingFiberHandle !== undefined) yield* FiberHandle.clear(pullingFiberHandle)
+        yield* TxQueue.end(leaderPushQueue)
+        yield* Deferred.succeed(drainStartedSignal, undefined)
+      }),
+    )
+    if (leaderPushingFiberHandle !== undefined) yield* FiberHandle.awaitEmpty(leaderPushingFiberHandle)
+    if (terminalPushCause !== undefined) return yield* Effect.failCause(terminalPushCause)
+    if (unresolvedRejection !== undefined) return yield* Effect.die(unresolvedRejection.error)
+  })
+
+  const shutdown: ClientSessionSyncProcessor['shutdown'] = (exit) =>
+    Effect.suspend(() => {
+      if (shutdownStarted === true) return Deferred.await(shutdownDone)
+      shutdownStarted = true
+      return runShutdown(exit).pipe(
+        Effect.exit,
+        Effect.tap((shutdownExit) => Deferred.done(shutdownDone, shutdownExit)),
+        Effect.forkDetach,
+        Effect.andThen(Deferred.await(shutdownDone)),
+      )
+    })
 
   const encodeEvents: ClientSessionSyncProcessor['encodeEvents'] = Effect.fn(
     'client-session-sync-processor:encode-events',
@@ -318,6 +396,12 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
   const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(
     function* (encodedEvents) {
+      if (shutdownStarted === true) {
+        return yield* Effect.die(
+          new Error('Cannot push events after the client session sync processor starts shutting down'),
+        )
+      }
+
       const mergeResult = yield* SyncState.merge({
         syncState: syncStateRef.current,
         payload: { _tag: 'local-push', newEvents: encodedEvents },
@@ -341,7 +425,10 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
       syncStateRef.current = mergeResult.newSyncState
       yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
-      yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
+      const rejectedEvents = yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
+      if (rejectedEvents.length > 0) {
+        return yield* Effect.die(new Error('Leader push queue closed while accepting events'))
+      }
     },
   )
 
@@ -353,6 +440,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
   return {
     boot,
+    shutdown,
     encodeEvents,
     materializeEvents,
     push,
@@ -361,6 +449,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       changes: Stream.fromQueue(syncStateUpdateQueue),
     }),
     debug: {
+      awaitDrainStarted: Deferred.await(drainStartedSignal),
+      awaitRejection: Deferred.await(rejectionObserved),
       print: () =>
         Effect.gen(function* () {
           console.log('debugInfo', debugInfo)
@@ -377,17 +467,29 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   } satisfies ClientSessionSyncProcessor
 })
 
-const snapshotTxQueue = <A>(queue: TxQueue.TxQueue<A>): Effect.Effect<ReadonlyArray<A>> =>
+const snapshotTxQueue = <A, E>(queue: TxQueue.TxQueue<A, E>): Effect.Effect<ReadonlyArray<A>, E> =>
   Effect.tx(
     Effect.gen(function* () {
+      if ((yield* TxQueue.isOpen(queue)) === false) return []
+
       const items = yield* TxQueue.clear(queue)
       yield* TxQueue.offerAll(queue, items)
       return items
     }),
   )
 
+const isRejectedBatchRecovered = (
+  rejectedEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+  pendingEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+): boolean =>
+  rejectedEvents.every(
+    (rejectedEvent) =>
+      pendingEvents.some((pendingEvent) => LiveStoreEvent.Client.isEqualEncoded(pendingEvent, rejectedEvent)) === false,
+  )
+
 export interface ClientSessionSyncProcessor {
   boot: Effect.Effect<void, never, Scope.Scope>
+  shutdown: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>
   encodeEvents: (
     events: ReadonlyArray<LiveStoreEvent.Input.Decoded>,
   ) => Effect.Effect<ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>>
@@ -400,6 +502,8 @@ export interface ClientSessionSyncProcessor {
    */
   syncState: Subscribable.Subscribable<SyncState.SyncState>
   debug: {
+    awaitDrainStarted: Effect.Effect<void>
+    awaitRejection: Effect.Effect<void>
     print: () => void
     debugInfo: () => {
       rebaseCount: number
