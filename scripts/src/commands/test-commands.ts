@@ -181,11 +181,20 @@ const runUnitTests = Effect.fn(function* ({ filter }: { filter: Option.Option<st
     if (configs.length > 0) {
       yield* Effect.forEach(
         configs,
-        (config) => cmd(['vitest', 'run', '--config', config]).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+        (config) =>
+          TestPolicy.runTestTarget({
+            label: config,
+            policy: TestPolicy.blocking,
+            run: cmd(['vitest', 'run', '--config', config]).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+          }),
         { concurrency: 'unbounded' },
       )
     } else {
-      yield* cmd(['vitest', 'run', target]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+      yield* TestPolicy.runTestTarget({
+        label: target,
+        policy: TestPolicy.blocking,
+        run: cmd(['vitest', 'run', target]).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+      })
     }
     return
   }
@@ -244,10 +253,14 @@ const runUnitTests = Effect.fn(function* ({ filter }: { filter: Option.Option<st
             : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
         const label = target.config ?? target.path
         // TODO use this https://x.com/luxdav/status/1942532247833436656
-        return cmdText(args.join(' '), { stderr: 'pipe' }).pipe(
-          Effect.provide(LivestoreWorkspace.toCwd()),
-          Effect.tap((text) => Effect.sync(() => console.log(`Output for ${label}:\n\n${text}\n\n`))),
-        )
+        return TestPolicy.runTestTarget({
+          label,
+          policy: TestPolicy.blocking,
+          run: cmdText(args.join(' '), { stderr: 'pipe' }).pipe(
+            Effect.provide(LivestoreWorkspace.toCwd()),
+            Effect.tap((text) => Effect.sync(() => console.log(`Output for ${label}:\n\n${text}\n\n`))),
+          ),
+        })
       },
       { concurrency: 'unbounded' },
     )
@@ -266,16 +279,24 @@ export const testUnitCommand = Cli.Command.make(
 )
 
 const runPerfTests = Effect.fn(function* () {
-  yield* cmd('NODE_OPTIONS=--disable-warning=ExperimentalWarning pnpm playwright test', {
-    shell: true,
-    env: { FORCE_PLAYWRIGHT_VIA_CLI: '1' },
-  }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/perf')))
+  yield* TestPolicy.runTestTarget({
+    label: 'tests/perf',
+    policy: TestPolicy.blocking,
+    run: cmd('NODE_OPTIONS=--disable-warning=ExperimentalWarning pnpm playwright test', {
+      shell: true,
+      env: { FORCE_PLAYWRIGHT_VIA_CLI: '1' },
+    }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/perf'))),
+  })
 })
 
 export const testPerfCommand = Cli.Command.make('perf', {}, runPerfTests)
 
 const runWaSqliteTests = Effect.fn(function* () {
-  yield* cmd('vitest run').pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/wa-sqlite')))
+  yield* TestPolicy.runTestTarget({
+    label: 'tests/wa-sqlite',
+    policy: TestPolicy.blocking,
+    run: cmd('vitest run').pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/wa-sqlite'))),
+  })
 })
 
 export const waSqliteTest = Cli.Command.make('wa-sqlite', {}, runWaSqliteTests)
