@@ -41,12 +41,11 @@ implemented):
 
 ## Query Kinds
 
-| Kind | Constructor | Identity (`def.hash`) | Notes |
-| --- | --- | --- | --- |
-| Db query | `queryDb()` | `queryString + deps + extraDeps` | `SessionIdSymbol` serialized as the literal `'SessionIdSymbol'` so identity stays session-agnostic |
-| Computed | `computed()` | `deps` if given, else `fn.toString()` | Referential result equality only (no schema equivalence) |
-| Signal | `signal()` | `nanoid()` | Every call is unique — signals never dedup; `set` takes a plain value (functional update resolved by `store.setSignal`) |
-| Client document | `table.get(id)` backing query | RowQuery label `${table}.get:${id}` | First read seeds the default row via `store.commit(table.set(...))` with `skipRefresh: true` to avoid a reactive loop during render |
+| Kind     | Constructor  | Identity (`def.hash`)                 | Notes                                                                                                                   |
+| -------- | ------------ | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Db query | `queryDb()`  | `queryString + deps + extraDeps`      | `SessionIdSymbol` serialized as the literal `'SessionIdSymbol'` so identity stays session-agnostic                      |
+| Computed | `computed()` | `deps` if given, else `fn.toString()` | Referential result equality only (no schema equivalence)                                                                |
+| Signal   | `signal()`   | `nanoid()`                            | Every call is unique — signals never dedup; `set` takes a plain value (functional update resolved by `store.setSignal`) |
 
 Db queries are two thunks: `queryInput$` builds the SQL and tracks
 dependencies (its equality compares query text + `deepEqual(bindValues)`;
@@ -55,6 +54,9 @@ decodes. Reactivity comes from `get(tableRef)` dependencies on the queried
 tables — query-builder queries set a single table eagerly; raw-SQL/function
 queries resolve tables lazily via `getTablesUsed`
 (`db-query.ts:252,378-393`).
+
+All query kinds are read-only. A first read cannot commit an event or seed a
+missing row; an ordinary query may instead return an in-memory fallback.
 
 Contextual (function-form) db queries whose builder is not introspectable on
 Hermes (Expo) must supply explicit `deps` or construction throws
@@ -90,7 +92,7 @@ this tree):
 2. **SQL result cache** (`QueryCache.ts`): an LRU (200 entries) keyed on
    SQL text + bind values, invalidated per written table on
    `cachedExecute`; transaction-control statements are ignored. This caches
-   *values*, not reactivity — a hot table with >200 distinct queries evicts
+   _values_, not reactivity — a hot table with >200 distinct queries evicts
    silently (flagged as provisional in code comments).
 
 ## Caching Substrate (`SqliteDbWrapper`)

@@ -20,7 +20,6 @@ import { StoreInternalsSymbol } from '../store/store-types.ts'
 import { isValidFunctionString } from '../utils/function-string.ts'
 import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.ts'
 import { depsToString, isLiveQueryDef, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.ts'
-import { makeExecBeforeFirstRun, rowQueryLabel } from './client-document-get-query.ts'
 
 export type QueryInputRaw<TDecoded, TEncoded> = {
   query: string
@@ -32,7 +31,6 @@ export type QueryInputRaw<TDecoded, TEncoded> = {
    * NOTE In the future we want to do this automatically at build time
    */
   queriedTables?: Set<string>
-  execBeforeFirstRun?: (ctx: ReactivityGraphContext) => void
 }
 
 export const isQueryInputRaw = (value: unknown): value is QueryInputRaw<any, any> =>
@@ -227,17 +225,11 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
             : queryInput.schema,
     }
 
-    const execBeforeFirstRunRef: {
-      current: ((ctx: ReactivityGraphContext, otelContext: otel.Context) => void) | undefined
-    } = {
-      current: undefined,
-    }
-
     type TQueryInputRaw = QueryInputRaw<any, any>
 
     let queryInputRaw$OrQueryInputRaw: TQueryInputRaw | Thunk<TQueryInputRaw, ReactivityGraphContext, RefreshReason>
 
-    const fromQueryBuilder = (qb: QueryBuilder.Any, otelContext: otel.Context | undefined) => {
+    const fromQueryBuilder = (qb: QueryBuilder.Any) => {
       try {
         const qbRes = qb.asSql()
         const schema = getResultSchema(qb) as Schema.Codec<TResultSchema, ReadonlyArray<any>>
@@ -250,16 +242,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
             bindValues: qbRes.bindValues,
             queriedTables: new Set([ast.tableDef.sqliteDef.name]),
           } satisfies TQueryInputRaw,
-          label: ast._tag === 'RowQuery' ? rowQueryLabel(ast.tableDef, ast.id) : qb.toString(),
-          execBeforeFirstRun:
-            ast._tag === 'RowQuery'
-              ? makeExecBeforeFirstRun({
-                  table: ast.tableDef,
-                  explicitDefaultValues: ast.explicitDefaultValues,
-                  id: ast.id,
-                  otelContext,
-                })
-              : undefined,
+          label: qb.toString(),
         }
       } catch (cause) {
         throw new UnknownError({ cause, note: `Error building query for ${qb.toString()}`, payload: { qb } })
@@ -279,11 +262,10 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
           let queryInputRaw: TQueryInputRaw
 
           if (isQueryBuilder(queryInputResult) === true) {
-            const res = fromQueryBuilder(queryInputResult, otelContext)
+            const res = fromQueryBuilder(queryInputResult)
             queryInputRaw = res.queryInputRaw
             // setting label dynamically here
             this.label = res.label
-            execBeforeFirstRunRef.current = res.execBeforeFirstRun
           } else {
             queryInputRaw = queryInputResult
           }
@@ -306,10 +288,9 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
     } else {
       let queryInputRaw: TQueryInputRaw
       if (isQueryBuilder(queryInput) === true) {
-        const res = fromQueryBuilder(queryInput, otelContext)
+        const res = fromQueryBuilder(queryInput)
         queryInputRaw = res.queryInputRaw
         label = res.label
-        execBeforeFirstRunRef.current = res.execBeforeFirstRun
       } else {
         queryInputRaw = queryInput
       }
@@ -318,12 +299,6 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
       queryInputRaw$OrQueryInputRaw = queryInputRaw
 
       // this.label = inputLabel ? this.label : `db(${})`
-      if (inputLabel === undefined && isQueryBuilder(queryInput) === true) {
-        const ast = queryInput[QueryBuilderAstSymbol]
-        if (ast._tag === 'RowQuery') {
-          label = `db(${rowQueryLabel(ast.tableDef, ast.id)})`
-        }
-      }
     }
 
     const queriedTablesRef: { current: Set<string> | undefined } = { current: undefined }
@@ -361,11 +336,6 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
             const startTimePerfNow = performance.now()
             const otelContext = otel.trace.setSpan(otel.context.active(), span)
             const { store } = queryContext
-
-            if (execBeforeFirstRunRef.current !== undefined) {
-              execBeforeFirstRunRef.current(queryContext, otelContext)
-              execBeforeFirstRunRef.current = undefined
-            }
 
             const queryInputResult =
               isThunk(queryInputRaw$OrQueryInputRaw) === true

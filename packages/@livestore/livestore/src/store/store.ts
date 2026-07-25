@@ -42,7 +42,6 @@ import { nanoid } from '@livestore/utils/nanoid'
 
 import type { LiveQuery, ReactivityGraphContext, SignalDef } from '../live-queries/base-class.ts'
 import { makeReactivityGraph } from '../live-queries/base-class.ts'
-import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.ts'
 import { queryDb } from '../live-queries/db-query.ts'
 import type { Ref } from '../reactive.ts'
 import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
@@ -715,20 +714,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       }
       return res
     } else if (isQueryBuilder(query) === true) {
-      const ast = query[QueryBuilderAstSymbol]
-      if (ast._tag === 'RowQuery') {
-        makeExecBeforeFirstRun({
-          table: ast.tableDef,
-          id: ast.id,
-          explicitDefaultValues: ast.explicitDefaultValues,
-          otelContext: options?.otelContext,
-        })(this[StoreInternalsSymbol].reactivityGraph.context!)
-      }
-
       const sqlRes = query.asSql()
       const schema = getResultSchema(query)
 
-      // Query builders preserve SessionIdSymbol so client-document queries can be reused across sessions.
+      // Query builders preserve SessionIdSymbol so queries can be reused across sessions.
       // SQLite bind values must be concrete primitives, so resolve the symbol only at execution time.
       const resolvedBindValues =
         sqlRes.bindValues === undefined

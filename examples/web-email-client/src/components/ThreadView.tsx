@@ -1,7 +1,8 @@
-import { queryDb } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
 import type React from 'react'
 import { useMemo } from 'react'
+
+import { queryDb } from '@livestore/livestore'
+import { useStore } from '@livestore/react'
 
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
@@ -51,6 +52,12 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
       ),
     [threadUserLabels],
   )
+
+  // The thread store can finish opening before its remote seed events arrive.
+  if (thread === undefined) {
+    return <p className="p-6 text-sm text-gray-600">Loading thread…</p>
+  }
+
   const participants: string[] = JSON.parse(thread.participants)
 
   return (

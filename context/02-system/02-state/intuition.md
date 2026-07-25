@@ -1,8 +1,8 @@
 # State (Read Model) — Intuition
 
-*For: contributors touching materializers or state realizations · Assumes:
+_For: contributors touching materializers or state realizations · Assumes:
 [../01-event-model/intuition.md](../01-event-model/intuition.md) · Covers:
-why state is disposable and what a materializer really is*
+why state is disposable and what a materializer really is_
 
 ## State is a cache of the log
 
@@ -33,16 +33,16 @@ network. Every client runs the same step function over the same history and
 must land in the same place; in dev, result hashes are compared across
 materialization sites to catch violations rather than trusting convention.
 
-Coverage is total by type: every non-derived event has exactly one
-user-defined materializer (the framework wires implicit ones for derived
-events like client-document sets). An event without an interpretation, or
-with two competing ones, cannot exist.
+Coverage is total by type: every application event has exactly one explicit
+materializer. The low-level derived-event category remains reserved for
+framework internals, but no current SQLite table API uses it. An application
+event without an interpretation, or with two competing ones, cannot exist.
 
 ## The dimension, not the database
 
 This node owns the realization-agnostic contract: mutation format, read-only
 query surface, rebuild, rollback, drift handling. SQLite
 ([01-sqlite/](./01-sqlite/spec.md)) is the shipping realization — tables,
-query builder, client documents — but the layers above depend only on the
-contract, which is what keeps other realizations possible (root
+query builder, and schema management — but the layers above depend only on
+the contract, which is what keeps other realizations possible (root
 `roadmap.md`).

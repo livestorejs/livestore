@@ -344,10 +344,10 @@ export { isLiveQueryDef }
  *
  * @example
  * ```ts
- * const [, , , query$] = useClientDocument(tables.uiState)
- *
- * if (isLiveQueryInstance(query$)) {
- *   console.log('Execution count:', query$.runs)
+ * const inspectQuery = (value: unknown) => {
+ *   if (isLiveQueryInstance(value)) {
+ *     console.log('Execution count:', value.runs)
+ *   }
  * }
  * ```
  */

@@ -1,4 +1,4 @@
-import { defineMaterializer, Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+import { defineMaterializer, Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 export const tables = {
   todos: State.SQLite.table({
@@ -9,14 +9,6 @@ export const tables = {
       completed: State.SQLite.boolean({ default: false }),
       createdAt: State.SQLite.datetime(),
     },
-  }),
-  uiState: State.SQLite.clientDocument({
-    name: 'UiState',
-    schema: Schema.Struct({
-      newTodoText: Schema.String,
-      filter: Schema.Literals(['all', 'active', 'completed']),
-    }),
-    default: { id: SessionIdSymbol, value: { newTodoText: '', filter: 'all' } },
   }),
 } as const
 

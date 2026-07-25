@@ -1,4 +1,6 @@
-import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+import { Events, makeSchema, Schema, State } from '@livestore/livestore'
+
+export const TodoFilter = Schema.Literals(['all', 'active', 'completed'])
 
 // You can model your state as SQLite tables (https://docs.livestore.dev/reference/state/sqlite-schema)
 export const tables = {
@@ -11,11 +13,14 @@ export const tables = {
       deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
     },
   }),
-  // Client documents can be used for local-only state (e.g. form inputs)
-  uiState: State.SQLite.clientDocument({
+  // Persisted client-only state uses an ordinary table.
+  uiState: State.SQLite.table({
     name: 'uiState',
-    schema: Schema.Struct({ newTodoText: Schema.String, filter: Schema.Literals(['all', 'active', 'completed']) }),
-    default: { id: SessionIdSymbol, value: { newTodoText: '', filter: 'all' } },
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      newTodoText: State.SQLite.text({ default: '' }),
+      filter: State.SQLite.text({ schema: TodoFilter, default: 'all' }),
+    },
   }),
 }
 
@@ -44,7 +49,14 @@ export const events = {
     name: 'v1.TodoClearedCompleted',
     schema: Schema.Struct({ deletedAt: Schema.DateFromString.check(Schema.isDateValid()) }),
   }),
-  uiStateSet: tables.uiState.set,
+  todoDraftChanged: Events.clientOnly({
+    name: 'v1.TodoDraftChanged',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+  }),
+  todoFilterChanged: Events.clientOnly({
+    name: 'v1.TodoFilterChanged',
+    schema: Schema.Struct({ id: Schema.String, filter: TodoFilter }),
+  }),
 }
 
 // Materializers are used to map events to state (https://docs.livestore.dev/reference/state/materializers)
@@ -54,6 +66,10 @@ const materializers = State.SQLite.materializers(events, {
   'v1.TodoUncompleted': ({ id }) => tables.todos.update({ completed: false }).where({ id }),
   'v1.TodoDeleted': ({ id, deletedAt }) => tables.todos.update({ deletedAt }).where({ id }),
   'v1.TodoClearedCompleted': ({ deletedAt }) => tables.todos.update({ deletedAt }).where({ completed: true }),
+  'v1.TodoDraftChanged': ({ id, text }) =>
+    tables.uiState.insert({ id, newTodoText: text, filter: 'all' }).onConflict('id', 'update', { newTodoText: text }),
+  'v1.TodoFilterChanged': ({ id, filter }) =>
+    tables.uiState.insert({ id, newTodoText: '', filter }).onConflict('id', 'update', { filter }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

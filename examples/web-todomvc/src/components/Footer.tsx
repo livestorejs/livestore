@@ -1,7 +1,8 @@
-import { queryDb } from '@livestore/livestore'
 import { useCallback } from 'react'
 
-import { uiState$ } from '../livestore/queries.ts'
+import { queryDb } from '@livestore/livestore'
+
+import { uiStateQuery } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
 
@@ -11,10 +12,11 @@ const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, 
 
 export const Footer = () => {
   const store = useAppStore()
-  const { filter } = store.useQuery(uiState$)
+  const { filter } = store.useQuery(uiStateQuery(store.sessionId))
   const incompleteCount = store.useQuery(incompleteCount$)
   const setFilter = useCallback(
-    (filter: (typeof tables.uiState.Value)['filter']) => store.commit(events.uiStateSet({ filter })),
+    (filter: (typeof tables.uiState.Type)['filter']) =>
+      store.commit(events.todoFilterChanged({ id: store.sessionId, filter })),
     [store],
   )
   const handleAllClick = useCallback(() => setFilter('all'), [setFilter])

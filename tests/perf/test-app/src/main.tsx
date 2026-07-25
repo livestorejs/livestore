@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
 
-import { allItems$, uiState$ } from './queries.ts'
+import { allItems$, uiStateQuery } from './queries.ts'
 import { events, type Item, type Items } from './schema.ts'
 import { useAppStore } from './store.ts'
 
@@ -74,11 +74,11 @@ const RemoveIcon = <span>X</span>
 
 const ItemRow = React.memo(({ item }: { item: Item }) => {
   const store = useAppStore()
-  const { selected } = store.useQuery(uiState$)
+  const { selected } = store.useQuery(uiStateQuery(store.sessionId))
   const isSelected = selected === item.id
   const rowStyle = isSelected === true ? selectedRowStyle : defaultRowStyle
   const handleSelect = React.useCallback(() => {
-    store.commit(events.uiStateSet({ selected: item.id }))
+    store.commit(events.uiStateSet({ id: store.sessionId, selected: item.id }))
   }, [store, item.id])
   const handleRemove = React.useCallback(() => {
     store.commit(events.itemDeleted({ id: item.id }))

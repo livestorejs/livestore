@@ -24,9 +24,8 @@ LS-R04…R06, LS-R10, LS-T04. Realization:
   rolled back to support rebase. `refines: LS-R06, LS-T04`
 - **LS.SYS.STATE-R04 Total materializer coverage:** Every non-derived event
   type has exactly one user-defined materializer; derived events must not have
-  a user-defined one, though the framework may wire implicit materializers for
-  them (e.g. client-document set-events). Coverage is enforced at the type
-  level.
+  a user-defined one, though framework-owned derived events may wire
+  framework-owned materializers. Coverage is enforced at the type level.
 - **LS.SYS.STATE-R05 Realization contract:** A state realization defines its
   mutation format, query surface, and rebuild/rollback mechanics against this
   contract; the engine core depends only on the contract. `refines: LS-R10`

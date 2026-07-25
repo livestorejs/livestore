@@ -1,4 +1,4 @@
-import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 export const tables = {
   todos: State.SQLite.table({
@@ -9,11 +9,6 @@ export const tables = {
       completed: State.SQLite.boolean({ default: false }),
       deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
     },
-  }),
-  uiState: State.SQLite.clientDocument({
-    name: 'uiState',
-    schema: Schema.Struct({ newTodoText: Schema.String }),
-    default: { id: SessionIdSymbol, value: { newTodoText: '' } },
   }),
 }
 
@@ -37,7 +32,6 @@ export const events = {
       deletedAt: Schema.DateFromString.check(Schema.isDateValid()),
     }),
   }),
-  uiStateSet: tables.uiState.set,
 }
 
 const materializers = State.SQLite.materializers(events, {

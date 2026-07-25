@@ -2,7 +2,7 @@ import React from 'react'
 
 import { queryDb } from '@livestore/livestore'
 
-import { uiState$ } from '../livestore/queries.ts'
+import { uiStateQuery } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
 import type { Filter } from '../types.ts'
@@ -13,9 +13,12 @@ const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, 
 
 export const Footer: React.FC = () => {
   const store = useAppStore()
-  const { filter } = store.useQuery(uiState$)
+  const { filter } = store.useQuery(uiStateQuery(store.sessionId))
   const incompleteCount = store.useQuery(incompleteCount$)
-  const setFilter = React.useCallback((filter: Filter) => store.commit(events.uiStateSet({ filter })), [store])
+  const setFilter = React.useCallback(
+    (filter: Filter) => store.commit(events.todoFilterChanged({ id: store.sessionId, filter })),
+    [store],
+  )
   const setAllFilter = React.useCallback(() => setFilter('all'), [setFilter])
   const setActiveFilter = React.useCallback(() => setFilter('active'), [setFilter])
   const setCompletedFilter = React.useCallback(() => setFilter('completed'), [setFilter])

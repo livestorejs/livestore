@@ -8,7 +8,6 @@ description: How to integrate LiveStore with Vue.
 import ProviderSnippet from '../../_assets/code/reference/framework-integrations/vue/provider.vue?snippet'
 import UseStoreSnippet from '../../_assets/code/reference/framework-integrations/vue/use-store.ts?snippet'
 import UseQuerySnippet from '../../_assets/code/reference/framework-integrations/vue/use-query.vue?snippet'
-import UseClientDocumentSnippet from '../../_assets/code/reference/framework-integrations/vue/use-client-document.vue?snippet'
 
 The [vue-livestore](https://github.com/slashv/vue-livestore) package provides integration with Vue. It's currently in beta but aims to match feature parity with the React integration.
 
@@ -27,16 +26,6 @@ In order to use LiveStore with Vue, you need to wrap your application in a `<Liv
 ### useQuery
 
 <UseQuerySnippet />
-
-### useClientDocument
-
-**[!] The interface for useClientDocument is experimental and might change**
-
-Since it's more common in Vue to work with a single writable ref (as compared to state, setState in React) the useClientDocument composable for Vue tries to make that easier by directly returning a collection of refs.
-
-The current implementation destructures all client state variables into the return object which allows directly binding to v-model or editing the .value reactivly.
-
-<UseClientDocumentSnippet />
 
 ## Usage with ...
 

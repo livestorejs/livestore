@@ -1,8 +1,8 @@
 # Framework Integrations — Intuition
 
-*For: contributors building or maintaining framework bindings · Assumes:
+_For: contributors building or maintaining framework bindings · Assumes:
 [../05-store/intuition.md](../05-store/intuition.md) · Covers: why
-integrations are thin and where the shared logic lives*
+integrations are thin and where the shared logic lives_
 
 ## Translators, not engines
 
@@ -24,7 +24,7 @@ store (framework-agnostic)      framework
 
 Everything genuinely cross-framework lives once in `framework-toolkit`:
 normalizing the query-shaped inputs (query builder, live query defs) into
-one internal shape, client-document get/set helpers, stack-info provenance
+one internal shape, resource lifecycle helpers, and stack-info provenance
 for devtools. React, Vue, Solid, and Svelte bindings compose the same
 primitives — so behavior differences between frameworks are, by
 construction, binding bugs rather than semantic forks.

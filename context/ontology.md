@@ -23,8 +23,10 @@
   (persisted leader-side as `backendHead`).
 - **Local head** — The latest locally committed eventlog position, including
   pending events.
-- **Derived event** — A framework-generated event with an implicit
-  materializer (e.g. client-document set events); never user-defined.
+- **Derived event** — An event marked as framework-generated so the
+  materializer builder does not require a user handler. The low-level type
+  machinery remains reserved for framework internals; no current SQLite
+  table API generates derived events.
 - **Schema hash** — The hash of the state-schema AST and event definitions
   that drives drift detection and state rebuild.
 - **Storage format version** — The manually bumped version of persisted
@@ -36,9 +38,6 @@
 - **State** — Data derived from the eventlog via materializers and queryable
   by the app. "Read model" is the event-sourcing literature term for the same
   thing; State is canonical in LiveStore.
-- **Client document** — A keyed document table shape for client-local/UI
-  state with last-write-wins semantics, built on the SQLite state
-  realization.
 - **Store** — The app-facing entry point bundling eventlog, state, and
   reactivity for one `storeId`.
 - **storeId** — The identifier that partitions data and sync scope; one
@@ -107,17 +106,18 @@
 - **Facts** _(experimental)_ — Declarative constraints an event sets,
   unsets, requires, or reads; input to ordering, compaction, and conflict
   detection.
+
 ## Structure
 
 The **event** is the spine: every other concept produces events, orders
 them, derives from them, or observes the result.
 
-| Relation to the spine | Terms |
-| --- | --- |
-| Produce | Store (commit), Client session |
-| Order | Eventlog, Event sequence number, Sync backend, Rebase, Facts _(experimental)_ |
-| Derive | Materializer, State, Client document |
-| Observe | Live query, Reactivity graph, Devtools |
+| Relation to the spine | Terms                                                                         |
+| --------------------- | ----------------------------------------------------------------------------- |
+| Produce               | Store (commit), Client session                                                |
+| Order                 | Eventlog, Event sequence number, Sync backend, Rebase, Facts _(experimental)_ |
+| Derive                | Materializer, State                                                           |
+| Observe               | Live query, Reactivity graph, Devtools                                        |
 
 ### Term families and leitwörter
 
@@ -128,7 +128,7 @@ in their name:
   definition, Eventlog, Event sequence number, Synced event, Client-only
   event, Pending event, Derived event.
 - **Client family** (leitwort "client") — anchor **Client**; followers
-  Client session, Client document.
+  Client session.
 - **Sync family** (leitwort "sync") — no single anchor noun; Sync provider,
   Sync backend, Sync processor share the leitwort. Rebase, Rebase
   generation, Upstream head, and Local head are its operation/position

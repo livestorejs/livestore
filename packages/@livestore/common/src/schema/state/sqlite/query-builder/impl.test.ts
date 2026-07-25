@@ -37,25 +37,6 @@ const comments = State.SQLite.table({
   },
 })
 
-const UiState = State.SQLite.clientDocument({
-  name: 'UiState',
-  schema: Schema.Struct({
-    filter: Schema.Literals(['all', 'active', 'completed']),
-  }),
-  default: { value: { filter: 'all' } },
-})
-
-const UiStateWithDefaultId = State.SQLite.clientDocument({
-  name: 'UiState',
-  schema: Schema.Struct({
-    filter: Schema.Literals(['all', 'active', 'completed']),
-  }),
-  default: {
-    id: 'static',
-    value: { filter: 'all' },
-  },
-})
-
 const issue = State.SQLite.table({
   name: 'issue',
   columns: {
@@ -97,7 +78,7 @@ const personProfiles = State.SQLite.table({
   },
 })
 
-const db = { todos, todosWithIntId, comments, issue, selections, UiState, UiStateWithDefaultId, personProfiles }
+const db = { todos, todosWithIntId, comments, issue, selections, personProfiles }
 
 describe('query builder', () => {
   describe('basic queries', () => {

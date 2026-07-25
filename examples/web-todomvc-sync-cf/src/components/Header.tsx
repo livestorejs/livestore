@@ -1,15 +1,15 @@
 import { type ChangeEvent, type KeyboardEvent, useCallback } from 'react'
 
-import { uiState$ } from '../livestore/queries.ts'
+import { uiStateQuery } from '../livestore/queries.ts'
 import { events } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
 
 export const Header = () => {
   const store = useAppStore()
-  const { newTodoText } = store.useQuery(uiState$)
+  const { newTodoText } = store.useQuery(uiStateQuery(store.sessionId))
 
   const updatedNewTodoText = useCallback(
-    (text: string) => store.commit(events.uiStateSet({ newTodoText: text })),
+    (text: string) => store.commit(events.todoDraftChanged({ id: store.sessionId, text })),
     [store],
   )
 
@@ -17,7 +17,7 @@ export const Header = () => {
     () =>
       store.commit(
         events.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
-        events.uiStateSet({ newTodoText: '' }),
+        events.todoDraftChanged({ id: store.sessionId, text: '' }),
       ),
     [newTodoText, store],
   )

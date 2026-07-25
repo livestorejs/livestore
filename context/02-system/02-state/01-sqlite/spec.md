@@ -6,6 +6,8 @@ builds on [requirements.md](./requirements.md) and the parent
 the primary read-model realization (and why the dimension stays open) is
 recorded in
 [.decisions/0001](./.decisions/0001-sqlite-primary-read-model.md).
+The removal of the former implicit document API is recorded in
+[decision 0002](./.decisions/0002-remove-client-document-api.md).
 
 ## Status
 
@@ -33,7 +35,7 @@ schema-level metadata.
 
 `query-builder/` (`api.ts`, `astToSql.ts`) provides a deliberately small
 SQL subset over table defs — reads: `select`, `where`, `orderBy`, `offset`,
-`limit`, `first`, `count`, `row`; writes: `insert`, `update`, `delete` with
+`limit`, `first`, `count`; writes: `insert`, `update`, `delete` with
 `onConflict` and `returning`. No joins, subqueries, or aggregations beyond
 `count` — raw SQL (with bind values) is the escape hatch for those. Results
 decode through the row schema derived from the table AST. Every builder
@@ -43,41 +45,23 @@ hash used for live-query dedup and reactive invalidation
 raw SQL strings, or `{sql, bindValues, writeTables}`
 (LS.SYS.STATE.SQLITE-R02).
 
-## Client Documents
-
-`client-document-def.ts`: a keyed document table where `set(value, id?)`
-emits an auto-generated derived client-only event with an implicit
-materializer; `get(id?)` is a typed query. Mechanics:
-
-- The set-event payload is always `{ id, value }`; with
-  `partialSet: true` (default, struct-valued documents only) `value` may be
-  a partial that merges into the current document; otherwise the
-  materializer upserts the full value via
-  `INSERT … ON CONFLICT (id) DO UPDATE` (`client-document-def.ts:305-321`)
-  — last-write-wins per key (LS.SYS.STATE.SQLITE-R07).
-- The `value` column stores full documents decoded through an
-  *optimistic* schema (`client-document-def.ts:66`) so historical value
-  formats remain readable after the document schema evolves.
-- `SessionIdSymbol` keys the document to the current session and is
-  resolved before materialization (materializing an unresolved symbol is a
-  defect).
-- Scope: reaches all sessions of the client, never other clients. Caveat
-  (from code): incompatible re-definitions of a client-document table can
-  orphan old auto-generated events — rebuilds then lose that document
-  state.
+Application state uses one explicit path: ordinary tables, explicit synced
+or client-only events, explicit materializers, and read-only queries. Query
+fallbacks may synthesize a result for a missing row in memory, but querying
+never commits an event or writes to SQLite.
 
 ## System Tables
 
-| Group | Tables | Purpose |
-| --- | --- | --- |
-| Eventlog | `eventlog` (`eventlog-tables.ts`) | one row per event: composite seqNum triple (PK) + parent triple, `name`, `argsJson`, `clientId`, `sessionId`, per-row `schemaHash`, `syncMetadataJson`; indexed on seqNum |
-| Sync status | `__livestore_sync_status` | upstream head + `backendId` (backend-identity change detection) |
-| Schema meta | `__livestore_schema`, `__livestore_schema_event_defs` (`state-tables.ts`) | table-AST and event-definition hashes for drift detection |
-| Changeset/rollback | `__livestore_session_changeset` (`state-tables.ts`) | per-event SQLite session changesets enabling rebase rollback (LS.SYS.STATE.SQLITE-R06) |
+| Group              | Tables                                                                    | Purpose                                                                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Eventlog           | `eventlog` (`eventlog-tables.ts`)                                         | one row per event: composite seqNum triple (PK) + parent triple, `name`, `argsJson`, `clientId`, `sessionId`, per-row `schemaHash`, `syncMetadataJson`; indexed on seqNum |
+| Sync status        | `__livestore_sync_status`                                                 | upstream head + `backendId` (backend-identity change detection)                                                                                                           |
+| Schema meta        | `__livestore_schema`, `__livestore_schema_event_defs` (`state-tables.ts`) | table-AST and event-definition hashes for drift detection                                                                                                                 |
+| Changeset/rollback | `__livestore_session_changeset` (`state-tables.ts`)                       | per-event SQLite session changesets enabling rebase rollback (LS.SYS.STATE.SQLITE-R06)                                                                                    |
 
 (LS.SYS.STATE.SQLITE-R04.) Note the eventlog and changeset groups span two
-databases: changeset rows live in the *state* DB while event rows live in
-the *eventlog* DB; `getEventsSince` joins across both to serve rebase
+databases: changeset rows live in the _state_ DB while event rows live in
+the _eventlog_ DB; `getEventsSince` joins across both to serve rebase
 rollback.
 
 ## Schema Change

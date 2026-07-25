@@ -2,7 +2,7 @@ import { type FC, useCallback } from 'react'
 import type { TextStyle, ViewStyle } from 'react-native'
 import { Button, ScrollView, Text, View } from 'react-native'
 
-import { visibleTodos$ } from '../livestore/queries.ts'
+import { visibleTodosQuery } from '../livestore/queries.ts'
 import { events, type tables } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
 
@@ -20,7 +20,7 @@ const todoActionRowStyle = { flexDirection: 'row', gap: 12 } satisfies ViewStyle
 
 export const ListTodos: FC = () => {
   const store = useAppStore()
-  const todos = store.useQuery(visibleTodos$)
+  const todos = store.useQuery(visibleTodosQuery(store.sessionId))
 
   const toggleTodo = useCallback(
     ({ id, completed }: typeof tables.todos.Type) => {

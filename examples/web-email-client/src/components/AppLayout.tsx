@@ -1,9 +1,11 @@
-import { queryDb } from '@livestore/livestore'
 import type React from 'react'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 
+import { queryDb } from '@livestore/livestore'
+
 import { useMailboxStore } from '../stores/mailbox/index.ts'
+import { mailboxUiStateQuery } from '../stores/mailbox/queries.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
 import { LabelSidebar } from './LabelSidebar.tsx'
 import { ThreadList } from './ThreadList.tsx'
@@ -30,7 +32,7 @@ export const AppLayout: React.FC = () => {
   const mailboxStore = useMailboxStore()
 
   const labels = mailboxStore.useQuery(labelsQuery)
-  const [uiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
+  const uiState = mailboxStore.useQuery(mailboxUiStateQuery(mailboxStore.sessionId))
 
   const selectedLabel = labels.find((l) => l.id === uiState.selectedLabelId)
 

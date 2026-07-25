@@ -18,8 +18,8 @@ contrib-owned — see [realizations.md](./realizations.md).
   framework idioms; they hold no data state of their own and add no query
   semantics. `refines: LS-R09`
 - **LS.SYS.INT-R02 Shared toolkit:** Cross-framework logic — queryable
-  normalization, client-document helpers, stack-info for query provenance —
-  lives once in `framework-toolkit`, not per integration.
+  normalization and stack-info for query provenance — lives once in
+  `framework-toolkit`, not per integration.
 - **LS.SYS.INT-R03 Lifecycle ownership:** Integrations acquire and release
   stores through the store registry so store lifetime follows component/app
   lifetime without manual shutdown. `refines: LS.SYS.STORE-R07`
@@ -28,7 +28,7 @@ contrib-owned — see [realizations.md](./realizations.md).
 - **LS.SYS.INT-R05 Robust under framework semantics:** Integrations tolerate
   their framework's rendering model (e.g. React StrictMode double-invoke,
   concurrent rendering) without leaking or double-registering resources.
-- **LS.SYS.INT-R06 Read seeds default:** The first read of a client document
-  idempotently materializes its default value without triggering a refresh
-  loop. Adopted 2026-07-16 (interview).
-  `refines: LS.SYS.STATE.SQLITE-R03`
+
+(`LS.SYS.INT-R06` was retired on 2026-07-25 by
+[decision 0002](../02-state/01-sqlite/.decisions/0002-remove-client-document-api.md);
+the ID is not reused.)

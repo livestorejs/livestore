@@ -1,7 +1,7 @@
 import { type FC, useCallback } from 'react'
 import { Button, TextInput, View } from 'react-native'
 
-import { uiState$ } from '../livestore/queries.ts'
+import { uiStateQuery } from '../livestore/queries.ts'
 import { events } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
 
@@ -9,18 +9,18 @@ const formContainerStyle = { gap: 12 }
 
 export const NewTodo: FC = () => {
   const store = useAppStore()
-  const { newTodoText } = store.useQuery(uiState$)
+  const { newTodoText } = store.useQuery(uiStateQuery(store.sessionId))
 
   const updateText = useCallback(
     (text: string) => {
-      store.commit(events.uiStateSet({ newTodoText: text }))
+      store.commit(events.todoDraftChanged({ id: store.sessionId, text }))
     },
     [store],
   )
   const createTodo = useCallback(() => {
     store.commit(
       events.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
-      events.uiStateSet({ newTodoText: '' }),
+      events.todoDraftChanged({ id: store.sessionId, text: '' }),
     )
   }, [newTodoText, store])
 

@@ -11,20 +11,14 @@ const todos = State.SQLite.table({
   },
 })
 
-const Config = Schema.Struct({
-  fontSize: Schema.Finite,
-  theme: Schema.Literals(['light', 'dark']),
-})
-
-const appConfig = State.SQLite.clientDocument({
+const appConfig = State.SQLite.table({
   name: 'app_config',
-  schema: Config,
-  default: { value: { fontSize: 16, theme: 'light' } },
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    fontSize: State.SQLite.real({ default: 16 }),
+    theme: State.SQLite.text({ schema: Schema.Literals(['light', 'dark']), default: 'light' }),
+  },
 })
-
-const appConfigTable = appConfig as typeof appConfig & State.SQLite.ClientDocumentTableDef<any, any, any, any>
-
-export const appConfigSetEvent = appConfigTable[State.SQLite.ClientDocumentTableDefSymbol].derived.setEventDef
 
 export const events = {
   todoCreated: Events.synced({
@@ -39,6 +33,16 @@ export const events = {
     name: 'todoDeletedNonPure',
     schema: Schema.Struct({ id: Schema.String }),
   }),
+  appConfigSet: Events.clientOnly({
+    name: 'app_configSet',
+    schema: Schema.Struct({
+      id: Schema.String,
+      value: Schema.Struct({
+        fontSize: Schema.Finite.pipe(Schema.optional),
+        theme: Schema.Literals(['light', 'dark']).pipe(Schema.optional),
+      }),
+    }),
+  }),
 }
 
 const materializers = State.SQLite.materializers(events, {
@@ -46,7 +50,13 @@ const materializers = State.SQLite.materializers(events, {
   todoCompleted: ({ id }) => todos.update({ completed: true }).where({ id }),
   // This materialize is non-pure as `new Date()` is side effecting
   todoDeletedNonPure: ({ id }) => todos.update({ deletedAt: new Date() }).where({ id }),
+  app_configSet: ({ id, value }) =>
+    appConfig
+      .insert({ id, fontSize: value.fontSize ?? 16, theme: value.theme ?? 'light' })
+      .onConflict('id', 'update', value),
 })
+
+export const appConfigSetEvent = events.appConfigSet
 
 export const tables = { todos, appConfig }
 

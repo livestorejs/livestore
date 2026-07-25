@@ -1,4 +1,3 @@
-import { queryDb } from '@livestore/livestore'
 import { generateKeyBetween } from 'fractional-indexing'
 import React from 'react'
 import {
@@ -14,8 +13,10 @@ import {
 } from 'react-aria-components'
 import { AutoSizer } from 'react-virtualized-auto-sizer'
 
+import { queryDb } from '@livestore/livestore'
+
 import type { StatusDetails } from '../../../data/status-options.ts'
-import { filterState$, useDebouncedScrollState, useFilterState } from '../../../livestore/queries.ts'
+import { filterStateQuery, useDebouncedScrollState, useFilterState } from '../../../livestore/queries.ts'
 import { events, tables } from '../../../livestore/schema/index.ts'
 import { useAppStore } from '../../../livestore/store.ts'
 import { filterStateToWhere } from '../../../livestore/utils.tsx'
@@ -56,7 +57,7 @@ const ColumnGridList = ({
       style={listStyle}
       onScroll={handleScroll}
     >
-      {(issue: (typeof tables.issue.Type)) => (
+      {(issue: typeof tables.issue.Type) => (
         <GridListItem
           textValue={issue.id.toString()}
           aria-label={`Issue ${issue.id}: ${issue.title}`}
@@ -79,9 +80,13 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
     (get) =>
       tables.issue
         .select()
-        .where({ priority: filterStateToWhere(get(filterState$))?.priority, status, deleted: null })
+        .where({
+          priority: filterStateToWhere(get(filterStateQuery(store.sessionId)).value)?.priority,
+          status,
+          deleted: null,
+        })
         .orderBy('kanbanorder', 'desc'),
-    { label: 'List.visibleIssues', deps: [status] },
+    { label: 'List.visibleIssues', deps: [status, store.sessionId] },
   )
   const filteredIssues = store.useQuery(filteredIssues$)
 

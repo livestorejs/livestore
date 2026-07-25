@@ -7,8 +7,8 @@ registry-based lifecycle. Refines [../requirements.md](../requirements.md)
 ## Requirements
 
 - **LS.SYS.INT.REACT-R01 Hooks surface:** The integration exposes `useStore`,
-  `useQuery`, `useClientDocument`, and `useSyncStatus`; components never touch
-  session or leader internals. `refines: LS.SYS.INT-R01`
+  `useQuery`, and `useSyncStatus`; components never touch session or leader
+  internals. `refines: LS.SYS.INT-R01`
 - **LS.SYS.INT.REACT-R02 Context-scoped registry:** Stores resolve through
   `StoreRegistryContext`; providers scope which stores a subtree sees.
   `refines: LS.SYS.INT-R03`

@@ -1,7 +1,7 @@
 import { queryDb } from '@livestore/livestore'
 
 import { statusOptions } from '../../../data/status-options.ts'
-import { filterState$ } from '../../../livestore/queries.ts'
+import { filterStateQuery } from '../../../livestore/queries.ts'
 import { tables } from '../../../livestore/schema/index.ts'
 import { useAppStore } from '../../../livestore/store.ts'
 import { filterStateToOrderBy, filterStateToWhere } from '../../../livestore/utils.tsx'
@@ -9,18 +9,21 @@ import type { Status } from '../../../types/status.ts'
 import { Filters } from '../filters/index.tsx'
 import { Column } from './column.tsx'
 
-const filteredIssueIds$ = queryDb(
-  (get) =>
-    tables.issue
-      .select('id')
-      .where({ ...filterStateToWhere(get(filterState$)), deleted: null })
-      .orderBy(filterStateToOrderBy(get(filterState$))),
-  { label: 'Board.visibleIssueIds' },
-)
+const filteredIssueIdsQuery = (id: string) =>
+  queryDb(
+    (get) => {
+      const filterState = get(filterStateQuery(id)).value
+      return tables.issue
+        .select('id')
+        .where({ ...filterStateToWhere(filterState), deleted: null })
+        .orderBy(filterStateToOrderBy(filterState))
+    },
+    { label: `Board.visibleIssueIds:${id}`, deps: id },
+  )
 
 export const Board = () => {
   const store = useAppStore()
-  const filteredIssueIds = store.useQuery(filteredIssueIds$)
+  const filteredIssueIds = store.useQuery(filteredIssueIdsQuery(store.sessionId))
 
   return (
     <>
