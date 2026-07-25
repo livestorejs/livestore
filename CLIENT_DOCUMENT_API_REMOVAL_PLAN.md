@@ -746,13 +746,13 @@ root-relative recording path:
 
 | Example workspace          | Run/build command                                                                    | Local URL                 | Updated flow verified                                                                | Video                                                                                                               |
 | -------------------------- | ------------------------------------------------------------------------------------ | ------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| `web-todomvc`              | `pnpm build`; `pnpm exec playwright test`; `pnpm dev`                                | `http://localhost:60002/` | [x] fallback, create/update, reload, session isolation, todo create/complete         | `client-document-api-removal-recordings/web-todomvc--client-ui-state-create-update-reload.webm`                     |
-| `web-todomvc-sync-cf`      | `pnpm build`; `pnpm exec playwright test`; `pnpm dev`                                | `http://localhost:60001/` | [x] fallback, create/update, reload, session isolation, synced todo/filter           | `client-document-api-removal-recordings/web-todomvc-sync-cf--client-ui-state-create-update-reload.webm`             |
-| `web-todomvc-script`       | `pnpm build`; `pnpm exec playwright test`; `pnpm dev`                                | `http://localhost:60004/` | [x] seeded and streamed todo workflow; no converted UI state remains                 | `client-document-api-removal-recordings/web-todomvc-script--todo-workflow-after-unused-ui-state-removal.webm`       |
+| `web-todomvc`              | `pnpm build`; `pnpm exec playwright test`; `pnpm dev`                                | `http://localhost:60002/` | [x] fallback, create/update, reload, session isolation, todo create/complete         | `../client-document-api-removal-recordings/web-todomvc--client-ui-state-create-update-reload.webm`                  |
+| `web-todomvc-sync-cf`      | `pnpm build`; `pnpm exec playwright test`; `pnpm dev`                                | `http://localhost:60001/` | [x] fallback, create/update, reload, session isolation, synced todo/filter           | `../client-document-api-removal-recordings/web-todomvc-sync-cf--client-ui-state-create-update-reload.webm`          |
+| `web-todomvc-script`       | `pnpm build`; `pnpm exec playwright test`; `pnpm dev`                                | `http://localhost:60004/` | [x] seeded and streamed todo workflow; no converted UI state remains                 | `../client-document-api-removal-recordings/web-todomvc-script--todo-workflow-after-unused-ui-state-removal.webm`    |
 | `web-todomvc-react-router` | **Waived:** no `package.json`, dev command, or runnable app exists in this checkout | **Waived:** no local URL | [x] maintainer waiver received 2026-07-25                                            | **Waived:** no recording required                                                                                  |
 | `web-todomvc-redwood`      | **Waived:** no `package.json`, dev command, or runnable app exists in this checkout | **Waived:** no local URL | [x] maintainer waiver received 2026-07-25                                            | **Waived:** no recording required                                                                                  |
-| `web-email-client`         | `pnpm build`; `pnpm dev`                                                             | `http://localhost:5173/`  | [x] fallback, label/thread create/update, reload, session isolation, thread workflow | `client-document-api-removal-recordings/web-email-client--navigation-state-create-update-reload.webm`               |
-| `web-linearlite`           | `pnpm build`; `pnpm exec playwright test`; `pnpm dev`                                | `http://localhost:60000/` | [x] filter/frontend/scroll create/update, reload, session isolation, issue workflow  | `client-document-api-removal-recordings/web-linearlite--filter-frontend-scroll-state-create-update-reload.webm`     |
+| `web-email-client`         | `pnpm build`; `pnpm dev`                                                             | `http://localhost:5173/`  | [x] fallback, label/thread create/update, reload, session isolation, thread workflow | `../client-document-api-removal-recordings/web-email-client--navigation-state-create-update-reload.webm`            |
+| `web-linearlite`           | `pnpm build`; `pnpm exec playwright test`; `pnpm dev`                                | `http://localhost:60000/` | [x] filter/frontend/scroll create/update, reload, session isolation, issue workflow  | `../client-document-api-removal-recordings/web-linearlite--filter-frontend-scroll-state-create-update-reload.webm`  |
 
 If another example appears in the final diff, add a row and name its recording
 using the same convention:
@@ -800,13 +800,13 @@ For each row in the matrix:
 #### Record one focused video per changed example
 
 After an example passes its manual flow, reset it to a clean/reloaded starting
-state and record a focused demonstration of the updated behavior. Put all
-recordings in `client-document-api-removal-recordings/` at the repository root,
-regardless of the working directory used to launch an example:
+state and record a focused demonstration of the updated behavior. Keep all
+recordings in a sibling directory outside the repository, regardless of the
+working directory used to launch an example:
 
 ```sh
 REPO_ROOT="$(git rev-parse --show-toplevel)"
-VIDEO_DIR="$REPO_ROOT/client-document-api-removal-recordings"
+VIDEO_DIR="$(dirname "$REPO_ROOT")/client-document-api-removal-recordings"
 mkdir -p "$VIDEO_DIR"
 
 agent-browser --session "$EXAMPLE_SESSION" record start "$VIDEO_DIR/$VIDEO_FILENAME"
@@ -824,9 +824,8 @@ agent-browser --session "$EXAMPLE_SESSION" record stop
       video that only loads the landing page is insufficient.
 - [x] Verify every recording exists, is non-empty, and plays through before
       claiming completion.
-- [x] Keep video binaries out of the source commit unless a maintainer requests
-      otherwise, but leave them in the root-level
-      `client-document-api-removal-recordings/` directory for local review.
+- [x] Keep video binaries out of the source commit and leave them in the sibling
+      `../client-document-api-removal-recordings/` directory for local review.
       Attach or upload them as PR evidence and add durable links to the PR
       description.
 - [x] Stop recording even when a flow fails, then restart from a clean state
@@ -858,6 +857,6 @@ agent-browser --session "$EXAMPLE_SESSION" record stop
   integration failures have explicit maintainer waivers.
 - Every changed example workspace builds, passes its automated checks, passes
   the agent-browser manual workflow, and has a reviewed video demonstrating the
-  converted behavior in the root-level
-  `client-document-api-removal-recordings/` directory, except for explicitly
+  converted behavior in the sibling
+  `../client-document-api-removal-recordings/` directory, except for explicitly
   waived non-runnable workspaces.
