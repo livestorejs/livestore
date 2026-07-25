@@ -608,9 +608,13 @@ editing the derived docs site.
 - [ ] Keep RFC 0003 as the design/history record; do not turn the implementation
       PR into a broader migration-framework project.
 
-### 8. Verification and completion audit
+### 8. Mandatory full build and automated-test gate
 
-Run targeted checks first, then repository-wide gates.
+Run targeted checks first, then repository-wide gates. The removal is not
+complete until every command in this section exits successfully. Do not treat
+an unrelated-looking or pre-existing failure as a pass: fix it when it is
+caused by this branch, or stop and get an explicit maintainer waiver when it is
+demonstrably external to the change.
 
 - [ ] Run the directly affected Vitest files for the query builder,
       `SessionIdSymbol`, client-session sync processor, leader sync/stream
@@ -626,6 +630,7 @@ Run targeted checks first, then repository-wide gates.
   ```sh
   devenv tasks run lint:full:fix
   devenv tasks run ts:check
+  mono ts --clean
   ```
 
 - [ ] Build current documentation and test examples:
@@ -635,15 +640,31 @@ Run targeted checks first, then repository-wide gates.
   mono examples test
   ```
 
+- [ ] Determine the complete set of changed example workspaces from the final
+      diff, not from memory:
+
+  ```sh
+  git diff --name-only "$(git merge-base main HEAD)" -- examples/
+  ```
+
+  Group the results by example workspace. For every changed workspace, inspect
+  its `package.json` and local README/configuration, then run its documented
+  build command. This form includes committed and uncommitted changes relative
+  to the merge base; if the work targets a branch other than `main`, substitute
+  that target branch.
+
 - [ ] Run the full suite before pushing:
 
   ```sh
   devenv tasks run test:run
   ```
 
-- [ ] Run the relevant browser and performance smoke tests for the converted
-      devtools/TodoMVC and perf fixtures if they are not covered by the full
-      task.
+- [ ] Run any browser, integration, and performance suites for the converted
+      devtools/TodoMVC and perf fixtures that are not included in
+      `devenv tasks run test:run`.
+- [ ] Save the exact commands and successful exit results in the PR description
+      or linked implementation checklist. “Tests pass” without the command list
+      is not sufficient validation.
 - [ ] Perform a final source audit. Outside RFC 0003, the new decision, and
       sealed historical release notes, there must be no live references to:
   - `State.SQLite.clientDocument`
@@ -660,6 +681,140 @@ Run targeted checks first, then repository-wide gates.
   - `StateSetters`
   - client-document `.get()`, `.set()`, `.Value`, defaults, or `partialSet`
 
+### 9. Mandatory per-example agent-browser validation and video evidence
+
+Every example workspace changed while removing client-document APIs must be
+manually exercised in a real browser. This is a completion gate in addition to
+the automated example tests above.
+
+Before using the CLI, the implementing agent must read the repository-available
+`agent-browser` skill in full and follow its current instructions. In
+particular, use the snapshot/ref interaction loop, re-snapshot after any page
+change because element refs can become stale, wait for a specific readiness
+condition rather than an arbitrary delay, and keep each example in an isolated
+worktree-scoped browser session.
+
+#### Establish the exact example matrix
+
+- [ ] Generate the list from the final diff using the command in step 8. Add
+      every distinct example workspace to the matrix below, including any
+      example discovered later in the implementation.
+- [ ] The currently expected changed workspaces are:
+  - `examples/web-todomvc`
+  - `examples/web-todomvc-sync-cf`
+  - `examples/web-todomvc-script`
+  - `examples/web-todomvc-react-router`
+  - `examples/web-todomvc-redwood`
+  - `examples/web-email-client`
+  - `examples/web-linearlite`
+- [ ] Do not silently skip an expected row. A row may be removed only if its
+      workspace has no changes in the final diff. If an updated example cannot
+      be started or reached through a local browser URL, treat that as a
+      blocking failure rather than marking it not applicable.
+
+Use this checklist as the evidence index and fill in the actual commands, URL,
+and result during implementation. The video column assigns the expected
+root-relative recording path:
+
+| Example workspace | Run/build command | Local URL | Updated flow verified | Video |
+| --- | --- | --- | --- | --- |
+| `web-todomvc` | _fill in_ | _fill in_ | [ ] | `client-document-api-removal-recordings/web-todomvc--client-ui-state-create-update-reload.webm` |
+| `web-todomvc-sync-cf` | _fill in_ | _fill in_ | [ ] | `client-document-api-removal-recordings/web-todomvc-sync-cf--client-ui-state-create-update-reload.webm` |
+| `web-todomvc-script` | _fill in_ | _fill in_ | [ ] | `client-document-api-removal-recordings/web-todomvc-script--todo-workflow-after-unused-ui-state-removal.webm` |
+| `web-todomvc-react-router` | _fill in_ | _fill in_ | [ ] | `client-document-api-removal-recordings/web-todomvc-react-router--todo-workflow-after-unused-ui-state-removal.webm` |
+| `web-todomvc-redwood` | _fill in_ | _fill in_ | [ ] | `client-document-api-removal-recordings/web-todomvc-redwood--todo-workflow-after-unused-ui-state-removal.webm` |
+| `web-email-client` | _fill in_ | _fill in_ | [ ] | `client-document-api-removal-recordings/web-email-client--navigation-state-create-update-reload.webm` |
+| `web-linearlite` | _fill in_ | _fill in_ | [ ] | `client-document-api-removal-recordings/web-linearlite--filter-frontend-scroll-state-create-update-reload.webm` |
+
+If another example appears in the final diff, add a row and name its recording
+using the same convention:
+`<example>--<converted-feature>--<behaviors-demonstrated>.webm`. Prefer concrete
+feature and behavior names such as `navigation-state-create-update-reload`;
+avoid opaque names such as `demo.webm`, `test.webm`, or `recording-1.webm`.
+
+#### Manually verify each changed example
+
+For each row in the matrix:
+
+1. Start the example with its own documented development command and keep that
+   process running. Capture the actual local URL from the process output and
+   wait for its explicit readiness signal.
+2. Create a stable, isolated browser session and open the local URL. Replace
+   the shell variables with values for the current example:
+
+   ```sh
+   EXAMPLE_SESSION="$(agent-browser session id --scope worktree --prefix "$EXAMPLE_NAME")"
+   agent-browser --session "$EXAMPLE_SESSION" --restore open "$EXAMPLE_URL"
+   agent-browser --session "$EXAMPLE_SESSION" snapshot -i
+   ```
+
+3. Interact through snapshot refs (`@e1`, `@e2`, and so on). After navigation,
+   a reload, opening or closing a dialog, or any other DOM-changing action,
+   take a new interactive snapshot before the next interaction.
+4. Exercise the example's primary workflow and every UI path changed by the
+   client-document replacement. Where the example exposes the converted state,
+   explicitly prove all applicable behavior:
+   - the fallback value renders before a persisted row exists;
+   - the first edit dispatches the explicit client-only event and creates the
+     ordinary-table row;
+   - a later edit updates that same row instead of creating duplicates;
+   - a reload preserves the value at the intended client/session scope;
+   - a second tab or session observes shared client state, or remains isolated
+     for session-keyed state, according to the replacement chosen in this
+     plan; and
+   - the rest of the example's main workflow still works without an error
+     overlay or visibly broken state.
+5. Use condition-based waits for the expected text, element, URL, or network
+   idle state. Do not use blind sleeps as proof that an interaction worked.
+6. If any assertion fails, fix the example and repeat the complete manual flow
+   before recording evidence.
+
+#### Record one focused video per changed example
+
+After an example passes its manual flow, reset it to a clean/reloaded starting
+state and record a focused demonstration of the updated behavior. Put all
+recordings in `client-document-api-removal-recordings/` at the repository root,
+regardless of the working directory used to launch an example:
+
+```sh
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+VIDEO_DIR="$REPO_ROOT/client-document-api-removal-recordings"
+mkdir -p "$VIDEO_DIR"
+
+agent-browser --session "$EXAMPLE_SESSION" record start "$VIDEO_DIR/$VIDEO_FILENAME"
+agent-browser --session "$EXAMPLE_SESSION" snapshot -i
+# Perform and verify the updated workflow using fresh snapshot refs.
+agent-browser --session "$EXAMPLE_SESSION" record stop
+```
+
+- [ ] Each changed example has its own `.webm` recording; one combined video
+      does not satisfy this requirement.
+- [ ] Set `VIDEO_FILENAME` to the descriptive basename assigned in the matrix,
+      not merely the example name. If the demonstrated behavior changes, rename
+      the file and update the matrix so the filename remains truthful.
+- [ ] Each recording visibly demonstrates the converted UI path working. A
+      video that only loads the landing page is insufficient.
+- [ ] Verify every recording exists, is non-empty, and plays through before
+      claiming completion.
+- [ ] Keep video binaries out of the source commit unless a maintainer requests
+      otherwise, but leave them in the root-level
+      `client-document-api-removal-recordings/` directory for local review.
+      Attach or upload them as PR evidence and add durable links to the PR
+      description.
+- [ ] Stop recording even when a flow fails, then restart from a clean state
+      after the fix so partial or misleading recordings are not submitted.
+- [ ] Close each browser session and stop its development server after its
+      evidence is complete:
+
+  ```sh
+  agent-browser --session "$EXAMPLE_SESSION" close
+  ```
+
+- [ ] If the CLI itself fails, preserve the error output and run the skill's
+      read-only diagnostic command (`agent-browser doctor --offline --quick`).
+      Do not use automatic repair flags without separately reviewing their
+      effects.
+
 ## Definition of done
 
 - No published package exports a client-document constructor, type, hook, or
@@ -674,3 +829,7 @@ Run targeted checks first, then repository-wide gates.
   working.
 - Type checking, linting, docs, examples, intent invariants, targeted tests,
   and the full test suite pass.
+- Every changed example workspace builds, passes its automated checks, passes
+  the agent-browser manual workflow, and has a reviewed video demonstrating the
+  converted behavior in the root-level
+  `client-document-api-removal-recordings/` directory.
