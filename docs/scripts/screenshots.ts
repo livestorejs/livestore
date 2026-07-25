@@ -128,7 +128,7 @@ const waitForServer = async (baseURL: string, timeoutMs: number): Promise<void> 
   while (Date.now() < deadline) {
     try {
       const res = await fetch(baseURL)
-      if (res.ok || res.status < 500) return
+      if (res.ok === true || res.status < 500) return
     } catch {
       // server not up yet
     }
@@ -142,7 +142,7 @@ const getFreePort = (): Promise<number> =>
     const server = net.createServer()
     server.listen(0, () => {
       const address = server.address()
-      if (!address || typeof address === 'string') {
+      if (address === null || typeof address === 'string') {
         server.close()
         reject(new Error('Failed to allocate a free port'))
         return
