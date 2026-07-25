@@ -8,6 +8,8 @@ const isoDate = /^\d{4}-\d{2}-\d{2}$/
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
+const decodeEntry = Schema.decodeUnknownExit(QuarantineEntry)
+
 describe('quarantine ledger', () => {
   it('has no expired entries', () => {
     // A quarantine past its expiry reds `test-unit` rather than quietly becoming permanent.
@@ -27,9 +29,16 @@ describe('quarantine ledger', () => {
     expect(expiredEntries({ lapsed, live }, today()).map(([key]) => key)).toEqual(['lapsed'])
   })
 
+  it('rejects a malformed entry', () => {
+    // Exercises the decode used by the shape check above, which otherwise never runs while
+    // the ledger is empty — an unexercised assertion is the failure mode this PR exists to stop.
+    expect(Exit.isSuccess(decodeEntry({ target: 'x', reason: 'y', issue: 'z', expires: '2999-01-01' }))).toBe(true)
+    expect(Exit.isSuccess(decodeEntry({ target: 'x', reason: 'y', issue: 'z' }))).toBe(false)
+  })
+
   it('records a target, reason, issue and a well-formed expiry for every entry', () => {
     for (const [key, entry] of Object.entries(quarantineLedger as Record<string, QuarantineEntry>)) {
-      expect(Exit.isSuccess(Schema.decodeUnknownExit(QuarantineEntry)(entry)), `${key} shape`).toBe(true)
+      expect(Exit.isSuccess(decodeEntry(entry)), `${key} shape`).toBe(true)
       expect(entry.issue, `${key} issue`).toMatch(/^https:\/\/github\.com\//)
       expect(entry.expires, `${key} expires`).toMatch(isoDate)
       expect(entry.reason.length, `${key} reason`).toBeGreaterThan(0)
