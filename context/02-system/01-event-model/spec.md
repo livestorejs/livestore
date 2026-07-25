@@ -111,7 +111,7 @@ row completeness contracted by LS.SYS.EVT-R09):
 Properties:
 
 - Logically append-only: confirmed history is immutable (LS.SYS.EVT-R07).
-  Mechanically, rebase is implemented as delete + reinsert of the _pending_
+  Mechanically, rebase is implemented as delete + reinsert of the *pending*
   tail — `rollback()` physically `DELETE`s pending eventlog and changeset
   rows (`materialize-event.ts:210-219`) before the re-parented events are
   appended. The append-only contract holds for events at or below the
@@ -134,8 +134,8 @@ Properties:
 not-fully-implemented). Facts are key/value constraints an event can
 `set`/`unset`/`require`/`read`, intended for ordering constraints,
 compaction, and conflict detection, consumed by the experimental next-gen
-sync (`../03-sync/spec.md`). They are currently _not wired into
-materialization at all_: the materializer context's `currentFacts` is a
+sync (`../03-sync/spec.md`). They are currently *not wired into
+materialization at all*: the materializer context's `currentFacts` is a
 constant empty `Map` (`common/src/materializer-helper.ts:70`). Not part of
 the shipping contract.
 
