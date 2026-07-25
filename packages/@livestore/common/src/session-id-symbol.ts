@@ -16,15 +16,15 @@ import type { Bindable, SqlValue } from './util.ts'
  *
  * In a session-scoped client-only event:
  * ```ts
- * const draftChanged = Events.clientOnly({
- *   name: 'DraftChanged',
+ * const themeChanged = Events.clientOnly({
+ *   name: 'ThemeChanged',
  *   schema: Schema.Struct({
  *     id: Schema.Union([Schema.String, Schema.UniqueSymbol(SessionIdSymbol)]),
- *     draft: Schema.String,
+ *     theme: Schema.Literals(['dark', 'light', 'system']),
  *   }),
  * })
  *
- * store.commit(draftChanged({ id: SessionIdSymbol, draft: 'Buy milk' }))
+ * store.commit(themeChanged({ id: SessionIdSymbol, theme: 'dark' }))
  * ```
  *
  * Or in a query bind value:
