@@ -71,7 +71,8 @@ R20→R13, R21→R14, R22→R15, R23→R16, R24→R17; DQ1→DQ1, DQ3→DQ2.
   links, not npm.
 - **LS.DEL.COMP-R08 No duplicate LiveStore identities:** Live development
   workspaces avoid pnpm settings that make TypeScript see duplicated
-  `@livestore/*` package identities through generated outputs or GVS links.
+  `@livestore/*` package identities through injected and source workspace
+  views.
 
 ### Must Share Tooling
 
