@@ -39,8 +39,12 @@ command column). Two characteristics are deliberate, not drift:
 
 ## Test Policy
 
-Every test target runs under an explicit policy (LS.SYS.VER.LANE-R04), stated at
-its invocation in `scripts/src/shared/test-policy.ts`:
+Test targets invoked by the `mono test` runner (unit, sync-provider, SQLite
+substrate, perf) run under an explicit policy (LS.SYS.VER.LANE-R04), stated at
+their invocation in `scripts/src/shared/test-policy.ts`. The browser integration
+lane is dispatched through `@local/tests-integration` and is not yet routed
+through the helper — tracked in
+[.delta/DELTA-003-integration-lane-unpoliced.md](./.delta/DELTA-003-integration-lane-unpoliced.md).
 
 | Policy | Effect on the job |
 | --- | --- |
