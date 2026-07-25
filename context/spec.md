@@ -210,13 +210,8 @@ committed `.proposed/`), and the maturity vocabulary (only `experimental` is a
 legal marker; `proposal` is rejected — see Maturity Markers). Semantic review
 (testability, decision evidence quality) remains human/agent judgment.
 
-The suite runs in CI but its failures do **not yet hard-block the run**:
-`tests/package-common` sits in the CI runner's `sequentialPackages` group, which
-is executed through `Effect.ignore` (a workaround for flaky `webmesh` tests,
-`scripts/src/commands/test-commands.ts`), so a failing invariant is logged, not
-gated. Making this suite fail the `test-unit` job — by running it as a dedicated
-non-ignored step — is tracked in
-[.delta/DELTA-002-enforcement-not-ci-blocking.md](./.delta/DELTA-002-enforcement-not-ci-blocking.md).
+A failing invariant hard-blocks the run: `test-unit` is a required check, and the
+suite's failures reach its exit code.
 
 ## Open Design Questions
 

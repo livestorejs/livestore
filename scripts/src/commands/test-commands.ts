@@ -197,12 +197,8 @@ const runUnitTests = Effect.fn(function* ({ filter }: { filter: Option.Option<st
 
     const vitestPathsToRunSequentially = sequentialPackages.map((pkg) => `${workspaceRoot}/${pkg}`)
 
-    // Currently getting a bunch of flaky webmesh tests on CI (https://share.cleanshot.com/Q2WWD144)
-    // Ignoring them for now but we should fix them eventually
     for (const vitestPath of vitestPathsToRunSequentially) {
-      yield* runTestGroup(vitestPath)(
-        cmd(`vitest run ${vitestPath}`).pipe(Effect.ignore, Effect.provide(LivestoreWorkspace.toCwd())),
-      )
+      yield* runTestGroup(vitestPath)(cmd(`vitest run ${vitestPath}`).pipe(Effect.provide(LivestoreWorkspace.toCwd())))
     }
 
     // Run the rest of the tests in parallel (each config as separate vitest invocation)
