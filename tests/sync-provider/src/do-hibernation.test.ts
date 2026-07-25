@@ -20,14 +20,17 @@ import {
 } from '@livestore/utils/effect'
 
 import * as CloudflareWsProvider from './providers/cloudflare-ws.ts'
+import { isProviderSelected } from './providers/registry.ts'
 import { SyncProviderImpl } from './types.ts'
 
 const idleWindow: Duration.Input = '20 seconds' // workerd evicts somewhere between 9s and 11s idle
 
 type RuntimeServices = SyncProviderImpl | HttpClient.HttpClient | KeyValueStore.KeyValueStore
 
-// CI cells select by title (see scripts/src/commands/test-commands.ts); renaming this stops it running anywhere.
-Vitest.describe(`${CloudflareWsProvider.doSqlite.name} sync provider — DO hibernation`, () => {
+// Selected by provider key, not by suite title, so renaming this suite cannot drop it from CI.
+const describeWsDo = Vitest.describe.skipIf(isProviderSelected('cf-ws-do') === false)
+
+describeWsDo(`${CloudflareWsProvider.doSqlite.name} sync provider — DO hibernation`, () => {
   let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
   let runtimeContext: Context.Context<RuntimeServices>
 

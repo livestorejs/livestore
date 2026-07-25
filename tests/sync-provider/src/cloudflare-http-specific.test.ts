@@ -17,16 +17,27 @@ import {
   References,
 } from '@livestore/utils/effect'
 
-import * as CloudflareHttpProvider from './providers/cloudflare-http-rpc.ts'
+import { isProviderSelected, providerRegistry } from './providers/registry.ts'
 import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'
 
 /** Cloudflare HTTP-specific tests for response headers and HTTP transport features */
 
-const cloudflareHttpProviders = [CloudflareHttpProvider.d1, CloudflareHttpProvider.doSqlite]
+const cloudflareHttpKeys = ['cf-http-d1', 'cf-http-do'] as const
+const selectedHttpKeys = cloudflareHttpKeys.filter((key) => isProviderSelected(key))
+
+// When no HTTP provider is selected the full list is still registered, just skipped: an empty
+// `describe.each` collects nothing and Vitest fails the file outright, which would red every
+// non-HTTP provider cell.
+const skipUnlessHttpSelected = selectedHttpKeys.length === 0
+const cloudflareHttpProviders = (skipUnlessHttpSelected === true ? cloudflareHttpKeys : selectedHttpKeys).map(
+  (key) => providerRegistry[key],
+)
 
 type RuntimeServices = SyncProviderImpl | HttpClient.HttpClient
 
-Vitest.describe.each(cloudflareHttpProviders)('$name HTTP response headers', { timeout: 30000 }, ({ layer, name }) => {
+const describeHttpProviders = Vitest.describe.skipIf(skipUnlessHttpSelected).each(cloudflareHttpProviders)
+
+describeHttpProviders('$name HTTP response headers', { timeout: 30000 }, ({ layer, name }) => {
   let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
   let runtimeContext: Context.Context<RuntimeServices>
   let testId: string

@@ -450,7 +450,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
               tabLocalhost.devtoolsConsoleFiber,
               tabLoopback.pageConsoleFiber,
               tabLoopback.devtoolsConsoleFiber,
-            ]).pipe(Effect.ignore),
+            ]),
           ),
         )
       }),

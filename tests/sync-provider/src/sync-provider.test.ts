@@ -26,7 +26,7 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 
-import { providerKeys, providerRegistry } from './providers/registry.ts'
+import { providerRegistry, selectedProviderKeys } from './providers/registry.ts'
 import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'
 
 // NOTE: These specs should mirror LeaderSyncProcessor semantics: pushes never bypass the
@@ -37,7 +37,7 @@ const defaultClient = EventFactory.clientIdentity('test-client', 'test-session')
 
 const makeFactory = EventFactory.makeFactory(events)
 
-const providerLayers = providerKeys.map((key) => providerRegistry[key])
+const providerLayers = selectedProviderKeys().map((key) => providerRegistry[key])
 
 type RuntimeServices = SyncProviderImpl | HttpClient.HttpClient
 
@@ -56,7 +56,6 @@ const runFirstNonEmpty = <T, E, R>(stream: Stream.Stream<SyncBackend.PullResItem
     Stream.runFirstUnsafe,
   )
 
-// TODO come up with a way to target specific providers individually
 /** Verifies: LS.SYS.SYNC-R02, LS.SYS.SYNC-R03, LS.SYS.SYNC-R04, LS.SYS.SYNC-R05, LS.SYS.SYNC.CF-R05, LS.SYS.VER.CONF-R01 */
 Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, ({ layer, name }) => {
   let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
