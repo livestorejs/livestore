@@ -51,7 +51,15 @@ simulation}`, `debug.instanceId`, `shutdownDeferred`, `signal`
 ## Commit Path
 
 The pipeline is fully synchronous, run via `Effect.runSyncWith`
-(`store.ts:945`):
+(`store.ts:945`). **This synchronicity is an invariant** (Q1, see
+[`.decisions/0001-client-session-shutdown-drain.md`](./.decisions/0001-client-session-shutdown-drain.md)):
+no step on the commit path — including the `ClientSessionSyncProcessor.push`
+enqueue (step 3) — may block or suspend on a lock/permit, because a suspension
+turns the commit effect async and makes `runSyncWith` throw `AsyncFiberError`
+out of `store.commit`. This is why `push` serializes against rebase by
+non-blocking reconciliation rather than a permit
+([`../03-sync/02-processors/spec.md`](../03-sync/02-processors/spec.md), #1465).
+The steps:
 
 1. Validate and encode events against their definitions; assign client
    sequence numbers.
@@ -75,10 +83,16 @@ per-commit root span with links.
 
 - Every public operation guards on `isShutdown` (`checkShutdown`).
 - `shutdown` first drains admitted client-session events to the leader, then
-  closes the store's `lifetimeScope`. Its 1s timeout limits how long the caller
-  waits without cancelling cleanup; intentional shutdown is distinguished
-  from failure via the Exit cause (LS.SYS.STORE-R07,
-  LS.SYS.SYNC.PROC-R03).
+  closes the store's `lifetimeScope`. **Durability contract (Q2, see
+  [`.decisions/0001-client-session-shutdown-drain.md`](./.decisions/0001-client-session-shutdown-drain.md)):
+  a successful orderly `shutdown()` flushes every admitted client commit to the
+  leader; a hard crash may still lose un-acked client commits** — the client
+  session is the only tier without persist-before-admit (LS.SYS.STORE-DQ1). The
+  caller's 1s timeout limits how long `shutdown()` blocks; the detached cleanup
+  is itself hard-bounded (`SHUTDOWN_DRAIN_HARD_TIMEOUT_MS`, `create-store.ts`),
+  after which the lifetime scope is force-closed so an unresponsive leader
+  cannot leak it. Intentional shutdown is distinguished from failure via the
+  Exit cause (LS.SYS.STORE-R07, LS.SYS.SYNC.PROC-R03).
 - During boot, `batchUpdates` is the identity function and is swapped to the
   adapter-provided implementation after boot (`create-store.ts:399,430`) —
   events committed during boot are unbatched.
@@ -116,4 +130,9 @@ RFC 0001, the implementation is the contract:
   confirmation surface cannot be specified independently. A concrete design, if
   pursued, belongs in an RFC (per
   [decision 0004](../../.decisions/0004-rfc-vrs-boundary.md)). `../03-sync/`
-  LS.SYS.SYNC-DQ1 cross-references this.
+  LS.SYS.SYNC-DQ1 cross-references this. **Persist-before-admit for client
+  sessions** — making client commits crash-durable, not merely flushed on
+  orderly shutdown — is the separate future target that would subsume the
+  shutdown drain (LS.SYS.SYNC.PROC-R03); it is gated by LS-DQ1 and tracked as
+  #1425. Until then, the orderly-shutdown flush is the accepted durability
+  contract (Q2), not a stopgap for a specific release.

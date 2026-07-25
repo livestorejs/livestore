@@ -6,7 +6,6 @@ import {
   type BootStatus,
   type ClientSession,
   type ClientSessionDevtoolsChannel,
-  type ClientSessionSyncProcessorSimulationParams,
   type IntentionalShutdownCause,
   type MaterializeError,
   type MigrationsReport,
@@ -42,6 +41,14 @@ import type {
 } from './store-types.ts'
 import { StoreInternalsSymbol } from './store-types.ts'
 import { STORE_DEFAULT_PARAMS, Store } from './store.ts'
+
+/**
+ * Hard upper bound (ms) for the detached shutdown drain. A dead/unresponsive leader must not keep
+ * the drain (and therefore the lifetime scope) alive forever; after this bound the scope is
+ * force-closed. Kept comfortably above the 1s caller-side soft wait so that a still-progressing
+ * in-flight leader push is allowed to finish rather than being interrupted.
+ */
+const SHUTDOWN_DRAIN_HARD_TIMEOUT_MS = 30_000
 
 declare global {
   /** Store instances for console debugging */
@@ -213,9 +220,6 @@ export interface CreateStoreOptions<
     leaderPushBatchSize?: number
     /** Chunk size used when the stream replays confirmed events. */
     eventQueryBatchSize?: number
-    simulation?: {
-      clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
-    }
   }
   debug?: {
     instanceId?: string
@@ -334,10 +338,25 @@ export const createStore = <
         exit: Exit.Exit<IntentionalShutdownCause, UnknownError | MaterializeError | BackendIdMismatchError>,
       ) =>
         Effect.gen(function* () {
+          // Hard outer bound on the DETACHED teardown: the processor drain `awaitEmpty`s the
+          // leader-push worker, which never completes if the leader is dead/unresponsive. Without a
+          // bound the drain would block forever, so `Scope.close(lifetimeScope)` (in `ensuring`)
+          // would never run and the lifetime scope + its resources would leak indefinitely (a later
+          // `createStore`/registry dispose on the same `storeId` would observe a never-closed store).
+          // Drain up to the bound, then force-close the scope regardless. The bound exceeds the
+          // caller-side wait below so an in-flight (but progressing) push is not cut short.
           const closeFiber = yield* (shutdownSyncProcessor?.(exit) ?? Effect.void).pipe(
+            Effect.timeout(SHUTDOWN_DRAIN_HARD_TIMEOUT_MS),
+            Effect.catchTag('TimeoutError', () =>
+              Effect.logError(
+                `@livestore/livestore:shutdown: drain exceeded hard bound of ${SHUTDOWN_DRAIN_HARD_TIMEOUT_MS}ms; forcing scope close`,
+              ),
+            ),
             Effect.ensuring(Scope.close(lifetimeScope, exit)),
             Effect.forkDetach,
           )
+          // Caller-side soft wait: stop blocking the shutdown() caller after 1s without cancelling
+          // the detached teardown above (which remains bounded by SHUTDOWN_DRAIN_HARD_TIMEOUT_MS).
           yield* Fiber.join(closeFiber).pipe(
             Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
             Effect.timeout(1000),
@@ -406,7 +425,6 @@ export const createStore = <
         params: {
           leaderPushBatchSize: params?.leaderPushBatchSize ?? STORE_DEFAULT_PARAMS.leaderPushBatchSize,
           eventQueryBatchSize: params?.eventQueryBatchSize ?? STORE_DEFAULT_PARAMS.eventQueryBatchSize,
-          ...omitUndefineds({ simulation: params?.simulation }),
         },
       })
       shutdownSyncProcessor = store[StoreInternalsSymbol].syncProcessor.shutdown

@@ -93,20 +93,31 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   re-materialize into the session DB with changesets and session-side
   materializer hashes written back, then `refreshTables` runs once per
   merge (`:232-250`).
-- **Rebase critical section** (`:170-214`): interrupt the push fiber →
-  clear the queue → roll back session changesets in reverse order
-  (`meta.sessionChangeset`, then mark `unset`) → re-offer rebased pending
-  → restart the push fiber. Sequencing is what the built-in simulation
-  harness perturbs (`simSleep` hooks at 5 labeled points, `:83-86,
-414-422`; `SIMULATION_ENABLED` is hardcoded `true` with a build-macro
-  TODO, `:410-411`).
+- **Rebase critical section** (`:209-272`): interrupt the push fiber → roll
+  back session changesets in reverse order (`meta.sessionChangeset`, then mark
+  `unset`) → **atomically reconcile** the push queue (clear + re-offer the
+  _live_ `syncStateRef.current.pending` inside one `Effect.tx`, with no async
+  park between the read, clear, and offer) → restart the push fiber. Re-reading
+  the live pending (rather than the stale merge-time snapshot) is what
+  serializes `push` against rebase **without blocking it**: `push` runs via
+  `Effect.runSyncWith` as an indivisible unit that can only interleave in the
+  pull fiber's async gaps, so a synchronous commit admitted during a rebase
+  park is folded into the reconciliation instead of being torn away by the
+  clear. This replaces the earlier blocking `rebaseOwnership` permit on `push`,
+  which violated the synchronous-commit invariant (LS.SYS.STORE-R09) by
+  suspending the commit path (see `.decisions/`, #1465). Deterministic
+  `rebaseBarriers` hooks at 3 labeled points let tests inject a concurrent
+  push/shutdown into this window (the F1 no-loss oracle).
 - **Shutdown drain:** orderly shutdown closes new `push()` admission, stops
-  pull processing while holding the same state-ownership permit, ends the push
-  queue, and awaits its sole worker. Success therefore means all admitted
+  pull processing while holding the state-ownership permit (which still
+  serializes shutdown↔rebase — only `push` was taken off that permit), ends the
+  push queue, and awaits its sole worker. Success therefore means all admitted
   events reached the leader; an unresolved rejection or fatal push fails the
-  drain. Failed shutdown interrupts the pull and push workers. Store-level
-  timeout stops waiting without cancelling this cleanup
-  (LS.SYS.SYNC.PROC-R03).
+  drain. Failed shutdown interrupts the pull and push workers. The Store runs
+  this cleanup detached under a **hard bound**: the caller stops waiting after
+  1s, and the detached drain is itself force-closed after
+  `SHUTDOWN_DRAIN_HARD_TIMEOUT_MS` so an unresponsive leader cannot leak the
+  lifetime scope (LS.SYS.SYNC.PROC-R03, LS.SYS.STORE-R07).
 - **Observability** (`:98-99, 358-361`): sync-state updates surface via a
   separate queue explicitly not relied on for correctness; a devtools
   latch can pause upstream application (`:152-153`).

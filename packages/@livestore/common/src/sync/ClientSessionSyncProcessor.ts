@@ -73,7 +73,13 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   refreshTables: (tables: Set<string>) => void
   params: {
     leaderPushBatchSize: number
-    simulation?: ClientSessionSyncProcessorSimulationParams
+    /**
+     * Test-only deterministic barriers, awaited at fixed points of the rebase critical section.
+     * A test can park the pull fiber at a chosen point, inject a concurrent operation
+     * (a synchronous `push` or a `shutdown`), then release the barrier — without relying on
+     * virtual-time scheduling. Unset in production, where each lookup resolves to `Effect.void`.
+     */
+    rebaseBarriers?: Partial<Record<RebaseBarrierPoint, Effect.Effect<void>>>
   }
   /**
    * Currently only used in the web adapter:
@@ -83,10 +89,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 }): Effect.fn.Return<ClientSessionSyncProcessor> {
   const eventSchema = LiveStoreEvent.Client.makeSchemaMemo(schema)
 
-  const simSleep = <TKey extends keyof ClientSessionSyncProcessorSimulationParams>(
-    key: TKey,
-    key2: keyof ClientSessionSyncProcessorSimulationParams[TKey],
-  ) => Effect.sleep((params.simulation?.[key]?.[key2] ?? 0) as number)
+  const rebaseBarrier = (point: RebaseBarrierPoint): Effect.Effect<void> =>
+    params.rebaseBarriers?.[point] ?? Effect.void
 
   const syncStateRef = {
     // The initial state is identical to the leader's initial state
@@ -213,16 +217,10 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
             debugInfo.rebaseCount++
 
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
+            // Barrier: before we interrupt the in-flight leader-push worker.
+            yield* rebaseBarrier('before_leader_push_fiber_interrupt')
 
             yield* FiberHandle.clear(leaderPushingHandle)
-
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '2_before_leader_push_queue_clear')
-
-            // Reset the leader push queue since we're rebasing and will push again
-            yield* TxQueue.clear(leaderPushQueue)
-
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '3_before_rebase_rollback')
 
             if (LS_DEV === true) {
               yield* Effect.logDebug(
@@ -232,6 +230,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
               )
             }
 
+            // Roll back the optimistic session changesets for the events this rebase discards.
+            // (Independent of the push queue below; order relative to the queue reconcile is irrelevant.)
             for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
               const event = mergeResult.rollbackEvents[i]!
               if (event.meta.sessionChangeset._tag !== 'no-op' && event.meta.sessionChangeset._tag !== 'unset') {
@@ -240,11 +240,34 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
               }
             }
 
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
+            // Barrier: before the atomic queue reconciliation (the "discard + re-offer" step).
+            // A `push` admitted here appends its event to `syncStateRef.current.pending` AND to
+            // `leaderPushQueue`; the reconciliation below re-reads the LIVE pending, so that event
+            // is preserved rather than torn away by the clear.
+            yield* rebaseBarrier('before_queue_reconcile')
 
-            yield* TxQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
+            // Atomic queue reconciliation. `push` runs via `Effect.runSyncWith` (a synchronous run,
+            // per the store's fully-synchronous commit contract), so it executes as an indivisible
+            // unit that can only interleave in THIS fiber's async gaps — never inside a synchronous
+            // stretch. By reading the live pending, clearing, and re-offering with no async park
+            // between them, this block is atomic w.r.t. `push`. This replaces the blocking
+            // `rebaseOwnership` permit that previously forced `push` to wait: push↔rebase is now
+            // serialized WITHOUT ever suspending the synchronous commit path.
+            //
+            // We re-read `syncStateRef.current.pending` (the LIVE pending) instead of the stale
+            // `mergeResult.newSyncState.pending` snapshot captured at merge time, so any event a
+            // concurrent push appended during the async steps above (fiber interrupt / rollback /
+            // barriers) is included. `Effect.tx` commits the clear+offer as one transaction.
+            const livePending = syncStateRef.current.pending
+            yield* Effect.tx(
+              Effect.gen(function* () {
+                yield* TxQueue.clear(leaderPushQueue)
+                yield* TxQueue.offerAll(leaderPushQueue, livePending)
+              }),
+            )
 
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
+            // Barrier: before restarting the leader-push worker.
+            yield* rebaseBarrier('before_leader_push_fiber_run')
 
             yield* FiberHandle.run(leaderPushingHandle, backgroundLeaderPushing)
           } else {
@@ -512,17 +535,11 @@ export interface ClientSessionSyncProcessor {
   }
 }
 
-// TODO turn this into a build-time "macro" so all simulation snippets are removed for production builds
-const SIMULATION_ENABLED = true
-
-// Warning: High values for the simulation params can lead to very long test runs since those get multiplied with the number of events
-export const ClientSessionSyncProcessorSimulationParams = Schema.Struct({
-  pull: Schema.Struct({
-    '1_before_leader_push_fiber_interrupt': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
-    '2_before_leader_push_queue_clear': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
-    '3_before_rebase_rollback': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
-    '4_before_leader_push_queue_offer': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
-    '5_before_leader_push_fiber_run': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
-  }),
-})
-type ClientSessionSyncProcessorSimulationParams = typeof ClientSessionSyncProcessorSimulationParams.Type
+/**
+ * Injection points inside the rebase critical section where a test-only barrier may be awaited.
+ * Named for the step they precede so the deterministic no-loss tests can target the exact window.
+ */
+export type RebaseBarrierPoint =
+  | 'before_leader_push_fiber_interrupt'
+  | 'before_queue_reconcile'
+  | 'before_leader_push_fiber_run'

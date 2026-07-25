@@ -79,7 +79,7 @@ const makeClientProcessorHarness = Effect.fn(function* ({
   shutdown = () => Effect.void,
   devtools = { enabled: false },
   leaderPushBatchSize = 1,
-  simulation,
+  rebaseBarriers,
 }: {
   push: LeaderEvents['push']
   pull?: LeaderEvents['pull']
@@ -87,7 +87,7 @@ const makeClientProcessorHarness = Effect.fn(function* ({
   shutdown?: ClientSession['shutdown']
   devtools?: ClientSession['devtools']
   leaderPushBatchSize?: number
-  simulation?: ClientProcessorParams['params']['simulation']
+  rebaseBarriers?: ClientProcessorParams['params']['rebaseBarriers']
 }) {
   const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
   const leaderThread: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy = {
@@ -132,7 +132,7 @@ const makeClientProcessorHarness = Effect.fn(function* ({
       }),
     rollback,
     refreshTables: () => undefined,
-    params: { leaderPushBatchSize, simulation },
+    params: { leaderPushBatchSize, rebaseBarriers },
     confirmUnsavedChanges: false,
   })
 
@@ -587,19 +587,105 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     { fastCheck: { numRuns: 50 } },
   )
 
-  for (const shutdownPoint of [
-    '1_before_leader_push_fiber_interrupt',
-    '3_before_rebase_rollback',
-    '5_before_leader_push_fiber_run',
+  // Deterministic barrier: the returned `effect` (handed to the processor via `rebaseBarriers`)
+  // signals `reached` when the rebase parks at the point, then blocks until `release` is called.
+  // This replaces the previous virtual-time `simSleep` injection, which was flaky and — as filed in
+  // #1465 — misaligned with the source's simulation points (it never covered the discard step).
+  const makeRebaseBarrier = Effect.fn(function* () {
+    const reached = yield* Deferred.make<void>()
+    const release = yield* Deferred.make<void>()
+    return {
+      effect: Deferred.succeed(reached, undefined).pipe(Effect.andThen(Deferred.await(release))),
+      awaitReached: Deferred.await(reached),
+      release: Deferred.succeed(release, undefined).pipe(Effect.asVoid),
+    }
+  })
+
+  // Builds a leader payload that conflicts with the local pending event, forcing a rebase.
+  const makeConflictingUpstream = Effect.fn(function* (processor: ClientSessionSyncProcessor) {
+    const [remoteBase] = yield* processor.encodeEvents([
+      events.todoCreated({ id: 'remote', text: 'remote', completed: false }),
+    ])
+    const remoteEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
+      ...remoteBase!,
+      seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
+      parentSeqNum: EventSequenceNumber.Client.ROOT,
+      clientId: 'remote-client',
+      sessionId: 'remote-session',
+    })
+    return SyncState.PayloadUpstreamAdvance.make({ newEvents: [remoteEvent] })
+  })
+
+  // F1 no-loss oracle (Fix for #1465 §3 torn-`syncStateRef` race): a `push` admitted while the pull
+  // fiber is parked mid-rebase — right before the queue reconcile ("discard" step) — must NOT be lost.
+  // The guard is the atomic reconcile re-reading the LIVE `syncStateRef.current.pending`. Reverting the
+  // reconcile to the stale `mergeResult.newSyncState.pending` snapshot makes this test fail (the
+  // concurrently-admitted event is cleared from the queue and never re-offered → never pushed).
+  Vitest.it.effect('does not lose a push admitted during the rebase discard window', (test) =>
+    Effect.gen(function* () {
+      const pullQueue = yield* Queue.unbounded<typeof SyncState.PayloadUpstream.Type>()
+      const firstPushStarted = yield* Deferred.make<void>()
+      const persistedIds: string[] = []
+      let pushCallCount = 0
+
+      const reconcileBarrier = yield* makeRebaseBarrier()
+
+      const { processor, pushIds, close } = yield* makeClientProcessorHarness({
+        pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+        // First push (the initial 'local' admission) blocks so 'local' stays pending until the
+        // conflicting upstream forces a rebase; the rebase interrupts it. Later pushes record.
+        push: (batch) => {
+          pushCallCount++
+          return pushCallCount === 1
+            ? Deferred.succeed(firstPushStarted, undefined).pipe(Effect.andThen(Effect.never))
+            : Effect.sync(() => persistedIds.push(...batch.map((event) => event.args.id as string)))
+        },
+        rebaseBarriers: { before_queue_reconcile: reconcileBarrier.effect },
+      })
+
+      yield* pushIds(['local'])
+      yield* Deferred.await(firstPushStarted)
+
+      // Force the rebase and let it park right before the atomic queue reconcile.
+      yield* Queue.offer(pullQueue, yield* makeConflictingUpstream(processor))
+      yield* reconcileBarrier.awaitReached
+
+      // Concurrently admit a new push while the rebase is parked (models a `store.commit()` landing
+      // during a rebase). It appends to `syncStateRef.current.pending` and to the leader push queue.
+      yield* pushIds(['concurrent'])
+
+      // Resume the rebase: the reconcile must re-read the LIVE pending and preserve 'concurrent'.
+      yield* reconcileBarrier.release
+
+      // Draining via orderly shutdown flushes every queued event to the leader.
+      yield* close()
+
+      expect(processor.debug.debugInfo().rebaseCount).toBe(1)
+      expect(persistedIds).toContain('concurrent')
+      expect(persistedIds).toContain('local')
+    }).pipe(withTestCtx(test)),
+  )
+
+  // F1 no-loss oracle for shutdown↔rebase (guarded by the `rebaseOwnership` permit shared by the
+  // pull tap and `runShutdown`): an orderly shutdown that interleaves a rebase at any point of the
+  // discard→re-offer window must still flush the rebased pending event. Removing the permit from
+  // `runShutdown` makes the pre-reconcile cases (points 1/2) fail — the queue is ended and the pull
+  // fiber interrupted before the rebased event is re-offered.
+  for (const barrierPoint of [
+    'before_leader_push_fiber_interrupt',
+    'before_queue_reconcile',
+    'before_leader_push_fiber_run',
   ] as const) {
-    Vitest.it.effect.skip(`does not lose rebased pending events when shutdown reaches ${shutdownPoint}`, (test) =>
+    Vitest.it.effect(`does not lose the rebased pending event when shutdown interleaves at ${barrierPoint}`, (test) =>
       Effect.gen(function* () {
         const pullQueue = yield* Queue.unbounded<typeof SyncState.PayloadUpstream.Type>()
         const firstPushStarted = yield* Deferred.make<void>()
         const persistedIds: string[] = []
         let pushCallCount = 0
 
-        const { processor, pushIds, scope } = yield* makeClientProcessorHarness({
+        const barrier = yield* makeRebaseBarrier()
+
+        const { processor, pushIds, close } = yield* makeClientProcessorHarness({
           pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
           push: (batch) => {
             pushCallCount++
@@ -607,42 +693,20 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
               ? Deferred.succeed(firstPushStarted, undefined).pipe(Effect.andThen(Effect.never))
               : Effect.sync(() => persistedIds.push(...batch.map((event) => event.args.id as string)))
           },
-          simulation: {
-            pull: {
-              '1_before_leader_push_fiber_interrupt': shutdownPoint === '1_before_leader_push_fiber_interrupt' ? 1 : 0,
-              '2_before_leader_push_queue_clear': 0,
-              '3_before_rebase_rollback': shutdownPoint === '3_before_rebase_rollback' ? 1 : 0,
-              '4_before_leader_push_queue_offer': 0,
-              '5_before_leader_push_fiber_run': shutdownPoint === '5_before_leader_push_fiber_run' ? 1 : 0,
-            },
-          },
+          rebaseBarriers: { [barrierPoint]: barrier.effect },
         })
 
-        const [localEvent] = yield* pushIds(['local'])
-        localEvent!.meta.sessionChangeset = {
-          _tag: 'sessionChangeset',
-          data: new Uint8Array([1]),
-          debug: {},
-        }
+        yield* pushIds(['local'])
         yield* Deferred.await(firstPushStarted)
 
-        const [remoteBase] = yield* processor.encodeEvents([
-          events.todoCreated({ id: 'remote', text: 'remote', completed: false }),
-        ])
-        const remoteEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
-          ...remoteBase!,
-          seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
-          parentSeqNum: EventSequenceNumber.Client.ROOT,
-          clientId: 'remote-client',
-          sessionId: 'remote-session',
-        })
-        yield* Queue.offer(pullQueue, SyncState.PayloadUpstreamAdvance.make({ newEvents: [remoteEvent] }))
+        yield* Queue.offer(pullQueue, yield* makeConflictingUpstream(processor))
+        yield* barrier.awaitReached
 
-        // Let rebase reach the selected virtual-time barrier, start shutdown there, then finish the handoff.
-        yield* TestClock.adjust(0)
-        const closeFiber = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)
-        yield* TestClock.adjust(0)
-        yield* TestClock.adjust('1 millis')
+        // Start an orderly shutdown while the rebase is parked. The success path takes the
+        // `rebaseOwnership` permit still held by the parked pull fiber, so it cannot end the queue
+        // until the rebase releases the permit (i.e. after re-offering the rebased pending event).
+        const closeFiber = yield* close().pipe(Effect.forkChild)
+        yield* barrier.release
         yield* Fiber.join(closeFiber)
 
         expect(processor.debug.debugInfo().rebaseCount).toBe(1)
@@ -650,7 +714,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       }).pipe(withTestCtx(test)),
     )
   }
-
   Vitest.it.effect('interrupts a hung leader push during failed shutdown', (test) =>
     Effect.gen(function* () {
       const firstPushStarted = yield* Deferred.make<void>()

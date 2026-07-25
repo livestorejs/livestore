@@ -4,7 +4,6 @@ import {
   type BackendIdMismatchError,
   type ClientSession,
   type ClientSessionSyncProcessor,
-  type ClientSessionSyncProcessorSimulationParams,
   type IntentionalShutdownCause,
   isQueryBuilder,
   type MaterializeError,
@@ -196,9 +195,6 @@ export type StoreConstructorParams<TSchema extends LiveStoreSchema = LiveStoreSc
   params: {
     leaderPushBatchSize: number
     eventQueryBatchSize?: number
-    simulation?: {
-      clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
-    }
   }
   __runningInDevtools: boolean
 }

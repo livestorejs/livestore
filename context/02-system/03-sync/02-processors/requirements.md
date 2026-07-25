@@ -30,7 +30,13 @@ Builds on [../requirements.md](../requirements.md) and
   shutdown closes client-session admission and sends every admitted event to
   the leader in FIFO order within configured batch bounds. A rejected or fatal
   leader push fails the drain instead of claiming durability. Failed shutdown
-  may interrupt blocked processor work. Adopted 2026-07-18 (#1437).
+  may interrupt blocked processor work. The drain must **not** block the
+  synchronous commit path: `push` serializes against rebase by non-blocking
+  atomic reconciliation, never a permit (preserves LS.SYS.STORE-R09). Cleanup
+  runs detached under a hard bound so an unresponsive leader cannot leak the
+  lifetime scope. Adopted 2026-07-18 (#1437); non-blocking design + hard bound
+  2026-07-19 (#1465, store
+  [`.decisions/0001`](../../05-store/.decisions/0001-client-session-shutdown-drain.md)).
   `refines: LS.SYS.STORE-R07`
 
 Further processor requirements (e.g. the crash-atomicity contract of batch
