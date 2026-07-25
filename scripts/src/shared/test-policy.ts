@@ -57,14 +57,33 @@ export const runTestTarget = <A, E, R>({
   readonly label: string
   readonly policy: TestPolicy
   readonly run: Effect.Effect<A, E, R>
-}): Effect.Effect<void, E, R> =>
-  policy._tag === 'blocking'
-    ? run.pipe(Effect.asVoid)
-    : run.pipe(
-        Effect.asVoid,
-        Effect.tapError(() => Effect.sync(() => announceQuarantinedFailure(label, quarantineLedger[policy.key]))),
-        Effect.ignore,
-      )
+}): Effect.Effect<void, E, R> => {
+  if (policy._tag === 'blocking') return run.pipe(Effect.asVoid)
+
+  const entry = (quarantineLedger as Record<string, QuarantineEntry>)[policy.key] as QuarantineEntry | undefined
+
+  // The type checker rejects an unknown key, but a cast or a JS caller can still get here, and
+  // silently treating an unknown quarantine as "suppress everything" is the failure this whole
+  // mechanism exists to prevent.
+  if (entry === undefined) {
+    throw new Error(`Quarantine '${String(policy.key)}' has no entry in the ledger.`)
+  }
+
+  // The ledger's `target` is the declaration of what is suppressed, so it has to be enforced
+  // rather than decorative: without this, one entry's key could silently suppress an unrelated
+  // target under another target's reason, issue, and expiry.
+  if (entry.target !== label) {
+    throw new Error(
+      `Quarantine '${String(policy.key)}' declares target ${JSON.stringify(entry.target)} but was applied to ${JSON.stringify(label)}.`,
+    )
+  }
+
+  return run.pipe(
+    Effect.asVoid,
+    Effect.tapError(() => Effect.sync(() => announceQuarantinedFailure(label, entry))),
+    Effect.ignore,
+  )
+}
 
 /**
  * Entries whose expiry has passed, relative to `today` (`YYYY-MM-DD`).

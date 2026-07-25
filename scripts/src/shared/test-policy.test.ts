@@ -62,4 +62,16 @@ describe('runTestTarget', () => {
 
     expect(Exit.isSuccess(exit)).toBe(true)
   })
+
+  it('refuses a quarantine key with no ledger entry', () => {
+    // The type checker rejects this statically; a cast or a JS caller can still reach it, and
+    // treating an unknown quarantine as "suppress everything" is the failure mode to avoid.
+    expect(() =>
+      runTestTarget({ label: 'packages/@livestore/unrelated', policy: fakePolicy(), run: Effect.void }),
+    ).toThrow(/has no entry in the ledger/)
+  })
 })
+
+/** A quarantine policy the type checker would reject, to reach the runtime guards. */
+const fakePolicy = (key = 'demo-entry'): Parameters<typeof runTestTarget>[0]['policy'] =>
+  ({ _tag: 'quarantined', key }) as unknown as Parameters<typeof runTestTarget>[0]['policy']
