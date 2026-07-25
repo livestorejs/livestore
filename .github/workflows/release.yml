@@ -996,7 +996,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: '${{ runner.temp }}/megarepo-store'
-          key: "livestore-megarepo-store-v2-${{ runner.os }}-${{ hashFiles('megarepo.lock') }}"
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
@@ -1020,7 +1020,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: '${{ runner.temp }}/megarepo-store'
-          key: "livestore-megarepo-store-v2-${{ runner.os }}-${{ hashFiles('megarepo.lock') }}"
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Use pinned devenv from lock
         run: |
           DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
@@ -1238,7 +1238,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: '${{ runner.temp }}/megarepo-store'
-          key: "livestore-megarepo-store-v2-${{ runner.os }}-${{ hashFiles('megarepo.lock') }}"
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
@@ -1262,7 +1262,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: '${{ runner.temp }}/megarepo-store'
-          key: "livestore-megarepo-store-v2-${{ runner.os }}-${{ hashFiles('megarepo.lock') }}"
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Use pinned devenv from lock
         run: |
           DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
@@ -1487,7 +1487,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: '${{ runner.temp }}/megarepo-store'
-          key: "livestore-megarepo-store-v2-${{ runner.os }}-${{ hashFiles('megarepo.lock') }}"
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
@@ -1511,7 +1511,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: '${{ runner.temp }}/megarepo-store'
-          key: "livestore-megarepo-store-v2-${{ runner.os }}-${{ hashFiles('megarepo.lock') }}"
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Use pinned devenv from lock
         run: |
           DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
@@ -1779,7 +1779,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: '${{ runner.temp }}/megarepo-store'
-          key: "livestore-megarepo-store-v2-${{ runner.os }}-${{ hashFiles('megarepo.lock') }}"
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
@@ -1803,7 +1803,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: '${{ runner.temp }}/megarepo-store'
-          key: "livestore-megarepo-store-v2-${{ runner.os }}-${{ hashFiles('megarepo.lock') }}"
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Use pinned devenv from lock
         run: |
           DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)

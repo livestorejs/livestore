@@ -299,9 +299,11 @@ import {
   prepareCiScriptsStep,
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
+  restoreMegarepoStoreStep,
   restorePnpmStateStep,
   runDevenvTasksBefore,
   nixDiagnosticsArtifactStep,
+  saveMegarepoStoreStep,
   savePnpmStateStep,
   validateNixStoreStep,
   workflowReportCollectorStep,
@@ -367,39 +369,14 @@ const withNixSetupRetry = <TStep extends { readonly name: string; readonly run: 
   withNixRetry(step, setupMegarepoRun(step.run))
 
 /**
- * EXPERIMENT (#1480): cache the megarepo store to stop cold-cloning large members each run.
- *
- * Key finding: GitHub derives an actions/cache *version* from the cache `path`. The default
- * `MEGAREPO_STORE` embeds `run_id`/`run_attempt`/`job`, so the version changes every run and
- * restores never hit (and each job writes a duplicate). Fix: pin the store to a STABLE path
- * (like the pnpm-state cache's `${{ github.workspace }}` path), so the version is stable
- * across runs → restore hits and GitHub's reserve dedups the concurrent saves. Safe here:
- * GitHub runs one job per (ephemeral) runner, so `${{ runner.temp }}` is already per-job.
+ * The megarepo-store sync step, opted into the shared cacheable-store path (#1480). Paired with
+ * {@link restoreMegarepoStoreStep} / {@link saveMegarepoStoreStep} (from effect-utils) it stops CI
+ * from cold-cloning large members (e.g. `effect-ts/effect`) every run: the store lives at the
+ * stable `cacheableMegarepoStore` path so the actions/cache version is stable across runs and
+ * restores hit. `withNixSetupRetry` preserves the step's `env` (the cacheable path) while
+ * rewriting the run for the codeload override.
  */
-const megarepoStorePath = '${{ runner.temp }}/megarepo-store'
-
-const megarepoStoreCacheKey =
-  "livestore-megarepo-store-v2-${{ runner.os }}-${{ hashFiles('megarepo.lock') }}"
-
-const restoreMegarepoStoreStep = {
-  name: 'Restore megarepo store',
-  id: 'restore-megarepo-store',
-  uses: 'actions/cache/restore@v4',
-  with: { path: megarepoStorePath, key: megarepoStoreCacheKey },
-} as const
-
-const saveMegarepoStoreStep = {
-  name: 'Save megarepo store',
-  if: "${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}",
-  uses: 'actions/cache/save@v4',
-  with: { path: megarepoStorePath, key: megarepoStoreCacheKey },
-} as const
-
-/** The sync step with its run-scoped `MEGAREPO_STORE` overridden to the stable, cacheable path. */
-const stableStoreSyncStep = (() => {
-  const step = applyMegarepoLockStep()
-  return { ...step, env: { ...step.env, MEGAREPO_STORE: megarepoStorePath } }
-})()
+const stableStoreSyncStep = applyMegarepoLockStep({ cacheableStore: true })
 
 /**
  * Setup steps for livestore CI jobs (without checkout).
@@ -419,9 +396,9 @@ export const livestoreSetupStepsAfterCheckout = [
     const base = cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' })
     return { ...base, with: { ...base.with, skipPush: true } }
   })(),
-  restoreMegarepoStoreStep,
+  restoreMegarepoStoreStep(),
   withNixSetupRetry(stableStoreSyncStep),
-  saveMegarepoStoreStep,
+  saveMegarepoStoreStep(),
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
   restorePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
