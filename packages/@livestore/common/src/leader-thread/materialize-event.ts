@@ -7,6 +7,7 @@ import { logDeprecationWarnings } from '../schema/EventDef/deprecated.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, resolveEventDef, SystemTables, UNKNOWN_EVENT_SCHEMA_HASH } from '../schema/mod.ts'
 import { insertRow } from '../sql-queries/index.ts'
+import * as SqliteDbHelper from '../sqlite-db-helper.ts'
 import { sql } from '../util.ts'
 import { execSql, execSqlPrepared } from './connection.ts'
 import * as Eventlog from './eventlog.ts'
@@ -192,24 +193,30 @@ export const rollback = ({
       }))
       .toSorted((a, b) => EventSequenceNumber.Client.compare(a.seqNum, b.seqNum))
 
-    // Apply changesets in reverse order
-    for (let i = rollbackEvents.length - 1; i >= 0; i--) {
-      const { changeset } = rollbackEvents[i]!
-      if (changeset !== null) {
-        dbState.makeChangeset(changeset).invert().apply()
-      }
-    }
-
     const eventNumPairChunks = ReadonlyArray.chunksOf(100)(
       eventNumsToRollback.map((seqNum) => `(${seqNum.global}, ${seqNum.client})`),
     )
 
-    // Delete the changeset rows
-    for (const eventNumPairChunk of eventNumPairChunks) {
-      dbState.execute(
-        sql`DELETE FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE (seqNumGlobal, seqNumClient) IN (${eventNumPairChunk.join(', ')})`,
-      )
-    }
+    yield* SqliteDbHelper.withSavepoint({
+      db: dbState,
+      savepointName: 'livestore_materialization_rollback',
+      effect: Effect.sync(() => {
+        // Apply changesets in reverse order.
+        for (let i = rollbackEvents.length - 1; i >= 0; i--) {
+          const { changeset } = rollbackEvents[i]!
+          if (changeset !== null) {
+            dbState.makeChangeset(changeset).invert().apply()
+          }
+        }
+
+        // Delete rollback records only after every changeset has been applied.
+        for (const eventNumPairChunk of eventNumPairChunks) {
+          dbState.execute(
+            sql`DELETE FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE (seqNumGlobal, seqNumClient) IN (${eventNumPairChunk.join(', ')})`,
+          )
+        }
+      }),
+    })
 
     // Delete the eventlog rows
     for (const eventNumPairChunk of eventNumPairChunks) {

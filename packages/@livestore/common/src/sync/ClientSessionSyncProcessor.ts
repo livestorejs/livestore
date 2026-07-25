@@ -24,6 +24,7 @@ import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { resolveSessionIdSymbolInEventArgs } from '../session-id-symbol.ts'
+import * as SqliteDbHelper from '../sqlite-db-helper.ts'
 import * as SyncState from './syncstate.ts'
 
 /** Serialize value to JSON string for trace attributes */
@@ -232,11 +233,29 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
             // Roll back the optimistic session changesets for the events this rebase discards.
             // (Independent of the push queue below; order relative to the queue reconcile is irrelevant.)
-            for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
-              const event = mergeResult.rollbackEvents[i]!
-              if (event.meta.sessionChangeset._tag !== 'no-op' && event.meta.sessionChangeset._tag !== 'unset') {
-                rollback(event.meta.sessionChangeset.data)
-                event.meta.sessionChangeset = { _tag: 'unset' }
+            const rollbackEventsWithChangesets = mergeResult.rollbackEvents.filter(
+              (event) => event.meta.sessionChangeset._tag === 'sessionChangeset',
+            )
+
+            if (rollbackEventsWithChangesets.length > 0) {
+              yield* SqliteDbHelper.withSavepoint({
+                db: clientSession.sqliteDb,
+                savepointName: 'livestore_materialization_rollback',
+                effect: Effect.sync(() => {
+                  for (let i = rollbackEventsWithChangesets.length - 1; i >= 0; i--) {
+                    const event = rollbackEventsWithChangesets[i]!
+                    if (event.meta.sessionChangeset._tag === 'sessionChangeset') {
+                      rollback(event.meta.sessionChangeset.data)
+                    }
+                  }
+                }),
+              })
+
+              // Only discard rollback data after the savepoint was released successfully.
+              for (const event of rollbackEventsWithChangesets) {
+                if (event.meta.sessionChangeset._tag === 'sessionChangeset') {
+                  event.meta.sessionChangeset = { _tag: 'unset' }
+                }
               }
             }
 

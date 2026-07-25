@@ -56,8 +56,10 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   current pending, offers the payload to session pull queues, and persists
   sync metadata for confirmed events; rebase additionally rolls back
   state+eventlog rows and re-seeds pushing from rebased pending
-  (`:466-516`). Backend head advances via `Eventlog.updateBackendHead`
-  (`:462-464`).
+  (`:466-516`). State changeset application and changeset-row deletion are
+  enclosed in a composable SQLite savepoint; eventlog deletion remains a
+  coordinated write to the separate eventlog database. Backend head advances
+  via `Eventlog.updateBackendHead` (`:462-464`).
 - **Pull precedence** (`:241, 393, 408-438`): a 1-permit semaphore
   (`localPushBackendPullMutex`) makes local-push application and pull-chunk
   application mutually exclusive; the pull side holds the permit for a
@@ -94,20 +96,23 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   materializer hashes written back, then `refreshTables` runs once per
   merge (`:232-250`).
 - **Rebase critical section** (`:209-272`): interrupt the push fiber → roll
-  back session changesets in reverse order (`meta.sessionChangeset`, then mark
-  `unset`) → **atomically reconcile** the push queue (clear + re-offer the
+  back session changesets in reverse order inside a composable SQLite
+  savepoint → mark `meta.sessionChangeset` as `unset` only after the savepoint
+  is released → **atomically reconcile** the push queue (clear + re-offer the
   _live_ `syncStateRef.current.pending` inside one `Effect.tx`, with no async
-  park between the read, clear, and offer) → restart the push fiber. Re-reading
-  the live pending (rather than the stale merge-time snapshot) is what
-  serializes `push` against rebase **without blocking it**: `push` runs via
-  `Effect.runSyncWith` as an indivisible unit that can only interleave in the
-  pull fiber's async gaps, so a synchronous commit admitted during a rebase
-  park is folded into the reconciliation instead of being torn away by the
-  clear. This replaces the earlier blocking `rebaseOwnership` permit on `push`,
-  which violated the synchronous-commit invariant (LS.SYS.STORE-R09) by
-  suspending the commit path (see `.decisions/`, #1465). Deterministic
-  `rebaseBarriers` hooks at 3 labeled points let tests inject a concurrent
-  push/shutdown into this window (the F1 no-loss oracle).
+  park between the read, clear, and offer) → restart the push fiber. Failure or
+  interruption rolls the entire session-state rollback back before the original
+  cause is re-emitted. Re-reading the live pending (rather than the stale
+  merge-time snapshot) is what serializes `push` against rebase **without
+  blocking it**: `push` runs via `Effect.runSyncWith` as an indivisible unit
+  that can only interleave in the pull fiber's async gaps, so a synchronous
+  commit admitted during a rebase park is folded into the reconciliation
+  instead of being torn away by the clear. This replaces the earlier blocking
+  `rebaseOwnership` permit on `push`, which violated the synchronous-commit
+  invariant (LS.SYS.STORE-R09) by suspending the commit path (see
+  `.decisions/`, #1465). Deterministic `rebaseBarriers` hooks at 3 labeled
+  points let tests inject a concurrent push/shutdown into this window (the F1
+  no-loss oracle).
 - **Shutdown drain:** orderly shutdown closes new `push()` admission, stops
   pull processing while holding the state-ownership permit (which still
   serializes shutdown↔rebase — only `push` was taken off that permit), ends the
