@@ -272,25 +272,52 @@ export const waSqliteTest = Cli.Command.make('wa-sqlite', {}, runWaSqliteTests)
 // the sync provider tests are actually part of another tests package but for now we run them from here too
 // TODO clean this up at some point
 
-/** A run that reported success without executing a single test. */
+/** A run in which the suite that had to prove something never executed. */
 export class NoTestsExecutedError extends Schema.TaggedErrorClass<NoTestsExecutedError>()('NoTestsExecutedError', {
   reportPath: Schema.String,
+  suiteFile: Schema.String,
 }) {}
 
 /** The subset of Vitest's JSON reporter output this guard depends on. */
-const VitestRunReport = Schema.Struct({ numPassedTests: Schema.Finite })
+const VitestRunReport = Schema.Struct({
+  testResults: Schema.Array(
+    Schema.Struct({
+      name: Schema.String,
+      assertionResults: Schema.Array(Schema.Struct({ status: Schema.String })),
+    }),
+  ),
+})
+
+/** File whose tests every sync-provider cell must actually execute to have proven anything. */
+const syncProviderConformanceSuite = 'sync-provider.test.ts'
 
 /**
- * Fails when a run executed no tests at all. Selection itself is resolved in-process against
- * the provider registry, so a cell can no longer silently select nothing — this stays as a
- * backstop against a bad `include` glob or an over-broad skip leaving the job vacuously green.
+ * Fails when `suiteFile` executed no tests. Selection is resolved in-process against the
+ * provider registry, so a cell can no longer silently select nothing — this is the backstop
+ * against a bad `include` glob or an over-broad skip leaving the job vacuously green.
+ *
+ * Scoped to one file rather than the run's total: utility suites that run in every cell
+ * (`registry.test.ts`) would otherwise keep the count non-zero even if the conformance suite
+ * were skipped entirely. Failed tests count as executed — a quarantined run where everything
+ * fails has still proven something, and rejecting it here would defeat the quarantine.
  */
-export const assertTestsExecuted = Effect.fn(function* (reportPath: string) {
+export const assertTestsExecuted = Effect.fn(function* ({
+  reportPath,
+  suiteFile,
+}: {
+  readonly reportPath: string
+  readonly suiteFile: string
+}) {
   const raw = fs.readFileSync(reportPath, 'utf8')
   const report = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(VitestRunReport))(raw)
 
-  if (report.numPassedTests === 0) {
-    return yield* new NoTestsExecutedError({ reportPath })
+  const executed = report.testResults
+    .filter((file) => path.basename(file.name) === suiteFile)
+    .flatMap((file) => file.assertionResults)
+    .filter((assertion) => assertion.status === 'passed' || assertion.status === 'failed').length
+
+  if (executed === 0) {
+    return yield* new NoTestsExecutedError({ reportPath, suiteFile })
   }
 })
 
@@ -307,7 +334,7 @@ const runSyncProviderTests = Effect.fn(function* ({ provider }: { provider: Opti
     env: Option.isSome(provider) === true ? { [providerSelectionEnvVar]: provider.value } : {},
   }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/sync-provider')))
 
-  yield* assertTestsExecuted(reportPath)
+  yield* assertTestsExecuted({ reportPath, suiteFile: syncProviderConformanceSuite })
 })
 
 export const syncProviderTest = Cli.Command.make(

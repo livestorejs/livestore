@@ -8,28 +8,45 @@ import { Effect, Exit } from '@livestore/utils/effect'
 
 import { assertTestsExecuted } from './test-commands.ts'
 
-const writeReport = (report: Record<string, unknown>): string => {
+const suiteFile = 'sync-provider.test.ts'
+
+/** Builds a Vitest JSON report from `{ fileName: [statuses] }`. */
+const writeReport = (files: Record<string, readonly string[]>): string => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'livestore-test-report-'))
   const reportPath = path.join(dir, 'report.json')
-  fs.writeFileSync(reportPath, JSON.stringify(report))
+  const testResults = Object.entries(files).map(([name, statuses]) => ({
+    name: `/repo/tests/sync-provider/src/${name}`,
+    assertionResults: statuses.map((status) => ({ status })),
+  }))
+  fs.writeFileSync(reportPath, JSON.stringify({ testResults }))
   return reportPath
 }
 
+const run = (files: Record<string, readonly string[]>) =>
+  Effect.runPromiseExit(assertTestsExecuted({ reportPath: writeReport(files), suiteFile }))
+
 describe('assertTestsExecuted', () => {
-  it('fails a run that executed no tests', async () => {
-    // The shape Vitest emits when every test is filtered or skipped: `success: true`, zero passed.
-    const reportPath = writeReport({ numTotalTests: 116, numPassedTests: 0, numPendingTests: 116, success: true })
-
-    const exit = await Effect.runPromiseExit(assertTestsExecuted(reportPath))
-
-    expect(Exit.isFailure(exit)).toBe(true)
+  it('accepts a run that executed the conformance suite', async () => {
+    expect(Exit.isSuccess(await run({ [suiteFile]: ['passed', 'passed'] }))).toBe(true)
   })
 
-  it('accepts a run that executed at least one test', async () => {
-    const reportPath = writeReport({ numTotalTests: 20, numPassedTests: 16, numPendingTests: 4, success: true })
+  it('counts failures as executed, so a quarantined run still satisfies the guard', async () => {
+    expect(Exit.isSuccess(await run({ [suiteFile]: ['failed', 'failed'] }))).toBe(true)
+  })
 
-    const exit = await Effect.runPromiseExit(assertTestsExecuted(reportPath))
+  it('rejects a run where the conformance suite was entirely skipped', async () => {
+    expect(Exit.isSuccess(await run({ [suiteFile]: ['skipped', 'skipped'] }))).toBe(false)
+  })
 
-    expect(Exit.isSuccess(exit)).toBe(true)
+  it('rejects a skipped conformance suite even when utility suites passed', async () => {
+    // `registry.test.ts` runs in every provider cell; counting the run's total would let its
+    // passes mask a conformance suite that never ran.
+    const exit = await run({ [suiteFile]: ['skipped'], 'registry.test.ts': ['passed', 'passed', 'passed'] })
+
+    expect(Exit.isSuccess(exit)).toBe(false)
+  })
+
+  it('rejects a run missing the conformance suite entirely', async () => {
+    expect(Exit.isSuccess(await run({ 'registry.test.ts': ['passed'] }))).toBe(false)
   })
 })
