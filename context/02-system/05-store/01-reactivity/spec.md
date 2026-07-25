@@ -41,11 +41,11 @@ implemented):
 
 ## Query Kinds
 
-| Kind     | Constructor  | Identity (`def.hash`)                 | Notes                                                                                                                   |
-| -------- | ------------ | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Db query | `queryDb()`  | `queryString + deps + extraDeps`      | `SessionIdSymbol` serialized as the literal `'SessionIdSymbol'` so identity stays session-agnostic                      |
-| Computed | `computed()` | `deps` if given, else `fn.toString()` | Referential result equality only (no schema equivalence)                                                                |
-| Signal   | `signal()`   | `nanoid()`                            | Every call is unique — signals never dedup; `set` takes a plain value (functional update resolved by `store.setSignal`) |
+| Kind | Constructor | Identity (`def.hash`) | Notes |
+| --- | --- | --- | --- |
+| Db query | `queryDb()` | `queryString + deps + extraDeps` | `SessionIdSymbol` serialized as the literal `'SessionIdSymbol'` so identity stays session-agnostic |
+| Computed | `computed()` | `deps` if given, else `fn.toString()` | Referential result equality only (no schema equivalence) |
+| Signal | `signal()` | `nanoid()` | Every call is unique — signals never dedup; `set` takes a plain value (functional update resolved by `store.setSignal`) |
 
 Db queries are two thunks: `queryInput$` builds the SQL and tracks
 dependencies (its equality compares query text + `deepEqual(bindValues)`;
@@ -92,7 +92,7 @@ this tree):
 2. **SQL result cache** (`QueryCache.ts`): an LRU (200 entries) keyed on
    SQL text + bind values, invalidated per written table on
    `cachedExecute`; transaction-control statements are ignored. This caches
-   _values_, not reactivity — a hot table with >200 distinct queries evicts
+   *values*, not reactivity — a hot table with >200 distinct queries evicts
    silently (flagged as provisional in code comments).
 
 ## Caching Substrate (`SqliteDbWrapper`)

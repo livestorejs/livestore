@@ -12,15 +12,15 @@ Draft.
 ```ts
 // packages/@livestore/common/src/schema/EventDef/event-def.ts
 type EventDef<TName, TType, TEncoded, TDerived> = {
-  name: TName // unique, versioned by convention
+  name: TName                      // unique, versioned by convention
   schema: Schema.Codec<TType, TEncoded>
   options: {
-    clientOnly: boolean // sync scope (LS.SYS.EVT-R02)
-    facts: FactsCallback | undefined // experimental
+    clientOnly: boolean            // sync scope (LS.SYS.EVT-R02)
+    facts: FactsCallback | undefined   // experimental
     derived: TDerived // reserved framework-internal marker
     deprecated: string | undefined // warn-at-commit (LS.SYS.EVT-R04)
   }
-  (args: TType): { name; args } // callable → partial event for commit()
+  (args: TType): { name; args }    // callable → partial event for commit()
 }
 ```
 
@@ -49,11 +49,11 @@ Partial {name, args}                       calling an EventDef
 `EncodedWithMeta` (`client.ts:67`) is the shape the eventlog, both sync
 processors, and rebase actually move around. Its `meta` carries:
 
-| Field                                                | Purpose                                                                                                                            |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `sessionChangeset`                                   | `sessionChangeset(data) \| no-op \| unset` — the SQLite session changeset recorded at materialization; consumed by rebase rollback |
-| `syncMetadata`                                       | provider-opaque per-event sync metadata (persisted as `syncMetadataJson`)                                                          |
-| `materializerHashLeader` / `materializerHashSession` | dev-mode determinism hashes compared across materialization sites                                                                  |
+| Field | Purpose |
+| --- | --- |
+| `sessionChangeset` | `sessionChangeset(data) \| no-op \| unset` — the SQLite session changeset recorded at materialization; consumed by rebase rollback |
+| `syncMetadata` | provider-opaque per-event sync metadata (persisted as `syncMetadataJson`) |
+| `materializerHashLeader` / `materializerHashSession` | dev-mode determinism hashes compared across materialization sites |
 
 Conversions: `toGlobal()` / `EncodedWithMeta.fromGlobal` and
 `Global.toClientEncoded` (`global.ts:32`, mapping global seqNums into
@@ -103,8 +103,8 @@ row completeness contracted by LS.SYS.EVT-R09):
 
 - **`eventlog`** — one row per event: composite seqNum triple (3-column PK)
   - parent triple, `name`, `argsJson` (note: `undefined` args are stored as
-    `{}` — `eventlog.ts:248`), `clientId`, `sessionId`, per-row `schemaHash`,
-    `syncMetadataJson`; indexed on `seqNumGlobal` and the full triple.
+  `{}` — `eventlog.ts:248`), `clientId`, `sessionId`, per-row `schemaHash`,
+  `syncMetadataJson`; indexed on `seqNumGlobal` and the full triple.
 - **`__livestore_sync_status`** — the upstream head plus `backendId`, used
   to detect a changed backend identity (`BackendIdMismatchError` handling).
 

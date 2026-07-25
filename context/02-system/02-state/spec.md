@@ -20,12 +20,12 @@ eventlog ──▶ materializer(event, ctx) ──▶ mutations ──▶ state 
 ```ts
 // packages/@livestore/common/src/schema/EventDef/materializer.ts
 type Materializer<TEventDef> = (
-  args: TEventDef['schema']['Type'], // decoded payload
+  args: TEventDef['schema']['Type'],       // decoded payload
   context: {
-    query: MaterializerContextQuery // read current state
-    event: LiveStoreEvent.Client.Decoded // full metadata
+    query: MaterializerContextQuery        // read current state
+    event: LiveStoreEvent.Client.Decoded   // full metadata
     eventDef: TEventDef
-    currentFacts: EventDefFacts // experimental
+    currentFacts: EventDefFacts            // experimental
   },
 ) => SingleOrReadonlyArray<MaterializerResult>
 ```
@@ -46,7 +46,7 @@ type Materializer<TEventDef> = (
 ### Execution boundaries
 
 Leader-side batch materialization writes the state DB and the eventlog DB in
-two _coordinated_ transactions — begun and committed in lockstep inside one
+two *coordinated* transactions — begun and committed in lockstep inside one
 uninterruptible Effect with a joint rollback finalizer
 (`LeaderSyncProcessor.ts:849-886`). This protects against errors and fiber
 interruption, but is **not** atomic across the two databases under process
@@ -57,11 +57,11 @@ mechanics live in `../03-sync/02-processors/`.
 
 The classification is contract (LS.SYS.STATE-R07):
 
-| Failure                                                                      | Kind                         |
-| ---------------------------------------------------------------------------- | ---------------------------- |
-| `MaterializeError` (materializer threw / bad SQL)                            | recoverable tagged error     |
-| `MaterializerHashMismatchError` (dev determinism check)                      | recoverable tagged error     |
-| Unknown event definition on **write** (`eventlog.ts:228`)                    | defect (`shouldNeverHappen`) |
+| Failure | Kind |
+| --- | --- |
+| `MaterializeError` (materializer threw / bad SQL) | recoverable tagged error |
+| `MaterializerHashMismatchError` (dev determinism check) | recoverable tagged error |
+| Unknown event definition on **write** (`eventlog.ts:228`) | defect (`shouldNeverHappen`) |
 | Missing event definition during materialization (`materialize-event.ts:133`) | defect (`shouldNeverHappen`) |
 
 Unknown events on **read** are tolerated (`../01-event-model/spec.md`).
@@ -70,13 +70,13 @@ Unknown events on **read** are tolerated (`../01-event-model/spec.md`).
 
 A realization supplies (LS.SYS.STATE-R05):
 
-| Obligation            | Meaning                                                                  |
-| --------------------- | ------------------------------------------------------------------------ |
-| Mutation format       | What a `MaterializerResult` is (e.g. SQL statement)                      |
-| Query surface         | Typed read-only queries for app + live queries                           |
-| Rebuild               | Recreate state from the full eventlog                                    |
-| Rollback              | Undo recent materializations for rebase (e.g. SQLite session changesets) |
-| Schema drift handling | Detect definition changes, trigger rebuild                               |
+| Obligation | Meaning |
+| --- | --- |
+| Mutation format | What a `MaterializerResult` is (e.g. SQL statement) |
+| Query surface | Typed read-only queries for app + live queries |
+| Rebuild | Recreate state from the full eventlog |
+| Rollback | Undo recent materializations for rebase (e.g. SQLite session changesets) |
+| Schema drift handling | Detect definition changes, trigger rebuild |
 
 Realizations: [01-sqlite](./01-sqlite/spec.md) (primary, shipping).
 Additional realizations are a roadmap item (root `roadmap.md`).

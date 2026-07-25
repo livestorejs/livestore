@@ -112,12 +112,12 @@
 The **event** is the spine: every other concept produces events, orders
 them, derives from them, or observes the result.
 
-| Relation to the spine | Terms                                                                         |
-| --------------------- | ----------------------------------------------------------------------------- |
-| Produce               | Store (commit), Client session                                                |
-| Order                 | Eventlog, Event sequence number, Sync backend, Rebase, Facts _(experimental)_ |
+| Relation to the spine | Terms |
+| --- | --- |
+| Produce | Store (commit), Client session |
+| Order | Eventlog, Event sequence number, Sync backend, Rebase, Facts _(experimental)_ |
 | Derive                | Materializer, State                                                           |
-| Observe               | Live query, Reactivity graph, Devtools                                        |
+| Observe | Live query, Reactivity graph, Devtools |
 
 ### Term families and leitwörter
 

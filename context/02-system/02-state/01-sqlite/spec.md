@@ -52,16 +52,16 @@ never commits an event or writes to SQLite.
 
 ## System Tables
 
-| Group              | Tables                                                                    | Purpose                                                                                                                                                                   |
-| ------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Eventlog           | `eventlog` (`eventlog-tables.ts`)                                         | one row per event: composite seqNum triple (PK) + parent triple, `name`, `argsJson`, `clientId`, `sessionId`, per-row `schemaHash`, `syncMetadataJson`; indexed on seqNum |
-| Sync status        | `__livestore_sync_status`                                                 | upstream head + `backendId` (backend-identity change detection)                                                                                                           |
-| Schema meta        | `__livestore_schema`, `__livestore_schema_event_defs` (`state-tables.ts`) | table-AST and event-definition hashes for drift detection                                                                                                                 |
-| Changeset/rollback | `__livestore_session_changeset` (`state-tables.ts`)                       | per-event SQLite session changesets enabling rebase rollback (LS.SYS.STATE.SQLITE-R06)                                                                                    |
+| Group | Tables | Purpose |
+| --- | --- | --- |
+| Eventlog | `eventlog` (`eventlog-tables.ts`) | one row per event: composite seqNum triple (PK) + parent triple, `name`, `argsJson`, `clientId`, `sessionId`, per-row `schemaHash`, `syncMetadataJson`; indexed on seqNum |
+| Sync status | `__livestore_sync_status` | upstream head + `backendId` (backend-identity change detection) |
+| Schema meta | `__livestore_schema`, `__livestore_schema_event_defs` (`state-tables.ts`) | table-AST and event-definition hashes for drift detection |
+| Changeset/rollback | `__livestore_session_changeset` (`state-tables.ts`) | per-event SQLite session changesets enabling rebase rollback (LS.SYS.STATE.SQLITE-R06) |
 
 (LS.SYS.STATE.SQLITE-R04.) Note the eventlog and changeset groups span two
-databases: changeset rows live in the _state_ DB while event rows live in
-the _eventlog_ DB; `getEventsSince` joins across both to serve rebase
+databases: changeset rows live in the *state* DB while event rows live in
+the *eventlog* DB; `getEventsSince` joins across both to serve rebase
 rollback.
 
 ## Schema Change

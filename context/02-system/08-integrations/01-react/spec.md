@@ -11,12 +11,12 @@ Draft.
 
 ## Surface
 
-| Hook / export          | File                       | Purpose                                                 |
-| ---------------------- | -------------------------- | ------------------------------------------------------- |
-| `useStore`             | `useStore.ts`              | Acquire a store from the registry (suspense-aware boot) |
-| `useQuery`             | `useQuery.ts`              | Subscribe to any queryable; synchronous first read      |
-| `useSyncStatus`        | `useSyncStatus.ts`         | Observe sync/network status                             |
-| `StoreRegistryContext` | `StoreRegistryContext.tsx` | Scope store resolution per subtree                      |
+| Hook / export | File | Purpose |
+| --- | --- | --- |
+| `useStore` | `useStore.ts` | Acquire a store from the registry (suspense-aware boot) |
+| `useQuery` | `useQuery.ts` | Subscribe to any queryable; synchronous first read |
+| `useSyncStatus` | `useSyncStatus.ts` | Observe sync/network status |
+| `StoreRegistryContext` | `StoreRegistryContext.tsx` | Scope store resolution per subtree |
 
 `useRcResource` (`useRcResource.ts`) implements the reference-counted
 resource pattern behind LS.SYS.INT.REACT-R03: caches are bucketed in a
@@ -44,7 +44,7 @@ rendering (LS.SYS.INT.REACT-R04 flags this as unverified; issue #1422).
 
 `useStore` calls `storeRegistry.getOrLoadPromise` on every render,
 deliberately un-memoized so React transitions stay committable; `retain()`
-runs in `useEffect` _after_ `React.use` to keep hook order stable across
+runs in `useEffect` *after* `React.use` to keep hook order stable across
 suspensions, accepting a documented timing-gap race when `unusedCacheTime`
 is below ~100ms (issue #916). The returned store is wrapped by
 `withReactApi`, which attaches `useQuery` and `useSyncStatus` as store

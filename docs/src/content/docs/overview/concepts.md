@@ -37,7 +37,7 @@ queries** keep your UI in sync with that state.
       queries.
     - Persisted SQLite database (usually running on the leader thread).
     - Fully derived from the eventlog — it can always be rebuilt.
-      with last-write-wins semantics.
+    with last-write-wins semantics.
 
 ## Store
 

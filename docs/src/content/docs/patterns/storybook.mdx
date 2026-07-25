@@ -87,10 +87,10 @@ export const TodoInput = () => {
 
   const createTodo = () => {
     if (newTodoText.trim() === '') return
-    store.commit(
-      events.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
+      store.commit(
+        events.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
       events.todoDraftChanged({ id: store.sessionId, text: '' }),
-    )
+      )
   }
 
   return (
@@ -154,16 +154,16 @@ stories with explicit application events so fixtures exercise the same
 materializers as production.
 
 <Tabs>
-  <TabItem label="Stories">
+<TabItem label="Stories">
     <Code code={CODE.stories} lang="tsx" title="src/TodoInput.stories.tsx" />
-  </TabItem>
-  <TabItem label="Decorator">
+</TabItem>
+<TabItem label="Decorator">
     <Code code={CODE.decorator} lang="tsx" title="src/decorator.tsx" />
-  </TabItem>
-  <TabItem label="Component">
+</TabItem>
+<TabItem label="Component">
     <Code code={CODE.component} lang="tsx" title="src/TodoInput.tsx" />
-  </TabItem>
-  <TabItem label="Schema">
-    <Code code={CODE.schema} lang="ts" title="src/schema.ts" />
-  </TabItem>
+</TabItem>
+<TabItem label="Schema">
+<Code code={CODE.schema} lang="ts" title="src/schema.ts" />
+</TabItem>
 </Tabs>

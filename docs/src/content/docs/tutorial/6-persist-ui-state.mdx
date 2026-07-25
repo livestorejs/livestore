@@ -157,9 +157,9 @@ export const App = () => {
   )
 
   const updateInput = (nextInput: string) =>
-    store.commit(
+      store.commit(
       events.todoDraftChanged({ id: store.sessionId, input: nextInput }),
-    )
+      )
 
   const updateFilter = (nextFilter: Filter) =>
     store.commit(
@@ -176,17 +176,17 @@ export const App = () => {
 
   return (
     <main>
-      <input
-        value={input}
+          <input
+            value={input}
         onChange={(event) => updateInput(event.target.value)}
         onKeyDown={(event) => event.key === 'Enter' && addTodo()}
-      />
+                />
 
       {(['All', 'Active', 'Completed'] as const).map((value) => (
         <button key={value} onClick={() => updateFilter(value)}>
           {value}
-        </button>
-      ))}
+              </button>
+          ))}
 
       <ul>
         {todos.map((todo) => <li key={todo.id}>{todo.text}</li>)}

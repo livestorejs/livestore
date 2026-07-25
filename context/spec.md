@@ -79,14 +79,14 @@ kinds (e.g. `04-docs/` vs `05-contributing/`) is reading order only.
 
 ### Branch responsibilities
 
-| Branch               | Owns                                                                                      | Absorbs (over time)                                                                                                                                                   |
-| -------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `01-product/`        | Positioning, target use cases, comparison criteria, adoption guidance                     | `docs/overview/why-livestore`, `when-livestore` (as canonical source; docs pages become derived)                                                                      |
-| `02-system/`         | All technical contracts and their realizations                                            | `docs/understanding-livestore/design-decisions` (absorbed 2026-07-16 into `.decisions/` records; page is now derived), RFC fold-ins                                   |
-| `03-delivery/`       | Repo topology, package composition, release/versioning, artifact flows                    | `context/repo-architecture/`, `context/devtools-artifact-release/`, `contributor-docs/{package-release,release-workflows,dependency-management,wa-sqlite-management}` |
-| `04-docs/`           | Derivation rule (docs follow VRS), snippets/diagrams policy, examples as learning surface | `contributor-docs/docs/*`, examples policy                                                                                                                            |
-| `05-contributing/`   | Collaboration model, RFC process + fold-in rule, governance, community surfaces           | `contributor-docs/rfcs/index.md`, `CONTRIBUTING.md` (as canonical source)                                                                                             |
-| `06-sustainability/` | License policy, sponsorship/funding model, commercial surfaces                            | `docs/sustainable-open-source/*` (as canonical source)                                                                                                                |
+| Branch | Owns | Absorbs (over time) |
+| --- | --- | --- |
+| `01-product/` | Positioning, target use cases, comparison criteria, adoption guidance | `docs/overview/why-livestore`, `when-livestore` (as canonical source; docs pages become derived) |
+| `02-system/` | All technical contracts and their realizations | `docs/understanding-livestore/design-decisions` (absorbed 2026-07-16 into `.decisions/` records; page is now derived), RFC fold-ins |
+| `03-delivery/` | Repo topology, package composition, release/versioning, artifact flows | `context/repo-architecture/`, `context/devtools-artifact-release/`, `contributor-docs/{package-release,release-workflows,dependency-management,wa-sqlite-management}` |
+| `04-docs/` | Derivation rule (docs follow VRS), snippets/diagrams policy, examples as learning surface | `contributor-docs/docs/*`, examples policy |
+| `05-contributing/` | Collaboration model, RFC process + fold-in rule, governance, community surfaces | `contributor-docs/rfcs/index.md`, `CONTRIBUTING.md` (as canonical source) |
+| `06-sustainability/` | License policy, sponsorship/funding model, commercial surfaces | `docs/sustainable-open-source/*` (as canonical source) |
 
 ## Node Conventions
 
@@ -109,24 +109,24 @@ All IDs carry the uniform `LS` prefix so they are globally unique when quoted
 outside the repo (assumptions `A`, tradeoffs `T`, requirements `R`, design
 questions `DQ`, deltas `DELTA`, decisions by number):
 
-| Namespace                                                                                                                                          | Node                                          |
-| -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `LS-*`                                                                                                                                             | root                                          |
-| `LS.PROD-*`                                                                                                                                        | `01-product/`                                 |
-| `LS.SYS-*`                                                                                                                                         | `02-system/`                                  |
-| `LS.SYS.EVT-*`                                                                                                                                     | `02-system/01-event-model/`                   |
-| `LS.SYS.STATE-*` / `LS.SYS.STATE.SQLITE-*`, `LS.SYS.STATE.SQLITE.SM-*`                                                                             | `02-system/02-state/` and children            |
-| `LS.SYS.SYNC-*` / `LS.SYS.SYNC.SS-*`, `LS.SYS.SYNC.PROC-*`, `LS.SYS.SYNC.CF-*`                                                                     | `02-system/03-sync/` and children             |
-| `LS.SYS.RT-*` / `LS.SYS.RT.WEB-*`, `LS.SYS.RT.CF-*`, `LS.SYS.RT.MESH-*`, `LS.SYS.RT.WEB.PERSIST-*`, `LS.SYS.RT.WEB.TOPO-*`, `LS.SYS.RT.WEB.LEAD-*` | `02-system/04-runtime/` and children          |
-| `LS.SYS.STORE-*` / `LS.SYS.STORE.RX-*`                                                                                                             | `02-system/05-store/` and children            |
-| `LS.SYS.OBS-*`                                                                                                                                     | `02-system/06-observability/`                 |
-| `LS.SYS.DT-*`                                                                                                                                      | `02-system/07-devtools/`                      |
-| `LS.SYS.INT-*` / `LS.SYS.INT.REACT-*`, `LS.SYS.INT.EFFECT-*`                                                                                       | `02-system/08-integrations/` and realizations |
-| `LS.SYS.VER-*` / `LS.SYS.VER.LANE-*`, `LS.SYS.VER.CONF-*`, `LS.SYS.VER.PERF-*`, `LS.SYS.VER.PROTO-*`, `LS.SYS.VER.DET-*`                           | `02-system/09-verification/` and children     |
-| `LS.DEL-*` / `LS.DEL.COMP-*`, `LS.DEL.REL-*`, `LS.DEL.ART-*`                                                                                       | `03-delivery/` and children                   |
-| `LS.DOCS-*` / `LS.DOCS.EX-*`, `LS.DOCS.SEARCH-*`, `LS.DOCS.OPS-*`                                                                                  | `04-docs/` and children                       |
-| `LS.CONTRIB-*` / `LS.CONTRIB.COLLAB-*`, `LS.CONTRIB.COMM-*`                                                                                        | `05-contributing/` and children               |
-| `LS.SUST-*`                                                                                                                                        | `06-sustainability/`                          |
+| Namespace | Node |
+| --- | --- |
+| `LS-*` | root |
+| `LS.PROD-*` | `01-product/` |
+| `LS.SYS-*` | `02-system/` |
+| `LS.SYS.EVT-*` | `02-system/01-event-model/` |
+| `LS.SYS.STATE-*` / `LS.SYS.STATE.SQLITE-*`, `LS.SYS.STATE.SQLITE.SM-*` | `02-system/02-state/` and children |
+| `LS.SYS.SYNC-*` / `LS.SYS.SYNC.SS-*`, `LS.SYS.SYNC.PROC-*`, `LS.SYS.SYNC.CF-*` | `02-system/03-sync/` and children |
+| `LS.SYS.RT-*` / `LS.SYS.RT.WEB-*`, `LS.SYS.RT.CF-*`, `LS.SYS.RT.MESH-*`, `LS.SYS.RT.WEB.PERSIST-*`, `LS.SYS.RT.WEB.TOPO-*`, `LS.SYS.RT.WEB.LEAD-*` | `02-system/04-runtime/` and children |
+| `LS.SYS.STORE-*` / `LS.SYS.STORE.RX-*` | `02-system/05-store/` and children |
+| `LS.SYS.OBS-*` | `02-system/06-observability/` |
+| `LS.SYS.DT-*` | `02-system/07-devtools/` |
+| `LS.SYS.INT-*` / `LS.SYS.INT.REACT-*`, `LS.SYS.INT.EFFECT-*` | `02-system/08-integrations/` and realizations |
+| `LS.SYS.VER-*` / `LS.SYS.VER.LANE-*`, `LS.SYS.VER.CONF-*`, `LS.SYS.VER.PERF-*`, `LS.SYS.VER.PROTO-*`, `LS.SYS.VER.DET-*` | `02-system/09-verification/` and children |
+| `LS.DEL-*` / `LS.DEL.COMP-*`, `LS.DEL.REL-*`, `LS.DEL.ART-*` | `03-delivery/` and children |
+| `LS.DOCS-*` / `LS.DOCS.EX-*`, `LS.DOCS.SEARCH-*`, `LS.DOCS.OPS-*` | `04-docs/` and children |
+| `LS.CONTRIB-*` / `LS.CONTRIB.COLLAB-*`, `LS.CONTRIB.COMM-*` | `05-contributing/` and children |
+| `LS.SUST-*` | `06-sustainability/` |
 
 Realization namespaces extend their dimension namespace with one more segment.
 IDs are sequential per namespace; renumbering updates all references in the

@@ -9,16 +9,16 @@ Draft.
 
 ## Lane Taxonomy
 
-| Lane                      | Proves                                                                             | Home                     | Runner                    | Local command                         | CI job                                                                |
-| ------------------------- | ---------------------------------------------------------------------------------- | ------------------------ | ------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
-| Unit                      | Pure semantics per package                                                         | `*.test.ts(x)` colocated | Vitest                    | `mono test unit`                      | `test-unit`                                                           |
+| Lane | Proves | Home | Runner | Local command | CI job |
+| --- | --- | --- | --- | --- | --- |
+| Unit | Pure semantics per package | `*.test.ts(x)` colocated | Vitest | `mono test unit` | `test-unit` |
 | Package integration       | Cross-package engine behavior (materializers, client-only events, sync processors) | `tests/package-common/`  | Vitest                    | folded into `mono test unit`          | `test-unit`                                                           |
-| Browser integration       | Adapter/devtools behavior in real browsers                                         | `tests/integration/`     | Playwright                | `mono test integration`               | `test-integration-playwright` (suite matrix: misc, todomvc, devtools) |
-| Sync-provider conformance | Provider contract (see [../02-conformance/](../02-conformance/spec.md))            | `tests/sync-provider/`   | Vitest                    | `mono test integration sync-provider` | `test-integration-sync-provider` (7-provider matrix)                  |
-| SQLite substrate          | wa-sqlite API, session extension, serialize                                        | `tests/wa-sqlite/`       | Vitest                    | `mono test integration wa-sqlite`     | `wa-sqlite-test`                                                      |
-| Perf (store)              | Measurement collection (see [../03-performance/](../03-performance/spec.md))       | `tests/perf/`            | Playwright                | `mono test perf`                      | `perf-test`                                                           |
-| Perf (eventlog)           | Event-streaming measurements                                                       | `tests/perf-eventlog/`   | Playwright                | package `test` script                 | —                                                                     |
-| Examples-as-tests         | Examples still build and run                                                       | `examples/`              | per-example `test` script | `mono examples test`                  | not a required gate                                                   |
+| Browser integration | Adapter/devtools behavior in real browsers | `tests/integration/` | Playwright | `mono test integration` | `test-integration-playwright` (suite matrix: misc, todomvc, devtools) |
+| Sync-provider conformance | Provider contract (see [../02-conformance/](../02-conformance/spec.md)) | `tests/sync-provider/` | Vitest | `mono test integration sync-provider` | `test-integration-sync-provider` (7-provider matrix) |
+| SQLite substrate | wa-sqlite API, session extension, serialize | `tests/wa-sqlite/` | Vitest | `mono test integration wa-sqlite` | `wa-sqlite-test` |
+| Perf (store) | Measurement collection (see [../03-performance/](../03-performance/spec.md)) | `tests/perf/` | Playwright | `mono test perf` | `perf-test` |
+| Perf (eventlog) | Event-streaming measurements | `tests/perf-eventlog/` | Playwright | package `test` script | — |
+| Examples-as-tests | Examples still build and run | `examples/` | per-example `test` script | `mono examples test` | not a required gate |
 
 ## Lane / CI Correspondence
 

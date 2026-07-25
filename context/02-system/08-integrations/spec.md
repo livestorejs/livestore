@@ -10,13 +10,13 @@ Draft.
 
 ## Shared Toolkit
 
-| Primitive                                 | File            | Purpose                                                                                                                                                                                    |
-| ----------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `normalizeQueryable`                      | `query.ts`      | QueryBuilder → `queryDb` def; def/signal-def passthrough; live `LiveQuery` instance → `{ _tag: 'live-query' }`                                                                             |
-| `computeRcRefKey`                         | `query.ts`      | Resource cache key `${storeId}_${clientId}_${sessionId}:def:${hash}` (or `:instance:${id}`) — scoping that prevents cross-store cache mixing                                               |
-| `createQueryResource` / `runInitialQuery` | `query.ts`      | Builds the rc-ref + otel span per query; live-query instances get a synthetic `rc: Infinity` ref. `runInitialQuery` hardcodes `debugRefreshReason: 'react'` for all frameworks (code TODO) |
-| Stack info                                | `stack-info.ts` | Query provenance via a captured JS stack trace (temporarily raises `Error.stackTraceLimit`)                                                                                                |
-| Testing utilities                         | `testing.ts`    | TodoMVC fixture store over the in-memory adapter                                                                                                                                           |
+| Primitive | File | Purpose |
+| --- | --- | --- |
+| `normalizeQueryable` | `query.ts` | QueryBuilder → `queryDb` def; def/signal-def passthrough; live `LiveQuery` instance → `{ _tag: 'live-query' }` |
+| `computeRcRefKey` | `query.ts` | Resource cache key `${storeId}_${clientId}_${sessionId}:def:${hash}` (or `:instance:${id}`) — scoping that prevents cross-store cache mixing |
+| `createQueryResource` / `runInitialQuery` | `query.ts` | Builds the rc-ref + otel span per query; live-query instances get a synthetic `rc: Infinity` ref. `runInitialQuery` hardcodes `debugRefreshReason: 'react'` for all frameworks (code TODO) |
+| Stack info | `stack-info.ts` | Query provenance via a captured JS stack trace (temporarily raises `Error.stackTraceLimit`) |
+| Testing utilities | `testing.ts` | TodoMVC fixture store over the in-memory adapter |
 
 An integration composes these with its framework's reactivity: subscribe on
 mount/first read, unsubscribe on disposal, resolve stores through the
