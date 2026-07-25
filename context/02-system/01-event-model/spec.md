@@ -65,7 +65,7 @@ structs; encoding happens at the boundary (LS.SYS.EVT-R03).
 `EventSequenceNumber.Client.Composite = { global, client, rebaseGeneration }`.
 
 - `global` — allocated optimistically by the committing client and
-  _arbitrated_ by the sync backend: the backend admits a push only if it
+  *arbitrated* by the sync backend: the backend admits a push only if it
   extends the current head, otherwise the client rebases and re-numbers
   (`03-sync/`). Once admitted, global numbers are the canonical total order
   (LS.SYS.EVT-R05).
