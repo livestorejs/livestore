@@ -372,19 +372,20 @@ export const make = Effect.fnUntraced(function* ({
           }
         }
 
-        // A local push appends accepted events after the existing pending events. Materialize that
-        // retained suffix so leader rollback metadata stays on the canonical events used by a later rebase.
-        const newPendingEvents = mergeResult.newSyncState.pending.slice(syncState.pending.length)
-        if (newPendingEvents.length !== mergeResult.newEvents.length) {
+        // For a local-push advance, `newEvents` and the appended pending suffix describe the same logical
+        // events but serve different roles and may be distinct instances. Materialize the retained pending
+        // instances so their rollback metadata remains available if a later backend event causes a rebase.
+        const acceptedPendingEvents = mergeResult.newSyncState.pending.slice(syncState.pending.length)
+        if (acceptedPendingEvents.length !== mergeResult.newEvents.length) {
           return yield* Effect.dieDebugger('Local push events must be retained in pending state')
         }
 
-        yield* materializeEventsBatch({ batchItems: newPendingEvents, deferreds })
+        yield* materializeEventsBatch({ batchItems: acceptedPendingEvents, deferreds })
 
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
         yield* connectedClientSessionPullQueues.offer({
-          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: newPendingEvents }),
+          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: acceptedPendingEvents }),
           leaderHead: mergeResult.newSyncState.localHead,
         })
 
@@ -394,7 +395,7 @@ export const make = Effect.fnUntraced(function* ({
         })
 
         // Don't sync client-only events
-        const globalOrUnknownEvents = newPendingEvents.filter((e) => !isClientOnlyEvent(e))
+        const globalOrUnknownEvents = acceptedPendingEvents.filter((e) => !isClientOnlyEvent(e))
 
         yield* TxQueue.offerAll(syncBackendPushQueue, globalOrUnknownEvents)
       }).pipe(localPushBackendPullMutex.withPermits(1))
