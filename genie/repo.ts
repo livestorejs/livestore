@@ -367,6 +367,21 @@ const withNixSetupRetry = <TStep extends { readonly name: string; readonly run: 
   withNixRetry(step, setupMegarepoRun(step.run))
 
 /**
+ * VALIDATION-ONLY probe (not for merge). Sets the legacy `MEGAREPO_GIT_COMMAND_TIMEOUT_MS=1`
+ * on the sync step as a green discriminator for overengineeringstudio/effect-utils#965:
+ * the FIXED megarepo retires that var, so it ignores this and the `effect` clone gets the
+ * 600s network budget → sync is GREEN. The OLD (pre-fix) megarepo obeys it → 1ms flat
+ * deadline → the clone dies instantly → sync would be RED. A green sync step therefore
+ * proves the fixed operation-aware code is what runs in livestore's real CI.
+ */
+const withGitTimeoutProbe = <TStep extends { readonly env?: Record<string, string> }>(
+  step: TStep,
+): TStep => ({
+  ...step,
+  env: { ...step.env, MEGAREPO_GIT_COMMAND_TIMEOUT_MS: '1' },
+})
+
+/**
  * Setup steps for livestore CI jobs (without checkout).
  * Uses shared step atoms from effect-utils/genie/ci-workflow.ts.
  */
@@ -384,7 +399,7 @@ export const livestoreSetupStepsAfterCheckout = [
     const base = cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' })
     return { ...base, with: { ...base.with, skipPush: true } }
   })(),
-  withNixSetupRetry(applyMegarepoLockStep()),
+  withNixSetupRetry(withGitTimeoutProbe(applyMegarepoLockStep())),
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
   restorePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),

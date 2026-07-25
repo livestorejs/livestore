@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "f007561eb40e1a4c3a0fad3adafb14cd420bafc0",
+      "ref": "schickling-assistant/2026-07-25-validate-git-timeout-on-pin",
+      "commit": "450be74d0f466acc4aba24d8cb79b38962c677af",
       "pinned": true,
-      "lockedAt": "2026-07-19T14:46:24.673Z"
+      "lockedAt": "2026-07-25T13:30:01.687Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
