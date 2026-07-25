@@ -566,6 +566,19 @@ in
     '';
   };
 
+  tasks."docs:screenshots" = {
+    description = "Capture example screenshots as local Astro assets (docs/src/assets/examples/)";
+    exec = ''
+      set -euo pipefail
+      cd "$DEVENV_ROOT/docs"
+
+      # Auto-captures the 3 in-repo web apps; contrib apps are refreshed manually
+      # (see the header comment in docs/src/data/examples.ts).
+      bun scripts/screenshots.ts
+    '';
+    after = [ "pnpm:install" ];
+  };
+
   # NOTE: check:quick is provided by effect-utils taskModules.check.
 
   git-hooks.enable = true;

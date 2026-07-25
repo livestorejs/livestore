@@ -116,9 +116,6 @@ export default defineConfig({
   // rejects every request with a 500. Disabling it optimizes remote images at
   // build time with sharp and backs `/_image` with the local sharp service (200).
   adapter: process.env.NODE_ENV === 'production' ? netlify({ imageCDN: false }) : undefined,
-  image: {
-    domains: ['gitbucket.schickling.dev'],
-  },
   build: {
     concurrency: os.cpus().length,
   },
