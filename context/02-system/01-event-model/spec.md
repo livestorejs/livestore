@@ -30,8 +30,7 @@ an `EventDefRecord` on the store schema. A definition is callable (partial
 event for `commit()`) and also exposes an `.encoded()` constructor
 (`event-def.ts:74`) plus an `Event` type helper. `derived` is never set by
 user code. Its low-level type machinery remains available for framework
-internals, but no current SQLite table API auto-generates events or
-materializers.
+internals.
 
 ## Event Shape Lifecycle
 
