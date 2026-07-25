@@ -717,8 +717,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       const sqlRes = query.asSql()
       const schema = getResultSchema(query)
 
-      // Query builders preserve SessionIdSymbol so queries can be reused across sessions.
-      // SQLite bind values must be concrete primitives, so resolve the symbol only at execution time.
       const resolvedBindValues =
         sqlRes.bindValues === undefined
           ? undefined
