@@ -12,6 +12,8 @@ import {
   type ProviderKey as TSyncProviderChoice,
 } from '@local/tests-sync-provider/registry'
 
+import * as TestPolicy from '../shared/test-policy.ts'
+
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
 const ciUnitTestPackageConcurrency = (() => {
@@ -115,11 +117,14 @@ const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: strin
       }
     }
 
-    // Also check tests/package-common if not excluded
-    if (excludePackages.includes('tests/package-common') === false) {
-      const packageCommonPath = path.join(workspaceRoot, 'tests/package-common')
-      if (fs.existsSync(packageCommonPath) === true && hasTestFiles(packageCommonPath) === true) {
-        addPackage(packageCommonPath, 'tests/package-common')
+    // Test roots outside packages/*. Without these the unit lane silently omits suites that
+    // exist and pass locally — `scripts/` carried 4 test files that no CI job ever ran.
+    for (const extraRoot of ['tests/package-common', 'scripts']) {
+      if (excludePackages.includes(extraRoot) === true) continue
+
+      const extraPath = path.join(workspaceRoot, extraRoot)
+      if (fs.existsSync(extraPath) === true && hasTestFiles(extraPath) === true) {
+        addPackage(extraPath, extraRoot)
       }
     }
   } catch (error) {
@@ -198,7 +203,13 @@ const runUnitTests = Effect.fn(function* ({ filter }: { filter: Option.Option<st
     const vitestPathsToRunSequentially = sequentialPackages.map((pkg) => `${workspaceRoot}/${pkg}`)
 
     for (const vitestPath of vitestPathsToRunSequentially) {
-      yield* runTestGroup(vitestPath)(cmd(`vitest run ${vitestPath}`).pipe(Effect.provide(LivestoreWorkspace.toCwd())))
+      yield* runTestGroup(vitestPath)(
+        TestPolicy.runTestTarget({
+          label: vitestPath,
+          policy: TestPolicy.blocking,
+          run: cmd(`vitest run ${vitestPath}`).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+        }),
+      )
     }
 
     // Run the rest of the tests in parallel (each config as separate vitest invocation)
@@ -211,7 +222,11 @@ const runUnitTests = Effect.fn(function* ({ filter }: { filter: Option.Option<st
               target.config !== undefined
                 ? ['vitest', 'run', '--config', target.config]
                 : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
-            return cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+            return TestPolicy.runTestTarget({
+              label: target.config ?? target.path,
+              policy: TestPolicy.blocking,
+              run: cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+            })
           },
           { concurrency: ciUnitTestPackageConcurrency },
         ),
@@ -324,11 +339,15 @@ const runSyncProviderTests = Effect.fn(function* ({ provider }: { provider: Opti
   const reportPath = path.join(workspaceRoot, 'tmp/sync-provider-run-report.json')
   fs.mkdirSync(path.dirname(reportPath), { recursive: true })
 
-  yield* cmd(['vitest', 'run', '--reporter=default', '--reporter=json', `--outputFile.json=${reportPath}`], {
-    // Selection happens at collection time via the registry rather than by matching test
-    // titles, so renaming a suite can no longer remove it from a CI cell (#1429).
-    env: Option.isSome(provider) === true ? { [providerSelectionEnvVar]: provider.value } : {},
-  }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/sync-provider')))
+  yield* TestPolicy.runTestTarget({
+    label: Option.isSome(provider) === true ? `sync-provider:${provider.value}` : 'sync-provider',
+    policy: TestPolicy.blocking,
+    run: cmd(['vitest', 'run', '--reporter=default', '--reporter=json', `--outputFile.json=${reportPath}`], {
+      // Selection happens at collection time via the registry rather than by matching test
+      // titles, so renaming a suite can no longer remove it from a CI cell (#1429).
+      env: Option.isSome(provider) === true ? { [providerSelectionEnvVar]: provider.value } : {},
+    }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/sync-provider'))),
+  })
 
   yield* assertTestsExecuted({ reportPath, suiteFile: syncProviderConformanceSuite })
 })

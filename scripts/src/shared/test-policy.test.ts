@@ -1,0 +1,56 @@
+import { describe, expect, it } from 'vitest'
+
+import { Effect, Exit, Schema } from '@livestore/utils/effect'
+
+import { blocking, expiredEntries, QuarantineEntry, quarantineLedger, runTestTarget } from './test-policy.ts'
+
+const isoDate = /^\d{4}-\d{2}-\d{2}$/
+
+const today = (): string => new Date().toISOString().slice(0, 10)
+
+describe('quarantine ledger', () => {
+  it('has no expired entries', () => {
+    // A quarantine past its expiry reds `test-unit` rather than quietly becoming permanent.
+    // Renew it with a new date and a fresh justification, or delete it.
+    expect(expiredEntries(quarantineLedger, today())).toEqual([])
+  })
+
+  it('flags a lapsed entry and leaves a live one alone', () => {
+    const lapsed = new QuarantineEntry({
+      target: 'packages/@livestore/example',
+      reason: 'demonstrates the expiry rule',
+      issue: 'https://github.com/livestorejs/livestore/issues/1404',
+      expires: '2020-01-01',
+    })
+    const live = new QuarantineEntry({ ...lapsed, expires: '2999-01-01' })
+
+    expect(expiredEntries({ lapsed, live }, today()).map(([key]) => key)).toEqual(['lapsed'])
+  })
+
+  it('records a target, reason, issue and a well-formed expiry for every entry', () => {
+    for (const [key, entry] of Object.entries(quarantineLedger as Record<string, QuarantineEntry>)) {
+      expect(Exit.isSuccess(Schema.decodeUnknownExit(QuarantineEntry)(entry)), `${key} shape`).toBe(true)
+      expect(entry.issue, `${key} issue`).toMatch(/^https:\/\/github\.com\//)
+      expect(entry.expires, `${key} expires`).toMatch(isoDate)
+      expect(entry.reason.length, `${key} reason`).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe('runTestTarget', () => {
+  it('propagates failure under the blocking policy', async () => {
+    const exit = await Effect.runPromiseExit(
+      runTestTarget({ label: 'demo', policy: blocking, run: Effect.fail('boom' as const) }),
+    )
+
+    expect(Exit.isFailure(exit)).toBe(true)
+  })
+
+  it('passes success through under the blocking policy', async () => {
+    const exit = await Effect.runPromiseExit(
+      runTestTarget({ label: 'demo', policy: blocking, run: Effect.succeed('ok' as const) }),
+    )
+
+    expect(Exit.isSuccess(exit)).toBe(true)
+  })
+})

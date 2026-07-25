@@ -23,3 +23,8 @@ workflows) are owned by `../../../03-delivery/`.
   exactly one `mono test`/devenv command, and the table stays in sync with
   the CI job decomposition. Adopted 2026-07-16 (interview); not met — see
   [.delta/DELTA-002-lane-ci-mismatches.md](./.delta/DELTA-002-lane-ci-mismatches.md).
+- **LS.SYS.VER.LANE-R04 Honest gates:** A required check reports success only
+  if every test it represents executed and passed. Tolerating a known failure
+  is expressible only as a declared quarantine carrying a reason, a tracking
+  issue, and an expiry date (mechanism in [spec.md](./spec.md) §Test Policy).
+  Adopted 2026-07-25.
