@@ -12,6 +12,18 @@
 
 - Removed redundant devenv package entries now owned by the task guard modules.
 
+### Internal Changes
+
+For maintainers and contributors:
+
+- **Tooling:** Failing tests now block merges. The unit lane
+  (`packages/@livestore/webmesh`, `tests/package-common`), the six Cloudflare
+  sync-provider matrix cells, and the DevTools Playwright suite previously
+  converted test failures into passing required checks, so a green check could
+  mean "the tests passed, or they failed and were ignored". Those suppressions
+  are removed, which also restores the intent-layer invariant suite as a real
+  gate on `context/` changes ([#1404](https://github.com/livestorejs/livestore/issues/1404)).
+
 ## 0.4.0 - 2026-06-02
 
 > **Installing v0.4.0:** Make sure all LiveStore packages use the same version:
