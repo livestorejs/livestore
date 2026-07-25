@@ -74,6 +74,254 @@ helper, compatibility alias, deprecation shim, codemod, or migration layer.
 | Framework toolkit | Client-document validation and setter typing | Query/resource and stack-info utilities only |
 | Examples/tests | Client documents provide persisted UI fixtures | Ordinary tables plus explicit client-only events where persistence is still required |
 
+## Replacement patterns for in-repository consumers
+
+These patterns are only for converting this repository's examples, tests, and
+fixtures so they continue to build after the API removal. They do not introduce
+a replacement public client-document abstraction.
+
+### Pattern 1: Normal table plus semantic client-only events
+
+Teaching examples should model persisted client state with an ordinary table
+and events that describe the UI actions.
+
+Replace a client document such as:
+
+```ts
+const uiState = State.SQLite.clientDocument({
+  name: 'uiState',
+  schema: Schema.Struct({
+    newTodoText: Schema.String,
+    filter: Schema.Literals(['all', 'active', 'completed']),
+  }),
+  default: {
+    id: SessionIdSymbol,
+    value: { newTodoText: '', filter: 'all' },
+  },
+})
+```
+
+with a normal table:
+
+```ts
+const Filter = Schema.Literals(['all', 'active', 'completed'])
+
+const uiState = State.SQLite.table({
+  name: 'uiState',
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    newTodoText: State.SQLite.text({ default: '' }),
+    filter: State.SQLite.text({ schema: Filter, default: 'all' }),
+  },
+})
+```
+
+Define client-only events explicitly. Prefer events that name the action over
+a generic document mutation in teaching examples:
+
+```ts
+const events = {
+  todoDraftChanged: Events.clientOnly({
+    name: 'v1.TodoDraftChanged',
+    schema: Schema.Struct({
+      id: Schema.String,
+      text: Schema.String,
+    }),
+  }),
+
+  todoFilterChanged: Events.clientOnly({
+    name: 'v1.TodoFilterChanged',
+    schema: Schema.Struct({
+      id: Schema.String,
+      filter: Filter,
+    }),
+  }),
+}
+```
+
+Register explicit upsert materializers:
+
+```ts
+const materializers = State.SQLite.materializers(events, {
+  'v1.TodoDraftChanged': ({ id, text }) =>
+    uiState
+      .insert({ id, newTodoText: text, filter: 'all' })
+      .onConflict('id', 'update', { newTodoText: text }),
+
+  'v1.TodoFilterChanged': ({ id, filter }) =>
+    uiState
+      .insert({ id, newTodoText: '', filter })
+      .onConflict('id', 'update', { filter }),
+})
+```
+
+Each insert branch supplies a complete initial row. Each conflict branch
+updates only the fields represented by that event. Components pass the
+concrete key explicitly:
+
+```ts
+store.commit(
+  events.todoDraftChanged({
+    id: store.sessionId,
+    text,
+  }),
+)
+```
+
+### Pattern 2: Existing read-only query fallback, then insert on first edit
+
+Use the existing core
+`QueryBuilder.first({ behaviour: 'fallback', fallback })` API when no row has
+been materialized yet:
+
+```ts
+const defaultUiState = {
+  newTodoText: '',
+  filter: 'all' as const,
+}
+
+const uiStateQuery = (id: string) =>
+  queryDb(
+    uiState.where({ id }).first({
+      behaviour: 'fallback',
+      fallback: () => ({ id, ...defaultUiState }),
+    }),
+    {
+      label: `uiState:${id}`,
+      deps: id,
+    },
+  )
+```
+
+React consumes it through the existing query integration:
+
+```tsx
+const store = useAppStore()
+const uiState = store.useQuery(uiStateQuery(store.sessionId))
+```
+
+The fallback is an in-memory query result. It does not insert a row or commit
+an event. The first edit commits a client-only event, and that event's upsert
+materializer creates the row:
+
+```text
+No row
+  → query returns fallback without writing
+  → first edit commits a client-only event
+  → materializer insert branch creates the row
+  → later edits take the on-conflict update branch
+```
+
+This replaces the client-document read-time seeding behavior and ensures every
+write remains attributable to an explicit application event.
+
+### Pattern 3: Choose a key that reflects the real state scope
+
+The replacement must make state ownership explicit:
+
+- Use `store.sessionId` for state belonging to one running session or browser
+  tab, such as an unfinished TodoMVC input.
+- Use a stable id such as `"settings"` for client-local state that should be
+  observed by every session/tab of the same client, such as a theme preference.
+- Use an entity-derived id such as `"filtered-list"` or `"column-todo"` for
+  keyed state such as saved scroll positions.
+
+For session-scoped state:
+
+```ts
+events.todoDraftChanged({
+  id: store.sessionId,
+  text,
+})
+```
+
+For state shared across the client's sessions:
+
+```ts
+events.themeChanged({
+  id: 'settings',
+  theme: 'dark',
+})
+```
+
+`Events.clientOnly()` still determines distribution: the event reaches the
+sessions of the same client but is not pushed to the sync backend. The row key
+determines whether those sessions read the same materialized value.
+
+`SessionIdSymbol` and its resolution infrastructure remain supported, but the
+examples should normally pass `store.sessionId` directly because it makes
+their scope visible in both the event and query. The dedicated
+`SessionIdSymbol` test continues to cover symbolic resolution.
+
+### Pattern 4: Private app hooks for complex examples
+
+Complex examples may preserve an existing component-facing tuple through an
+app-local hook, while implementing that hook entirely with public core
+primitives. For example, LinearLite can retain:
+
+```ts
+const [filterState, setFilterState] = useFilterState()
+```
+
+with an implementation shaped like:
+
+```tsx
+export const useFilterState = () => {
+  const store = useAppStore()
+  const id = store.sessionId
+  const state = store.useQuery(filterStateQuery(id))
+
+  const setState = React.useCallback(
+    (patch: Partial<FilterState>) => {
+      store.commit(
+        events.filterStateChanged({
+          id,
+          patch,
+        }),
+      )
+    },
+    [id, store],
+  )
+
+  return [state, setState] as const
+}
+```
+
+The table, `filterStateChanged` event, and patch/upsert materializer remain
+specific to LinearLite. The hook is not exported from a LiveStore package and
+must not grow into a generic compatibility layer.
+
+For these complex states:
+
+- Prefer flat columns when fields participate directly in queries.
+- Use typed JSON columns for genuinely opaque nested values.
+- Use an app-specific patch event when changing a settings object is itself the
+  meaningful application action.
+- Use separate semantic events when actions have distinct meaning, such as
+  `themeChanged` and `userNameChanged`.
+
+### Pattern selection by example
+
+| Consumer | Replacement |
+| --- | --- |
+| TodoMVC and its documentation variants | Normal `uiState` table, semantic draft/filter client-only events, explicit upserts, and a fallback query |
+| Web email | Normal navigation-state table with explicit `labelSelected` and `threadSelected`-style events |
+| LinearLite | Normal filter/frontend/scroll tables with private hooks implemented using `useQuery` and explicit commits |
+| Performance and devtools fixtures | Explicit `uiStateSet` client-only event and materializer are acceptable because these fixtures test engine behavior rather than domain modeling |
+| Router/Redwood/script variants with unused UI state | Remove the unused table and generated event instead of replacing them |
+| Current documentation snippets | Teach the explicit table/event/materializer/query flow directly, without a migration helper |
+
+Every converted consumer should end with the same data flow:
+
+```text
+UI action
+  → explicit client-only event
+  → explicit materializer
+  → ordinary table
+  → read-only query with fallback
+  → useQuery
+```
+
 ## Ordered implementation plan
 
 ### 0. Confirm the change and establish the baseline
