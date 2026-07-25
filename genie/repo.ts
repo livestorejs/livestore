@@ -367,6 +367,41 @@ const withNixSetupRetry = <TStep extends { readonly name: string; readonly run: 
   withNixRetry(step, setupMegarepoRun(step.run))
 
 /**
+ * Job-local megarepo store path — MUST match `jobLocalMegarepoStore` inside
+ * effect-utils' `applyMegarepoLockStep` (the sync step's `MEGAREPO_STORE` env). Kept
+ * literal here so the cache steps can address it before the sync step sets the env. If
+ * effect-utils changes the path the cache simply misses (graceful — no correctness impact).
+ */
+const megarepoStorePath =
+  '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+
+/**
+ * Cache the megarepo store (bare git repos + worktrees) keyed on `megarepo.lock`, so jobs
+ * stop cold-cloning the large members (`effect` etc., ~700MB of bares total) from GitHub on
+ * every run — the redundant-clone exposure behind #1473 (#1480). On a hit `mr apply` sees
+ * the pinned commits already present and no-ops; the key changes only when a member commit
+ * moves. A relocated store re-applies cleanly (verified: git/mr repair moved worktrees, no
+ * re-clone), so the run-scoped path in the key's *value* is irrelevant to correctness.
+ */
+const megarepoStoreCacheKey =
+  "livestore-megarepo-store-v1-${{ runner.os }}-${{ hashFiles('megarepo.lock') }}"
+
+const restoreMegarepoStoreStep = {
+  name: 'Restore megarepo store',
+  id: 'restore-megarepo-store',
+  uses: 'actions/cache/restore@v4',
+  with: { path: megarepoStorePath, key: megarepoStoreCacheKey },
+} as const
+
+const saveMegarepoStoreStep = {
+  name: 'Save megarepo store',
+  // Only the first job to finish a cold run writes the key; the rest no-op (key exists).
+  if: "${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}",
+  uses: 'actions/cache/save@v4',
+  with: { path: megarepoStorePath, key: megarepoStoreCacheKey },
+} as const
+
+/**
  * Setup steps for livestore CI jobs (without checkout).
  * Uses shared step atoms from effect-utils/genie/ci-workflow.ts.
  */
@@ -384,7 +419,9 @@ export const livestoreSetupStepsAfterCheckout = [
     const base = cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' })
     return { ...base, with: { ...base.with, skipPush: true } }
   })(),
+  restoreMegarepoStoreStep,
   withNixSetupRetry(applyMegarepoLockStep()),
+  saveMegarepoStoreStep,
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
   restorePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
