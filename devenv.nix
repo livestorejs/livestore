@@ -330,7 +330,6 @@ in
     (taskModules.ts {
       tsconfigFile = "tsconfig.dev.json";
       tsBinPkg = effectTsgo;
-      tscBin = "$DEVENV_ROOT/node_modules/.bin/tsc";
     })
     (taskModules.check {
       hasTests = false;
