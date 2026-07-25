@@ -299,9 +299,11 @@ import {
   prepareCiScriptsStep,
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
+  restoreMegarepoStoreStep,
   restorePnpmStateStep,
   runDevenvTasksBefore,
   nixDiagnosticsArtifactStep,
+  saveMegarepoStoreStep,
   savePnpmStateStep,
   validateNixStoreStep,
   workflowReportCollectorStep,
@@ -367,6 +369,16 @@ const withNixSetupRetry = <TStep extends { readonly name: string; readonly run: 
   withNixRetry(step, setupMegarepoRun(step.run))
 
 /**
+ * The megarepo-store sync step, opted into the shared cacheable-store path (#1480). Paired with
+ * {@link restoreMegarepoStoreStep} / {@link saveMegarepoStoreStep} (from effect-utils) it stops CI
+ * from cold-cloning large members (e.g. `effect-ts/effect`) every run: the store lives at the
+ * stable `cacheableMegarepoStore` path so the actions/cache version is stable across runs and
+ * restores hit. `withNixSetupRetry` preserves the step's `env` (the cacheable path) while
+ * rewriting the run for the codeload override.
+ */
+const stableStoreSyncStep = applyMegarepoLockStep({ cacheableStore: true })
+
+/**
  * Setup steps for livestore CI jobs (without checkout).
  * Uses shared step atoms from effect-utils/genie/ci-workflow.ts.
  */
@@ -384,7 +396,9 @@ export const livestoreSetupStepsAfterCheckout = [
     const base = cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' })
     return { ...base, with: { ...base.with, skipPush: true } }
   })(),
-  withNixSetupRetry(applyMegarepoLockStep()),
+  restoreMegarepoStoreStep(),
+  withNixSetupRetry(stableStoreSyncStep),
+  saveMegarepoStoreStep(),
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
   restorePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),

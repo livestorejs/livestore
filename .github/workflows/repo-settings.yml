@@ -74,9 +74,15 @@ jobs:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
           skipPush: true
+      - name: Restore megarepo store
+        id: restore-megarepo-store
+        uses: actions/cache/restore@v4
+        with:
+          path: '${{ runner.temp }}/megarepo-store'
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Sync megarepo dependencies
         env:
-          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
@@ -92,6 +98,12 @@ jobs:
 
           nix run --no-write-lock-file --override-input flake-utils "https://codeload.github.com/numtide/flake-utils/tar.gz/11707dc2f618dd54ca8739b309ec4fc024de578b" --override-input nixpkgs "https://codeload.github.com/NixOS/nixpkgs/tar.gz/5b63481602d9b0a714d5791c53bebe829d6b1a3c" --override-input tsgo "https://codeload.github.com/Effect-TS/tsgo/tar.gz/8d34c0a2d603a4b963b85ffccd4322c0ef74f472" "https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all'
         shell: bash
+      - name: Save megarepo store
+        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: '${{ runner.temp }}/megarepo-store'
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Use pinned devenv from lock
         run: |
           DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
@@ -246,9 +258,15 @@ jobs:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
           skipPush: true
+      - name: Restore megarepo store
+        id: restore-megarepo-store
+        uses: actions/cache/restore@v4
+        with:
+          path: '${{ runner.temp }}/megarepo-store'
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Sync megarepo dependencies
         env:
-          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
@@ -264,6 +282,12 @@ jobs:
 
           nix run --no-write-lock-file --override-input flake-utils "https://codeload.github.com/numtide/flake-utils/tar.gz/11707dc2f618dd54ca8739b309ec4fc024de578b" --override-input nixpkgs "https://codeload.github.com/NixOS/nixpkgs/tar.gz/5b63481602d9b0a714d5791c53bebe829d6b1a3c" --override-input tsgo "https://codeload.github.com/Effect-TS/tsgo/tar.gz/8d34c0a2d603a4b963b85ffccd4322c0ef74f472" "https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all'
         shell: bash
+      - name: Save megarepo store
+        if: ${{ success() && steps.restore-megarepo-store.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: '${{ runner.temp }}/megarepo-store'
+          key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Use pinned devenv from lock
         run: |
           DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
