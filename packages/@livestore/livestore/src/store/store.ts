@@ -316,9 +316,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         ...omitUndefineds({
           leaderPushBatchSize: params.leaderPushBatchSize,
         }),
-        ...(params.simulation?.clientSessionSyncProcessor !== undefined
-          ? { simulation: params.simulation.clientSessionSyncProcessor }
-          : {}),
       },
       confirmUnsavedChanges,
     }).pipe(Effect.runSyncWith(effectContext.services))
