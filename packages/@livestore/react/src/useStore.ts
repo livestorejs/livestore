@@ -9,7 +9,7 @@ import { useQuery } from './useQuery.ts'
 import { useSyncStatus } from './useSyncStatus.ts'
 
 /**
- * Returns a store instance augmented with React-specific hooks.
+ * Returns a store instance augmented with hooks (`store.useQuery()` and `store.useClientDocument()`) for reactive queries.
  *
  * @example
  * ```tsx
@@ -91,7 +91,8 @@ export const useStore = <
 /**
  * React-specific methods added to the Store when used via React hooks.
  *
- * These methods are attached by `withReactApi()` and `useStore()`.
+ * These methods are attached by `withReactApi()` and `useStore()`, allowing you
+  * to call `store.useQuery()` directly on the Store instance.
  */
 export type ReactApi = {
   /** Hook version of query subscription—re-renders component when query result changes */
@@ -101,7 +102,7 @@ export type ReactApi = {
 }
 
 /**
- * Augments a Store instance with React-specific methods.
+ * Augments a Store instance with React-specific methods. (`useQuery`)
  *
  * This is called automatically by `useStore()`. You typically don't need to call it
  * directly unless you're building custom integrations.
