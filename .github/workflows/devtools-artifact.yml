@@ -504,8 +504,8 @@ jobs:
       - name: Isolate pnpm state
         shell: bash
         run: |
-          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
-          echo "PNPM_CONFIG_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_STORE_DIR=${{ github.workspace }}/.pnpm-store" >> "$GITHUB_ENV"
+          echo "PNPM_CONFIG_STORE_DIR=${{ github.workspace }}/.pnpm-store" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
       - id: restore-pnpm-state
         name: Restore pnpm state
@@ -513,8 +513,8 @@ jobs:
         with:
           path: |
             ${{ github.workspace }}/.pnpm-home
-            ${{ runner.temp }}/pnpm-store/${{ github.job }}
-          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+            ${{ github.workspace }}/.pnpm-store
+          key: "livestore-pnpm-state-v1-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
