@@ -449,6 +449,7 @@ jobs:
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          MEGAREPO_GIT_COMMAND_TIMEOUT_MS: '600000'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
@@ -620,6 +621,7 @@ jobs:
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          MEGAREPO_GIT_COMMAND_TIMEOUT_MS: '600000'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
@@ -786,6 +788,7 @@ jobs:
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          MEGAREPO_GIT_COMMAND_TIMEOUT_MS: '600000'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
@@ -959,6 +962,7 @@ jobs:
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          MEGAREPO_GIT_COMMAND_TIMEOUT_MS: '600000'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
@@ -1124,6 +1128,7 @@ jobs:
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          MEGAREPO_GIT_COMMAND_TIMEOUT_MS: '600000'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
@@ -1299,6 +1304,7 @@ jobs:
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          MEGAREPO_GIT_COMMAND_TIMEOUT_MS: '600000'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
@@ -1480,6 +1486,7 @@ jobs:
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          MEGAREPO_GIT_COMMAND_TIMEOUT_MS: '600000'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
@@ -1674,6 +1681,7 @@ jobs:
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          MEGAREPO_GIT_COMMAND_TIMEOUT_MS: '600000'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
@@ -1853,6 +1861,7 @@ jobs:
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          MEGAREPO_GIT_COMMAND_TIMEOUT_MS: '600000'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
@@ -2041,6 +2050,7 @@ jobs:
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          MEGAREPO_GIT_COMMAND_TIMEOUT_MS: '600000'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
@@ -2249,6 +2259,7 @@ jobs:
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          MEGAREPO_GIT_COMMAND_TIMEOUT_MS: '600000'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
@@ -2445,6 +2456,7 @@ jobs:
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+          MEGAREPO_GIT_COMMAND_TIMEOUT_MS: '600000'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)

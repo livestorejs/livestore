@@ -367,6 +367,20 @@ const withNixSetupRetry = <TStep extends { readonly name: string; readonly run: 
   withNixRetry(step, setupMegarepoRun(step.run))
 
 /**
+ * Raise the git subprocess deadline for the megarepo sync step. The currently pinned
+ * effect-utils applies a single flat 30s bound to every git command, which
+ * intermittently kills the cold bare clone of the large `effect` member on shared CI
+ * runners (livestore#1473). 10min is generous for the clone while the job's own
+ * `timeout-minutes` still bounds a genuine hang. Once effect-utils ships the
+ * operation-aware deadline (overengineeringstudio/effect-utils#965) and is repinned,
+ * this override becomes redundant with the network default and can be dropped.
+ */
+const withMegarepoGitTimeout = <TStep extends { readonly env?: Record<string, string> }>(step: TStep): TStep => ({
+  ...step,
+  env: { ...step.env, MEGAREPO_GIT_COMMAND_TIMEOUT_MS: '600000' },
+})
+
+/**
  * Setup steps for livestore CI jobs (without checkout).
  * Uses shared step atoms from effect-utils/genie/ci-workflow.ts.
  */
@@ -384,7 +398,7 @@ export const livestoreSetupStepsAfterCheckout = [
     const base = cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' })
     return { ...base, with: { ...base.with, skipPush: true } }
   })(),
-  withNixSetupRetry(applyMegarepoLockStep()),
+  withNixSetupRetry(withMegarepoGitTimeout(applyMegarepoLockStep())),
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
   restorePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
