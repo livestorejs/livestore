@@ -102,7 +102,7 @@ export type ReactApi = {
 }
 
 /**
- * Augments a Store instance with React-specific methods (`useQuery`)
+ * Augments a Store instance with React-specific methods (`useQuery`).
  *
  * This is called automatically by `useStore()`. You typically don't need to call it
  * directly unless you're building custom integrations.
