@@ -38,7 +38,15 @@ export class QuarantineEntry extends Schema.Class<QuarantineEntry>('QuarantineEn
  * `test-policy.test.ts`, so a forgotten quarantine reds `test-unit` instead of
  * silently becoming permanent.
  */
-export const quarantineLedger = {} as const satisfies Record<string, QuarantineEntry>
+export const quarantineLedger = {
+  'devtools-suite': new QuarantineEntry({
+    target: 'tests/integration:devtools',
+    reason:
+      'Every test in the suite fails (0/15). All browser-extension tests die at "No devtools page found"; the rest time out on locators. Pre-existing — the suite was silently suppressed from 2025-05-10 until #1404.',
+    issue: 'https://github.com/livestorejs/livestore/issues/1489',
+    expires: '2026-09-30',
+  }),
+} as const satisfies Record<string, QuarantineEntry>
 
 export type QuarantineKey = keyof typeof quarantineLedger
 
@@ -99,11 +107,16 @@ export const expiredEntries = (
   Object.entries(ledger).filter(([, entry]) => entry.expires < today)
 
 const announceQuarantinedFailure = (label: string, entry: QuarantineEntry): void => {
-  const summary = `Quarantined failure: ${label} (${entry.target}) — ${entry.reason}. Tracking ${entry.issue}, expires ${entry.expires}.`
-  console.log(`::warning title=Quarantined test failure::${summary}`)
+  const summary = `Quarantined failure: ${label} — ${entry.reason} Tracking ${entry.issue}, expires ${entry.expires}.`
 
+  // The job summary is the load-bearing channel. The annotation below is best-effort: a
+  // tolerated failure exits 0, and `devenv tasks run` prints a task's stdout only when the
+  // task fails, so this line is discarded whenever the run happens under devenv — the same
+  // trap that made the old `|| echo "::warning::"` wrappers invisible for over a year.
   const summaryPath = process.env.GITHUB_STEP_SUMMARY
   if (summaryPath !== undefined && summaryPath !== '') {
     fs.appendFileSync(summaryPath, `- ${summary}\n`)
   }
+
+  console.log(`::warning title=Quarantined test failure::${summary}`)
 }
