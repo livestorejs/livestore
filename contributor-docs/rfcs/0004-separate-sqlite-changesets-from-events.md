@@ -27,6 +27,28 @@ objects, so a changeset attached to one representation was absent from the
 representation retained for later rollback. This is evidence of the ownership
 problem, rather than the scope of this proposal.
 
+## Related Implementation Exploration
+
+[#1299](https://github.com/livestorejs/livestore/pull/1299) explores the same
+direction from an implementation-first starting point. It removes SQLite
+changesets from event metadata and introduces explicit `MaterializationJournal`
+and `StateHead` services, including storage, rollback, snapshot-head, and
+processor integration work. It also makes unresolved lifecycle questions
+concrete, notably how a client session learns that a changeset is safe to
+reclaim after global confirmation.
+
+This RFC takes an intent-layer-first starting point: establish the ownership,
+lifetime, snapshot, and transport contracts before choosing the implementation
+shape. That sequencing does not reject the abstractions or complexity in
+#1299. Explicit Effect services may be an appropriate way to isolate these
+responsibilities, and some of the complexity may be inherent in making the
+current implicit contracts explicit.
+
+It remains open whether implementation should continue from #1299, adapt that
+work after the intent is accepted, or use another implementation approach. The
+RFC is intended to provide criteria for that decision rather than preselect the
+implementation PR.
+
 ## Problem
 
 > **Problem statement:** SQLite changesets are node-local rollback data, but
