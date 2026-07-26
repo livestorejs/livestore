@@ -29,6 +29,19 @@ describe('quarantine ledger', () => {
     expect(expiredEntries({ lapsed, live }, today()).map(([key]) => key)).toEqual(['lapsed'])
   })
 
+  it('treats a malformed expiry as expired rather than never-expiring', () => {
+    // Lexicographic comparison would sort 'someday' above every real date, so a typo would
+    // otherwise create a permanent quarantine.
+    const malformed = new QuarantineEntry({
+      target: 'packages/@livestore/example',
+      reason: 'typo in the expiry',
+      issue: 'https://github.com/livestorejs/livestore/issues/1404',
+      expires: 'someday',
+    })
+
+    expect(expiredEntries({ malformed }, today()).map(([key]) => key)).toEqual(['malformed'])
+  })
+
   it('rejects a malformed entry', () => {
     // Exercises the decode used by the shape check above, which otherwise never runs while
     // the ledger is empty — an unexercised assertion is the failure mode this PR exists to stop.
@@ -69,6 +82,27 @@ describe('runTestTarget', () => {
     expect(() =>
       runTestTarget({ label: 'packages/@livestore/unrelated', policy: fakePolicy(), run: Effect.void }),
     ).toThrow(/has no entry in the ledger/)
+  })
+
+  it('refuses a real quarantine applied to a target it does not declare', () => {
+    const [key, entry] = Object.entries(quarantineLedger as Record<string, QuarantineEntry>)[0] ?? []
+    if (key === undefined || entry === undefined) return
+
+    expect(() =>
+      runTestTarget({ label: `${entry.target}-but-not-really`, policy: fakePolicy(key), run: Effect.void }),
+    ).toThrow(/declares target/)
+  })
+
+  it('swallows a failure for a correctly declared quarantine', async () => {
+    // The mechanism's whole point. Without this, dropping the `Effect.ignore` would pass the suite.
+    const [key, entry] = Object.entries(quarantineLedger as Record<string, QuarantineEntry>)[0] ?? []
+    if (key === undefined || entry === undefined) return
+
+    const exit = await Effect.runPromiseExit(
+      runTestTarget({ label: entry.target, policy: fakePolicy(key), run: Effect.fail('boom' as const) }),
+    )
+
+    expect(Exit.isSuccess(exit)).toBe(true)
   })
 })
 

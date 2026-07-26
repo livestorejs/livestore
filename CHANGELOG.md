@@ -21,10 +21,11 @@ For maintainers and contributors:
   `Effect.ignore` on CI, so their failures produced a passing required check.
   Removing that also restores the intent-layer invariant suite as a real gate on
   `context/` changes ([#1404](https://github.com/livestorejs/livestore/issues/1404)).
-- **Tooling:** DevTools Playwright failures are no longer silently discarded. The
-  suite is currently broken (0/15) and carries a declared, expiring quarantine
-  entry instead of an unrecorded `|| echo` wrapper
-  ([#1489](https://github.com/livestorejs/livestore/issues/1489)).
+- **Tooling:** The DevTools Playwright suite is currently broken (0/15) and
+  carries a declared, expiring quarantine entry instead of an unrecorded
+  `|| echo` wrapper. Its check does **not** gate merges yet — the quarantine
+  records the failure with a reason, an issue, and an expiry date rather than
+  hiding it ([#1489](https://github.com/livestorejs/livestore/issues/1489)).
 - **Tooling:** Cloudflare sync-provider failures now block merges. All six `cf-*`
   matrix cells previously exited 0 on failure, which is why the Durable Object
   hibernation guards could not gate merges

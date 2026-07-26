@@ -5,11 +5,17 @@ import { Effect, Schema } from '@livestore/utils/effect'
 /**
  * How a test target's failures reach the job's exit code.
  *
- * Every test invocation states its policy explicitly, so weakening a required check is a
- * deliberate, reviewable act rather than a `.pipe(Effect.ignore)` or a `|| true` buried in a
- * task wrapper. Quarantining is reachable only through {@link quarantined}, which accepts a
- * key of {@link quarantineLedger} — so a quarantine cannot exist without a checked-in entry
- * carrying a reason, a tracking issue, and an expiry date.
+ * Test targets invoked through {@link runTestTarget} state their policy explicitly, so
+ * weakening one is a deliberate, reviewable act rather than a `.pipe(Effect.ignore)` or a
+ * `|| true` buried in a task wrapper. Quarantining is reachable only through
+ * {@link quarantined}, which accepts a key of {@link quarantineLedger} — so a quarantine here
+ * cannot exist without a checked-in entry carrying a reason, tracking issue, and expiry date.
+ *
+ * What this is NOT: a chokepoint. It governs whole invocations, not individual tests, and it
+ * is opt-in — `it.skip`, `test.todo`, an `exclude` glob, piping `Effect.ignore` onto the
+ * result, or bypassing the helper entirely all still tolerate a failure without a ledger
+ * entry, and none of them are type errors. Treat this as the honest path for suppressing a
+ * target, not a guarantee that no other path exists.
  */
 export type TestPolicy = { readonly _tag: 'blocking' } | { readonly _tag: 'quarantined'; readonly key: QuarantineKey }
 
@@ -104,7 +110,18 @@ export const expiredEntries = (
   ledger: Record<string, QuarantineEntry>,
   today: string,
 ): readonly (readonly [string, QuarantineEntry])[] =>
-  Object.entries(ledger).filter(([, entry]) => entry.expires < today)
+  Object.entries(ledger).filter(([, entry]) => isExpired(entry.expires, today))
+
+const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * A malformed `expires` counts as expired.
+ *
+ * Comparison is lexicographic, so any free-form string (`'someday'`) sorts above every real
+ * date and would otherwise never expire — turning a typo into a permanent quarantine, which
+ * is the outcome the expiry rule exists to prevent.
+ */
+const isExpired = (expires: string, today: string): boolean => isoDatePattern.test(expires) === false || expires < today
 
 const announceQuarantinedFailure = (label: string, entry: QuarantineEntry): void => {
   const summary = `Quarantined failure: ${label} — ${entry.reason} Tracking ${entry.issue}, expires ${entry.expires}.`
