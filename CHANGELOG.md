@@ -12,6 +12,16 @@
 
 - Removed redundant devenv package entries now owned by the task guard modules.
 
+### Internal Changes
+
+For maintainers and contributors:
+
+- **Tooling:** Unit-test failures now block merges. The `test-unit` job ran
+  `packages/@livestore/webmesh` and `tests/package-common` through
+  `Effect.ignore` on CI, so their failures produced a passing required check.
+  Removing that also restores the intent-layer invariant suite as a real gate on
+  `context/` changes ([#1404](https://github.com/livestorejs/livestore/issues/1404)).
+
 ## 0.4.0 - 2026-06-02
 
 > **Installing v0.4.0:** Make sure all LiveStore packages use the same version:
