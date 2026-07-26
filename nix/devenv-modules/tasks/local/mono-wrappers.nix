@@ -128,11 +128,6 @@ in
           exit 1
         fi
 
-        if [ "$suite" = "devtools" ]; then
-          mono test integration devtools || echo "::warning::Script failed but continuing"
-          exit 0
-        fi
-
         mono test integration "$suite"
       '';
       after = [ "setup:strict" ];

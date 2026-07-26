@@ -1,18 +1,23 @@
-# DELTA-003 — Browser integration lane bypasses the test policy
+# DELTA-003 — Parts of the browser integration lane bypass the test policy
 
 Status: open
 
 ## Divergence
 
 LS.SYS.VER.LANE-R04 requires that tolerating a failing test is expressible only
-as a declared quarantine. The `runTestTarget` helper enforces this for the
-targets the `mono test` runner invokes directly (unit, sync-provider, SQLite
-substrate, perf), but the browser integration lane is dispatched through
-`@local/tests-integration`'s `runMiscTest` / `runTodomvcTest` /
-`runDevtoolsTest`, which call Playwright without passing through the helper.
+as a declared quarantine. `runTestTarget` enforces that for the unit lane,
+sync-provider, the SQLite substrate, perf, and the DevTools browser cell — the
+last via a wrapper in `scripts/src/commands/test-commands.ts` carrying the
+`devtools-suite` ledger entry.
 
-A suppression added inside that module would therefore not require a ledger
-entry, and would not be rejected by the type checker.
+Three invocation paths remain outside it:
+
+- The `misc` and `todomvc` browser cells register `@local/tests-integration`'s
+  commands directly, so neither states a policy.
+- `mono test integration all` calls `runDevtoolsTest` without the wrapper, so the
+  DevTools quarantine applies on the CI path but not the aggregate one. The same
+  suite behaves differently depending on which command reached it.
+- `@local/tests-integration` exposes its own unwrapped CLI entrypoint.
 
 ## VRS
 
@@ -20,7 +25,6 @@ entry, and would not be rejected by the type checker.
 
 ## Close condition
 
-Route the integration lane's invocations through `runTestTarget`, so every lane
-in the table above is covered by the same policy. Close when adding an
-`Effect.ignore` to an integration-lane invocation fails to compile without a
-ledger entry, the same way it now does for the other lanes.
+Route every browser-integration invocation through `runTestTarget`, so a suite's
+policy does not depend on how it was invoked. Close when `mono test integration
+all` and the `misc`/`todomvc` cells apply the same policy as the DevTools cell.

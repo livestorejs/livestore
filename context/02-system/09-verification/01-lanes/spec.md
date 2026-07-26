@@ -34,16 +34,19 @@ command column). Two characteristics are deliberate, not drift:
   (`scripts/src/commands/test-commands.ts`) rather than getting separate CI
   jobs, and examples-as-tests run on demand (not a required gate) — all are
   documented in the table above, by design. The unit lane's discovery walks
-  `packages/@livestore/*`, `packages/@local/*`, and those two extra roots; a
-  test root absent from that list runs nowhere in CI.
+  `packages/@livestore/*`, `packages/@local/*`, and those two extra roots; a test
+  root that is neither in that list nor served by its own lane job runs nowhere in
+  CI.
 
 ## Test Policy
 
-Test targets invoked by the `mono test` runner (unit, sync-provider, SQLite
-substrate, perf) run under an explicit policy (LS.SYS.VER.LANE-R04), stated at
-their invocation in `scripts/src/shared/test-policy.ts`. The browser integration
-lane is dispatched through `@local/tests-integration` and is not yet routed
-through the helper — tracked in
+Test targets invoked through `runTestTarget` state an explicit policy
+(LS.SYS.VER.LANE-R04). The mechanism lives in
+`scripts/src/shared/test-policy.ts`; the invocations are in
+`scripts/src/commands/test-commands.ts`. Covered: the unit lane, sync-provider,
+the SQLite substrate, perf, and the DevTools browser cell. The `misc` and
+`todomvc` browser cells and the `mono test integration all` aggregate are not
+covered — see
 [.delta/DELTA-003-integration-lane-unpoliced.md](./.delta/DELTA-003-integration-lane-unpoliced.md).
 
 | Policy | Effect on the job |
@@ -51,19 +54,26 @@ through the helper — tracked in
 | `blocking` | Failures fail the job. The default for every target. |
 | `quarantined(key)` | Failures are announced and tolerated, under a ledger entry. |
 
-`key` must name an entry in `quarantineLedger`, so a quarantine cannot be
-expressed without a checked-in record of its target, reason, tracking issue, and
-expiry date. The ledger is empty in the steady state; with no entries the
-quarantine constructor is uninhabited and the type checker rejects any attempt to
-suppress a failure.
+`key` must name an entry in `quarantineLedger`, so a quarantine *on this path*
+cannot be expressed without a checked-in record of its target, reason, tracking
+issue, and expiry date. When the ledger is empty the quarantine constructor is
+uninhabited and the type checker rejects any such attempt.
+
+The policy governs whole invocations, not individual tests, and it is opt-in.
+`it.skip`, `test.todo`, an `exclude` glob, piping `Effect.ignore` onto the
+result, or bypassing the helper all still tolerate a failure without a ledger
+entry, and none are type errors — see
+[.delta/DELTA-004-test-level-suppressions-unledgered.md](./.delta/DELTA-004-test-level-suppressions-unledgered.md).
 
 Two properties keep a quarantine from becoming permanent and invisible:
 
 - **Expiry.** `test-policy.test.ts` fails once an entry's `expires` date passes,
   forcing a renew-or-remove decision in the unit lane, which is a required check.
-- **Distinguishable signal.** A tolerated failure is announced with its own
-  annotation title and a job-summary line, so it cannot be mistaken for a pass or
-  lost among unrelated Actions warnings.
+- **Distinguishable signal.** A tolerated failure appends a line to the job
+  summary naming the target, reason, issue, and expiry. That file-based channel is
+  load-bearing; the accompanying `::warning::` annotation is best-effort, because
+  `devenv tasks run` prints a task's stdout only when the task fails and a
+  tolerated failure exits 0.
 
 Test selection is resolved against source-of-truth registries rather than by
 matching test titles — the sync-provider matrix pins a cell with

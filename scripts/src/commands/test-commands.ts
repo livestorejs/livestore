@@ -359,6 +359,9 @@ const runSyncProviderTests = Effect.fn(function* ({ provider }: { provider: Opti
   const workspaceRoot = yield* LivestoreWorkspace
   const reportPath = path.join(workspaceRoot, 'tmp/sync-provider-run-report.json')
   fs.mkdirSync(path.dirname(reportPath), { recursive: true })
+  // A run that dies before writing the report would otherwise be validated against the
+  // previous run's data — the guard has to fail closed.
+  fs.rmSync(reportPath, { force: true })
 
   yield* TestPolicy.runTestTarget({
     label: Option.isSome(provider) === true ? `sync-provider:${provider.value}` : 'sync-provider',
@@ -366,7 +369,11 @@ const runSyncProviderTests = Effect.fn(function* ({ provider }: { provider: Opti
     run: cmd(['vitest', 'run', '--reporter=default', '--reporter=json', `--outputFile.json=${reportPath}`], {
       // Selection happens at collection time via the registry rather than by matching test
       // titles, so renaming a suite can no longer remove it from a CI cell (#1429).
-      env: Option.isSome(provider) === true ? { [providerSelectionEnvVar]: provider.value } : {},
+      //
+      // Explicitly cleared when no provider is pinned: CI sets TEST_SYNC_PROVIDER at step
+      // level, so inheriting it would silently collapse a full sweep to a single provider
+      // while still reporting success as a full run.
+      env: { [providerSelectionEnvVar]: Option.isSome(provider) === true ? provider.value : undefined },
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/sync-provider'))),
   })
 
@@ -412,9 +419,27 @@ const testIntegrationAllCommand = Cli.Command.make(
   runIntegrationAllTests,
 ).pipe(Cli.Command.withDescription('Run all integration tests'))
 
+/**
+ * Wraps the DevTools suite so its declared quarantine is enforced at the invocation, rather
+ * than as an `|| echo` in the CI task wrapper that nothing records and devenv discards.
+ */
+const devtoolsCommand = Cli.Command.make(
+  'devtools',
+  { mode: integrationTests.modeOption, localDevtoolsPreview: integrationTests.localDevtoolsPreviewOption },
+  (args) =>
+    TestPolicy.runTestTarget({
+      label: 'tests/integration:devtools',
+      policy: TestPolicy.quarantined('devtools-suite'),
+      run: integrationTests.runDevtoolsTest(args),
+    }),
+)
+
 export const testIntegrationCommand = Cli.Command.make('integration').pipe(
   Cli.Command.withSubcommands([
-    ...integrationTests.commands,
+    integrationTests.miscTest,
+    integrationTests.todomvcTest,
+    integrationTests.setupDevtools,
+    devtoolsCommand,
     syncProviderTest,
     waSqliteTest,
     testIntegrationAllCommand,

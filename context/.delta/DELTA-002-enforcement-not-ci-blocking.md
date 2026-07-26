@@ -25,12 +25,18 @@ expected; only the CI wrapper drops the failure.
 
 The `Effect.ignore` was removed from the sequential loop entirely, so both
 `tests/package-common` and `packages/@livestore/webmesh` now fail `test-unit`.
-This supersedes the remedy proposed above — a dedicated non-ignored step for the
-intent-layer suite — which would have left the rest of `tests/package-common`
-swallowed.
+This supersedes the originally proposed remedy — running the intent-layer suite
+as a dedicated non-ignored step — which would have left the rest of
+`tests/package-common` swallowed.
 
 Carving out only the intent-layer suite was rejected because the quarantine was
 never scoped to the flake it was added for: it covered two complete targets, and
 a survey of 20 `main` runs and 18 pull-request runs found no evidence of the
-`webmesh` flakiness still occurring. Quarantining a specific test, if one proves
-unreliable, is now a per-test declaration rather than a package-wide wrapper.
+`webmesh` flakiness still occurring. Quarantining a target, if one proves unreliable, is a
+declared ledger entry carrying a reason, tracking issue, and expiry date rather
+than a package-wide wrapper. Test-level suppression remains outside the ledger
+(see `../02-system/09-verification/01-lanes/.delta/DELTA-004-test-level-suppressions-unledgered.md`).
+
+Closure rests on the code change and on `test-unit` being a required check whose
+exit code now reflects these targets; a deliberately-broken invariant reddening
+CI has not been demonstrated end to end.
