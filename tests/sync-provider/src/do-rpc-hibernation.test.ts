@@ -20,14 +20,17 @@ import {
 } from '@livestore/utils/effect'
 
 import * as CloudflareDoRpcProvider from './providers/cloudflare-do-rpc.ts'
+import { isProviderSelected } from './providers/registry.ts'
 import { SyncProviderImpl } from './types.ts'
 
 const idleWindow: Duration.Input = '20 seconds' // workerd evicts somewhere between 9s and 11s idle
 
 type RuntimeServices = SyncProviderImpl | HttpClient.HttpClient | KeyValueStore.KeyValueStore
 
-// CI cells select by title (see scripts/src/commands/test-commands.ts); renaming this stops it running anywhere.
-Vitest.describe(`${CloudflareDoRpcProvider.doSqlite.name} sync provider — DO hibernation`, () => {
+// Selected by provider key, not by suite title, so renaming this suite cannot drop it from CI.
+const describeDoRpcDo = Vitest.describe.skipIf(isProviderSelected('cf-do-rpc-do') === false)
+
+describeDoRpcDo(`${CloudflareDoRpcProvider.doSqlite.name} sync provider — DO hibernation`, () => {
   let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
   let runtimeContext: Context.Context<RuntimeServices>
 

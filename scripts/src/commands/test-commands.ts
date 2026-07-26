@@ -2,13 +2,13 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
-import { Effect, Option } from '@livestore/utils/effect'
+import { Effect, Option, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
 import * as syncProviderTestsPrepare from '@local/tests-sync-provider/prepare-ci'
 import {
   providerKeys,
-  providerRegistry,
+  providerSelectionEnvVar,
   type ProviderKey as TSyncProviderChoice,
 } from '@local/tests-sync-provider/registry'
 
@@ -27,14 +27,17 @@ const ciUnitTestPackageConcurrency = (() => {
 })()
 
 // GitHub actions log groups
+/**
+ * Closes the log group on every exit path. A group left open on failure swallows the
+ * rest of the job output into a collapsed section, hiding the very failure that caused it.
+ */
 const runTestGroup =
   (name: string) =>
   <E, C>(effect: Effect.Effect<unknown, E, C>) =>
     Effect.gen(function* () {
       console.log(`::group::${name}`)
       yield* effect
-      console.log(`::endgroup::`)
-    }).pipe(Effect.withSpan(`test-group(${name})`))
+    }).pipe(Effect.ensuring(Effect.sync(() => console.log(`::endgroup::`))), Effect.withSpan(`test-group(${name})`))
 
 interface TestTarget {
   path: string
@@ -120,7 +123,9 @@ const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: strin
       }
     }
   } catch (error) {
-    console.warn('Warning: Failed to discover packages with tests:', error)
+    // Swallowing this would silently shrink the unit lane to a partial run that still
+    // reports success — the failure mode the whole lane exists to rule out.
+    throw new Error(`Failed to discover packages with tests under ${workspaceRoot}`, { cause: error })
   }
 
   return results.toSorted((a, b) => a.path.localeCompare(b.path))
@@ -266,21 +271,70 @@ export const waSqliteTest = Cli.Command.make('wa-sqlite', {}, runWaSqliteTests)
 
 // the sync provider tests are actually part of another tests package but for now we run them from here too
 // TODO clean this up at some point
-const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** A run in which the suite that had to prove something never executed. */
+export class NoTestsExecutedError extends Schema.TaggedErrorClass<NoTestsExecutedError>()('NoTestsExecutedError', {
+  reportPath: Schema.String,
+  suiteFile: Schema.String,
+}) {}
+
+/** The subset of Vitest's JSON reporter output this guard depends on. */
+const VitestRunReport = Schema.Struct({
+  testResults: Schema.Array(
+    Schema.Struct({
+      name: Schema.String,
+      assertionResults: Schema.Array(Schema.Struct({ status: Schema.String })),
+    }),
+  ),
+})
+
+/** File whose tests every sync-provider cell must actually execute to have proven anything. */
+const syncProviderConformanceSuite = 'sync-provider.test.ts'
+
+/**
+ * Fails when `suiteFile` executed no tests. Selection is resolved in-process against the
+ * provider registry, so a cell can no longer silently select nothing — this is the backstop
+ * against a bad `include` glob or an over-broad skip leaving the job vacuously green.
+ *
+ * Scoped to one file rather than the run's total: utility suites that run in every cell
+ * (`registry.test.ts`) would otherwise keep the count non-zero even if the conformance suite
+ * were skipped entirely. Failed tests count as executed — a quarantined run where everything
+ * fails has still proven something, and rejecting it here would defeat the quarantine.
+ */
+export const assertTestsExecuted = Effect.fn(function* ({
+  reportPath,
+  suiteFile,
+}: {
+  readonly reportPath: string
+  readonly suiteFile: string
+}) {
+  const raw = fs.readFileSync(reportPath, 'utf8')
+  const report = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(VitestRunReport))(raw)
+
+  const executed = report.testResults
+    .filter((file) => path.basename(file.name) === suiteFile)
+    .flatMap((file) => file.assertionResults)
+    .filter((assertion) => assertion.status === 'passed' || assertion.status === 'failed').length
+
+  if (executed === 0) {
+    return yield* new NoTestsExecutedError({ reportPath, suiteFile })
+  }
+})
 
 const runSyncProviderTests = Effect.fn(function* ({ provider }: { provider: Option.Option<TSyncProviderChoice> }) {
   yield* syncProviderTestsPrepare.prepareCi
 
-  const args: string[] = ['vitest', 'run']
-  if (Option.isSome(provider) === true) {
-    const suite = providerRegistry[provider.value].name
-    // Vitest may render the provider name wrapped in quotes in the full test title.
-    // Use a forgiving pattern that matches with or without surrounding quotes.
-    const pattern = `["']?${escapeRegex(suite)}["']? sync provider`
-    args.push('--testNamePattern', pattern)
-  }
+  const workspaceRoot = yield* LivestoreWorkspace
+  const reportPath = path.join(workspaceRoot, 'tmp/sync-provider-run-report.json')
+  fs.mkdirSync(path.dirname(reportPath), { recursive: true })
 
-  yield* cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/sync-provider')))
+  yield* cmd(['vitest', 'run', '--reporter=default', '--reporter=json', `--outputFile.json=${reportPath}`], {
+    // Selection happens at collection time via the registry rather than by matching test
+    // titles, so renaming a suite can no longer remove it from a CI cell (#1429).
+    env: Option.isSome(provider) === true ? { [providerSelectionEnvVar]: provider.value } : {},
+  }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/sync-provider')))
+
+  yield* assertTestsExecuted({ reportPath, suiteFile: syncProviderConformanceSuite })
 })
 
 export const syncProviderTest = Cli.Command.make(
