@@ -56,6 +56,13 @@ processors, and rebase actually move around. Its `meta` carries:
 | `syncMetadata` | provider-opaque per-event sync metadata (persisted as `syncMetadataJson`) |
 | `materializerHashLeader` / `materializerHashSession` | dev-mode determinism hashes compared across materialization sites |
 
+Current limitation: an event occurrence and the SQLite changeset produced when
+a node materializes it share one mutable schema value. Normalization and
+serialization can copy an event or remove its metadata, while the changeset is
+meaningful only for the node-local SQLite state that produced it. Changeset
+ownership and lifetime are therefore not represented independently from event
+identity. This limitation motivates root LS-DQ3.
+
 Conversions: `toGlobal()` / `EncodedWithMeta.fromGlobal` and
 `Global.toClientEncoded` (`global.ts:32`, mapping global seqNums into
 composite ones via `Client.fromGlobal`). All shapes are Effect Schema
@@ -147,3 +154,8 @@ the shipping contract.
   events beyond warn-and-tolerate. What is the durable evolution story?
 - **LS.SYS.EVT-DQ2 Facts graduation:** What evidence (see
   `09-verification/`) graduates facts from experimental to shipping?
+- **LS.SYS.EVT-DQ3 Event occurrence versus SQLite changeset:** Should event
+  shapes stop carrying mutable SQLite changesets, and what identity should
+  connect an occurrence to the node-local rollback data produced when it is
+  materialized? Cross-reference: root LS-DQ3; the proposal remains outside
+  this shipping spec until accepted.

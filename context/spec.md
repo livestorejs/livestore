@@ -225,6 +225,12 @@ non-ignored step — is tracked in
   [decision 0004](./.decisions/0004-rfc-vrs-boundary.md); the open part is
   whether to accept and fold it in. See
   [open-questions.md](./open-questions.md).
+- **LS-DQ3 SQLite changeset ownership** —
+  [RFC 0004](../contributor-docs/rfcs/0004-separate-sqlite-changesets-from-events.md)
+  proposes removing SQLite changesets from event values and storing them with
+  the node-local state they describe. Its design lives in the RFC; the open
+  part is whether to accept it and resolve its keying, retention, snapshot, and
+  recovery questions. See [open-questions.md](./open-questions.md).
 
 (LS-DQ2 was resolved 2026-07-16 into
 [.decisions/0003-contrib-referencing.md](./.decisions/0003-contrib-referencing.md).)

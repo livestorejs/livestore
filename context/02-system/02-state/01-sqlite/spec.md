@@ -80,9 +80,29 @@ databases: changeset rows live in the *state* DB while event rows live in
 the *eventlog* DB; `getEventsSince` joins across both to serve rebase
 rollback.
 
+Current limitations:
+
+- Leader materialization persists changesets in the state DB and also copies
+  them onto mutable event metadata; leader rollback trusts the table, whereas
+  client-session rollback trusts event metadata.
+- `__livestore_session_changeset` stores `seqNumRebaseGeneration`, but has no
+  primary key and its lookup/deletion paths identify rows by only
+  `(seqNumGlobal, seqNumClient)`. The persisted identity is therefore broader
+  than the operational rollback key.
+- The web fast path derives its initial leader head from this rollback table,
+  coupling rollback-retention policy to session boot metadata.
+
 ## Schema Change
 
 Owned by [02-schema-management](./02-schema-management/spec.md): hash-based
 rebuild via adapter file naming, `auto`/`manual` strategies + hooks
 (contracted by LS.SYS.STATE.SQLITE-R08), and the state-vs-eventlog
 versioning asymmetry.
+
+## Open Design Questions
+
+- **LS.SYS.STATE.SQLITE-DQ1 Rollback-data ownership and keying:** What exact
+  occurrence key, lifetime, and state-snapshot contract should govern SQLite
+  changesets independently at the leader and each session? Cross-reference:
+  root LS-DQ3; the proposed storage abstraction lives in RFC 0004 until
+  accepted.

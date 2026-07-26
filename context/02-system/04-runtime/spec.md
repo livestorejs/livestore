@@ -87,6 +87,13 @@ Realizations may expose a superset over their worker RPC (web adds
 `GetLeaderHead`, `Shutdown`, `WebmeshWorker.CreateConnection`, boot-status
 streaming — `worker-schema.ts`); the proxy above is the portable contract.
 
+Current boundary limitation: the portable push type is plain
+`Client.Encoded`, while pull payloads contain `EncodedWithMeta`. Web RPC schema
+encoding therefore omits SQLite changesets on push but can carry leader
+changeset bytes on pull. Direct in-process realizations can preserve that
+mutable event metadata across calls. Rollback behavior can consequently depend
+on whether an adapter uses a serialized boundary.
+
 ## Session Boot
 
 Two boot paths produce the session's initial in-memory state:
@@ -186,3 +193,8 @@ The session ⇄ leader boundary has a typed failure contract:
   leader death (new leader re-pushes the same events and must recover via
   pull + rebase) is not explicitly contracted or covered by a targeted test
   per realization.
+- **LS.SYS.RT-DQ2 SQLite changesets across the session boundary.** How should
+  session snapshots adopt the rollback data matching their materialized state
+  while excluding changesets from ordinary leader/session event transport?
+  Cross-reference: root LS-DQ3; the proposed boundary change lives in RFC 0004
+  until accepted.

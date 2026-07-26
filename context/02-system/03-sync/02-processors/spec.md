@@ -100,6 +100,12 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   harness perturbs (`simSleep` hooks at 5 labeled points, `:83-86,
   414-422`; `SIMULATION_ENABLED` is hardcoded `true` with a build-macro
   TODO, `:410-411`).
+- **Rollback-lifetime limitation:** session pending means unconfirmed by the
+  leader, but a leader-accepted event can remain rollbackable until the
+  leader's backend confirms it. Once the session drops its matching pending
+  occurrence, session rollback data remains available only when a later
+  downstream event object carries a usable `meta.sessionChangeset`; receipt
+  lifetime is not modeled independently from event-object reachability.
 - **Observability** (`:98-99, 358-361`): sync-state updates surface via a
   separate queue explicitly not relied on for correctness; a devtools
   latch can pause upstream application (`:152-153`).
@@ -114,3 +120,11 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
 - Per-event `materializerHashLeader` beyond the first item of a pull chunk
   is unknown (TODO, `:555-556`, issue #503).
 - Metrics for retry/queue health are an acknowledged TODO (`:599`).
+
+## Open Design Questions
+
+- **LS.SYS.SYNC.PROC-DQ1 Changeset lookup and lifetime:** How should each
+  processor record and locate its own SQLite changesets independently from
+  event-object metadata, and what signal makes a stored changeset safe to
+  reclaim? Cross-reference: root LS-DQ3; the proposed storage direction lives
+  in RFC 0004 until accepted.
