@@ -35,7 +35,9 @@ changesets from event metadata and introduces explicit `MaterializationJournal`
 and `StateHead` services, including storage, rollback, snapshot-head, and
 processor integration work. It also makes unresolved lifecycle questions
 concrete, notably how a client session learns that a changeset is safe to
-reclaim after global confirmation.
+reclaim after global confirmation. Leader acceptance is not sufficient: it can
+remove an event from session pending while that event remains rollbackable
+relative to the backend.
 
 This RFC takes an intent-layer-first starting point: establish the ownership,
 lifetime, snapshot, and transport contracts before choosing the implementation
@@ -95,6 +97,13 @@ changeset store associated with the SQLite state database they describe.
 6. **Changesets do not cross ordinary sync RPC.** Push and pull messages carry
    event and sync data; they do not use another node's changeset as their
    rollback mechanism.
+7. **Reclamation is ordered with finality.** A node deletes rollback data only
+   after it has committed the transition establishing an immutable upstream
+   frontier beyond that occurrence. A session must receive that frontier in an
+   ordered, replayable relationship with the corresponding leader transition,
+   apply the transition before pruning, and commit both effects locally. The
+   transport itself is published after the leader commit; it is not assumed to
+   be atomic with SQLite.
 
 The existing `__livestore_session_changeset` table is the natural starting
 point for a shared storage contract. The contract may be exposed through a
@@ -107,9 +116,12 @@ eventlog and changeset table. The implementation must validate whether that key
 remains stable and unique for every required rollback flow before making it a
 permanent contract.
 
-Retention may require a minimal leader/session signal establishing that an
-occurrence can no longer be rolled back. Adding such a reclamation signal is
-within scope; redesigning the merge-result algebra is not.
+Retention requires a minimal leader/session finality signal establishing that
+an occurrence can no longer be rolled back. The signal must also cover
+confirmation-only advances, where no event needs to be materialized. This RFC
+does not prescribe whether it is represented as a transition field, checkpoint
+message, or versioned state; redesigning the merge-result algebra is not
+required.
 
 ### Intent-layer impact
 
@@ -210,8 +222,8 @@ on a broader sync redesign.
 
 1. Is the full composite sequence position a sufficient changeset key across
    every rebase, or is a separate immutable occurrence identifier required?
-2. What exact signal establishes that a leader or session changeset can no
-   longer be needed for rollback?
+2. What replayable protocol shape should carry the ordered finality checkpoint
+   between leader and session?
 3. Should the changeset store remain part of the state database, and what
    transaction boundary must join a state write with its changeset record?
 4. How should missing or duplicate changesets be handled: defect, rebuild
