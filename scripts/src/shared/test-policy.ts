@@ -60,7 +60,7 @@ export const runTestTarget = <A, E, R>({
 }): Effect.Effect<void, E, R> => {
   if (policy._tag === 'blocking') return run.pipe(Effect.asVoid)
 
-  const entry = (quarantineLedger as Record<string, QuarantineEntry>)[policy.key] as QuarantineEntry | undefined
+  const entry = (quarantineLedger as Record<string, QuarantineEntry>)[policy.key]
 
   // The type checker rejects an unknown key, but a cast or a JS caller can still get here, and
   // silently treating an unknown quarantine as "suppress everything" is the failure this whole
