@@ -16,13 +16,11 @@
 
 For maintainers and contributors:
 
-- **Tooling:** Failing tests now block merges. The unit lane
-  (`packages/@livestore/webmesh`, `tests/package-common`), the six Cloudflare
-  sync-provider matrix cells, and the DevTools Playwright suite previously
-  converted test failures into passing required checks, so a green check could
-  mean "the tests passed, or they failed and were ignored". Those suppressions
-  are removed, which also restores the intent-layer invariant suite as a real
-  gate on `context/` changes ([#1404](https://github.com/livestorejs/livestore/issues/1404)).
+- **Tooling:** Unit-test failures now block merges. The `test-unit` job ran
+  `packages/@livestore/webmesh` and `tests/package-common` through
+  `Effect.ignore` on CI, so their failures produced a passing required check.
+  Removing that also restores the intent-layer invariant suite as a real gate on
+  `context/` changes ([#1404](https://github.com/livestorejs/livestore/issues/1404)).
 
 ## 0.4.0 - 2026-06-02
 
