@@ -372,10 +372,20 @@ export const make = Effect.fnUntraced(function* ({
           }
         }
 
+        // For a local-push advance, `newEvents` and the appended pending suffix describe the same logical
+        // events but serve different roles and may be distinct instances. Materialize the retained pending
+        // instances so their rollback metadata remains available if a later backend event causes a rebase.
+        const acceptedPendingEvents = mergeResult.newSyncState.pending.slice(syncState.pending.length)
+        if (acceptedPendingEvents.length !== mergeResult.newEvents.length) {
+          return yield* Effect.dieDebugger('Local push events must be retained in pending state')
+        }
+
+        yield* materializeEventsBatch({ batchItems: acceptedPendingEvents, deferreds })
+
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
         yield* connectedClientSessionPullQueues.offer({
-          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }),
+          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: acceptedPendingEvents }),
           leaderHead: mergeResult.newSyncState.localHead,
         })
 
@@ -385,11 +395,9 @@ export const make = Effect.fnUntraced(function* ({
         })
 
         // Don't sync client-only events
-        const globalOrUnknownEvents = mergeResult.newEvents.filter((e) => !isClientOnlyEvent(e))
+        const globalOrUnknownEvents = acceptedPendingEvents.filter((e) => !isClientOnlyEvent(e))
 
         yield* TxQueue.offerAll(syncBackendPushQueue, globalOrUnknownEvents)
-
-        yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
       }).pipe(localPushBackendPullMutex.withPermits(1))
     }
   })
