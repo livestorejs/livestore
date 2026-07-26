@@ -37,7 +37,6 @@ queries** keep your UI in sync with that state.
       queries.
     - Persisted SQLite database (usually running on the leader thread).
     - Fully derived from the eventlog — it can always be rebuilt.
-  - Client documents: a keyed document table shape for client-local/UI state
     with last-write-wins semantics.
 
 ## Store

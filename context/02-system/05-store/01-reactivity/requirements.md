@@ -20,8 +20,7 @@ R01 and R02 below were re-homed from the parent node on 2026-07-16
   when a query's result may have changed, driven by an incremental
   reactivity graph rather than re-running all queries. `refines: LS-R12`
 - **LS.SYS.STORE.RX-R02 Composable query kinds:** Db queries, computed
-  values, and signals compose into one reactive graph; client-document
-  queries build on the same primitives.
+  values, and signals compose into one reactive graph.
 - **LS.SYS.STORE.RX-R03 Two-level dedup:** Identical query definitions share
   one live instance (keyed by definition hash); identical SQL + bind values
   share a bounded result cache invalidated per written table (see

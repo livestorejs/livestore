@@ -6,6 +6,8 @@ builds on [requirements.md](./requirements.md) and the parent
 the primary read-model realization (and why the dimension stays open) is
 recorded in
 [.decisions/0001](./.decisions/0001-sqlite-primary-read-model.md).
+The removal of the former implicit document API is recorded in
+[decision 0002](./.decisions/0002-remove-client-document-api.md).
 
 ## Status
 
@@ -33,7 +35,7 @@ schema-level metadata.
 
 `query-builder/` (`api.ts`, `astToSql.ts`) provides a deliberately small
 SQL subset over table defs — reads: `select`, `where`, `orderBy`, `offset`,
-`limit`, `first`, `count`, `row`; writes: `insert`, `update`, `delete` with
+`limit`, `first`, `count`; writes: `insert`, `update`, `delete` with
 `onConflict` and `returning`. No joins, subqueries, or aggregations beyond
 `count` — raw SQL (with bind values) is the escape hatch for those. Results
 decode through the row schema derived from the table AST. Every builder
@@ -43,28 +45,10 @@ hash used for live-query dedup and reactive invalidation
 raw SQL strings, or `{sql, bindValues, writeTables}`
 (LS.SYS.STATE.SQLITE-R02).
 
-## Client Documents
-
-`client-document-def.ts`: a keyed document table where `set(value, id?)`
-emits an auto-generated derived client-only event with an implicit
-materializer; `get(id?)` is a typed query. Mechanics:
-
-- The set-event payload is always `{ id, value }`; with
-  `partialSet: true` (default, struct-valued documents only) `value` may be
-  a partial that merges into the current document; otherwise the
-  materializer upserts the full value via
-  `INSERT … ON CONFLICT (id) DO UPDATE` (`client-document-def.ts:305-321`)
-  — last-write-wins per key (LS.SYS.STATE.SQLITE-R07).
-- The `value` column stores full documents decoded through an
-  *optimistic* schema (`client-document-def.ts:66`) so historical value
-  formats remain readable after the document schema evolves.
-- `SessionIdSymbol` keys the document to the current session and is
-  resolved before materialization (materializing an unresolved symbol is a
-  defect).
-- Scope: reaches all sessions of the client, never other clients. Caveat
-  (from code): incompatible re-definitions of a client-document table can
-  orphan old auto-generated events — rebuilds then lose that document
-  state.
+Application state uses one explicit path: ordinary tables, explicit synced
+or client-only events, explicit materializers, and read-only queries. Query
+fallbacks may synthesize a result for a missing row in memory, but querying
+never commits an event or writes to SQLite.
 
 ## System Tables
 

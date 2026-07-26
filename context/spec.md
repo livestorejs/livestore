@@ -28,8 +28,7 @@ context/                     root: LiveStore the product (this node)
     01-event-model/          event defs, LiveStoreEvent, sequence numbers,
                              eventlog, facts (experimental)
     02-state/                read-model contract; realizations as children
-      01-sqlite/             SQLite schema DSL, materializers, client
-                             documents, query builder
+      01-sqlite/             SQLite schema DSL, materializers, query builder
         02-schema-management/  hash-based rebuild, auto/manual migration
                                strategies, storage-format versioning
     03-sync/                 sync-provider contract (boundary)

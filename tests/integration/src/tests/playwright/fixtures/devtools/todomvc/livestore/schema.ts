@@ -1,4 +1,4 @@
-import { makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 import { Filter } from '../types.ts'
 import * as eventsDefs from './events.ts'
@@ -26,22 +26,25 @@ const todos = State.SQLite.table({
   },
 })
 
-// LiveStore aims to provide a unified state management solution (for synced and client-only state),
-// so to simplify local-only state management, it also offers a client-only document concept
-// giving you the convenience of `React.useState` with a derived `.set` event and auto-registered materializer.
-const uiState = State.SQLite.clientDocument({
+const uiState = State.SQLite.table({
   name: 'uiState',
-  schema: Schema.Struct({ newTodoText: Schema.String, filter: Filter }),
-  default: {
-    // Using the SessionIdSymbol as default id means the UiState will be scoped per client session (i.e. browser tab).
-    id: SessionIdSymbol,
-    value: { newTodoText: '', filter: 'all' },
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    newTodoText: State.SQLite.text({ default: '' }),
+    filter: State.SQLite.text({ schema: Filter, default: 'all' }),
   },
 })
 
 export const events = {
   ...eventsDefs,
-  uiStateSet: uiState.set,
+  todoDraftChanged: Events.clientOnly({
+    name: 'v1.TodoDraftChanged',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+  }),
+  todoFilterChanged: Events.clientOnly({
+    name: 'v1.TodoFilterChanged',
+    schema: Schema.Struct({ id: Schema.String, filter: Filter }),
+  }),
 }
 
 export const tables = { todos, uiState }
@@ -52,6 +55,10 @@ const materializers = State.SQLite.materializers(events, {
   'v1.TodoUncompleted': ({ id }) => todos.update({ completed: false }).where({ id }),
   'v1.TodoDeleted': ({ id, deletedAt }) => todos.update({ deletedAt }).where({ id }),
   'v1.TodoClearedCompleted': ({ deletedAt }) => todos.update({ deletedAt }).where({ completed: true }),
+  'v1.TodoDraftChanged': ({ id, text }) =>
+    uiState.insert({ id, newTodoText: text, filter: 'all' }).onConflict('id', 'update', { newTodoText: text }),
+  'v1.TodoFilterChanged': ({ id, filter }) =>
+    uiState.insert({ id, newTodoText: '', filter }).onConflict('id', 'update', { filter }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

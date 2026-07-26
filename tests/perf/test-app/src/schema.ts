@@ -1,4 +1,4 @@
-import { makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 import * as eventsDefs from './events.ts'
 
@@ -13,20 +13,22 @@ const items = State.SQLite.table({
 export type Item = typeof items.Type
 export type Items = Item[]
 
-const uiState = State.SQLite.clientDocument({
+const uiState = State.SQLite.table({
   name: 'uiState',
-  schema: Schema.Struct({ selected: Schema.NullOr(Schema.Finite) }),
-  default: {
-    id: SessionIdSymbol,
-    value: { selected: null },
+  columns: {
+    id: State.SQLite.text({ primaryKey: true }),
+    selected: State.SQLite.real({ nullable: true, schema: Schema.Finite }),
   },
 })
 
-export type UiState = typeof uiState.Value
+export type UiState = typeof uiState.Type
 
 export const events = {
   ...eventsDefs,
-  uiStateSet: uiState.set,
+  uiStateSet: Events.clientOnly({
+    name: 'v1.UiStateSet',
+    schema: Schema.Struct({ id: Schema.String, selected: Schema.NullOr(Schema.Finite) }),
+  }),
 }
 
 export const tables = { items, uiState }
@@ -50,6 +52,7 @@ const materializers = State.SQLite.materializers(events, {
     return updates
   },
   'v1.AllItemsDeleted': () => items.delete(),
+  'v1.UiStateSet': ({ id, selected }) => uiState.insert({ id, selected }).onConflict('id', 'update', { selected }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

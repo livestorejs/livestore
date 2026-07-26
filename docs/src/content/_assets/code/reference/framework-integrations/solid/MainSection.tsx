@@ -1,7 +1,7 @@
 /** @jsxImportSource solid-js */
 import { type Component, For } from 'solid-js'
 
-import { visibleTodos$ } from './livestore/queries.ts'
+import { visibleTodosQuery } from './livestore/queries.ts'
 import { events, type tables } from './livestore/schema.ts'
 import { useAppStore } from './livestore/store.ts'
 
@@ -27,7 +27,7 @@ const handleDelete = (event: MouseEvent & { currentTarget: HTMLButtonElement }) 
 export const MainSection: Component = () => {
   const store = useAppStore()
   currentStore = store
-  const todos = store.useQuery(visibleTodos$)
+  const todos = store.useQuery(visibleTodosQuery(store().sessionId))
   const todoItems = () => todos() ?? ([] as (typeof tables.todos.Type)[])
 
   return (

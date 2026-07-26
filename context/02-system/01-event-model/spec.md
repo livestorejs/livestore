@@ -17,8 +17,7 @@ type EventDef<TName, TType, TEncoded, TDerived> = {
   options: {
     clientOnly: boolean            // sync scope (LS.SYS.EVT-R02)
     facts: FactsCallback | undefined   // experimental
-    derived: TDerived              // no user-defined materializer; framework
-                                   // may wire an implicit one (client docs)
+    derived: TDerived // reserved framework-internal marker
     deprecated: string | undefined // warn-at-commit (LS.SYS.EVT-R04)
   }
   (args: TType): { name; args }    // callable → partial event for commit()
@@ -30,8 +29,8 @@ Definitions are created via `Events.synced(...)` / `Events.clientOnly(...)`
 an `EventDefRecord` on the store schema. A definition is callable (partial
 event for `commit()`) and also exposes an `.encoded()` constructor
 (`event-def.ts:74`) plus an `Event` type helper. `derived` is never set by
-user code: client-document tables (`02-state/01-sqlite/`) auto-generate
-derived client-only set-events with implicit materializers.
+user code. Its low-level type machinery remains available for framework
+internals.
 
 ## Event Shape Lifecycle
 
@@ -103,7 +102,7 @@ The leader persists events in the eventlog database (`eventlog-tables.ts`;
 row completeness contracted by LS.SYS.EVT-R09):
 
 - **`eventlog`** — one row per event: composite seqNum triple (3-column PK)
-  + parent triple, `name`, `argsJson` (note: `undefined` args are stored as
+  - parent triple, `name`, `argsJson` (note: `undefined` args are stored as
   `{}` — `eventlog.ts:248`), `clientId`, `sessionId`, per-row `schemaHash`,
   `syncMetadataJson`; indexed on `seqNumGlobal` and the full triple.
 - **`__livestore_sync_status`** — the upstream head plus `backendId`, used

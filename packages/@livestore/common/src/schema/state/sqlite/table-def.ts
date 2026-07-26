@@ -24,10 +24,8 @@ export type TableDefInternalsSymbol = typeof TableDefInternalsSymbol
 export type TableDefBase<
   // TODO replace SqliteDef type param with Effect Schema (see below)
   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDefConstrained,
-  TOptions extends TableOptions = TableOptions,
 > = {
   sqliteDef: TSqliteDef
-  options: TOptions
   // Derived from `sqliteDef`, so only exposed for convenience
   rowSchema: SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>
   insertSchema: SqliteDsl.InsertStructSchemaForColumns<TSqliteDef['columns']>
@@ -38,30 +36,23 @@ export type TableDef<
   // We can only do this with Effect Schema v4 once the default values are tracked on the type level
   // https://github.com/livestorejs/livestore/issues/382
   TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDefConstrained,
-  TOptions extends TableOptions = TableOptions,
   TSchema extends Schema.Top = Schema.Struct<SqliteDsl.StructFieldsForColumns<TSqliteDef['columns']>>,
 > = {
   sqliteDef: TSqliteDef
-  options: TOptions
   // Derived from `sqliteDef`, so only exposed for convenience
   rowSchema: TSchema
   insertSchema: SqliteDsl.InsertStructSchemaForColumns<TSqliteDef['columns']>
-  // query: QueryBuilder<ReadonlyArray<TSchema['Type']>>, TableDefBase<TSqliteDef & {}, TOptions>>
+  // query: QueryBuilder<ReadonlyArray<TSchema['Type']>>, TableDefBase<TSqliteDef & {}>>
   readonly Type: TSchema['Type']
   readonly Encoded: TSchema['Encoded']
-} & QueryBuilder<ReadonlyArray<TSchema['Type']>, TableDefBase<TSqliteDef & {}, TOptions>>
+} & QueryBuilder<ReadonlyArray<TSchema['Type']>, TableDefBase<TSqliteDef & {}>>
 
 export type TableOptionsInput = Partial<{
   indexes: SqliteDsl.Index[]
 }>
 
 export namespace TableDef {
-  export type Any = TableDef<any, any>
-}
-
-export type TableOptions = {
-  /** Derived based on whether the table definition has one or more columns (besides the `id` column) */
-  readonly isClientDocumentTable: boolean
+  export type Any = TableDef<any>
 }
 
 /**
@@ -145,7 +136,7 @@ export function table<
     name: TName
     columns: TColumns
   } & Partial<TOptionsInput>,
-): TableDef<SqliteTableDefForInput<TName, TColumns>, WithDefaults<TColumns>>
+): TableDef<SqliteTableDefForInput<TName, TColumns>>
 
 // Overload 2: With schema and explicit name
 export function table<
@@ -186,7 +177,7 @@ export function table<
       }
   ) &
     Partial<TOptionsInput>,
-): TableDef<any, any> {
+): TableDef<any> {
   const { ...options } = args
 
   let tableName: string
@@ -230,10 +221,6 @@ export function table<
     return shouldNeverHappen('Either `columns` or `schema` must be provided when calling `table()`')
   }
 
-  const options_: TableOptions = {
-    isClientDocumentTable: false,
-  }
-
   // Combine user-provided indexes with unique column indexes
   const allIndexes = [...(options?.indexes ?? []), ...additionalIndexes]
   const sqliteDef = SqliteDsl.table(tableName, columns, allIndexes)
@@ -242,7 +229,6 @@ export function table<
   const insertSchema = SqliteDsl.insertStructSchemaForTable(sqliteDef)
   const tableDef = {
     sqliteDef,
-    options: options_,
     rowSchema,
     insertSchema,
   } satisfies TableDefBase
@@ -398,11 +384,6 @@ export type SqliteTableDefForSchemaInput<
   TEncoded,
   _TSchema = any,
 > = TableDefInput.ForSchema<TName, TType, TEncoded, _TSchema>
-
-export type WithDefaults<TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition.Any> = {
-  isClientDocumentTable: false
-  requiredInsertColumnNames: SqliteDsl.FromColumns.RequiredInsertColumnNames<ToColumns<TColumns>>
-}
 
 export type PrettifyFlat<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
 

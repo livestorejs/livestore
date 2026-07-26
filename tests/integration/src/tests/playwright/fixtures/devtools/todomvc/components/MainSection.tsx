@@ -2,20 +2,21 @@ import React from 'react'
 
 import { queryDb } from '@livestore/livestore'
 
-import { uiState$ } from '../livestore/queries.ts'
+import { uiStateQuery } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
 
-const visibleTodos$ = queryDb(
-  (get) => {
-    const { filter } = get(uiState$)
-    return tables.todos.where({
-      deletedAt: null,
-      completed: filter === 'all' ? undefined : filter === 'completed',
-    })
-  },
-  { label: 'visibleTodos' },
-)
+const visibleTodosQuery = (id: string) =>
+  queryDb(
+    (get) => {
+      const { filter } = get(uiStateQuery(id))
+      return tables.todos.where({
+        deletedAt: null,
+        completed: filter === 'all' ? undefined : filter === 'completed',
+      })
+    },
+    { label: `visibleTodos:${id}`, deps: id },
+  )
 
 export const MainSection: React.FC = () => {
   const store = useAppStore()
@@ -26,7 +27,7 @@ export const MainSection: React.FC = () => {
     [store],
   )
 
-  const visibleTodos = store.useQuery(visibleTodos$)
+  const visibleTodos = store.useQuery(visibleTodosQuery(store.sessionId))
 
   const deleteTodo = React.useCallback(
     (id: string) => {

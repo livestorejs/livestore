@@ -11,7 +11,6 @@ export {
   provideOtel,
   type QueryBuilder,
   type QueryBuilderAst,
-  type RowQuery,
   SessionIdSymbol,
   type SqliteDb,
   StoreInterrupted,

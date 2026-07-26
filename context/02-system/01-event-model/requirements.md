@@ -18,8 +18,8 @@ and root LS-R04…R06. Code: `packages/@livestore/common/src/schema/EventDef/`,
 - **LS.SYS.EVT-R01 Complete definitions:** An event type is declared by an
   event definition: unique name (versioned by convention, e.g.
   `v1.TodoCreated`), payload schema, and sync scope. Optional: facts callback
-  (experimental), deprecation reason. The derived flag is framework-set
-  (client documents), never user-supplied.
+  (experimental), deprecation reason. The derived flag is framework-set, never
+  user-supplied.
 - **LS.SYS.EVT-R02 Sync scope:** Every event is either `synced` (distributed
   via the sync backend) or `clientOnly` (reaches all sessions of the committing
   client, never the backend). `refines: LS-R04`

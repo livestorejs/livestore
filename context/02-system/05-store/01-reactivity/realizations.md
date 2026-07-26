@@ -9,7 +9,7 @@ store without touching the engine. Referencing mechanism per
 
 | Realization | Home | Conformance |
 | --- | --- | --- |
-| Built-in kinds (db query, computed, signal, client-document) | [spec.md](./spec.md) | covered by store/reactivity unit tests |
+| Built-in kinds (db query, computed, signal) | [spec.md](./spec.md)                                                                                                                                              | covered by store/reactivity unit tests |
 | GraphQL | [contrib `graphql`](https://github.com/livestorejs/livestore-contrib/tree/main/packages/%40livestore/graphql) · intent: contrib `context/query-surfaces/graphql/` | no query-surface suite yet |
 
 There is no shared query-surface conformance suite today; a contrib query

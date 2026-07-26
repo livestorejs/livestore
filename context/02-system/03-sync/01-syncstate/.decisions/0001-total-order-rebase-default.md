@@ -43,5 +43,6 @@ merge outcomes and invariants.
 - Convergence and determinism come for free; semantic validity under
   concurrency is the app's job until commands/facts land (RFC 0002,
   LS-DQ1).
-- Client documents adopt explicit LWW value semantics on this substrate
-  (`02-state/01-sqlite/`).
+- The former client-document consequence is superseded by
+  [SQLite decision 0002](../../../02-state/01-sqlite/.decisions/0002-remove-client-document-api.md):
+  applications now choose their event and materializer semantics explicitly.

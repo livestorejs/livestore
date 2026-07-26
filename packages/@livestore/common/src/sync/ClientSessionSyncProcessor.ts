@@ -383,8 +383,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         // so `Effect.orDie` is the correct modeling — it keeps the typed error channel narrow.
         const encoded = yield* Schema.encodeUnknownEffect(eventSchema)({
           name,
-          // Client-document events expose SessionIdSymbol as an input placeholder, but encoded events are persisted
-          // and replayed by concrete id. Resolve during schema encoding so commit never mutates the caller's event.
+          // Events may use SessionIdSymbol as an input placeholder, but encoded events are persisted and replayed
+          // by concrete id. Resolve during schema encoding so commit never mutates the caller's event.
           args: resolveSessionIdSymbolInEventArgs(args, clientSession.sessionId),
           ...nextNumPair,
           clientId: clientSession.clientId,

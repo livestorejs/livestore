@@ -1,12 +1,12 @@
-import { makeSchema, Schema, State } from '@livestore/livestore'
+import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 import * as eventsDefs from '../events.ts'
 import { type Comment, comment } from './comment.ts'
 import { type Description, description } from './description.ts'
-import { type FilterState, filterState } from './filter-state.ts'
-import { type FrontendState, frontendState } from './frontend-state.ts'
+import { defaultFilterState, FilterState, filterState } from './filter-state.ts'
+import { defaultFrontendState, FrontendState, frontendState } from './frontend-state.ts'
 import { type Issue, issue } from './issue.ts'
-import { type ScrollState, scrollState } from './scroll-state.ts'
+import { defaultScrollState, ScrollState, scrollState } from './scroll-state.ts'
 
 export {
   type Comment,
@@ -15,6 +15,9 @@ export {
   description,
   type FilterState,
   type FrontendState,
+  defaultFilterState,
+  defaultFrontendState,
+  defaultScrollState,
   filterState,
   frontendState,
   type Issue,
@@ -25,9 +28,18 @@ export {
 
 export const events = {
   ...eventsDefs,
-  frontendStateSet: frontendState.set,
-  filterStateSet: filterState.set,
-  scrollStateSet: scrollState.set,
+  frontendStateChanged: Events.clientOnly({
+    name: 'v1.FrontendStateChanged',
+    schema: Schema.Struct({ id: Schema.String, value: FrontendState }),
+  }),
+  filterStateChanged: Events.clientOnly({
+    name: 'v1.FilterStateChanged',
+    schema: Schema.Struct({ id: Schema.String, value: FilterState }),
+  }),
+  scrollStateChanged: Events.clientOnly({
+    name: 'v1.ScrollStateChanged',
+    schema: Schema.Struct({ id: Schema.String, value: ScrollState }),
+  }),
 }
 
 export const tables = { issue, description, comment, filterState, frontendState, scrollState }
@@ -73,6 +85,12 @@ const materializers = State.SQLite.materializers(events, {
     tables.issue.update({ kanbanorder, status, modified }).where({ id }),
   'v1.UpdateIssuePriority': ({ id, priority, modified }) => tables.issue.update({ priority, modified }).where({ id }),
   'v1.UpdateDescription': ({ id, body }) => tables.description.update({ body }).where({ id }),
+  'v1.FilterStateChanged': ({ id, value }) =>
+    tables.filterState.insert({ id, value }).onConflict('id', 'update', { value }),
+  'v1.FrontendStateChanged': ({ id, value }) =>
+    tables.frontendState.insert({ id, value }).onConflict('id', 'update', { value }),
+  'v1.ScrollStateChanged': ({ id, value }) =>
+    tables.scrollState.insert({ id, value }).onConflict('id', 'update', { value }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })

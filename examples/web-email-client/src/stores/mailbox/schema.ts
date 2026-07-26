@@ -1,4 +1,4 @@
-import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 export const mailboxTables = {
   labels: State.SQLite.table({
@@ -38,19 +38,13 @@ export const mailboxTables = {
     },
   }),
 
-  // Client-only UI state
-  uiState: State.SQLite.clientDocument({
+  // Session-scoped client-only navigation state
+  uiState: State.SQLite.table({
     name: 'uiState',
-    schema: Schema.Struct({
-      selectedThreadId: Schema.String.pipe(Schema.NullOr),
-      selectedLabelId: Schema.String.pipe(Schema.NullOr),
-    }),
-    default: {
-      id: SessionIdSymbol,
-      value: {
-        selectedThreadId: null,
-        selectedLabelId: null,
-      },
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      selectedThreadId: State.SQLite.text({ nullable: true }),
+      selectedLabelId: State.SQLite.text({ nullable: true }),
     },
   }),
 }
@@ -100,8 +94,14 @@ export const mailboxEvents = {
     }),
   }),
 
-  // UI state events (client-only)
-  uiStateSet: mailboxTables.uiState.set,
+  labelSelected: Events.clientOnly({
+    name: 'v1.LabelSelected',
+    schema: Schema.Struct({ id: Schema.String, labelId: Schema.String }),
+  }),
+  threadSelected: Events.clientOnly({
+    name: 'v1.ThreadSelected',
+    schema: Schema.Struct({ id: Schema.String, threadId: Schema.String }),
+  }),
 }
 
 const materializers = State.SQLite.materializers(mailboxEvents, {
@@ -126,6 +126,16 @@ const materializers = State.SQLite.materializers(mailboxEvents, {
     mailboxTables.threadLabels.delete().where({ threadId, labelId }),
     { sql: 'UPDATE labels SET threadCount = MAX(0, threadCount - 1) WHERE id = ?', bindValues: [labelId] },
   ],
+
+  'v1.LabelSelected': ({ id, labelId }) =>
+    mailboxTables.uiState
+      .insert({ id, selectedLabelId: labelId, selectedThreadId: null })
+      .onConflict('id', 'update', { selectedLabelId: labelId, selectedThreadId: null }),
+
+  'v1.ThreadSelected': ({ id, threadId }) =>
+    mailboxTables.uiState
+      .insert({ id, selectedLabelId: null, selectedThreadId: threadId })
+      .onConflict('id', 'update', { selectedThreadId: threadId }),
 })
 
 const state = State.SQLite.makeState({ tables: mailboxTables, materializers })

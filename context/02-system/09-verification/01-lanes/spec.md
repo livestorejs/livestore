@@ -12,7 +12,7 @@ Draft.
 | Lane | Proves | Home | Runner | Local command | CI job |
 | --- | --- | --- | --- | --- | --- |
 | Unit | Pure semantics per package | `*.test.ts(x)` colocated | Vitest | `mono test unit` | `test-unit` |
-| Package integration | Cross-package engine behavior (materializer, sync processors, client documents) | `tests/package-common/` | Vitest | folded into `mono test unit` | `test-unit` |
+| Package integration       | Cross-package engine behavior (materializers, client-only events, sync processors) | `tests/package-common/`  | Vitest                    | folded into `mono test unit`          | `test-unit`                                                           |
 | Browser integration | Adapter/devtools behavior in real browsers | `tests/integration/` | Playwright | `mono test integration` | `test-integration-playwright` (suite matrix: misc, todomvc, devtools) |
 | Sync-provider conformance | Provider contract (see [../02-conformance/](../02-conformance/spec.md)) | `tests/sync-provider/` | Vitest | `mono test integration sync-provider` | `test-integration-sync-provider` (7-provider matrix) |
 | SQLite substrate | wa-sqlite API, session extension, serialize | `tests/wa-sqlite/` | Vitest | `mono test integration wa-sqlite` | `wa-sqlite-test` |

@@ -101,7 +101,7 @@ const hasJsonStringEncoding = (ast: SchemaAST.AST): boolean => {
 
 /**
  * NOTE we're now including JSON schema information for JSON columns
- * to detect client document schema changes
+ * to detect changes to typed JSON column schemas
  */
 export const hash = (obj: Table | Column | Index | ForeignKey | DbSchema): number =>
   hashCode(JSON.stringify(trimInfoForHasing(obj)))

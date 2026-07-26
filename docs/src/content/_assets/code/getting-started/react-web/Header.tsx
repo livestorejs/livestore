@@ -6,14 +6,21 @@ import { queryDb } from '@livestore/livestore'
 import { events, tables } from './livestore/schema.ts'
 import { useAppStore } from './store.ts'
 
-const uiState$ = queryDb(tables.uiState.get(), { label: 'uiState' })
+const uiStateQuery = (id: string) =>
+  queryDb(
+    tables.uiState.where({ id }).first({
+      behaviour: 'fallback',
+      fallback: () => ({ id, newTodoText: '', filter: 'all' as const }),
+    }),
+    { label: `uiState:${id}`, deps: id },
+  )
 
 export const Header: React.FC = () => {
   const store = useAppStore()
-  const { newTodoText } = store.useQuery(uiState$)
+  const { newTodoText } = store.useQuery(uiStateQuery(store.sessionId))
 
   const updateNewTodoText = useCallback(
-    (text: string) => store.commit(events.uiStateSet({ newTodoText: text })),
+    (text: string) => store.commit(events.todoDraftChanged({ id: store.sessionId, text })),
     [store],
   )
 
@@ -21,7 +28,7 @@ export const Header: React.FC = () => {
     () =>
       store.commit(
         events.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
-        events.uiStateSet({ newTodoText: '' }),
+        events.todoDraftChanged({ id: store.sessionId, text: '' }),
       ),
     [newTodoText, store],
   )

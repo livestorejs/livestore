@@ -14,22 +14,22 @@ import type { Bindable, SqlValue } from './util.ts'
  * Can be used in queries to refer to the current session id.
  * Will be replaced with the actual session id at runtime.
  *
- * In client document table:
+ * In a session-scoped client-only event:
  * ```ts
- * const uiState = State.SQLite.clientDocument({
- *   name: 'ui_state',
+ * const themeChanged = Events.clientOnly({
+ *   name: 'ThemeChanged',
  *   schema: Schema.Struct({
+ *     id: Schema.Union([Schema.String, Schema.UniqueSymbol(SessionIdSymbol)]),
  *     theme: Schema.Literals(['dark', 'light', 'system']),
- *     user: Schema.String,
- *     showToolbar: Schema.Boolean,
  *   }),
- *   default: { value: defaultFrontendState, id: SessionIdSymbol },
  * })
+ *
+ * store.commit(themeChanged({ id: SessionIdSymbol, theme: 'dark' }))
  * ```
  *
- * Or in a client document query:
+ * Or in a query bind value:
  * ```ts
- * const query$ = queryDb(tables.uiState.get(SessionIdSymbol))
+ * const query$ = queryDb(tables.uiState.where({ id: SessionIdSymbol }))
  * ```
  */
 export const SessionIdSymbol = Symbol.for('@livestore/session-id')

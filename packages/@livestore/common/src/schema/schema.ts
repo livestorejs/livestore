@@ -3,7 +3,6 @@ import { ReadonlyArray as EffectArray } from '@livestore/utils/effect'
 
 import type { MigrationOptions } from '../adapter-types.ts'
 import type { EventDef, EventDefRecord, Materializer } from './EventDef/mod.ts'
-import { tableIsClientDocumentTable } from './state/sqlite/client-document-def.ts'
 import type { SqliteDsl } from './state/sqlite/db-schema/mod.ts'
 import { stateSystemTables } from './state/sqlite/system-tables/state-tables.ts'
 import type { TableDef } from './state/sqlite/table-def.ts'
@@ -119,12 +118,6 @@ export const makeSchema = <TInputSchema extends InputSchema>(
         shouldNeverHappen(`Duplicate event name: ${eventDef.name}. Please use unique names for events.`)
       }
       eventsDefsMap.set(eventDef.name, eventDef)
-    }
-  }
-
-  for (const tableDef of tables.values()) {
-    if (tableIsClientDocumentTable(tableDef) === true && eventsDefsMap.has(tableDef.set.name) === false) {
-      eventsDefsMap.set(tableDef.set.name, tableDef.set)
     }
   }
 

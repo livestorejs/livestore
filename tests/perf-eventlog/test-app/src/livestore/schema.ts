@@ -1,4 +1,6 @@
-import { Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
+import { Events, makeSchema, Schema, State } from '@livestore/livestore'
+
+const Filter = Schema.Literals(['all', 'active', 'completed'])
 
 export const tables = {
   todos: State.SQLite.table({
@@ -10,13 +12,13 @@ export const tables = {
       deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
     },
   }),
-  uiState: State.SQLite.clientDocument({
+  uiState: State.SQLite.table({
     name: 'uiState',
-    schema: Schema.Struct({
-      newTodoText: Schema.String,
-      filter: Schema.Literals(['all', 'active', 'completed']),
-    }),
-    default: { id: SessionIdSymbol, value: { newTodoText: '', filter: 'all' } },
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      newTodoText: State.SQLite.text({ default: '' }),
+      filter: State.SQLite.text({ schema: Filter, default: 'all' }),
+    },
   }),
 }
 
@@ -44,7 +46,10 @@ export const events = {
     name: 'v1.TodoClearedCompleted',
     schema: Schema.Struct({ deletedAt: Schema.DateFromString.check(Schema.isDateValid()) }),
   }),
-  uiStateSet: tables.uiState.set,
+  uiStateSet: Events.clientOnly({
+    name: 'v1.UiStateSet',
+    schema: Schema.Struct({ id: Schema.String, newTodoText: Schema.String, filter: Filter }),
+  }),
 }
 
 const materializers = State.SQLite.materializers(events, {
@@ -53,6 +58,8 @@ const materializers = State.SQLite.materializers(events, {
   'v1.TodoUncompleted': ({ id }) => tables.todos.update({ completed: false }).where({ id }),
   'v1.TodoDeleted': ({ id, deletedAt }) => tables.todos.update({ deletedAt }).where({ id }),
   'v1.TodoClearedCompleted': ({ deletedAt }) => tables.todos.update({ deletedAt }).where({ completed: true }),
+  'v1.UiStateSet': ({ id, newTodoText, filter }) =>
+    tables.uiState.insert({ id, newTodoText, filter }).onConflict('id', 'update', { newTodoText, filter }),
 })
 
 const state = State.SQLite.makeState({ tables, materializers })
@@ -60,4 +67,4 @@ const state = State.SQLite.makeState({ tables, materializers })
 export const schema = makeSchema({ events, state })
 
 export type TodoRow = typeof tables.todos.Type
-export type UiStateDoc = typeof tables.uiState.Value
+export type UiStateRow = typeof tables.uiState.Type

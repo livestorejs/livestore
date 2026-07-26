@@ -40,8 +40,8 @@ type Materializer<TEventDef> = (
   only when a session hash is present — raising
   `MaterializerHashMismatchError` on divergence.
 - Coverage is total at the type level: the `materializers()` builder
-  requires a handler per non-derived event and excludes derived events
-  (LS.SYS.STATE-R04).
+  requires a handler per non-derived event and excludes the reserved
+  framework-internal derived-event category (LS.SYS.STATE-R04).
 
 ### Execution boundaries
 

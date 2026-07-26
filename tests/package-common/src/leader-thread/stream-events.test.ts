@@ -399,7 +399,8 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           { value: { theme: 'dark' } },
           { value: { fontSize: 18 } },
           { value: { theme: 'light', fontSize: 20 } },
-        ].map((payload) => {
+        ] as const
+        const encodedClientOnlyEvents = clientOnlyEvents.map((payload) => {
           const { encoded, nextBase } = makeClientOnlyEvent({
             base: clientBase,
             event: appConfigSetFactory.next({ id: 'session-1', ...payload }),
@@ -408,7 +409,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           return encoded
         })
 
-        yield* insertEvents(dbEventlog, [...backendApproved, ...clientOnlyEvents])
+        yield* insertEvents(dbEventlog, [...backendApproved, ...encodedClientOnlyEvents])
 
         const stream = streamEventsWithSyncState({
           dbEventlog,

@@ -8,6 +8,10 @@
 
 ## Unreleased
 
+### Breaking Changes
+
+- **Client state APIs:** Removed `State.SQLite.clientDocument()`, `RowQuery`, `useClientDocument`, `store.useClientDocument`, and their generated event/materializer and first-read seeding behavior. ([#1481](https://github.com/livestorejs/livestore/issues/1481)).
+
 ### Changed
 
 - Removed redundant devenv package entries now owned by the task guard modules.
