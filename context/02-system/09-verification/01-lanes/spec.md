@@ -13,6 +13,7 @@ Draft.
 | --- | --- | --- | --- | --- | --- |
 | Unit | Pure semantics per package | `*.test.ts(x)` colocated | Vitest | `mono test unit` | `test-unit` |
 | Package integration | Cross-package engine behavior (materializer, sync processors, client documents) | `tests/package-common/` | Vitest | folded into `mono test unit` | `test-unit` |
+| Repo tooling | `mono` CLI commands (release, docs export, test policy) | `scripts/` | Vitest | folded into `mono test unit` | `test-unit` |
 | Browser integration | Adapter/devtools behavior in real browsers | `tests/integration/` | Playwright | `mono test integration` | `test-integration-playwright` (suite matrix: misc, todomvc, devtools) |
 | Sync-provider conformance | Provider contract (see [../02-conformance/](../02-conformance/spec.md)) | `tests/sync-provider/` | Vitest | `mono test integration sync-provider` | `test-integration-sync-provider` (7-provider matrix) |
 | SQLite substrate | wa-sqlite API, session extension, serialize | `tests/wa-sqlite/` | Vitest | `mono test integration wa-sqlite` | `wa-sqlite-test` |
@@ -29,10 +30,45 @@ command column). Two characteristics are deliberate, not drift:
 - `mono test integration` is a CLI parent grouping the three integration lanes
   (Browser, Sync-provider, SQLite) — each is still its own row with its own CI
   job.
-- `tests/package-common/` folds into the unit lane
-  (`scripts/src/commands/test-commands.ts`) rather than getting a separate CI
-  job, and examples-as-tests run on demand (not a required gate) — both are
-  documented in the table above, by design.
+- `tests/package-common/` and `scripts/` fold into the unit lane
+  (`scripts/src/commands/test-commands.ts`) rather than getting separate CI
+  jobs, and examples-as-tests run on demand (not a required gate) — all are
+  documented in the table above, by design. The unit lane's discovery walks
+  `packages/@livestore/*`, `packages/@local/*`, and those two extra roots; a
+  test root absent from that list runs nowhere in CI.
+
+## Test Policy
+
+Test targets invoked by the `mono test` runner (unit, sync-provider, SQLite
+substrate, perf) run under an explicit policy (LS.SYS.VER.LANE-R04), stated at
+their invocation in `scripts/src/shared/test-policy.ts`. The browser integration
+lane is dispatched through `@local/tests-integration` and is not yet routed
+through the helper — tracked in
+[.delta/DELTA-003-integration-lane-unpoliced.md](./.delta/DELTA-003-integration-lane-unpoliced.md).
+
+| Policy | Effect on the job |
+| --- | --- |
+| `blocking` | Failures fail the job. The default for every target. |
+| `quarantined(key)` | Failures are announced and tolerated, under a ledger entry. |
+
+`key` must name an entry in `quarantineLedger`, so a quarantine cannot be
+expressed without a checked-in record of its target, reason, tracking issue, and
+expiry date. The ledger is empty in the steady state; with no entries the
+quarantine constructor is uninhabited and the type checker rejects any attempt to
+suppress a failure.
+
+Two properties keep a quarantine from becoming permanent and invisible:
+
+- **Expiry.** `test-policy.test.ts` fails once an entry's `expires` date passes,
+  forcing a renew-or-remove decision in the unit lane, which is a required check.
+- **Distinguishable signal.** A tolerated failure is announced with its own
+  annotation title and a job-summary line, so it cannot be mistaken for a pass or
+  lost among unrelated Actions warnings.
+
+Test selection is resolved against source-of-truth registries rather than by
+matching test titles — the sync-provider matrix pins a cell with
+`TEST_SYNC_PROVIDER`, validated against `providerRegistry`. A cell therefore
+cannot select an empty set, and renaming a suite cannot remove it from CI.
 
 ## Coverage Skew
 
