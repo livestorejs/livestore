@@ -26,12 +26,24 @@ be fixable after the fact: rotating the passphrase does not help, since the old
 ciphertext remains readable in history, and the only true remediation would be
 rotating the Mixedbread key itself.
 
-Two properties are therefore load-bearing while this delta is open:
+Three properties are therefore load-bearing while this delta is open:
 
 - The state-encryption passphrase must be high-entropy and generated, not
   memorable. Its strength is the entire security margin against an offline
   attacker holding the ciphertext indefinitely.
 - A rotation's resulting state must not be committed.
+- A resource may only be adopted if its live values are not themselves
+  secret. Import writes non-secret values into state verbatim
+  (`netlify_environment_variable.values[].value` is a plain string returned on
+  read), so adopting a credential that a provider holds as ordinary
+  configuration publishes it. Where a live resource stores a credential
+  unprotected, it must be moved to the provider's secret mechanism *before*
+  adoption, never after.
+
+The invariant is currently unenforced: nothing prevents a commit whose state
+decrypts to plaintext values. A check that the committed state parses as
+ciphertext, and that a decrypted plan contains no credential-bearing
+attribute, would make this mechanical rather than remembered.
 
 ## VRS
 

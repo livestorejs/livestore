@@ -27,11 +27,11 @@ scopes and contexts — and never its value. Both variables were already live an
 were imported; `plan` reports no changes.
 
 The Netlify API masks secret environment-variable values on read, so an
-imported secret resource has no usable value in state. The masking is not
-total — observed 2026-07-27, a secret variable's `dev` context is returned in
-plaintext while its other contexts are masked — so "write-only" describes the
-intent of the API, not a guarantee it enforces. Either way the value cannot be
-round-tripped, which is what forces the ownership question. As of provider
+imported secret resource has no usable value in state. Masking is a read-time
+behaviour of the API rather than a guarantee the value can never be observed,
+so it is not relied on for secrecy — only for the fact that a secret value
+cannot be round-tripped, which is what forces the ownership question. As of
+provider
 `netlify/netlify` v0.4.4 the nested `secret_values.value` attribute is typed
 `(String, Sensitive)` rather than write-only, so there is no provider-supported
 way to send a value without persisting it to state.
