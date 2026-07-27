@@ -119,8 +119,9 @@ figures as met until your company passes them during its first tax year. This
 does not apply to the investment figure, which always counts everything your
 company has received to date.
 
-All three figures are counted across your company as defined in
-[Definitions](#definitions), which includes its affiliates.
+All three figures are counted across your company, which as defined in
+[Definitions](#definitions) includes its affiliates. A subsidiary counts its
+parent's people, revenue and investment, and a parent counts its subsidiaries'.
 
 These figures are fixed amounts. They are not adjusted for inflation. The
 licensor may use different figures in a later version of these terms. That does
@@ -262,8 +263,9 @@ Control can be direct or indirect.
 
 **Total revenue** means all money and other consideration your company received
 or became entitled to receive in the prior tax year, from all sources, before
-deducting any costs. External investment is not revenue. Government grants,
-subsidies and charitable donations are not revenue.
+deducting any costs, added together across your company and counted once.
+External investment is not revenue. Government grants, subsidies and charitable
+donations are not revenue.
 
 **Total external investment** means all money and other consideration your
 company has ever received from anyone outside your company in exchange for
@@ -280,6 +282,9 @@ company earned; government grants, subsidies, research funding and prize money;
 charitable donations; and money put in by your company's own founders or
 employees out of their own funds.
 
+Total external investment is added together across your company and counted
+once, over your company's whole history.
+
 **Your application** has the meaning given in [Your
 Application](#your-application).
 
@@ -287,6 +292,3 @@ Application](#your-application).
 these terms.
 
 **Use** means anything you do with the software requiring one of your licenses.
-
-Each figure in [Eligible Organizations](#eligible-organizations) is counted
-across your company, including its affiliates, added together and counted once.

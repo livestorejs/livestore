@@ -306,7 +306,7 @@ date is avoidable fragility. Concretely:
 - Keep `LICENSE-APACHE-2.0` in both repository roots permanently. It is now referenced by
   a live, ongoing mechanism, not just by history.
 
-**Question for counsel (Q-P6):** the conversion runs from "the date the licensor first
+**Question for counsel (Q-P4):** the conversion runs from "the date the licensor first
 made that version available". For an npm package this is unambiguous — the registry
 records it. But a version reachable from a git tag, a GitHub release, or a prerelease
 dist-tag before the npm publish could arguably start the clock earlier. Should the
@@ -345,7 +345,7 @@ Note that `LICENSE.md` does now name Apache-2.0, in `Later Apache License`. That
 forward boundary and it belongs in the operative text, because it is a grant the licence
 itself makes. The backward boundary still does not, and should not, appear there.
 
-**Question for counsel (Q-P4):** should the root `LICENSE` say anything more than the
+**Question for counsel (Q-P5):** should the root `LICENSE` say anything more than the
 paragraph above about the surviving Apache-2.0 grant on pre-`{{FIRST_COVERED_VERSION}}`
 releases? The requirements list this as an open item. The drafting position taken here
 is: state it plainly once, in the repo root and the release notes, and keep it out of
@@ -366,7 +366,7 @@ to fix. Assuming it ships as a Chrome Web Store extension:
 - The Chrome Web Store's own Developer Program Policies apply on top and are not
   displaced by this licence. Counsel may want to check there is no conflict.
 
-**Question for counsel (Q-P5):** does distribution through a third-party store impose
+**Question for counsel (Q-P6):** does distribution through a third-party store impose
 any licence-presentation requirement that `LICENSE.md`'s [Notices] section does not
 already satisfy?
 
@@ -399,23 +399,23 @@ This is documentation, not licence text, and should live in the docs site rather
    block (`No Liability`); delete all HTML comments.
 2. Confirm `LICENSE.md` names neither licence family it was adapted from — see
    `REVIEW-NOTES.md` §2. Grep for both.
-2a. Wire the `Apache Date:` line into the release pipeline and publish the conversion
+3. Wire the `Apache Date:` line into the release pipeline and publish the conversion
    table (§5). This is a recurring release obligation, not a one-off launch task.
-3. Fix the **two** absent `license` fields in the current generation (`devtools-vite`,
+4. Fix the **two** absent `license` fields in the current generation (`devtools-vite`,
    `wa-sqlite`) — do this even if the licence change is deferred.
-4. Decide what to do about the **13** absent `license` fields in the legacy packages
+5. Decide what to do about the **13** absent `license` fields in the legacy packages
    (§3 Group D, Q-P3). Deprecating them on the registry is the recommended minimum.
-5. Decide and record `{{FIRST_COVERED_VERSION}}`.
-6. Re-run the org-endpoint listing immediately before launch and reconcile against
+6. Decide and record `{{FIRST_COVERED_VERSION}}`.
+7. Re-run the org-endpoint listing immediately before launch and reconcile against
    Group A. The scope had grown by 18 packages beyond what the requirements document
    recorded; assume it has moved again.
-7. Add `LICENSE.md` to every Group A package root; add MIT `LICENSE` to `wa-sqlite`.
-8. Update both repository root `LICENSE` files; rename the existing Apache-2.0 text to
+8. Add `LICENSE.md` to every Group A package root; add MIT `LICENSE` to `wa-sqlite`.
+9. Update both repository root `LICENSE` files; rename the existing Apache-2.0 text to
    `LICENSE-APACHE-2.0` in both.
-9. Verify each published tarball actually contains its licence file
+10. Verify each published tarball actually contains its licence file
    (`npm pack --dry-run` per package).
-10. Confirm the commercial licence is purchasable — see `COMMERCIAL-LICENSE-NOTES.md` §7.
-11. Publish `{{LICENCE_URL}}` and confirm it resolves before the first covered release.
+11. Confirm the commercial licence is purchasable — see `COMMERCIAL-LICENSE-NOTES.md` §7.
+12. Publish `{{LICENCE_URL}}` and confirm it resolves before the first covered release.
    Do not rely on any third party's domain for the canonical text; see `REVIEW-NOTES.md`
    §2.
 

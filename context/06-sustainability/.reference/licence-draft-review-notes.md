@@ -9,6 +9,11 @@ what each clause is for, where the draft departs from its source and why, what i
 unverified, and what I could not resolve. §12 is the numbered list of open questions.
 §13 states what I am least confident in.
 
+All business decisions are settled. `LICENSE.md` has **one** unresolved placeholder
+(`{{LICENCE_URL}}`) and **one** remaining choice (`No Liability`, A or B) — and that
+choice is yours, not the project's, because it is a question about legal effect rather
+than commercial intent. See §10.
+
 **Read §2 first.** It corrects a factual premise I was given, and it constrains the
 licence text.
 
@@ -18,15 +23,19 @@ licence text.
 
 From the settled requirements (`../licence-requirements.md`), which I treated as fixed:
 
-- Free use if **fewer than 10 individuals AND less than USD 1,000,000 revenue** in the
-  prior tax year. Conjunctive, deliberately. Fixed figure, **not** inflation-indexed.
-  Affiliates aggregate.
+- Free use requires **all three** of: fewer than 10 individuals; less than USD 1,000,000
+  revenue in the prior tax year; less than USD 1,000,000 in aggregate external
+  investment. Conjunctive, deliberately. Fixed figures, **not** inflation-indexed.
+  Affiliates aggregate across all three.
 - Unconditional grants regardless of that gate for: individuals, noncommercial and public
   organisations, and a ~30-day evaluation.
 - Modification and redistribution as part of the licensee's own application permitted.
 - **Downstream recipients of a licensee's application must not need their own licence.**
-- No non-compete. No source-disclosure obligation. No technical enforcement.
+- Every release converts to Apache-2.0 two years after its own publication.
+- No non-compete. No source-disclosure obligation. No technical enforcement. **No audit
+  rights.** No governing-law clause in the public licence.
 - Future releases only; prior releases stay Apache-2.0 irrevocably.
+- Licence name: LiveStore Community License 1.0. Licensor: Johannes Schickling.
 - `@livestore/wa-sqlite` excluded, stays MIT.
 
 The context that makes several of these load-bearing: **LiveStore is a client-side
@@ -96,28 +105,35 @@ following a URL in the unmodified upstream licences right now reaches a 404.
 
 ---
 
-## 2a. Placeholder inventory — including three the brief did not list
+## 2a. Placeholder inventory — all but one now resolved
 
-The brief specified `{{LICENCE_NAME}}`, `{{LICENSOR}}`, `{{GOVERNING_LAW}}`,
-`{{SUNSET}}`, `{{AUDIT_RIGHTS}}`, `{{REVENUE_DEFINITION}}` and
-`{{INDIVIDUALS_DEFINITION}}`. All appear in the draft. I added **three more**, each
-because the text is unusable without it. Flagged here rather than slipped in:
+Every placeholder from the brief has been resolved into the text: `{{LICENCE_NAME}}` →
+LiveStore Community License 1.0; `{{LICENSOR}}` → Johannes Schickling (see §11 for how it
+is carried); `{{GOVERNING_LAW}}` → section deleted (§9); `{{SUNSET}}` → two-year
+per-version Apache-2.0 conversion (§7); `{{AUDIT_RIGHTS}}` → section deleted (§8);
+`{{REVENUE_DEFINITION}}` and `{{INDIVIDUALS_DEFINITION}}` → resolved in §6, plus the new
+investment limb in §5.
 
-| Placeholder | Why it exists |
+I had added three placeholders of my own. Two are now gone, one remains:
+
+| Placeholder | Status |
 | --- | --- |
-| **`{{LICENCE_URL}}`** | The `Notices` clause obliges recipients to get the terms *or the URL for them*. Removing the source publisher's URL under the de-branding condition (§2) leaves nothing there. A project-hosted canonical URL must exist and resolve before the first covered release. |
-| **`{{LICENSOR_URL}}`** | Appears only in the `Required Notice:` example line, mirroring the source licences' own example format. Cosmetic; can be dropped with the example if the `Required Notice:` mechanism is not used. |
-| **`{{VENUE}}`** | Only inside the optional `Governing Law` section. Governing law and forum are separate choices and conflating them into one placeholder would hide that. Disappears entirely if §11's recommendation to omit that section is accepted. |
+| **`{{LICENCE_URL}}`** | **Still open — the only one.** The `Notices` clause obliges recipients to get the terms *or the URL for them*. Removing the source publisher's URL under the de-branding condition (§2) leaves nothing there. A project-hosted canonical URL must exist and resolve before the first covered release. |
+| `{{LICENSOR_URL}}` | Gone. The `Required Notice:` example now reads simply `Copyright Johannes Schickling`, with no URL, so nothing needs inventing. |
+| `{{VENUE}}` | Gone with the `Governing Law` section (§9). |
 
-Two further placeholders, `{{SUNSET_PERIOD}}` and `{{SUNSET_LICENCE}}`, sit inside the
-`{{SUNSET}}` variant block and are needed only if that variant is chosen. `LICENSE.md`
-also references `{{LICENCE_ID}}` indirectly through `NOTICE-AND-PACKAGING.md`, which is
-the SPDX `LicenseRef-` identifier and is not part of the licence text itself.
+`{{SUNSET_PERIOD}}` and `{{SUNSET_LICENCE}}` are also gone, resolved into the text as two
+years and Apache-2.0 respectively (§7).
+
+`NOTICE-AND-PACKAGING.md` carries one further placeholder of its own,
+`{{FIRST_COVERED_VERSION}}` — the version number at which the new licence takes effect.
+That is a project decision, not a legal one, but it must be fixed before launch because
+three separate documents refer to it.
 
 I invented no substantive figures, names, periods or jurisdictions anywhere. The only
-concrete numbers in the operative text are those the requirements fix (10 individuals,
-USD 1,000,000), the 32-day cure period inherited unchanged from the source, and the
-30-day evaluation and certification-response periods discussed at §3 and §8.
+concrete numbers in the operative text are those the project fixed (10 individuals, USD
+1,000,000 revenue, USD 1,000,000 investment, two-year conversion), the 32-day cure period
+inherited unchanged from the source, and the 30-day evaluation period discussed at §3.
 
 ---
 
@@ -183,6 +199,21 @@ Three changes from the source free-trial licence:
   to internal use.
 - **Retained multiple concurrent evaluations** for different needs or projects, matching
   the source and the publisher's later working draft.
+
+**A problem with the narrow form, which I have left as drafted but want to flag.** The
+carve-out means an ineligible organisation may trial the software only internally. For a
+*server* library that is a complete evaluation. For a client-side library whose entire
+purpose is shipping inside an application that reaches end users, it is not: the
+organisation cannot build anything it can put in front of a real user, which is exactly
+what evaluating this library means. So `Evaluation`, as drafted, offers less than it
+appears to, and the signpost's "may evaluate it for 30 days" slightly oversells it.
+
+I left the narrow form because widening it re-opens the hole it was added to close — an
+ineligible organisation shipping production software free under a rolling "evaluation".
+But there are middle positions: permit distribution to a small number of named pilot
+users, or to non-production deployments, or permit external distribution during the 30
+days on condition it stops at the end. Each needs care to avoid becoming a loophole.
+**See Q23.**
 
 ---
 
@@ -293,12 +324,17 @@ agree, and is how this is usually solved.
 
 ---
 
-## 5. The size gate
+## 5. The eligibility gate — three limbs
 
-Drafted from the small-business licence's `Small Business` clause with these changes:
+Drafted from the small-business licence's `Small Business` clause, with the third limb
+having no precedent anywhere. Changes from the source:
 
-- **Thresholds:** 100 → **10** individuals; 1,000,000 USD retained but its meaning
-  changed, see next point.
+- **Section renamed** from `Small Business` to `Eligible Organizations`. The source name
+  is no longer accurate: a three-person company that raised USD 1.5M is unambiguously a
+  small business and is unambiguously gated. Leaving the heading as "Small Business"
+  while the test excludes obvious small businesses would be actively misleading.
+- **Thresholds:** 100 → **10** individuals; USD 1,000,000 revenue retained; **USD
+  1,000,000 external investment added as a third limb.**
 - **CPI indexing removed entirely.** The source says `1,000,000 USD (2019)` followed by a
   sentence directing the reader to adjust for inflation via the US BLS CPI-U index. The
   requirements reject indexing: it obliges every prospective licensee to perform an
@@ -311,116 +347,241 @@ Drafted from the small-business licence's `Small Business` clause with these cha
   *This is a live trap.* The Statiq precedent modified the numbers but kept both the
   `(2019)` marker and the full CPI sentence. Anyone adapting from Statiq by swapping
   figures will silently reimport exactly what the requirements reject.
-- **Conjunctive test made explicit.** The source's "and" is easy to skim past, so the
-  draft adds "Your company must meet both of these. If it meets only one, use for its
-  benefit is not a permitted purpose under this section." The requirements are emphatic
-  that a five-person company at USD 3M revenue is meant to be gated.
-- **New-company case added.** The source has no rule for a company with no prior tax
-  year, which is undefined for a large share of the target audience — the gate simply
-  has no answer for them. The draft permits use during the first tax year until either
-  figure is passed. This is not in the requirements, but the gate is incomplete without
-  it, so I trace it to the gate requirement rather than treating it as an addition. The
-  publisher's own later working draft adopts the same approach, which I take as
-  confirmation it is the conventional fix. **Confirm this is wanted — see Q6.**
+- **Conjunctive test made explicit.** "Your company must meet all three. If it fails any
+  one of them, use for its benefit is not a permitted purpose under this section." The
+  three limbs are also set out as a labelled list rather than a run-on sentence, because
+  at three conditions the prose form becomes genuinely hard to parse.
+- **Different measurement periods, stated explicitly.** People and revenue are measured
+  over the prior tax year; investment is measured over the company's whole history. Two
+  different frames in one test is a real comprehension hazard, so the draft states it in
+  its own paragraph rather than leaving a reader to infer it from the definitions.
+- **New-company case added, and scoped.** The source has no rule for a company with no
+  prior tax year, which is undefined for a large share of the target audience. The draft
+  permits use during the first tax year until either the people or revenue figure is
+  passed — and **expressly does not extend to the investment limb**, so a newly
+  incorporated company that has just raised USD 5M is gated from day one. Without that
+  scoping the new-company rule would swallow the investment limb entirely for exactly the
+  companies it targets. **Confirm — see Q6.**
 - **Affiliate roll-up** comes free from the source's `Your company` / `Control`
-  definitions, which the draft keeps essentially verbatim. Nothing was added.
+  definitions, which the draft keeps verbatim. The draft adds one closing sentence in
+  Definitions making explicit that it applies to all three figures, and the gate section
+  cross-references it. For investment this means a group's historical raises aggregate:
+  a subsidiary of a well-funded parent is gated by the parent's fundraising.
+
+### The investment limb — my least-precedented clause
+
+**This is the single clause in the document with no precedent I could find anywhere.**
+Not in the PolyForm family, not in FSL, BUSL, SSPL or Elastic, not in Statiq. Every
+existing size-gated licence gates on headcount and revenue. I could find none that gates
+on capital raised. Treat the drafting as a first attempt rather than an adaptation of
+something tested, and please give it disproportionate attention.
+
+What the definition does:
+
+| Counts | Does not count |
+| --- | --- |
+| Equity investment | Bank borrowing on ordinary commercial terms |
+| Convertible notes, SAFEs and similar, **at the amount received when received, not on conversion** | Trade credit |
+| Venture debt | Money the company earned |
+| Revenue-based financing | Government grants, subsidies, research funding, prize money |
+| | Charitable donations |
+| | Money put in by the company's own founders or employees from their own funds |
+
+Reasoning for each of the contested calls, so you can overrule them individually:
+
+- **Convertible instruments counted on receipt, not conversion.** A SAFE is not equity
+  until it converts, so a definition keyed to shares alone would let a company hold USD
+  5M on SAFEs and remain eligible indefinitely. Counting at receipt closes that, and it
+  is also the figure the company actually knows.
+- **Venture debt and revenue-based financing count; ordinary bank borrowing does not.**
+  The line drawn is whether the terms are tied to the company's equity, revenue or
+  growth. This is the softest boundary in the definition and the place a well-advised
+  licensee would push. A structured facility deliberately dressed as commercial lending
+  is a foreseeable workaround and the current wording may not catch it.
+- **Grants and subsidies do not count.** They are not investment; nobody took a stake.
+  But this creates a visible gap against the limb's own rationale: a company sitting on a
+  EUR 2M research grant plainly has ability to pay and remains eligible. If the intent is
+  "ability to pay" rather than "has investors", grants should count and the definition
+  needs changing. **See Q7.**
+- **Founder capital does not count.** "External" investment naturally excludes the
+  founders' own money. But a founder who puts USD 2M of personal wealth in is
+  indistinguishable, in ability-to-pay terms, from one who raised it. Same tension as
+  grants, same question.
+
+**The consequence you should be most sure about is permanence.** Because investment is
+cumulative to date and never resets:
+
+> A company that raised USD 1.2M in 2019, spent it, failed, and is now three people with
+> no revenue and no investors is **permanently ineligible**, with no route back, forever.
+
+That is the harshest edge in the document by a wide margin. It is a direct consequence of
+"cumulative-to-date", which the project chose deliberately and which I have drafted
+faithfully and unambiguously rather than softening. But it is not what the word
+"Community" in the licence name leads a reader to expect, and it will produce at least
+one bad story. **See Q8**, which offers three ways to soften it if wanted.
+
+I have deliberately **not** editorialised about any of this in the licence text itself,
+per instruction. The text states the rule plainly and leaves it there.
 
 ### An open item from the requirements that I believe is now answered
 
 Requirements open item 5 asks whether the individual grant should extend to sole traders
-and single-person companies. **I think the definitions already settle it and it does not
-need to go to you as an open question.** The `Your company` definition expressly includes
-"sole proprietorship", and `Personal Uses` expressly excludes work for an organization
-including a client. So a sole trader doing client work falls to `Small Business` — where,
-being one person under USD 1,000,000, they pass anyway. The outcome the requirement
-wanted is reached without a special rule. Flagged here so you can disagree rather than
-rediscover it.
+and single-person companies. **I think the definitions already settle it.** The
+`Your company` definition expressly includes "sole proprietorship", and `Personal Uses`
+expressly excludes work for an organization including a client. So a sole trader doing
+client work falls to `Eligible Organizations` — where, being one person with no outside
+investment and under USD 1,000,000, they pass. Flagged here so you can disagree rather
+than rediscover it.
 
 ---
 
-## 6. `{{REVENUE_DEFINITION}}` — variants in the draft
+## 6. Revenue and headcount definitions — both resolved
 
-Requirements open item 4. Left as a labelled variant block in the Definitions section
-because it materially changes who is gated.
+**Headcount: the source wording, unchanged.** "Fewer than 10 total individuals working as
+employees and independent contractors." No definition added — bodies, not
+full-time-equivalents, on any working basis. I had offered an FTE variant and a
+count-everyone variant; the project chose to add neither, which is the right call at a
+threshold of 10, where arithmetic costs more than it clarifies. The consequence is that
+"total individuals" carries its ordinary meaning, and the offshore-agency edge I
+previously flagged is left unaddressed on purpose rather than by oversight. A company
+using a 30-person agency team through a single contract is, on the plain words, not
+employing 30 individuals. **See Q9** if you think that needs closing.
 
-- **Variant A — undefined.** What the source licences do. Relies on ordinary meaning.
-  Shortest, and consistent with the register, but leaves genuine ambiguity for grant-
-  funded organisations and for pre-revenue funded startups.
-- **Variant B — defined.** Gross (before costs), consolidated across the company and its
-  affiliates and counted once, excluding equity investment, borrowing, grants and
-  donations.
+**Revenue: defined, and the definition now does double duty.** Gross, before costs,
+across the company and its affiliates, counted once. It expressly excludes external
+investment, grants, subsidies and donations.
 
-**Recommendation: Variant B.** The pre-revenue-funded-startup case is common in this
-audience and Variant A gives no answer. Excluding investment means a seed-funded
-five-person company with no product revenue qualifies, which I read as the intended
-outcome given the requirement's stated rationale of ability to pay. Excluding grants
-avoids double-gating organisations that `Noncommercial Organizations` already covers.
-**Confirm the investment carve-out is intended — see Q7.**
-
----
-
-## 7. `{{INDIVIDUALS_DEFINITION}}` — variants in the draft
-
-Requirements open item 3. Three labelled variants:
-
-- **A — undefined.** Source behaviour.
-- **B — headcount, part-time counted in full.** Every individual counted once regardless
-  of hours; agency workers count if they worked mainly for the company.
-- **C — full-time equivalents.** Averaged FTE across the prior tax year.
-
-**Recommendation: Variant B.** At a threshold of 10, FTE arithmetic is disproportionate
-and creates a self-assessment burden bigger than the decision it informs. B is
-conservative — it counts more people, so it gates more organisations — and is trivial to
-apply. The agency sentence in B is the part I am least sure of: "worked mainly for your
-company" is a soft test, and offshore agency arrangements are exactly where a licensee
-would push. **See Q8.**
+The investment carve-out is no longer merely a clarification — it is now **structurally
+required**. With investment gated as its own limb, counting the same money as revenue too
+would double-count it and make the revenue limb unpredictable. The two definitions have
+to be read together and are drafted to be mutually exclusive. If you change one, check
+the other.
 
 ---
 
-## 8. `{{AUDIT_RIGHTS}}` — variants in the draft
+## 7. The two-year conversion — mechanism chosen and why
 
-Requirements §5 asks counsel to advise. Two labelled variants:
+Settled: each version converts to Apache-2.0 on the second anniversary of **its own**
+publication. I was asked to compare two mechanisms and pick.
 
-- **A — nothing.** Rely on `Violations` and on the commercial agreement.
-- **B — self-certification on request.** On written request the licensee confirms in
-  writing, within 30 days, whether its use is permitted and under which section. Capped
-  at one request per 12 months. No financial records. Never applies to `Personal Uses`.
+### The candidates
 
-**Recommendation: Variant B, but this is the clause I would most readily drop.** A
-records-inspection audit right of the kind found in enterprise agreements is
-disproportionate in a public licence for a client-side library and would be read as
-hostile by exactly the developer audience the project depends on. Variant B is the
-minimum that gives the licensor a documented request-and-response record. The
-`Personal Uses` carve-out is there so an individual can never receive a compliance
-letter. A *paid* agreement can reasonably carry more; see `COMMERCIAL-LICENSE-NOTES.md`
-§6. **See Q9.**
+**PolyForm Countdown 1.0.0** is a *separate document*, shipped alongside each release,
+with an explicit ISO-8601 start date filled in per release and the full target licence
+text copied into it. Its virtues are precision and, especially, its framing:
+
+> Legally, this is a present grant of a license on the date of release, not a contract
+> promise to grant the license later.
+>
+> No contributor can revoke the new license before it starts.
+
+**FSL's Grant of Future License** is an *inline clause* in the licence itself:
+
+> We hereby irrevocably grant you an additional license to use the Software under the
+> Apache License, Version 2.0 that is effective on the second anniversary of the date we
+> make the Software available.
+
+### What I chose, and why
+
+**FSL's structure, with Countdown's framing sentences imported into it.**
+
+The deciding factor is operational, and it is decisive at this project's scale.
+Countdown's defining feature is that it is a per-release artefact. LiveStore publishes
+24 packages in lockstep; adopting Countdown means generating and shipping a second
+licence document, carrying a correct computed date, with every release, forever. A
+missing file or a wrong date in one package silently breaks or muddies that package's
+conversion, and nothing in the build would catch it. FSL's clause cannot be omitted,
+because it is part of the licence text that already has to ship.
+
+Two further points against Countdown as a document:
+
+- It requires the target licence text to be copied in wholesale, which would roughly
+  double the licence's length for a project already carrying more sections than the
+  source.
+- Its canonical URL is currently dead (§2), and its repository describes it as working
+  drafts. FSL's wording, by contrast, is in production at Sentry, Codecov, Convex,
+  GitButler, PowerSync, NativeLink and CodeCrafters.
+
+**But Countdown's legal framing is better than FSL's, and I took it.** FSL relies on
+"hereby irrevocably grant" to do the work implicitly. Countdown says the quiet part out
+loud: this is a present grant, not a promise. That distinction matters, because a bare
+promise to grant a licence in future, unsupported by consideration, is the obvious line
+of attack on this kind of clause. The draft therefore adds two sentences FSL does not
+have:
+
+> This is a present grant of that additional license, made now. It is not a promise to
+> grant it later. The licensor cannot revoke it before it takes effect.
+
+### Deviations from both sources
+
+- **No cascade.** My earlier draft had each version's conversion also release all earlier
+  versions, so a licensee tracked only one date. The project specified per-version
+  conversion from each version's own publication, so I removed it. Consequence: a
+  licensee wanting to rely on the Apache-2.0 grant must check the date for each version
+  they use. `NOTICE-AND-PACKAGING.md` §5 addresses this with a published conversion table.
+- **`Apache Date:` line retained** from my earlier draft, renamed from `Change Date:` to
+  avoid confusion with BUSL's differently-behaving term of art. It lets the project pin
+  an exact date per release rather than obliging each licensee to compute one. Strongly
+  recommend using it; see Q10.
+- **Added to `Violations`,** so that a licensee whose licences end does not lose
+  Apache-2.0 rights that had already vested. Without this, breach would retroactively
+  strip rights the licence says are irrevocable — an internal contradiction.
+
+### Reuse position on FSL's wording
+
+FSL imposes the same de-branding condition as the PolyForm family — its FAQ says that a
+variant with a different conversion licence must "call it something other than FSL". The
+draft complies with both by construction: it is the LiveStore Community License and names
+neither family.
+
+But unlike PolyForm, **FSL publishes no express grant covering reuse of its text.**
+PolyForm states one plainly in its repository; I could find no equivalent for FSL, only
+the renaming condition. So the copyright position on the ~40 borrowed words is unstated
+rather than permissive. In practice short functional legal wording of this kind is
+routinely adapted across licences, and the project has complied with the one condition
+FSL does state — but I am flagging the asymmetry rather than assuming it away. **See Q17.**
 
 ---
 
-## 9. `{{SUNSET}}` — variants in the draft
+## 8. Audit rights — none, as instructed
 
-Being decided separately, so it is a labelled variant with placeholders left open.
+Settled: no audit clause, no inspection right, no obligation to confirm eligibility on
+request. Pure honour system. The `Confirming You Qualify` variant I had drafted is
+deleted, not commented out.
 
-- **A — none.** The terms apply indefinitely.
-- **B — delayed permissive grant.** After `{{SUNSET_PERIOD}}`, each version also becomes
-  available under `{{SUNSET_LICENCE}}`, with an optional `Change Date:` plain-text line
-  to state the date exactly for a given release.
+This is the right call for a public licence aimed at developers, and it matches the
+requirements' position that enforcement is contractual rather than technical. Two things
+follow that counsel should be aware of rather than surprised by:
 
-Drafting notes on B, which apply whichever period is chosen:
+- **The licensor has no contractual route to information.** Combined with no technical
+  enforcement, the only mechanism against a non-compliant organisation is the `Violations`
+  clause, which requires the licensor to already know about the violation. In practice
+  the gate is enforced by licensees choosing to comply.
+- **This raises the stakes on the self-assessment question.** With three limbs — one of
+  which requires a company to total its fundraising across its entire history and its
+  affiliates — good-faith misassessment is likely, not hypothetical. **See Q12.**
 
-- The grant is **additive** — the licensee may then choose either set of terms. It does
-  not replace the original grant, so nobody's existing rights shrink.
-- It runs **per version, from first availability of that version**, matching the
-  established convention for this pattern.
-- It cascades to earlier versions ("that version, and every earlier version"), so a
-  licensee never has to track more than one date.
-- The `Change Date:` mechanism lets the project state an exact date per release rather
-  than obliging every licensee to compute one. Recommended if B is chosen.
+A *paid, signed* agreement can reasonably carry a verification term that a free public
+licence should not; see `COMMERCIAL-LICENSE-NOTES.md` §7.
 
-**Interaction worth noting:** if `{{SUNSET_LICENCE}}` is Apache-2.0, the project ends up
-with Apache-2.0 on prior releases, the new licence on covered releases, and Apache-2.0
-again after the sunset period. That is coherent, and probably reassuring to enterprise
-adopters, but the announcement must be very clear or it will read as confusing. **See Q10.**
+---
+
+## 9. Governing law — omitted, as instructed
+
+Settled: the public licence is silent on governing law and forum. The optional
+`Governing Law` section and the `{{VENUE}}` placeholder are deleted.
+
+This matches Apache-2.0, MIT, the PolyForm family and FSL — none carries a governing-law
+clause. It was also my recommendation before the decision was made, for the reason given
+in the earlier draft: a public licence offered to the world is not a negotiated contract,
+and naming a forum invites the argument that it is one, while being unlikely to survive
+against a consumer or small business in an unfavourable jurisdiction.
+
+Governing law and forum for the **commercial** agreement are settled as German law,
+courts of Berlin. That is covered in `COMMERCIAL-LICENSE-NOTES.md` §11, together with the
+German-law points that follow from it — in particular that the AGB regime (§§305–310 BGB)
+may apply to self-serve standard terms and constrains liability exclusion far more than
+US drafting assumes.
 
 ---
 
@@ -454,95 +615,202 @@ Both variants are already bolded and italicised, which is the conventional way o
 a conspicuousness requirement in a Markdown document, and I have preserved that from the
 source in both.
 
-**I have deliberately not picked.** The choice is between fidelity to a plain-English
-register that the whole document depends on, and defensive drafting. That is your call,
-not mine. **See Q11.**
+**I have deliberately not picked, and this is now the only unmade choice in the
+document.** The project told me every placeholder was resolved and nothing further was
+open. I read that as addressing the `{{PLACEHOLDER}}` items, which were business
+decisions. This one was never a placeholder — it was flagged for counsel from the start,
+and it is a question about legal effect rather than commercial intent. I have therefore
+left it as a live A/B choice rather than picking silently. If the project intended to
+close it too, say so and I will resolve it.
+
+**One further point, new since the governing-law decision.** The commercial agreement is
+now to be governed by German law (`COMMERCIAL-LICENSE-NOTES.md` §11), and German law does
+not permit excluding liability for intent or gross negligence, or for injury to life,
+body or health, however drafted. The `No Liability` analysis above is US-centric because
+the source wording is. If German or EU law is likely to govern disputes under the
+**public** licence too — which is plausible given the licensor is resident there, even
+with no forum clause — then neither variant is calibrated for it and a third, German-law
+variant may be needed. **See Q15.** **See Q11** for the original US-law question.
 
 ---
 
-## 11. `{{GOVERNING_LAW}}` — included as optional, and I would leave it out
+## 11. Licence name and licensor — two drafting consequences
 
-The source licences have **no** governing-law or venue clause at all, and no
-public source-available licence in wide use has one. The draft includes a short optional
-section so it is available if wanted.
+### The name
 
-**My view: omit it.** A public licence offered to the world is not a negotiated contract;
-naming a forum invites the argument that it is one, and a venue clause is unlikely to
-survive against a consumer or small business in an unfavourable jurisdiction anyway. It
-also breaks register — it is the one section that reads like conventional contract
-boilerplate. The place for governing law and venue is the **commercial agreement**, which
-is negotiated and signed. **See Q12.**
+Settled: **LiveStore Community License 1.0**, SPDX `LicenseRef-LiveStore-Community-1.0`.
+
+Two things I did in response, and one risk I could not draft away.
+
+**Prominence.** The name leads with "Community" while the gate is genuinely tight — a
+three-person company that has ever raised USD 1.5M is excluded. A reader who meets the
+name first and the conditions late will feel the name oversold it. The draft therefore
+opens with a **`Who May Use This Software For Free`** section, before `Acceptance`, that
+states all three limbs in plain words in under sixty. It names the investment limb
+explicitly rather than saying "small teams use it free", because a signpost that omits
+the least expected condition is worse than no signpost.
+
+**The summary-versus-operative risk this creates.** A summary in an operative document
+invites the argument that the summary governs where the two diverge, and short plain
+wording will inevitably be less precise than the sections it summarises. The draft
+closes this with an express deferral — "The sections below govern. This summary does not."
+I believe that is sufficient, but it is a construction risk that did not exist before and
+you should confirm the deferral wording is strong enough. The alternative is to move the
+summary out of `LICENSE.md` into the docs site, which removes the risk entirely at the
+cost of the prominence the project asked for. **See Q13.**
+
+**Naming collision risk I could not resolve.** "Community License" is well-trodden:
+Confluent Community License, Elastic, MongoDB and Redis have all used "Community" or
+"Source Available" branding for source-available licences. Nothing prevents reusing the
+word, but a reader familiar with those may assume LiveStore's terms match one of them,
+and they do not. Worth a trademark search before launch. **See Q14.**
+
+### The licensor as a natural person
+
+Settled: **Johannes Schickling**, an individual, intending to assign to an entity later.
+
+**I changed the drafting in response, and it removes the need for an assignment clause.**
+An earlier draft defined the licensor as the named person: "The **licensor** is
+{{LICENSOR}}". Hard-coding a natural person into the Definitions section is exactly the
+wrong shape when assignment is planned — after an assignment the operative text would
+still name the individual, and every package would need its licence text re-issued.
+
+The draft now restores the source licences' generic definition — "The **licensor** is the
+individual or entity offering these terms" — and carries the name only in the
+`Required Notice:` line and the repository-root `LICENSE`. The licensor is then whoever
+is offering the terms at the time, which is the assignee after an assignment.
+
+**On whether an express assignment clause is needed: I do not think so, and silence is
+better than a clause.** Copyright is assignable, and an assignee takes subject to
+licences already granted, so existing licensees are unaffected and the assignee steps
+into the licensor's position automatically. `No Other Rights` restricts the *licensee*
+from transferring their licences; it says nothing about the licensor and does not need
+to. Adding an express assignment right would be the only clause in the document
+addressing the licensor's own dealings, which reads oddly and invites the question of
+what else is reserved. **See Q16.**
+
+**The commercial side is different and does need a clause.** Signed agreements are
+contracts, and moving the licensor's side to a new entity may need customer consent
+depending on drafting. `COMMERCIAL-LICENSE-NOTES.md` §12 recommends including an
+assignment-to-successor clause in every commercial agreement from the first one, and
+flags that a natural person signing commercial agreements carries the obligations
+personally with no corporate veil — which, combined with German law's limits on excluding
+liability, is a real exposure. Counsel may want to advise forming the entity before
+signing anything.
 
 ---
 
 ## 12. Open questions — numbered
 
-1. **De-branding scope.** I read the source publisher's condition ("remove all mention
-   of [the family name] and [their domain]") as binding the modified licence text only,
-   so `LICENSE.md` is clean but these notes discuss derivation freely. Is that right? If
-   you read it more broadly, this document needs sanitising too. Related: is the
-   condition a copyright term, a trademark term, or both, and does that change the
-   answer? (§2)
+All business decisions are settled; these are legal questions. **Q3, Q7, Q8 and Q11 are
+the ones I would most want answered.**
+
+1. **De-branding scope.** I read the source publishers' conditions (PolyForm: "remove all
+   mention of PolyForm and polyformproject.org"; FSL: "call it something other than FSL")
+   as binding the modified licence text only, so `LICENSE.md` names neither family but
+   these notes discuss derivation freely. Is that right? Related: is PolyForm's condition
+   a copyright term, a trademark term, or both, and does that change the answer? (§2)
 2. **Breadth of `Personal Uses`.** I removed "without any anticipated commercial
    application" to admit portfolio work. Does the negative boundary sentence plus the
    `Your company` definition adequately stop a solo commercial developer relying on
-   `Personal Uses` instead of `Small Business`? (§3)
+   `Personal Uses` instead of `Eligible Organizations`? (§3)
 3. **Patent defence and Application Users.** Application Users recipients get a patent
    licence with no defensive-termination hook, because `Patent Defense` binds only "you"
-   and "your company". Is that acceptable, or should `Application Users` carry its own
-   defensive-termination sentence at the cost of some of its no-agreement-needed
-   simplicity? (§4a)
+   and "your company". Acceptable, or should `Application Users` carry its own? (§4a)
 4. **Anti-circumvention in `Your Application`.** Is "substantial functionality of its own
-   beyond the software" / "a product whose main value is the software itself" a
-   workable test, and can it be tightened without excluding legitimate thin integration
+   beyond the software" / "a product whose main value is the software itself" a workable
+   test, and can it be tightened without excluding legitimate thin integration
    libraries? (§4a)
 5. **Narrowed `Notices`.** Is accepting a third-party-notices file as compliance for
-   bundled distribution acceptable, and does it weaken any later claim? (§4b)
-6. **New-company rule.** Is permitting a company with no prior tax year to use the
-   software during its first tax year, until it passes either figure, wanted? It is not
-   in the requirements but the gate is undefined without it. (§5)
-7. **Revenue definition.** Variant A or B; and if B, confirm that excluding equity
-   investment and borrowing is intended, so a well-funded pre-revenue startup qualifies.
-   (§6)
-8. **Individuals definition.** Variant A, B, or C; and if B, is "worked mainly for your
-   company" adequate for offshore agency arrangements? (§7)
-9. **Audit rights.** Variant A or B, and is even the light self-certification in B
-   appropriate in a public licence for a client-side library? (§8)
-10. **Sunset.** If Variant B is chosen: what period, what target licence, and is the
-    additive per-version cascading structure right? (§9)
-11. **Warranty and liability.** Variant A or B. This is the clause most likely to be
-    legally weaker in plain English than in conventional wording. (§10)
-12. **Governing law.** Include or omit? Recommendation is omit from the public licence
-    and put it in the commercial agreement. (§11)
-13. **Enforceability of self-assessment.** Requirements open item 1, which I could not
-    address in drafting. If a licensee self-assesses incorrectly in good faith, is the
-    gate enforceable against them, and does the absence of any technical enforcement
-    weaken the licensor's position? This affects whether Q9 should be answered A or B.
-14. **Interaction with the surviving Apache-2.0 grant.** Requirements open item 6. My
-    drafting position: state it plainly in the repo root `LICENSE` and the release notes,
-    and keep it out of the operative licence entirely — the boundary is drawn by which
-    text ships with which version. Confirm. (`NOTICE-AND-PACKAGING.md` §5)
-15. **`wa-sqlite` fork copyright.** Does the fork contain enough original authorship for
-    a second copyright line, and in whose name? (`NOTICE-AND-PACKAGING.md` §3)
-16. **Acceptance mechanics.** `Acceptance` makes agreement both a strict obligation and a
+   bundled distribution acceptable, and does it weaken any later claim? Note also that the
+   notice chain terminates at the first downstream hop, for the reason given at §4b. (§4b)
+6. **New-company rule, and its scoping.** A company with no prior tax year is treated as
+   meeting the people and revenue figures during its first tax year, but **not** the
+   investment figure. Is that the right split? Without it the rule would exempt exactly
+   the newly-incorporated well-funded startups the investment limb targets. (§5)
+7. **The investment limb — definitional boundaries.** This is my least-precedented
+   clause and it needs line-by-line review. Specifically: (a) are convertible instruments
+   correctly counted at receipt rather than conversion? (b) is "tied to your company's
+   equity, revenue, or growth" a workable line between venture debt and ordinary
+   borrowing, and does it catch a facility deliberately structured to look like
+   commercial lending? (c) should government grants count, given a grant-funded company
+   plainly has ability to pay? (d) should founder capital count, for the same reason?
+   (§5)
+8. **The permanence of the investment limb.** Because it is cumulative to date and never
+   resets, a company that raised USD 1.2M in 2019, spent it, and is now three people with
+   no revenue is permanently ineligible with no route back. This is deliberate and I have
+   drafted it faithfully. If it is ever to be softened, the three mechanisms are: measure
+   over a trailing window (e.g. the last five years); allow the investment limb to be
+   disregarded where revenue and headcount are both far under; or add a discretionary
+   reinstatement the licensor can grant. Each has costs. Do any warrant adding? (§5)
+9. **Headcount left undefined.** The source wording is kept unchanged, so "total
+   individuals working as employees and independent contractors" carries its ordinary
+   meaning. That leaves the offshore-agency case open: a company using a 30-person agency
+   team through one contract is, on the plain words, not employing 30 individuals. Leave
+   it, or close it? (§6)
+10. **The conversion mechanism.** Is the present-grant framing ("This is a present grant
+    of that additional license, made now. It is not a promise to grant it later.")
+    sufficient to defeat the argument that a future grant unsupported by consideration is
+    unenforceable? And is "the date the licensor first made that version available"
+    adequately certain, or should it be tied to npm publication specifically? (§7,
+    `NOTICE-AND-PACKAGING.md` Q-P4)
+11. **Warranty and liability.** Variant A or B — the only remaining choice in the
+    licence, and the clause most likely to be legally weaker in plain English than in
+    conventional wording. (§10)
+12. **Enforceability of self-assessment, now with no audit rights.** With three limbs —
+    one requiring a company to total its fundraising across its whole history and its
+    affiliates — good-faith misassessment is likely rather than hypothetical, and the
+    licence now has no mechanism to ask. Is the gate enforceable against a licensee who
+    self-assesses wrongly in good faith? (§8)
+13. **The summary section.** `Who May Use This Software For Free` sits before
+    `Acceptance` and expressly defers to the sections below. Is the deferral wording
+    strong enough to prevent the summary being read as operative where it is less precise
+    than the clauses it summarises? (§11)
+14. **Licence name.** "Community License" is used by Confluent, Elastic, MongoDB and
+    Redis for source-available licences with materially different terms. Worth a
+    trademark search, and is there a confusion risk with those? (§11)
+15. **German law and the public licence.** The commercial agreement will be governed by
+    German law. The public licence has no governing-law clause, but the licensor is
+    resident in Germany, so German or EU law may govern disputes under it regardless.
+    Neither `No Liability` variant is calibrated for a legal system that forbids
+    excluding liability for gross negligence. Is a third variant needed? (§10)
+16. **Licensor assignment.** I concluded that silence suffices for the public licence —
+    copyright is assignable and an assignee takes subject to existing licences — and that
+    an express assignment clause would read oddly as the only provision addressing the
+    licensor's own dealings. Confirm. The commercial side does need a clause; see
+    `COMMERCIAL-LICENSE-NOTES.md` §12. (§11)
+17. **Reuse of FSL's wording.** FSL publishes no express grant covering reuse of its
+    text, unlike PolyForm. The draft complies with the one condition FSL does state
+    (renaming), but the copyright position on the borrowed ~40 words is unstated rather
+    than permissive. Is that a real exposure? (§7)
+18. **Interaction with the surviving Apache-2.0 grant.** My drafting position: state the
+    backward boundary plainly in the repo root and release notes and keep it out of the
+    operative licence; the forward boundary belongs in the licence because it is a grant
+    the licence makes. Confirm. (`NOTICE-AND-PACKAGING.md` §5)
+19. **`wa-sqlite` fork copyright.** Does the fork contain enough original authorship for
+    a second copyright line, and in whose name? (`NOTICE-AND-PACKAGING.md` §3, Q-P2)
+20. **Acceptance mechanics.** `Acceptance` makes agreement both a strict obligation and a
     condition of the licences. For software installed by a package manager with no
-    click-through, is that sufficient to bind, and does anything need to change now that
-    a *paid* alternative exists behind the same gate? Note this is separate from the
-    Application Users carve-out described at §4a(2), which fixes an internal
-    contradiction rather than the general binding question. Not raised in the
-    requirements; it occurred to me while drafting.
-17. **Legacy packages published with no `license` field.** 13 packages have published for
+    click-through, is that sufficient to bind? Separate from the Application Users
+    carve-out at §4a(2), which fixes an internal contradiction rather than the general
+    binding question. (§4a)
+21. **Legacy packages published with no `license` field.** 13 packages have published for
     years with no licence grant at all, which is ordinarily "all rights reserved" and
-    almost certainly not what was intended. Is a clarifying statement that those versions
-    were and remain available under Apache-2.0 advisable, and does making it carry risk?
-    (`NOTICE-AND-PACKAGING.md` §3, Q-P3)
-18. **Scope of Group A.** Should internal and build-time packages (`utils`, `utils-dev`,
+    almost certainly not intended. Is a clarifying statement advisable, and does making it
+    carry risk? (`NOTICE-AND-PACKAGING.md` §3, Q-P3)
+22. **Scope of Group A.** Should internal and build-time packages (`utils`, `utils-dev`,
     `peer-deps`, `framework-toolkit`) be relicensed along with the shipped library
-    surface? The requirements' "all published `@livestore/*` packages" says yes by
-    default. (`NOTICE-AND-PACKAGING.md` §3, Q-P1)
-19. **Commercial agreement questions.** `COMMERCIAL-LICENSE-NOTES.md` §10 carries seven
-    further questions (Q-C1 to Q-C7), including indemnity and warranty position for
-    paying customers, which is currently undecided and will affect pricing.
+    surface? (`NOTICE-AND-PACKAGING.md` §3, Q-P1)
+23. **Scope of `Evaluation`.** As drafted it permits internal trial only, which for a
+    client-side library may not constitute a meaningful evaluation at all (§3). Should it
+    permit limited external distribution — named pilot users, non-production deployments,
+    or unrestricted distribution that must cease at day 30 — and can that be drafted
+    without becoming a route to indefinite free production use? (§3)
+24. **Commercial agreement questions.** `COMMERCIAL-LICENSE-NOTES.md` §13 carries eleven
+    further questions (Q-C0 to Q-C10), including whether entity formation should precede
+    signing anything (Q-C9), whether the agreement is standard terms subject to the AGB
+    regime (Q-C8), and whether pricing works against the customer's free fallback of
+    running two-year-old releases (Q-C10).
 
 ---
 
@@ -557,22 +825,34 @@ Ordered by how much damage an error would do.
    recipients, made through a document those recipients never see, as effective. It may
    need to be restructured as an express third-party-beneficiary provision, or as an
    irrevocable offer that recipients accept by use. That is beyond what I can judge.
-2. **`No Liability` (§10).** Explained above. Untested plain-English wording against a
-   statutory requirement that names specific words.
+2. **`No Liability` (§10).** Untested plain-English wording against a statutory
+   requirement that names specific words — and now with a second, German-law dimension
+   that neither variant addresses.
 3. **The anti-circumvention test in `Your Application` (§4a).** Deliberately loose. I
    know it is loose. I could not find a formulation that was both tight and did not
    catch legitimate cases.
-4. **Whether the four independent permitted purposes read as independent.** They are
+3. **The investment limb (§5).** Moved up from where it would otherwise sit, because it
+   has **no precedent anywhere** — not in the PolyForm family, FSL, BUSL, SSPL, Elastic
+   or Statiq. Every existing size-gated licence gates on headcount and revenue; I found
+   none gating on capital raised. The venture-debt-versus-ordinary-borrowing line is the
+   softest boundary, and the permanence of the cumulative measure is the harshest
+   consequence. Both are deliberate, and both are first attempts rather than adaptations.
+4. **The anti-circumvention test in `Your Application` (§4a).** Deliberately loose. I
+   know it is loose. I could not find a formulation that was both tight and did not
+   catch legitimate cases.
+5. **Whether the four independent permitted purposes read as independent.** They are
    separate sections each ending "is use for a permitted purpose", which is the source
-   licences' own pattern for exactly this. But a reader who arrives at `Small Business`
-   and stops might conclude the gate is universal. If you think that risk is real, a
-   short orienting sentence before the four sections would fix it — I left it out to
-   protect the register, which may have been the wrong trade.
-5. **Length.** With one option chosen per variant block the operative text lands around
-   1,200 words against the source's ~550. The extra is almost entirely the three added
-   permitted purposes and the two library-specific clauses, all of which trace to
-   requirements. Length is a defect in this genre and I would welcome cuts, but I could
-   not find any that did not drop a required grant.
+   licences' own pattern for exactly this. But a reader who arrives at `Eligible
+   Organizations` and stops might conclude the gate is universal. The new
+   `Who May Use This Software For Free` signpost substantially mitigates this — it was
+   added for prominence but it also fixes this — at the cost of the summary-versus-
+   operative risk discussed at §11.
+6. **Length.** With one option chosen the operative text lands around 1,850 words against
+   the source's ~550. Roughly 400 of the increase is the three-limb gate and the
+   investment definition; the rest is the added permitted purposes, the two
+   library-specific clauses, and the conversion. Every part traces to a requirement.
+   Length is a defect in this genre and I would welcome cuts, but I could not find any
+   that did not drop something the project asked for.
 
 ---
 
@@ -591,6 +871,15 @@ each (§2):
 - `https://raw.githubusercontent.com/polyformproject/polyform-licenses/1.0.0/README.md`
 - `https://raw.githubusercontent.com/polyformproject/polyform-licenses/Polyform-Small-Business-1.0.0/README.md`
 - `https://raw.githubusercontent.com/polyformproject/polyform-licenses/master/README.md`
+
+Conversion mechanism, both candidates compared at §7:
+
+- `https://raw.githubusercontent.com/polyformproject/polyform-countdown/v1.0.0/form.md`
+  — PolyForm Countdown License Grant 1.0.0, the per-release-document mechanism (not
+  adopted; its framing sentences were)
+- `https://raw.githubusercontent.com/getsentry/fsl.software/main/FSL-1.1-ALv2.template.md`
+  — FSL 1.1, "Grant of Future License" (structure adopted)
+- `https://fsl.software/` — FSL FAQ, source of the renaming condition discussed at §7
 
 Precedent for this exact adaptation:
 

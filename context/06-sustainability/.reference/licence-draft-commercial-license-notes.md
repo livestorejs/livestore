@@ -195,9 +195,11 @@ whole enforcement burden, and should include:
   software above the threshold without a licence can cure by purchasing, at list price,
   for the period of unlicensed use. This is worth having; it converts an awkward
   conversation into a sale and is far cheaper than litigation.
-- Whatever verification right counsel thinks appropriate — see the `{{AUDIT_RIGHTS}}`
-  variant in `LICENSE.md` and §8 of `REVIEW-NOTES.md`. Note that a *paid* agreement can
-  reasonably carry an audit right that a free public licence should not.
+- Whatever verification right counsel thinks appropriate. **The public licence has none
+  at all** — this was settled deliberately (see `REVIEW-NOTES.md` §8), so the commercial
+  agreement is the only place any verification can live. A *paid, signed* agreement can
+  reasonably carry a right that a free public licence should not, but it must not be
+  drafted so as to imply the free licence carried one.
 
 ---
 
@@ -254,8 +256,79 @@ Each of these would contradict a settled requirement:
 
 ---
 
-## 11. Open questions for counsel
+## 11. Governing law and forum — this is where they live
 
+The public licence is **deliberately silent** on governing law and forum, matching
+Apache-2.0, MIT, and every widely used source-available licence. That silence is a
+decision, not an omission (see `REVIEW-NOTES.md` §11).
+
+The commercial agreement is the right home for both, because it is negotiated and
+signed rather than offered to the world.
+
+**Settled: German law, courts of Berlin.**
+
+Points for counsel:
+
+- **Mandatory consumer and small-business protections may override the choice.** German
+  and EU rules on standard terms (AGB, §§305–310 BGB) apply with real force to
+  non-negotiated agreements and can strike clauses that a US-style agreement takes for
+  granted — particularly broad liability exclusions. If the commercial agreement is sold
+  self-serve as standard terms rather than negotiated, expect the AGB regime to apply,
+  and draft the liability section for it rather than importing US wording.
+- **The liability position cannot simply mirror `LICENSE.md`.** German law does not
+  permit excluding liability for intent or gross negligence, or for injury to life, body
+  or health, however the clause is worded. Whatever is chosen for the public licence's
+  `No Liability` section, the commercial agreement needs its own German-law-compliant
+  version. This connects to Q-C7.
+- **A Berlin forum clause is straightforward against business customers** and much less
+  reliable against consumers or very small businesses in other EU states. If any
+  customers might be consumers, the clause should be drafted to yield where mandatory
+  rules require.
+- **Non-EU customers** — particularly US enterprises — routinely resist foreign
+  governing law. Decide in advance whether this is negotiable for larger deals, because
+  it will be asked.
+
+**Question for counsel (Q-C8):** should the agreement be structured as negotiated terms
+or as standard terms (AGB)? The answer changes how much of it survives review, and it is
+better decided before drafting than discovered afterwards.
+
+---
+
+## 12. The licensor is a natural person
+
+`{{LICENSOR}}` resolves to **Johannes Schickling**, an individual, with a stated
+intention to assign the rights to an entity later. Three consequences for the commercial
+agreement:
+
+- **Business and personal liability are mixed.** A natural person signing commercial
+  software agreements carries the obligations personally, with no corporate veil. Given
+  that the agreements will contain warranty and possibly indemnity terms (Q-C6), and
+  that German law limits how far liability can be excluded, this is a real exposure and
+  not a formality. Counsel should advise on whether to form the entity **before** signing
+  any commercial agreements rather than after.
+- **A later assignment means novating or notifying existing customers.** Copyright can be
+  assigned and the assignee takes subject to existing licences, so the *public* licence
+  needs nothing (see `REVIEW-NOTES.md` §12). But signed commercial agreements are
+  contracts, and moving the licensor's side of them to a new entity may require customer
+  consent depending on how they are drafted. **Include an assignment clause permitting
+  assignment to a successor entity without customer consent, in every commercial
+  agreement from the first one.** Retrofitting this across a customer base is painful;
+  including it costs nothing.
+- **Name the licensor consistently.** The public licence identifies the licensor
+  generically and carries the name only in a `Required Notice:` line, precisely so that
+  an assignment does not require re-issuing the licence text. The commercial agreement
+  should name the party explicitly, as contracts must.
+
+**Question for counsel (Q-C9):** should entity formation precede the licence change, or
+can commercial agreements be signed personally in the interim with an assignment clause
+carrying them across later?
+
+---
+
+## 13. Open questions for counsel
+
+- **Q-C0** — Should the agreement restate the two-year Apache-2.0 conversion, or
+  incorporate it by reference to `LICENSE.md`? (§2)
 - **Q-C1** — Organisation definition: repeat verbatim or incorporate by reference? (§4)
 - **Q-C2** — Auto-renewal enforceability and notice requirements. (§5)
 - **Q-C3** — Model A vs Model B. Recommendation is A; confirm. (§6)
@@ -264,11 +337,21 @@ Each of these would contradict a settled requirement:
 - **Q-C5** — If purchase is click-through, what acceptance mechanics are needed for the
   agreement to bind, and does that differ across target jurisdictions? (§8)
 - **Q-C6** — Does a commercial customer need an indemnity from the licensor, and is the
-  project willing to give one? Customers above the size threshold will ask. The answer
+  project willing to give one? Customers who fail any eligibility limb will ask. The answer
   affects pricing and is currently undecided.
 - **Q-C7** — Should the commercial agreement include a warranty and liability position
   different from `LICENSE.md`'s? A paying customer may not accept a bare "as is", and a
-  large one certainly will not.
+  large one certainly will not. Under German law it cannot simply mirror it in any case
+  — see §11.
+- **Q-C8** — Negotiated terms or standard terms (AGB)? The answer determines how much of
+  the agreement survives review under §§305–310 BGB. (§11)
+- **Q-C9** — Should entity formation precede the licence change, or can agreements be
+  signed personally in the interim with an assignment clause? (§12)
+- **Q-C10** — Pricing must be set against the customer's free fallback of running
+  releases more than two years old, not against total denial of access. Is that fallback
+  acceptable commercially, or does it argue for a longer conversion period? Note the
+  two-year period is settled; this question is about whether the *pricing* built on it
+  works, not about reopening it. (§2)
 
 [Application Users]: ./LICENSE.md#application-users
 [Personal Uses]: ./LICENSE.md#personal-uses
