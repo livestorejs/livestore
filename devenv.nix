@@ -311,11 +311,13 @@ EOF
 in
 {
   imports = [
-    # OTEL observability stack with livestore-specific dashboards
-    # Keep release/task automation independent from user machine-level OTEL
-    # dashboard sync state. System OTEL remains useful for interactive shells,
-    # but the repository task contract needs deterministic local module wiring.
-    (effectUtils.devenvModules.otel { mode = "local"; })
+    # Share bootstrap-safe native-devenv + Effect-utils capture orchestration.
+    # Auto mode retains system-stack detection with a worktree-local fallback.
+    (effectUtils.devenvModules.observability {
+      project = "livestore";
+      backend = "auto";
+      wireInto = [ "check:all" ];
+    })
     # Playwright browser drivers and environment setup
     inputs.playwright.devenvModules.default
     # Shared task modules from effect-utils
@@ -384,7 +386,6 @@ in
       optionalTasks = [
         "pnpm:install"
         "genie:run"
-        "ts:build"
       ];
     })
     # Local task: mono command wrappers for uniform dt interface

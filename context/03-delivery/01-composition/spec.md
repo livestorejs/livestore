@@ -157,6 +157,13 @@ cachixStep({ name: 'livestore-contrib', ... })
 It does not reuse `livestoreSetupSteps` wholesale because that composite
 carries core-specific cache names and pnpm state keys.
 
+### Developer Environment Readiness And Diagnostics
+
+The [developer-environment child](./01-developer-environment/spec.md) owns shell
+readiness, explicit validation gates, setup profiling, and local trace
+handling. This parent retains the outcome requirement
+LS.DEL.COMP-R18 while the child owns the operational contract and evidence.
+
 ## Docs Site Composition
 
 Core owns `docs.livestore.dev` (LS.DEL.COMP-R13). The docs build
