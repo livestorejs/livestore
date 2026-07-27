@@ -2,12 +2,13 @@
 # give the SSR search function (`/api/search`) its Mixedbread credentials at
 # runtime.
 #
-# PROD-SAFETY: this config manages ONLY environment variables. There is no
-# `netlify_site` resource and no site data source — each site is referenced by
-# its known literal ID, so OpenTofu can never create, replace, or mutate a site,
-# its build settings, or its deploys. The only resource type is
-# `netlify_environment_variable`. A plan must show `No changes` against the live
-# environment (see README.md).
+# PROD-SAFETY: there is no `netlify_site` resource and no site data source —
+# each site is referenced by its known literal ID, so OpenTofu can never create,
+# replace, or mutate a site, its build settings, or its deploys. The blast
+# radius of `infra:netlify:apply` is environment variables (this file) plus DNS
+# records and site domain settings (`dns.tf`) — see that file for the DNS and
+# domain scope. A plan must show `No changes` against the live environment (see
+# README.md).
 #
 # Identifiers (verified via the Netlify API):
 #   team_id : 66db1fd95431120089f47e20 (livestore account)

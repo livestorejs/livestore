@@ -12,10 +12,12 @@ OpenTofu state + encryption + provider conventions that the broader public-web
 IaC (Netlify docs domain, `livestore.dev` DNS, `*.workers.dev` example domains)
 will extend.
 
-## Scope — env vars only (prod-safety)
+## Scope (prod-safety)
 
-This config manages four `netlify_environment_variable` resources — one pair
-per docs surface, keyed by `prod` / `dev`:
+This config manages nineteen resources: four `netlify_environment_variable`
+(one pair per docs surface, keyed by `prod` / `dev`), eleven
+`netlify_dns_record` for the hand-authored records in the `livestore.dev` zone,
+and four `netlify_site_domain_settings`. The environment variables are:
 
 | Key                     | Secret? | Scopes                     | Contexts                                       |
 | ----------------------- | ------- | -------------------------- | ---------------------------------------------- |
@@ -129,7 +131,7 @@ shows `No changes`. Apply is idempotent (re-sets the secret to the same value).
 
 ```
 .infra/iac/netlify/  (OpenTofu / HCL)
-  → Netlify API (env vars only, scoped to existing site_id)
+  → Netlify API: env vars, hand-authored DNS records, site domain settings
 
 state/netlify.tfstate  → encrypted at rest (committed ciphertext)
 ```

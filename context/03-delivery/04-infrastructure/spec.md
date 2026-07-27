@@ -37,9 +37,22 @@ surrounding resource structurally impossible rather than merely unlikely.
 
 Where a provider treats a value as write-only — accepted on write, never
 returned on read — the declaration owns the resource's *shape* (existence,
-scopes, contexts) and not its value. Shape drift is still detected; the value is
-governed by `LS.DEL.INFRA-R03` instead. See
+scopes, contexts) and not its value. The value is governed by
+`LS.DEL.INFRA-R03` instead. See
 [.decisions/0001-netlify-env-iac.md](./.decisions/0001-netlify-env-iac.md).
+
+Ignoring a write-only value costs more observability than it appears to.
+Declaring the value ignored suppresses the whole attribute, so structure carried
+alongside it — which contexts exist — stops being compared, and a removed
+context reads as no drift at all. Verified: deleting a context from a live
+secret variable left `plan` reporting `No changes`.
+
+A declaration that cannot see part of what it owns must say so and compensate,
+rather than let the gap sit behind a green check. The drift task therefore
+asserts the ignored shape directly against the provider API after planning —
+that the variable is still stored as a secret, with the expected scopes and the
+expected set of contexts. Only the values themselves remain unverifiable, which
+is inherent: they are write-only.
 
 ## Secret Handling (LS.DEL.INFRA-R02, LS.DEL.INFRA-R03)
 

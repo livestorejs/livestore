@@ -33,6 +33,7 @@ let
 
   tofu = "${pkgs.opentofu}/bin/tofu";
   jq = "${pkgs.jq}/bin/jq";
+  curl = "${pkgs.curl}/bin/curl";
 
   # Shared preamble for the Netlify IaC tasks (.infra/iac/netlify).
   #
@@ -454,11 +455,52 @@ in
     # Same plan, but drift is a failure rather than a report. A declaration
     # nobody checks is documentation, so CI runs this on a schedule: any change
     # made to these env vars outside the config turns the job red.
+    #
+    # `plan` alone is not sufficient for the secret variable. Its resource
+    # carries `ignore_changes = [secret_values]`, which suppresses the whole
+    # collection — not just the write-only values but the context entries too.
+    # An operator dropping the `production` context would break docs search on
+    # the next build while `plan` still reported clean, so the shape is asserted
+    # directly against the API afterwards.
     "infra:netlify:drift-check" = {
-      description = "Fail if live Netlify env vars have drifted from the declared state";
+      description = "Fail if live Netlify state has drifted from the declared state";
       exec = ''
         ${netlifyIacPreamble}
         ${tofu} plan -input=false -detailed-exitcode
+
+        expected_scopes="builds functions runtime"
+        expected_contexts="branch-deploy deploy-preview dev production"
+        drift=0
+
+        for site in \
+          abeae053-d336-480a-a0fe-f0aaaacaa74e \
+          e02ba783-ea85-4be1-8b7f-c1b2b4d0d307; do
+          body="$(${curl} -sS -H "Authorization: Bearer $TF_VAR_netlify_api_token" \
+            "https://api.netlify.com/api/v1/accounts/livestore/env/MXBAI_API_KEY?site_id=$site")"
+
+          actual_secret="$(printf '%s' "$body" | ${jq} -r '.is_secret // false')"
+          actual_scopes="$(printf '%s' "$body" | ${jq} -r '[.scopes[]?] | sort | join(" ")')"
+          actual_contexts="$(printf '%s' "$body" | ${jq} -r '[.values[]?.context] | sort | join(" ")')"
+
+          if [ "$actual_secret" != "true" ]; then
+            echo "::error::MXBAI_API_KEY on $site is not stored as a secret (LS.DEL.INFRA-R06)"
+            drift=1
+          fi
+          if [ "$actual_scopes" != "$expected_scopes" ]; then
+            echo "::error::MXBAI_API_KEY scopes on $site are '$actual_scopes', expected '$expected_scopes'"
+            drift=1
+          fi
+          if [ "$actual_contexts" != "$expected_contexts" ]; then
+            echo "::error::MXBAI_API_KEY contexts on $site are '$actual_contexts', expected '$expected_contexts'"
+            drift=1
+          fi
+        done
+
+        if [ "$drift" -ne 0 ]; then
+          echo "Secret env-var shape has drifted; see errors above."
+          exit 1
+        fi
+        echo "Secret env-var shape matches on both docs surfaces."
       '';
     };
 

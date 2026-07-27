@@ -5,10 +5,12 @@ Status: open
 ## Divergence
 
 `LS.DEL.INFRA-R01` requires every third-party resource LiveStore depends on to
-be described as declared state in-repo. Reality: exactly two Netlify
-environment variables are declared. Everything else is configured imperatively
-in workflow YAML or by hand in a provider dashboard, with no reviewable
-description of intended state and no drift detection.
+be described as declared state in-repo. Reality: the Netlify account is
+declared — environment variables on both docs surfaces, the hand-authored
+`livestore.dev` DNS records, and site domain settings — and nothing else is.
+Every other provider is configured imperatively in workflow YAML or by hand in
+a dashboard, with no reviewable description of intended state and no drift
+detection.
 
 | Surface | Provider | How it is configured today |
 | --- | --- | --- |

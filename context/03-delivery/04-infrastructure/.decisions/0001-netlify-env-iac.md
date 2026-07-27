@@ -12,19 +12,22 @@ Records the durable decisions behind the first declared-state surface: the
 `livestore-docs` Netlify environment variables that back the docs search
 function (`docs/src/pages/api/search.ts`).
 
-## Scope Is Environment Variables Only
+## Scope Is Resources, Never Containers
 
-The configuration declares two `netlify_environment_variable` resources and
-refers to the site by literal `site_id`/`team_id`.
+The configuration declares environment variables, hand-authored DNS records, and
+site domain settings. It never declares the containers those live in: sites and
+the DNS zone are referred to by literal id, with no resource and no data source.
 
 | Option | Rejected because |
 | --- | --- |
 | Declare the `netlify_site` resource | Puts the live docs site one bad plan away from replacement, for no gain |
+| Declare a `netlify_dns_zone` resource | Records are additive and individually replaceable; a zone is not |
 | Read the site through a data source | Couples every plan to site read permissions without making the site declarative |
 
-With no site resource and no site data source, OpenTofu cannot create, replace,
-or mutate the site, its build settings, or its deploys. Prod-safety is
-structural, not procedural.
+With no site resource, no zone resource, and no data sources, OpenTofu cannot
+create, replace, or delete a site or the DNS zone, nor touch build settings or
+deploys. Prod-safety is structural, not procedural: the blast radius is the
+declared resources, and destroying a container is not expressible.
 
 ## Adopt-Only Ownership Of The Secret Value
 
