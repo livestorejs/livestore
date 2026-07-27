@@ -76,6 +76,11 @@ Three properties are checked per package against `npm view`:
 | tarball digest | `dist.integrity` | the registry serves a different artifact than we packed |
 | dist-tag target | `npm view <pkg> dist-tags` | the release published but nothing resolves to it |
 
+The digest check applies only to packages this run actually packed and published.
+A re-run repairing a partial release (`--allow-existing`) skips packages already
+on the registry, and those have no local artifact to compare against — they are
+version- and dist-tag-verified only.
+
 Outcomes are a tagged union so retry policy is explicit rather than implied:
 
 - `pending` — the registry has not converged. Retried on a bounded schedule;

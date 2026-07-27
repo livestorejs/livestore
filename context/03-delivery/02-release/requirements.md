@@ -50,14 +50,17 @@ the normative contract stays here):
   Adopted 2026-07-18 (owner-confirmed).
 - **LS.DEL.REL-R08 Registry-verified releases:** After publishing, every package
   in the release group is verified against what the registry actually serves:
-  the version is visible, the served tarball digest matches the locally packed
-  artifact, and the release's dist-tag resolves to exactly that version.
-  Verification failure fails the release rather than being reported after the
-  fact. Registry propagation may be retried; a digest that disagrees with the
-  packed artifact may not. The dist-tag clause is what makes a partial release
-  — version published but `latest` still resolving to the previous release —
-  a release-time failure instead of a silent one users discover on install.
-  Adopted 2026-07-27 (owner-confirmed).
+  the version is visible and the release's dist-tag resolves to exactly that
+  version. For packages actually published by this run, the served tarball
+  digest must also match the locally packed artifact; packages skipped as
+  already-published (`--allow-existing`, used when repairing a partial release)
+  have no local artifact to compare, so they are version- and dist-tag-verified
+  only. Verification failure fails the release rather than being reported after
+  the fact. Registry propagation may be retried; a digest that disagrees with
+  the packed artifact may not. The dist-tag clause is what makes a partial
+  release — version published but `latest` still resolving to the previous
+  release — a release-time failure instead of a silent one users discover on
+  install. Adopted 2026-07-27 (owner-confirmed).
 - **LS.DEL.REL-R09 Attested stable releases:** Stable package publishing emits
   SLSA provenance from the workflow's OIDC identity, so every artifact we ship
   to users is attested. Snapshot and DevTools artifact publishing already do;

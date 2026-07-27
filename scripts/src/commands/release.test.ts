@@ -1,6 +1,62 @@
+import { Effect, Schedule } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
 
-import { registryVerification, sliceChangelogSection } from './release.ts'
+import {
+  registryVerification,
+  sliceChangelogSection,
+  type TRemoteRegistryState,
+  verifyPackageOnRegistry,
+} from './release.ts'
+
+describe('verifyPackageOnRegistry', () => {
+  const base = {
+    pkg: '@livestore/livestore',
+    version: '0.4.1',
+    npmTag: 'latest',
+    localIntegrity: undefined,
+    // No delay between attempts so the retry policy is exercised without waiting.
+    schedule: Schedule.recurs(5),
+  }
+  const converged: TRemoteRegistryState = { version: '0.4.1', integrity: 'sha512-x', distTag: '0.4.1' }
+  const notPropagated: TRemoteRegistryState = { version: undefined, integrity: undefined, distTag: '0.4.0' }
+
+  /** Returns each state in turn, then repeats the last one. */
+  const readStates = (states: ReadonlyArray<TRemoteRegistryState>) => {
+    let calls = 0
+    const readState = Effect.sync(() => states[Math.min(calls++, states.length - 1)]!)
+    return { readState, attempts: () => calls }
+  }
+
+  it('retries while the registry has not converged, then succeeds', async () => {
+    const { readState, attempts } = readStates([notPropagated, notPropagated, converged])
+
+    await Effect.runPromise(verifyPackageOnRegistry({ ...base, readState }))
+
+    expect(attempts()).toBe(3)
+  })
+
+  it('fails once the retry budget is exhausted and the registry never converges', async () => {
+    const { readState, attempts } = readStates([notPropagated])
+
+    const exit = await Effect.runPromiseExit(verifyPackageOnRegistry({ ...base, readState }))
+
+    expect(exit._tag).toBe('Failure')
+    // Initial attempt + 5 retries.
+    expect(attempts()).toBe(6)
+  })
+
+  // A published version is immutable on npm, so retrying a digest disagreement is pointless.
+  it('fails immediately on a digest mismatch without retrying', async () => {
+    const { readState, attempts } = readStates([{ version: '0.4.1', integrity: 'sha512-other', distTag: '0.4.1' }])
+
+    const exit = await Effect.runPromiseExit(
+      verifyPackageOnRegistry({ ...base, localIntegrity: 'sha512-ours', readState }),
+    )
+
+    expect(exit._tag).toBe('Failure')
+    expect(attempts()).toBe(1)
+  })
+})
 
 describe('registryVerification', () => {
   const base = { pkg: '@livestore/livestore', version: '0.4.1', npmTag: 'latest' }

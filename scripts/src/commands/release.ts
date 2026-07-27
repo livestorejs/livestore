@@ -565,6 +565,46 @@ const RegistryDistTags = Schema.Record(Schema.String, Schema.String)
  * for a version that has not propagated yet, and that is a "retry", not an error.
  * The caller's retry schedule decides when missing data becomes a failure.
  */
+/** Bounded wait for npm's registry to converge after a publish (~5 minutes). */
+const registryConvergenceSchedule = Schedule.spaced('5 seconds').pipe(Schedule.upTo({ times: 60 }))
+
+/**
+ * Verify one package against the registry, retrying only while the registry has
+ * not converged. A `mismatch` fails immediately; exhausting the schedule turns a
+ * lingering `pending` into a release failure.
+ *
+ * Takes `readState` as a parameter so the retry policy can be tested without npm.
+ */
+export const verifyPackageOnRegistry = <R>({
+  readState,
+  pkg,
+  version,
+  npmTag,
+  localIntegrity,
+  schedule = registryConvergenceSchedule,
+}: {
+  readonly readState: Effect.Effect<TRemoteRegistryState, never, R>
+  readonly pkg: string
+  readonly version: string
+  readonly npmTag: string
+  readonly localIntegrity: string | undefined
+  readonly schedule?: Schedule.Schedule<unknown, unknown, never>
+}) =>
+  Effect.gen(function* () {
+    const remote = yield* readState
+    const result = registryVerification({ pkg, version, npmTag, localIntegrity, remote })
+
+    if (result._tag === 'mismatch') return yield* new ReleaseError({ message: result.reason })
+    if (result._tag === 'pending') return yield* new RegistryPendingError({ reason: result.reason })
+  }).pipe(
+    Effect.retry({ schedule, while: (error) => error._tag === 'RegistryPendingError' }),
+    Effect.catchTag(
+      'RegistryPendingError',
+      (error) =>
+        new ReleaseError({ message: `${error.reason} — registry did not converge within the verification window` }),
+    ),
+  )
+
 export const readRegistryState = ({
   cwd,
   pkg,
@@ -711,33 +751,13 @@ const publishReleasePackages = ({
     if (dryRun === false) {
       yield* Effect.log('Verifying packages on the registry...')
       for (const pkg of packages) {
-        const verifyOnce = Effect.gen(function* () {
-          const remote = yield* readRegistryState({ cwd, pkg, version, npmTag })
-          const result = registryVerification({
-            pkg,
-            version,
-            npmTag,
-            localIntegrity: localIntegrityByPackage.get(pkg),
-            remote,
-          })
-
-          if (result._tag === 'mismatch') return yield* new ReleaseError({ message: result.reason })
-          if (result._tag === 'pending') return yield* new RegistryPendingError({ reason: result.reason })
+        yield* verifyPackageOnRegistry({
+          readState: readRegistryState({ cwd, pkg, version, npmTag }),
+          pkg,
+          version,
+          npmTag,
+          localIntegrity: localIntegrityByPackage.get(pkg),
         })
-
-        yield* verifyOnce.pipe(
-          Effect.retry({
-            schedule: Schedule.spaced('5 seconds').pipe(Schedule.upTo({ times: 60 })),
-            while: (error) => error._tag === 'RegistryPendingError',
-          }),
-          Effect.catchTag(
-            'RegistryPendingError',
-            (error) =>
-              new ReleaseError({
-                message: `${error.reason} — registry did not converge within the verification window`,
-              }),
-          ),
-        )
 
         yield* Effect.log(`Verified ${pkg}@${version} (dist-tag ${npmTag} -> ${version})`)
       }
