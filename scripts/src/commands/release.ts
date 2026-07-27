@@ -472,7 +472,10 @@ const verifyReleaseOnRegistry = ({
 }) =>
   Effect.gen(function* () {
     const fsEffect = yield* FileSystem.FileSystem
-    const planPath = `${cwd}/release/registry-verify-plan.json`
+    // `tmp/` is gitignored; `release/` holds tracked release inputs and must not
+    // collect scratch artifacts that could be committed by accident.
+    const planDir = `${cwd}/tmp/npm-release`
+    const planPath = `${planDir}/registry-verify-plan.json`
 
     const encodedPlan = yield* Schema.encodeEffect(Schema.jsonStringIndented(RegistryVerifyPlan))({
       schemaVersion: 1,
@@ -484,10 +487,10 @@ const verifyReleaseOnRegistry = ({
       }),
     }).pipe(Effect.orDie)
 
-    yield* fsEffect.makeDirectory(`${cwd}/release`, { recursive: true })
+    yield* fsEffect.makeDirectory(planDir, { recursive: true })
     yield* fsEffect.writeFileString(planPath, `${encodedPlan}\n`)
 
-    yield* cmd(`npm-release verify --plan ${planPath}`, { shell: true }).pipe(
+    yield* cmd(['npm-release', 'verify', '--plan', planPath]).pipe(
       Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
   })
