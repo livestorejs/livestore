@@ -108,7 +108,6 @@ Interacts with `../../04-docs/`.
   preserve relevant pre-move commit history through filtered history import.
 - **LS.DEL.COMP-R17 Source commit traceability:** The history import records
   the source core commit used to establish contrib ownership.
-
 ### Must Keep The Development Shell Diagnostic
 
 - **LS.DEL.COMP-R18 Readiness before validation:** Entering the supported
@@ -116,3 +115,16 @@ Interacts with `../../04-docs/`.
   without requiring full source validation. TypeScript build and check tasks
   remain explicit developer and CI gates. Refined by
   [01-developer-environment](./01-developer-environment/requirements.md).
+
+### Must Stay Usable Without Materialization
+
+- **LS.DEL.COMP-R19 Core installs and tests without materialization:** A fresh
+  clone of core installs dependencies, typechecks, and runs its test lanes
+  without `mr apply`. Materialization is required to *regenerate* — Genie
+  sources import `#mr/effect-utils/...`, which resolves through `repos/` or the
+  megarepo store — but generated outputs are committed, so building and testing
+  never need it. Shared tooling therefore reaches core as Nix-built binaries
+  from the `effect-utils` flake input (LS.DEL.COMP-A01) rather than as
+  workspace packages under `repos/`, which would make `pnpm install` depend on
+  materialization for every external contributor. Adopted 2026-07-27; see
+  [.decisions/0001-shared-tooling-consumption-channel.md](./.decisions/0001-shared-tooling-consumption-channel.md).

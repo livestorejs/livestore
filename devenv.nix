@@ -331,13 +331,22 @@ in
     })
     (taskModules.check {
       hasTests = false;
+      # `hasNixCheck` gates the nix-cli build tasks (nix:check:quick / nix:flake:check), which
+      # this repo does not use. Nix *linting* is separate and wired in via extraChecks below.
       hasNixCheck = false;
+      extraChecks = [
+        "lint:nix"
+        "quarantine:check"
+      ];
     })
     (taskModules.clean {
       packages = pnpmPackages;
       extraDirs = [ ".astro" ];
     })
     # Lint tasks via lint-oxc plus local aggregate wrappers.
+    # Nix linting: nixfmt + deadnix, plus lint:nix:workflow-commands, which fails when a task
+    # definition writes a GitHub workflow command to stdout (devenv discards it there).
+    (taskModules.lint-nix { })
     (taskModules.lint-oxc {
       lintPaths = [
         "packages"
@@ -391,6 +400,7 @@ in
     # Local task: mono command wrappers for uniform dt interface
     ./nix/devenv-modules/tasks/local/mono-wrappers.nix
     ./nix/devenv-modules/tasks/local/github-rulesets.nix
+    ./nix/devenv-modules/tasks/local/quarantine.nix
   ];
 
   # Non-`.genie.ts` generator inputs (source-of-truth modules that the `.genie.ts`
@@ -412,6 +422,9 @@ in
   ]
   ++ [
     effectUtilsPackages.genie
+    # `mono test` shells out to `ci-tools quarantine announce` when a target's failure is
+    # tolerated, and `quarantine:check` validates the ledger.
+    effectUtilsPackages.ci-tools
     effectUtils.packages.${pkgs.system}.megarepo
     pkgs.jq
     pkgs.unzip
