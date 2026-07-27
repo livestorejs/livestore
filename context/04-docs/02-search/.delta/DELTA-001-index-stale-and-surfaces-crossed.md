@@ -1,6 +1,6 @@
 # DELTA-001 — The search index is stale and the two docs surfaces are crossed
 
-Status: open
+Status: open — largely remediated 2026-07-27; one observable step outstanding.
 
 ## Divergence
 
@@ -8,10 +8,11 @@ Status: open
 every stable release (production), and that search never serves content older
 than the latest stable docs. Reality, observed 2026-07-27:
 
-- **One vector store exists**, `3c3548fb-f2e2-4a71-8080-bfbb0db03994`, named
-  `livestore-docs-dev` and described as "development mode". Its last content
-  update was 2026-04-27. It holds 101 files; 31 docs content files have changed
-  since that date and none of those changes are indexed.
+- **One vector store existed**, `3c3548fb-f2e2-4a71-8080-bfbb0db03994`, named
+  `livestore-docs-dev` and described as "development mode". Its content had not
+  been refreshed since roughly 2026-04, evidenced by the sync workflow failing
+  on every run since then rather than by the store's `updated_at`, which tracks
+  store metadata and not file operations.
 - **Both docs surfaces read that one store.** `docs.livestore.dev`
   (`livestore-docs`) and `dev.docs.livestore.dev` (`livestore-docs-dev`) each
   set `MXBAI_VECTOR_STORE_ID` to it for all contexts. Production search is
@@ -43,20 +44,26 @@ Related: the underlying provider configuration is undeclared, tracked as
 
 ## Implementation Contract
 
-Ordered, because later steps are meaningless without the earlier ones:
+Applied 2026-07-27:
 
-1. Repair the `Setup pnpm` step in `sync-docs.yml` so the dev sync runs again,
-   and make a failing sync visible rather than silent — three months of red
-   push runs did not surface anywhere.
-2. Decide whether production and development genuinely need separate indexes.
-   If yes, create the production store and retire the bare
-   `MXBAI_VECTOR_STORE_ID` alias in favour of the explicit `_DEV`/`_PROD` pair.
-   If no, retire the `_DEV`/`_PROD` split and name the single store honestly.
-3. Point each surface at the store its own sync path writes, and restore a
-   working credential on the development surface.
-4. Only then adopt the resulting configuration into declared state
-   (`LS.DEL.INFRA-R04`) — adopting it beforehand would freeze the crossed
-   wiring into the declaration.
+1. `sync-docs.yml` now generates from `sync-docs.yml.genie.ts` on the shared
+   devenv/nix setup, removing the pnpm pin that broke it, and selects its target
+   with two gated jobs so a missing store id fails loudly instead of silently
+   falling back to a legacy store.
+2. Two stores now exist — `livestore-docs-prod` (released docs, populated from
+   `v0.4.0`) and `livestore-docs-dev` (refreshed from `main`) — and the
+   `MXBAI_VECTOR_STORE_ID_DEV` / `_PROD` secrets that the workflow had always
+   referenced were created for the first time.
+3. Each surface points at its own store. The development surface's Mixedbread
+   credential was invalid and was replaced with the canonical 1Password value,
+   now stored using Netlify's secret mechanism (`LS.DEL.INFRA-R06`) rather than
+   as plain configuration.
 
-Close this delta when a docs push is observably reflected in the surface that
-push targets.
+Outstanding: the development surface still returns HTTP 500. Netlify injects
+environment variables into the function bundle at build time, so the corrected
+credential takes effect on that site's next deploy rather than immediately; a
+re-publish of the existing deploy is not sufficient. The production surface
+serves results from the production store and is correct.
+
+Close this delta once `dev.docs.livestore.dev/api/search` returns results, which
+confirms a docs push is reflected in the surface that push targets.
