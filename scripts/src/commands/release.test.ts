@@ -1,5 +1,6 @@
-import { Effect, Schedule } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
+
+import { Effect, Schedule } from '@livestore/utils/effect'
 
 import {
   registryVerification,
