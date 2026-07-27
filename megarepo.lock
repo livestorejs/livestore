@@ -4,7 +4,7 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "schickling-assistant/2026-07-27-2026-07-27-devenv-otel",
-      "commit": "8ef10f23189e3a689ca38b5a3f7b525cb958d786",
+      "commit": "cfeaf0b939e378557bdd7cbe7f0d9f0c4d12bdd5",
       "pinned": true,
       "lockedAt": "2026-07-27T09:56:54.959Z"
     },
