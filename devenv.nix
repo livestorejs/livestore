@@ -413,6 +413,8 @@ in
   ++ [
     effectUtilsPackages.genie
     effectUtils.packages.${pkgs.system}.megarepo
+    # Shared npm release verification; see scripts/src/commands/release.ts
+    effectUtilsPackages.npm-release
     pkgs.jq
     pkgs.unzip
     pkgs.deno
