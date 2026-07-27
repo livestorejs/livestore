@@ -2,6 +2,12 @@
 
 Status: accepted (2026-07-27 interview).
 
+Evidence: the committed state was decrypted and inspected on 2026-07-27. Both
+imported resources carry `secret_values: absent`; the only value present is the
+non-secret vector store id, which is also a literal in `variables.tf`. No
+credential material appears in the state. This is what makes the committed-state
+backend acceptable, and it is the property later changes must preserve.
+
 Records the durable decisions behind the first declared-state surface: the
 `livestore-docs` Netlify environment variables that back the docs search
 function (`docs/src/pages/api/search.ts`).
@@ -38,7 +44,7 @@ way to send a value without persisting it to state.
 
 | Option | Rejected because |
 | --- | --- |
-| Own the value — `apply` writes the key | Puts a live credential into state, and therefore into public git history under [DELTA-001](../.delta/DELTA-001-state-ciphertext-committed.md), permanently |
+| Own the value — `apply` writes the key | Puts a live credential into state, and therefore into permanent public git history |
 | Ephemeral / write-only attribute | Not offered by the provider at v0.4.4 |
 
 `lifecycle { ignore_changes = [secret_values] }` keeps the imported resource
@@ -59,19 +65,24 @@ The cost is a credential fetch on a read-only operation. It is accepted so that
 the one path that does consume the variable — a deliberate `-replace` to rotate
 — sends the correct value rather than a destructive placeholder.
 
-## State Is Committed As Ciphertext, Under Protest
+## State Is Committed, And Carries No Secret
 
-State is committed to a public repository, encrypted with OpenTofu native state
-encryption (PBKDF2-SHA512, 600k iterations, AES-GCM, `enforced = true`).
+State is committed to the repository, encrypted with OpenTofu native state
+encryption (PBKDF2-SHA512, 600k iterations, AES-GCM, `enforced = true`) using a
+generated 64-character passphrase held in 1Password.
 
 | Option | Rejected because |
 | --- | --- |
-| Cloudflare R2 `backend "s3"` | R2 is not enabled on the LiveStore Cloudflare account — the API returns code `10042`, a dashboard-only action that cannot be scripted with the CI token |
+| Cloudflare R2 `backend "s3"` | R2 is not enabled on the account, and enabling it is a human dashboard action — see [.reference/cloudflare-r2-enablement.md](../.reference/cloudflare-r2-enablement.md). Not justified by a two-variable surface whose state holds no secret |
 | Plaintext state, git-ignored | State is then unshared; the next operator's `plan` cannot see prior ownership |
 | No state at all — re-import per run | Makes `plan` non-trivial to run and defeats drift detection as a routine check |
 
-This is the intended backend only until R2 is enabled. Committing ciphertext
-converts an immediate disclosure into an offline attack against the passphrase,
-which `LS.DEL.INFRA-R02` does not accept; the deviation is tracked as
-[DELTA-001](../.delta/DELTA-001-state-ciphertext-committed.md). The `encryption`
-block survives the migration unchanged — only the backend swaps.
+Committing state is acceptable *because* the state carries no secret, not
+because encryption makes committing a secret safe — it would not, since history
+is permanent and a passphrase rotation cannot retract published ciphertext. The
+encryption is defence in depth against a mistake.
+
+This backend therefore holds until a resource whose state carries secret
+material is declared, which is the trigger for moving state out of the
+repository (see [spec.md](../spec.md), "State carries no secret"). The
+`encryption` block survives that migration unchanged — only the backend swaps.

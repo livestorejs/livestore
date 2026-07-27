@@ -38,9 +38,16 @@ Extend `.infra/iac/` provider-by-provider, adopting each existing resource by
 import so no adoption disrupts a live surface (`LS.DEL.INFRA-R04`). The
 Cloudflare surface — `livestore.dev` DNS and the `*.workers.dev` example
 domains — is tracked as livestorejs/livestore#1244 and is the intended next
-step; it also unblocks
-[DELTA-001](./DELTA-001-state-ciphertext-committed.md), since the same
-Cloudflare account provides the R2 state bucket.
+step.
+
+That work carries an ordering hazard worth naming here. Declaring a resource
+whose state would carry secret material is the trigger for moving state out of
+the repository (see [../spec.md](../spec.md), "State carries no secret"), and
+the intended destination is a Cloudflare R2 bucket on the same account being
+declared. R2 enablement is a human dashboard action
+([../.reference/cloudflare-r2-enablement.md](../.reference/cloudflare-r2-enablement.md)),
+so it must happen before that work begins rather than during it. DNS records
+alone carry no secret and do not trip the trigger.
 
 The Discord bot is out-of-repo infrastructure: this repository contains only
 `DISCORD_INVITE_URL` (`packages/@local/shared/src/CONSTANTS.ts`). Declaring it

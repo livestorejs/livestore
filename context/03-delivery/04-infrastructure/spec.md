@@ -48,17 +48,38 @@ process environment, never read from a file in the working tree. Declarations
 reference secrets by variable, so the configuration is complete and reviewable
 without containing a secret.
 
-Because the repository is public and permanent (`LS.DEL.INFRA-A01`), the
-constraint is on what is *committed*, not on what is *readable at rest*:
-encryption of a committed artifact converts an immediate disclosure into an
-offline attack against the passphrase, which `LS.DEL.INFRA-R02` does not accept
-as sufficient. Remote state — a bucket outside the repository — is the intended
-mechanism. The current deviation is tracked in
-[.delta/DELTA-001-state-ciphertext-committed.md](./.delta/DELTA-001-state-ciphertext-committed.md).
+### State carries no secret
 
-A rotation is a supervised act: it re-introduces a secret value into state, so
-the resulting state must not be committed while
-[DELTA-001](./.delta/DELTA-001-state-ciphertext-committed.md) is open.
+Declared state is committed to the repository, so the governing rule is that
+**state must contain no secret material**. This is a property to preserve, not
+a compromise to tolerate: an adopt-only declaration of a write-only value
+produces state describing shape alone, and non-secret attributes are public by
+definition.
+
+Encryption of the committed state is defence in depth, not the mechanism that
+satisfies `LS.DEL.INFRA-R02`. Because the repository is permanent
+(`LS.DEL.INFRA-A01`), encrypting a committed secret would only convert an
+immediate disclosure into an offline attack against a passphrase, and a
+passphrase rotation could never undo it — history keeps the ciphertext. The
+requirement is met by the state being empty of secrets, and the encryption
+exists so that a mistake is survivable rather than immediate.
+
+Two consequences follow, and both are ordering rules:
+
+- **Remote state is required before the first secret-bearing resource is
+  declared, not after.** Where a resource's state would carry secret material,
+  state moves out of the repository first. Afterwards is too late: the commit
+  is already permanent. The intended backend is a Cloudflare R2 bucket, whose
+  enablement is an account-level human action —
+  [.reference/cloudflare-r2-enablement.md](./.reference/cloudflare-r2-enablement.md).
+- **A resource is adopted only if its live values are not themselves secret.**
+  Import writes non-secret values into state verbatim, so adopting a credential
+  that a provider holds as ordinary configuration would publish it. Where a
+  live resource stores a credential unprotected, it moves to the provider's
+  secret mechanism *before* adoption, never after.
+
+A rotation is a supervised act for the same reason: it writes a secret value
+into state, so the resulting state is not committed.
 
 ## Provider Surfaces
 
