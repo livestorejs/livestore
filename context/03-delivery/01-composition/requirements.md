@@ -108,3 +108,11 @@ Interacts with `../../04-docs/`.
   preserve relevant pre-move commit history through filtered history import.
 - **LS.DEL.COMP-R17 Source commit traceability:** The history import records
   the source core commit used to establish contrib ownership.
+
+### Must Keep The Development Shell Diagnostic
+
+- **LS.DEL.COMP-R18 Readiness before validation:** Entering the supported
+  development shell establishes dependency and generated-source readiness
+  without requiring full source validation. TypeScript build and check tasks
+  remain explicit developer and CI gates. Refined by
+  [01-developer-environment](./01-developer-environment/requirements.md).

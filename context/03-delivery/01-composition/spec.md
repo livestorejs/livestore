@@ -159,24 +159,10 @@ carries core-specific cache names and pnpm state keys.
 
 ### Developer Environment Readiness And Diagnostics
 
-Shell entry establishes dependency and generated-source readiness through
-`pnpm:install` and `genie:run`. It does not run the full TypeScript build.
-TypeScript validation remains an explicit `ts:build` / `ts:check` gate in
-developer and CI workflows, so source errors cannot delay or block access to
-the diagnostic environment.
-
-`setup:profile` is the canonical setup diagnostic. It runs the strict setup
-graph under devenv's native `--trace-to` instrumentation and captures both
-native devenv spans and Effect-utils task spans with `otelite`. Native spans
-own evaluation, scheduling, and task lifecycle; Effect-utils spans refine the
-task execution beneath the matching native task span. The capture uses
-ephemeral receivers and asserts a single connected trace without fixed ports
-or timing sleeps.
-
-Setup captures are local diagnostic artifacts under the ignored `tmp/` tree.
-They are not uploaded automatically. This keeps machine-local paths and command
-metadata in a private-by-default evidence lane while stable task names,
-outcomes, cache decisions, and durations remain queryable.
+The [developer-environment child](./01-developer-environment/spec.md) owns shell
+readiness, explicit validation gates, setup profiling, and local trace
+handling. This parent retains the outcome requirement
+LS.DEL.COMP-R18 while the child owns the operational contract and evidence.
 
 ## Docs Site Composition
 

@@ -124,7 +124,7 @@ questions `DQ`, deltas `DELTA`, decisions by number):
 | `LS.SYS.DT-*` | `02-system/07-devtools/` |
 | `LS.SYS.INT-*` / `LS.SYS.INT.REACT-*`, `LS.SYS.INT.EFFECT-*` | `02-system/08-integrations/` and realizations |
 | `LS.SYS.VER-*` / `LS.SYS.VER.LANE-*`, `LS.SYS.VER.CONF-*`, `LS.SYS.VER.PERF-*`, `LS.SYS.VER.PROTO-*`, `LS.SYS.VER.DET-*` | `02-system/09-verification/` and children |
-| `LS.DEL-*` / `LS.DEL.COMP-*`, `LS.DEL.REL-*`, `LS.DEL.ART-*` | `03-delivery/` and children |
+| `LS.DEL-*` / `LS.DEL.COMP-*`, `LS.DEL.COMP.DEV-*`, `LS.DEL.REL-*`, `LS.DEL.ART-*` | `03-delivery/` and children |
 | `LS.DOCS-*` / `LS.DOCS.EX-*`, `LS.DOCS.SEARCH-*`, `LS.DOCS.OPS-*` | `04-docs/` and children |
 | `LS.CONTRIB-*` / `LS.CONTRIB.COLLAB-*`, `LS.CONTRIB.COMM-*` | `05-contributing/` and children |
 | `LS.SUST-*` | `06-sustainability/` |
