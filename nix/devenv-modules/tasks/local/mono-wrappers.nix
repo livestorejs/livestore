@@ -15,6 +15,21 @@
 }:
 let
   pnpm = "${inputs.effect-utils.lib.mkPnpm { inherit pkgs; }}/bin/pnpm";
+
+  # Each docs surface owns its own Mixedbread vector store, so a surface only
+  # ever searches content it actually serves: `dev` tracks `main`, `prod` tracks
+  # the published stable release. Parameterised by the env var holding the store
+  # id so the two sync tasks cannot drift apart.
+  docsSearchSync = storeIdVar: ''
+    set -euo pipefail
+    : "''${MXBAI_API_KEY:?Missing MXBAI_API_KEY secret}"
+    : "''${${storeIdVar}:?Missing ${storeIdVar} secret}"
+    timeout --signal=TERM --kill-after=1m 10m \
+      pnpm --dir docs exec mxbai store sync "''${${storeIdVar}}" \
+        "./src/content/**/*.mdx" \
+        "./src/content/**/*.md" \
+        --yes --strategy fast
+  '';
 in
 {
   tasks = {
@@ -259,18 +274,15 @@ in
       '';
     };
 
+    "docs:search:sync:dev" = {
+      description = "Sync dev Mixedbread vector store from docs Markdown sources";
+      exec = docsSearchSync "MXBAI_VECTOR_STORE_ID_DEV";
+      after = [ "pnpm:install" ];
+    };
+
     "docs:search:sync:prod" = {
       description = "Sync prod Mixedbread vector store from docs Markdown sources";
-      exec = ''
-        set -euo pipefail
-        : "''${MXBAI_API_KEY:?Missing MXBAI_API_KEY secret}"
-        : "''${MXBAI_VECTOR_STORE_ID:?Missing MXBAI_VECTOR_STORE_ID secret}"
-        timeout --signal=TERM --kill-after=1m 10m \
-          pnpm --dir docs exec mxbai store sync "$MXBAI_VECTOR_STORE_ID" \
-            "./src/content/**/*.mdx" \
-            "./src/content/**/*.md" \
-            --yes --strategy fast
-      '';
+      exec = docsSearchSync "MXBAI_VECTOR_STORE_ID_PROD";
       after = [ "pnpm:install" ];
     };
 

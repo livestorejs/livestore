@@ -1048,7 +1048,7 @@ fi`,
           run: runDevenvTasksBefore('docs:search:sync:prod'),
           env: {
             MXBAI_API_KEY: '${{ secrets.MXBAI_API_KEY }}',
-            MXBAI_VECTOR_STORE_ID: '${{ secrets.MXBAI_VECTOR_STORE_ID }}',
+            MXBAI_VECTOR_STORE_ID_PROD: '${{ secrets.MXBAI_VECTOR_STORE_ID_PROD }}',
           },
         },
       ]),
