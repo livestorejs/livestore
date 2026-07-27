@@ -85,12 +85,21 @@ into state, so the resulting state is not committed.
 
 | Surface | Provider | Declared |
 | --- | --- | --- |
-| Docs site hosting | Netlify (`livestore-docs`) | env vars only |
+| Docs site env vars (both surfaces) | Netlify | yes |
+| `livestore.dev` hand-authored DNS | Netlify (zone is Netlify-hosted) | yes |
+| Docs custom domains | Netlify | yes |
+| `livestore.dev` `NETLIFY`-type records | Netlify | indirectly — see below |
 | Docs search index | Mixedbread | no |
 | Examples hosting | Cloudflare Workers | no |
-| `livestore.dev` DNS | Cloudflare | no |
 | CI runners | Namespace, GitHub-hosted | no |
 | Community bot | Discord | not in this repository |
+
+`NETLIFY`-type records are created by Netlify from each site's domain settings
+and cannot be declared directly, so they are governed by owning the claims that
+produce them. That indirection has a gap: a record can outlive the claim that
+created it, and such a record is invisible to the drift check because the
+config cannot name it —
+[.reference/netlify-provider-limitations.md](./.reference/netlify-provider-limitations.md).
 
 Closing the undeclared rows is tracked by
 [.delta/DELTA-002-infrastructure-largely-undeclared.md](./.delta/DELTA-002-infrastructure-largely-undeclared.md).

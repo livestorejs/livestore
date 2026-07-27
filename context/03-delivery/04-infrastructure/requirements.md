@@ -55,6 +55,17 @@ Netlify environment variables are declared; the gap is tracked in
 
 ## Open Design Questions
 
+- **LS.DEL.INFRA-DQ2 Unattributed live dependency.** Ten of the eleven
+  hand-authored `livestore.dev` DNS records serve a Clerk instance — auth,
+  DKIM, and mail hostnames for both the production and development subdomains —
+  and a `PUBLIC_CLERK_PUBLISHABLE_KEY` repository secret exists alongside them.
+  The instance is live: `clerk.livestore.dev` answers with a real configuration.
+  Nothing in this repository references Clerk, and no workflow reads that
+  secret, so what depends on it is unknown. The records are declared because
+  removing a live dependency you cannot identify is worse than keeping one you
+  cannot explain, but "keep it, it seems load-bearing" is not a decision.
+  Resolving this means finding the consumer or retiring the instance.
+
 - **LS.DEL.INFRA-DQ1 Secret projection drift.** `LS.DEL.INFRA-R03` makes
   1Password canonical, but nothing detects when a projection drifts from it. The
   Mixedbread API key exists in at least three places — 1Password, the

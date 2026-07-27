@@ -63,14 +63,20 @@ resource "netlify_site_domain_settings" "docs_dev" {
 # driven from, and an unowned claim is exactly how the namespace drifted in the
 # first place (livestorejs/livestore#1244).
 #
-# Adopted at their current values so the adoption itself changes nothing. The
-# claims are released in a separate, reviewable diff.
+# The claims have been released, so neither site holds a hostname under
+# `livestore.dev` and Netlify withdrew the records it had published for them.
+# These resources assert no `custom_domain`, which is what keeps that true: if a
+# claim reappears, the drift check reports it.
+#
+# The release itself could not be performed here. The provider cannot express
+# "no custom domain" — a null value is silently omitted from the request, and an
+# empty string is rejected by the API with `Name is blank` — so it was done
+# through the Netlify API directly. See
+# ../../../context/03-delivery/04-infrastructure/.reference/netlify-provider-limitations.md.
 resource "netlify_site_domain_settings" "orphan_todomvc_custom_elements_prod" {
-  site_id       = "658e1eb4-6a63-4a26-acd4-4ffc439c70a8"
-  custom_domain = "todomvc-custom-elements.livestore.dev"
+  site_id = "658e1eb4-6a63-4a26-acd4-4ffc439c70a8"
 }
 
 resource "netlify_site_domain_settings" "orphan_todomvc_custom_elements_dev" {
-  site_id       = "a9c428da-cd8c-4d06-9904-05de40bd277e"
-  custom_domain = "dev.todomvc-custom-elements.livestore.dev"
+  site_id = "a9c428da-cd8c-4d06-9904-05de40bd277e"
 }

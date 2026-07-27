@@ -13,11 +13,17 @@ description of intended state and no drift detection.
 | Surface | Provider | How it is configured today |
 | --- | --- | --- |
 | Docs site (build, deploys, CDN purge) | Netlify | `.github/workflows/deploy-prod.yml` |
-| Docs search index | Mixedbread | `.github/workflows/sync-docs.yml` |
+| Docs search index | Mixedbread | `.github/workflows/sync-docs.yml`; the stores themselves exist only in the provider |
 | Examples hosting | Cloudflare Workers | `.github/workflows/deploy-prod.yml` |
-| `livestore.dev` DNS and domains | Cloudflare | dashboard only |
 | CI runners | Namespace, GitHub-hosted | `runs-on` labels in workflow YAML |
 | Community bot | Discord | not in this repository |
+
+The Netlify surface is now declared: environment variables on both docs sites,
+the hand-authored `livestore.dev` DNS records, and the docs custom domains.
+That closed the gap this delta was opened for on one provider, and doing so
+immediately surfaced drift that had accumulated while nothing was watching — a
+site claiming a hostname with no record behind it, a record outliving the site
+that created it, and an undeclared scope on an environment variable.
 
 The practical cost is that a dashboard change is invisible to review, and no
 `plan` anywhere reports that live state has drifted from intent.
