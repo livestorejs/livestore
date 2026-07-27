@@ -1,3 +1,4 @@
+import { credentialEnv } from '../../genie/release-credentials.ts'
 import {
   bashShellDefaults,
   defaultActionlintConfig,
@@ -993,27 +994,21 @@ fi`,
           if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
           'timeout-minutes': 30,
           run: runDevenvTasksBefore('docs:deploy:prod:phase:build-deploy'),
-          env: {
-            NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
-          },
+          env: credentialEnv('Netlify'),
         },
         {
           name: 'Deploy production docs — verify',
           if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
           'timeout-minutes': 15,
           run: runDevenvTasksBefore('docs:deploy:prod:phase:verify'),
-          env: {
-            NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
-          },
+          env: credentialEnv('Netlify'),
         },
         {
           name: 'Deploy production docs — purge CDN',
           if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
           'timeout-minutes': 15,
           run: runDevenvTasksBefore('docs:deploy:prod:phase:purge'),
-          env: {
-            NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
-          },
+          env: credentialEnv('Netlify'),
         },
         {
           name: 'Collect docs deploy diagnostics on failure',
@@ -1036,20 +1031,14 @@ fi`,
           if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
           'timeout-minutes': 30,
           run: runDevenvTasksBefore('examples:deploy:prod'),
-          env: {
-            CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
-            CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
-          },
+          env: credentialEnv('Cloudflare'),
         },
         {
           name: 'Sync production docs search',
           if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
           'timeout-minutes': 15,
           run: runDevenvTasksBefore('docs:search:sync:prod'),
-          env: {
-            MXBAI_API_KEY: '${{ secrets.MXBAI_API_KEY }}',
-            MXBAI_VECTOR_STORE_ID_PROD: '${{ secrets.MXBAI_VECTOR_STORE_ID_PROD }}',
-          },
+          env: credentialEnv('Mixedbread'),
         },
       ]),
     },

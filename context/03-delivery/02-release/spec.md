@@ -98,6 +98,37 @@ This mirrors the cohort verification the snapshot path performs inline in
 `release.yml` ("Verify complete immutable registry cohort"), so stable and
 snapshot releases are held to the same standard.
 
+## Credential Surfaces (LS.DEL.REL-R10)
+
+`genie/release-credentials.ts` declares each external credential surface the
+production deploy steps depend on — its secrets and a read-only probe proving
+those secrets are still accepted. Two generated workflows derive from it:
+
+| Consumer | Derives |
+| --- | --- |
+| `release.yml` production deploy steps | the `env:` block passing secrets to the devenv task |
+| `health-release-credentials.yml` | the weekly liveness probe per surface |
+
+Sharing the declaration is what makes the two consistent. A secret referenced by
+a release step but never defined — the failure behind
+[#1284](https://github.com/livestorejs/livestore/issues/1284) — is not detected
+at runtime here, it is unrepresentable: there is one name, used in both places.
+
+The health check is deliberately narrow. `validate-release-plan` already
+exercises release *code* on every PR in the real Nix environment; what it cannot
+prove is that a token which expires on wall-clock time is still valid. So the
+check runs weekly, performs only HTTP calls, and sets up no toolchain — there is
+no environment to reproduce for an API call, and approximating the release job's
+shell would only create a second environment that drifts from the first.
+
+Probes are read-only and fail closed: a rejected credential fails the job. Where
+a provider exposes token *status* (Cloudflare's `/user/tokens/verify`) the probe
+asserts on it, so a token that still authenticates but has been disabled is
+caught rather than passing.
+
+npm has no surface here: publishing authenticates through OIDC trusted
+publishing, and `release.yml` asserts that no npm token is present.
+
 ## Breaking-Change Mechanics (LS.DEL.REL-R06)
 
 Beta releases may break in three distinct ways (user-facing promise:
