@@ -66,3 +66,12 @@ the normative contract stays here):
   to users is attested. Snapshot and DevTools artifact publishing already do;
   without this, stable releases are the only unattested artifact.
   Adopted 2026-07-27 (owner-confirmed).
+- **LS.DEL.REL-R10 Declared credential surfaces:** Every long-lived external
+  credential a production release step consumes is declared once, as generator
+  data, together with the read-only probe that proves it is still accepted.
+  Release steps and the credential health check both derive from that
+  declaration, so neither can reference a credential the other does not know
+  about. Credentials expire on wall-clock time rather than on change, so
+  liveness is checked on a schedule; a rejected credential fails loudly.
+  npm is out of scope — publishing uses OIDC trusted publishing and has no
+  long-lived credential. Adopted 2026-07-27 (owner-confirmed).
