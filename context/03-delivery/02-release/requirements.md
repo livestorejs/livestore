@@ -48,3 +48,18 @@ the normative contract stays here):
   off `workflow_run.conclusion == 'success'`); tracked in
   [.delta/DELTA-001](./.delta/DELTA-001-snapshot-gated-on-ci-conclusion.md).
   Adopted 2026-07-18 (owner-confirmed).
+- **LS.DEL.REL-R08 Registry-verified releases:** After publishing, every package
+  in the release group is verified against what the registry actually serves:
+  the version is visible, the served tarball digest matches the locally packed
+  artifact, and the release's dist-tag resolves to exactly that version.
+  Verification failure fails the release rather than being reported after the
+  fact. Registry propagation may be retried; a digest that disagrees with the
+  packed artifact may not. The dist-tag clause is what makes a partial release
+  — version published but `latest` still resolving to the previous release —
+  a release-time failure instead of a silent one users discover on install.
+  Adopted 2026-07-27 (owner-confirmed).
+- **LS.DEL.REL-R09 Attested stable releases:** Stable package publishing emits
+  SLSA provenance from the workflow's OIDC identity, so every artifact we ship
+  to users is attested. Snapshot and DevTools artifact publishing already do;
+  without this, stable releases are the only unattested artifact.
+  Adopted 2026-07-27 (owner-confirmed).

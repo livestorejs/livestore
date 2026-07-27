@@ -1,4 +1,5 @@
-import { copyFile, mkdir, rm } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { copyFile, mkdir, readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 
 import semver from 'semver'
@@ -22,6 +23,11 @@ export type ReleaseSnapshotOptions = {
 class PackageJsonParseError extends Schema.TaggedErrorClass<PackageJsonParseError>()('PackageJsonParseError', {
   message: Schema.String,
   cause: Schema.Defect(),
+}) {}
+
+/** Registry has not converged on the published state yet; retryable by design. */
+class RegistryPendingError extends Schema.TaggedErrorClass<RegistryPendingError>()('RegistryPendingError', {
+  reason: Schema.String,
 }) {}
 
 /** Expected failures in the release/publish flow (validation, packing, npm state). */
@@ -407,6 +413,101 @@ const restoreGeneratedReleaseFiles = (cwd: string) =>
     Effect.catch((error) => Effect.logWarning(`Failed to restore generated release files: ${toErrorMessage(error)}`)),
   )
 
+/** What the npm registry currently serves for a package we just published. */
+export type TRemoteRegistryState = {
+  /** `undefined` when the exact version is not visible on the registry (yet). */
+  readonly version: string | undefined
+  /** `dist.integrity` of the served tarball, e.g. `sha512-…`. */
+  readonly integrity: string | undefined
+  /** Version the mutable dist-tag resolves to; `undefined` when the tag does not exist. */
+  readonly distTag: string | undefined
+}
+
+/**
+ * Outcome of comparing the registry against what we intended to publish.
+ *
+ * `pending` and `mismatch` are separated because they need opposite handling:
+ * registry propagation is eventually consistent and worth retrying, whereas a
+ * tarball digest that disagrees with what we packed can never become correct.
+ */
+export type TRegistryVerification =
+  | { readonly _tag: 'ok' }
+  /** Registry has not caught up yet; retrying may resolve this. */
+  | { readonly _tag: 'pending'; readonly reason: string }
+  /** Registry disagrees with what we published; retrying cannot fix it. */
+  | { readonly _tag: 'mismatch'; readonly reason: string }
+
+/**
+ * Compare what the registry serves against what we intended to publish.
+ *
+ * This holds stable releases to the standard the snapshot path already enforces in
+ * `release.yml` ("Verify complete immutable registry cohort"): the version must be
+ * visible, the served tarball digest must match the artifact we packed, and the
+ * mutable dist-tag must resolve to exactly this version.
+ *
+ * The dist-tag check is the one that catches a silent partial release: publishing
+ * can succeed while `latest` keeps pointing at the previous version, so
+ * `npm install @livestore/livestore` still serves the old release even though
+ * `release/version.json` has advanced.
+ */
+export const registryVerification = ({
+  pkg,
+  version,
+  npmTag,
+  localIntegrity,
+  remote,
+}: {
+  readonly pkg: string
+  readonly version: string
+  readonly npmTag: string
+  /** Absent when the package was already on the registry and we never packed it locally. */
+  readonly localIntegrity: string | undefined
+  readonly remote: TRemoteRegistryState
+}): TRegistryVerification => {
+  if (remote.version === undefined) {
+    return { _tag: 'pending', reason: `${pkg}@${version} is not visible on the registry yet` }
+  }
+
+  if (remote.version !== version) {
+    return { _tag: 'mismatch', reason: `${pkg}: registry serves version ${remote.version}, expected ${version}` }
+  }
+
+  // A different tarball under the same version means we published something other
+  // than what we packed. Immutable on npm, so this can only be resolved by a human.
+  if (localIntegrity !== undefined && remote.integrity !== undefined && remote.integrity !== localIntegrity) {
+    return {
+      _tag: 'mismatch',
+      reason: `${pkg}@${version}: registry tarball digest ${remote.integrity} does not match the locally packed ${localIntegrity}`,
+    }
+  }
+
+  if (remote.distTag === undefined) {
+    return {
+      _tag: 'pending',
+      reason: `${pkg}: dist-tag "${npmTag}" is absent, so ${version} published but nothing resolves to it`,
+    }
+  }
+
+  if (remote.distTag !== version) {
+    return {
+      _tag: 'pending',
+      reason: `${pkg}: dist-tag "${npmTag}" points at ${remote.distTag}, expected ${version}`,
+    }
+  }
+
+  return { _tag: 'ok' }
+}
+
+/** npm's `dist.integrity` format: base64-encoded SHA-512 of the tarball, algorithm-prefixed. */
+const tarballIntegrity = (tarballPath: string) =>
+  Effect.tryPromise({
+    try: async () =>
+      `sha512-${createHash('sha512')
+        .update(await readFile(tarballPath))
+        .digest('base64')}`,
+    catch: (cause) => new ReleaseError({ message: `Failed to hash ${tarballPath}`, cause }),
+  })
+
 const packPackageForPublish = ({ cwd, pkg, version }: { cwd: string; pkg: string; version: string }) =>
   Effect.gen(function* () {
     const fsEffect = yield* FileSystem.FileSystem
@@ -437,6 +538,68 @@ const packPackageForPublish = ({ cwd, pkg, version }: { cwd: string; pkg: string
     return `${packDir}/${tarballs[0]}`
   })
 
+/**
+ * Registry payloads we cannot parse are reported as absent rather than as errors:
+ * "no data" and "unexpected data" are both handled as "not converged yet", which the
+ * caller's retry schedule eventually turns into a hard failure.
+ */
+const tolerate = <A>(decode: () => A): A | undefined => {
+  try {
+    return decode()
+  } catch {
+    return undefined
+  }
+}
+
+const RegistryManifest = Schema.Struct({
+  version: Schema.String,
+  dist: Schema.optional(Schema.Struct({ integrity: Schema.optional(Schema.String) })),
+})
+
+const RegistryDistTags = Schema.Record(Schema.String, Schema.String)
+
+/**
+ * Read what the registry currently serves for `pkg`.
+ *
+ * Absent data decodes to `undefined` rather than failing: `npm view` exits non-zero
+ * for a version that has not propagated yet, and that is a "retry", not an error.
+ * The caller's retry schedule decides when missing data becomes a failure.
+ */
+export const readRegistryState = ({
+  cwd,
+  pkg,
+  version,
+  npmTag,
+}: {
+  cwd: string
+  pkg: string
+  version: string
+  npmTag: string
+}) =>
+  Effect.gen(function* () {
+    const cwdLayer = CurrentWorkingDirectory.fromPath(cwd)
+
+    const viewJson = (args: ReadonlyArray<string>) =>
+      cmdText(['npm', 'view', ...args, '--json'], { stderr: 'pipe' }).pipe(
+        Effect.provide(cwdLayer),
+        Effect.map((raw) => tolerate(() => jsonParse(raw.trim()))),
+        Effect.orElseSucceed(() => undefined),
+      )
+
+    const manifest = yield* viewJson([`${pkg}@${version}`]).pipe(
+      Effect.map((raw) => tolerate(() => Schema.decodeUnknownSync(RegistryManifest)(raw))),
+    )
+    const distTags = yield* viewJson([pkg, 'dist-tags']).pipe(
+      Effect.map((raw) => tolerate(() => Schema.decodeUnknownSync(RegistryDistTags)(raw))),
+    )
+
+    return {
+      version: manifest?.version,
+      integrity: manifest?.dist?.integrity,
+      distTag: distTags?.[npmTag],
+    } satisfies TRemoteRegistryState
+  })
+
 const publishReleasePackages = ({
   cwd,
   version,
@@ -456,6 +619,8 @@ const publishReleasePackages = ({
 }) =>
   Effect.gen(function* () {
     const isCI = process.env.CI === 'true' || process.env.CI === '1'
+    /** Digest of each tarball we packed, so verification can prove the registry serves that exact artifact. */
+    const localIntegrityByPackage = new Map<string, string>()
 
     /**
      * Regenerate all genie-managed files with the release version (writable for pnpm publish).
@@ -496,6 +661,7 @@ const publishReleasePackages = ({
       }
 
       const packedTarballPath = yield* packPackageForPublish({ cwd, pkg, version })
+      localIntegrityByPackage.set(pkg, yield* tarballIntegrity(packedTarballPath))
       const publishArgs = [
         'npm',
         'publish',
@@ -504,7 +670,14 @@ const publishReleasePackages = ({
         '--access=public',
         '--ignore-scripts',
       ]
-      if (dryRun === true) publishArgs.push('--dry-run')
+      if (dryRun === true) {
+        publishArgs.push('--dry-run')
+      } else if (process.env.GITHUB_ACTIONS === 'true') {
+        // SLSA provenance attestation, minted from the job's OIDC id-token. The snapshot
+        // path and the DevTools artifact publisher already do this; without it stable
+        // releases would be the only artifact we ship unattested.
+        publishArgs.push('--provenance')
+      }
       const versionIsVisible = cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
         Effect.provide(cwdLayer),
         Effect.as(true),
@@ -536,13 +709,37 @@ const publishReleasePackages = ({
     }
 
     if (dryRun === false) {
-      yield* Effect.log('Verifying packages are available on the registry...')
+      yield* Effect.log('Verifying packages on the registry...')
       for (const pkg of packages) {
-        yield* cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
-          Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
-          Effect.retry(Schedule.spaced('5 seconds').pipe(Schedule.upTo({ times: 60 }))),
+        const verifyOnce = Effect.gen(function* () {
+          const remote = yield* readRegistryState({ cwd, pkg, version, npmTag })
+          const result = registryVerification({
+            pkg,
+            version,
+            npmTag,
+            localIntegrity: localIntegrityByPackage.get(pkg),
+            remote,
+          })
+
+          if (result._tag === 'mismatch') return yield* new ReleaseError({ message: result.reason })
+          if (result._tag === 'pending') return yield* new RegistryPendingError({ reason: result.reason })
+        })
+
+        yield* verifyOnce.pipe(
+          Effect.retry({
+            schedule: Schedule.spaced('5 seconds').pipe(Schedule.upTo({ times: 60 })),
+            while: (error) => error._tag === 'RegistryPendingError',
+          }),
+          Effect.catchTag(
+            'RegistryPendingError',
+            (error) =>
+              new ReleaseError({
+                message: `${error.reason} — registry did not converge within the verification window`,
+              }),
+          ),
         )
-        yield* Effect.log(`Verified ${pkg}@${version}`)
+
+        yield* Effect.log(`Verified ${pkg}@${version} (dist-tag ${npmTag} -> ${version})`)
       }
     }
   }).pipe(Effect.ensuring(restoreGeneratedReleaseFiles(cwd)))

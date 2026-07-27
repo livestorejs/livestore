@@ -1,6 +1,86 @@
 import { describe, expect, it } from 'vitest'
 
-import { sliceChangelogSection } from './release.ts'
+import { registryVerification, sliceChangelogSection } from './release.ts'
+
+describe('registryVerification', () => {
+  const base = { pkg: '@livestore/livestore', version: '0.4.1', npmTag: 'latest' }
+  const localIntegrity = 'sha512-local'
+
+  it('accepts a release the registry serves under the expected version and dist-tag', () => {
+    expect(
+      registryVerification({
+        ...base,
+        localIntegrity,
+        remote: { version: '0.4.1', integrity: localIntegrity, distTag: '0.4.1' },
+      }),
+    ).toEqual({ _tag: 'ok' })
+  })
+
+  it('treats a not-yet-visible version as pending so propagation can be retried', () => {
+    const result = registryVerification({
+      ...base,
+      localIntegrity,
+      remote: { version: undefined, integrity: undefined, distTag: '0.4.0' },
+    })
+    expect(result._tag).toBe('pending')
+  })
+
+  // The failure #1289 tried to detect a day later: the version publishes fine but
+  // `latest` keeps resolving to the previous release, so installs stay on the old one.
+  it('flags a dist-tag still pointing at the previous release', () => {
+    const result = registryVerification({
+      ...base,
+      localIntegrity,
+      remote: { version: '0.4.1', integrity: localIntegrity, distTag: '0.4.0' },
+    })
+    expect(result).toEqual({
+      _tag: 'pending',
+      reason: '@livestore/livestore: dist-tag "latest" points at 0.4.0, expected 0.4.1',
+    })
+  })
+
+  it('flags an absent dist-tag, which leaves the published version unreachable', () => {
+    const result = registryVerification({
+      ...base,
+      localIntegrity,
+      remote: { version: '0.4.1', integrity: localIntegrity, distTag: undefined },
+    })
+    expect(result._tag).toBe('pending')
+    expect(result).toMatchObject({ reason: expect.stringContaining('is absent') })
+  })
+
+  // Immutable on npm, so retrying can never resolve it — must fail the release outright.
+  it('reports a differing tarball digest as an unrecoverable mismatch', () => {
+    const result = registryVerification({
+      ...base,
+      localIntegrity,
+      remote: { version: '0.4.1', integrity: 'sha512-something-else', distTag: '0.4.1' },
+    })
+    expect(result._tag).toBe('mismatch')
+  })
+
+  it('skips the digest comparison for packages that were already published', () => {
+    expect(
+      registryVerification({
+        ...base,
+        localIntegrity: undefined,
+        remote: { version: '0.4.1', integrity: 'sha512-whatever', distTag: '0.4.1' },
+      }),
+    ).toEqual({ _tag: 'ok' })
+  })
+
+  it('verifies the dist-tag named by the release plan rather than assuming latest', () => {
+    expect(
+      registryVerification({
+        ...base,
+        npmTag: 'dev',
+        version: '0.5.0-dev.1',
+        localIntegrity,
+        remote: { version: '0.5.0-dev.1', integrity: localIntegrity, distTag: '0.5.0-dev.1' },
+      }),
+    ).toEqual({ _tag: 'ok' })
+  })
+})
 
 describe('sliceChangelogSection', () => {
   it('extracts the verbatim block for a stable version with date heading', () => {
