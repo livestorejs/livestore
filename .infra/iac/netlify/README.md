@@ -1,8 +1,9 @@
-# Netlify IaC — livestore-docs runtime env vars
+# Netlify IaC — docs runtime env vars
 
 OpenTofu-managed desired state for the **runtime environment variables** of the
-existing `livestore-docs` Netlify site (https://docs.livestore.dev). These give
-the SSR search function (`/api/search`) its Mixedbread credentials at runtime.
+two existing docs Netlify sites — `livestore-docs` (https://docs.livestore.dev)
+and `livestore-docs-dev` (https://dev.docs.livestore.dev). These give the SSR
+search function (`/api/search`) its Mixedbread credentials at runtime.
 
 This is the first managed resource of LiveStore's Infrastructure-as-Code surface
 and seeds [#1244](https://github.com/livestorejs/livestore/issues/1244)
@@ -13,7 +14,8 @@ will extend.
 
 ## Scope — env vars only (prod-safety)
 
-This config manages exactly two `netlify_environment_variable` resources:
+This config manages four `netlify_environment_variable` resources — one pair
+per docs surface, keyed by `prod` / `dev`:
 
 | Key                     | Secret? | Scopes                     | Contexts                                       |
 | ----------------------- | ------- | -------------------------- | ---------------------------------------------- |
@@ -110,9 +112,15 @@ live resources without modifying them.
 Run from the repo root via devenv tasks (secrets auto-injected via op-proxy):
 
 ```bash
-dt infra:netlify:plan    # read-only; must show "No changes"
-dt infra:netlify:apply   # only after plan shows No changes / the intended diff
+dt infra:netlify:plan          # read-only; shows the diff, exits 0
+dt infra:netlify:drift-check   # same plan, but drift exits non-zero (used by CI)
+dt infra:netlify:apply         # only after plan shows the intended diff
 ```
+
+Drift is checked automatically by `.github/workflows/infra-drift.yml` on a
+weekday schedule and on any push touching `.infra/iac/**`. A declaration nobody
+checks is documentation rather than a control, so any change made to these
+variables outside this config turns that job red.
 
 No apply is needed for steady state — the values are already live and `plan`
 shows `No changes`. Apply is idempotent (re-sets the secret to the same value).

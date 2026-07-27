@@ -21,11 +21,16 @@ variable "mxbai_api_key" {
   sensitive = true
 }
 
-# Mixedbread vector store id for the *production* docs surface — an opaque,
-# non-secret identifier (the API key is the actual gate). The development
-# surface (`livestore-docs-dev`) has its own store and is not managed here; each
-# surface searches only the content it serves (LS.DOCS.SEARCH-R03).
-variable "mxbai_vector_store_id" {
+# Mixedbread vector store ids — opaque, non-secret identifiers (the API key is
+# the actual gate). One per docs surface: each surface searches only the content
+# it serves (LS.DOCS.SEARCH-R03), so production reads the store fed by stable
+# releases and development reads the store fed by pushes to `main`.
+variable "mxbai_vector_store_id_prod" {
   type    = string
   default = "fff51624-7624-44b1-a223-71a6e29f7f02"
+}
+
+variable "mxbai_vector_store_id_dev" {
+  type    = string
+  default = "3c3548fb-f2e2-4a71-8080-bfbb0db03994"
 }

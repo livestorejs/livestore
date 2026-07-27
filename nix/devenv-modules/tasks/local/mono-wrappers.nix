@@ -451,6 +451,17 @@ in
       '';
     };
 
+    # Same plan, but drift is a failure rather than a report. A declaration
+    # nobody checks is documentation, so CI runs this on a schedule: any change
+    # made to these env vars outside the config turns the job red.
+    "infra:netlify:drift-check" = {
+      description = "Fail if live Netlify env vars have drifted from the declared state";
+      exec = ''
+        ${netlifyIacPreamble}
+        ${tofu} plan -input=false -detailed-exitcode
+      '';
+    };
+
     "infra:netlify:apply" = {
       description = "Apply the livestore-docs Netlify env-var IaC (only after plan shows No changes / intended diff)";
       exec = ''

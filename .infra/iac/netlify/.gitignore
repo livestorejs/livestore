@@ -5,9 +5,14 @@
 # Plaintext state/backups must NEVER be committed (this repo is PUBLIC and state
 # holds the API key value). The committed state under state/netlify.tfstate is
 # encrypted by OpenTofu native state encryption; any *.tfstate elsewhere or
-# *.backup files are unencrypted and must stay out of git.
-*.tfstate.backup
-state/*.backup
+# backup file must stay out of git.
+#
+# Match every backup shape, not just `*.tfstate.backup`: `tofu state mv` writes
+# `terraform.tfstate.<timestamp>.backup`, which that pattern does not cover, so
+# those files showed up as untracked and one commit away from being added.
+*.backup
+*.tfstate
+!state/netlify.tfstate
 
 # crash logs / var files that might hold secrets
 crash.log

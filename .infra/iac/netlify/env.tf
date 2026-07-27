@@ -1,38 +1,53 @@
-# Runtime environment variables for the existing `livestore-docs` Netlify site
-# (https://docs.livestore.dev). These give the SSR search function
-# (`/api/search`) its Mixedbread credentials at runtime.
+# Runtime environment variables for the two existing docs Netlify sites. These
+# give the SSR search function (`/api/search`) its Mixedbread credentials at
+# runtime.
 #
 # PROD-SAFETY: this config manages ONLY environment variables. There is no
-# `netlify_site` resource and no site data source — the site is referenced by
-# its known literal ID, so OpenTofu can never create, replace, or mutate the
-# site, its build settings, or its deploys. The only resource type is
-# `netlify_environment_variable`. A plan must show `No changes` once the two
-# already-live env vars are imported (see README.md).
+# `netlify_site` resource and no site data source — each site is referenced by
+# its known literal ID, so OpenTofu can never create, replace, or mutate a site,
+# its build settings, or its deploys. The only resource type is
+# `netlify_environment_variable`. A plan must show `No changes` against the live
+# environment (see README.md).
 #
 # Identifiers (verified via the Netlify API):
-#   site    : livestore-docs (docs.livestore.dev)
-#   site_id : abeae053-d336-480a-a0fe-f0aaaacaa74e
 #   team_id : 66db1fd95431120089f47e20 (livestore account)
+#   prod    : livestore-docs      (docs.livestore.dev)     abeae053-…
+#   dev     : livestore-docs-dev  (dev.docs.livestore.dev) e02ba783-…
 
 locals {
-  livestore_docs_site_id = "abeae053-d336-480a-a0fe-f0aaaacaa74e"
-  livestore_team_id      = "66db1fd95431120089f47e20"
+  livestore_team_id = "66db1fd95431120089f47e20"
+
+  # Each docs surface searches only the content it serves
+  # (LS.DOCS.SEARCH-R03), so the store id differs per surface while the
+  # credential is the same 1Password-canonical value for both.
+  docs_surfaces = {
+    prod = {
+      site_id  = "abeae053-d336-480a-a0fe-f0aaaacaa74e"
+      store_id = var.mxbai_vector_store_id_prod
+    }
+    dev = {
+      site_id  = "e02ba783-ea85-4be1-8b7f-c1b2b4d0d307"
+      store_id = var.mxbai_vector_store_id_dev
+    }
+  }
 }
 
 # --- Secret: Mixedbread API key ---
 resource "netlify_environment_variable" "mxbai_api_key" {
+  for_each = local.docs_surfaces
+
   team_id = local.livestore_team_id
-  site_id = local.livestore_docs_site_id
+  site_id = each.value.site_id
   key     = "MXBAI_API_KEY"
 
   # Required explicit scopes for secret env vars (provider requirement on free
-  # plans). `runtime` is what the SSR function reads.
+  # plans). `runtime` is what the SSR function reads; `builds` is read by the
+  # Starlight plugin in `docs/astro.config.ts` at build time.
   scopes = ["builds", "functions", "runtime"]
 
   # Netlify rejects the `all` context for *secret* env vars (422: "Secrets are
   # not allowed to have 'All contexts' context"). Enumerate every context that
-  # `all` would expand to, so production + previews + branches + dev all get the
-  # key and search works everywhere.
+  # `all` would expand to.
   secret_values = [
     { context = "production", value = var.mxbai_api_key },
     { context = "deploy-preview", value = var.mxbai_api_key },
@@ -61,13 +76,15 @@ resource "netlify_environment_variable" "mxbai_api_key" {
 
 # --- Non-secret: Mixedbread vector store id ---
 resource "netlify_environment_variable" "mxbai_vector_store_id" {
+  for_each = local.docs_surfaces
+
   team_id = local.livestore_team_id
-  site_id = local.livestore_docs_site_id
+  site_id = each.value.site_id
   key     = "MXBAI_VECTOR_STORE_ID"
   scopes  = ["builds", "functions", "runtime"]
 
   # Non-secret: a plain (non-sensitive) value, not a secret_values block.
   values = [
-    { context = "all", value = var.mxbai_vector_store_id },
+    { context = "all", value = each.value.store_id },
   ]
 }
