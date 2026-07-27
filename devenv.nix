@@ -311,9 +311,13 @@ EOF
 in
 {
   imports = [
-    # Use Effect-utils' current system-stack detection while retaining the
-    # worktree-local collector fallback for interactive development.
-    (effectUtils.devenvModules.otel { mode = "auto"; })
+    # Share bootstrap-safe native-devenv + Effect-utils capture orchestration.
+    # Auto mode retains system-stack detection with a worktree-local fallback.
+    (effectUtils.devenvModules.observability {
+      project = "livestore";
+      backend = "auto";
+      wireInto = [ "check:all" ];
+    })
     # Playwright browser drivers and environment setup
     inputs.playwright.devenvModules.default
     # Shared task modules from effect-utils
@@ -328,7 +332,6 @@ in
     (taskModules.check {
       hasTests = false;
       hasNixCheck = false;
-      extraChecks = [ "test:setup:otel" ];
     })
     (taskModules.clean {
       packages = pnpmPackages;
@@ -388,9 +391,6 @@ in
     # Local task: mono command wrappers for uniform dt interface
     ./nix/devenv-modules/tasks/local/mono-wrappers.nix
     ./nix/devenv-modules/tasks/local/github-rulesets.nix
-    (import ./nix/devenv-modules/tasks/local/setup-observability.nix {
-      inherit effectUtilsPackages;
-    })
   ];
 
   # Non-`.genie.ts` generator inputs (source-of-truth modules that the `.genie.ts`
