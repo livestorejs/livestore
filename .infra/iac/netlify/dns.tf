@@ -54,3 +54,23 @@ resource "netlify_site_domain_settings" "docs_dev" {
   custom_domain  = "dev.docs.livestore.dev"
   domain_aliases = ["next.livestore.dev"]
 }
+
+# The `web-todomvc-custom-elements` example was removed from the repository, but
+# its two Netlify sites kept their `livestore.dev` domain claims — and a domain
+# claim is what makes Netlify publish the corresponding zone record. They are
+# adopted here rather than left alone because this config owns the
+# `livestore.dev` namespace: a hostname under it is in scope wherever it is
+# driven from, and an unowned claim is exactly how the namespace drifted in the
+# first place (livestorejs/livestore#1244).
+#
+# Adopted at their current values so the adoption itself changes nothing. The
+# claims are released in a separate, reviewable diff.
+resource "netlify_site_domain_settings" "orphan_todomvc_custom_elements_prod" {
+  site_id       = "658e1eb4-6a63-4a26-acd4-4ffc439c70a8"
+  custom_domain = "todomvc-custom-elements.livestore.dev"
+}
+
+resource "netlify_site_domain_settings" "orphan_todomvc_custom_elements_dev" {
+  site_id       = "a9c428da-cd8c-4d06-9904-05de40bd277e"
+  custom_domain = "dev.todomvc-custom-elements.livestore.dev"
+}
