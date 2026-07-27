@@ -46,10 +46,12 @@ Related: the underlying provider configuration is undeclared, tracked as
 
 Applied 2026-07-27:
 
-1. `sync-docs.yml` now generates from `sync-docs.yml.genie.ts` on the shared
-   devenv/nix setup, removing the pnpm pin that broke it, and selects its target
-   with two gated jobs so a missing store id fails loudly instead of silently
-   falling back to a legacy store.
+1. `sync-docs.yml` is rebuilt to generate from `sync-docs.yml.genie.ts` on the
+   shared devenv/nix setup, removing the pnpm pin that broke it, and to select
+   its target with two gated jobs so a missing store id fails loudly instead of
+   silently falling back to a legacy store. That repair is livestorejs/livestore#1507
+   and is not part of the change that introduces this delta; until it merges,
+   `main` still passes the legacy store id to the production sync.
 2. Two stores now exist — `livestore-docs-prod` (released docs, populated from
    `v0.4.0`) and `livestore-docs-dev` (refreshed from `main`) — and the
    `MXBAI_VECTOR_STORE_ID_DEV` / `_PROD` secrets that the workflow had always
