@@ -46,12 +46,10 @@ Related: the underlying provider configuration is undeclared, tracked as
 
 Applied 2026-07-27:
 
-1. `sync-docs.yml` is rebuilt to generate from `sync-docs.yml.genie.ts` on the
-   shared devenv/nix setup, removing the pnpm pin that broke it, and to select
-   its target with two gated jobs so a missing store id fails loudly instead of
-   silently falling back to a legacy store. That repair is livestorejs/livestore#1507
-   and is not part of the change that introduces this delta; until it merges,
-   `main` still passes the legacy store id to the production sync.
+1. `sync-docs.yml` now generates from `sync-docs.yml.genie.ts` on the shared
+   devenv/nix setup, removing the pnpm pin that broke it, and selects its target
+   with two gated jobs so a missing store id fails loudly instead of silently
+   falling back to a legacy store. Merged as livestorejs/livestore#1507.
 2. Two stores now exist — `livestore-docs-prod` (released docs, populated from
    `v0.4.0`) and `livestore-docs-dev` (refreshed from `main`) — and the
    `MXBAI_VECTOR_STORE_ID_DEV` / `_PROD` secrets that the workflow had always
@@ -61,11 +59,20 @@ Applied 2026-07-27:
    now stored using Netlify's secret mechanism (`LS.DEL.INFRA-R06`) rather than
    as plain configuration.
 
-Outstanding: the development surface still returns HTTP 500. Netlify injects
-environment variables into the function bundle at build time, so the corrected
-credential takes effect on that site's next deploy rather than immediately; a
-re-publish of the existing deploy is not sufficient. The production surface
-serves results from the production store and is correct.
+Both surfaces now return results: production from the production store,
+development from the development store.
 
-Close this delta once `dev.docs.livestore.dev/api/search` returns results, which
-confirms a docs push is reflected in the surface that push targets.
+Outstanding, and why this delta stays open:
+
+- **The production sync path has never run successfully.** The production store
+  was populated by hand so the surface would not serve a stale index; the
+  release pipeline that is supposed to maintain it is now wired correctly but
+  unproven. `LS.DOCS.SEARCH-R01` promises the index updates on every stable
+  release, and that promise is still untested.
+- **Silent failure remains possible.** The proximate bug was a stale pnpm pin,
+  but the reason it survived three months is that a failing sync surfaced
+  nowhere. Detection belongs with the disabled alignment-notification job
+  (livestorejs/livestore#1183) rather than a mechanism invented here.
+
+Close this delta once a stable release has refreshed the production index
+without manual intervention.
