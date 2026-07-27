@@ -44,15 +44,17 @@ hardcoded as a default (the API key is the actual gate).
 | `netlify_api_token`           | Existing Netlify CLI login at `~/.config/netlify/config.json` (or `NETLIFY_AUTH_TOKEN`)             |
 | `mxbai_api_key`               | 1Password: `op://ialr3ed3depgv523r3bqojsyjq/6lpbvcuq6mdasuheabe3ms7rdm/djua6eaktvatttoxnu6e6qsqai`  |
 | `state_encryption_passphrase` | 1Password: `op://LiveStore/livestore-tofu-state-encryption/password`                                |
-| `mxbai_vector_store_id`       | Hardcoded non-secret default `3c3548fb-f2e2-4a71-8080-bfbb0db03994` (no override needed)             |
+| `mxbai_vector_store_id`       | Hardcoded non-secret default: the **production** store `fff51624-…` (no override needed)              |
 
 The devenv tasks read these via `op-proxy` (or pre-set `TF_VAR_*` / env in CI).
 
 ## State backend — encrypted, committed
 
-`livestorejs/livestore` is a **public** repo and OpenTofu state holds the
-Mixedbread API key value (even though the input variable is `sensitive`). State
-is therefore committed **only in encrypted form**:
+`livestorejs/livestore` is a **public** repo, so the rule is that **state must
+contain no secret**. It does not: the API key resource is adopt-only and owns
+shape rather than value, so the only value in state is the non-secret vector
+store id (verified by decrypting the committed state). State is committed, and
+additionally encrypted as defence in depth against a future mistake:
 
 - **OpenTofu native state encryption** (`terraform { encryption {} }`,
   PBKDF2/AES-GCM, `enforced = true`). The passphrase lives in 1Password
@@ -62,13 +64,18 @@ is therefore committed **only in encrypted form**:
 - The `state/` directory is committed; transient `*.tfstate.backup`,
   `.terraform/`, and any `*.tfvars` are git-ignored.
 
-**Why not remote R2?** The intended backend was a Cloudflare R2 (`backend "s3"`)
-bucket, but **R2 is not enabled on the LiveStore Cloudflare account** — the API
-returns code `10042` ("Please enable R2 through the Cloudflare Dashboard"), a
-dashboard-only action that can't be scripted with the CI token. Native
-encryption with committed ciphertext is the sanctioned fallback and gives the
-same at-rest secrecy guarantee. To migrate later: enable R2 + create an R2 S3
-access key, swap `backend "local"` for `backend "s3"` in `versions.tf` (keep the
+**When does state have to move?** Not on a schedule — on a trigger. The moment a
+resource is declared whose state would carry secret material, state must leave
+the repository *first*, because a commit cannot be retracted. Until then a
+committed, secret-free state is fine and gives shared ownership for free.
+
+The intended destination is a Cloudflare R2 (`backend "s3"`) bucket. R2 is not
+enabled on the LiveStore Cloudflare account — the API returns code `10042`, and
+enablement is an account-level dashboard action that no API token can perform.
+Since the same account work is required by
+[#1244](https://github.com/livestorejs/livestore/issues/1244), do it before that
+work rather than during it. To migrate: enable R2, create an R2 S3 access key,
+swap `backend "local"` for `backend "s3"` in `versions.tf` (keep the
 `encryption` block), and run `tofu init -migrate-state`.
 
 ## Adopting the live resources (import, not recreate)
@@ -87,14 +94,16 @@ tofu import netlify_environment_variable.mxbai_vector_store_id \
 After import, `tofu plan` reports **`No changes`** — proving the IaC owns the
 live resources without modifying them.
 
-> Note on the secret value: the Netlify API treats secret env-var values as
-> **write-only** (it never returns them on read/import). Without handling, every
-> plan would forever show a cosmetic in-place "update" of `secret_values`. The
-> `MXBAI_API_KEY` resource therefore declares
-> `lifecycle { ignore_changes = [secret_values] }` so plan reports `No changes`.
-> The value is still written on the initial `apply`; to rotate the key, change it
-> in 1Password and run `tofu apply -replace=netlify_environment_variable.mxbai_api_key`
-> (or temporarily drop the ignore).
+> Note on the secret value: the Netlify API masks secret env-var values on read,
+> so an imported secret resource carries no usable value and the value cannot be
+> round-tripped. Without handling, every plan would show a cosmetic in-place
+> "update" of `secret_values`, so `MXBAI_API_KEY` declares
+> `lifecycle { ignore_changes = [secret_values] }`.
+>
+> This config therefore owns the variable's **shape**, never its value.
+> 1Password is the canonical source (`LS.DEL.INFRA-R03`) and **rotation happens
+> there**, not through OpenTofu — applying a rotation here would write the key
+> into state, and this repository is public and permanent.
 
 ## Commands
 

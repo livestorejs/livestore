@@ -41,15 +41,20 @@ resource "netlify_environment_variable" "mxbai_api_key" {
   ]
 
   lifecycle {
-    # The Netlify API treats secret env-var values as WRITE-ONLY: it never
-    # returns them on read/import, so an imported secret resource has an empty
-    # `secret_values` in state. Without this, every `plan` would forever show an
-    # in-place "update" for `secret_values` even though the live value already
-    # matches 1Password — a cosmetic, unavoidable diff, not real drift. Ignoring
-    # it makes `plan` report `No changes` (the import truly adopted the live
-    # resource). The value is still written once on the initial `apply`; to
-    # rotate the key, change it in 1Password and run a targeted
-    # `tofu apply -replace` (or temporarily drop this ignore).
+    # The Netlify API masks secret env-var values on read, so an imported secret
+    # resource carries no usable value in state and the value cannot be
+    # round-tripped. Without this, every `plan` would forever show an in-place
+    # "update" for `secret_values` even though the live value already matches
+    # 1Password — a cosmetic diff, not real drift.
+    #
+    # This declaration therefore owns the variable's *shape* — that it exists,
+    # with these scopes and contexts — and never its value. 1Password is the
+    # canonical source for the value (LS.DEL.INFRA-R03), and rotation happens
+    # there rather than through this config. Consequently the committed state
+    # holds no secret, which is what makes committing it acceptable at all.
+    #
+    # Do not "fix" this by dropping the ignore and applying: that writes the key
+    # into state, and this repository is public and permanent.
     ignore_changes = [secret_values]
   }
 }
