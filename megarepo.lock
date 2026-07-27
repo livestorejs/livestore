@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "82ed83e7077af7a4daf2b9a4655de7f9964f39c7",
+      "ref": "schickling-assistant/2026-07-27-2026-07-27-devenv-otel",
+      "commit": "8ef10f23189e3a689ca38b5a3f7b525cb958d786",
       "pinned": true,
-      "lockedAt": "2026-07-27T08:31:43.467Z"
+      "lockedAt": "2026-07-27T09:56:54.959Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",

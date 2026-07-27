@@ -30,13 +30,12 @@ depend on the Node workspace that it is measuring.
 
 ### Effect-utils reuse boundary
 
-- **A. Compose the otelite CLI directly (chosen).** Effect-utils remains the
-  source of truth for receiver lifecycle, isolated ports, capture schemas, and
-  normalized inspection. LiveStore owns only the bootstrap-specific
-  dual-protocol routing and assertions about its setup task graph.
-- **B. Add a generic Effect-utils setup-profiler module.** This would reduce a
-  small amount of downstream shell composition, but creates a shared
-  abstraction before a second equivalent setup contract exists.
+- **A. Import the generic Effect-utils observability module (chosen).**
+  Effect-utils owns receiver lifecycle, isolated ports, dual-protocol routing,
+  capture schemas, and common connected-tree assertions. LiveStore supplies a
+  stable project identity and setup profile.
+- **B. Compose the otelite CLI directly.** This retains full local control but
+  duplicates bootstrap-safe shell and Nix orchestration across repositories.
 - **C. Run the typed `@overeng/utils-dev/otelite` harness.** This gives typed
   Effect assertions, but depends on the Node workspace whose materialization is
   itself part of the setup path being profiled.
@@ -55,9 +54,10 @@ depend on the Node workspace that it is measuring.
 ## Decision
 
 Choose A for all three axes. Interactive routing follows Effect-utils auto
-detection; otelite owns deterministic setup capture. The setup profiler composes
-otelite's machine-first CLI rather than redefining capture or inspection, and
-keeps LiveStore-specific trace assertions at the consumer boundary.
+detection; otelite owns deterministic setup capture. The shared observability
+module composes otelite's machine-first CLI rather than redefining capture or
+inspection. LiveStore configures the reusable setup profile and keeps
+domain-specific performance interpretation in its experiment record.
 
 ## Consequences
 
@@ -68,8 +68,8 @@ keeps LiveStore-specific trace assertions at the consumer boundary.
 - The bootstrap path does not depend on `node_modules`; typed otelite helpers
   remain the preferred test integration once dependency materialization is
   already available.
-- A shared setup-profiler module should be reconsidered only when a second
-  consumer demonstrates the same routing and assertion contract.
+- Repositories share one bootstrap-safe profiler implementation; adoption does
+  not require importing the full Collector/Tempo/Grafana stack.
 - CI does not fail on an absolute setup duration. Reproducible benchmark method
   and measured results stay in the experiment record.
 - Local captures may contain machine-local command metadata. They stay under

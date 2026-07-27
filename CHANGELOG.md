@@ -17,9 +17,11 @@
 For maintainers and contributors:
 
 - **Tooling:** Shell entry no longer runs the full TypeScript build after
-  dependency and generated-source setup. `setup:profile` now captures the
-  strict setup graph through native devenv tracing and Effect-utils `otelite`
-  assertions ([#1402](https://github.com/livestorejs/livestore/issues/1402)).
+  dependency and generated-source setup. The shared Effect-utils
+  `otel:profile:setup` task captures the strict setup graph through native
+  devenv tracing and `otelite`; `otel:verify:setup` gates the connected trace
+  shape without a repository-local orchestration module
+  ([#1402](https://github.com/livestorejs/livestore/issues/1402)).
 - **Tooling:** Unit-test failures now block merges. The `test-unit` job ran
   `packages/@livestore/webmesh` and `tests/package-common` through
   `Effect.ignore` on CI, so their failures produced a passing required check.

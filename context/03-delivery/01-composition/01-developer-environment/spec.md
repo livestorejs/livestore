@@ -24,18 +24,20 @@ the diagnostic environment
 
 ## Setup Observability
 
-`setup:profile` is the canonical setup diagnostic. It runs the strict setup
-graph under devenv's native `--trace-to` instrumentation and captures both
-native devenv spans and Effect-utils task spans with Effect-utils' `otelite`
-CLI. Native spans own evaluation, scheduling, and task lifecycle; Effect-utils
-spans refine the task execution beneath the matching native task span.
+`otel:profile:setup` is the canonical setup diagnostic. The shared Effect-utils
+observability module runs the strict setup graph under devenv's native
+`--trace-to` instrumentation and captures both native devenv spans and
+Effect-utils task spans with `otelite`. Native spans own evaluation, scheduling,
+and task lifecycle; Effect-utils spans refine the task execution beneath the
+matching native task span. `otel:verify:setup` runs the bounded `setup:gate`
+shape proof and is part of `check:all`.
 
 Interactive telemetry uses Effect-utils automatic system-stack detection with
 the worktree-local stack as fallback. Deterministic setup profiling uses
-otelite's ephemeral HTTP and gRPC receivers. LiveStore owns only the
-bootstrap-specific transport routing and assertions about its setup graph;
-otelite remains the source of truth for capture, schemas, and normalized
-inspection
+otelite's ephemeral HTTP and gRPC receivers. Effect-utils owns the
+bootstrap-safe dual-transport lifecycle and common connected-tree assertions;
+LiveStore configures its stable project identity and setup profile. Otelite
+remains the source of truth for capture, schemas, and normalized inspection
 ([decision 0002](./.decisions/0002-compose-isolated-setup-observability.md)).
 
 The E2E contract asserts a successful child, no rejected telemetry, one trace,
