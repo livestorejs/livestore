@@ -29,8 +29,13 @@ const NETLIFY_PROD_SITE = 'livestore-docs'
 const ISSUE_TITLE = 'release pre-flight regressed'
 const ISSUE_LABELS = ['bug']
 
+// The publish path uses npm **trusted publishing via OIDC** (`id-token: write`)
+// and explicitly rejects token auth (see the "Assert tokenless npm trusted
+// publishing" steps in `release.yml`, which fail if `NPM_TOKEN`/`NODE_AUTH_TOKEN`
+// is set). So `NPM_TOKEN` is intentionally NOT a required secret — npm publish
+// readiness is covered by the OIDC trusted-publisher probe below. The remaining
+// secrets are the release job's non-npm surfaces (Netlify / Cloudflare / Mixedbread).
 const REQUIRED_SECRETS = [
-  'NPM_TOKEN',
   'NETLIFY_AUTH_TOKEN',
   'CLOUDFLARE_API_TOKEN',
   'CLOUDFLARE_ACCOUNT_ID',
@@ -145,21 +150,26 @@ const checkNpmRead = (): Check => {
   }
 }
 
-const checkOidcConfig = (): Check => {
-  // `actions/oidc/customization/sub` only exists when a custom sub-claim has
-  // been configured. The default config returns 404, which is fine — what we
-  // want to detect is "GitHub API auth broken", not "no custom sub set".
+const checkTrustedPublisherOidc = (): Check => {
+  // npm publishing uses OIDC **trusted publishing** (there is no `NPM_TOKEN`):
+  // the publish job mints a GitHub Actions `id-token` and npm authorizes it
+  // against the configured trusted-publisher workflow. We can't complete the
+  // full token handshake here without minting an id-token, so as a readiness
+  // probe we confirm the repo's Actions OIDC customization endpoint is reachable
+  // — i.e. GitHub-side OIDC/API auth is intact. `sub` customization is optional,
+  // so a 404 is as healthy as a 200; what we're detecting is "GitHub OIDC/API
+  // broken", not "no custom sub set".
   const result = runCapture(['gh', 'api', `repos/${OWNER}/${REPO}/actions/oidc/customization/sub`, '--include'])
   const firstLine = result.stdout.split('\n', 1)[0] ?? ''
   if (firstLine.includes('200') === true || firstLine.includes('404') === true) {
     return {
-      name: 'GitHub OIDC endpoint reachable',
+      name: 'npm trusted-publisher OIDC readiness',
       status: 'ok',
       detail: firstLine.trim(),
     }
   }
   return {
-    name: 'GitHub OIDC endpoint reachable',
+    name: 'npm trusted-publisher OIDC readiness',
     status: 'fail',
     detail: `unexpected response: ${firstLine.trim() || result.stderr.trim()}`,
   }
@@ -298,7 +308,7 @@ export const runPreflight = async (): Promise<{
   const mxbaiToken = process.env.MXBAI_API_KEY
   const mxbaiVectorStoreId = process.env.MXBAI_VECTOR_STORE_ID
 
-  const checks: Check[] = [checkPathTools(), checkSecretsList(), checkNpmRead(), checkOidcConfig()]
+  const checks: Check[] = [checkPathTools(), checkSecretsList(), checkNpmRead(), checkTrustedPublisherOidc()]
 
   checks.push(
     await checkHttpReadProbe({
