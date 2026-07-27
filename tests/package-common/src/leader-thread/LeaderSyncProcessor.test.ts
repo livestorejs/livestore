@@ -6,9 +6,12 @@ import {
   type MockSyncBackend,
   type MockSyncBackendOptions,
   makeMockSyncBackend,
+  MATERIALIZATION_JOURNAL_META_TABLE,
   type RejectedPushError,
   ServerAheadError,
   StaleRebaseGenerationError,
+  StateHead,
+  sql,
   type SyncBackend,
   type SyncOptions,
   type SyncState,
@@ -148,6 +151,32 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       expect([...retainedEvent.meta.sessionChangeset.data]).toEqual([...publishedEvent.meta.sessionChangeset.data])
       expect([...retainedEvent.meta.sessionChangeset.data]).not.toEqual([...sourceSessionChangeset])
       expect(retainedEvent.meta.materializerHashLeader).toEqual(publishedEvent.meta.materializerHashLeader)
+    }).pipe(withTestCtx()(test)),
+  )
+
+  Vitest.live('prunes confirmed leader materialization journal rows independently of StateHead', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      yield* testContext.pushEncoded(
+        testContext.eventFactory.todoCreated.next({ id: 'confirmed-leader', text: 'confirmed', completed: false }),
+      )
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
+      yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.filter((state) => state.pending.length === 0),
+        Stream.take(1),
+        Stream.runDrain,
+        Effect.timeout('5 seconds'),
+      )
+
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+      const remainingJournalRows = leaderThreadCtx.dbState.select<{ count: number }>(
+        sql`SELECT COUNT(*) AS count FROM ${MATERIALIZATION_JOURNAL_META_TABLE}`,
+      )[0]!.count
+
+      expect(remainingJournalRows).toEqual(0)
+      expect(yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get).toEqual(syncState.localHead)
     }).pipe(withTestCtx()(test)),
   )
 
@@ -409,6 +438,9 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       const queueResults = yield* Queue.clear(testContext.pullQueue)
       expect(queueResults[0]!.payload._tag).toEqual('upstream-advance')
       expect(queueResults[1]!.payload._tag).toEqual('upstream-rebase')
+      expect(yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get).toEqual(
+        (yield* leaderThreadCtx.syncProcessor.syncState.get).localHead,
+      )
     }).pipe(withTestCtx()(test)),
   )
 

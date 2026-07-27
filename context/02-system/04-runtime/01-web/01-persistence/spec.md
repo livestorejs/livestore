@@ -47,9 +47,12 @@ Unless disabled or OPFS is unavailable, a booting session reads the
 persisted state DB directly from OPFS
 (`readPersistedStateDbFromClientSession`) instead of requesting a
 `GetRecreateSnapshot` from the leader, and derives its initial leader head
-from `SESSION_CHANGESET_META_TABLE` rather than the eventlog
-(`persisted-adapter.ts:238-249,464-483`). Any read error falls back to the
-slow path. The snapshot is currently trusted without validation — see
+through `StateHead` in the imported state DB. The dedicated
+`__livestore_state_head` row survives materialization-journal pruning; legacy
+snapshots without that table fall back to the newest row in the physical
+`__livestore_session_changeset` table. Both the shared-worker persisted
+adapter and the single-tab adapter use this path. Any read error falls back to
+the slow path. The snapshot is currently trusted without validation — see
 `LS.SYS.RT-R15` and
 [../../.delta/DELTA-001-fast-path-unvalidated.md](../../.delta/DELTA-001-fast-path-unvalidated.md).
 

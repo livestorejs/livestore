@@ -52,7 +52,7 @@ processors, and rebase actually move around. Its `meta` carries:
 
 | Field | Purpose |
 | --- | --- |
-| `sessionChangeset` | `sessionChangeset(data) \| no-op \| unset` — the SQLite session changeset recorded at materialization; consumed by rebase rollback |
+| `sessionChangeset` | `sessionChangeset(data) \| no-op \| unset` — compatibility transport for client-session materialization and rollback; leader rollback owns its durable copy through the state DB's materialization journal |
 | `syncMetadata` | provider-opaque per-event sync metadata (persisted as `syncMetadataJson`) |
 | `materializerHashLeader` / `materializerHashSession` | dev-mode determinism hashes compared across materialization sites |
 
@@ -113,18 +113,21 @@ Properties:
 
 - Logically append-only: confirmed history is immutable (LS.SYS.EVT-R07).
   Mechanically, rebase is implemented as delete + reinsert of the *pending*
-  tail — `rollback()` physically `DELETE`s pending eventlog and changeset
-  rows (`materialize-event.ts:210-219`) before the re-parented events are
-  appended. The append-only contract holds for events at or below the
-  upstream head.
+  tail. The leader rolls state back through `MaterializationJournal`, removes
+  the matching eventlog rows by the full `(global, client,
+  rebaseGeneration)` key, then appends the re-parented events. The append-only
+  contract holds for events at or below the upstream head.
 - Each row is self-decoding: name, encoded args, composite position, and
   per-row schema hash — sufficient for drift detection and full rebuild
   (LS.SYS.EVT-R08). Unknown schema hashes are tolerated on read
   (`UNKNOWN_EVENT_SCHEMA_HASH`) so logs written by newer app versions do
   not brick older readers.
 - `getEventsSince(seqNum)` (`eventlog.ts:47`) joins eventlog rows
-  (eventlog DB) with their session-changeset rows (state DB) so the tail
-  carries its rollback data — rebase state spans both databases.
+  (eventlog DB) with materialization-journal rows (state DB, physical table
+  `__livestore_session_changeset`) so the tail continues to carry
+  `meta.sessionChangeset` for client-session compatibility. Leader rollback
+  reads the journal service directly rather than treating event metadata as
+  its durable source.
 - Writing an event whose definition is unknown is a defect
   (`shouldNeverHappen`, `eventlog.ts:228`); tolerance applies to reads
   only.

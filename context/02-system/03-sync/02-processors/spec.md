@@ -54,10 +54,11 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   (`eventlog.ts:280-300`). Each chunk merges with
   `ignoreClientOnlyEvents: true`; advance restarts backend pushing with
   current pending, offers the payload to session pull queues, and persists
-  sync metadata for confirmed events; rebase additionally rolls back
-  state+eventlog rows and re-seeds pushing from rebased pending
-  (`:466-516`). Backend head advances via `Eventlog.updateBackendHead`
-  (`:462-464`).
+  sync metadata for confirmed events; rebase additionally rolls back the
+  pending materialization-journal records in reverse sequence order, restores
+  `StateHead` in the same state-DB savepoint, deletes eventlog rows by the full
+  composite key, and re-seeds pushing from rebased pending. Backend head
+  advances via `Eventlog.updateBackendHead`.
 - **Pull precedence** (`:241, 393, 408-438`): a 1-permit semaphore
   (`localPushBackendPullMutex`) makes local-push application and pull-chunk
   application mutually exclusive; the pull side holds the permit for a
@@ -65,7 +66,12 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
 - **Materialization** (`:849-886`): `materializeEventsBatch` opens one
   transaction on `dbState` and one on `dbEventlog` in lockstep, commits
   them sequentially inside one uninterruptible effect with a joint
-  rollback finalizer. This protects against interruption and errors, but
+  rollback finalizer. Known events record their SQLite changeset (or a no-op)
+  through `MaterializationJournal`; unknown/no-op events record a no-op, and
+  both paths advance `StateHead`. The event's `meta.sessionChangeset` remains
+  attached for client-session compatibility. Confirmed records are removed
+  inclusively through the upstream head because StateHead is independent of
+  journal retention. This protects against interruption and errors, but
   is **not crash-atomic across the two databases**: a process death
   between the two COMMITs can diverge state from eventlog (healed only by
   state rebuild when the state DB is absent — see

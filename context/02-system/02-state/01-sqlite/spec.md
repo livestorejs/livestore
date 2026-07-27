@@ -73,12 +73,22 @@ materializer; `get(id?)` is a typed query. Mechanics:
 | Eventlog | `eventlog` (`eventlog-tables.ts`) | one row per event: composite seqNum triple (PK) + parent triple, `name`, `argsJson`, `clientId`, `sessionId`, per-row `schemaHash`, `syncMetadataJson`; indexed on seqNum |
 | Sync status | `__livestore_sync_status` | upstream head + `backendId` (backend-identity change detection) |
 | Schema meta | `__livestore_schema`, `__livestore_schema_event_defs` (`state-tables.ts`) | table-AST and event-definition hashes for drift detection |
-| Changeset/rollback | `__livestore_session_changeset` (`state-tables.ts`) | per-event SQLite session changesets enabling rebase rollback (LS.SYS.STATE.SQLITE-R06) |
+| State head | `__livestore_state_head` (`state-tables.ts`) | single-row full composite sequence number reflected by the state DB; updated for known and unknown/no-op events |
+| Materialization journal | `__livestore_session_changeset` (`state-tables.ts`) | per-event SQLite changesets or no-op records enabling rebase rollback (LS.SYS.STATE.SQLITE-R06); the physical legacy name is retained for snapshot compatibility |
 
-(LS.SYS.STATE.SQLITE-R04.) Note the eventlog and changeset groups span two
-databases: changeset rows live in the *state* DB while event rows live in
-the *eventlog* DB; `getEventsSince` joins across both to serve rebase
-rollback.
+(LS.SYS.STATE.SQLITE-R04.) `StateHead` and `MaterializationJournal` are
+independent services over the state DB. Journal records may be pruned through
+the confirmed upstream head without losing the state snapshot's identity.
+`StateHead.get` returns ROOT when neither marker nor legacy rows exist, and
+falls back to the newest legacy `__livestore_session_changeset` row when
+reading an older snapshot. `StateHead.set` lazily creates the marker table so
+an imported legacy snapshot remains writable.
+
+The eventlog and materialization-journal groups span two databases: journal
+rows live in the *state* DB while event rows live in the *eventlog* DB.
+`getEventsSince` still joins across both so client sessions receive
+`meta.sessionChangeset`; leader rollback uses the journal abstraction
+directly.
 
 ## Schema Change
 

@@ -6,7 +6,9 @@ import {
   type ClientSession,
   type ClientSessionLeaderThreadProxy,
   LeaderAheadError,
+  MaterializationJournal,
   makeMockSyncBackend,
+  StateHead,
   SyncState,
   type UnknownError,
 } from '@livestore/common'
@@ -404,7 +406,9 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
             const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
 
             const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
-            const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
+            const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog }).pipe(
+              Effect.provide(Layer.mergeAll(MaterializationJournal.layer({ dbState }), StateHead.layer({ dbState }))),
+            )
             yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
 
             return { dbEventlog, dbState }

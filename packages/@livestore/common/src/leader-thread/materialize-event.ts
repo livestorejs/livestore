@@ -1,14 +1,14 @@
 import { isDevEnv, LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
+import { Effect, Option, Schema } from '@livestore/utils/effect'
 
 import { MaterializeError, MaterializerHashMismatchError, type SqliteDb } from '../adapter-types.ts'
+import * as MaterializationJournal from '../MaterializationJournal.ts'
 import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.ts'
 import { logDeprecationWarnings } from '../schema/EventDef/deprecated.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
-import { EventSequenceNumber, resolveEventDef, SystemTables, UNKNOWN_EVENT_SCHEMA_HASH } from '../schema/mod.ts'
-import { insertRow } from '../sql-queries/index.ts'
-import { sql } from '../util.ts'
-import { execSql, execSqlPrepared } from './connection.ts'
+import { EventSequenceNumber, resolveEventDef, UNKNOWN_EVENT_SCHEMA_HASH } from '../schema/mod.ts'
+import * as StateHead from '../StateHead.ts'
+import { execSqlPrepared } from './connection.ts'
 import * as Eventlog from './eventlog.ts'
 import type { MaterializeEvent } from './types.ts'
 
@@ -21,8 +21,10 @@ export const makeMaterializeEvent = ({
   schema: LiveStoreSchema
   dbState: SqliteDb
   dbEventlog: SqliteDb
-}): Effect.Effect<MaterializeEvent> =>
+}): Effect.Effect<MaterializeEvent, never, MaterializationJournal.MaterializationJournal | StateHead.StateHead> =>
   Effect.gen(function* () {
+    const materializationJournal = yield* MaterializationJournal.MaterializationJournal
+    const stateHead = yield* StateHead.StateHead
     const eventDefSchemaHashMap = new Map(
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
       // at build time and lookup the pre-computed hash at runtime.
@@ -53,10 +55,14 @@ export const makeMaterializeEvent = ({
             )
           }
 
+          const changeset = { _tag: 'no-op' as const }
+          yield* materializationJournal.record({ key: eventEncoded.seqNum, changeset })
+
           dbState.debug.head = eventEncoded.seqNum
+          yield* stateHead.set(eventEncoded.seqNum)
 
           return {
-            sessionChangeset: { _tag: 'no-op' as const },
+            sessionChangeset: changeset,
             hash: Option.none(),
           }
         }
@@ -102,27 +108,25 @@ export const makeMaterializeEvent = ({
           yield* execSqlPrepared(dbState, statementSql, bindValues)
         }
 
-        dbState.debug.head = eventEncoded.seqNum
-
         const changeset = session.changeset()
         session.finish()
 
-        // TODO use prepared statements
-        yield* execSql(
-          dbState,
-          ...insertRow({
-            tableName: SystemTables.SESSION_CHANGESET_META_TABLE,
-            columns: SystemTables.sessionChangesetMetaTable.sqliteDef.columns,
-            values: {
-              seqNumGlobal: eventEncoded.seqNum.global,
-              seqNumClient: eventEncoded.seqNum.client,
-              seqNumRebaseGeneration: eventEncoded.seqNum.rebaseGeneration,
-              // NOTE the changeset will be empty (i.e. null) for no-op events
-              changeset: changeset ?? null,
-              debug: LS_DEV === true ? execArgsArr : null,
-            },
-          }),
-        )
+        const materializationChangeset =
+          changeset !== undefined
+            ? {
+                _tag: 'sessionChangeset' as const,
+                data: changeset,
+                debug: LS_DEV === true ? execArgsArr : null,
+              }
+            : { _tag: 'no-op' as const }
+
+        yield* materializationJournal.record({
+          key: eventEncoded.seqNum,
+          changeset: materializationChangeset,
+        })
+
+        dbState.debug.head = eventEncoded.seqNum
+        yield* stateHead.set(eventEncoded.seqNum)
 
         // console.groupEnd()
 
@@ -144,14 +148,7 @@ export const makeMaterializeEvent = ({
         }
 
         return {
-          sessionChangeset:
-            changeset !== undefined
-              ? {
-                  _tag: 'sessionChangeset' as const,
-                  data: changeset,
-                  debug: LS_DEV === true ? execArgsArr : null,
-                }
-              : { _tag: 'no-op' as const },
+          sessionChangeset: materializationChangeset,
           hash: materializerHash,
         }
       }).pipe(
@@ -166,59 +163,3 @@ export const makeMaterializeEvent = ({
         // Effect.logDuration('@livestore/common:leader-thread:materializeEvent'),
       )
   })
-
-export const rollback = ({
-  dbState,
-  dbEventlog,
-  eventNumsToRollback,
-}: {
-  dbState: SqliteDb
-  dbEventlog: SqliteDb
-  eventNumsToRollback: EventSequenceNumber.Client.Composite[]
-}) =>
-  Effect.gen(function* () {
-    const rollbackEvents = dbState
-      .select<SystemTables.SessionChangesetMetaRow>(
-        sql`SELECT * FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE (seqNumGlobal, seqNumClient) IN (${eventNumsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
-      )
-      .map((_) => ({
-        seqNum: {
-          global: _.seqNumGlobal,
-          client: _.seqNumClient,
-          rebaseGeneration: -1, // unused in this code path
-        },
-        changeset: _.changeset,
-        debug: _.debug,
-      }))
-      .toSorted((a, b) => EventSequenceNumber.Client.compare(a.seqNum, b.seqNum))
-
-    // Apply changesets in reverse order
-    for (let i = rollbackEvents.length - 1; i >= 0; i--) {
-      const { changeset } = rollbackEvents[i]!
-      if (changeset !== null) {
-        dbState.makeChangeset(changeset).invert().apply()
-      }
-    }
-
-    const eventNumPairChunks = ReadonlyArray.chunksOf(100)(
-      eventNumsToRollback.map((seqNum) => `(${seqNum.global}, ${seqNum.client})`),
-    )
-
-    // Delete the changeset rows
-    for (const eventNumPairChunk of eventNumPairChunks) {
-      dbState.execute(
-        sql`DELETE FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE (seqNumGlobal, seqNumClient) IN (${eventNumPairChunk.join(', ')})`,
-      )
-    }
-
-    // Delete the eventlog rows
-    for (const eventNumPairChunk of eventNumPairChunks) {
-      dbEventlog.execute(
-        sql`DELETE FROM ${SystemTables.EVENTLOG_META_TABLE} WHERE (seqNumGlobal, seqNumClient) IN (${eventNumPairChunk.join(', ')})`,
-      )
-    }
-  }).pipe(
-    Effect.withSpan('@livestore/common:LeaderSyncProcessor:rollback', {
-      attributes: { count: eventNumsToRollback.length },
-    }),
-  )

@@ -24,8 +24,10 @@ import {
 } from '../adapter-types.ts'
 import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
+import * as MaterializationJournal from '../MaterializationJournal.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
+import * as StateHead from '../StateHead.ts'
 import type { SyncBackend, SyncOptions } from '../sync/sync.ts'
 import { SyncState } from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
@@ -157,7 +159,11 @@ export const makeLeaderThreadLayer = ({
       bootStatusQueue,
     })
 
-    const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
+    const materializationLayer = Layer.mergeAll(MaterializationJournal.layer({ dbState }), StateHead.layer({ dbState }))
+
+    const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog }).pipe(
+      Effect.provide(materializationLayer),
+    )
 
     // Recreate state database if needed BEFORE creating sync processor
     // This ensures all system tables exist before any queries are made
@@ -183,7 +189,7 @@ export const makeLeaderThreadLayer = ({
       testing: {
         ...omitUndefineds({ delays: testing?.syncProcessor?.delays }),
       },
-    })
+    }).pipe(Effect.provide(materializationLayer))
 
     const extraIncomingMessagesQueue = yield* Effect.acquireRelease(
       Queue.unbounded<Devtools.Leader.MessageToApp>(),

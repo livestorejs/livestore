@@ -43,14 +43,34 @@ export const schemaEventDefsMetaTable = table({
 
 export type SchemaEventDefsMetaRow = typeof schemaEventDefsMetaTable.Type
 
-/**
- * Table which stores SQLite changeset blobs which is used for rolling back
- * read-model state during rebasing.
- */
-export const SESSION_CHANGESET_META_TABLE = '__livestore_session_changeset'
+export const STATE_HEAD_META_TABLE = '__livestore_state_head'
 
-export const sessionChangesetMetaTable = table({
-  name: SESSION_CHANGESET_META_TABLE,
+/**
+ * Single-row marker for the latest event sequence number reflected by the state DB.
+ */
+export const stateHeadMetaTable = table({
+  name: STATE_HEAD_META_TABLE,
+  columns: {
+    id: SqliteDsl.integer({ primaryKey: true }),
+    seqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.Global.Schema }),
+    seqNumClient: SqliteDsl.integer({ schema: EventSequenceNumber.Client.Schema }),
+    seqNumRebaseGeneration: SqliteDsl.integer({}),
+  },
+})
+
+export type StateHeadMetaRow = typeof stateHeadMetaTable.Type
+
+/**
+ * The physical name remains unchanged to preserve persisted snapshot compatibility.
+ */
+export const MATERIALIZATION_JOURNAL_META_TABLE = '__livestore_session_changeset'
+
+/** @deprecated Use {@link MATERIALIZATION_JOURNAL_META_TABLE}. */
+export const SESSION_CHANGESET_META_TABLE = MATERIALIZATION_JOURNAL_META_TABLE
+
+/** Materialization journal used to roll back state database changes during rebasing. */
+export const materializationJournalMetaTable = table({
+  name: MATERIALIZATION_JOURNAL_META_TABLE,
   columns: {
     // TODO bring back primary key
     seqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.Global.Schema }),
@@ -62,8 +82,19 @@ export const sessionChangesetMetaTable = table({
   indexes: [{ columns: ['seqNumGlobal', 'seqNumClient'], name: 'idx_session_changeset_id' }],
 })
 
-export type SessionChangesetMetaRow = typeof sessionChangesetMetaTable.Type
+/** @deprecated Use {@link materializationJournalMetaTable}. */
+export const sessionChangesetMetaTable = materializationJournalMetaTable
 
-export const stateSystemTables = [schemaMetaTable, schemaEventDefsMetaTable, sessionChangesetMetaTable] as const
+export type MaterializationJournalMetaRow = typeof materializationJournalMetaTable.Type
+
+/** @deprecated Use {@link MaterializationJournalMetaRow}. */
+export type SessionChangesetMetaRow = MaterializationJournalMetaRow
+
+export const stateSystemTables = [
+  schemaMetaTable,
+  schemaEventDefsMetaTable,
+  stateHeadMetaTable,
+  materializationJournalMetaTable,
+] as const
 
 export const isStateSystemTable = (tableName: string) => stateSystemTables.some((_) => _.sqliteDef.name === tableName)

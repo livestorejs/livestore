@@ -6,11 +6,13 @@ Status: open
 
 LS.SYS.RT-R15 requires fast-path-derived head/state to be validated against
 what the leader would report. Today the web fast path reads the persisted
-state DB directly from OPFS and derives `leaderHead` from
-`SESSION_CHANGESET_META_TABLE`, while the leader derives its head from the
-eventlog — two sources that can diverge. The snapshot is trusted without
-validation (code TODO, `adapter-web/src/web-worker/client-session/
-persisted-adapter.ts:237`).
+state DB directly from OPFS and derives `leaderHead` from its dedicated
+`__livestore_state_head` marker (with a legacy materialization-journal
+fallback), while the leader rehydrates sync state from the eventlog. The
+marker now identifies the snapshot independently of rollback-record
+retention, but the two databases can still diverge across a crash boundary.
+The snapshot is trusted without validation (code TODO,
+`adapter-web/src/web-worker/client-session/persisted-adapter.ts`).
 
 ## VRS
 

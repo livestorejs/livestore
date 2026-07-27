@@ -27,11 +27,12 @@ Builds on [../requirements.md](../requirements.md). Code:
   client-only set-events, and implicit materializers; documents can be keyed by
   an explicit id or the current session (`SessionIdSymbol`).
 - **LS.SYS.STATE.SQLITE-R04 System/user separation:** Engine bookkeeping
-  (schema hashes, eventlog meta, sync status, session changesets) lives in
-  dedicated system tables, never in user tables.
+  (schema hashes, eventlog meta, sync status, state head, and materialization
+  journal) lives in dedicated system tables, never in user tables.
 - **LS.SYS.STATE.SQLITE-R06 Rollback via changesets:** Materializations record
-  SQLite session changesets so rebase can roll state back without a full
-  rebuild.
+  SQLite session changesets in a materialization journal so rebase can roll
+  state back without a full rebuild; the state head is persisted separately
+  because journal retention is independent of snapshot identity.
 - **LS.SYS.STATE.SQLITE-R07 Client-document set semantics:** Client-document
   set events carry `{id, value}`; a partial set merges against the current
   value; the value column schema tolerates historical formats. Adopted

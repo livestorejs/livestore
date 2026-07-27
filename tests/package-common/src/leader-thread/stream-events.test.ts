@@ -1,14 +1,14 @@
 import { expect } from 'vitest'
 
 import type { BootStatus } from '@livestore/common'
-import { SyncState } from '@livestore/common'
+import { MaterializationJournal, StateHead, SyncState } from '@livestore/common'
 import { Eventlog, makeMaterializeEvent, recreateDb, streamEventsWithSyncState } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect, Fiber, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
+import { Effect, Fiber, Layer, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
 import { appConfigSetEvent, events as fixtureEvents, schema as fixtureSchema } from './fixture.ts'
@@ -46,7 +46,9 @@ const makeTestEnvironment = Effect.gen(function* () {
   yield* Eventlog.initEventlogDb(dbEventlog)
 
   const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
-  const materializeEvent = yield* makeMaterializeEvent({ schema: fixtureSchema, dbState, dbEventlog })
+  const materializeEvent = yield* makeMaterializeEvent({ schema: fixtureSchema, dbState, dbEventlog }).pipe(
+    Effect.provide(Layer.mergeAll(MaterializationJournal.layer({ dbState }), StateHead.layer({ dbState }))),
+  )
   yield* recreateDb({ dbState, dbEventlog, schema: fixtureSchema, bootStatusQueue, materializeEvent })
   yield* Queue.shutdown(bootStatusQueue)
 

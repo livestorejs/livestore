@@ -2,7 +2,7 @@ import { Effect, Exit, Function, Schema } from '@livestore/utils/effect'
 
 import { type SqliteDb, SqliteError } from './adapter-types.ts'
 import { getResultSchema, isQueryBuilder } from './schema/state/sqlite/query-builder/mod.ts'
-import type { PreparedBindValues } from './util.ts'
+import { type PreparedBindValues, prepareBindValues, sql } from './util.ts'
 
 export const makeExecute = (
   execute: (
@@ -38,6 +38,11 @@ export const makeSelect = <T>(
       return select(queryStrOrQueryBuilder, maybeBindValues)
     }
   }
+}
+
+export const hasTable = (db: SqliteDb, tableName: string) => {
+  const statement = sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = $tableName`
+  return db.select<{ name: string }>(statement, prepareBindValues({ tableName }, statement))[0] !== undefined
 }
 
 /**

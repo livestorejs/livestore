@@ -1,5 +1,5 @@
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Option, Schema } from '@livestore/utils/effect'
+import { Effect, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
 import { migrateTable } from '../schema-management/migrations.ts'
@@ -99,6 +99,19 @@ export const getEventsSince = ({
     })
     .filter((_) => EventSequenceNumber.Client.compare(_.seqNum, since) > 0)
     .toSorted((a, b) => EventSequenceNumber.Client.compare(a.seqNum, b.seqNum))
+}
+
+export const deleteEvents = (dbEventlog: SqliteDb, keys: ReadonlyArray<EventSequenceNumber.Client.Composite>) => {
+  const eventNumChunks = ReadonlyArray.chunksOf(100)(
+    keys.map((key) => `(${key.global}, ${key.client}, ${key.rebaseGeneration})`),
+  )
+
+  for (const eventNumChunk of eventNumChunks) {
+    dbEventlog.execute(
+      sql`DELETE FROM ${EVENTLOG_META_TABLE}
+        WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN (${eventNumChunk.join(', ')})`,
+    )
+  }
 }
 
 export const getEventsFromEventlog = ({
