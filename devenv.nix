@@ -5,14 +5,10 @@
   ...
 }:
 let
-  # Prefer the megarepo-materialized effect-utils checkout when present so the
-  # downstream shell/task CLIs match the exact generator sources imported from
-  # ./repos/effect-utils during CI and local megarepo workflows.
-  effectUtils =
-    if builtins.pathExists ./repos/effect-utils/flake.nix then
-      builtins.getFlake (toString ./repos/effect-utils)
-    else
-      inputs.effect-utils;
+  # Pinned input, not ./repos/effect-utils: `mr:lock-sync-check` already keeps
+  # devenv.lock in step with megarepo.lock, so reading the gitignored checkout
+  # only added a way for a drifted member to break evaluation (#1467).
+  effectUtils = inputs.effect-utils;
   effectUtilsPackages = effectUtils.packages.${pkgs.system};
   effectTsgo = effectUtilsPackages.effect-tsgo;
   taskModules = effectUtils.devenvModules.tasks;
