@@ -29,6 +29,8 @@ let
         "./src/content/**/*.mdx" \
         "./src/content/**/*.md" \
         --yes --strategy fast
+  '';
+
   tofu = "${pkgs.opentofu}/bin/tofu";
   jq = "${pkgs.jq}/bin/jq";
 
