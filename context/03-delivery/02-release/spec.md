@@ -109,10 +109,17 @@ those secrets are still accepted. Two generated workflows derive from it:
 | `release.yml` production deploy steps | the `env:` block passing secrets to the devenv task |
 | `health-release-credentials.yml` | the weekly liveness probe per surface |
 
-Sharing the declaration is what makes the two consistent. A secret referenced by
-a release step but never defined — the failure behind
-[#1284](https://github.com/livestorejs/livestore/issues/1284) — is not detected
-at runtime here, it is unrepresentable: there is one name, used in both places.
+Sharing the declaration is what keeps the two consistent: the release step and
+the probe cannot disagree about which secrets a surface needs, because there is
+one name used in both places.
+
+It does not make a wrong name impossible. A typo in the declaration propagates
+to both consumers, exactly as in
+[#1284](https://github.com/livestorejs/livestore/issues/1284) (`release.yml`
+referenced `MXBAI_VECTOR_STORE_ID_PROD`, which never existed). What changes is
+when it surfaces: a secret that does not exist arrives as an empty value, which
+trips the probe's `:?` guard on the next weekly run, rather than staying hidden
+until a release reaches that deploy step.
 
 The health check is deliberately narrow. `validate-release-plan` already
 exercises release *code* on every PR in the real Nix environment; what it cannot
