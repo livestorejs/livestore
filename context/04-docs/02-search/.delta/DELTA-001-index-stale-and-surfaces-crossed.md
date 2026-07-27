@@ -35,8 +35,9 @@ is the invariant the split was meant to establish.
 
 ## VRS
 
-[../requirements.md](../requirements.md) `LS.DOCS.SEARCH-R01`. The requirement
-is kept at the target; the failure is in the implementation, not the intent.
+[../requirements.md](../requirements.md) `LS.DOCS.SEARCH-R01` (freshness) and
+`LS.DOCS.SEARCH-R03` (each surface searches its own content). Both are kept at
+the target; the failure is in the implementation, not the intent.
 Related: the underlying provider configuration is undeclared, tracked as
 [../../../03-delivery/04-infrastructure/.delta/DELTA-002-infrastructure-largely-undeclared.md](../../../03-delivery/04-infrastructure/.delta/DELTA-002-infrastructure-largely-undeclared.md).
 

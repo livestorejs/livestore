@@ -46,6 +46,12 @@ Netlify environment variables are declared; the gap is tracked in
 - **LS.DEL.INFRA-R05 Organization-owned accounts:** Provider accounts are owned
   by the `livestorejs` organization, not by an individual's personal account.
   Adopted 2026-07-27 (interview).
+- **LS.DEL.INFRA-R06 Credentials use the provider's secret mechanism:** A
+  credential held in a provider surface is stored using that provider's secret
+  facility, never as ordinary configuration. Providers expose plain
+  configuration in build logs, previews, and read APIs, and a credential stored
+  that way is also unsafe to adopt into declared state.
+  `refines: LS.DEL.INFRA-R03` Adopted 2026-07-27 (interview).
 
 ## Open Design Questions
 
