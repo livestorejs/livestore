@@ -212,7 +212,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       schema,
       clientSession,
       materializeEvent: Effect.fn('client-session-sync-processor:materialize-event')(
-        (eventEncoded, { withChangeset, materializerHashLeader }) =>
+        (eventEncoded, { materializerHashLeader }) =>
           // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
           Effect.gen({ self: this }, function* () {
             const resolution = yield* resolveEventDef(schema, {
@@ -287,15 +287,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               }
             }
 
-            let sessionChangeset:
-              | { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any }
-              | { _tag: 'no-op' }
-              | { _tag: 'unset' } = { _tag: 'unset' }
-            if (withChangeset === true) {
-              sessionChangeset = this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset
-            } else {
-              exec()
-            }
+            const sessionChangeset = this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset
 
             return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
           }).pipe(Effect.mapError((cause) => MaterializeError.make({ cause }))),
