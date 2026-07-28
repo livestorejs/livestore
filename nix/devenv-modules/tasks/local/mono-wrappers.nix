@@ -604,11 +604,15 @@ in
     };
 
     "lint:full" = {
-      description = "Run full lint checks (lint:check + madge + markdown import guard)";
+      description = "Run full lint checks (lint:check + madge + markdown import guard + quarantine ledger)";
       after = [
         "lint:check"
         "lint:check:madge"
         "lint:check:md-imports"
+        # Expiry is only a real gate if it runs on every PR. CI invokes
+        # `lint:full:with-megarepo-check`, never `check:quick`/`check:all`, so hanging the
+        # ledger check off `check` alone would let an expired quarantine stay green forever.
+        "quarantine:check"
       ];
     };
 
