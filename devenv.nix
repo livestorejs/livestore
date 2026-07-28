@@ -344,8 +344,8 @@ in
       extraDirs = [ ".astro" ];
     })
     # Lint tasks via lint-oxc plus local aggregate wrappers.
-    # Nix linting: nixfmt + deadnix, plus lint:nix:workflow-commands, which fails when a task
-    # definition writes a GitHub workflow command to stdout (devenv discards it there).
+    # nixfmt formatting and deadnix dead-code checks over this repo's tracked `.nix` files.
+    # Gated through `extraChecks` above rather than run standalone.
     (taskModules.lint-nix { })
     (taskModules.lint-oxc {
       lintPaths = [
