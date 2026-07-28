@@ -99,200 +99,200 @@ let
   '';
 
   devtoolsArtifactCertifyLivenessExec = ''
-    set -euo pipefail
-    cd "$DEVENV_ROOT"
+        set -euo pipefail
+        cd "$DEVENV_ROOT"
 
-    : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
+        : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
 
-    out_dir="''${LIVESTORE_DEVTOOLS_OUT_DIR:-$(mktemp -d)}"
-    mkdir -p "$out_dir"
-    export LIVESTORE_DEVTOOLS_OUT_DIR="$out_dir"
+        out_dir="''${LIVESTORE_DEVTOOLS_OUT_DIR:-$(mktemp -d)}"
+        mkdir -p "$out_dir"
+        export LIVESTORE_DEVTOOLS_OUT_DIR="$out_dir"
 
-    export LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK=1
-    ${devtoolsArtifactRepackExec "--dry-run"}
-    unset LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK
+        export LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK=1
+        ${devtoolsArtifactRepackExec "--dry-run"}
+        unset LIVESTORE_DEVTOOLS_ALLOW_UNCERTIFIED_REPACK
 
-    repacked_tarball="$out_dir/livestore-devtools-vite-$LIVESTORE_RELEASE_VERSION.tgz"
-    if [ ! -f "$repacked_tarball" ]; then
-      echo "Expected repacked DevTools tarball not found: $repacked_tarball" >&2
-      exit 1
-    fi
-
-    backup_dir="$(mktemp -d)"
-    package_links=(
-      "tests/integration/node_modules/@livestore/devtools-vite"
-    )
-
-    for index in "''${!package_links[@]}"; do
-      package_link="''${package_links[$index]}"
-      if [ ! -e "$package_link" ]; then
-        echo "Expected installed @livestore/devtools-vite package link not found: $package_link" >&2
-        exit 1
-      fi
-      cp -a "$package_link" "$backup_dir/devtools-vite-$index"
-    done
-
-    restore_node_modules() {
-      for index in "''${!package_links[@]}"; do
-        package_link="''${package_links[$index]}"
-        rm -rf "$package_link"
-        cp -a "$backup_dir/devtools-vite-$index" "$package_link"
-      done
-      rm -rf "$backup_dir"
-    }
-
-    dev_server_pid=""
-    dev_server_log=""
-    stop_dev_server() {
-      if [ -n "$dev_server_pid" ]; then
-        kill "$dev_server_pid" 2>/dev/null || true
-        wait "$dev_server_pid" 2>/dev/null || true
-      fi
-      if [ -n "$dev_server_log" ]; then
-        rm -f "$dev_server_log"
-      fi
-    }
-    cleanup_certification() {
-      stop_dev_server
-      restore_node_modules
-    }
-    trap cleanup_certification EXIT
-
-    unpack_dir="$(mktemp -d)"
-    tar -xzf "$repacked_tarball" -C "$unpack_dir"
-    hydrate_devtools_package() {
-      package_dir="$1"
-      installed_devtools_package="$(readlink -f tests/integration/node_modules/@livestore/devtools-vite)"
-      mkdir -p "$package_dir/node_modules/@livestore"
-
-      dependencies=(
-        "@livestore/adapter-web"
-        "@livestore/utils"
-        "vite"
-      )
-
-      for dependency in "''${dependencies[@]}"; do
-        source_path="tests/integration/node_modules/$dependency"
-        target_path="$package_dir/node_modules/$dependency"
-        if [ ! -e "$source_path" ]; then
-          echo "Expected installed dependency for exact DevTools artifact not found: $source_path" >&2
+        repacked_tarball="$out_dir/livestore-devtools-vite-$LIVESTORE_RELEASE_VERSION.tgz"
+        if [ ! -f "$repacked_tarball" ]; then
+          echo "Expected repacked DevTools tarball not found: $repacked_tarball" >&2
           exit 1
         fi
-        rm -rf "$target_path"
-        mkdir -p "$(dirname "$target_path")"
-        ln -s "$(readlink -f "$source_path")" "$target_path"
-      done
 
-      parcel_watcher_path="$(
-        bun --eval '
-          const { createRequire } = require("node:module")
-          const path = require("node:path")
-          const requireFromDevtools = createRequire(path.resolve(process.argv[1], "package.json"))
-          console.log(path.dirname(requireFromDevtools.resolve("@parcel/watcher/package.json")))
-        ' "$installed_devtools_package"
-      )"
-      parcel_watcher_target="$package_dir/node_modules/@parcel/watcher"
-      rm -rf "$parcel_watcher_target"
-      mkdir -p "$(dirname "$parcel_watcher_target")"
-      cp -a "$parcel_watcher_path" "$parcel_watcher_target"
+        backup_dir="$(mktemp -d)"
+        package_links=(
+          "tests/integration/node_modules/@livestore/devtools-vite"
+        )
 
-      parcel_watcher_platform_packages="$(
-        bun --eval '
-          const { createRequire } = require("node:module")
-          const path = require("node:path")
-          const watcherPackageJson = path.resolve(process.argv[1], "package.json")
-          const requireFromWatcher = createRequire(watcherPackageJson)
-          for (const dependency of Object.keys(require(watcherPackageJson).optionalDependencies ?? {})) {
-            try {
-              console.log(dependency + "\t" + path.dirname(requireFromWatcher.resolve(dependency + "/package.json")))
-            } catch {}
-          }
-        ' "$parcel_watcher_path"
-      )"
-      mkdir -p "$package_dir/node_modules/@parcel"
-      while IFS="$(printf '\t')" read -r dependency dependency_path; do
-        if [ -z "$dependency" ] || [ -z "$dependency_path" ]; then
-          continue
+        for index in "''${!package_links[@]}"; do
+          package_link="''${package_links[$index]}"
+          if [ ! -e "$package_link" ]; then
+            echo "Expected installed @livestore/devtools-vite package link not found: $package_link" >&2
+            exit 1
+          fi
+          cp -a "$package_link" "$backup_dir/devtools-vite-$index"
+        done
+
+        restore_node_modules() {
+          for index in "''${!package_links[@]}"; do
+            package_link="''${package_links[$index]}"
+            rm -rf "$package_link"
+            cp -a "$backup_dir/devtools-vite-$index" "$package_link"
+          done
+          rm -rf "$backup_dir"
+        }
+
+        dev_server_pid=""
+        dev_server_log=""
+        stop_dev_server() {
+          if [ -n "$dev_server_pid" ]; then
+            kill "$dev_server_pid" 2>/dev/null || true
+            wait "$dev_server_pid" 2>/dev/null || true
+          fi
+          if [ -n "$dev_server_log" ]; then
+            rm -f "$dev_server_log"
+          fi
+        }
+        cleanup_certification() {
+          stop_dev_server
+          restore_node_modules
+        }
+        trap cleanup_certification EXIT
+
+        unpack_dir="$(mktemp -d)"
+        tar -xzf "$repacked_tarball" -C "$unpack_dir"
+        hydrate_devtools_package() {
+          package_dir="$1"
+          installed_devtools_package="$(readlink -f tests/integration/node_modules/@livestore/devtools-vite)"
+          mkdir -p "$package_dir/node_modules/@livestore"
+
+          dependencies=(
+            "@livestore/adapter-web"
+            "@livestore/utils"
+            "vite"
+          )
+
+          for dependency in "''${dependencies[@]}"; do
+            source_path="tests/integration/node_modules/$dependency"
+            target_path="$package_dir/node_modules/$dependency"
+            if [ ! -e "$source_path" ]; then
+              echo "Expected installed dependency for exact DevTools artifact not found: $source_path" >&2
+              exit 1
+            fi
+            rm -rf "$target_path"
+            mkdir -p "$(dirname "$target_path")"
+            ln -s "$(readlink -f "$source_path")" "$target_path"
+          done
+
+          parcel_watcher_path="$(
+            bun --eval '
+              const { createRequire } = require("node:module")
+              const path = require("node:path")
+              const requireFromDevtools = createRequire(path.resolve(process.argv[1], "package.json"))
+              console.log(path.dirname(requireFromDevtools.resolve("@parcel/watcher/package.json")))
+            ' "$installed_devtools_package"
+          )"
+          parcel_watcher_target="$package_dir/node_modules/@parcel/watcher"
+          rm -rf "$parcel_watcher_target"
+          mkdir -p "$(dirname "$parcel_watcher_target")"
+          cp -a "$parcel_watcher_path" "$parcel_watcher_target"
+
+          parcel_watcher_platform_packages="$(
+            bun --eval '
+              const { createRequire } = require("node:module")
+              const path = require("node:path")
+              const watcherPackageJson = path.resolve(process.argv[1], "package.json")
+              const requireFromWatcher = createRequire(watcherPackageJson)
+              for (const dependency of Object.keys(require(watcherPackageJson).optionalDependencies ?? {})) {
+                try {
+                  console.log(dependency + "\t" + path.dirname(requireFromWatcher.resolve(dependency + "/package.json")))
+                } catch {}
+              }
+            ' "$parcel_watcher_path"
+          )"
+          mkdir -p "$package_dir/node_modules/@parcel"
+          while IFS="$(printf '\t')" read -r dependency dependency_path; do
+            if [ -z "$dependency" ] || [ -z "$dependency_path" ]; then
+              continue
+            fi
+            platform_target="$package_dir/node_modules/$dependency"
+            rm -rf "$platform_target"
+            mkdir -p "$(dirname "$platform_target")"
+            ln -s "$dependency_path" "$platform_target"
+          done <<EOF
+    $parcel_watcher_platform_packages
+    EOF
+        }
+        hydrate_devtools_package "$unpack_dir/package"
+        for package_link in "''${package_links[@]}"; do
+          rm -rf "$package_link"
+          cp -a "$unpack_dir/package" "$package_link"
+        done
+        rm -rf "$unpack_dir"
+
+        for package_link in "''${package_links[@]}"; do
+          package_version="$(bun -e "console.log(require('./$package_link/package.json').version)")"
+          if [ "$package_version" != "$LIVESTORE_RELEASE_VERSION" ]; then
+            echo "Expected $package_link to contain exact DevTools artifact version $LIVESTORE_RELEASE_VERSION, found $package_version" >&2
+            exit 1
+          fi
+        done
+
+        (
+          cd tests/integration
+          dev_server_port="''${LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT:-4444}"
+          dev_server_log="$(mktemp)"
+          TEST_LIVESTORE_SCHEMA_PATH_JSON='"./devtools/todomvc/livestore/schema.ts"' \
+            LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
+            VITE_OTEL_EXPORTER_OTLP_ENDPOINT= \
+            ./node_modules/.bin/vite \
+              --config src/tests/playwright/fixtures/vite.config.ts \
+              dev \
+              --port "$dev_server_port" \
+              --strictPort \
+              >"$dev_server_log" 2>&1 &
+          dev_server_pid="$!"
+          trap stop_dev_server EXIT
+
+          if ! LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT="$dev_server_port" \
+            LIVESTORE_DEV_SERVER_PID="$dev_server_pid" \
+            bun --eval '
+              const port = process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT ?? "4444"
+              const pid = Number(process.env.LIVESTORE_DEV_SERVER_PID ?? "0")
+              const deadline = Date.now() + 60_000
+              const paths = ["/devtools/todomvc", "/_livestore/web"]
+              while (Date.now() < deadline) {
+                try {
+                  if (pid > 0) process.kill(pid, 0)
+                } catch {
+                  throw new Error("Vite dev server exited before accepting connections")
+                }
+                try {
+                  const responses = await Promise.all(paths.map((path) => fetch("http://localhost:" + port + path)))
+                  if (responses.every((response) => response.status < 500)) process.exit(0)
+                } catch {}
+                await new Promise((resolve) => setTimeout(resolve, 250))
+              }
+              throw new Error("Timed out waiting for exact DevTools artifact routes on localhost:" + port)
+            '; then
+            echo "Vite dev server log:" >&2
+            sed -n '1,200p' "$dev_server_log" >&2
+            exit 1
+          fi
+        )
+
+        certification_path="''${LIVESTORE_DEVTOOLS_CERTIFICATION:-release/devtools-artifact.certification.json}"
+        evidence="DevTools exact-artifact Vite route liveness passed for $LIVESTORE_RELEASE_VERSION"
+        if [[ -n "''${GITHUB_SERVER_URL:-}" && -n "''${GITHUB_REPOSITORY:-}" && -n "''${GITHUB_RUN_ID:-}" ]]; then
+          evidence="$evidence in $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
         fi
-        platform_target="$package_dir/node_modules/$dependency"
-        rm -rf "$platform_target"
-        mkdir -p "$(dirname "$platform_target")"
-        ln -s "$dependency_path" "$platform_target"
-      done <<EOF
-$parcel_watcher_platform_packages
-EOF
-    }
-    hydrate_devtools_package "$unpack_dir/package"
-    for package_link in "''${package_links[@]}"; do
-      rm -rf "$package_link"
-      cp -a "$unpack_dir/package" "$package_link"
-    done
-    rm -rf "$unpack_dir"
-
-    for package_link in "''${package_links[@]}"; do
-      package_version="$(bun -e "console.log(require('./$package_link/package.json').version)")"
-      if [ "$package_version" != "$LIVESTORE_RELEASE_VERSION" ]; then
-        echo "Expected $package_link to contain exact DevTools artifact version $LIVESTORE_RELEASE_VERSION, found $package_version" >&2
-        exit 1
-      fi
-    done
-
-    (
-      cd tests/integration
-      dev_server_port="''${LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT:-4444}"
-      dev_server_log="$(mktemp)"
-      TEST_LIVESTORE_SCHEMA_PATH_JSON='"./devtools/todomvc/livestore/schema.ts"' \
-        LIVESTORE_DEVTOOLS_ENFORCE_LICENSE=false \
-        VITE_OTEL_EXPORTER_OTLP_ENDPOINT= \
-        ./node_modules/.bin/vite \
-          --config src/tests/playwright/fixtures/vite.config.ts \
-          dev \
-          --port "$dev_server_port" \
-          --strictPort \
-          >"$dev_server_log" 2>&1 &
-      dev_server_pid="$!"
-      trap stop_dev_server EXIT
-
-      if ! LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT="$dev_server_port" \
-        LIVESTORE_DEV_SERVER_PID="$dev_server_pid" \
-        bun --eval '
-          const port = process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT ?? "4444"
-          const pid = Number(process.env.LIVESTORE_DEV_SERVER_PID ?? "0")
-          const deadline = Date.now() + 60_000
-          const paths = ["/devtools/todomvc", "/_livestore/web"]
-          while (Date.now() < deadline) {
-            try {
-              if (pid > 0) process.kill(pid, 0)
-            } catch {
-              throw new Error("Vite dev server exited before accepting connections")
-            }
-            try {
-              const responses = await Promise.all(paths.map((path) => fetch("http://localhost:" + port + path)))
-              if (responses.every((response) => response.status < 500)) process.exit(0)
-            } catch {}
-            await new Promise((resolve) => setTimeout(resolve, 250))
-          }
-          throw new Error("Timed out waiting for exact DevTools artifact routes on localhost:" + port)
-        '; then
-        echo "Vite dev server log:" >&2
-        sed -n '1,200p' "$dev_server_log" >&2
-        exit 1
-      fi
-    )
-
-    certification_path="''${LIVESTORE_DEVTOOLS_CERTIFICATION:-release/devtools-artifact.certification.json}"
-    evidence="DevTools exact-artifact Vite route liveness passed for $LIVESTORE_RELEASE_VERSION"
-    if [[ -n "''${GITHUB_SERVER_URL:-}" && -n "''${GITHUB_REPOSITORY:-}" && -n "''${GITHUB_RUN_ID:-}" ]]; then
-      evidence="$evidence in $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-    fi
-    bun scripts/src/commands/devtools-artifact.ts certify \
-      --manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}" \
-      --version "$LIVESTORE_RELEASE_VERSION" \
-      --out "$certification_path" \
-      --evidence "$evidence"
-    if [[ -n "''${GITHUB_ENV:-}" ]]; then
-      echo "LIVESTORE_DEVTOOLS_CERTIFICATION=$certification_path" >> "$GITHUB_ENV"
-    fi
+        bun scripts/src/commands/devtools-artifact.ts certify \
+          --manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}" \
+          --version "$LIVESTORE_RELEASE_VERSION" \
+          --out "$certification_path" \
+          --evidence "$evidence"
+        if [[ -n "''${GITHUB_ENV:-}" ]]; then
+          echo "LIVESTORE_DEVTOOLS_CERTIFICATION=$certification_path" >> "$GITHUB_ENV"
+        fi
   '';
 
   devtoolsArtifactRepackTask =
@@ -331,13 +331,22 @@ in
     })
     (taskModules.check {
       hasTests = false;
+      # `hasNixCheck` gates the nix-cli build tasks (nix:check:quick / nix:flake:check), which
+      # this repo does not use. Nix *linting* is separate and wired in via extraChecks below.
       hasNixCheck = false;
+      extraChecks = [
+        "lint:nix"
+        "quarantine:check"
+      ];
     })
     (taskModules.clean {
       packages = pnpmPackages;
       extraDirs = [ ".astro" ];
     })
     # Lint tasks via lint-oxc plus local aggregate wrappers.
+    # nixfmt formatting and deadnix dead-code checks over this repo's tracked `.nix` files.
+    # Gated through `extraChecks` above rather than run standalone.
+    (taskModules.lint-nix { })
     (taskModules.lint-oxc {
       lintPaths = [
         "packages"
@@ -391,6 +400,7 @@ in
     # Local task: mono command wrappers for uniform dt interface
     ./nix/devenv-modules/tasks/local/mono-wrappers.nix
     ./nix/devenv-modules/tasks/local/github-rulesets.nix
+    ./nix/devenv-modules/tasks/local/quarantine.nix
   ];
 
   # Non-`.genie.ts` generator inputs (source-of-truth modules that the `.genie.ts`
@@ -401,6 +411,9 @@ in
   # by the module; the glob overlap with genie/**/*.genie.ts is harmless.
   effectUtils.genie.extraInputGlobs = [
     ":(glob)genie/**/*.ts"
+    # The quarantine ledger lives under scripts/ (it is imported by runtime code, so it must
+    # sit inside that project's rootDir) while still being a generator input.
+    ":(glob)scripts/src/shared/quarantine-ledger.ts"
   ];
 
   packages = [
@@ -412,6 +425,9 @@ in
   ]
   ++ [
     effectUtilsPackages.genie
+    # `mono test` shells out to `ci-tools quarantine announce` when a target's failure is
+    # tolerated, and `quarantine:check` validates the ledger.
+    effectUtilsPackages.ci-tools
     effectUtils.packages.${pkgs.system}.megarepo
     pkgs.jq
     pkgs.unzip

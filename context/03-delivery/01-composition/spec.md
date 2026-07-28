@@ -43,31 +43,31 @@ bump core's unpinned contrib reference. This satisfies LS.DEL.COMP-R04–R06.
 
 ## Package Ownership
 
-| Package               | Owner   | Reason                                                    |
-| --------------------- | ------- | --------------------------------------------------------- |
-| `livestore`           | core    | Engine root                                               |
-| `common`              | core    | Engine internals                                          |
-| `common-cf`           | core    | Cloudflare engine internals                               |
-| `utils`               | core    | Shared utility surface                                    |
-| `utils-dev`           | core    | Shared test infrastructure                                |
-| `peer-deps`           | core    | Catalog management                                        |
-| `react`               | core    | Primary framework integration                             |
-| `adapter-web`         | core    | Primary browser adapter                                   |
-| `adapter-cloudflare`  | core    | Primary production adapter                                |
-| `sync-cf`             | core    | Primary sync provider                                     |
-| `sqlite-wasm`         | core    | SQLite browser surface                                    |
-| `wa-sqlite`           | core    | Vendored SQLite                                           |
-| `webmesh`             | core    | Cross-worker mesh primitive                               |
-| `framework-toolkit`   | core    | Shared primitive imported by React and contrib frameworks |
-| `svelte`              | contrib | Framework integration                                     |
-| `solid`               | contrib | Framework integration                                     |
-| `adapter-node`        | contrib | Node platform adapter                                     |
-| `adapter-expo`        | contrib | Expo platform adapter                                     |
-| `devtools-expo`       | contrib | Expo devtools surface                                     |
-| `sync-electric`       | contrib | Additional sync provider                                  |
-| `sync-s2`             | contrib | Additional sync provider                                  |
-| `graphql`             | contrib | Optional integration                                      |
-| `cli`                 | contrib | Scaffolding and MCP server                                |
+| Package              | Owner   | Reason                                                    |
+| -------------------- | ------- | --------------------------------------------------------- |
+| `livestore`          | core    | Engine root                                               |
+| `common`             | core    | Engine internals                                          |
+| `common-cf`          | core    | Cloudflare engine internals                               |
+| `utils`              | core    | Shared utility surface                                    |
+| `utils-dev`          | core    | Shared test infrastructure                                |
+| `peer-deps`          | core    | Catalog management                                        |
+| `react`              | core    | Primary framework integration                             |
+| `adapter-web`        | core    | Primary browser adapter                                   |
+| `adapter-cloudflare` | core    | Primary production adapter                                |
+| `sync-cf`            | core    | Primary sync provider                                     |
+| `sqlite-wasm`        | core    | SQLite browser surface                                    |
+| `wa-sqlite`          | core    | Vendored SQLite                                           |
+| `webmesh`            | core    | Cross-worker mesh primitive                               |
+| `framework-toolkit`  | core    | Shared primitive imported by React and contrib frameworks |
+| `svelte`             | contrib | Framework integration                                     |
+| `solid`              | contrib | Framework integration                                     |
+| `adapter-node`       | contrib | Node platform adapter                                     |
+| `adapter-expo`       | contrib | Expo platform adapter                                     |
+| `devtools-expo`      | contrib | Expo devtools surface                                     |
+| `sync-electric`      | contrib | Additional sync provider                                  |
+| `sync-s2`            | contrib | Additional sync provider                                  |
+| `graphql`            | contrib | Optional integration                                      |
+| `cli`                | contrib | Scaffolding and MCP server                                |
 
 `@livestore/effect-playwright` is not part of either repository's final
 LiveStore package set; it belongs in `overengineeringstudio/effect-utils`.
@@ -117,6 +117,21 @@ host-user pnpm Store Cache defined by effect-utils' storage authority.
 Publish-time rewriting of `workspace:*` to exact versions is
 [../02-release/](../02-release/spec.md)'s contract.
 
+## Shared Tooling Consumption
+
+Core consumes effect-utils through two channels, and which one a mechanism uses
+is a contract, not a convenience (LS.DEL.COMP-R19, [decision 0001](./.decisions/0001-shared-tooling-consumption-channel.md)):
+
+| Channel          | Reaches core via                               | Examples                                                   |
+| ---------------- | ---------------------------------------------- | ---------------------------------------------------------- |
+| Nix-built binary | `inputs.effect-utils`, pinned by `devenv.lock` | `genie`, `effect-tsgo`, `megarepo`, `ci-tools`             |
+| Genie helper     | `#mr/effect-utils/...`, Genie's own resolver   | `oxlint-base`, `oxfmt-base`, `ci-workflow`, `jsonArtifact` |
+
+Core has no npm dependency on `@overeng/*`. A `repos/effect-utils/...` entry in
+`pnpm-workspace.yaml` would make `pnpm install` require `mr apply`, which is why
+a fresh clone installs and tests without materialization while regeneration
+still needs it.
+
 ## Tooling Composition
 
 Contrib's generated files are composed from the same helper stack as core,
@@ -124,15 +139,15 @@ but contrib owns its package and example membership locally. Core exports
 core package metadata and reusable generator helpers; it does not carry the
 final contrib package manifest.
 
-| Surface           | Source of truth                                                        |
-| ----------------- | ---------------------------------------------------------------------- |
-| devenv            | effect-utils modules, imported by contrib                              |
-| pnpm workspace    | contrib-local package/example manifest plus core/effect-utils helpers  |
-| package manifests | contrib-local package manifest plus core/effect-utils helpers          |
-| tsconfig          | contrib-local workspace shape plus core/effect-utils helpers           |
-| oxlint/oxfmt      | effect-utils base config plus contrib-local ignores                    |
-| labels/settings   | effect-utils catalog plus contrib-local labels                         |
-| CI workflow       | effect-utils workflow builders plus core re-exported setup atoms       |
+| Surface           | Source of truth                                                       |
+| ----------------- | --------------------------------------------------------------------- |
+| devenv            | effect-utils modules, imported by contrib                             |
+| pnpm workspace    | contrib-local package/example manifest plus core/effect-utils helpers |
+| package manifests | contrib-local package manifest plus core/effect-utils helpers         |
+| tsconfig          | contrib-local workspace shape plus core/effect-utils helpers          |
+| oxlint/oxfmt      | effect-utils base config plus contrib-local ignores                   |
+| labels/settings   | effect-utils catalog plus contrib-local labels                        |
+| CI workflow       | effect-utils workflow builders plus core re-exported setup atoms      |
 
 Contrib's `genie/repo.ts` imports core helpers by relative path:
 
@@ -193,13 +208,13 @@ package-specific docs into contrib without changing the public docs URL.
 
 ## Issue And Pull-Request Routing
 
-| Concern                                                                  | Repository                                                           |
-| ------------------------------------------------------------------------ | -------------------------------------------------------------------- |
-| Core engine, React, web adapter, Cloudflare adapter, Cloudflare sync     | `livestorejs/livestore`                                              |
-| Svelte, Solid, Node, Expo, Electric, S2, GraphQL, CLI, contrib devtools  | `livestorejs/livestore-contrib`                                      |
-| Docs site infrastructure                                                 | `livestorejs/livestore`                                              |
-| Package-specific docs content                                            | owning package repository once docs source ownership is implemented  |
-| Cross-repo release/version coordination                                  | `livestorejs/livestore` coordination issue                           |
+| Concern                                                                 | Repository                                                          |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Core engine, React, web adapter, Cloudflare adapter, Cloudflare sync    | `livestorejs/livestore`                                             |
+| Svelte, Solid, Node, Expo, Electric, S2, GraphQL, CLI, contrib devtools | `livestorejs/livestore-contrib`                                     |
+| Docs site infrastructure                                                | `livestorejs/livestore`                                             |
+| Package-specific docs content                                           | owning package repository once docs source ownership is implemented |
+| Cross-repo release/version coordination                                 | `livestorejs/livestore` coordination issue                          |
 
 The package ownership table is the routing source of truth
 (LS.DEL.COMP-R03).

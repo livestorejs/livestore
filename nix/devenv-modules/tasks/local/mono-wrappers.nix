@@ -604,11 +604,18 @@ in
     };
 
     "lint:full" = {
-      description = "Run full lint checks (lint:check + madge + markdown import guard)";
+      description = "Run full lint checks (lint:check + madge + markdown imports + nix + quarantine ledger)";
+      # CI invokes `lint:full:with-megarepo-check` and never `check:quick`/`check:all`, so a
+      # check reachable only through the `check` aggregate does not actually gate anything.
+      # Both entries below are here for that reason, not just for grouping.
       after = [
         "lint:check"
         "lint:check:madge"
         "lint:check:md-imports"
+        # nixfmt + deadnix. Without this the repo's Nix formatting has no CI gate.
+        "lint:nix"
+        # An expired quarantine would otherwise stay green indefinitely.
+        "quarantine:check"
       ];
     };
 
@@ -622,10 +629,16 @@ in
 
     "lint:full:fix" = {
       description = "Fix lint issues, then run full lint checks";
+      # CONTRIBUTING/CLAUDE.md point contributors at this task before committing, so it has to
+      # cover what `lint:full` gates in CI — otherwise the documented pre-commit command passes
+      # while CI fails. Nix formatting gets the fixing variant; the rest are check-only.
       after = [
         "lint:fix"
         "lint:check:madge"
         "lint:check:md-imports"
+        "lint:nix:fix:format"
+        "lint:nix:deadcode"
+        "quarantine:check"
       ];
     };
   };
