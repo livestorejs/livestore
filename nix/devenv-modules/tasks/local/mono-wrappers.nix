@@ -30,6 +30,44 @@ let
         "./src/content/**/*.md" \
         --yes --strategy fast
   '';
+
+  tofu = "${pkgs.opentofu}/bin/tofu";
+  jq = "${pkgs.jq}/bin/jq";
+  curl = "${pkgs.curl}/bin/curl";
+
+  # Shared preamble for the Netlify IaC tasks (.infra/iac/netlify).
+  #
+  # Injects the three runtime inputs OpenTofu needs as TF_VAR_* env vars,
+  # preferring an already-set env var (so CI can pass them directly) and falling
+  # back to the canonical source:
+  #   - netlify_api_token: existing Netlify CLI login (~/.config/netlify/config.json)
+  #   - state_encryption_passphrase + mxbai_api_key: 1Password via op-proxy
+  # Then runs `tofu init` against the encrypted local backend.
+  netlifyIacPreamble = ''
+    set -euo pipefail
+    cd "$DEVENV_ROOT/.infra/iac/netlify"
+
+    if [ -z "''${TF_VAR_netlify_api_token:-}" ]; then
+      if [ -n "''${NETLIFY_AUTH_TOKEN:-}" ]; then
+        export TF_VAR_netlify_api_token="$NETLIFY_AUTH_TOKEN"
+      else
+        export TF_VAR_netlify_api_token="$(${jq} -r '.users | to_entries[0].value.auth.token' "$HOME/.config/netlify/config.json")"
+      fi
+    fi
+
+    if [ -z "''${TF_VAR_state_encryption_passphrase:-}" ]; then
+      # Item: LiveStore vault / "livestore-tofu-state-encryption" / password.
+      # Addressed by vault+item id (the name-based op:// path resolves unreliably
+      # through op-proxy for this item).
+      export TF_VAR_state_encryption_passphrase="$(op-proxy read 'op://lyqreoqpojah7krktywucyjh5y/7daew6uco4ao4lpdrjpvutvjoi/password' --reason 'livestore netlify IaC state encryption' --cache 1d)"
+    fi
+
+    if [ -z "''${TF_VAR_mxbai_api_key:-}" ]; then
+      export TF_VAR_mxbai_api_key="$(op-proxy read 'op://ialr3ed3depgv523r3bqojsyjq/6lpbvcuq6mdasuheabe3ms7rdm/djua6eaktvatttoxnu6e6qsqai' --reason 'livestore netlify IaC mxbai key' --cache 1d)"
+    fi
+
+    ${tofu} init -input=false >/dev/null
+  '';
 in
 {
   tasks = {
@@ -393,6 +431,85 @@ in
         ${pnpm} --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build
       '';
       after = [ "examples:install" ];
+    };
+
+    # =========================================================================
+    # Infra (Infrastructure as Code — .infra/iac/)
+    #
+    # OpenTofu-managed desired state for LiveStore's public infrastructure.
+    # Currently owns the two runtime env vars on the `livestore-docs` Netlify
+    # site (MXBAI_API_KEY, MXBAI_VECTOR_STORE_ID). State is committed encrypted
+    # (OpenTofu native state encryption); secrets are injected at runtime via
+    # op-proxy/1Password (or env vars in CI). Seeds livestorejs/livestore#1244.
+    # See .infra/iac/netlify/README.md.
+    # =========================================================================
+
+    "infra:netlify:plan" = {
+      description = "Plan the livestore-docs Netlify env-var IaC (read-only; never applies)";
+      exec = ''
+        ${netlifyIacPreamble}
+        ${tofu} plan -input=false
+      '';
+    };
+
+    # Same plan, but drift is a failure rather than a report. A declaration
+    # nobody checks is documentation, so CI runs this on a schedule: any change
+    # made to these env vars outside the config turns the job red.
+    #
+    # `plan` alone is not sufficient for the secret variable. Its resource
+    # carries `ignore_changes = [secret_values]`, which suppresses the whole
+    # collection — not just the write-only values but the context entries too.
+    # An operator dropping the `production` context would break docs search on
+    # the next build while `plan` still reported clean, so the shape is asserted
+    # directly against the API afterwards.
+    "infra:netlify:drift-check" = {
+      description = "Fail if live Netlify state has drifted from the declared state";
+      exec = ''
+        ${netlifyIacPreamble}
+        ${tofu} plan -input=false -detailed-exitcode
+
+        expected_scopes="builds functions runtime"
+        expected_contexts="branch-deploy deploy-preview dev production"
+        drift=0
+
+        for site in \
+          abeae053-d336-480a-a0fe-f0aaaacaa74e \
+          e02ba783-ea85-4be1-8b7f-c1b2b4d0d307; do
+          body="$(${curl} -sS -H "Authorization: Bearer $TF_VAR_netlify_api_token" \
+            "https://api.netlify.com/api/v1/accounts/livestore/env/MXBAI_API_KEY?site_id=$site")"
+
+          actual_secret="$(printf '%s' "$body" | ${jq} -r '.is_secret // false')"
+          actual_scopes="$(printf '%s' "$body" | ${jq} -r '[.scopes[]?] | sort | join(" ")')"
+          actual_contexts="$(printf '%s' "$body" | ${jq} -r '[.values[]?.context] | sort | join(" ")')"
+
+          if [ "$actual_secret" != "true" ]; then
+            echo "::error::MXBAI_API_KEY on $site is not stored as a secret (LS.DEL.INFRA-R06)"
+            drift=1
+          fi
+          if [ "$actual_scopes" != "$expected_scopes" ]; then
+            echo "::error::MXBAI_API_KEY scopes on $site are '$actual_scopes', expected '$expected_scopes'"
+            drift=1
+          fi
+          if [ "$actual_contexts" != "$expected_contexts" ]; then
+            echo "::error::MXBAI_API_KEY contexts on $site are '$actual_contexts', expected '$expected_contexts'"
+            drift=1
+          fi
+        done
+
+        if [ "$drift" -ne 0 ]; then
+          echo "Secret env-var shape has drifted; see errors above."
+          exit 1
+        fi
+        echo "Secret env-var shape matches on both docs surfaces."
+      '';
+    };
+
+    "infra:netlify:apply" = {
+      description = "Apply the livestore-docs Netlify env-var IaC (only after plan shows No changes / intended diff)";
+      exec = ''
+        ${netlifyIacPreamble}
+        ${tofu} apply -input=false
+      '';
     };
 
     # =========================================================================
