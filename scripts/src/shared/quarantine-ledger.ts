@@ -8,7 +8,7 @@
  *
  * This module is the source of truth. It stays free of imports so it can be read by a Genie
  * generator source (which must stay out of the runtime dependency closure) and by
- * `scripts/src/shared/test-policy.ts`, which needs the literal type: `QuarantineKey` is
+ * `test-policy.ts`, which needs the literal type: `QuarantineKey` is
  * uninhabited while the ledger is empty, so `TestPolicy.quarantined(...)` cannot be written
  * without a checked-in entry. `scripts/src/generated/quarantine-ledger.json` is generated from
  * here for the CLI, which cannot read TypeScript.

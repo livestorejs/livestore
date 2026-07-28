@@ -9,17 +9,17 @@ Draft.
 
 ## Lane Taxonomy
 
-| Lane | Proves | Home | Runner | Local command | CI job |
-| --- | --- | --- | --- | --- | --- |
-| Unit | Pure semantics per package | `*.test.ts(x)` colocated | Vitest | `mono test unit` | `test-unit` |
-| Package integration | Cross-package engine behavior (materializer, sync processors, client documents) | `tests/package-common/` | Vitest | folded into `mono test unit` | `test-unit` |
-| Repo tooling | `mono` CLI commands (release, docs export, test policy) | `scripts/` | Vitest | folded into `mono test unit` | `test-unit` |
-| Browser integration | Adapter/devtools behavior in real browsers | `tests/integration/` | Playwright | `mono test integration` | `test-integration-playwright` (suite matrix: misc, todomvc, devtools) |
-| Sync-provider conformance | Provider contract (see [../02-conformance/](../02-conformance/spec.md)) | `tests/sync-provider/` | Vitest | `mono test integration sync-provider` | `test-integration-sync-provider` (7-provider matrix) |
-| SQLite substrate | wa-sqlite API, session extension, serialize | `tests/wa-sqlite/` | Vitest | `mono test integration wa-sqlite` | `wa-sqlite-test` |
-| Perf (store) | Measurement collection (see [../03-performance/](../03-performance/spec.md)) | `tests/perf/` | Playwright | `mono test perf` | `perf-test` |
-| Perf (eventlog) | Event-streaming measurements | `tests/perf-eventlog/` | Playwright | package `test` script | — |
-| Examples-as-tests | Examples still build and run | `examples/` | per-example `test` script | `mono examples test` | not a required gate |
+| Lane                      | Proves                                                                          | Home                     | Runner                    | Local command                         | CI job                                                                |
+| ------------------------- | ------------------------------------------------------------------------------- | ------------------------ | ------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
+| Unit                      | Pure semantics per package                                                      | `*.test.ts(x)` colocated | Vitest                    | `mono test unit`                      | `test-unit`                                                           |
+| Package integration       | Cross-package engine behavior (materializer, sync processors, client documents) | `tests/package-common/`  | Vitest                    | folded into `mono test unit`          | `test-unit`                                                           |
+| Repo tooling              | `mono` CLI commands (release, docs export, test policy)                         | `scripts/`               | Vitest                    | folded into `mono test unit`          | `test-unit`                                                           |
+| Browser integration       | Adapter/devtools behavior in real browsers                                      | `tests/integration/`     | Playwright                | `mono test integration`               | `test-integration-playwright` (suite matrix: misc, todomvc, devtools) |
+| Sync-provider conformance | Provider contract (see [../02-conformance/](../02-conformance/spec.md))         | `tests/sync-provider/`   | Vitest                    | `mono test integration sync-provider` | `test-integration-sync-provider` (7-provider matrix)                  |
+| SQLite substrate          | wa-sqlite API, session extension, serialize                                     | `tests/wa-sqlite/`       | Vitest                    | `mono test integration wa-sqlite`     | `wa-sqlite-test`                                                      |
+| Perf (store)              | Measurement collection (see [../03-performance/](../03-performance/spec.md))    | `tests/perf/`            | Playwright                | `mono test perf`                      | `perf-test`                                                           |
+| Perf (eventlog)           | Event-streaming measurements                                                    | `tests/perf-eventlog/`   | Playwright                | package `test` script                 | —                                                                     |
+| Examples-as-tests         | Examples still build and run                                                    | `examples/`              | per-example `test` script | `mono examples test`                  | not a required gate                                                   |
 
 ## Lane / CI Correspondence
 
@@ -44,23 +44,23 @@ Test targets invoked through `runTestTarget` state an explicit policy
 (LS.SYS.VER.LANE-R04). The policy decision lives in
 `scripts/src/shared/test-policy.ts` and the invocations in
 `scripts/src/commands/test-commands.ts`; the ledger is
-`genie/quarantine-ledger.ts`. Covered: the unit lane, sync-provider, the SQLite
+`scripts/src/shared/quarantine-ledger.ts`. Covered: the unit lane, sync-provider, the SQLite
 substrate, perf, and the DevTools browser cell. The `misc` and `todomvc` browser
 cells and the `mono test integration all` aggregate are not covered — see
 [.delta/DELTA-003-integration-lane-unpoliced.md](./.delta/DELTA-003-integration-lane-unpoliced.md).
 
-What a quarantine *means* is not defined here. `ci-tools quarantine` owns the
+What a quarantine _means_ is not defined here. `ci-tools quarantine` owns the
 entry schema, the expiry rule, and the announcement, so every repo with a ledger
 gets the same semantics; this repo declares only which targets are quarantined
 (LS.DEL.COMP-R19 and
 [../../../03-delivery/01-composition/.decisions/0001-shared-tooling-consumption-channel.md](../../../03-delivery/01-composition/.decisions/0001-shared-tooling-consumption-channel.md)).
 
-| Policy | Effect on the job |
-| --- | --- |
-| `blocking` | Failures fail the job. The default for every target. |
+| Policy             | Effect on the job                                           |
+| ------------------ | ----------------------------------------------------------- |
+| `blocking`         | Failures fail the job. The default for every target.        |
 | `quarantined(key)` | Failures are announced and tolerated, under a ledger entry. |
 
-`key` must name an entry in `quarantineLedger`, so a quarantine *on this path*
+`key` must name an entry in `quarantineLedger`, so a quarantine _on this path_
 cannot be expressed without a checked-in record of its target, reason, tracking
 issue, and expiry date. When the ledger is empty the quarantine constructor is
 uninhabited and the type checker rejects any such attempt. The ledger is

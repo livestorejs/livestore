@@ -120,7 +120,7 @@ Interacts with `../../04-docs/`.
 
 - **LS.DEL.COMP-R19 Core installs and tests without materialization:** A fresh
   clone of core installs dependencies, typechecks, and runs its test lanes
-  without `mr apply`. Materialization is required to *regenerate* — Genie
+  without `mr apply`. Materialization is required to _regenerate_ — Genie
   sources import `#mr/effect-utils/...`, which resolves through `repos/` or the
   megarepo store — but generated outputs are committed, so building and testing
   never need it. Shared tooling therefore reaches core as Nix-built binaries

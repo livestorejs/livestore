@@ -11,15 +11,15 @@ tests passed).
 `overengineeringstudio/effect-utils` supplies this repo's shared tooling
 (LS.DEL.COMP-A01). When a mechanism belongs upstream — the case that forced this
 decision was the test-quarantine contract, whose entry semantics and CI emit
-channel are not LiveStore's to own — the question is *how* core consumes it.
+channel are not LiveStore's to own — the question is _how_ core consumes it.
 
 Three channels exist, and they differ in what they cost a contributor:
 
-| Channel | Reaches core via | Requires materialization to install? |
-| --- | --- | --- |
-| Nix-built binary | `inputs.effect-utils` flake input, pinned by `devenv.lock` | no |
-| Genie helper | `#mr/effect-utils/...`, resolved by Genie's own resolver | only to regenerate |
-| npm workspace package | a `repos/effect-utils/...` entry in `pnpm-workspace.yaml` | **yes** |
+| Channel               | Reaches core via                                           | Requires materialization to install? |
+| --------------------- | ---------------------------------------------------------- | ------------------------------------ |
+| Nix-built binary      | `inputs.effect-utils` flake input, pinned by `devenv.lock` | no                                   |
+| Genie helper          | `#mr/effect-utils/...`, resolved by Genie's own resolver   | only to regenerate                   |
+| npm workspace package | a `repos/effect-utils/...` entry in `pnpm-workspace.yaml`  | **yes**                              |
 
 The third looks like the obvious way to share TypeScript, and it is the one that
 does real damage. `repos/` is gitignored and every `@overeng/*` package is

@@ -2,7 +2,7 @@
 {
   # Fails once a quarantine entry's `expires` date passes, forcing a renew-or-remove decision
   # rather than letting a tolerated failure quietly become permanent. Runs against the generated
-  # JSON — `genie/quarantine-ledger.ts` is the source of truth, and `lint:check:genie` catches
+  # JSON — `scripts/src/shared/quarantine-ledger.ts` is the source of truth, and `lint:check:genie` catches
   # drift between the two.
   #
   # The expiry rule itself lives in `ci-tools` (effect-utils#971), so every repo with a ledger

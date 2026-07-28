@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 
 import { Effect } from '@livestore/utils/effect'
 
-import type { QuarantineKey } from '../../../genie/quarantine-ledger.ts'
+import type { QuarantineKey } from './quarantine-ledger.ts'
 
 /**
  * How a test target's failures reach the job's exit code.
@@ -13,7 +13,7 @@ import type { QuarantineKey } from '../../../genie/quarantine-ledger.ts'
  * `|| true` buried in a task wrapper. Quarantining is reachable only through
  * {@link quarantined}, which accepts a key of `quarantineLedger` — so a quarantine here cannot
  * exist without a checked-in entry carrying a reason, tracking issue, and expiry date. The
- * ledger lives in `genie/quarantine-ledger.ts`; `ci-tools quarantine` owns what an entry means.
+ * ledger lives in `scripts/src/shared/quarantine-ledger.ts`; `ci-tools quarantine` owns what an entry means.
  *
  * What this is NOT: a chokepoint. It governs whole invocations, not individual tests, and it
  * is opt-in — `it.skip`, `test.todo`, an `exclude` glob, piping `Effect.ignore` onto the
@@ -29,7 +29,7 @@ export const blocking: TestPolicy = { _tag: 'blocking' }
 /** Failures are reported but do not fail the job, under a declared, expiring ledger entry. */
 export const quarantined = (key: QuarantineKey): TestPolicy => ({ _tag: 'quarantined', key })
 
-export { type QuarantineEntry, type QuarantineKey, quarantineLedger } from '../../../genie/quarantine-ledger.ts'
+export { type QuarantineEntry, type QuarantineKey, quarantineLedger } from './quarantine-ledger.ts'
 
 /** Generated from {@link quarantineLedger}; the CLI reads JSON, not TypeScript. */
 export const quarantineLedgerJsonPath = fileURLToPath(new URL('../generated/quarantine-ledger.json', import.meta.url))
