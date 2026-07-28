@@ -1,10 +1,14 @@
-# Consume shared tooling as Nix-built binaries, not workspace packages
+# 0001 — Consume shared tooling as Nix-built binaries, not workspace packages
 
-Status: accepted — 2026-07-27, confirmed with the maintainer during the design
-interview that produced this record. Evidence: a clean clone of this branch with
+Status: accepted (2026-07-27, confirmed with the maintainer during the design
+interview that produced this record). Evidence: a clean clone of this branch with
 no `repos/` present ran `pnpm install` (exit 0), `tsgo --build tsconfig.json`
-(exit 0, no errors), and `vitest packages/@livestore/common/src` (19 files, 268
-tests passed).
+(exit 0, no errors), and one unit-lane project,
+`vitest packages/@livestore/common/src` (19 files, 268 tests passed). The
+structural basis is independent of that sample: `scripts/tsconfig.json` excludes
+`**/*.genie.ts`, so the only `#mr/effect-utils/...` import is outside the
+typecheck graph, and neither root nor `scripts/` declares an `@overeng/*`
+dependency or an `imports` map.
 
 ## Context
 

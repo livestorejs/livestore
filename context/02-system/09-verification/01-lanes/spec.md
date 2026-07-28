@@ -78,8 +78,8 @@ Two properties keep a quarantine from becoming permanent and invisible:
 
 - **Expiry.** The `quarantine:check` task fails once an entry's `expires` date
   passes, forcing a renew-or-remove decision. It runs via `lint:full`, which the
-  `lint` CI job invokes on every pull request, and also via `check` locally. A
-  malformed date counts as expired.
+  `lint` CI job invokes on every pull request, and via `check:quick` /
+  `check:all` locally. A malformed date counts as expired.
 - **Distinguishable signal.** A tolerated failure appends a line to the job
   summary naming the target, reason, issue, and expiry, and emits a matching
   `::warning::` annotation. Failing to announce fails the run: tolerating a

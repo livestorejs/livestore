@@ -108,6 +108,7 @@ Interacts with `../../04-docs/`.
   preserve relevant pre-move commit history through filtered history import.
 - **LS.DEL.COMP-R17 Source commit traceability:** The history import records
   the source core commit used to establish contrib ownership.
+
 ### Must Keep The Development Shell Diagnostic
 
 - **LS.DEL.COMP-R18 Readiness before validation:** Entering the supported
