@@ -57,7 +57,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   clientSession: ClientSession
   materializeEvent: (
     eventEncoded: LiveStoreEvent.Client.EncodedWithMeta,
-    options: { withChangeset: boolean; materializerHashLeader: Option.Option<number> },
+    options: { materializerHashLeader: Option.Option<number> },
   ) => Effect.Effect<
     {
       writeTables: Set<string>
@@ -302,7 +302,6 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
               sessionChangeset,
               materializerHash,
             } = yield* materializeEvent(event, {
-              withChangeset: true,
               materializerHashLeader: event.meta.materializerHashLeader,
             })
             for (const table of newWriteTables) {
@@ -405,7 +404,6 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         sessionChangeset,
         materializerHash,
       } = yield* materializeEvent(event, {
-        withChangeset: true,
         materializerHashLeader: Option.none(),
       })
       for (const table of newWriteTables) {

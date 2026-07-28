@@ -1120,10 +1120,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       })
 
       const materializeEvent = Effect.fn('test:materialize-event')(
-        (
-          event: LiveStoreEvent.Client.EncodedWithMeta,
-          _options: { withChangeset: boolean; materializerHashLeader: Option.Option<number> },
-        ) =>
+        (event: LiveStoreEvent.Client.EncodedWithMeta, _options: { materializerHashLeader: Option.Option<number> }) =>
           Effect.gen(function* () {
             materializedEvents.push(event)
             return {
