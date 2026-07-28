@@ -411,6 +411,9 @@ in
   # by the module; the glob overlap with genie/**/*.genie.ts is harmless.
   effectUtils.genie.extraInputGlobs = [
     ":(glob)genie/**/*.ts"
+    # The quarantine ledger lives under scripts/ (it is imported by runtime code, so it must
+    # sit inside that project's rootDir) while still being a generator input.
+    ":(glob)scripts/src/shared/quarantine-ledger.ts"
   ];
 
   packages = [

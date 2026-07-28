@@ -73,12 +73,17 @@ describe('runTestTarget', () => {
     // Losing the signal while still suppressing the failure is the outcome the whole mechanism
     // exists to prevent, so a broken announcer must be loud.
     const { key, entry } = firstLedgerEntry()
-    stubCiTools({ exitCode: 1 })
+    const calls = stubCiTools({ exitCode: 1 })
 
     const exit = await Effect.runPromiseExit(
       runTestTarget({ label: entry.target, policy: quarantined(key), run: Effect.fail('boom' as const) }),
     )
 
+    // Asserting the stub actually ran matters: `ci-tools` is absent from a bare checkout, so
+    // without this the test would also pass on a spawn ENOENT — including if `Effect.ignore`
+    // were deleted outright. It has to prove "non-zero announcer exit ⇒ fatal", not merely
+    // "announcing didn't succeed ⇒ fatal".
+    expect(calls()).toHaveLength(1)
     expect(Exit.isFailure(exit)).toBe(true)
   })
 
@@ -117,8 +122,9 @@ const stubCiTools = ({ exitCode }: { readonly exitCode: number }): (() => readon
     },
   )
 
-  originalPath = process.env.PATH
-  process.env.PATH = `${dir}${path.delimiter}${originalPath ?? ''}`
+  if (originalPath !== undefined) throw new Error('stubCiTools called twice; the first stub would leak onto PATH.')
+  originalPath = process.env.PATH ?? ''
+  process.env.PATH = `${dir}${path.delimiter}${originalPath}`
 
   return () =>
     fs.existsSync(log) === true

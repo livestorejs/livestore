@@ -10,10 +10,12 @@ import type { QuarantineKey } from './quarantine-ledger.ts'
  *
  * Test targets invoked through {@link runTestTarget} state their policy explicitly, so
  * weakening one is a deliberate, reviewable act rather than a `.pipe(Effect.ignore)` or a
- * `|| true` buried in a task wrapper. Quarantining is reachable only through
- * {@link quarantined}, which accepts a key of `quarantineLedger` — so a quarantine here cannot
- * exist without a checked-in entry carrying a reason, tracking issue, and expiry date. The
- * ledger lives in `scripts/src/shared/quarantine-ledger.ts`; `ci-tools quarantine` owns what an entry means.
+ * `|| true` buried in a task wrapper. A quarantine names a key of `quarantineLedger`, so it
+ * cannot exist without a checked-in entry carrying a reason, tracking issue, and expiry date —
+ * when the ledger is empty `QuarantineKey` is `never` and no quarantine can be written at all.
+ * (`TestPolicy` is a plain union, so a caller can spell the object literal instead of using
+ * {@link quarantined}; the ledger constraint binds either way.) The ledger lives in
+ * `scripts/src/shared/quarantine-ledger.ts`; `ci-tools quarantine` owns what an entry means.
  *
  * What this is NOT: a chokepoint. It governs whole invocations, not individual tests, and it
  * is opt-in — `it.skip`, `test.todo`, an `exclude` glob, piping `Effect.ignore` onto the
@@ -26,7 +28,11 @@ export type TestPolicy = { readonly _tag: 'blocking' } | { readonly _tag: 'quara
 /** Failures fail the job. The default for every target. */
 export const blocking: TestPolicy = { _tag: 'blocking' }
 
-/** Failures are reported but do not fail the job, under a declared, expiring ledger entry. */
+/**
+ * Expected failures are reported but do not fail the job, under a declared, expiring ledger
+ * entry. Only the `Fail` channel is tolerated: a defect or an interruption still fails the job,
+ * and is not announced.
+ */
 export const quarantined = (key: QuarantineKey): TestPolicy => ({ _tag: 'quarantined', key })
 
 export { type QuarantineEntry, type QuarantineKey, quarantineLedger } from './quarantine-ledger.ts'
@@ -58,23 +64,30 @@ export const runTestTarget = <A, E, R>({
 
   return run.pipe(
     Effect.asVoid,
-    Effect.tapError(() => Effect.sync(() => announceQuarantinedFailure(label, policy.key))),
+    Effect.tapError((cause) => Effect.sync(() => announceQuarantinedFailure(label, policy.key, cause))),
     Effect.ignore,
   )
 }
 
-const announceQuarantinedFailure = (label: string, key: QuarantineKey): void => {
+const announceQuarantinedFailure = (label: string, key: QuarantineKey, cause: unknown): void => {
   const result = spawnSync(
     'ci-tools',
     ['quarantine', 'announce', '--ledger', quarantineLedgerJsonPath, '--key', key, '--label', label],
     { stdio: 'inherit' },
   )
 
+  // The original failure is carried into the message: this path discards the quarantined
+  // error to surface the announcer's, and without it the red job would say only that
+  // announcing broke, never what actually failed.
   if (result.error !== undefined) {
-    throw new Error(`Could not announce quarantined failure for ${label}: ${result.error.message}`)
+    throw new Error(
+      `Could not announce quarantined failure for ${label}: ${result.error.message}. Original failure: ${String(cause)}`,
+    )
   }
 
   if (result.status !== 0) {
-    throw new Error(`Announcing the quarantined failure for ${label} failed with exit code ${result.status}.`)
+    throw new Error(
+      `Announcing the quarantined failure for ${label} failed with exit code ${result.status}. Original failure: ${String(cause)}`,
+    )
   }
 }
