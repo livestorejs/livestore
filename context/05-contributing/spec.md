@@ -46,8 +46,8 @@ record. RFC 0002 (command replay) is an active proposal (root LS-DQ1).
 | --- | --- |
 | Help wanted | wa-sqlite build maintainer, examples maintainer, Solid integration maintainer; `help wanted` issues |
 | Encouraged | Docs improvements, examples, test cases, bug fixes, benchmarking |
-| Potentially in scope | New features, larger core changes (RFC first), new integrations, devtools changes in `livestore-contrib`, monorepo/docs-site changes |
-| Out of scope (for now) | Landing page, core rewrite in another language |
+| Potentially in scope | New features, larger core changes (RFC first), new integrations, monorepo/docs-site changes |
+| Out of scope (for now) | Landing page, devtools, core rewrite in another language |
 
 ## Security Policy (LS.CONTRIB-R09)
 
