@@ -22,6 +22,13 @@ developer and CI workflows, so source errors cannot delay or block access to
 the diagnostic environment
 ([decision 0001](./.decisions/0001-separate-readiness-from-validation.md)).
 
+The shared setup gate computes one repository-input fingerprint and exports its
+cache verdict to every downstream status probe. Instrumentation must preserve
+those task exports across its process boundary. A warm verdict only selects the
+bounded pnpm projection and generated-output existence checks; it does not
+bypass them. Dirty lockfiles, missing or broken dependency projections, and
+missing generated outputs remain cache misses.
+
 ## Setup Observability
 
 `otel:profile:setup` is the canonical setup diagnostic. The shared Effect-utils
@@ -45,7 +52,8 @@ the native root and task spans, and the native `setup:gate` to Effect-utils
 `devenv.task.exec` parent relationship. It does not enforce absolute duration.
 Benchmark timings remain experiment evidence because host and cache state are
 material inputs
-([experiment 0001](./.experiments/0001-worktree-setup-and-trace.md)).
+([experiment 0001](./.experiments/0001-worktree-setup-and-trace.md),
+[experiment 0002](./.experiments/0002-traced-task-export-propagation.md)).
 
 Setup captures are local diagnostic artifacts under the ignored `tmp/` tree.
 They are not uploaded automatically. This keeps machine-local paths and command
