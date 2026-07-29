@@ -120,8 +120,9 @@ const releaseNotesPath = (cwd: string) => `${cwd}/release/release-notes.md`
  * stopping at the next `## ` heading. Trailing blank lines are trimmed; a
  * single trailing newline is normalized.
  *
- * Throws when the heading is not found, or when more than one `## <version>`
- * heading exists (defensive — should never happen, but cheap to guard).
+ * Throws when the heading is not found, is empty, or when more than one
+ * `## <version>` heading exists (defensive — should never happen, but cheap
+ * to guard).
  */
 export const sliceChangelogSection = (changelog: string, version: string): string => {
   const lines = changelog.split('\n')
@@ -167,6 +168,10 @@ export const sliceChangelogSection = (changelog: string, version: string): strin
   while (start < endIndex && lines[start]!.trim() === '') start += 1
   let end = endIndex
   while (end > start && lines[end - 1]!.trim() === '') end -= 1
+
+  if (start === end) {
+    throw new Error(`Changelog section for version ${version} is empty in CHANGELOG.md`)
+  }
 
   return `${lines.slice(start, end).join('\n')}\n`
 }

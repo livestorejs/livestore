@@ -972,9 +972,9 @@ fi`,
 tag="v\${LIVESTORE_RELEASE_VERSION}"
 notes_path="release/release-notes.md"
 
-# The release PR commits this file. Missing notes mean the plan is malformed.
-if [[ ! -f "$notes_path" ]]; then
-  echo "::error::Missing committed GitHub Release notes: $notes_path" >&2
+# The release PR commits nonempty notes. Missing or blank notes mean the plan is malformed.
+if [[ ! -f "$notes_path" ]] || ! grep -q '[^[:space:]]' "$notes_path"; then
+  echo "::error::Missing or empty committed GitHub Release notes: $notes_path" >&2
   exit 1
 fi
 
@@ -987,6 +987,7 @@ else
   fi
   gh release create "$tag" \\
     --repo "$GITHUB_REPOSITORY" \\
+    --target "$GITHUB_SHA" \\
     --title "$tag" \\
     --notes-file "$notes_path" \\
     "\${prerelease_args[@]}"

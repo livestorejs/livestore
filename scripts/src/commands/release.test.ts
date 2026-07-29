@@ -1,9 +1,25 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
+import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
+import { parse } from 'yaml'
 
 import { sliceChangelogSection } from './release.ts'
+
+const WorkflowStep = Schema.Struct({
+  name: Schema.optional(Schema.String),
+  run: Schema.optional(Schema.String),
+  'continue-on-error': Schema.optional(Schema.Boolean),
+})
+
+const ReleaseWorkflow = Schema.Struct({
+  jobs: Schema.Struct({
+    'publish-release': Schema.Struct({
+      steps: Schema.Array(WorkflowStep),
+    }),
+  }),
+})
 
 describe('sliceChangelogSection', () => {
   it('extracts the verbatim block for a stable version with date heading', () => {
@@ -64,6 +80,18 @@ describe('sliceChangelogSection', () => {
     )
   })
 
+  it('throws when the matching section is empty or whitespace-only', () => {
+    const empty = ['## 0.4.0', '', '## 0.3.0', '', 'old'].join('\n')
+    const whitespaceOnly = ['## 0.4.0', '', '  ', '\t', '', '## 0.3.0', '', 'old'].join('\n')
+
+    expect(() => sliceChangelogSection(empty, '0.4.0')).toThrow(
+      /Changelog section for version 0\.4\.0 is empty/,
+    )
+    expect(() => sliceChangelogSection(whitespaceOnly, '0.4.0')).toThrow(
+      /Changelog section for version 0\.4\.0 is empty/,
+    )
+  })
+
   it('reads up to the next ## heading even with deeper ### subheadings in between', () => {
     const changelog = [
       '## 0.4.0 - 2026-06-02',
@@ -99,28 +127,34 @@ describe('sliceChangelogSection', () => {
 
 describe('publish-release workflow', () => {
   const workflowPath = fileURLToPath(new URL('../../../.github/workflows/release.yml', import.meta.url))
-  const workflow = readFileSync(workflowPath, 'utf8')
+  const workflow = Schema.decodeUnknownSync(ReleaseWorkflow)(parse(readFileSync(workflowPath, 'utf8')))
+  const steps = workflow.jobs['publish-release'].steps
 
   it('creates or updates the GitHub Release only after npm publishing succeeds', () => {
-    const npmPublishIndex = workflow.indexOf('      - name: Publish stable package release')
-    const githubReleaseIndex = workflow.indexOf('      - name: Create or update GitHub Release')
-    const devtoolsPublishIndex = workflow.indexOf('      - name: Publish DevTools artifact release')
+    const npmPublishIndex = steps.findIndex((step) => step.name === 'Publish stable package release')
+    const githubReleaseIndex = steps.findIndex((step) => step.name === 'Create or update GitHub Release')
+    const devtoolsPublishIndex = steps.findIndex((step) => step.name === 'Publish DevTools artifact release')
 
     expect(npmPublishIndex).toBeGreaterThan(-1)
     expect(githubReleaseIndex).toBeGreaterThan(npmPublishIndex)
     expect(devtoolsPublishIndex).toBeGreaterThan(githubReleaseIndex)
 
-    const nextStepIndex = workflow.indexOf('\n      - name:', githubReleaseIndex + 1)
-    const githubReleaseStep = workflow.slice(githubReleaseIndex, nextStepIndex)
+    const npmPublishStep = steps[npmPublishIndex]!
+    const githubReleaseStep = steps[githubReleaseIndex]!
+    const githubReleaseScript = githubReleaseStep.run!
 
-    expect(githubReleaseStep).toContain('::error::Missing committed GitHub Release notes: $notes_path')
-    expect(githubReleaseStep).toContain('exit 1')
-    expect(githubReleaseStep).toContain('gh release view')
-    expect(githubReleaseStep).toContain('gh release edit')
-    expect(githubReleaseStep).toContain('gh release create')
-    expect(githubReleaseStep).toContain('--notes-file "$notes_path"')
-    expect(githubReleaseStep).toContain('prerelease_args+=(--prerelease)')
-    expect(githubReleaseStep).not.toMatch(/--notes(?:\s|")/)
-    expect(githubReleaseStep).not.toContain('gh release upload')
+    expect(npmPublishStep['continue-on-error']).not.toBe(true)
+    expect(githubReleaseStep['continue-on-error']).not.toBe(true)
+    expect(githubReleaseScript).toContain('::error::Missing or empty committed GitHub Release notes: $notes_path')
+    expect(githubReleaseScript).toContain(`grep -q '[^[:space:]]' "$notes_path"`)
+    expect(githubReleaseScript).toContain('exit 1')
+    expect(githubReleaseScript).toContain('gh release view')
+    expect(githubReleaseScript).toContain('gh release edit')
+    expect(githubReleaseScript).toContain('gh release create')
+    expect(githubReleaseScript).toContain('--target "$GITHUB_SHA"')
+    expect(githubReleaseScript).toContain('--notes-file "$notes_path"')
+    expect(githubReleaseScript).toContain('prerelease_args+=(--prerelease)')
+    expect(githubReleaseScript).not.toMatch(/--notes(?:\s|")/)
+    expect(githubReleaseScript).not.toContain('gh release upload')
   })
 })
