@@ -11,5 +11,15 @@ inputs:
     inputs:
       nixpkgs:
         follows: nixpkgs
+  tsgo:
+    url: github:Effect-TS/tsgo/8d34c0a2d603a4b963b85ffccd4322c0ef74f472
+    inputs:
+      nixpkgs:
+        follows: nixpkgs
+      nixpkgsUnstable:
+        follows: nixpkgs
   effect-utils:
     url: github:overengineeringstudio/effect-utils/main
+    inputs:
+      tsgo:
+        follows: tsgo
