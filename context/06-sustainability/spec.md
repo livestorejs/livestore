@@ -11,14 +11,9 @@ Draft.
 
 | Surface | License |
 | --- | --- |
-| All published `@livestore/*` packages | LiveStore Community License 1.0 (`LicenseRef-LiveStore-Community-1.0`) |
-| `@livestore/wa-sqlite` | MIT (fork of `rhashimoto/wa-sqlite`, © Roy T. Hashimoto) |
-| Releases published before 2026-07-27 | Apache-2.0, irrevocably |
-| Every version, from its second anniversary | Apache-2.0, by present grant |
-
-Licensing is per package, not per repository. Package-level licence files
-define the applicable terms; repository roots state which subtrees they do not
-cover.
+| `livestorejs/livestore` (this repo) | Apache-2.0 |
+| `livestorejs/livestore-contrib` | Apache-2.0 (same product identity) |
+| Devtools | Sponsor license, delivered via the sponsor dashboard |
 
 ## Funding Channels (LS.SUST-R02)
 
@@ -47,12 +42,28 @@ channels, office hours, prioritized bug fixes and feature requests.
 
 ## Open Design Questions
 
-- **LS.SUST-DQ1 Licensing model.** **Resolved 2026-07-27** — the accepted
-  [licensing decision](https://github.com/livestorejs/livestore/issues/1511)
-  adopts a size-gated source-available license across all packages with a
-  two-year per-version conversion to Apache-2.0. What remains open is execution:
-  the licence text awaits counsel review; the commercial licence and purchase
-  path must exist before the change ships; and the protected project vision
-  still needs a maintainer-owned consistency pass.
+- **LS.SUST-DQ1 Licensing model.** Whether LiveStore keeps its current model
+  (permissive open-source core, Apache-2.0, plus closed sponsor-licensed
+  devtools — LS.SUST-R01/R03, LS.SUST-T01) or moves to a source-available model
+  that better funds maintenance. **Leading direction (2026-07-17, interview —
+  not yet decided):** a single time-delayed license over the *whole* system
+  (FSL or similar — source-available now, converting to a permissive license
+  after a rolling window), which would also open the devtools source. Candidate
+  families in
+  [.reference/license-model-options.md](./.reference/license-model-options.md).
+  Implications, none settled until the decision is made:
+  - **Identity / vision.** A whole-product time-delayed license means the core
+    is not OSI "open source" *now* (it becomes "eventually open source" / fair
+    source). This changes what LiveStore *is*, needs a `vision.md` pass
+    (human-only), and would revise LS.SUST-R01 (core Apache-2.0) plus
+    LS.SUST-R03/T01 (devtools would become source-available, not sponsorware).
+  - **Positioning wording.** The sponsoring page's "fully open source" line
+    (today it sits directly above the devtools-license line it contradicts) is
+    rewritten to match the chosen model.
+  - **Mechanics** (tiers, per-seat vs per-org, lapse, enforcement) and the
+    **UI-component-kit** boundary are subsumed / moot until the model is chosen.
+  Blocked on: a strategic decision by the project creator (+ legal review).
+  Reframed 2026-07-17 (interview) from a narrower "wording + mechanics"
+  question.
 - **LS.SUST-DQ2 Scaling maintainership.** The stated goal of funding
   additional maintainers has no defined thresholds or mechanics.
