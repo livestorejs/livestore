@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
+
+import { Schema } from '@livestore/utils/effect'
 
 import { sliceChangelogSection } from './release.ts'
 
@@ -84,9 +85,7 @@ describe('sliceChangelogSection', () => {
     const empty = ['## 0.4.0', '', '## 0.3.0', '', 'old'].join('\n')
     const whitespaceOnly = ['## 0.4.0', '', '  ', '\t', '', '## 0.3.0', '', 'old'].join('\n')
 
-    expect(() => sliceChangelogSection(empty, '0.4.0')).toThrow(
-      /Changelog section for version 0\.4\.0 is empty/,
-    )
+    expect(() => sliceChangelogSection(empty, '0.4.0')).toThrow(/Changelog section for version 0\.4\.0 is empty/)
     expect(() => sliceChangelogSection(whitespaceOnly, '0.4.0')).toThrow(
       /Changelog section for version 0\.4\.0 is empty/,
     )
@@ -145,9 +144,7 @@ describe('publish-release workflow', () => {
 
     expect(npmPublishStep['continue-on-error']).not.toBe(true)
     expect(githubReleaseStep['continue-on-error']).not.toBe(true)
-    expect(githubReleaseScript).toContain(
-      '::error::Missing or empty committed GitHub Release notes: $notes_path',
-    )
+    expect(githubReleaseScript).toContain('::error::Missing or empty committed GitHub Release notes: $notes_path')
     expect(githubReleaseScript).toContain(`grep -q '[^[:space:]]' "$notes_path"`)
     expect(githubReleaseScript).toContain('exit 1')
     expect(githubReleaseScript).toContain('gh release view')
