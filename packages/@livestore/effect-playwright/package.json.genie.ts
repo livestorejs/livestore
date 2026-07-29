@@ -7,7 +7,7 @@ const runtimeDeps = catalog.compose({
     workspace: [utilsPkg],
   },
   devDependencies: {
-    external: effectDevDeps('@playwright/test', '@types/node'),
+    external: effectDevDeps('@playwright/test', '@types/node', 'vitest'),
   },
   peerDependencies: {
     external: {
