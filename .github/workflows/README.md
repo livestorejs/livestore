@@ -150,7 +150,7 @@ package.
 The workflow exists so the LiveStore repository can keep release CI
 self-contained while the DevTools source remains outside this repository.
 
-See [../../context/devtools-artifact-release/spec.md](../../context/devtools-artifact-release/spec.md)
+See [../../context/03-delivery/03-artifacts/spec.md](../../context/03-delivery/03-artifacts/spec.md)
 for the release-scenario contract and certification model.
 
 ## `auto-review.yml`
