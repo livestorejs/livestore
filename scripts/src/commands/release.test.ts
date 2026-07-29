@@ -145,7 +145,9 @@ describe('publish-release workflow', () => {
 
     expect(npmPublishStep['continue-on-error']).not.toBe(true)
     expect(githubReleaseStep['continue-on-error']).not.toBe(true)
-    expect(githubReleaseScript).toContain('::error::Missing or empty committed GitHub Release notes: $notes_path')
+    expect(githubReleaseScript).toContain(
+      '::error::Missing or empty committed GitHub Release notes: $notes_path',
+    )
     expect(githubReleaseScript).toContain(`grep -q '[^[:space:]]' "$notes_path"`)
     expect(githubReleaseScript).toContain('exit 1')
     expect(githubReleaseScript).toContain('gh release view')
