@@ -524,7 +524,7 @@ jobs:
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ runner.temp }}/genie-ci-scripts/nix-gc-race-retry.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
@@ -708,7 +708,7 @@ jobs:
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ runner.temp }}/genie-ci-scripts/nix-gc-race-retry.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
@@ -887,7 +887,7 @@ jobs:
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ runner.temp }}/genie-ci-scripts/nix-gc-race-retry.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
@@ -1073,7 +1073,7 @@ jobs:
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ runner.temp }}/genie-ci-scripts/nix-gc-race-retry.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
@@ -1251,7 +1251,7 @@ jobs:
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ runner.temp }}/genie-ci-scripts/nix-gc-race-retry.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
@@ -1439,7 +1439,7 @@ jobs:
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ runner.temp }}/genie-ci-scripts/nix-gc-race-retry.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
@@ -1633,7 +1633,7 @@ jobs:
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ runner.temp }}/genie-ci-scripts/nix-gc-race-retry.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
@@ -1840,7 +1840,7 @@ jobs:
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ runner.temp }}/genie-ci-scripts/nix-gc-race-retry.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
@@ -2032,7 +2032,7 @@ jobs:
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ runner.temp }}/genie-ci-scripts/nix-gc-race-retry.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
@@ -2233,7 +2233,7 @@ jobs:
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ runner.temp }}/genie-ci-scripts/nix-gc-race-retry.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
@@ -2454,7 +2454,7 @@ jobs:
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ runner.temp }}/genie-ci-scripts/nix-gc-race-retry.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
@@ -2663,7 +2663,7 @@ jobs:
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ runner.temp }}/genie-ci-scripts/nix-gc-race-retry.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"

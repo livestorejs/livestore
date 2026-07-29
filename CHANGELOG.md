@@ -24,7 +24,9 @@ For maintainers and contributors:
   ([#1402](https://github.com/livestorejs/livestore/issues/1402)).
 - **Tooling:** Warm shell setup now receives the shared setup-fingerprint
   verdict across the traced task boundary. Genie uses its bounded generated-file
-  check while pnpm retains projection-integrity validation
+  check while pnpm retains projection-integrity validation. The shared CI
+  runtime also composes devenv resolution into the support artifact already
+  materialized by consumers
   ([#1500](https://github.com/livestorejs/livestore/issues/1500),
   [effect-utils#1030](https://github.com/overengineeringstudio/effect-utils/pull/1030)).
 - **Tooling:** Unit-test failures now block merges. The `test-unit` job ran
