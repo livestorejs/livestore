@@ -26,7 +26,7 @@ export default packageJson(
       '.': './src/index.ts',
     },
     scripts: {
-      test: "echo 'No tests'",
+      test: 'vitest',
     },
   },
   runtimeDeps,
