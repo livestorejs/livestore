@@ -56,7 +56,7 @@ context/                     root: LiveStore the product (this node)
       01-react/  02-effect/  realizations (hooks; Store.Tag layer API)
     09-verification/         verification contract
       01-lanes/  02-conformance/  03-performance/  04-protocol-compat/
-      05-determinism/
+      05-determinism/  06-scenarios/
   03-delivery/               delivery identity boundary
     01-composition/          repo/package composition, locks, tooling, docs
     02-release/              versioning, publish flow, dependency policy
@@ -98,8 +98,9 @@ kinds (e.g. `04-docs/` vs `05-contributing/`) is reading order only.
   integrations, devtools surfaces) use the composable contract/realization
   pattern: the dimension node states the mechanism-agnostic contract once;
   each realization is a child node whose requirements declare
-  `refines: <parent-id>`. Contrib-owned realizations get a contract-level stub
-  child here; their implementation specs live in `livestore-contrib`.
+  `refines: <parent-id>`. Contrib-owned realizations are listed in the core
+  dimension's `realizations.md` registry; their implementation specs and
+  `LSC.*` IDs live in `livestore-contrib`.
 - Child requirements that constrain a parent concept declare a backticked
   `` `refines: <parent-ids>` `` marker at the end of the requirement bullet
   so the tree reads upward.
@@ -123,7 +124,7 @@ questions `DQ`, deltas `DELTA`, decisions by number):
 | `LS.SYS.OBS-*` | `02-system/06-observability/` |
 | `LS.SYS.DT-*` | `02-system/07-devtools/` |
 | `LS.SYS.INT-*` / `LS.SYS.INT.REACT-*`, `LS.SYS.INT.EFFECT-*` | `02-system/08-integrations/` and realizations |
-| `LS.SYS.VER-*` / `LS.SYS.VER.LANE-*`, `LS.SYS.VER.CONF-*`, `LS.SYS.VER.PERF-*`, `LS.SYS.VER.PROTO-*`, `LS.SYS.VER.DET-*` | `02-system/09-verification/` and children |
+| `LS.SYS.VER-*` / `LS.SYS.VER.LANE-*`, `LS.SYS.VER.CONF-*`, `LS.SYS.VER.PERF-*`, `LS.SYS.VER.PROTO-*`, `LS.SYS.VER.DET-*`, `LS.SYS.VER.SCEN-*` | `02-system/09-verification/` and children |
 | `LS.DEL-*` / `LS.DEL.COMP-*`, `LS.DEL.COMP.DEV-*`, `LS.DEL.REL-*`, `LS.DEL.ART-*`, `LS.DEL.INFRA-*` | `03-delivery/` and children |
 | `LS.DOCS-*` / `LS.DOCS.EX-*`, `LS.DOCS.SEARCH-*`, `LS.DOCS.OPS-*` | `04-docs/` and children |
 | `LS.CONTRIB-*` / `LS.CONTRIB.COLLAB-*`, `LS.CONTRIB.COMM-*` | `05-contributing/` and children |

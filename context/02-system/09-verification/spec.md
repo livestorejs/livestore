@@ -20,6 +20,7 @@ Verification maps claim shapes to evidence shapes (see
 | [03-performance/](./03-performance/spec.md) | Latency/memory measurement suites |
 | [04-protocol-compat/](./04-protocol-compat/spec.md) | Executable protocol-compatibility tests |
 | [05-determinism/](./05-determinism/spec.md) | Determinism guards and (missing) oracles |
+| [06-scenarios/](./06-scenarios/spec.md) | Reproducible system-wide scenarios, traces, and bounded oracles |
 
 Evidence conventions: benchmark results, prototype outcomes, and validation
 runs that inform contracts are recorded as `.experiments/` records in the
