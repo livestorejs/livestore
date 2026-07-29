@@ -24,9 +24,9 @@ Sponsorship-first (decided 2026-07-16, interview):
 - Explicitly rejected paths: VC funding (no VC-scale business intended) and
   a first-party hosting service (partnerships with sync services are
   preferred; avoids vendor lock-in) — see the sponsoring page FAQ.
-- Commercial licensing is adopted but does not become active until the
-  licence text, commercial terms, and purchase path are ready.
-- Paid consulting remains a possible future channel (non-normative).
+- Possible future channels (non-normative; consistent with the docs FAQ):
+  commercial licenses, paid consulting, premium devtools. None is active
+  today beyond the sponsor-licensed devtools.
 
 ## Brand (LS.SUST-R06)
 
@@ -37,8 +37,9 @@ Captured as current state 2026-07-16 (interview).
 
 ## Benefit Mechanics (LS.SUST-R05)
 
-Sponsor dashboard at `livestore.dev/sponsor` grants: sponsor-only Discord
-channels, office hours, prioritized bug fixes and feature requests.
+Sponsor dashboard at `livestore.dev/sponsor` grants: devtools license,
+sponsor-only Discord channels, office hours, prioritized bug fixes and
+feature requests. Student devtools licenses via Discord request.
 
 ## Open Design Questions
 
