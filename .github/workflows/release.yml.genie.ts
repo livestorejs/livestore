@@ -967,6 +967,32 @@ fi`,
           run: runDevenvTasksBefore('release:stable:publish'),
         },
         {
+          name: 'Create or update GitHub Release',
+          run: `set -euo pipefail
+tag="v\${LIVESTORE_RELEASE_VERSION}"
+notes_path="release/release-notes.md"
+
+# The release PR commits this file. Missing notes mean the plan is malformed.
+if [[ ! -f "$notes_path" ]]; then
+  echo "::error::Missing committed GitHub Release notes: $notes_path" >&2
+  exit 1
+fi
+
+if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+  gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --notes-file "$notes_path"
+else
+  prerelease_args=()
+  if [[ "$LIVESTORE_RELEASE_VERSION" == *-* ]]; then
+    prerelease_args+=(--prerelease)
+  fi
+  gh release create "$tag" \\
+    --repo "$GITHUB_REPOSITORY" \\
+    --title "$tag" \\
+    --notes-file "$notes_path" \\
+    "\${prerelease_args[@]}"
+fi`,
+        },
+        {
           name: 'Certify DevTools artifact liveness',
           run: runDevenvTasksBefore('release:devtools-artifact:certify-liveness:no-install'),
         },

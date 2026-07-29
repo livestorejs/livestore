@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
 import { describe, expect, it } from 'vitest'
 
 import { sliceChangelogSection } from './release.ts'
@@ -91,5 +94,33 @@ describe('sliceChangelogSection', () => {
   it('extracts the last section in the file (no following ## heading)', () => {
     const changelog = ['## 0.4.0 - 2026-06-02', '', 'final notes', ''].join('\n')
     expect(sliceChangelogSection(changelog, '0.4.0')).toBe('final notes\n')
+  })
+})
+
+describe('publish-release workflow', () => {
+  const workflowPath = fileURLToPath(new URL('../../../.github/workflows/release.yml', import.meta.url))
+  const workflow = readFileSync(workflowPath, 'utf8')
+
+  it('creates or updates the GitHub Release only after npm publishing succeeds', () => {
+    const npmPublishIndex = workflow.indexOf('      - name: Publish stable package release')
+    const githubReleaseIndex = workflow.indexOf('      - name: Create or update GitHub Release')
+    const devtoolsPublishIndex = workflow.indexOf('      - name: Publish DevTools artifact release')
+
+    expect(npmPublishIndex).toBeGreaterThan(-1)
+    expect(githubReleaseIndex).toBeGreaterThan(npmPublishIndex)
+    expect(devtoolsPublishIndex).toBeGreaterThan(githubReleaseIndex)
+
+    const nextStepIndex = workflow.indexOf('\n      - name:', githubReleaseIndex + 1)
+    const githubReleaseStep = workflow.slice(githubReleaseIndex, nextStepIndex)
+
+    expect(githubReleaseStep).toContain('::error::Missing committed GitHub Release notes: $notes_path')
+    expect(githubReleaseStep).toContain('exit 1')
+    expect(githubReleaseStep).toContain('gh release view')
+    expect(githubReleaseStep).toContain('gh release edit')
+    expect(githubReleaseStep).toContain('gh release create')
+    expect(githubReleaseStep).toContain('--notes-file "$notes_path"')
+    expect(githubReleaseStep).toContain('prerelease_args+=(--prerelease)')
+    expect(githubReleaseStep).not.toMatch(/--notes(?:\s|")/)
+    expect(githubReleaseStep).not.toContain('gh release upload')
   })
 })

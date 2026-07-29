@@ -124,18 +124,19 @@ the `release:notes:extract` task (which calls
 release-plan PR so reviewers see exactly what will land on the GitHub Release
 page.
 
-The DevTools artifact publish step then uses that file when it creates or
-updates the GitHub Release tag:
+After npm publication succeeds, the `publish-release` job uses that file when
+it creates or updates the GitHub Release tag:
 
 - On `gh release create`, it passes `--notes-file release/release-notes.md`
-  instead of the legacy hardcoded `Release <version>` body.
+  and creates the git tag for the published version.
 - On subsequent reruns (the release already exists), it also calls
   `gh release edit --notes-file release/release-notes.md` so a corrected
   `CHANGELOG.md` section actually lands on the GitHub Release page.
 
 If `release/release-notes.md` is missing at publish time, the publish step
-falls back to the legacy `Release <version>` body and logs a warning. To
-refresh it locally for a planned release:
+fails because the committed release plan is malformed. It does not fall back
+to the legacy `Release <version>` body, which could silently publish stale
+notes. To refresh the file locally for a planned release:
 
 ```bash
 mono release extract-release-notes
