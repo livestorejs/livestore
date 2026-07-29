@@ -98,6 +98,99 @@
   telemetry. _Avoid:_ introspection channel (not a webmesh channel).
 - **Control operation** — A devtools message that mutates engine state
   (reset, import, event injection) rather than inspecting it.
+- **Application definition** — A Scenario dependency wrapping a real
+  `LiveStoreSchema` together with named actions and optional normalized State
+  inspectors; it never redeclares the Application's materializers.
+- **Scenario specification** — A versioned, serializable description of a
+  Scenario's topology, execution requirements, plans, Workload patterns,
+  faults, completion, and Scenario oracles.
+- **Scenario participant** — A Client or Client session instantiated and
+  managed by a Scenario runner. A Leader is a role within a Client, and a Sync
+  backend is a separate topology component.
+- **Participant host** — A transport-neutral execution-profile realization
+  that creates and controls Scenario participants behind serializable control
+  and Scenario trace boundaries.
+- **Participant execution profile** — The environment and isolation model in
+  which Scenario participants run, such as in-process, worker/process, or
+  browser.
+- **Sync-backend realization** — A Scenario-side realization of the backend
+  boundary, such as mock/in-memory, local concrete, or deployed.
+- **Execution configuration** — The composition of a Participant execution
+  profile, Sync-backend realization, and optional State capabilities for one
+  Scenario run.
+- **Workload pattern** — A named, parameterized, seeded generator of
+  Application actions assigned to Scenario participants.
+- **Scenario operation** — A runner-invoked interaction identified across its
+  instruction, Participant-host response, related observations, and Operation
+  outcome.
+- **Control acknowledgement** — Evidence that a Participant host completed
+  handling a controller request at its advertised boundary. It is neither Sync
+  backend confirmation nor proof of propagation.
+- **Participant-host failure** — A portable failure category at the
+  Participant-host boundary: host infrastructure failure, request rejection,
+  invalid response, response timeout, or transport failure. Category is
+  independent from definite or indefinite Operation outcome certainty.
+- **Operation outcome** — The controller's classification of a Scenario
+  operation as successful, definitely failed, or indefinite. An indefinite
+  outcome means the completion boundary was lost; it does not prove that the
+  requested effect did not occur.
+- **Scenario operation history** — A projection of Scenario operation
+  invocations and outcomes for history-based checks. It is complete only for
+  the operation families and invocation/completion boundaries retained by the
+  Scenario trace.
+- **Scenario fault model** — The supported adverse connectivity, availability,
+  latency, lifecycle, or capacity conditions and assumptions of an Execution
+  configuration.
+- **Fault injection** — A Scenario operation that introduces a condition from
+  the Scenario fault model.
+- **Fault removal** — A Scenario operation that stops an injected condition.
+  It does not itself prove Recovery.
+- **Recovery** — Observed progression after Fault removal toward the required
+  operating or converged state.
+- **Quiescence** — No new Scenario workload and no relevant in-flight
+  runner-controlled work; background streams and future polling may remain.
+- **Convergence** — The required participants reach a declared agreement
+  condition under the Scenario's stated assumptions.
+- **Convergence group** — The Scenario participants that a settle phase
+  requires to reach the same authoritative Eventlog and, when requested,
+  equivalent normalized State.
+- **Settlement barrier** — A profile-appropriate, bounded confirmation that
+  the selected Convergence predicates form a stable fixed point after required
+  Quiescence and Fault removal. It does not include Scenario property verdicts.
+- **Scenario runner** — The headless orchestrator that validates a Scenario
+  specification, controls participants and faults, and emits a Scenario trace.
+  _Avoid:_ Scenario runtime (conflicts with LiveStore's Runtime).
+- **Scenario trace** — A versioned semantic stream of Scenario instructions,
+  Control acknowledgements, Operation outcomes, observations, and verdicts.
+  OTel spans and other implementation details are namespaced diagnostic
+  extensions. Its canonical ordering evidence is a causal partial order;
+  runner receipt order and timestamps remain separately inspectable facts.
+- **Scenario observation capture** — One runner-initiated collection of
+  component observations. It groups facts sampled during the same collection
+  pass but is neither an atomic distributed snapshot nor proof that the
+  observed transitions happened simultaneously.
+- **Scenario correlation** — Association of evidence belonging to the same
+  Scenario operation or investigation. Correlation alone establishes neither
+  direction nor causation.
+- **Scenario dependency** — An evidence-supported ordering relationship
+  between Scenario trace records.
+- **Scenario causal order** — The partial order supported by
+  Participant-local sequence and explicit Scenario dependency or causation
+  edges. Correlation, timestamps, and Observation-capture membership alone
+  never create an edge.
+- **Calibrated Scenario time** — An estimated shared monotonic elapsed-time
+  interval derived from a participant's local monotonic clock and a recorded
+  clock calibration. Its uncertainty is part of the estimate; it measures
+  latency but never establishes LiveStore sync causality.
+- **Scenario property** — A declared correctness or reliability claim under
+  stated Scenario assumptions.
+- **Scenario oracle** — The mechanism that evaluates a Scenario property from
+  bounded Scenario trace, observation, and State evidence.
+- **Scenario verdict** — A Scenario oracle's result for one Scenario property,
+  including its evidence references and explanation.
+- **Scenario run artifact** — The reproduction bundle containing the
+  normalized Scenario specification, source and Application identity,
+  Execution configuration, seed, Scenario trace, snapshots, and verdicts.
 - **Changeset (SQLite session)** — A SQLite session-extension changeset
   recorded per materialization, used to roll back state during rebase.
 - **Changeset (release)** — A pnpm changeset file describing a package-level
@@ -118,6 +211,7 @@ them, derives from them, or observes the result.
 | Order | Eventlog, Event sequence number, Sync backend, Rebase, Facts _(experimental)_ |
 | Derive | Materializer, State, Client document |
 | Observe | Live query, Reactivity graph, Devtools |
+| Verify | Scenario specification, Scenario runner, Scenario trace, Scenario property, Scenario oracle, Scenario verdict |
 
 ### Term families and leitwörter
 
@@ -145,6 +239,17 @@ in their name:
 - **Devtools family** (leitwort "devtools") — anchor **Devtools**; follower
   Devtools protocol version. SessionInfo, Introspection surface, and
   Control operation are its discovery/inspection vocabulary.
+- **Scenario family** (leitwort "Scenario") — anchor **Scenario
+  specification**; followers Scenario participant, Scenario runner, Scenario
+  operation, Scenario operation history, Scenario trace, Scenario observation
+  capture, Scenario correlation, Scenario dependency, Scenario causal order,
+  Scenario property, Scenario oracle, Scenario verdict, and Scenario run
+  artifact. Application definition, Participant host, Participant execution
+  profile, Execution configuration, Workload pattern, Scenario fault model,
+  Fault injection, Fault removal, Recovery, Quiescence, Convergence,
+  Convergence group, Settlement barrier, Control acknowledgement,
+  Participant-host failure, Operation outcome, and Calibrated Scenario time are
+  its execution and evidence vocabulary.
 
 ### Naming rubric
 
@@ -160,6 +265,9 @@ in their name:
   State → Live query → App.
 - **Containment:** A Client contains one or more Client sessions plus the
   Leader role; sessions reach the leader through a proxy.
+- **Scenario topology:** A Scenario runner controls Client and Client-session
+  participants through a Participant host; a Sync backend remains a separate
+  topology component selected through a Sync-backend realization.
 - **Pluggable dimensions:** Adapter, Sync provider, Framework integration,
   State realization, Devtools surface — each is a contract with multiple
   realizations.

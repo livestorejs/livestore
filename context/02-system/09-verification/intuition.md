@@ -19,6 +19,7 @@ shape to evidence shape:
 | Performance promise (LS-R14) | Maintained perf suites with comparable runs |
 | Protocol stability (devtools, sync) | Executable compatibility tests |
 | Determinism | Runtime hash checks, not convention |
+| Composed sync behavior under faults and recovery | Reproducible scenarios, semantic traces, bounded oracles |
 
 ## Conformance is the flip side of pluggability
 
@@ -31,6 +32,13 @@ Adapter and framework-integration suites are now contracted but not yet
 built (open deltas in
 [02-conformance/](./02-conformance/requirements.md)); read-model
 conformance remains the open question (LS.SYS.VER.CONF-DQ1).
+
+Scenario verification is a different evidence shape from dimension
+conformance. It composes real Stores, processors, materialization, topology,
+faults, and recovery into a reviewable run while preserving explicit
+instructions, observations, and verdicts. Its mechanism-independent contract
+lives in [06-scenarios/](./06-scenarios/requirements.md); the runner and
+viewer realization is registered there and implemented in `livestore-contrib`.
 
 ## Where evidence lives
 
