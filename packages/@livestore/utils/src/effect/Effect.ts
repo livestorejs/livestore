@@ -49,22 +49,43 @@ export type SyncOrPromiseOrEffect<TResult, TError = never, TContext = never> =
   | Promise<TResult>
   | Effect.Effect<TResult, TError, TContext>
 
-export const tryAll = <Res>(
-  fn: () => Res,
-): Res extends Effect.Effect<infer A, infer E>
-  ? Effect.Effect<A, E | Cause.UnknownError>
-  : Res extends Promise<infer A>
-    ? Effect.Effect<A, Cause.UnknownError>
-    : Effect.Effect<Res, Cause.UnknownError> =>
-  Effect.try({ try: () => fn(), catch: (cause) => new Cause.UnknownError(cause) }).pipe(
-    Effect.andThen((fnRes) =>
-      Effect.isEffect(fnRes) === true
-        ? (fnRes as any as Effect.Effect<any>)
-        : Predicate.isPromiseLike(fnRes) === true
-          ? Effect.promise(() => fnRes)
-          : Effect.succeed(fnRes),
-    ),
-  ) as any
+/**
+ * Creates an Effect from an operation that may return a value, a Promise-like value, or another Effect.
+ *
+ * @remarks
+ * Synchronous values succeed directly, and Promise-like values are awaited. Synchronous throws and Promise rejections
+ * are mapped to `Cause.UnknownError`. When the operation returns an Effect, that Effect is executed rather than
+ * produced as a successful value; its failures and service requirements are preserved.
+ *
+ * @param operation - A callback that may return a synchronous value, a Promise-like value, or an Effect
+ * @returns An Effect representing the normalized outcome of the operation
+ */
+export function trySyncOrPromiseOrEffect<Return>(
+  operation: () => Return,
+): Effect.Effect<
+  Return extends Effect.Effect<infer A, infer _E, infer _R> ? A : Return extends PromiseLike<infer A> ? A : Return,
+  Cause.UnknownError | (Return extends Effect.Effect<infer _A, infer E, infer _R> ? E : never),
+  Return extends Effect.Effect<infer _A, infer _E, infer R> ? R : never
+>
+export function trySyncOrPromiseOrEffect(operation: () => unknown): Effect.Effect<unknown, unknown, unknown> {
+  return Effect.try({
+    try: () => {
+      const result = operation()
+
+      if (Effect.isEffect(result) === true) {
+        // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- dynamic implementation boundary; the public overload preserves exact Effect error and requirement channels
+        return result
+      }
+
+      if (Predicate.isPromiseLike(result) === true) {
+        return Effect.tryPromise(() => result)
+      }
+
+      return Effect.succeed(result)
+    },
+    catch: (cause) => new Cause.UnknownError(cause),
+  }).pipe(Effect.flatten)
+}
 
 export const acquireReleaseLog = (label: string) =>
   Effect.acquireRelease(Effect.log(`${label} acquire`), (_, ex) => Effect.log(`${label} release`, ex))

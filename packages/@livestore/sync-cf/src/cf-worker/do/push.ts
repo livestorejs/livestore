@@ -46,7 +46,7 @@ export const makePush =
       }
 
       if (options?.onPush !== undefined) {
-        yield* Effect.tryAll(() =>
+        yield* Effect.trySyncOrPromiseOrEffect(() =>
           options.onPush!(pushRequest, {
             storeId,
             ...(payload !== undefined ? { payload } : {}),
@@ -140,7 +140,9 @@ export const makePush =
           for (const { response, encoded } of responses) {
             // Only calling once for now.
             if (options?.onPullRes !== undefined) {
-              yield* Effect.tryAll(() => options.onPullRes!(response)).pipe(UnknownError.mapToUnknownError)
+              yield* Effect.trySyncOrPromiseOrEffect(() => options.onPullRes!(response)).pipe(
+                UnknownError.mapToUnknownError,
+              )
             }
 
             // NOTE we're also sending the pullRes chunk to the pushing ws client as confirmation
@@ -194,7 +196,9 @@ export const makePush =
       Effect.tap(
         Effect.fn(function* (message) {
           if (options?.onPushRes !== undefined) {
-            yield* Effect.tryAll(() => options.onPushRes!(message)).pipe(UnknownError.mapToUnknownError)
+            yield* Effect.trySyncOrPromiseOrEffect(() => options.onPushRes!(message)).pipe(
+              UnknownError.mapToUnknownError,
+            )
           }
         }),
       ),

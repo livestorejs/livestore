@@ -31,7 +31,7 @@ export const makeEndingPullStream = ({
     const { doOptions, backendId, storeId, storage } = yield* DoCtx.DoCtx
 
     if (doOptions?.onPull !== undefined) {
-      yield* Effect.tryAll(() =>
+      yield* Effect.trySyncOrPromiseOrEffect(() =>
         doOptions.onPull!(req, {
           storeId,
           ...(payload !== undefined ? { payload } : {}),
@@ -79,7 +79,7 @@ export const makeEndingPullStream = ({
       Stream.tap(
         Effect.fn(function* (res) {
           if (doOptions?.onPullRes !== undefined) {
-            yield* Effect.tryAll(() => doOptions.onPullRes!(res)).pipe(UnknownError.mapToUnknownError)
+            yield* Effect.trySyncOrPromiseOrEffect(() => doOptions.onPullRes!(res)).pipe(UnknownError.mapToUnknownError)
           }
         }),
       ),
