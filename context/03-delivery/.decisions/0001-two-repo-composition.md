@@ -53,13 +53,19 @@ The DevTools packages entering contrib under
 section unchanged; it needs extension, not revision.
 
 One edge deserves naming because exactness is **load-bearing** there rather than
-merely tidy. `@livestore/devtools-vite` compiles `@livestore/devtools-react`'s
-TypeScript **source** at its own build time rather than consuming a built API.
+merely tidy. `@livestore/devtools-vite` does **not** consume a built API from
+`@livestore/devtools-react`, and it does not compile that source itself either.
+Verified in the tree: its `build.ts` prebuilds only the shadow-isolated CSS
+(`tailwindcss -i ./src/index.css -o ./dist/index.css`), and `plugin.ts` resolves
+the `@livestore/devtools-react` **entry point at request time** — so the
+**consuming application's Vite server** compiles that TypeScript source.
+
 Every other `@livestore` edge is a runtime API dependency, where a range would at
-worst resolve a compatible newer minor. On a source-compilation edge a newer
-minor can use a language or configuration feature the pinned compiler step does
-not handle, and the failure surfaces in the **consumer's** build rather than
-ours. The existing "published graphs become non-deterministic" rationale already
+worst resolve a compatible newer minor against a stable interface. Here a range
+resolves *source that nothing on our side ever compiles*. A newer minor can use a
+language or configuration feature the consumer's toolchain does not handle, and
+the failure surfaces **entirely in the consumer's build**, with no build of ours
+in between to catch it first. The existing "published graphs become non-deterministic" rationale already
 excludes ranges; this records that the cost of getting it wrong is higher on that
 one edge.
 
