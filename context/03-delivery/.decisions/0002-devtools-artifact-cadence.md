@@ -1,7 +1,17 @@
 # 0002 — Decouple LiveStore release cadence from DevTools artifacts
 
-Status: accepted (2026-07-15; extracted from the delivery spec during review —
-the decision predates this record).
+Status: superseded by 0003-devtools-in-contrib
+
+Decided: 2026-07-15; extracted from the delivery spec during review — the
+decision predates this record.
+
+Superseded: 2026-07-30 by [0003-devtools-in-contrib](0003-devtools-in-contrib.md).
+The Context below opens "LiveStore releases consume a prebuilt DevTools artifact
+produced from `overeng` source". That premise no longer holds: the DevTools
+source moved into `livestore-contrib` and the artifact producer is retired, so
+there is no artifact to certify and no cadence to decouple. The reasoning is
+preserved rather than rewritten — the decision was correct for the world it
+described.
 
 ## Context
 

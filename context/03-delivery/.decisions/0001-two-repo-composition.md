@@ -46,6 +46,27 @@ to exact versions during publish.
 Lockstep releases cost extra publish events, but remove ambiguity from the
 package graph.
 
+### Amendment 1 — DevTools packages (2026-07-30)
+
+The DevTools packages entering contrib under
+[0003-devtools-in-contrib](0003-devtools-in-contrib.md) are covered by this
+section unchanged; it needs extension, not revision.
+
+One edge deserves naming because exactness is **load-bearing** there rather than
+merely tidy. `@livestore/devtools-vite` compiles `@livestore/devtools-react`'s
+TypeScript **source** at its own build time rather than consuming a built API.
+Every other `@livestore` edge is a runtime API dependency, where a range would at
+worst resolve a compatible newer minor. On a source-compilation edge a newer
+minor can use a language or configuration feature the pinned compiler step does
+not handle, and the failure surfaces in the **consumer's** build rather than
+ours. The existing "published graphs become non-deterministic" rationale already
+excludes ranges; this records that the cost of getting it wrong is higher on that
+one edge.
+
+`@livestore/devtools-chrome` is out of scope for this section: it is
+`private: true` and never reaches npm, so it has no published specifier. Its
+binding to a release is the wire protocol, not a version.
+
 ## Relative Genie Imports
 
 Contrib imports core genie helpers through `../repos/livestore/...`, not
