@@ -10,6 +10,7 @@ import {
   type SqliteError,
   UnknownError,
 } from '../index.ts'
+import type * as MaterializationJournal from '../MaterializationJournal.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { configureConnection } from './connection.ts'
 import type { MaterializeEvent } from './types.ts'
@@ -26,7 +27,10 @@ export const recreateDb = ({
   schema: LiveStoreSchema
   bootStatusQueue: Queue.Queue<BootStatus>
   materializeEvent: MaterializeEvent
-}): Effect.Effect<{ migrationsReport: MigrationsReport }, UnknownError | MaterializeError | SqliteError> =>
+}): Effect.Effect<
+  { migrationsReport: MigrationsReport },
+  UnknownError | MaterializeError | MaterializationJournal.MaterializationJournalError | SqliteError
+> =>
   Effect.gen(function* () {
     const hooks = schema.state.sqlite.migrations.hooks
 

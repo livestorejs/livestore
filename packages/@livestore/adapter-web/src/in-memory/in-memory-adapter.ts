@@ -4,6 +4,7 @@ import {
   Devtools,
   type LockStatus,
   makeClientSession,
+  MaterializationJournal,
   migrateDb,
   StateHead,
   type SyncOptions,
@@ -273,7 +274,7 @@ const makeLeaderThread = ({
         shutdownChannel,
         syncPayloadEncoded,
         syncPayloadSchema: syncPayloadSchema as Schema.Decoder<Schema.Json, never> | undefined,
-      }).pipe(Layer.provide(StateHead.layer({ dbState }))),
+      }).pipe(Layer.provide(Layer.mergeAll(StateHead.layer({ dbState }), MaterializationJournal.layer({ dbState })))),
     )
 
     return yield* Effect.gen(function* () {

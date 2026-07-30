@@ -1,5 +1,5 @@
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Option, Schema } from '@livestore/utils/effect'
+import { Effect, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
 import { migrateTable } from '../schema-management/migrations.ts'
@@ -11,8 +11,8 @@ import {
   eventlogSystemTables,
   SYNC_STATUS_TABLE,
 } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
-import { sessionChangesetMetaTable } from '../schema/state/sqlite/system-tables/state-tables.ts'
 import { insertRow, updateRows } from '../sql-queries/sql-queries.ts'
+import * as SqliteDbHelper from '../sqlite-db-helper.ts'
 import type { PreparedBindValues } from '../util.ts'
 import { sql } from '../util.ts'
 import { execSql } from './connection.ts'
@@ -42,31 +42,18 @@ export const initEventlogDb = (dbEventlog: SqliteDb) =>
 
 /**
  * Exclusive of the "since event"
- * Also queries the state db in order to get the SQLite session changeset data.
  */
 export const getEventsSince = ({
   dbEventlog,
-  dbState,
   since,
 }: {
   dbEventlog: SqliteDb
-  dbState: SqliteDb
   since: EventSequenceNumber.Client.Composite
 }): ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> => {
   const pendingEvents = dbEventlog.select(eventlogMetaTable.where('seqNumGlobal', '>=', since.global))
 
-  const sessionChangesetRowsDecoded = dbState.select(
-    sessionChangesetMetaTable.where('seqNumGlobal', '>=', since.global),
-  )
-
-  // Create a Map for O(1) lookup instead of O(n) find
-  const sessionChangesetMap = new Map(
-    sessionChangesetRowsDecoded.map((row) => [`${row.seqNumGlobal}:${row.seqNumClient}`, row]),
-  )
-
   return pendingEvents
     .map((eventlogEvent) => {
-      const sessionChangeset = sessionChangesetMap.get(`${eventlogEvent.seqNumGlobal}:${eventlogEvent.seqNumClient}`)
       return LiveStoreEvent.Client.EncodedWithMeta.make({
         name: eventlogEvent.name,
         args: eventlogEvent.argsJson,
@@ -83,14 +70,6 @@ export const getEventsSince = ({
         clientId: eventlogEvent.clientId,
         sessionId: eventlogEvent.sessionId,
         meta: {
-          sessionChangeset:
-            sessionChangeset !== undefined && sessionChangeset.changeset !== null
-              ? {
-                  _tag: 'sessionChangeset' as const,
-                  data: sessionChangeset.changeset,
-                  debug: sessionChangeset.debug,
-                }
-              : { _tag: 'unset' as const },
           syncMetadata: eventlogEvent.syncMetadataJson,
           materializerHashLeader: Option.none(),
           materializerHashSession: Option.none(),
@@ -100,6 +79,26 @@ export const getEventsSince = ({
     .filter((_) => EventSequenceNumber.Client.compare(_.seqNum, since) > 0)
     .toSorted((a, b) => EventSequenceNumber.Client.compare(a.seqNum, b.seqNum))
 }
+
+export const deleteEvents = (dbEventlog: SqliteDb, keys: ReadonlyArray<EventSequenceNumber.Client.Composite>) =>
+  Effect.gen(function* () {
+    // Split into batches to keep each DELETE statement and its bound parameter count manageable.
+    const eventNumChunks = ReadonlyArray.chunksOf(100)(keys)
+
+    for (const eventNumChunk of eventNumChunks) {
+      // A global/client pair identifies the logical event position. Deleting it intentionally purges
+      // every rebase-generation incarnation that may remain at that position.
+      const placeholders = eventNumChunk.map(() => '(?, ?)').join(', ')
+      const bindValues = eventNumChunk.flatMap((key) => [key.global, key.client])
+
+      yield* execSql(
+        dbEventlog,
+        sql`DELETE FROM ${EVENTLOG_META_TABLE}
+          WHERE (seqNumGlobal, seqNumClient) IN (${placeholders})`,
+        bindValues,
+      )
+    }
+  }).pipe(SqliteDbHelper.withSavepoint(dbEventlog))
 
 export const getEventsFromEventlog = ({
   dbEventlog,

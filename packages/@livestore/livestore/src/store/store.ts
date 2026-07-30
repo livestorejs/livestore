@@ -10,6 +10,7 @@ import {
   IntentionalShutdownCause,
   isQueryBuilder,
   liveStoreVersion,
+  MaterializationJournal,
   MaterializeError,
   MaterializerHashMismatchError,
   makeClientSessionSyncProcessor,
@@ -33,6 +34,7 @@ import {
   Exit,
   Fiber,
   Inspectable,
+  Layer,
   Option,
   OtelTracer,
   Queue,
@@ -209,7 +211,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.storageMode = clientSession.leaderThread.initialState.storageMode
 
     const reactivityGraph = makeReactivityGraph()
-    const stateHead = StateHead.make({ dbState: clientSession.sqliteDb })
+    const sqliteDbWrapper = new SqliteDbWrapper({ otel: otelOptions, db: clientSession.sqliteDb })
+    const materializationLayer = Layer.mergeAll(
+      MaterializationJournal.layer({ dbState: sqliteDbWrapper }),
+      StateHead.layer({ dbState: sqliteDbWrapper }),
+    )
 
     const syncProcessor = makeClientSessionSyncProcessor({
       schema,
@@ -218,6 +224,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         (eventEncoded, { materializerHashLeader }) =>
           // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
           Effect.gen({ self: this }, function* () {
+            const journal = yield* MaterializationJournal.MaterializationJournal
+            const stateHead = yield* StateHead.StateHead
             const resolution = yield* resolveEventDef(schema, {
               operation: '@livestore/livestore:store:materializeEvent',
               event: eventEncoded,
@@ -226,11 +234,13 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             if (resolution._tag === 'unknown') {
               // Runtime schema doesn't know this event yet; skip materialization but
               // keep the log entry so upgraded clients can replay it later.
+              yield* journal.record({
+                key: eventEncoded.seqNum,
+                changeset: { _tag: 'no-op' as const },
+              })
               yield* stateHead.set(eventEncoded.seqNum)
               return {
                 writeTables: new Set<string>(),
-                sessionChangeset: { _tag: 'no-op' as const },
-                materializerHash: Option.none(),
               }
             }
 
@@ -257,6 +267,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             ) {
               return yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
             }
+
+            eventEncoded.meta.materializerHashSession = materializerHash
 
             const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
             const otelContext = otel.trace.setSpan(otel.context.active(), span)
@@ -291,18 +303,23 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               }
             }
 
-            const sessionChangeset = this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset
+            yield* journal.record({
+              key: eventEncoded.seqNum,
+              changeset: this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset,
+            })
             yield* stateHead.set(eventEncoded.seqNum)
 
-            return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
+            return { writeTables: writeTablesForEvent }
           }).pipe(
             SqliteDbHelper.withSavepoint(clientSession.sqliteDb),
-            Effect.mapError((cause) => MaterializeError.make({ cause })),
+            Effect.provide(materializationLayer),
+            Effect.mapError((cause) =>
+              MaterializationJournal.isMaterializationJournalError(cause) === true
+                ? cause
+                : MaterializeError.make({ cause }),
+            ),
           ),
       ),
-      rollback: (changeset) => {
-        this[StoreInternalsSymbol].sqliteDbWrapper.rollback(changeset)
-      },
       refreshTables: (tables) => {
         const tablesToUpdate = [] as [Ref<null, ReactivityGraphContext, RefreshReason>, null][]
         for (const tableName of tables) {
@@ -318,7 +335,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         }),
       },
       confirmUnsavedChanges,
-    }).pipe(Effect.provideService(StateHead.StateHead, stateHead), Effect.runSyncWith(effectContext.services))
+    }).pipe(Effect.provide(materializationLayer), Effect.runSyncWith(effectContext.services))
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     const tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> } = {}
@@ -386,9 +403,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       yield* syncProcessor.boot
     })
-
-    // Build Sqlite wrapper last to avoid using getters before internals are set
-    const sqliteDbWrapper = new SqliteDbWrapper({ otel: otelOptions, db: clientSession.sqliteDb })
 
     // Initialize internals bag
     this[StoreInternalsSymbol] = {
@@ -1171,7 +1185,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *
    * This is called automatically when the store was created using the React or Effect API.
    */
-  shutdown = (cause?: Cause.Cause<UnknownError | MaterializeError>): Effect.Effect<void> => {
+  shutdown = (
+    cause?: Cause.Cause<UnknownError | MaterializeError | MaterializationJournal.MaterializationJournalError>,
+  ): Effect.Effect<void> => {
     this[StoreInternalsSymbol].isShutdown = true
     return this[StoreInternalsSymbol].clientSession.shutdown(
       cause !== undefined ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })),

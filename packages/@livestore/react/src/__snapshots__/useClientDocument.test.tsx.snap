@@ -9,9 +9,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -22,6 +19,9 @@ exports[`useClientDocument > otel > should update the data based on component ke
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -43,6 +43,58 @@ exports[`useClientDocument > otel > should update the data based on component ke
           },
         },
       ],
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "DELETE FROM __livestore_session_changeset WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((0, 1, 0))",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT INTO __livestore_session_changeset (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+      },
+    },
+    {
+      "_name": "sql-in-memory-select",
+      "attributes": {
+        "sql.cached": false,
+        "sql.query": "SELECT name FROM sqlite_master WHERE type = 'table' AND name = $tableName",
+        "sql.rowsCount": 1,
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "DELETE FROM __livestore_session_changeset WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((0, 2, 0))",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT INTO __livestore_session_changeset (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+      },
+    },
+    {
+      "_name": "sql-in-memory-select",
+      "attributes": {
+        "sql.cached": true,
+        "sql.query": "SELECT name FROM sqlite_master WHERE type = 'table' AND name = $tableName",
+        "sql.rowsCount": 1,
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+      },
     },
     {
       "_name": "LiveStore:commits",
@@ -309,9 +361,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -322,6 +371,9 @@ exports[`useClientDocument > otel > should update the data based on component ke
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -343,6 +395,58 @@ exports[`useClientDocument > otel > should update the data based on component ke
           },
         },
       ],
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "DELETE FROM __livestore_session_changeset WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((0, 1, 0))",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT INTO __livestore_session_changeset (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+      },
+    },
+    {
+      "_name": "sql-in-memory-select",
+      "attributes": {
+        "sql.cached": false,
+        "sql.query": "SELECT name FROM sqlite_master WHERE type = 'table' AND name = $tableName",
+        "sql.rowsCount": 1,
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "DELETE FROM __livestore_session_changeset WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((0, 2, 0))",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT INTO __livestore_session_changeset (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+      },
+    },
+    {
+      "_name": "sql-in-memory-select",
+      "attributes": {
+        "sql.cached": true,
+        "sql.query": "SELECT name FROM sqlite_master WHERE type = 'table' AND name = $tableName",
+        "sql.rowsCount": 1,
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+      },
     },
     {
       "_name": "LiveStore:commits",

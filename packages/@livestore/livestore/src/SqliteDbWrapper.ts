@@ -111,7 +111,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
   withChangeset<TRes>(callback: () => TRes): {
     result: TRes
-    changeset: { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any } | { _tag: 'no-op' }
+    changeset: { _tag: 'changeset'; data: Uint8Array<ArrayBuffer> } | { _tag: 'no-op' }
   } {
     const session = this.db.session()
     const result = callback()
@@ -121,8 +121,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
     return {
       result,
-      changeset:
-        changeset !== undefined ? { _tag: 'sessionChangeset', data: changeset, debug: null } : { _tag: 'no-op' },
+      changeset: changeset !== undefined ? { _tag: 'changeset', data: changeset } : { _tag: 'no-op' },
     }
   }
 

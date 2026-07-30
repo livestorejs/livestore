@@ -9,6 +9,7 @@ import {
   StateHead,
   type SyncOptions,
   UnknownError,
+  MaterializationJournal,
 } from '@livestore/common'
 import {
   configureConnection,
@@ -175,7 +176,7 @@ const makeLocalLeaderThread = ({
         shutdownChannel,
         syncPayloadEncoded,
         syncPayloadSchema,
-      }).pipe(Layer.provide(StateHead.layer({ dbState }))),
+      }).pipe(Layer.provide(Layer.mergeAll(StateHead.layer({ dbState }), MaterializationJournal.layer({ dbState })))),
     )
 
     return yield* Effect.gen(function* () {

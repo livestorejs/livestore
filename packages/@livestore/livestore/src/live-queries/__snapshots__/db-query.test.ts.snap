@@ -9,9 +9,6 @@ exports[`otel > QueryBuilder subscription - async iterator 1`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -22,6 +19,9 @@ exports[`otel > QueryBuilder subscription - async iterator 1`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -43,6 +43,32 @@ exports[`otel > QueryBuilder subscription - async iterator 1`] = `
           },
         },
       ],
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "DELETE FROM __livestore_session_changeset WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((1, 0, 0))",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT INTO __livestore_session_changeset (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+      },
+    },
+    {
+      "_name": "sql-in-memory-select",
+      "attributes": {
+        "sql.cached": false,
+        "sql.query": "SELECT name FROM sqlite_master WHERE type = 'table' AND name = $tableName",
+        "sql.rowsCount": 1,
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+      },
     },
     {
       "_name": "LiveStore:commits",
@@ -167,9 +193,6 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -180,6 +203,9 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -201,6 +227,32 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1
           },
         },
       ],
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "DELETE FROM __livestore_session_changeset WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((1, 0, 0))",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT INTO __livestore_session_changeset (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+      },
+    },
+    {
+      "_name": "sql-in-memory-select",
+      "attributes": {
+        "sql.cached": false,
+        "sql.query": "SELECT name FROM sqlite_master WHERE type = 'table' AND name = $tableName",
+        "sql.rowsCount": 1,
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+      },
     },
     {
       "_name": "LiveStore:commits",
@@ -325,9 +377,6 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -338,6 +387,9 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -359,6 +411,32 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
           },
         },
       ],
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "DELETE FROM __livestore_session_changeset WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((1, 0, 0))",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT INTO __livestore_session_changeset (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+      },
+    },
+    {
+      "_name": "sql-in-memory-select",
+      "attributes": {
+        "sql.cached": false,
+        "sql.query": "SELECT name FROM sqlite_master WHERE type = 'table' AND name = $tableName",
+        "sql.rowsCount": 1,
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+      },
     },
     {
       "_name": "LiveStore:commits",
@@ -483,9 +561,6 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -496,6 +571,9 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -517,6 +595,32 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
           },
         },
       ],
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "DELETE FROM __livestore_session_changeset WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((1, 0, 0))",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT INTO __livestore_session_changeset (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+      },
+    },
+    {
+      "_name": "sql-in-memory-select",
+      "attributes": {
+        "sql.cached": false,
+        "sql.query": "SELECT name FROM sqlite_master WHERE type = 'table' AND name = $tableName",
+        "sql.rowsCount": 1,
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+      },
     },
     {
       "_name": "LiveStore:commits",
@@ -641,9 +745,6 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -654,6 +755,9 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -675,6 +779,32 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
           },
         },
       ],
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "DELETE FROM __livestore_session_changeset WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((1, 0, 0))",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT INTO __livestore_session_changeset (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+      },
+    },
+    {
+      "_name": "sql-in-memory-select",
+      "attributes": {
+        "sql.cached": false,
+        "sql.query": "SELECT name FROM sqlite_master WHERE type = 'table' AND name = $tableName",
+        "sql.rowsCount": 1,
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+      },
     },
     {
       "_name": "LiveStore:commits",
@@ -799,9 +929,6 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -812,6 +939,9 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -833,6 +963,58 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
           },
         },
       ],
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "DELETE FROM __livestore_session_changeset WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((1, 0, 0))",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT INTO __livestore_session_changeset (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+      },
+    },
+    {
+      "_name": "sql-in-memory-select",
+      "attributes": {
+        "sql.cached": false,
+        "sql.query": "SELECT name FROM sqlite_master WHERE type = 'table' AND name = $tableName",
+        "sql.rowsCount": 1,
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "DELETE FROM __livestore_session_changeset WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((2, 0, 0))",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT INTO __livestore_session_changeset (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+      },
+    },
+    {
+      "_name": "sql-in-memory-select",
+      "attributes": {
+        "sql.cached": true,
+        "sql.query": "SELECT name FROM sqlite_master WHERE type = 'table' AND name = $tableName",
+        "sql.rowsCount": 1,
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+      },
     },
     {
       "_name": "LiveStore:commits",
@@ -1036,9 +1218,6 @@ exports[`otel > otel 3`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -1049,6 +1228,9 @@ exports[`otel > otel 3`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -1070,6 +1252,32 @@ exports[`otel > otel 3`] = `
           },
         },
       ],
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "DELETE FROM __livestore_session_changeset WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((1, 0, 0))",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT INTO __livestore_session_changeset (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+      },
+    },
+    {
+      "_name": "sql-in-memory-select",
+      "attributes": {
+        "sql.cached": false,
+        "sql.query": "SELECT name FROM sqlite_master WHERE type = 'table' AND name = $tableName",
+        "sql.rowsCount": 1,
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+      },
     },
     {
       "_name": "LiveStore:commits",
@@ -1356,9 +1564,6 @@ exports[`otel > with thunks 7`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -1369,6 +1574,9 @@ exports[`otel > with thunks 7`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -1390,6 +1598,32 @@ exports[`otel > with thunks 7`] = `
           },
         },
       ],
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "DELETE FROM __livestore_session_changeset WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((1, 0, 0))",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT INTO __livestore_session_changeset (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+      },
+    },
+    {
+      "_name": "sql-in-memory-select",
+      "attributes": {
+        "sql.cached": false,
+        "sql.query": "SELECT name FROM sqlite_master WHERE type = 'table' AND name = $tableName",
+        "sql.rowsCount": 1,
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+      },
     },
     {
       "_name": "LiveStore:commits",
@@ -1510,9 +1744,6 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -1523,6 +1754,9 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -1544,6 +1778,32 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
           },
         },
       ],
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "DELETE FROM __livestore_session_changeset WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((1, 0, 0))",
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT INTO __livestore_session_changeset (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+      },
+    },
+    {
+      "_name": "sql-in-memory-select",
+      "attributes": {
+        "sql.cached": false,
+        "sql.query": "SELECT name FROM sqlite_master WHERE type = 'table' AND name = $tableName",
+        "sql.rowsCount": 1,
+      },
+    },
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "INSERT OR REPLACE INTO __livestore_state_head (id, seqNumGlobal, seqNumClient, seqNumRebaseGeneration) VALUES ($id, $seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration)",
+      },
     },
     {
       "_name": "LiveStore:commits",

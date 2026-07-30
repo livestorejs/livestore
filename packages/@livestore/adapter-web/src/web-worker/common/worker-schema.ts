@@ -1,5 +1,6 @@
 import {
   BootStatus,
+  ClientSessionLeaderThreadProxy,
   Devtools,
   liveStoreVersion,
   MigrationsReport,
@@ -86,9 +87,7 @@ export class LeaderWorkerInnerPullStream extends Rpc.make('PullStream', {
   payload: {
     cursor: Schema.toType(EventSequenceNumber.Client.Composite),
   },
-  success: Schema.Struct({
-    payload: SyncState.PayloadUpstream,
-  }),
+  success: ClientSessionLeaderThreadProxy.PullItem,
   error: Schema.Never,
   stream: true,
 }) {}

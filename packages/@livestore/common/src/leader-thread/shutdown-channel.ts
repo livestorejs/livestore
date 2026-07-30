@@ -1,8 +1,15 @@
 import { type WebChannel, Schema } from '@livestore/utils/effect'
 
 import { BackendIdMismatchError, IntentionalShutdownCause, MaterializeError, UnknownError } from '../index.ts'
+import { MaterializationJournalError } from '../MaterializationJournal.ts'
 
-export const All = Schema.Union([IntentionalShutdownCause, UnknownError, BackendIdMismatchError, MaterializeError])
+export const All = Schema.Union([
+  IntentionalShutdownCause,
+  UnknownError,
+  BackendIdMismatchError,
+  MaterializeError,
+  MaterializationJournalError,
+])
 
 /**
  * Used internally by an adapter to shutdown gracefully.

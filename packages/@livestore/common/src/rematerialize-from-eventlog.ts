@@ -56,8 +56,9 @@ export const rematerializeFromEventlog = Effect.fn('@livestore/common:rematerial
     const materializer = schema.state.materializers.get(row.name)
 
     if (eventDef === undefined || materializer === undefined) {
-      // Route unknown events through the normal materialization boundary so
-      // they advance the state snapshot head as no-ops.
+      // Old snapshots can contain newer events. Route them through the normal
+      // materialization boundary so unknown-event policy, no-op journal records,
+      // and state-head advancement stay consistent with live materialization.
       yield* materializeEvent(eventEncoded, { skipEventlog: true })
       return
     }

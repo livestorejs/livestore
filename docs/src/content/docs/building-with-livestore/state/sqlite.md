@@ -38,7 +38,7 @@ LiveStore operates two SQLite databases by default: a state database (your mater
 - `__livestore_state_head`
   - Stores the latest composite event sequence number reflected by the state database snapshot.
 - `__livestore_session_changeset`
-  - Stores SQLite session changeset blobs keyed by event sequence numbers. Used to efficiently roll back and re‑apply state during rebases.
+  - Stores the materialization journal: SQLite session changeset blobs keyed by complete composite event sequence numbers. LiveStore uses these records to roll back affected materializations during a rebase.
 - Your application tables
   - All tables you define via `State.SQLite.table(...)` live in the state database.
 

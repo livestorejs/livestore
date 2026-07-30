@@ -7,6 +7,7 @@ import {
   type SyncOptions,
   UnknownError,
   StateHead,
+  MaterializationJournal,
 } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
 import {
@@ -94,7 +95,7 @@ export const makeAdapter =
           shutdownChannel,
           syncPayloadEncoded,
           syncPayloadSchema,
-        }).pipe(Layer.provide(StateHead.layer({ dbState }))),
+        }).pipe(Layer.provide(Layer.mergeAll(StateHead.layer({ dbState }), MaterializationJournal.layer({ dbState })))),
       )
 
       const { leaderThread, initialSnapshot } = yield* Effect.gen(function* () {

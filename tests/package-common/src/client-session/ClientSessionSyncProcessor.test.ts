@@ -4,9 +4,13 @@ import type { LockStatus, MockSyncBackend } from '@livestore/common'
 import {
   type BootStatus,
   type ClientSession,
-  type ClientSessionLeaderThreadProxy,
+  ClientSessionLeaderThreadProxy,
   LeaderAheadError,
   makeMockSyncBackend,
+  MATERIALIZATION_JOURNAL_META_TABLE,
+  MaterializationJournal,
+  sql,
+  STATE_HEAD_META_TABLE,
   StateHead,
   SyncState,
   type UnknownError,
@@ -14,19 +18,16 @@ import {
 import { Eventlog, makeMaterializeEvent, recreateDb } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
-import {
-  type ClientSessionSyncProcessor,
-  makeClientSessionSyncProcessor,
-  type SyncBackend,
-} from '@livestore/common/sync'
+import { type ClientSessionSyncProcessor, makeClientSessionSyncProcessor, SyncBackend } from '@livestore/common/sync'
 import { EventFactory } from '@livestore/common/testing'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, StoreInternalsSymbol } from '@livestore/livestore'
+import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
+import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Cache,
-  type OtelTracer,
   Cause,
   Context,
   Deferred,
@@ -40,6 +41,7 @@ import {
   Latch,
   Layer,
   Option,
+  type OtelTracer,
   Queue,
   References,
   Result,
@@ -59,6 +61,43 @@ import { makeTestAdapter, type TestingOverrides } from '../test-adapter.ts'
 // TODO fix type level - derived events are missing and thus infers to `never` currently
 const eventSchema = LiveStoreEvent.Input.makeSchema(schema) as TODO as Schema.Codec<LiveStoreEvent.Input.Encoded>
 const encode = Schema.encodeSync(eventSchema)
+const materializationLayerTest = Layer.mergeAll(MaterializationJournal.layerTest, StateHead.layerTest)
+const makeBackendPullGate = Effect.fn(function* (mockSyncBackend: MockSyncBackend) {
+  const permits = yield* Queue.unbounded<void>()
+
+  return {
+    allowNext: Queue.offer(permits, undefined).pipe(Effect.asVoid),
+    backend: () =>
+      mockSyncBackend.makeSyncBackend.pipe(
+        Effect.map((backend) =>
+          SyncBackend.of({
+            ...backend,
+            pull: (cursor, options) =>
+              backend
+                .pull(cursor, options)
+                .pipe(Stream.tap(({ batch }) => (batch.length === 0 ? Effect.void : Queue.take(permits)))),
+          }),
+        ),
+      ),
+  }
+})
+
+const getMaterializationJournalRows = (store: Store) =>
+  store[StoreInternalsSymbol].sqliteDbWrapper.select<{
+    seqNumGlobal: number
+    seqNumClient: number
+    seqNumRebaseGeneration: number
+  }>(
+    sql`SELECT seqNumGlobal, seqNumClient, seqNumRebaseGeneration
+      FROM ${MATERIALIZATION_JOURNAL_META_TABLE}
+      ORDER BY seqNumGlobal, seqNumClient, seqNumRebaseGeneration`,
+  )
+
+const waitForMaterializationJournalRows = Effect.fn(function* (store: Store, expectedCount: number) {
+  while (getMaterializationJournalRows(store).length !== expectedCount) {
+    yield* Effect.sleep(10)
+  }
+})
 
 const withTestCtx = Vitest.makeWithTestCtx({
   makeLayer: () =>
@@ -76,7 +115,6 @@ type ClientProcessorParams = Parameters<typeof makeClientSessionSyncProcessor>[0
 const makeClientProcessorHarness = Effect.fn(function* ({
   push,
   pull = () => Stream.empty,
-  rollback = () => undefined,
   shutdown = () => Effect.void,
   devtools = { enabled: false },
   leaderPushBatchSize = 1,
@@ -84,12 +122,14 @@ const makeClientProcessorHarness = Effect.fn(function* ({
 }: {
   push: LeaderEvents['push']
   pull?: LeaderEvents['pull']
-  rollback?: (changeset: Uint8Array<ArrayBuffer>) => void
   shutdown?: ClientSession['shutdown']
   devtools?: ClientSession['devtools']
   leaderPushBatchSize?: number
   rebaseBarriers?: ClientProcessorParams['params']['rebaseBarriers']
 }) {
+  const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
+  const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
+  const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
   const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
   const leaderThread: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy = {
     events: { pull, push, stream: () => Stream.empty },
@@ -112,7 +152,7 @@ const makeClientProcessorHarness = Effect.fn(function* ({
   }
 
   const clientSession: ClientSession = {
-    sqliteDb: {} as ClientSession['sqliteDb'],
+    sqliteDb,
     devtools,
     clientId: 'client-test',
     sessionId: 'session-test',
@@ -128,14 +168,11 @@ const makeClientProcessorHarness = Effect.fn(function* ({
     materializeEvent: () =>
       Effect.succeed({
         writeTables: new Set<string>(),
-        sessionChangeset: { _tag: 'no-op' as const },
-        materializerHash: Option.none<number>(),
       }),
-    rollback,
     refreshTables: () => undefined,
     params: { leaderPushBatchSize, rebaseBarriers },
     confirmUnsavedChanges: false,
-  }).pipe(Effect.provide(StateHead.layerTest))
+  }).pipe(Effect.provide(materializationLayerTest))
 
   const scope = yield* Scope.make()
   yield* processor.boot.pipe(Scope.provide(scope))
@@ -222,7 +259,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       // Make sure pending events are processed
       yield* store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
-        Stream.filter((_) => _.pending.length === 0),
+        Stream.filter((state) => state.pending.length === 0 && state.localHead.global > 0),
         Stream.take(1),
         Stream.runDrain,
       )
@@ -292,7 +329,9 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       yield* store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
         Stream.filter(
           (state) =>
-            state.pending.length === 0 && EventSequenceNumber.Client.isEqual(state.localHead, state.upstreamHead),
+            state.localHead.global > 0 &&
+            state.pending.length === 0 &&
+            EventSequenceNumber.Client.isEqual(state.localHead, state.upstreamHead),
         ),
         Stream.take(1),
         Stream.runDrain,
@@ -302,6 +341,154 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const finalState = yield* store[StoreInternalsSymbol].syncProcessor.syncState.get
       expect(finalState.pending.length).toEqual(0)
       expect(EventSequenceNumber.Client.isEqual(finalState.localHead, finalState.upstreamHead)).toBe(true)
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.live('globally confirmed client-session events do not retain materialization journal records', (test) =>
+    Effect.gen(function* () {
+      const { makeStore } = yield* TestContext
+      const store = yield* makeStore()
+
+      store.commit(events.todoCreated({ id: 'confirmed', text: 'confirmed', completed: false }))
+
+      // The synchronous commit materializes and journals the event before any
+      // leader/backend acknowledgement can prune it.
+      expect(getMaterializationJournalRows(store)).toHaveLength(1)
+
+      // Await the observable journal outcome itself. The mock backend exposes
+      // pushedEvents before the leader consumes its confirmation pull item.
+      yield* waitForMaterializationJournalRows(store, 0).pipe(Effect.timeout('5 seconds'))
+      const finalState = yield* store[StoreInternalsSymbol].syncProcessor.syncState.get
+      expect(finalState.pending).toEqual([])
+      expect(EventSequenceNumber.Client.isEqual(finalState.localHead, finalState.upstreamHead)).toBe(true)
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.live('same-sequence rebase rolls back before pruning the confirmed prefix', (test) =>
+    Effect.gen(function* () {
+      const { mockSyncBackend, shutdownDeferred } = yield* TestContext
+      const backendFactory = EventFactory.makeFactory(events)({
+        client: EventFactory.clientIdentity('remote-client', 'remote-session'),
+      })
+      const remoteEvent = backendFactory.todoCreated.next({
+        id: 'remote-winner',
+        text: 'remote-winner',
+        completed: false,
+      })
+      yield* mockSyncBackend.advance(remoteEvent)
+
+      const backendPullGate = yield* makeBackendPullGate(mockSyncBackend)
+      const localAcknowledgement = yield* Deferred.make<void>()
+      const adapter = makeTestAdapter({
+        sync: {
+          backend: backendPullGate.backend,
+          onSyncError: 'shutdown',
+        },
+        testing: {
+          overrides: {
+            clientSession: {
+              leaderThreadProxy: (leader) => ({
+                events: {
+                  pull: (args) =>
+                    leader.events
+                      .pull(args)
+                      .pipe(
+                        Stream.tap((item) =>
+                          item.payload.newEvents.some((event) => event.args.id === 'local-rebased') === true
+                            ? Deferred.succeed(localAcknowledgement, undefined)
+                            : Effect.void,
+                        ),
+                      ),
+                  push: leader.events.push,
+                  stream: leader.events.stream,
+                },
+              }),
+            },
+          },
+        },
+      })
+      const store = yield* createStore({
+        schema: schema as LiveStoreSchema,
+        adapter,
+        storeId: nanoid(),
+        shutdownDeferred,
+      })
+
+      store.commit(events.todoCreated({ id: 'local-rebased', text: 'local-rebased', completed: false }))
+      yield* Deferred.await(localAcknowledgement).pipe(Effect.timeout('5 seconds'))
+
+      // The old local e1 changeset must survive the leader-local acknowledgement
+      // because the backend's conflicting e1 still has to roll it back.
+      expect(getMaterializationJournalRows(store)).toEqual([
+        {
+          seqNumGlobal: 1,
+          seqNumClient: 0,
+          seqNumRebaseGeneration: 0,
+        },
+      ])
+
+      // Let the leader consume only the remote e1. The rebased local e2 push is
+      // accepted next, but its confirmation remains behind the second permit.
+      yield* backendPullGate.allowNext
+      yield* store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
+        Stream.filter((state) => state.localHead.global === 2),
+        Stream.take(1),
+        Stream.runDrain,
+        Effect.timeout('5 seconds'),
+      )
+
+      // Applying the rebase rolled back old local e1, materialized remote e1
+      // and rebased local e2, then pruned the now-confirmed e1 prefix.
+      expect(getMaterializationJournalRows(store)).toEqual([
+        {
+          seqNumGlobal: 2,
+          seqNumClient: 0,
+          seqNumRebaseGeneration: 1,
+        },
+      ])
+      expect(store.query(tables.todos.orderBy('id', 'asc')).map((todo) => todo.id)).toEqual([
+        'local-rebased',
+        'remote-winner',
+      ])
+
+      yield* backendPullGate.allowNext
+      yield* waitForMaterializationJournalRows(store, 0).pipe(Effect.timeout('5 seconds'))
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.live('state head is persisted independently from materialization journal rows', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, mockSyncBackend } = yield* TestContext
+      const store = yield* makeStore()
+
+      store.commit(events.todoCreated({ id: 'head-marker', text: 'head-marker', completed: false }))
+
+      yield* mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
+
+      yield* store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
+        Stream.filter((state) => state.pending.length === 0 && state.localHead.global > 0),
+        Stream.take(1),
+        Stream.runDrain,
+        Effect.timeout('2 seconds'),
+      )
+
+      const finalState = yield* store[StoreInternalsSymbol].syncProcessor.syncState.get
+
+      store[StoreInternalsSymbol].sqliteDbWrapper.execute(sql`DELETE FROM ${MATERIALIZATION_JOURNAL_META_TABLE}`)
+
+      const stateHeadRows = store[StoreInternalsSymbol].sqliteDbWrapper.select<{
+        seqNumGlobal: number
+        seqNumClient: number
+        seqNumRebaseGeneration: number
+      }>(sql`SELECT seqNumGlobal, seqNumClient, seqNumRebaseGeneration FROM ${STATE_HEAD_META_TABLE}`)
+
+      expect(stateHeadRows).toEqual([
+        {
+          seqNumGlobal: finalState.localHead.global,
+          seqNumClient: finalState.localHead.client,
+          seqNumRebaseGeneration: finalState.localHead.rebaseGeneration,
+        },
+      ])
     }).pipe(withTestCtx(test)),
   )
 
@@ -318,9 +505,12 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
                 events: {
                   pull: () =>
                     Stream.fromQueue(pullQueue).pipe(
-                      Stream.map((item) => ({
-                        payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [item] }),
-                      })),
+                      Stream.map((item) =>
+                        ClientSessionLeaderThreadProxy.PullItem.make({
+                          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [item] }),
+                          globalHead: EventSequenceNumber.Client.ROOT,
+                        }),
+                      ),
                     ),
                   push: () => Effect.void,
                   stream: () => Stream.empty,
@@ -429,7 +619,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
             const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
             const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog }).pipe(
-              Effect.provide(StateHead.layer({ dbState })),
+              Effect.provide(Layer.mergeAll(MaterializationJournal.layer({ dbState }), StateHead.layer({ dbState }))),
             )
             yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
 
@@ -538,7 +728,12 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         pull: () =>
           Stream.fromEffect(
             Deferred.succeed(pullStarted, undefined).pipe(
-              Effect.as({ payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [] }) }),
+              Effect.as(
+                ClientSessionLeaderThreadProxy.PullItem.make({
+                  payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [] }),
+                  globalHead: EventSequenceNumber.Client.ROOT,
+                }),
+              ),
             ),
           ),
         push: () => Effect.void,
@@ -662,7 +857,15 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const reconcileBarrier = yield* makeRebaseBarrier()
 
       const { processor, pushIds, close } = yield* makeClientProcessorHarness({
-        pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+        pull: () =>
+          Stream.fromQueue(pullQueue).pipe(
+            Stream.map((payload) =>
+              ClientSessionLeaderThreadProxy.PullItem.make({
+                payload,
+                globalHead: EventSequenceNumber.Client.ROOT,
+              }),
+            ),
+          ),
         // First push (the initial 'local' admission) blocks so 'local' stays pending until the
         // conflicting upstream forces a rebase; the rebase interrupts it. Later pushes record.
         push: (batch) => {
@@ -717,7 +920,15 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         const barrier = yield* makeRebaseBarrier()
 
         const { processor, pushIds, close } = yield* makeClientProcessorHarness({
-          pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+          pull: () =>
+            Stream.fromQueue(pullQueue).pipe(
+              Stream.map((payload) =>
+                ClientSessionLeaderThreadProxy.PullItem.make({
+                  payload,
+                  globalHead: EventSequenceNumber.Client.ROOT,
+                }),
+              ),
+            ),
           push: (batch) => {
             pushCallCount++
             return pushCallCount === 1
@@ -843,7 +1054,15 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         sessionId: 'session-test',
       })
       const { processor, pushIds, close } = yield* makeClientProcessorHarness({
-        pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+        pull: () =>
+          Stream.fromQueue(pullQueue).pipe(
+            Stream.map((payload) =>
+              ClientSessionLeaderThreadProxy.PullItem.make({
+                payload,
+                globalHead: EventSequenceNumber.Client.ROOT,
+              }),
+            ),
+          ),
         push: () => Effect.fail(rejection).pipe(Effect.ensuring(Deferred.succeed(pushReturned, undefined))),
       })
 
@@ -875,7 +1094,15 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       })
       let pushCount = 0
       const { processor, pushIds, close } = yield* makeClientProcessorHarness({
-        pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+        pull: () =>
+          Stream.fromQueue(pullQueue).pipe(
+            Stream.map((payload) =>
+              ClientSessionLeaderThreadProxy.PullItem.make({
+                payload,
+                globalHead: EventSequenceNumber.Client.ROOT,
+              }),
+            ),
+          ),
         push: () => {
           pushCount++
           return pushCount === 1
@@ -1033,16 +1260,13 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           }).pipe(
             Effect.as({
               writeTables: new Set<string>(),
-              sessionChangeset: { _tag: 'no-op' as const },
-              materializerHash: Option.none<number>(),
             }),
           ),
-        rollback: () => undefined,
         refreshTables: () => undefined,
 
         params: { leaderPushBatchSize: 10 },
         confirmUnsavedChanges: false,
-      }).pipe(Effect.provide(StateHead.layerTest))
+      }).pipe(Effect.provide(materializationLayerTest))
 
       const encoded = yield* syncProcessor.encodeEvents([
         events.todoCreated({ id: 'post-rebase', text: 'after', completed: false }),
@@ -1091,9 +1315,12 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
                 events: {
                   pull: () =>
                     Stream.fromQueue(pullQueue).pipe(
-                      Stream.map((item) => ({
-                        payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [item] }),
-                      })),
+                      Stream.map((item) =>
+                        ClientSessionLeaderThreadProxy.PullItem.make({
+                          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [item] }),
+                          globalHead: EventSequenceNumber.Client.ROOT,
+                        }),
+                      ),
                     ),
                   push: () => Effect.void,
                   stream: () => Stream.empty,
@@ -1116,7 +1343,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         clientId: 'this-client',
         sessionId: 'static-session-id',
         meta: {
-          sessionChangeset: { _tag: 'no-op' } as const,
           syncMetadata: Option.none(),
           materializerHashSession: Option.none(),
           // Set a leader hash that won't match what our non-deterministic materializer computes
@@ -1156,8 +1382,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
             materializedEvents.push(event)
             return {
               writeTables: new Set<string>(),
-              sessionChangeset: { _tag: 'no-op' as const },
-              materializerHash: Option.none<number>(),
             }
           }),
       )
@@ -1179,9 +1403,12 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
             push: () => Effect.void,
             pull: () =>
               Stream.fromQueue(upstreamQueue).pipe(
-                Stream.map((event) => ({
-                  payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [event] }),
-                })),
+                Stream.map((event) =>
+                  ClientSessionLeaderThreadProxy.PullItem.make({
+                    payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [event] }),
+                    globalHead: EventSequenceNumber.Client.ROOT,
+                  }),
+                ),
               ),
             stream: () => Stream.empty,
           },
@@ -1201,12 +1428,11 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         schema: schema as LiveStoreSchema,
         clientSession,
         materializeEvent,
-        rollback: () => undefined,
         refreshTables: () => undefined,
 
         params: { leaderPushBatchSize: 10 },
         confirmUnsavedChanges: false,
-      }).pipe(Effect.provide(StateHead.layerTest))
+      }).pipe(Effect.provide(materializationLayerTest))
 
       const unknownEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
         name: 'unknown_event_test',
@@ -1234,7 +1460,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       expect(materializedEvents).toHaveLength(1)
       expect(materializedEvents[0]?.name).toEqual('unknown_event_test')
-      expect(materializedEvents[0]?.meta.sessionChangeset._tag).toEqual('no-op')
     }).pipe(withTestCtx(test)),
   )
 

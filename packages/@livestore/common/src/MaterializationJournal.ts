@@ -82,8 +82,6 @@ export const make = ({ dbState }: Options) => {
             seqNumClient: record.key.client,
             seqNumRebaseGeneration: record.key.rebaseGeneration,
             changeset: record.changeset._tag === 'changeset' ? record.changeset.data : null,
-            // Legacy processors still expose this column for development diagnostics.
-            debug: null,
           },
         })
 

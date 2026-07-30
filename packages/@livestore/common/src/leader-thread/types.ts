@@ -25,6 +25,7 @@ import type {
   SyncBackend,
   UnknownError,
 } from '../index.ts'
+import type * as MaterializationJournal from '../MaterializationJournal.ts'
 import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import type * as LeaderSyncProcessor from './LeaderSyncProcessor.ts'
@@ -123,13 +124,7 @@ export type MaterializeEvent = (
     /** Needed for rematerializeFromEventlog */
     skipEventlog?: boolean
   },
-) => Effect.Effect<
-  {
-    sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any } | { _tag: 'no-op' }
-    hash: Option.Option<number>
-  },
-  MaterializeError
->
+) => Effect.Effect<void, MaterializeError | MaterializationJournal.MaterializationJournalError>
 
 export type InitialBlockingSyncContext = {
   blockingDeferred: Deferred.Deferred<void> | undefined
