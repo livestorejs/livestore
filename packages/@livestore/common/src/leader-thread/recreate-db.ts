@@ -1,11 +1,9 @@
-import { casesHandled } from '@livestore/utils'
 import { Effect, Queue } from '@livestore/utils/effect'
 
 import type { MigrationsReport } from '../defs.ts'
 import {
   type BootStatus,
   type MaterializeError,
-  type MigrationHooks,
   migrateDb,
   rematerializeFromEventlog,
   type SqliteDb,
@@ -30,8 +28,7 @@ export const recreateDb = ({
   materializeEvent: MaterializeEvent
 }): Effect.Effect<{ migrationsReport: MigrationsReport }, UnknownError | MaterializeError | SqliteError> =>
   Effect.gen(function* () {
-    const migrationOptions = schema.state.sqlite.migrations
-    let migrationsReport: MigrationsReport = { migrations: [] }
+    const hooks = schema.state.sqlite.migrations.hooks
 
     yield* Effect.addFinalizer(
       Effect.fn('recreateDb:finalizer')(function* (ex) {
@@ -46,61 +43,26 @@ export const recreateDb = ({
     const tmpDb = dbState
     yield* configureConnection(tmpDb, { foreignKeys: true })
 
-    const initDb = (hooks: Partial<MigrationHooks> | undefined) =>
-      Effect.gen(function* () {
-        yield* Effect.tryAll(() => hooks?.init?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
+    yield* Effect.tryAll(() => hooks?.init?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
 
-        const migrationsReport = yield* migrateDb({
-          db: tmpDb,
-          schema,
-          onProgress: ({ done, total }) =>
-            Queue.offer(bootStatusQueue, { stage: 'migrating', progress: { done, total } }),
-        })
+    const migrationsReport = yield* migrateDb({
+      db: tmpDb,
+      schema,
+      onProgress: ({ done, total }) => Queue.offer(bootStatusQueue, { stage: 'migrating', progress: { done, total } }),
+    })
 
-        yield* Effect.tryAll(() => hooks?.pre?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
+    yield* Effect.tryAll(() => hooks?.pre?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
 
-        return { migrationsReport, tmpDb }
-      })
+    yield* rematerializeFromEventlog({
+      // db: tmpDb,
+      dbEventlog,
+      schema,
+      materializeEvent,
+      onProgress: ({ done, total }) =>
+        Queue.offer(bootStatusQueue, { stage: 'rehydrating', progress: { done, total } }),
+    })
 
-    switch (migrationOptions.strategy) {
-      case 'auto': {
-        const hooks = migrationOptions.hooks
-        const initResult = yield* initDb(hooks)
-
-        migrationsReport = initResult.migrationsReport
-
-        yield* rematerializeFromEventlog({
-          // db: initResult.tmpDb,
-          dbEventlog,
-          schema,
-          materializeEvent,
-          onProgress: ({ done, total }) =>
-            Queue.offer(bootStatusQueue, { stage: 'rehydrating', progress: { done, total } }),
-        })
-
-        yield* Effect.tryAll(() => hooks?.post?.(initResult.tmpDb)).pipe(UnknownError.mapToUnknownError)
-
-        break
-      }
-      case 'manual': {
-        const oldDbData = dbState.export()
-
-        migrationsReport = { migrations: [] }
-
-        const newDbData = yield* Effect.tryAll(() => migrationOptions.migrate(oldDbData)).pipe(
-          UnknownError.mapToUnknownError,
-        )
-
-        tmpDb.import(newDbData)
-
-        // TODO validate schema
-
-        break
-      }
-      default: {
-        casesHandled(migrationOptions)
-      }
-    }
+    yield* Effect.tryAll(() => hooks?.post?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
 
     // TODO bring back
     // Import the temporary in-memory database into the persistent database

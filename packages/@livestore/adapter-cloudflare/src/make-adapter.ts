@@ -15,6 +15,7 @@ import {
   makeLeaderThreadLayer,
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
+import { getStateDbBaseName } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/livestore'
 import { CF_SQL_VFS_REQUIRED_PRAGMAS, sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -56,19 +57,14 @@ export const makeAdapter =
         UnknownError.mapToUnknownError,
       )
 
-      const schemaHashSuffix =
-        schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
-
       if (resetPersistence === true) {
         yield* resetDurableObjectPersistence({ storage, storeId })
       }
 
-      const stateDbFileName = getStateDbFileName(schemaHashSuffix)
-
       const dbState = yield* makeSqliteDb({
         _tag: 'storage',
         storage,
-        fileName: stateDbFileName,
+        fileName: `${getStateDbBaseName(schema)}@${liveStoreStorageFormatVersion}.db`,
         configureDb: (db) =>
           db.execute([...CF_SQL_VFS_REQUIRED_PRAGMAS, 'cache_size=-8000'].map((p) => `PRAGMA ${p}`).join(';\n')),
       }).pipe(UnknownError.mapToUnknownError)
@@ -173,8 +169,6 @@ export const makeAdapter =
       Effect.withSpan('@livestore/adapter-cloudflare:makeAdapter', { attributes: { clientId, sessionId } }),
       Effect.provide(FetchHttpClient.layer),
     )
-
-const getStateDbFileName = (suffix: string) => `state${suffix}@${liveStoreStorageFormatVersion}.db`
 
 const resetDurableObjectPersistence = ({
   storage,

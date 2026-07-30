@@ -83,6 +83,5 @@ rollback.
 ## Schema Change
 
 Owned by [02-schema-management](./02-schema-management/spec.md): hash-based
-rebuild via adapter file naming, `auto`/`manual` strategies + hooks
-(contracted by LS.SYS.STATE.SQLITE-R08), and the state-vs-eventlog
-versioning asymmetry.
+rebuild via adapter file naming, automatic migration hooks (contracted by
+LS.SYS.STATE.SQLITE-R08), and the state-vs-eventlog versioning asymmetry.

@@ -1,5 +1,5 @@
 import { liveStoreStorageFormatVersion } from '@livestore/common'
-import type { LiveStoreSchema } from '@livestore/common/schema'
+import { getStateDbBaseName, type LiveStoreSchema } from '@livestore/common/schema'
 import {
   decodeAccessHandlePoolFilename,
   HEADER_OFFSET_DATA,
@@ -122,11 +122,7 @@ export const sanitizeOpfsDir = Effect.fn('@livestore/adapter-web:sanitizeOpfsDir
   return `${directory}@${liveStoreStorageFormatVersion}`
 })
 
-export const getStateDbFileName = (schema: LiveStoreSchema) => {
-  const schemaHashSuffix =
-    schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
-  return `state${schemaHashSuffix}.db`
-}
+export const getStateDbFileName = (schema: LiveStoreSchema) => `${getStateDbBaseName(schema)}.db`
 
 export const MAX_ARCHIVED_STATE_DBS_IN_DEV = 3
 export const ARCHIVE_DIR_NAME = 'archive'
@@ -165,16 +161,6 @@ export const cleanupOldStateDbFiles: (options: {
   | PersistedSqliteError,
   Opfs.Opfs
 > = Effect.fn('@livestore/adapter-web:cleanupOldStateDbFiles')(function* ({ vfs, currentSchema, opfsDirectory }) {
-  // Only cleanup for auto migration strategy because:
-  // - Auto strategy: Creates new database files per schema change (e.g., state123.db, state456.db)
-  //   which accumulate over time and can exhaust OPFS file pool capacity
-  // - Manual strategy: Always reuses the same database file (statefixed.db) across schema changes,
-  //   so there are never multiple old files to clean up
-  if (currentSchema.state.sqlite.migrations.strategy === 'manual') {
-    yield* Effect.logDebug('Skipping state db cleanup - manual migration strategy uses fixed filename')
-    return
-  }
-
   const isDev = isDevEnv()
   const currentDbFileName = getStateDbFileName(currentSchema)
   const currentPath = `/${currentDbFileName}`

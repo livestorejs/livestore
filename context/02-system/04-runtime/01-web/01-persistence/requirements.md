@@ -12,10 +12,10 @@ snapshot read, and identity keys. Refines
   the adapter degrades to in-memory with an explicit boot warning. Re-homed
   2026-07-16 from `LS.SYS.RT.WEB-R03`. `refines: LS.SYS.RT-R07`
 - **LS.SYS.RT.WEB.PERSIST-R02 Hash-named state DB:** The state-DB file name
-  embeds the state schema hash (or `fixed` under the manual migration
-  strategy), so a schema change opens a fresh file and triggers
-  rebuild-by-absence (see [spec.md](./spec.md) §OPFS Databases). Adopted
-  2026-07-16 (interview). `refines: LS.SYS.STATE.SQLITE.SM-R01`
+  embeds the state schema hash, so a schema change opens a fresh file and
+  triggers rebuild-by-absence (see [spec.md](./spec.md) §OPFS Databases).
+  Adopted 2026-07-16 (interview).
+  `refines: LS.SYS.STATE.SQLITE.SM-R01`
 - **LS.SYS.RT.WEB.PERSIST-R03 Reset broadcasts first:** `resetPersistence`
   broadcasts an intentional `adapter-reset` shutdown to all contexts before
   deleting persisted data (see [spec.md](./spec.md) §Identity Keys). Adopted

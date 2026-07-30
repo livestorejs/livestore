@@ -16,11 +16,10 @@ The leader worker owns two OPFS-backed SQLite databases
 AccessHandlePoolVFS (single connection per database):
 
 - **State DB** — file name `state<suffix>.db` where `suffix` is the state
-  schema hash, or the literal `fixed` under the `manual` migration strategy
-  (`web-worker/common/persisted-sqlite.ts:125-129`;
-  LS.SYS.RT.WEB.PERSIST-R02). A schema change under `auto` therefore opens
-  a fresh file, which is what makes the leader see `dbStateMissing` and
-  rebuild — the trigger chain specified in
+  schema hash (`web-worker/common/persisted-sqlite.ts:125`;
+  LS.SYS.RT.WEB.PERSIST-R02). A schema change therefore opens a fresh file,
+  which is what makes the leader see `dbStateMissing` and rebuild. See the
+  trigger chain specified in
   `../../../02-state/01-sqlite/02-schema-management/`.
 - **Eventlog DB** — fixed file name `eventlog.db`; versioned only by
   `liveStoreStorageFormatVersion` (see the schema-management node for the
