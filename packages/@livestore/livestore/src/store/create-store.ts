@@ -434,7 +434,8 @@ export const createStore = <
 
       if (boot !== undefined) {
         // TODO also incorporate `boot` function progress into `bootStatusQueue`
-        yield* Effect.tryAll(() =>
+        // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- user boot errors are immediately normalized to LiveStore UnknownError
+        yield* Effect.trySyncOrPromiseOrEffect(() =>
           boot(store, { migrationsReport: clientSession.leaderThread.initialState.migrationsReport, parentSpan: span }),
         ).pipe(
           UnknownError.mapToUnknownError,

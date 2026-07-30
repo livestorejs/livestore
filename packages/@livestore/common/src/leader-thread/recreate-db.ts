@@ -43,7 +43,8 @@ export const recreateDb = ({
     const tmpDb = dbState
     yield* configureConnection(tmpDb, { foreignKeys: true })
 
-    yield* Effect.tryAll(() => hooks?.init?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
+    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- user hook errors are immediately normalized to LiveStore UnknownError
+    yield* Effect.trySyncOrPromiseOrEffect(() => hooks?.init?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
 
     const migrationsReport = yield* migrateDb({
       db: tmpDb,
@@ -51,7 +52,8 @@ export const recreateDb = ({
       onProgress: ({ done, total }) => Queue.offer(bootStatusQueue, { stage: 'migrating', progress: { done, total } }),
     })
 
-    yield* Effect.tryAll(() => hooks?.pre?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
+    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- user hook errors are immediately normalized to LiveStore UnknownError
+    yield* Effect.trySyncOrPromiseOrEffect(() => hooks?.pre?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
 
     yield* rematerializeFromEventlog({
       // db: tmpDb,
@@ -62,7 +64,8 @@ export const recreateDb = ({
         Queue.offer(bootStatusQueue, { stage: 'rehydrating', progress: { done, total } }),
     })
 
-    yield* Effect.tryAll(() => hooks?.post?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
+    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- user hook errors are immediately normalized to LiveStore UnknownError
+    yield* Effect.trySyncOrPromiseOrEffect(() => hooks?.post?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
 
     // TODO bring back
     // Import the temporary in-memory database into the persistent database
