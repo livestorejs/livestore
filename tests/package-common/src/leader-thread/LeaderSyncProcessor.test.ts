@@ -8,6 +8,7 @@ import {
   makeMockSyncBackend,
   type RejectedPushError,
   ServerAheadError,
+  StateHead,
   StaleRebaseGenerationError,
   type SyncBackend,
   type SyncOptions,
@@ -16,7 +17,7 @@ import {
 } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer, ShutdownChannel as Shutdown } from '@livestore/common/leader-thread'
-import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
+import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
@@ -106,11 +107,13 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       )
 
       const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
 
       expect(result).toEqual([
         { id: '1', text: 't1', completed: 0, deletedAt: null },
         { id: '2', text: 't2', completed: 0, deletedAt: null },
       ])
+      expect(yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get).toEqual(syncState.localHead)
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
     }).pipe(withTestCtx()(test)),
@@ -405,6 +408,9 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         { id: '1', text: 't1', completed: 0, deletedAt: null },
         { id: '2', text: 't2', completed: 0, deletedAt: null },
       ])
+
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+      expect(yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get).toEqual(syncState.localHead)
 
       const queueResults = yield* Queue.clear(testContext.pullQueue)
       expect(queueResults[0]!.payload._tag).toEqual('upstream-advance')
@@ -887,6 +893,8 @@ const LeaderThreadCtxLive = ({
     const shutdownProxy =
       captureShutdown === true ? yield* WebChannel.queueChannelProxy({ schema: Shutdown.All }) : undefined
 
+    const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
+    const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
     const leaderContextLayer = makeLeaderThreadLayer({
       schema,
       storeId: 'test',
@@ -904,15 +912,15 @@ const LeaderThreadCtxLive = ({
           initialSyncOptions: syncOptions?.initialSyncOptions,
         }),
       },
-      dbState: yield* makeSqliteDb({ _tag: 'in-memory' }),
-      dbEventlog: yield* makeSqliteDb({ _tag: 'in-memory' }),
+      dbState,
+      dbEventlog,
       devtoolsOptions: { enabled: false },
       shutdownChannel: shutdownProxy?.webChannel ?? (yield* WebChannel.noopChannel<any, any>()),
       testing: {
         ...omitUndefineds({ syncProcessor }),
       },
       ...omitUndefineds({ params }),
-    }).pipe(Layer.provide(FetchHttpClient.layer))
+    }).pipe(Layer.provide(StateHead.layer({ dbState })), Layer.provide(FetchHttpClient.layer))
 
     const testContextLayer = Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx

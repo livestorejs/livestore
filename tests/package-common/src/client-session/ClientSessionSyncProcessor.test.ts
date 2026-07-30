@@ -7,12 +7,13 @@ import {
   type ClientSessionLeaderThreadProxy,
   LeaderAheadError,
   makeMockSyncBackend,
+  StateHead,
   SyncState,
   type UnknownError,
 } from '@livestore/common'
 import { Eventlog, makeMaterializeEvent, recreateDb } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
+import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import {
   type ClientSessionSyncProcessor,
   makeClientSessionSyncProcessor,
@@ -134,7 +135,7 @@ const makeClientProcessorHarness = Effect.fn(function* ({
     refreshTables: () => undefined,
     params: { leaderPushBatchSize, rebaseBarriers },
     confirmUnsavedChanges: false,
-  })
+  }).pipe(Effect.provide(StateHead.layerTest))
 
   const scope = yield* Scope.make()
   yield* processor.boot.pipe(Scope.provide(scope))
@@ -163,7 +164,30 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       store.commit(events.todoCreated({ id: '1', text: 't1', completed: false }))
 
+      const syncState = yield* store[StoreInternalsSymbol].syncProcessor.syncState.get
+      expect(yield* StateHead.make({ dbState: store[StoreInternalsSymbol].sqliteDbWrapper }).get).toEqual(
+        syncState.localHead,
+      )
+
       yield* mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.live('rolls back materialized state when persisting the state head fails', (test) =>
+    Effect.gen(function* () {
+      const { makeStore } = yield* TestContext
+      const store = yield* makeStore()
+      const { sqliteDbWrapper, syncProcessor } = store[StoreInternalsSymbol]
+      const encodedEvents = yield* syncProcessor.encodeEvents([
+        events.todoCreated({ id: 'rolled-back', text: 'rolled-back', completed: false }),
+      ])
+
+      sqliteDbWrapper.execute(`DROP TABLE ${SystemTables.STATE_HEAD_META_TABLE}`)
+
+      const exit = yield* syncProcessor.materializeEvents(encodedEvents).pipe(Effect.exit)
+
+      expect(exit._tag).toEqual('Failure')
+      expect(sqliteDbWrapper.select(tables.todos.asSql().query)).toEqual([])
     }).pipe(withTestCtx(test)),
   )
 
@@ -404,7 +428,9 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
             const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
 
             const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
-            const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
+            const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog }).pipe(
+              Effect.provide(StateHead.layer({ dbState })),
+            )
             yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
 
             return { dbEventlog, dbState }
@@ -445,6 +471,11 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         { id: 'client_0', text: 't1', completed: false, deletedAt: null },
         { id: 'backend_0', text: 't2', completed: false, deletedAt: null },
       ])
+
+      const syncState = yield* store[StoreInternalsSymbol].syncProcessor.syncState.get
+      expect(yield* StateHead.make({ dbState: store[StoreInternalsSymbol].sqliteDbWrapper }).get).toEqual(
+        syncState.localHead,
+      )
     }).pipe(withTestCtx(test)),
   )
 
@@ -1011,7 +1042,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
         params: { leaderPushBatchSize: 10 },
         confirmUnsavedChanges: false,
-      })
+      }).pipe(Effect.provide(StateHead.layerTest))
 
       const encoded = yield* syncProcessor.encodeEvents([
         events.todoCreated({ id: 'post-rebase', text: 'after', completed: false }),
@@ -1175,7 +1206,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
         params: { leaderPushBatchSize: 10 },
         confirmUnsavedChanges: false,
-      })
+      }).pipe(Effect.provide(StateHead.layerTest))
 
       const unknownEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
         name: 'unknown_event_test',

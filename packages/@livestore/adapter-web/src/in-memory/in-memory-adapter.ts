@@ -5,6 +5,7 @@ import {
   type LockStatus,
   makeClientSession,
   migrateDb,
+  StateHead,
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
@@ -272,7 +273,7 @@ const makeLeaderThread = ({
         shutdownChannel,
         syncPayloadEncoded,
         syncPayloadSchema: syncPayloadSchema as Schema.Decoder<Schema.Json, never> | undefined,
-      }),
+      }).pipe(Layer.provide(StateHead.layer({ dbState }))),
     )
 
     return yield* Effect.gen(function* () {

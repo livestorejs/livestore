@@ -43,6 +43,27 @@ export const schemaEventDefsMetaTable = table({
 
 export type SchemaEventDefsMetaRow = typeof schemaEventDefsMetaTable.Type
 
+export const STATE_HEAD_META_TABLE = '__livestore_state_head'
+
+/**
+ * Single-row marker for the latest event sequence number reflected by the state DB.
+ *
+ * @remarks
+ * This is separate from the session changeset table because confirmed changesets
+ * can be removed after they are no longer needed for rollback.
+ */
+export const stateHeadMetaTable = table({
+  name: STATE_HEAD_META_TABLE,
+  columns: {
+    id: SqliteDsl.integer({ primaryKey: true }),
+    seqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.Global.Schema }),
+    seqNumClient: SqliteDsl.integer({ schema: EventSequenceNumber.Client.Schema }),
+    seqNumRebaseGeneration: SqliteDsl.integer({}),
+  },
+})
+
+export type StateHeadMetaRow = typeof stateHeadMetaTable.Type
+
 /**
  * Table which stores SQLite changeset blobs which is used for rolling back
  * read-model state during rebasing.
@@ -64,6 +85,11 @@ export const sessionChangesetMetaTable = table({
 
 export type SessionChangesetMetaRow = typeof sessionChangesetMetaTable.Type
 
-export const stateSystemTables = [schemaMetaTable, schemaEventDefsMetaTable, sessionChangesetMetaTable] as const
+export const stateSystemTables = [
+  schemaMetaTable,
+  schemaEventDefsMetaTable,
+  stateHeadMetaTable,
+  sessionChangesetMetaTable,
+] as const
 
 export const isStateSystemTable = (tableName: string) => stateSystemTables.some((_) => _.sqliteDef.name === tableName)

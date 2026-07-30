@@ -17,6 +17,7 @@ export {
   type BindableWithSessionIdSymbol,
 } from './session-id-symbol.ts'
 export * as SqliteDbHelper from './sqlite-db-helper.ts'
+export * as StateHead from './StateHead.ts'
 export * from './sync/index.ts'
 export * as SyncState from './sync/syncstate.ts'
 export * from './util.ts'

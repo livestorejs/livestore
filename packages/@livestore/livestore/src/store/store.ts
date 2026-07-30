@@ -16,6 +16,8 @@ import {
   prepareBindValues,
   QueryBuilderAstSymbol,
   resolveSessionIdSymbolInBindValues,
+  SqliteDbHelper,
+  StateHead,
   type StorageMode,
   type SyncState,
   UnknownError,
@@ -207,6 +209,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.storageMode = clientSession.leaderThread.initialState.storageMode
 
     const reactivityGraph = makeReactivityGraph()
+    const stateHead = StateHead.make({ dbState: clientSession.sqliteDb })
 
     const syncProcessor = makeClientSessionSyncProcessor({
       schema,
@@ -223,6 +226,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             if (resolution._tag === 'unknown') {
               // Runtime schema doesn't know this event yet; skip materialization but
               // keep the log entry so upgraded clients can replay it later.
+              yield* stateHead.set(eventEncoded.seqNum)
               return {
                 writeTables: new Set<string>(),
                 sessionChangeset: { _tag: 'no-op' as const },
@@ -288,9 +292,13 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             }
 
             const sessionChangeset = this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset
+            yield* stateHead.set(eventEncoded.seqNum)
 
             return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
-          }).pipe(Effect.mapError((cause) => MaterializeError.make({ cause }))),
+          }).pipe(
+            SqliteDbHelper.withSavepoint(clientSession.sqliteDb),
+            Effect.mapError((cause) => MaterializeError.make({ cause })),
+          ),
       ),
       rollback: (changeset) => {
         this[StoreInternalsSymbol].sqliteDbWrapper.rollback(changeset)
@@ -310,7 +318,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         }),
       },
       confirmUnsavedChanges,
-    }).pipe(Effect.runSyncWith(effectContext.services))
+    }).pipe(Effect.provideService(StateHead.StateHead, stateHead), Effect.runSyncWith(effectContext.services))
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     const tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> } = {}

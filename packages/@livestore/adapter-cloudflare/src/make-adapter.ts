@@ -6,6 +6,7 @@ import {
   makeClientSession,
   type SyncOptions,
   UnknownError,
+  StateHead,
 } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
 import {
@@ -93,7 +94,7 @@ export const makeAdapter =
           shutdownChannel,
           syncPayloadEncoded,
           syncPayloadSchema,
-        }),
+        }).pipe(Layer.provide(StateHead.layer({ dbState }))),
       )
 
       const { leaderThread, initialSnapshot } = yield* Effect.gen(function* () {
