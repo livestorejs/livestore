@@ -63,6 +63,25 @@ describe('trySyncOrPromiseOrEffect', () => {
     }),
   )
 
+  it.effect('maps a throwing Promise-like then getter to an UnknownError', () =>
+    Effect.gen(function* () {
+      const thrown = new Error('throwing then getter')
+      const thenable = {
+        // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- intentionally exercises Promise-like classification
+        get then(): PromiseLike<never>['then'] {
+          throw thrown
+        },
+      } satisfies PromiseLike<never>
+
+      const failure = yield* trySyncOrPromiseOrEffect(() => thenable).pipe(Effect.flip)
+
+      expect(failure).toBeInstanceOf(Cause.UnknownError)
+      if (failure instanceof Cause.UnknownError) {
+        expect(failure.cause).toBe(thrown)
+      }
+    }),
+  )
+
   it.effect('executes and returns the value of a returned Effect', () =>
     Effect.gen(function* () {
       const result = yield* trySyncOrPromiseOrEffect(() => Effect.succeed('effect-value'))
