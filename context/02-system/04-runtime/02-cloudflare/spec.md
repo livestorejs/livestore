@@ -32,8 +32,8 @@ and `syncBackendStub` (`@livestore/sync-cf/cf-worker` RPC interface).
 `livePull: false` is the default (LS.SYS.RT.CF-R03).
 
 Persistence keys are versioned with `liveStoreStorageFormatVersion` and the
-schema hash (migration strategy `manual` pins the suffix), so schema changes
-recreate state rather than migrate it in place.
+schema hash, so schema changes recreate state rather than migrate it in
+place.
 
 ## Platform Adaptations
 

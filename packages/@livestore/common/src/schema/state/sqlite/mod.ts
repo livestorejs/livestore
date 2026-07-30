@@ -60,14 +60,12 @@ export const makeState = <TStateInput extends InputState>(inputSchema: TStateInp
     tables: [...tables.values()].map((_) => _.sqliteDef.ast),
   })
 
-  return { sqlite: { tables, migrations: inputSchema.migrations ?? { strategy: 'auto' }, hash }, materializers }
+  return { sqlite: { tables, migrations: inputSchema.migrations ?? {}, hash }, materializers }
 }
 
 export type InputState = {
   readonly tables: Record<string, TableDefBase> | ReadonlyArray<TableDefBase>
   readonly materializers: Record<string, Materializer<any>>
-  /**
-   * @default { strategy: 'auto' }
-   */
+  /** Configures hooks and logging for automatic state migration. */
   readonly migrations?: MigrationOptions
 }

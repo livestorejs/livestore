@@ -30,8 +30,8 @@ context/                     root: LiveStore the product (this node)
     02-state/                read-model contract; realizations as children
       01-sqlite/             SQLite schema DSL, materializers, client
                              documents, query builder
-        02-schema-management/  hash-based rebuild, auto/manual migration
-                               strategies, storage-format versioning
+        02-schema-management/  hash-based rebuild, automatic migration,
+                               storage-format versioning
     03-sync/                 sync-provider contract (boundary)
       01-syncstate/          pure merge core: outcomes, invariants,
                              rebase generations, client-only events

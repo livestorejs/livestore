@@ -14,10 +14,10 @@ The trigger chain is indirect; no code path drops a mismatched table in
 place:
 
 1. **Adapters key the state-DB file by schema hash.** The state database
-   filename embeds `schema.state.sqlite.hash` (or the literal `fixed` under
-   the `manual` strategy), plus `liveStoreStorageFormatVersion` on
-   Cloudflare (`adapter-web/.../persisted-sqlite.ts:125-129`,
-   `adapter-cloudflare/src/make-adapter.ts:177`). A schema change therefore
+   filename embeds `schema.state.sqlite.hash`, plus
+   `liveStoreStorageFormatVersion` on Cloudflare
+   (`adapter-web/.../persisted-sqlite.ts:125`,
+   `adapter-cloudflare/src/make-adapter.ts:64-67`). A schema change therefore
    opens a **fresh, empty database file**.
 2. **Leader boot rebuilds when state tables are absent.** `recreateDb` runs
    only when `dbStateMissing = !hasStateTables(dbState)`
@@ -35,20 +35,13 @@ trigger a rebuild; the filename indirection is the load-bearing mechanism.
 Old state-DB files are garbage-collected by the web adapter
 (`cleanupOldStateDbFiles`; up to 3 archived files kept in dev).
 
-## Migration Strategies
+## Automatic Migration
 
-Per `recreate-db.ts` (`migrations.strategy`):
+LiveStore rebuilds state by applying the current schema to the fresh state
+database and replaying the full eventlog. Hooks: `init`/`pre`/`post` run
+against the database used for the rebuild.
 
-- **`auto`** (default) — rebuild state by replaying the full eventlog into a
-  temporary database, then swap. Hooks: `init`/`pre`/`post` run against the
-  temporary database.
-- **`manual`** — the app's `migrate(oldDbData)` receives the exported old
-  state database and returns the new one (`recreate-db.ts:85`); no replay.
-  The state-DB filename uses the `fixed` suffix, so the same file is reused
-  across schema changes.
-
-Both strategies produce a `migrationsReport` surfaced through adapter boot
-info.
+The rebuild produces a `migrationsReport` surfaced through adapter boot info.
 
 ## Schema-Meta Tables
 
