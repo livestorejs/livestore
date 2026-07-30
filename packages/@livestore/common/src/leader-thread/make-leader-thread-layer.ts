@@ -9,6 +9,7 @@ import {
   Layer,
   Option,
   Queue,
+  ReadonlyArray,
   Schema,
   Stream,
   Subscribable,
@@ -244,24 +245,12 @@ export const makeLeaderThreadLayer = ({
 
 const hasEventlogTables = (db: SqliteDb) => {
   const tableNames = new Set(db.select<{ name: string }>(sql`select name from sqlite_master`).map((_) => _.name))
-  const eventlogTables = new Set(SystemTables.eventlogSystemTables.map((_) => _.sqliteDef.name))
-  return isSubsetOf(eventlogTables, tableNames)
+  return ReadonlyArray.every(SystemTables.eventlogSystemTables, (_) => tableNames.has(_.sqliteDef.name))
 }
 
 const hasStateTables = (db: SqliteDb) => {
   const tableNames = new Set(db.select<{ name: string }>(sql`select name from sqlite_master`).map((_) => _.name))
-  const stateTables = new Set(SystemTables.stateSystemTables.map((_) => _.sqliteDef.name))
-  return isSubsetOf(stateTables, tableNames)
-}
-
-const isSubsetOf = (a: Set<string>, b: Set<string>): boolean => {
-  for (const item of a) {
-    if (b.has(item) === false) {
-      return false
-    }
-  }
-
-  return true
+  return ReadonlyArray.every(SystemTables.stateSystemTables, (_) => tableNames.has(_.sqliteDef.name))
 }
 
 const getInitialSyncState = ({
