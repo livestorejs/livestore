@@ -7,6 +7,7 @@ import { logDeprecationWarnings } from '../schema/EventDef/deprecated.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, resolveEventDef, SystemTables, UNKNOWN_EVENT_SCHEMA_HASH } from '../schema/mod.ts'
 import { insertRow } from '../sql-queries/index.ts'
+import * as StateHead from '../StateHead.ts'
 import { sql } from '../util.ts'
 import { execSql, execSqlPrepared } from './connection.ts'
 import * as Eventlog from './eventlog.ts'
@@ -21,8 +22,9 @@ export const makeMaterializeEvent = ({
   schema: LiveStoreSchema
   dbState: SqliteDb
   dbEventlog: SqliteDb
-}): Effect.Effect<MaterializeEvent> =>
+}): Effect.Effect<MaterializeEvent, never, StateHead.StateHead> =>
   Effect.gen(function* () {
+    const stateHead = yield* StateHead.StateHead
     const eventDefSchemaHashMap = new Map(
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
       // at build time and lookup the pre-computed hash at runtime.
@@ -53,6 +55,7 @@ export const makeMaterializeEvent = ({
             )
           }
 
+          yield* stateHead.set(eventEncoded.seqNum)
           dbState.debug.head = eventEncoded.seqNum
 
           return {
@@ -123,6 +126,7 @@ export const makeMaterializeEvent = ({
             },
           }),
         )
+        yield* stateHead.set(eventEncoded.seqNum)
 
         // console.groupEnd()
 

@@ -1,7 +1,7 @@
 import { expect } from 'vitest'
 
 import type { BootStatus } from '@livestore/common'
-import { SyncState } from '@livestore/common'
+import { StateHead, SyncState } from '@livestore/common'
 import { Eventlog, makeMaterializeEvent, recreateDb, streamEventsWithSyncState } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
@@ -46,7 +46,9 @@ const makeTestEnvironment = Effect.gen(function* () {
   yield* Eventlog.initEventlogDb(dbEventlog)
 
   const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
-  const materializeEvent = yield* makeMaterializeEvent({ schema: fixtureSchema, dbState, dbEventlog })
+  const materializeEvent = yield* makeMaterializeEvent({ schema: fixtureSchema, dbState, dbEventlog }).pipe(
+    Effect.provide(StateHead.layer({ dbState })),
+  )
   yield* recreateDb({ dbState, dbEventlog, schema: fixtureSchema, bootStatusQueue, materializeEvent })
   yield* Queue.shutdown(bootStatusQueue)
 

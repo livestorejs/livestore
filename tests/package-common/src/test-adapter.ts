@@ -6,6 +6,7 @@ import {
   makeClientSession,
   migrateDb,
   type SqliteDb,
+  StateHead,
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
@@ -174,7 +175,7 @@ const makeLocalLeaderThread = ({
         shutdownChannel,
         syncPayloadEncoded,
         syncPayloadSchema,
-      }),
+      }).pipe(Layer.provide(StateHead.layer({ dbState }))),
     )
 
     return yield* Effect.gen(function* () {

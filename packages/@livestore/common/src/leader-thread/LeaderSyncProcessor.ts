@@ -27,13 +27,14 @@ import {
   TxQueue,
 } from '@livestore/utils/effect'
 
-import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
+import { MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import type { UnknownEventError } from '../errors.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
+import * as StateHead from '../StateHead.ts'
 import type { BackendIdMismatchError, IsOfflineError, SyncBackend } from '../sync/sync.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
@@ -210,6 +211,7 @@ export const make = Effect.fnUntraced(function* ({
   params,
   testing,
 }: Options) {
+  const stateHead = yield* StateHead.StateHead
   const syncBackendPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
   const localPushBatchSize = params.localPushBatchSize ?? 10
   const backendPushBatchSize = params.backendPushBatchSize ?? 50
@@ -490,6 +492,9 @@ export const make = Effect.fnUntraced(function* ({
                 dbEventlog,
                 eventNumsToRollback: mergeResult.rollbackEvents.map((_) => _.seqNum),
               })
+              yield* stateHead
+                .set(mergeResult.rollbackEvents[0]!.parentSeqNum)
+                .pipe(Effect.mapError((cause) => MaterializeError.make({ cause })))
             }
 
             yield* connectedClientSessionPullQueues.offer({

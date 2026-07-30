@@ -18,12 +18,13 @@ import {
 } from '@livestore/utils/effect'
 
 import type { ClientSession } from '../adapter-types.ts'
-import type { MaterializeError } from '../errors.ts'
+import { MaterializeError } from '../errors.ts'
 import { isRejectedPushError } from '../leader-thread/RejectedPushError.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { resolveSessionIdSymbolInEventArgs } from '../session-id-symbol.ts'
+import * as StateHead from '../StateHead.ts'
 import * as SyncState from './syncstate.ts'
 
 /** Serialize value to JSON string for trace attributes */
@@ -86,7 +87,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
    * If true, registers a beforeunload event listener to confirm unsaved changes.
    */
   confirmUnsavedChanges: boolean
-}): Effect.fn.Return<ClientSessionSyncProcessor> {
+}) {
+  const stateHead = yield* StateHead.StateHead
   const eventSchema = LiveStoreEvent.Client.makeSchemaMemo(schema)
 
   const rebaseBarrier = (point: RebaseBarrierPoint): Effect.Effect<void> =>
@@ -238,6 +240,11 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
                 rollback(event.meta.sessionChangeset.data)
                 event.meta.sessionChangeset = { _tag: 'unset' }
               }
+            }
+            if (mergeResult.rollbackEvents.length > 0) {
+              yield* stateHead
+                .set(mergeResult.rollbackEvents[0]!.parentSeqNum)
+                .pipe(Effect.mapError((cause) => MaterializeError.make({ cause })))
             }
 
             // Barrier: before the atomic queue reconciliation (the "discard + re-offer" step).

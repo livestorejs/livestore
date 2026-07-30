@@ -17,11 +17,10 @@ import type { Adapter, BootWarningReason, ClientSession, LockStatus } from '@liv
 import {
   IntentionalShutdownCause,
   makeClientSession,
+  StateHead,
   StoreInterrupted,
-  sessionChangesetMetaTable,
   UnknownError,
 } from '@livestore/common'
-import { EventSequenceNumber } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
@@ -335,25 +334,9 @@ export const makeSingleTabAdapter =
         })
       }
 
-      // Restore leader head from SESSION_CHANGESET_META_TABLE
-      const initialLeaderHeadRes = sqliteDb.select(
-        sessionChangesetMetaTable
-          .select('seqNumClient', 'seqNumGlobal', 'seqNumRebaseGeneration')
-          .orderBy([
-            { col: 'seqNumGlobal', direction: 'desc' },
-            { col: 'seqNumClient', direction: 'desc' },
-          ])
-          .first(),
-      )
-
-      const initialLeaderHead =
-        initialLeaderHeadRes !== undefined
-          ? EventSequenceNumber.Client.Composite.make({
-              global: initialLeaderHeadRes.seqNumGlobal,
-              client: initialLeaderHeadRes.seqNumClient,
-              rebaseGeneration: initialLeaderHeadRes.seqNumRebaseGeneration,
-            })
-          : EventSequenceNumber.Client.ROOT
+      // The state snapshot carries its own cursor, so the fast path does not
+      // need to export or transfer the eventlog database.
+      const initialLeaderHead = yield* StateHead.make({ dbState: sqliteDb }).get
 
       yield* Effect.addFinalizer((ex: Exit.Exit<unknown, unknown>) =>
         Effect.gen(function* () {

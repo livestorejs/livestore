@@ -27,6 +27,7 @@ import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
+import type * as StateHead from '../StateHead.ts'
 import type { SyncBackend, SyncOptions } from '../sync/sync.ts'
 import { SyncState } from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
@@ -88,7 +89,11 @@ export const makeLeaderThreadLayer = ({
   bootWarning,
   params,
   testing,
-}: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnknownError, Scope.Scope | HttpClient.HttpClient> =>
+}: MakeLeaderThreadLayerParams): Layer.Layer<
+  LeaderThreadCtx,
+  UnknownError,
+  Scope.Scope | HttpClient.HttpClient | StateHead.StateHead
+> =>
   Effect.gen(function* () {
     const syncPayloadDecoded =
       syncPayloadEncoded === undefined
