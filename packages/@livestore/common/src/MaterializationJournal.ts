@@ -96,14 +96,14 @@ export const make = ({ dbState }: Options) => {
       function* (keys: ReadonlyArray<EventSequenceNumber.Client.Composite>) {
         const sortedKeys = keys.toSorted((a, b) => EventSequenceNumber.Client.compare(b, a))
 
-        // Keep DELETE statements below SQLite's bound-parameter limit.
+        // Keep statements below SQLite's bound-parameter limit.
         const keyChunks = ReadonlyArray.chunksOf(100)(sortedKeys)
 
         for (const keyChunk of keyChunks) {
           const placeholders = keyChunk.map(() => '(?, ?, ?)').join(', ')
-          const statement = sql`DELETE FROM ${SystemTables.MATERIALIZATION_JOURNAL_META_TABLE}
-            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN (${placeholders})
-            RETURNING seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset`
+          const statement = sql`SELECT seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset
+            FROM ${SystemTables.MATERIALIZATION_JOURNAL_META_TABLE}
+            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN (${placeholders})`
 
           const preparedBindValues = prepareBindValues(
             keyChunk.flatMap((key) => [key.global, key.client, key.rebaseGeneration]),
@@ -115,7 +115,7 @@ export const make = ({ dbState }: Options) => {
             catch: (cause) => new SqliteError({ cause, query: { sql: statement, bindValues: preparedBindValues } }),
           })
 
-          // SQLite does not guarantee RETURNING row order, so apply changesets
+          // SQLite does not guarantee row order without ORDER BY, so apply changesets
           // according to the already-sorted requested keys.
           const rowsByKey = new Map<string, SystemTables.MaterializationJournalMetaRow>()
           for (const row of rows) {
@@ -159,6 +159,9 @@ export const make = ({ dbState }: Options) => {
               })
             }
           }
+
+          // Use the write path so SqliteDb implementations can invalidate affected query caches.
+          yield* deleteByKeys(keyChunk)
         }
       },
       SqliteDbHelper.withSavepoint(dbState),
