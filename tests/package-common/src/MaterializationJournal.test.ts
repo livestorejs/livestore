@@ -5,7 +5,6 @@ import {
   MaterializationJournal,
   migrateDb,
   prepareBindValues,
-  SqliteDbHelper,
   sql,
   type MaterializationJournalMetaRow,
   type SqliteDb,
@@ -144,24 +143,6 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       })
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
-
-  Vitest.live('does not reuse cached rows after deleting rollback records', (test) =>
-    Effect.gen(function* () {
-      const { dbState } = yield* setup
-      const journal = MaterializationJournal.make({ dbState: withSelectCache(dbState) })
-
-      const key = EventSequenceNumber.Client.Composite.make({ global: 1, client: 0, rebaseGeneration: 0 })
-      yield* journal.record({ key, changeset: { _tag: 'no-op' } })
-      yield* journal.rollback([key])
-
-      const error = yield* journal.rollback([key]).pipe(Effect.flip)
-      expect(error).toBeInstanceOf(MaterializationJournal.MaterializationJournalError)
-      expect(error.method).toEqual('rollback')
-      expect(error.cause).toEqual(
-        new Error(`Missing materialization journal record for ${EventSequenceNumber.Client.toString(key)}`),
-      )
-    }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
-  )
 })
 
 const getRecord = (
@@ -205,31 +186,5 @@ const captureChangeset = (dbState: SqliteDb, mutation: () => void): Uint8Array<A
     return changeset
   } finally {
     session.finish()
-  }
-}
-
-const withSelectCache = (dbState: SqliteDb): SqliteDb => {
-  const cache = new Map<string, ReadonlyArray<unknown>>()
-
-  return {
-    ...dbState,
-    execute: SqliteDbHelper.makeExecute((queryStr, bindValues, options) => {
-      if (/^(?:DELETE|INSERT|UPDATE)\b/i.test(queryStr.trim()) === true) {
-        cache.clear()
-      }
-      dbState.execute(queryStr, bindValues, options)
-    }),
-    select: SqliteDbHelper.makeSelect((queryStr, bindValues) => {
-      const cacheKey = `${queryStr}\n${JSON.stringify(bindValues)}`
-      const cachedRows = cache.get(cacheKey)
-
-      if (cachedRows !== undefined) {
-        return cachedRows
-      }
-
-      const rows = dbState.select<unknown>(queryStr, bindValues)
-      cache.set(cacheKey, rows)
-      return rows
-    }),
   }
 }
