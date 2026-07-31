@@ -95,8 +95,6 @@ export const make = ({ dbState }: Options) => {
     rollback: Effect.fnUntraced(
       function* (keys: ReadonlyArray<EventSequenceNumber.Client.Composite>) {
         const sortedKeys = keys.toSorted((a, b) => EventSequenceNumber.Client.compare(b, a))
-        // Resolve every record before applying any inverse changeset so missing
-        // records fail atomically without partially mutating state.
         const rollbackRecords = yield* Effect.forEach(
           sortedKeys,
           Effect.fnUntraced(function* (key) {
@@ -108,19 +106,28 @@ export const make = ({ dbState }: Options) => {
                 seqNumClient: key.client,
                 seqNumRebaseGeneration: key.rebaseGeneration,
               },
-              limit: 1,
             })
             const preparedBindValues = prepareBindValues(bindValues, statement)
-            const row = yield* Effect.try({
-              try: () => dbState.select<SystemTables.MaterializationJournalMetaRow>(statement, preparedBindValues)[0],
+            const rows = yield* Effect.try({
+              try: () => dbState.select<SystemTables.MaterializationJournalMetaRow>(statement, preparedBindValues),
               catch: (cause) => new SqliteError({ cause, query: { sql: statement, bindValues: preparedBindValues } }),
             })
+            const row = rows[0]
 
             if (row === undefined) {
               return yield* new MaterializationJournalError({
                 method: 'rollback',
                 cause: new Error(
                   `Missing materialization journal record for ${EventSequenceNumber.Client.toString(key)}`,
+                ),
+              })
+            }
+
+            if (rows.length > 1) {
+              return yield* new MaterializationJournalError({
+                method: 'rollback',
+                cause: new Error(
+                  `Duplicate materialization journal records for ${EventSequenceNumber.Client.toString(key)}`,
                 ),
               })
             }
