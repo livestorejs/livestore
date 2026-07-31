@@ -1,6 +1,6 @@
 import { Context, Effect, Layer, Predicate, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import { type SqliteDb, SqliteError } from './adapter-types.ts'
+import { SqliteError, type SqliteDb } from './adapter-types.ts'
 import { execSql, execSqlPrepared } from './leader-thread/connection.ts'
 import * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
 import { SystemTables } from './schema/mod.ts'
@@ -61,7 +61,7 @@ export const make = ({ dbState }: Options) => {
       const placeholders = keyChunk.map(() => '(?, ?, ?)').join(', ')
       const bindValues = keyChunk.flatMap((key) => [key.global, key.client, key.rebaseGeneration])
       const statement = sql`DELETE FROM ${SystemTables.MATERIALIZATION_JOURNAL_META_TABLE}
-        WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN (${placeholders})`
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN (${placeholders})`
 
       yield* execSqlPrepared(dbState, statement, prepareBindValues(bindValues, statement))
     }
@@ -95,44 +95,49 @@ export const make = ({ dbState }: Options) => {
     rollback: Effect.fnUntraced(
       function* (keys: ReadonlyArray<EventSequenceNumber.Client.Composite>) {
         const sortedKeys = keys.toSorted((a, b) => EventSequenceNumber.Client.compare(b, a))
-
-        for (const key of sortedKeys) {
-          const [statement, bindValues] = findManyRows({
-            tableName: SystemTables.MATERIALIZATION_JOURNAL_META_TABLE,
-            columns: SystemTables.materializationJournalMetaTable.sqliteDef.columns,
-            where: {
-              seqNumGlobal: key.global,
-              seqNumClient: key.client,
-              seqNumRebaseGeneration: key.rebaseGeneration,
-            },
-          })
-          const preparedBindValues = prepareBindValues(bindValues, statement)
-          const rows = yield* Effect.try({
-            try: () => dbState.select<SystemTables.MaterializationJournalMetaRow>(statement, preparedBindValues),
-            catch: (cause) => new SqliteError({ cause, query: { sql: statement, bindValues: preparedBindValues } }),
-          })
-          const row = rows[0]
-
-          if (row === undefined) {
-            return yield* new MaterializationJournalError({
-              method: 'rollback',
-              cause: new Error(
-                `Missing materialization journal record for ${EventSequenceNumber.Client.toString(key)}`,
-              ),
+        // Resolve every record before applying any inverse changeset so missing
+        // records fail atomically without partially mutating state.
+        const rollbackRecords = yield* Effect.forEach(
+          sortedKeys,
+          Effect.fnUntraced(function* (key) {
+            const [statement, bindValues] = findManyRows({
+              tableName: SystemTables.MATERIALIZATION_JOURNAL_META_TABLE,
+              columns: SystemTables.materializationJournalMetaTable.sqliteDef.columns,
+              where: {
+                seqNumGlobal: key.global,
+                seqNumClient: key.client,
+                seqNumRebaseGeneration: key.rebaseGeneration,
+              },
+              limit: 1,
             })
-          }
-
-          if (rows.length > 1) {
-            return yield* new MaterializationJournalError({
-              method: 'rollback',
-              cause: new Error(
-                `Duplicate materialization journal records for ${EventSequenceNumber.Client.toString(key)}`,
-              ),
+            const preparedBindValues = prepareBindValues(bindValues, statement)
+            const row = yield* Effect.try({
+              try: () => dbState.select<SystemTables.MaterializationJournalMetaRow>(statement, preparedBindValues)[0],
+              catch: (cause) => new SqliteError({ cause, query: { sql: statement, bindValues: preparedBindValues } }),
             })
-          }
 
-          if (row.changeset !== null) {
-            const data = row.changeset
+            if (row === undefined) {
+              return yield* new MaterializationJournalError({
+                method: 'rollback',
+                cause: new Error(
+                  `Missing materialization journal record for ${EventSequenceNumber.Client.toString(key)}`,
+                ),
+              })
+            }
+
+            return {
+              key,
+              changeset:
+                row.changeset === null
+                  ? { _tag: 'no-op' as const }
+                  : { _tag: 'changeset' as const, data: row.changeset },
+            }
+          }),
+        )
+
+        for (const record of rollbackRecords) {
+          if (record.changeset._tag === 'changeset') {
+            const data = record.changeset.data
             yield* Effect.try({
               try: () => dbState.makeChangeset(data).invert().apply(),
               catch: (cause) => new SqliteError({ cause }),
@@ -154,11 +159,11 @@ export const make = ({ dbState }: Options) => {
         yield* execSql(
           dbState,
           sql`DELETE FROM ${SystemTables.MATERIALIZATION_JOURNAL_META_TABLE}
-          WHERE seqNumGlobal < ${head.global}
-            OR (
-              seqNumGlobal = ${head.global}
-              AND seqNumClient <= ${head.client}
-            )`,
+              WHERE seqNumGlobal < ${head.global}
+                 OR (
+                  seqNumGlobal = ${head.global}
+                      AND seqNumClient <= ${head.client}
+                  )`,
           {},
         )
       },
