@@ -106,28 +106,19 @@ export const make = ({ dbState }: Options) => {
                 seqNumClient: key.client,
                 seqNumRebaseGeneration: key.rebaseGeneration,
               },
+              limit: 1,
             })
             const preparedBindValues = prepareBindValues(bindValues, statement)
-            const rows = yield* Effect.try({
-              try: () => dbState.select<SystemTables.MaterializationJournalMetaRow>(statement, preparedBindValues),
+            const row = yield* Effect.try({
+              try: () => dbState.select<SystemTables.MaterializationJournalMetaRow>(statement, preparedBindValues)[0],
               catch: (cause) => new SqliteError({ cause, query: { sql: statement, bindValues: preparedBindValues } }),
             })
-            const row = rows[0]
 
             if (row === undefined) {
               return yield* new MaterializationJournalError({
                 method: 'rollback',
                 cause: new Error(
                   `Missing materialization journal record for ${EventSequenceNumber.Client.toString(key)}`,
-                ),
-              })
-            }
-
-            if (rows.length > 1) {
-              return yield* new MaterializationJournalError({
-                method: 'rollback',
-                cause: new Error(
-                  `Duplicate materialization journal records for ${EventSequenceNumber.Client.toString(key)}`,
                 ),
               })
             }

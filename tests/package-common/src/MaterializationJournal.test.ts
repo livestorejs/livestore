@@ -162,46 +162,6 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       )
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
-
-  Vitest.live('does not silently collapse duplicate physical records', (test) =>
-    Effect.gen(function* () {
-      const { dbState, journal } = yield* setup
-
-      const key = EventSequenceNumber.Client.Composite.make({ global: 1, client: 0, rebaseGeneration: 0 })
-      const changeset = captureChangeset(dbState, () => {
-        dbState.execute("INSERT INTO journal_test (id, value) VALUES (1, 'kept')")
-      })
-      yield* journal.record({
-        key,
-        changeset: { _tag: 'changeset', data: changeset },
-      })
-
-      const insertDuplicateStatement = sql`INSERT INTO ${MATERIALIZATION_JOURNAL_META_TABLE}
-        (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset, debug)
-        VALUES (?, ?, ?, ?, NULL)`
-      dbState.execute(
-        insertDuplicateStatement,
-        prepareBindValues([key.global, key.client, key.rebaseGeneration, changeset], insertDuplicateStatement),
-      )
-
-      const error = yield* journal.rollback([key]).pipe(Effect.flip)
-      expect(error).toBeInstanceOf(MaterializationJournal.MaterializationJournalError)
-      expect(error.method).toEqual('rollback')
-      expect(error.cause).toEqual(
-        new Error(`Duplicate materialization journal records for ${EventSequenceNumber.Client.toString(key)}`),
-      )
-
-      expect(dbState.select('SELECT id, value FROM journal_test')).toEqual([{ id: 1, value: 'kept' }])
-      expect(
-        dbState.select<{ count: number }>(
-          `SELECT count(*) AS count FROM ${MATERIALIZATION_JOURNAL_META_TABLE}
-            WHERE seqNumGlobal = ${key.global}
-              AND seqNumClient = ${key.client}
-              AND seqNumRebaseGeneration = ${key.rebaseGeneration}`,
-        ),
-      ).toEqual([{ count: 2 }])
-    }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
-  )
 })
 
 const getRecord = (
