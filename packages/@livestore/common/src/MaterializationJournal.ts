@@ -4,7 +4,7 @@ import { type SqliteDb, SqliteError } from './adapter-types.ts'
 import { execSql, execSqlPrepared } from './leader-thread/connection.ts'
 import * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
 import { SystemTables } from './schema/mod.ts'
-import { insertRow } from './sql-queries/index.ts'
+import { findManyRows, insertRow } from './sql-queries/index.ts'
 import * as SqliteDbHelper from './sqlite-db-helper.ts'
 import { prepareBindValues, sql } from './util.ts'
 
@@ -96,73 +96,51 @@ export const make = ({ dbState }: Options) => {
       function* (keys: ReadonlyArray<EventSequenceNumber.Client.Composite>) {
         const sortedKeys = keys.toSorted((a, b) => EventSequenceNumber.Client.compare(b, a))
 
-        // Keep statements below SQLite's bound-parameter limit.
-        const keyChunks = ReadonlyArray.chunksOf(100)(sortedKeys)
-
-        for (const keyChunk of keyChunks) {
-          const placeholders = keyChunk.map(() => '(?, ?, ?)').join(', ')
-          const statement = sql`SELECT seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset
-            FROM ${SystemTables.MATERIALIZATION_JOURNAL_META_TABLE}
-            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN (${placeholders})`
-
-          const preparedBindValues = prepareBindValues(
-            keyChunk.flatMap((key) => [key.global, key.client, key.rebaseGeneration]),
-            statement,
-          )
-
+        for (const key of sortedKeys) {
+          const [statement, bindValues] = findManyRows({
+            tableName: SystemTables.MATERIALIZATION_JOURNAL_META_TABLE,
+            columns: SystemTables.materializationJournalMetaTable.sqliteDef.columns,
+            where: {
+              seqNumGlobal: key.global,
+              seqNumClient: key.client,
+              seqNumRebaseGeneration: key.rebaseGeneration,
+            },
+          })
+          const preparedBindValues = prepareBindValues(bindValues, statement)
           const rows = yield* Effect.try({
             try: () => dbState.select<SystemTables.MaterializationJournalMetaRow>(statement, preparedBindValues),
             catch: (cause) => new SqliteError({ cause, query: { sql: statement, bindValues: preparedBindValues } }),
           })
+          const row = rows[0]
 
-          // SQLite does not guarantee row order without ORDER BY, so apply changesets
-          // according to the already-sorted requested keys.
-          const rowsByKey = new Map<string, SystemTables.MaterializationJournalMetaRow>()
-          for (const row of rows) {
-            const mapKey = `${row.seqNumGlobal}:${row.seqNumClient}:${row.seqNumRebaseGeneration}`
-
-            if (rowsByKey.has(mapKey) === true) {
-              const key = EventSequenceNumber.Client.Composite.make({
-                global: row.seqNumGlobal,
-                client: row.seqNumClient,
-                rebaseGeneration: row.seqNumRebaseGeneration,
-              })
-
-              return yield* new MaterializationJournalError({
-                method: 'rollback',
-                cause: new Error(
-                  `Duplicate materialization journal records for ${EventSequenceNumber.Client.toString(key)}`,
-                ),
-              })
-            }
-
-            rowsByKey.set(mapKey, row)
+          if (row === undefined) {
+            return yield* new MaterializationJournalError({
+              method: 'rollback',
+              cause: new Error(
+                `Missing materialization journal record for ${EventSequenceNumber.Client.toString(key)}`,
+              ),
+            })
           }
 
-          for (const key of keyChunk) {
-            const row = rowsByKey.get(`${key.global}:${key.client}:${key.rebaseGeneration}`)
-
-            if (row === undefined) {
-              return yield* new MaterializationJournalError({
-                method: 'rollback',
-                cause: new Error(
-                  `Missing materialization journal record for ${EventSequenceNumber.Client.toString(key)}`,
-                ),
-              })
-            }
-
-            if (row.changeset !== null) {
-              const data = row.changeset
-              yield* Effect.try({
-                try: () => dbState.makeChangeset(data).invert().apply(),
-                catch: (cause) => new SqliteError({ cause }),
-              })
-            }
+          if (rows.length > 1) {
+            return yield* new MaterializationJournalError({
+              method: 'rollback',
+              cause: new Error(
+                `Duplicate materialization journal records for ${EventSequenceNumber.Client.toString(key)}`,
+              ),
+            })
           }
 
-          // Use the write path so SqliteDb implementations can invalidate affected query caches.
-          yield* deleteByKeys(keyChunk)
+          if (row.changeset !== null) {
+            const data = row.changeset
+            yield* Effect.try({
+              try: () => dbState.makeChangeset(data).invert().apply(),
+              catch: (cause) => new SqliteError({ cause }),
+            })
+          }
         }
+
+        yield* deleteByKeys(sortedKeys)
       },
       SqliteDbHelper.withSavepoint(dbState),
       Effect.mapError((cause) =>
