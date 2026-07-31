@@ -24,12 +24,14 @@ Given that assumption, the current session-to-leader protocol is more complicate
 
 ## Proposed Solution
 
-The system keeps two durable ordering authorities:
+The system keeps two durable orderings:
 
-- Sync Backend's eventlog
-- Client Leader's eventlog
+- The Sync Backend's canonical eventlog order
+- The Client Leader's durable client-local order, which remains subject to backend rebasing
 
 Client sessions keep only a non-durable optimistic state: commits applied to the session's in-memory state DB but not yet observed back from the leader. A session no longer owns an independent event ordering protocol with the leader. Instead, the leader serializes all client-local commits, assigns the client-local event order, persists that order, and broadcasts the resulting events back to all sessions.
+
+Each commit carries a stable identity. The leader durably deduplicates that identity so sessions can safely retry after disconnection or uncertain acknowledgement.
 
 The session-to-leader boundary should therefore become a local optimistic commit protocol rather than a nested sync protocol. The existing leader-to-sync-backend protocol remains a sync protocol and continues to handle backend conflicts through rebasing.
 
@@ -39,10 +41,11 @@ When application code calls `store.commit(...)` in a client session:
 
 1. The session materializes the input events into its same-thread in-memory state DB immediately.
 2. The session sends the commit to the leader.
-3. The leader appends the commit's events into it persisted eventlog DB and materializes the events into its persisted state DB.
-4. The leader emits the commit to all its client sessions and the sync backend. 
-5. The originating session matches the emission to its optimistic commit identity and removes that optimistic entry.
-6. Sibling sessions materialize the received events normally.
+3. The leader appends the commit's events into its persisted eventlog DB and materializes the events into its persisted state DB.
+4. The leader emits the commit to all its client sessions and the sync backend.
+5. A session with optimistic commits buffers leader emissions without applying them until its earliest pending commit is included.
+6. It then transactionally rolls back its optimistic effects, applies the buffered emissions through that commit in leader order, reapplies any still-pending optimistic suffix, and removes confirmed optimistic entries.
+7. Sessions without optimistic commits materialize received events normally.
 
 The leader does not reject the commit merely because another session committed first.
 
