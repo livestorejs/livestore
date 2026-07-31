@@ -40,8 +40,8 @@ export interface Service {
   rollback: (
     keys: ReadonlyArray<EventSequenceNumber.Client.Composite>,
   ) => Effect.Effect<void, MaterializationJournalError>
-  /** Discards records whose key is less than or equal to `head`, ignoring rebase generation. */
-  discardUpTo: (head: EventSequenceNumber.Client.Composite) => Effect.Effect<void, MaterializationJournalError>
+  /** Discards records whose key is less than or equal to `key`, ignoring rebase generation. */
+  discardUpTo: (key: EventSequenceNumber.Client.Composite) => Effect.Effect<void, MaterializationJournalError>
 }
 
 export class MaterializationJournal extends Context.Service<MaterializationJournal, Service>()(
@@ -153,14 +153,14 @@ export const make = ({ dbState }: Options) => {
       ),
     ),
     discardUpTo: Effect.fnUntraced(
-      function* (head: EventSequenceNumber.Client.Composite) {
+      function* (key: EventSequenceNumber.Client.Composite) {
         yield* execSql(
           dbState,
           sql`DELETE FROM ${SystemTables.MATERIALIZATION_JOURNAL_META_TABLE}
-              WHERE seqNumGlobal < ${head.global}
+              WHERE seqNumGlobal < ${key.global}
                  OR (
-                  seqNumGlobal = ${head.global}
-                      AND seqNumClient <= ${head.client}
+                  seqNumGlobal = ${key.global}
+                      AND seqNumClient <= ${key.client}
                   )`,
           {},
         )

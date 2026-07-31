@@ -55,7 +55,7 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 
-  Vitest.live('discards records up to the confirmed head', (test) =>
+  Vitest.live('discards records up to the confirmed key', (test) =>
     Effect.gen(function* () {
       const { dbState, journal } = yield* setup
 
