@@ -11,6 +11,10 @@
 ### Changed
 
 - Removed redundant devenv package entries now owned by the task guard modules.
+- **Sync correctness:** Prevented a later client-session event from reaching the
+  leader before an older rejected pending prefix is reconciled, avoiding
+  duplicate event materialization during multi-writer rebases
+  ([#1530](https://github.com/livestorejs/livestore/pull/1530)).
 
 ### Internal Changes
 

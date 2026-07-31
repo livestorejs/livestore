@@ -55,4 +55,5 @@ transaction spanning the session, leader, and backend.
   receiver prevents a buggy downstream from bypassing its prefix.
 - The existing leader→backend `ServerAheadError` path already approximates the
   chosen state machine by parking until pull interrupts and reseeds it. The
-  client-session rejection path is the tracked implementation gap.
+  client-session path now uses the same park, reconcile, reseed, and resume
+  transition; the leader additionally rejects non-contiguous pushed batches.

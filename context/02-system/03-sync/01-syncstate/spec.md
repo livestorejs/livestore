@@ -80,7 +80,7 @@ The processor drivers own this precondition. A rejected or uncertain push must
 fence later pending events until pull reconciliation confirms the accepted
 prefix or rebases the complete remaining suffix (LS.SYS.SYNC.PROC-R04 and its
 [decision](../02-processors/.decisions/0001-prefix-fence-unresolved-upstream.md)).
-The current client-session rejection path violates that contract; see
+The processor implementation and its resolved divergence are recorded in
 [DELTA-001](../02-processors/.delta/DELTA-001-session-rejection-prefix-bypass.md).
 
 ## Invariants

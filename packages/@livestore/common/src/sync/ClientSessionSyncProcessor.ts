@@ -126,6 +126,15 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   let leaderPushingFiberHandle: FiberHandle.FiberHandle<void, never> | undefined
   let pullingFiberHandle: FiberHandle.FiberHandle<void, never> | undefined
 
+  /** Rebuild the upstream FIFO from the authoritative live pending suffix without racing synchronous commits. */
+  const reconcileLeaderPushQueue = Effect.tx(
+    Effect.gen(function* () {
+      const livePending = syncStateRef.current.pending
+      yield* TxQueue.clear(leaderPushQueue)
+      yield* TxQueue.offerAll(leaderPushQueue, livePending)
+    }),
+  )
+
   const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
     if (
       confirmUnsavedChanges === true &&
@@ -158,13 +167,36 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         if (batch === undefined) return
 
         yield* clientSession.leaderThread.events.push(batch).pipe(
-          Effect.catchIf(isRejectedPushError, (error) => {
-            debugInfo.rejectCount++
-            if (shutdownStarted === true) return Effect.die(error)
+          Effect.catchIf(isRejectedPushError, (error) =>
+            rebaseOwnership
+              .withPermits(1)(
+                Effect.gen(function* () {
+                  debugInfo.rejectCount++
+                  if (shutdownStarted === true) return yield* Effect.die(error)
 
-            unresolvedRejection = { error, events: batch }
-            return TxQueue.clear(leaderPushQueue).pipe(Effect.andThen(Deferred.succeed(rejectionObserved, undefined)))
-          }),
+                  // A concurrent pull may have already confirmed or rebased this batch while the
+                  // push response was in flight. In that case, rebuild from the reconciled suffix
+                  // and continue instead of creating a fence that no future pull could release.
+                  if (isRejectedBatchRecovered(batch, syncStateRef.current.pending) === true) {
+                    yield* reconcileLeaderPushQueue
+                    yield* Deferred.succeed(rejectionObserved, undefined)
+                    return false
+                  }
+
+                  unresolvedRejection = { error, events: batch }
+                  yield* TxQueue.clear(leaderPushQueue)
+                  yield* Deferred.succeed(rejectionObserved, undefined)
+                  return true
+                }),
+              )
+              .pipe(
+                Effect.flatMap((shouldFence) =>
+                  // Local commits remain synchronous and continue accumulating in pending/the FIFO,
+                  // but this sole drain worker stays parked until pull reconciliation reseeds it.
+                  shouldFence === true ? Effect.never : Effect.void,
+                ),
+              ),
+          ),
         )
       }
     }).pipe(
@@ -207,6 +239,11 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           )
 
           syncStateRef.current = mergeResult.newSyncState
+
+          const recoveredRejection =
+            rejectionAtPullStart !== undefined &&
+            unresolvedRejection === rejectionAtPullStart &&
+            isRejectedBatchRecovered(rejectionAtPullStart.events, mergeResult.newSyncState.pending) === true
 
           if (mergeResult._tag === 'rebase') {
             yield* Effect.spanEvent('merge:pull:rebase', {
@@ -265,17 +302,12 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
             // `mergeResult.newSyncState.pending` snapshot captured at merge time, so any event a
             // concurrent push appended during the async steps above (fiber interrupt / rollback /
             // barriers) is included. `Effect.tx` commits the clear+offer as one transaction.
-            const livePending = syncStateRef.current.pending
-            yield* Effect.tx(
-              Effect.gen(function* () {
-                yield* TxQueue.clear(leaderPushQueue)
-                yield* TxQueue.offerAll(leaderPushQueue, livePending)
-              }),
-            )
+            yield* reconcileLeaderPushQueue
 
             // Barrier: before restarting the leader-push worker.
             yield* rebaseBarrier('before_leader_push_fiber_run')
 
+            if (recoveredRejection === true) unresolvedRejection = undefined
             yield* FiberHandle.run(leaderPushingHandle, backgroundLeaderPushing)
           } else {
             yield* Effect.spanEvent('merge:pull:advance', {
@@ -286,14 +318,13 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
             })
 
             debugInfo.advanceCount++
-          }
 
-          if (
-            rejectionAtPullStart !== undefined &&
-            unresolvedRejection === rejectionAtPullStart &&
-            isRejectedBatchRecovered(rejectionAtPullStart.events, mergeResult.newSyncState.pending) === true
-          ) {
-            unresolvedRejection = undefined
+            if (recoveredRejection === true) {
+              yield* FiberHandle.clear(leaderPushingHandle)
+              yield* reconcileLeaderPushQueue
+              unresolvedRejection = undefined
+              yield* FiberHandle.run(leaderPushingHandle, backgroundLeaderPushing)
+            }
           }
 
           if (mergeResult.newEvents.length === 0) {
@@ -355,7 +386,13 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         yield* Deferred.succeed(drainStartedSignal, undefined)
       }),
     )
-    if (leaderPushingFiberHandle !== undefined) yield* FiberHandle.awaitEmpty(leaderPushingFiberHandle)
+    if (leaderPushingFiberHandle !== undefined) {
+      if (unresolvedRejection === undefined) {
+        yield* FiberHandle.awaitEmpty(leaderPushingFiberHandle)
+      } else {
+        yield* FiberHandle.clear(leaderPushingFiberHandle)
+      }
+    }
     if (terminalPushCause !== undefined) return yield* Effect.failCause(terminalPushCause)
     if (unresolvedRejection !== undefined) return yield* Effect.die(unresolvedRejection.error)
   })

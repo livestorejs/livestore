@@ -30,19 +30,20 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
 - **Local pushes** (`:235-239, 263-296`): `localPushesQueue` holds
   `[event, deferred]` items; a background fiber drains
   `takeBetween(1, localPushBatchSize)` per cycle (default 10, `:214`).
-  `validatePushBatch` (`:1037-1066`) requires strictly ascending batches
+  `validatePushBatch` requires strictly ascending batches
   (`NonMonotonicBatchError`) whose first event is ahead of
-  `pushHeadRef.current` (`LeaderAheadError`); `pushHead` advances on push
-  and on every pull merge (`:648, 521`).
+  `pushHeadRef.current` (`LeaderAheadError`) and whose complete sequence/parent
+  chain is contiguous with that head (`NonContiguousBatchError`); `pushHead`
+  advances on push and on every pull merge.
 - **Generations** (`:271-296, 321-366`): each queued item carries its
   seqNum's `rebaseGeneration`. After acquiring the mutex, items with a
   stale generation are dropped and their deferreds failed with
   `StaleRebaseGenerationError`. A merge `reject` fails the batch's
   deferreds with `LeaderAheadError`, bumps the generation, and drains
   same-generation queued items present at that moment — sessions rebase and
-  re-push. A later arrival from the rejected session/generation is not fenced
-  by the leader itself; the client-session driver is currently expected to
-  withhold it, but does not yet do so (see
+  re-push. The session driver fences later arrivals until that reconciliation;
+  leader-side contiguous-chain validation rejects a later suffix that bypasses
+  the fence (see resolved
   [DELTA-001](./.delta/DELTA-001-session-rejection-prefix-bypass.md)).
 - **Backend pushing** (`:575-637`): drains
   `takeBetween(1, backendPushBatchSize)` (default 50, `:215`), pushes
@@ -73,7 +74,9 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   is **not crash-atomic across the two databases**: a process death
   between the two COMMITs can diverge state from eventlog (healed only by
   state rebuild when the state DB is absent — see
-  `../../02-state/01-sqlite/`).
+  `../../02-state/01-sqlite/`). Local push acknowledgements are completed only
+  after the batch is materialized, published in leader sync state, offered to
+  session pull queues, and queued for backend propagation.
 - **Boot** (`:684-755`): initial sync state rehydrates from the eventlog
   (`../../04-runtime/spec.md` Leadership Handover); error routing via
   `onError: ignore|shutdown` and `BackendIdMismatchError` handling
@@ -89,12 +92,13 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   `takeBetween(1, leaderPushBatchSize)` and pushes to the leader (`:153-168`).
   Coalescing is opportunistic (whatever accumulated while the previous
   push was in flight); there is no time-based debounce. A rejected push
-  records the unresolved batch and clears the whole queue (`:161-168`), but
-  the worker remains able to drain events admitted by later commits before the
-  next pull reconciles that batch. This permits a later pending event to bypass
-  its unresolved prefix and is the open divergence from
-  LS.SYS.SYNC.PROC-R04 tracked by
-  [DELTA-001](./.delta/DELTA-001-session-rejection-prefix-bypass.md).
+  records the unresolved batch, clears the queue, and parks the sole worker.
+  Later commits remain synchronous and accumulate in pending/the FIFO without
+  crossing the boundary. Pull recovery atomically reseeds the FIFO from live
+  pending and restarts the worker. Rejection transition setup serializes with
+  pull so a late response cannot install a fence after that pull already
+  recovered the batch (resolved
+  [DELTA-001](./.delta/DELTA-001-session-rejection-prefix-bypass.md)).
 - **Pull** (`:145-168, 226-253`): a lazily-restarted stream from the
   leader (cursor = current `upstreamHead`) feeds `SyncState.merge`; a
   `reject` from upstream is impossible and dies (`:162-165`). New events
@@ -132,10 +136,6 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
 
 ## Backpressure and Known Gaps
 
-- The client-session rejection path does not yet fence later events until pull
-  reconciliation. SF-03 demonstrates that the leader can consequently confirm
-  a later event while an older session prefix remains pending; see
-  [DELTA-001](./.delta/DELTA-001-session-rejection-prefix-bypass.md).
 - All processor queues are unbounded; there is no producer backpressure.
   Anti-thrash relies on interrupt/clear on rebase and queue-clear on
   rejection.

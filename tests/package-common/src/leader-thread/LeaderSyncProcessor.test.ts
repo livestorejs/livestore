@@ -6,6 +6,7 @@ import {
   type MockSyncBackend,
   type MockSyncBackendOptions,
   makeMockSyncBackend,
+  NonContiguousBatchError,
   type RejectedPushError,
   ServerAheadError,
   StateHead,
@@ -87,7 +88,7 @@ const seedPaginatedBackendTodos = (mockBackend: MockSyncBackend) => {
   )
 }
 
-/** Verifies: LS.SYS.SYNC.PROC-R01, LS.SYS.SYNC.PROC-R02, LS.SYS.SYNC.SS-R06, LS.SYS.SYNC-R03, LS.SYS.RT-R10 */
+/** Verifies: LS.SYS.SYNC.PROC-R01, LS.SYS.SYNC.PROC-R02, LS.SYS.SYNC.PROC-R04, LS.SYS.SYNC.SS-R06, LS.SYS.SYNC-R03, LS.SYS.RT-R10 */
 Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   Vitest.live('sync', (test) =>
     Effect.gen(function* () {
@@ -548,6 +549,35 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       expect(EventSequenceNumber.Client.toString(error.minimumExpectedNum)).toBe('e6')
       expect(EventSequenceNumber.Client.toString(error.providedNum)).toBe('e2')
+    }).pipe(withTestCtx()(test)),
+  )
+
+  Vitest.live('leader push API rejects a batch that skips its pending prefix', (test) =>
+    Effect.gen(function* () {
+      const testContext = yield* TestContext
+      const skippedPrefixFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('client-skipped-prefix', 'session-skipped-prefix'),
+        startSeq: 2,
+        initialParent: 1,
+      })
+
+      const eventAfterMissingPrefix = skippedPrefixFactory.todoCreated.next({
+        id: 'after-missing-prefix',
+        text: 'after-missing-prefix',
+        completed: false,
+      })
+      const result = yield* testContext.pushEncoded(eventAfterMissingPrefix).pipe(Effect.result)
+
+      expect(Result.isFailure(result)).toBe(true)
+      if (Result.isSuccess(result) === true) return
+
+      expect(result.failure).toBeInstanceOf(NonContiguousBatchError)
+      expect(result.failure._tag).toBe('NonContiguousBatchError')
+      if (result.failure._tag !== 'NonContiguousBatchError') return
+
+      expect(EventSequenceNumber.Client.toString(result.failure.expectedSeqNum)).toBe('e1')
+      expect(EventSequenceNumber.Client.toString(result.failure.providedSeqNum)).toBe('e2')
+      expect(result.failure.violationIndex).toBe(0)
     }).pipe(withTestCtx()(test)),
   )
 

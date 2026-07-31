@@ -1,6 +1,6 @@
 # DELTA-001 — Session rejection permits a later event to bypass its pending prefix
 
-Status: open
+Status: resolved (2026-07-31)
 
 ## Divergence
 
@@ -42,6 +42,17 @@ then resume its single worker. Add a receiver-side session/generation fence and
 whole-batch admission checks as defense in depth; do not block the synchronous
 commit path.
 
-Close when deterministic tests prove that a later commit cannot reach the
-leader before the rejected prefix is reconciled, the SF-03 regression passes,
-and the equivalent leader→backend fence remains covered.
+## Resolution
+
+The client-session push worker now parks after recording and clearing a rejected
+batch. Local commits continue accumulating synchronously, but pull must confirm
+or rebase the rejected prefix before it atomically reseeds the FIFO from live
+pending and restarts the worker. Rejection handling serializes with pull so a
+late rejection response cannot install a stale fence after recovery.
+
+The leader now validates that every pushed event forms the exact sequence and
+parent chain after its admitted `pushHead`; a sender cannot bypass the fence by
+submitting a later suffix directly. Deterministic tests cover advance recovery,
+rebase recovery, the late-response race, receiver rejection, and orderly
+shutdown. The leader→backend `ServerAheadError` path retains its equivalent
+park-until-pull behavior.

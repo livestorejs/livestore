@@ -43,6 +43,7 @@ import { rollback } from './materialize-event.ts'
 import {
   isRejectedPushError,
   LeaderAheadError,
+  NonContiguousBatchError,
   NonMonotonicBatchError,
   type RejectedPushError,
   StaleRebaseGenerationError,
@@ -382,7 +383,7 @@ export const make = Effect.fnUntraced(function* ({
           return yield* Effect.dieDebugger('Local push events must be retained in pending state')
         }
 
-        yield* materializeEventsBatch({ batchItems: acceptedPendingEvents, deferreds })
+        yield* materializeEventsBatch({ batchItems: acceptedPendingEvents })
 
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
@@ -400,6 +401,10 @@ export const make = Effect.fnUntraced(function* ({
         const globalOrUnknownEvents = acceptedPendingEvents.filter((e) => !isClientOnlyEvent(e))
 
         yield* TxQueue.offerAll(syncBackendPushQueue, globalOrUnknownEvents)
+
+        // A push is acknowledged only after the complete batch is materialized, published in
+        // leader sync state, exposed to sessions, and queued for backend propagation.
+        yield* Effect.forEach(deferreds, (deferred) => Deferred.succeed(deferred, void 0))
       }).pipe(localPushBackendPullMutex.withPermits(1))
     }
   })
@@ -533,7 +538,7 @@ export const make = Effect.fnUntraced(function* ({
 
           advancePushHead(mergeResult.newSyncState.localHead)
 
-          yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
+          yield* materializeEventsBatch({ batchItems: mergeResult.newEvents })
 
           yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
         }).pipe(Effect.exit)
@@ -656,7 +661,7 @@ export const make = Effect.fnUntraced(function* ({
 
       // console.debug('push', newEvents)
 
-      yield* validatePushBatch(newEvents, pushHeadRef.current)
+      yield* validatePushBatch(newEvents, pushHeadRef.current, isClientOnlyEvent)
 
       advancePushHead(newEvents.at(-1)!.seqNum)
 
@@ -849,17 +854,10 @@ export const layer = (options: Options) => Layer.effect(LeaderSyncProcessor, mak
 
 type MaterializeEventsBatch = (_: {
   batchItems: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
-  /**
-   * The deferreds are used by the caller to know when the mutation has been processed.
-   * Indexes are aligned with `batchItems`
-   */
-  deferreds:
-    | ReadonlyArray<Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError> | undefined>
-    | undefined
 }) => Effect.Effect<void, MaterializeError, LeaderThreadCtx>
 
 // TODO how to handle errors gracefully
-const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds }) =>
+const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems }) =>
   Effect.gen(function* () {
     const { dbState: db, dbEventlog, materializeEvent } = yield* LeaderThreadCtx
 
@@ -881,10 +879,6 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
       const { sessionChangeset, hash } = yield* materializeEvent(batchItems[i]!)
       batchItems[i]!.meta.sessionChangeset = sessionChangeset
       batchItems[i]!.meta.materializerHashLeader = hash
-
-      if (deferreds?.[i] !== undefined) {
-        yield* Deferred.succeed(deferreds[i]!, void 0)
-      }
     }
 
     db.execute('COMMIT', undefined) // Commit the transaction
@@ -1037,6 +1031,7 @@ const makePullQueueSet = Effect.gen(function* () {
 const validatePushBatch = (
   batch: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
   pushHead: EventSequenceNumber.Client.Composite,
+  isClientOnlyEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean,
 ) =>
   Effect.gen(function* () {
     if (batch.length === 0) {
@@ -1063,6 +1058,40 @@ const validatePushBatch = (
         providedNum: batch[0]!.seqNum,
         sessionId: batch[0]!.sessionId,
       })
+    }
+
+    if (batch[0]!.seqNum.rebaseGeneration < pushHead.rebaseGeneration) {
+      return yield* StaleRebaseGenerationError.make({
+        currentRebaseGeneration: pushHead.rebaseGeneration,
+        providedRebaseGeneration: batch[0]!.seqNum.rebaseGeneration,
+        sessionId: batch[0]!.sessionId,
+      })
+    }
+
+    let precedingSeqNum = pushHead
+    for (let i = 0; i < batch.length; i++) {
+      const event = batch[i]!
+      const expectedPair = EventSequenceNumber.Client.nextPair({
+        seqNum: precedingSeqNum,
+        isClientOnly: isClientOnlyEvent(event),
+        rebaseGeneration: event.seqNum.rebaseGeneration,
+      })
+
+      if (
+        EventSequenceNumber.Client.isEqual(event.seqNum, expectedPair.seqNum) === false ||
+        EventSequenceNumber.Client.isEqual(event.parentSeqNum, expectedPair.parentSeqNum) === false
+      ) {
+        return yield* NonContiguousBatchError.make({
+          expectedSeqNum: expectedPair.seqNum,
+          providedSeqNum: event.seqNum,
+          expectedParentSeqNum: expectedPair.parentSeqNum,
+          providedParentSeqNum: event.parentSeqNum,
+          violationIndex: i,
+          sessionId: event.sessionId,
+        })
+      }
+
+      precedingSeqNum = event.seqNum
     }
   })
 
