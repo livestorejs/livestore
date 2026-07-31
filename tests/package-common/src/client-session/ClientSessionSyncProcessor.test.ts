@@ -173,6 +173,71 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
+  Vitest.live('does not rematerialize a pending event accepted ahead of its pending prefix', (test) =>
+    Effect.gen(function* () {
+      const shutdownDeferred = yield* makeShutdownDeferred
+      const pullQueue = yield* Queue.unbounded<typeof SyncState.PayloadUpstream.Type>()
+      const adapter = makeTestAdapter({
+        clientId: 'client-2',
+        sessionId: 'session-2',
+        testing: {
+          overrides: {
+            clientSession: {
+              leaderThreadProxy: () => ({
+                events: {
+                  pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+                  push: () => Effect.void,
+                  stream: () => Stream.empty,
+                },
+              }),
+            },
+          },
+        },
+      })
+      const store = yield* createStore({
+        schema: schema as LiveStoreSchema,
+        adapter,
+        storeId: 'sf-03-overlapping-advance',
+        shutdownDeferred,
+      })
+
+      store.commit(events.todoCreated({ id: 'older-pending', text: 'older', completed: false }))
+      store.commit(events.todoCreated({ id: 'accepted-ahead', text: 'accepted', completed: false }))
+
+      const before = yield* store[StoreInternalsSymbol].syncProcessor.syncState.get
+      const acceptedPending = before.pending[1]!
+      // Reduced from SF-03's production trace: the leader accepted this action at an earlier
+      // position while the session still retained the same action behind an older pending prefix.
+      const acceptedByLeader = new LiveStoreEvent.Client.EncodedWithMeta({
+        name: acceptedPending.name,
+        args: acceptedPending.args,
+        clientId: acceptedPending.clientId,
+        sessionId: acceptedPending.sessionId,
+        seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0, rebaseGeneration: 0 }),
+        parentSeqNum: EventSequenceNumber.Client.ROOT,
+      })
+
+      const reconciled = store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
+        Stream.filter((state) => state.upstreamHead.global === 1),
+        Stream.take(1),
+        Stream.runDrain,
+        Effect.raceFirst(Deferred.await(shutdownDeferred)),
+        Effect.forkChild,
+      )
+      const reconciledFiber = yield* reconciled
+
+      yield* Queue.offer(pullQueue, SyncState.PayloadUpstreamAdvance.make({ newEvents: [acceptedByLeader] }))
+      yield* Fiber.join(reconciledFiber)
+
+      expect(
+        store
+          .query(tables.todos)
+          .map((row) => row.id)
+          .toSorted(),
+      ).toEqual(['accepted-ahead', 'older-pending'])
+    }).pipe(withTestCtx(test)),
+  )
+
   Vitest.live('rolls back materialized state when persisting the state head fails', (test) =>
     Effect.gen(function* () {
       const { makeStore } = yield* TestContext
