@@ -85,6 +85,20 @@ export const sessionChangesetMetaTable = table({
 
 export type SessionChangesetMetaRow = typeof sessionChangesetMetaTable.Type
 
+// TODO: Rename the physical table once legacy session changeset consumers have been migrated.
+export const MATERIALIZATION_JOURNAL_META_TABLE = SESSION_CHANGESET_META_TABLE
+
+/**
+ * Materialization journal used to roll back state database changes during rebasing.
+ *
+ * @remarks
+ * This aliases the legacy table definition until all session changeset consumers
+ * have adopted the journal service.
+ */
+export const materializationJournalMetaTable = sessionChangesetMetaTable
+
+export type MaterializationJournalMetaRow = SessionChangesetMetaRow
+
 export const stateSystemTables = [
   schemaMetaTable,
   schemaEventDefsMetaTable,
