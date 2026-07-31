@@ -67,6 +67,22 @@ Branch semantics:
   plus all local pending, then re-parents pending onto the new upstream
   head; propagates an upstream-initiated rebase downstream.
 
+### Prefix-confirmation precondition
+
+An upstream advance may confirm only a prefix of this node's pending events.
+Equivalently, an incoming event must not be another incarnation of an event
+that appears later in pending behind an unresolved older event. `merge` is
+positional and cannot recover that identity after rebase has changed sequence
+positions: given incoming `[B]` and pending `[A, B]`, it treats both pending
+events as divergent and schedules `[B, A', B']` for materialization.
+
+The processor drivers own this precondition. A rejected or uncertain push must
+fence later pending events until pull reconciliation confirms the accepted
+prefix or rebases the complete remaining suffix (LS.SYS.SYNC.PROC-R04 and its
+[decision](../02-processors/.decisions/0001-prefix-fence-unresolved-upstream.md)).
+The current client-session rejection path violates that contract; see
+[DELTA-001](../02-processors/.delta/DELTA-001-session-rejection-prefix-bypass.md).
+
 ## Invariants
 
 `validateSyncState` (`:532-566`) and `validateMergeResult` (`:568-613`)

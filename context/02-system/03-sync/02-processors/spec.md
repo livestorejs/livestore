@@ -30,7 +30,7 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
 - **Local pushes** (`:235-239, 263-296`): `localPushesQueue` holds
   `[event, deferred]` items; a background fiber drains
   `takeBetween(1, localPushBatchSize)` per cycle (default 10, `:214`).
-  `validatePushBatch` (`:1024-1054`) requires strictly ascending batches
+  `validatePushBatch` (`:1037-1066`) requires strictly ascending batches
   (`NonMonotonicBatchError`) whose first event is ahead of
   `pushHeadRef.current` (`LeaderAheadError`); `pushHead` advances on push
   and on every pull merge (`:648, 521`).
@@ -39,7 +39,11 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   stale generation are dropped and their deferreds failed with
   `StaleRebaseGenerationError`. A merge `reject` fails the batch's
   deferreds with `LeaderAheadError`, bumps the generation, and drains
-  same-generation queued items — sessions rebase and re-push.
+  same-generation queued items present at that moment — sessions rebase and
+  re-push. A later arrival from the rejected session/generation is not fenced
+  by the leader itself; the client-session driver is currently expected to
+  withhold it, but does not yet do so (see
+  [DELTA-001](./.delta/DELTA-001-session-rejection-prefix-bypass.md)).
 - **Backend pushing** (`:575-637`): drains
   `takeBetween(1, backendPushBatchSize)` (default 50, `:215`), pushes
   `toGlobal()` batches. Retry: `Schedule.exponential(1s)` clamped to 30s,
@@ -80,13 +84,17 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
 `sync/ClientSessionSyncProcessor.ts`. One unbounded STM `leaderPushQueue`
 (`:104`) decouples `push()` (synchronous commit path) from leader I/O:
 
-- **Push** (`:341-343`): synchronously merge into local sync state and enqueue
+- **Push** (`:454-456`): synchronously merge into local sync state and enqueue
   the merge's `newEvents` without waiting for pull/rebase ownership; a background fiber drains
-  `takeBetween(1, leaderPushBatchSize)` and pushes to the leader (`:128-129`).
+  `takeBetween(1, leaderPushBatchSize)` and pushes to the leader (`:153-168`).
   Coalescing is opportunistic (whatever accumulated while the previous
   push was in flight); there is no time-based debounce. A rejected push
-  clears the whole queue (`:130-133`) — events are re-derived from the
-  next pull.
+  records the unresolved batch and clears the whole queue (`:161-168`), but
+  the worker remains able to drain events admitted by later commits before the
+  next pull reconciles that batch. This permits a later pending event to bypass
+  its unresolved prefix and is the open divergence from
+  LS.SYS.SYNC.PROC-R04 tracked by
+  [DELTA-001](./.delta/DELTA-001-session-rejection-prefix-bypass.md).
 - **Pull** (`:145-168, 226-253`): a lazily-restarted stream from the
   leader (cursor = current `upstreamHead`) feeds `SyncState.merge`; a
   `reject` from upstream is impossible and dies (`:162-165`). New events
@@ -124,6 +132,10 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
 
 ## Backpressure and Known Gaps
 
+- The client-session rejection path does not yet fence later events until pull
+  reconciliation. SF-03 demonstrates that the leader can consequently confirm
+  a later event while an older session prefix remains pending; see
+  [DELTA-001](./.delta/DELTA-001-session-rejection-prefix-bypass.md).
 - All processor queues are unbounded; there is no producer backpressure.
   Anti-thrash relies on interrupt/clear on rebase and queue-clear on
   rejection.
