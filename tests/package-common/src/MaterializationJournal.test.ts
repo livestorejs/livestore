@@ -5,6 +5,7 @@ import {
   MaterializationJournal,
   migrateDb,
   prepareBindValues,
+  SqliteError,
   sql,
   type MaterializationJournalMetaRow,
   type SqliteDb,
@@ -117,7 +118,7 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 
-  Vitest.live('does not partially roll back when a requested record is missing', (test) =>
+  Vitest.live('fails without changing state when a requested record is missing', (test) =>
     Effect.gen(function* () {
       const { dbState, journal } = yield* setup
 
@@ -134,12 +135,51 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       const error = yield* journal.rollback([recordedKey, missingKey]).pipe(Effect.flip)
       expect(error).toBeInstanceOf(MaterializationJournal.MaterializationJournalError)
       expect(error.method).toEqual('rollback')
-      expect(error.cause).not.toBeInstanceOf(MaterializationJournal.MaterializationJournalError)
+      expect(error.cause).toEqual(
+        new Error(`Missing materialization journal record for ${EventSequenceNumber.Client.toString(missingKey)}`),
+      )
 
       expect(dbState.select('SELECT id, value FROM journal_test')).toEqual([{ id: 1, value: 'kept' }])
       expect(getRecord(dbState, recordedKey)).toEqual({
         key: recordedKey,
         changeset: { _tag: 'changeset', data: changeset },
+      })
+    }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
+  )
+
+  Vitest.live('restores earlier inverse changes when a later changeset fails', (test) =>
+    Effect.gen(function* () {
+      const { dbState, journal } = yield* setup
+
+      const validKey = EventSequenceNumber.Client.Composite.make({ global: 2, client: 0, rebaseGeneration: 0 })
+      const validChangeset = captureChangeset(dbState, () => {
+        dbState.execute("INSERT INTO journal_test (id, value) VALUES (1, 'kept')")
+      })
+      yield* journal.record({
+        key: validKey,
+        changeset: { _tag: 'changeset', data: validChangeset },
+      })
+
+      const invalidKey = EventSequenceNumber.Client.Composite.make({ global: 1, client: 0, rebaseGeneration: 0 })
+      const invalidChangeset = Uint8Array.from([1, 2, 3])
+      yield* journal.record({
+        key: invalidKey,
+        changeset: { _tag: 'changeset', data: invalidChangeset },
+      })
+
+      const error = yield* journal.rollback([validKey, invalidKey]).pipe(Effect.flip)
+      expect(error).toBeInstanceOf(MaterializationJournal.MaterializationJournalError)
+      expect(error.method).toEqual('rollback')
+      expect(error.cause).toBeInstanceOf(SqliteError)
+
+      expect(dbState.select('SELECT id, value FROM journal_test')).toEqual([{ id: 1, value: 'kept' }])
+      expect(getRecord(dbState, validKey)).toEqual({
+        key: validKey,
+        changeset: { _tag: 'changeset', data: validChangeset },
+      })
+      expect(getRecord(dbState, invalidKey)).toEqual({
+        key: invalidKey,
+        changeset: { _tag: 'changeset', data: invalidChangeset },
       })
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
