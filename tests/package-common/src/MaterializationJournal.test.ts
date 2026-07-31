@@ -55,29 +55,29 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 
-  Vitest.live('discards records up to the confirmed key', (test) =>
+  Vitest.live('discards records up to the key', (test) =>
     Effect.gen(function* () {
       const { dbState, journal } = yield* setup
 
-      const confirmedKey = EventSequenceNumber.Client.Composite.make({ global: 1, client: 2, rebaseGeneration: 3 })
-      yield* journal.record({ key: confirmedKey, changeset: { _tag: 'no-op' } })
+      const key = EventSequenceNumber.Client.Composite.make({ global: 1, client: 2, rebaseGeneration: 3 })
+      yield* journal.record({ key, changeset: { _tag: 'no-op' } })
 
-      const rebasedConfirmedKey = EventSequenceNumber.Client.Composite.make({
+      const sameSequenceKey = EventSequenceNumber.Client.Composite.make({
         global: 1,
         client: 2,
         rebaseGeneration: 4,
       })
-      yield* journal.record({ key: rebasedConfirmedKey, changeset: { _tag: 'no-op' } })
+      yield* journal.record({ key: sameSequenceKey, changeset: { _tag: 'no-op' } })
 
-      const pendingKey = EventSequenceNumber.Client.Composite.make({ global: 1, client: 3, rebaseGeneration: 0 })
-      yield* journal.record({ key: pendingKey, changeset: { _tag: 'no-op' } })
+      const laterKey = EventSequenceNumber.Client.Composite.make({ global: 1, client: 3, rebaseGeneration: 0 })
+      yield* journal.record({ key: laterKey, changeset: { _tag: 'no-op' } })
 
-      yield* journal.discardUpTo(confirmedKey)
+      yield* journal.discardUpTo(key)
 
-      expect(getRecord(dbState, confirmedKey)).toBeUndefined()
-      expect(getRecord(dbState, rebasedConfirmedKey)).toBeUndefined()
-      expect(getRecord(dbState, pendingKey)).toEqual({
-        key: pendingKey,
+      expect(getRecord(dbState, key)).toBeUndefined()
+      expect(getRecord(dbState, sameSequenceKey)).toBeUndefined()
+      expect(getRecord(dbState, laterKey)).toEqual({
+        key: laterKey,
         changeset: { _tag: 'no-op' },
       })
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
