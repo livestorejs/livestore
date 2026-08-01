@@ -1,6 +1,7 @@
 import type * as otel from '@opentelemetry/api'
 
 import type { BootStatus, BootWarningReason, LogConfig, SqliteDb, SyncOptions } from '@livestore/common'
+import { MaterializationJournal } from '@livestore/common'
 import { Devtools, StateHead, UnknownError } from '@livestore/common'
 import type { DevtoolsOptions, StreamEventsOptions } from '@livestore/common/leader-thread'
 import {
@@ -284,7 +285,9 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
               syncPayloadSchema: syncPayloadSchema as Schema.Decoder<Schema.Json, never> | undefined,
               params,
               ...(bootWarning !== undefined ? { bootWarning } : {}),
-            }).pipe(Layer.provide(StateHead.layer({ dbState }))),
+            }).pipe(
+              Layer.provide(Layer.mergeAll(StateHead.layer({ dbState }), MaterializationJournal.layer({ dbState }))),
+            ),
             leaderThreadScope,
           )
         }).pipe(

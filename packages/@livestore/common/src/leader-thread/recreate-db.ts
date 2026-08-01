@@ -4,6 +4,7 @@ import type { MigrationsReport } from '../defs.ts'
 import {
   type BootStatus,
   type MaterializeError,
+  type MaterializationJournal,
   migrateDb,
   rematerializeFromEventlog,
   type SqliteDb,
@@ -42,7 +43,10 @@ export const recreateDb = ({
   bootStatusQueue: Queue.Queue<BootStatus>
   materializeEvent: MaterializeEvent
   stateRebuildBatchSize?: number
-}): Effect.Effect<{ migrationsReport: MigrationsReport }, UnknownError | MaterializeError | SqliteError> =>
+}): Effect.Effect<
+  { migrationsReport: MigrationsReport },
+  UnknownError | MaterializeError | MaterializationJournal.MaterializationJournalError | SqliteError
+> =>
   Effect.gen(function* () {
     const hooks = schema.state.sqlite.migrations.hooks
 

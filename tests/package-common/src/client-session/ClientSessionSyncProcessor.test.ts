@@ -7,6 +7,7 @@ import {
   type ClientSessionLeaderThreadProxy,
   LeaderAheadError,
   makeMockSyncBackend,
+  MaterializationJournal,
   StateHead,
   SyncState,
   type UnknownError,
@@ -512,7 +513,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
             const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
             const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog }).pipe(
-              Effect.provide(StateHead.layer({ dbState })),
+              Effect.provide(Layer.mergeAll(StateHead.layer({ dbState }), MaterializationJournal.layer({ dbState }))),
             )
             yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
 

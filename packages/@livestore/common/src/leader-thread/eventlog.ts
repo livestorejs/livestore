@@ -1,5 +1,5 @@
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Option, Schema } from '@livestore/utils/effect'
+import { Effect, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
 import { migrateTable } from '../schema-management/migrations.ts'
@@ -13,6 +13,7 @@ import {
 } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 import { sessionChangesetMetaTable } from '../schema/state/sqlite/system-tables/state-tables.ts'
 import { insertRow, updateRows } from '../sql-queries/sql-queries.ts'
+import * as SqliteDbHelper from '../sqlite-db-helper.ts'
 import type { PreparedBindValues } from '../util.ts'
 import { sql } from '../util.ts'
 import { execSql } from './connection.ts'
@@ -100,6 +101,36 @@ export const getEventsSince = ({
     .filter((_) => EventSequenceNumber.Client.compare(_.seqNum, since) > 0)
     .toSorted((a, b) => EventSequenceNumber.Client.compare(a.seqNum, b.seqNum))
 }
+
+/**
+ * Deletes eventlog entries at the requested logical event positions.
+ *
+ * @remarks
+ * Positions are matched by their global and client components, so every rebase-generation incarnation at a matching
+ * position is removed. Deletions are batched within one savepoint; if any batch fails, earlier batches are rolled back.
+ *
+ * @param dbEventlog - Eventlog database whose entries should be removed
+ * @param eventNums - Logical event positions to remove
+ */
+export const deleteEvents = (dbEventlog: SqliteDb, eventNums: ReadonlyArray<EventSequenceNumber.Client.Composite>) =>
+  Effect.gen(function* () {
+    // Split into batches to keep each DELETE statement and its bound parameter count manageable.
+    const eventNumChunks = ReadonlyArray.chunksOf(100)(eventNums)
+
+    for (const eventNumChunk of eventNumChunks) {
+      // A global/client pair identifies the logical event position. Deleting it intentionally purges
+      // every rebase-generation incarnation that may remain at that position.
+      const placeholders = eventNumChunk.map(() => '(?, ?)').join(', ')
+      const bindValues = eventNumChunk.flatMap((key) => [key.global, key.client])
+
+      yield* execSql(
+        dbEventlog,
+        sql`DELETE FROM ${EVENTLOG_META_TABLE}
+            WHERE (seqNumGlobal, seqNumClient) IN (${placeholders})`,
+        bindValues,
+      )
+    }
+  }).pipe(SqliteDbHelper.withSavepoint(dbEventlog))
 
 export const getEventsFromEventlog = ({
   dbEventlog,
