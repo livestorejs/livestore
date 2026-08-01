@@ -18,12 +18,14 @@ import {
 } from '@livestore/utils/effect'
 
 import type { ClientSession } from '../adapter-types.ts'
-import { MaterializeError } from '../errors.ts'
+import type { MaterializeError } from '../errors.ts'
 import { isRejectedPushError } from '../leader-thread/RejectedPushError.ts'
+import * as MaterializationJournal from '../MaterializationJournal.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { resolveSessionIdSymbolInEventArgs } from '../session-id-symbol.ts'
+import * as SqliteDbHelper from '../sqlite-db-helper.ts'
 import * as StateHead from '../StateHead.ts'
 import * as SyncState from './syncstate.ts'
 
@@ -49,7 +51,6 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   schema,
   clientSession,
   materializeEvent,
-  rollback,
   refreshTables,
   params,
   confirmUnsavedChanges,
@@ -68,9 +69,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         | { _tag: 'unset' }
       materializerHash: Option.Option<number>
     },
-    MaterializeError
+    MaterializeError | MaterializationJournal.MaterializationJournalError
   >
-  rollback: (changeset: Uint8Array<ArrayBuffer>) => void
   refreshTables: (tables: Set<string>) => void
   params: {
     leaderPushBatchSize: number
@@ -88,6 +88,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
    */
   confirmUnsavedChanges: boolean
 }) {
+  const materializationJournal = yield* MaterializationJournal.MaterializationJournal
   const stateHead = yield* StateHead.StateHead
   const eventSchema = LiveStoreEvent.Client.makeSchemaMemo(schema)
 
@@ -232,7 +233,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       Stream.tap(() =>
         clientSession.devtools.enabled === true ? clientSession.devtools.pullLatch.await : Effect.void,
       ),
-      Stream.tap(({ payload }) =>
+      Stream.tap(({ payload, globalHead }) =>
         Effect.gen(function* () {
           // yield* Effect.logDebug('ClientSessionSyncProcessor:pull', payload)
 
@@ -280,19 +281,20 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
               )
             }
 
-            // Roll back the optimistic session changesets for the events this rebase discards.
-            // (Independent of the push queue below; order relative to the queue reconcile is irrelevant.)
-            for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
-              const event = mergeResult.rollbackEvents[i]!
-              if (event.meta.sessionChangeset._tag !== 'no-op' && event.meta.sessionChangeset._tag !== 'unset') {
-                rollback(event.meta.sessionChangeset.data)
-                event.meta.sessionChangeset = { _tag: 'unset' }
-              }
-            }
             if (mergeResult.rollbackEvents.length > 0) {
-              yield* stateHead
-                .set(mergeResult.rollbackEvents[0]!.parentSeqNum)
-                .pipe(Effect.mapError((cause) => MaterializeError.make({ cause })))
+              const headAfterRollback = mergeResult.rollbackEvents[0]!.parentSeqNum
+
+              yield* Effect.gen(function* () {
+                yield* materializationJournal.rollback(mergeResult.rollbackEvents.map((event) => event.seqNum))
+                yield* stateHead.set(headAfterRollback)
+              }).pipe(
+                SqliteDbHelper.withSavepoint(clientSession.sqliteDb),
+                Effect.mapError((cause) =>
+                  MaterializationJournal.isMaterializationJournalError(cause) === true
+                    ? cause
+                    : new MaterializationJournal.MaterializationJournalError({ method: 'rollback', cause }),
+                ),
+              )
             }
 
             // Barrier: before the atomic queue reconciliation (the "discard + re-offer" step).
@@ -338,32 +340,33 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
             }
           }
 
-          if (mergeResult.newEvents.length === 0) {
-            // If there are no new events, we need to update the sync state as well
-            yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
-            return
-          }
+          if (mergeResult.newEvents.length > 0) {
+            const writeTables = new Set<string>()
+            for (const event of mergeResult.newEvents) {
+              const {
+                writeTables: newWriteTables,
+                sessionChangeset,
+                materializerHash,
+              } = yield* materializeEvent(event, {
+                materializerHashLeader: event.meta.materializerHashLeader,
+              })
+              for (const table of newWriteTables) {
+                writeTables.add(table)
+              }
 
-          const writeTables = new Set<string>()
-          for (const event of mergeResult.newEvents) {
-            const {
-              writeTables: newWriteTables,
-              sessionChangeset,
-              materializerHash,
-            } = yield* materializeEvent(event, {
-              materializerHashLeader: event.meta.materializerHashLeader,
-            })
-            for (const table of newWriteTables) {
-              writeTables.add(table)
+              // Kept temporarily for event-metadata compatibility. Rollback now uses the journal.
+              event.meta.sessionChangeset = sessionChangeset
+              event.meta.materializerHashSession = materializerHash
             }
 
-            event.meta.sessionChangeset = sessionChangeset
-            event.meta.materializerHashSession = materializerHash
+            refreshTables(writeTables)
           }
 
-          refreshTables(writeTables)
+          // A pull item can advance the confirmed frontier without carrying new events.
+          // Prune only after any rollback and replacement materialization for this item have completed.
+          yield* materializationJournal.discardUpTo(globalHead)
 
-          // We're only triggering the sync state update after all events have been materialized
+          // Publish only after rollback, materialization, and pruning complete.
           yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
         }).pipe(
           pullReconciliationMutex.withPermits(1),
@@ -572,7 +575,10 @@ export interface ClientSessionSyncProcessor {
   push: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
   materializeEvents: (
     events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
-  ) => Effect.Effect<{ writeTables: Set<string> }, MaterializeError>
+  ) => Effect.Effect<
+    { writeTables: Set<string> },
+    MaterializeError | MaterializationJournal.MaterializationJournalError
+  >
   /**
    * Only used for debugging / observability.
    */

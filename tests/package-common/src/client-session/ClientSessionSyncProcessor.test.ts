@@ -6,8 +6,10 @@ import {
   type ClientSession,
   ClientSessionLeaderThreadProxy,
   LeaderAheadError,
+  MATERIALIZATION_JOURNAL_META_TABLE,
   makeMockSyncBackend,
   MaterializationJournal,
+  sql,
   StateHead,
   SyncState,
   type UnknownError,
@@ -23,6 +25,8 @@ import {
 import { EventFactory } from '@livestore/common/testing'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, StoreInternalsSymbol } from '@livestore/livestore'
+import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
+import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
@@ -59,6 +63,27 @@ import { makeTestAdapter, type TestingOverrides } from '../test-adapter.ts'
 // TODO fix type level - derived events are missing and thus infers to `never` currently
 const eventSchema = LiveStoreEvent.Input.makeSchema(schema) as TODO as Schema.Codec<LiveStoreEvent.Input.Encoded>
 const encode = Schema.encodeSync(eventSchema)
+const materializationLayerTest = Layer.mergeAll(MaterializationJournal.layerTest, StateHead.layerTest)
+
+const getMaterializationJournalRows = (store: Store) =>
+  store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect<{
+    seqNumGlobal: number
+    seqNumClient: number
+    seqNumRebaseGeneration: number
+  }>(
+    sql`SELECT seqNumGlobal, seqNumClient, seqNumRebaseGeneration
+      FROM ${MATERIALIZATION_JOURNAL_META_TABLE}
+      ORDER BY seqNumGlobal, seqNumClient, seqNumRebaseGeneration`,
+    undefined,
+    // Journal mutations bypass SqliteDbWrapper, so this diagnostic query must not reuse its result cache.
+    { skipCache: true },
+  )
+
+const waitForMaterializationJournalRows = Effect.fn(function* (store: Store, expectedCount: number) {
+  while (getMaterializationJournalRows(store).length !== expectedCount) {
+    yield* Effect.sleep(10)
+  }
+})
 
 const withTestCtx = Vitest.makeWithTestCtx({
   makeLayer: () =>
@@ -76,20 +101,23 @@ type ClientProcessorParams = Parameters<typeof makeClientSessionSyncProcessor>[0
 const makeClientProcessorHarness = Effect.fn(function* ({
   push,
   pull = () => Stream.empty,
-  rollback = () => undefined,
   shutdown = () => Effect.void,
   devtools = { enabled: false },
   leaderPushBatchSize = 1,
   rebaseBarriers,
+  onDiscardUpTo = () => Effect.void,
 }: {
   push: LeaderEvents['push']
   pull?: LeaderEvents['pull']
-  rollback?: (changeset: Uint8Array<ArrayBuffer>) => void
   shutdown?: ClientSession['shutdown']
   devtools?: ClientSession['devtools']
   leaderPushBatchSize?: number
   rebaseBarriers?: ClientProcessorParams['params']['rebaseBarriers']
+  onDiscardUpTo?: MaterializationJournal.Service['discardUpTo']
 }) {
+  const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
+  const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
+  const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
   const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
   const leaderThread: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy = {
     events: { pull, push, stream: () => Stream.empty },
@@ -112,7 +140,7 @@ const makeClientProcessorHarness = Effect.fn(function* ({
   }
 
   const clientSession: ClientSession = {
-    sqliteDb: {} as ClientSession['sqliteDb'],
+    sqliteDb,
     devtools,
     clientId: 'client-test',
     sessionId: 'session-test',
@@ -131,11 +159,25 @@ const makeClientProcessorHarness = Effect.fn(function* ({
         sessionChangeset: { _tag: 'no-op' as const },
         materializerHash: Option.none<number>(),
       }),
-    rollback,
     refreshTables: () => undefined,
     params: { leaderPushBatchSize, rebaseBarriers },
     confirmUnsavedChanges: false,
-  }).pipe(Effect.provide(StateHead.layerTest))
+  }).pipe(
+    Effect.provide(
+      Layer.mergeAll(
+        StateHead.layerTest,
+        Layer.succeed(
+          MaterializationJournal.MaterializationJournal,
+          MaterializationJournal.MaterializationJournal.of({
+            [MaterializationJournal.TypeId]: MaterializationJournal.TypeId,
+            record: () => Effect.void,
+            rollback: () => Effect.void,
+            discardUpTo: onDiscardUpTo,
+          }),
+        ),
+      ),
+    ),
+  )
 
   const scope = yield* Scope.make()
   yield* processor.boot.pipe(Scope.provide(scope))
@@ -254,6 +296,26 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           .toSorted(),
       ).toEqual(['later-pending', 'older-pending'])
       expect(pushedIds).toEqual(['older-pending', 'later-pending'])
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.live('journals materializations and prunes them after global confirmation', (test) =>
+    Effect.gen(function* () {
+      const { makeStore } = yield* TestContext
+      const store = yield* makeStore()
+
+      store.commit(events.todoCreated({ id: 'journaled', text: 'journaled', completed: false }))
+
+      // Synchronous local materialization must journal the optimistic event before acknowledgement.
+      expect(getMaterializationJournalRows(store)).toEqual([
+        { seqNumGlobal: 1, seqNumClient: 0, seqNumRebaseGeneration: 0 },
+      ])
+
+      yield* waitForMaterializationJournalRows(store, 0).pipe(Effect.timeout('5 seconds'))
+
+      const finalState = yield* store[StoreInternalsSymbol].syncProcessor.syncState.get
+      expect(finalState.pending).toEqual([])
+      expect(EventSequenceNumber.Client.isEqual(finalState.localHead, finalState.upstreamHead)).toBe(true)
     }).pipe(withTestCtx(test)),
   )
 
@@ -1252,12 +1314,11 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
               materializerHash: Option.none<number>(),
             }),
           ),
-        rollback: () => undefined,
         refreshTables: () => undefined,
 
         params: { leaderPushBatchSize: 10 },
         confirmUnsavedChanges: false,
-      }).pipe(Effect.provide(StateHead.layerTest))
+      }).pipe(Effect.provide(materializationLayerTest))
 
       const encoded = yield* syncProcessor.encodeEvents([
         events.todoCreated({ id: 'post-rebase', text: 'after', completed: false }),
@@ -1422,12 +1483,11 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         schema: schema as LiveStoreSchema,
         clientSession,
         materializeEvent,
-        rollback: () => undefined,
         refreshTables: () => undefined,
 
         params: { leaderPushBatchSize: 10 },
         confirmUnsavedChanges: false,
-      }).pipe(Effect.provide(StateHead.layerTest))
+      }).pipe(Effect.provide(materializationLayerTest))
 
       const unknownEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
         name: 'unknown_event_test',

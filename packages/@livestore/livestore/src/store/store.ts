@@ -1,6 +1,5 @@
 import * as otel from '@opentelemetry/api'
 
-import type { MaterializationJournal } from '@livestore/common'
 import {
   type Bindable,
   type ClientSession,
@@ -11,6 +10,7 @@ import {
   IntentionalShutdownCause,
   isQueryBuilder,
   liveStoreVersion,
+  MaterializationJournal,
   MaterializeError,
   MaterializerHashMismatchError,
   makeClientSessionSyncProcessor,
@@ -34,6 +34,7 @@ import {
   Exit,
   Fiber,
   Inspectable,
+  Layer,
   Option,
   OtelTracer,
   Queue,
@@ -210,7 +211,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.storageMode = clientSession.leaderThread.initialState.storageMode
 
     const reactivityGraph = makeReactivityGraph()
-    const stateHead = StateHead.make({ dbState: clientSession.sqliteDb })
+    const materializationLayer = Layer.mergeAll(
+      MaterializationJournal.layer({ dbState: clientSession.sqliteDb }),
+      StateHead.layer({ dbState: clientSession.sqliteDb }),
+    )
 
     const syncProcessor = makeClientSessionSyncProcessor({
       schema,
@@ -219,6 +223,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         (eventEncoded, { materializerHashLeader }) =>
           // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
           Effect.gen({ self: this }, function* () {
+            const materializationJournal = yield* MaterializationJournal.MaterializationJournal
+            const stateHead = yield* StateHead.StateHead
             const resolution = yield* resolveEventDef(schema, {
               operation: '@livestore/livestore:store:materializeEvent',
               event: eventEncoded,
@@ -227,6 +233,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             if (resolution._tag === 'unknown') {
               // Runtime schema doesn't know this event yet; skip materialization but
               // keep the log entry so upgraded clients can replay it later.
+              yield* materializationJournal.record({ key: eventEncoded.seqNum, changeset: { _tag: 'no-op' } })
               yield* stateHead.set(eventEncoded.seqNum)
               return {
                 writeTables: new Set<string>(),
@@ -293,17 +300,26 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             }
 
             const sessionChangeset = this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset
+            yield* materializationJournal.record({
+              key: eventEncoded.seqNum,
+              changeset:
+                sessionChangeset._tag === 'sessionChangeset'
+                  ? { _tag: 'changeset', data: sessionChangeset.data }
+                  : { _tag: 'no-op' },
+            })
             yield* stateHead.set(eventEncoded.seqNum)
 
             return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
           }).pipe(
             SqliteDbHelper.withSavepoint(clientSession.sqliteDb),
-            Effect.mapError((cause) => MaterializeError.make({ cause })),
+            Effect.provide(materializationLayer),
+            Effect.mapError((cause) =>
+              MaterializationJournal.isMaterializationJournalError(cause) === true
+                ? cause
+                : MaterializeError.make({ cause }),
+            ),
           ),
       ),
-      rollback: (changeset) => {
-        this[StoreInternalsSymbol].sqliteDbWrapper.rollback(changeset)
-      },
       refreshTables: (tables) => {
         const tablesToUpdate = [] as [Ref<null, ReactivityGraphContext, RefreshReason>, null][]
         for (const tableName of tables) {
@@ -319,7 +335,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         }),
       },
       confirmUnsavedChanges,
-    }).pipe(Effect.provideService(StateHead.StateHead, stateHead), Effect.runSyncWith(effectContext.services))
+    }).pipe(Effect.provide(materializationLayer), Effect.runSyncWith(effectContext.services))
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     const tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> } = {}

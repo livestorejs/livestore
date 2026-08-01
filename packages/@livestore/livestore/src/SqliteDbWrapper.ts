@@ -126,11 +126,6 @@ export class SqliteDbWrapper implements SqliteDb {
     }
   }
 
-  rollback(changeset: Uint8Array<ArrayBuffer>) {
-    const invertedChangeset = this.db.makeChangeset(changeset).invert()
-    invertedChangeset.apply()
-  }
-
   getTablesUsed(query: string) {
     // It seems that SQLite doesn't properly handle `DELETE FROM SOME_TABLE` queries without a WHERE clause
     // So we need to handle these queries separately
