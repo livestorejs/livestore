@@ -2,10 +2,10 @@
 
 Defines how LiveStore proves its own contracts: test lanes, conformance
 suites for the pluggable dimensions, performance evidence, protocol
-compatibility, determinism guards, and reproducible system-wide scenarios.
-Refines the root's correctness and evidence criteria (notably [LS-R03],
-[LS-R05], [LS-R06], [LS-R08], [LS-R10], [LS-R13], and [LS-R14]; vision
-success criterion 6).
+compatibility, determinism guards, and reproducible composed-system evidence.
+Refines the root's correctness, realization-proving, and performance criteria
+([LS-R03], [LS-R05], [LS-R06], [LS-R08], [LS-R10], [LS-R13], and [LS-R14];
+vision success criterion 6).
 
 ## Context
 
@@ -21,6 +21,13 @@ owns what is verified and by what kind of evidence.
   [spec.md](./spec.md) §Traceability Annotations); annotations are
   comments only and never alter test behavior. Adopted 2026-07-16
   (interview).
+- **LS.SYS.VER-R08 Composed-system verification:** Verification includes
+  reproducible evidence for multi-Client Sync behavior across topology changes,
+  disconnection, faults, recovery, and convergence. It exercises actual
+  LiveStore boundaries, states the scope and assumptions of its claims, and
+  retains enough input, source, observation, and outcome context to reproduce
+  and diagnose failures without treating requested controls as observed
+  behavior. `refines: LS-R03, LS-R05, LS-R06, LS-R08, LS-R10, LS-R13`
 
 Lane/dimension requirements live in the child nodes; the former
 `LS.SYS.VER-R01…R06` were re-homed on 2026-07-16:
@@ -32,7 +39,3 @@ Lane/dimension requirements live in the child nodes; the former
 | [03-performance/](./03-performance/requirements.md) | Perf evidence | R04 → `LS.SYS.VER.PERF-R01` |
 | [04-protocol-compat/](./04-protocol-compat/requirements.md) | Protocol compat tests | R05 → `LS.SYS.VER.PROTO-R01` |
 | [05-determinism/](./05-determinism/requirements.md) | Determinism guards | R06 → `LS.SYS.VER.DET-R01` |
-
-Reproducible composed-system evidence is owned by
-[06-scenarios/](./06-scenarios/requirements.md) under the
-`LS.SYS.VER.SCEN-*` namespace.
