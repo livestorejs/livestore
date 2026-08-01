@@ -10,6 +10,9 @@
 
 ### Changed
 
+- **Cloudflare sync:** Serialize push admission through pull publication so an
+  accepted event cannot advance the backend head without notifying subscribers
+  ([#1537](https://github.com/livestorejs/livestore/pull/1537)).
 - Removed redundant devenv package entries now owned by the task guard modules.
 
 ### Internal Changes
