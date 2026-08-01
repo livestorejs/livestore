@@ -30,6 +30,7 @@ import {
   Duration,
   Effect,
   FetchHttpClient,
+  Fiber,
   Layer,
   Queue,
   References,
@@ -68,9 +69,10 @@ const withTestCtx = (
 ) =>
   Vitest.makeWithTestCtx({
     makeLayer: () =>
-      Layer.provideMerge(LeaderThreadCtxLive(args), PlatformNode.NodeFileSystem.layer).pipe(
-        Layer.provide(Layer.succeed(References.MinimumLogLevel, 'Debug')),
-      ),
+      Layer.provideMerge(
+        LeaderThreadCtxLive({ ...args, syncProcessor: args.testing?.syncProcessor }),
+        PlatformNode.NodeFileSystem.layer,
+      ).pipe(Layer.provide(Layer.succeed(References.MinimumLogLevel, 'Debug'))),
     forceOtel: true,
   })
 
@@ -580,6 +582,84 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       expect(result.failure.violationIndex).toBe(0)
     }).pipe(withTestCtx()(test)),
   )
+
+  Vitest.live('releases rejected queue reservations before admitting a rebased session retry', (test) => {
+    const localProcessingStarted = Deferred.makeUnsafe<void>()
+    const allowLocalProcessing = Deferred.makeUnsafe<void>()
+    const localPushAdmitted = Deferred.makeUnsafe<void>()
+
+    return Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+      const queuedFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('shared-client', 'queued-session'),
+        startSeq: 1,
+        initialParent: 'root',
+      })
+      const backendFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('remote-client', 'remote-session'),
+        startSeq: 1,
+        initialParent: 'root',
+      })
+
+      yield* Deferred.await(localProcessingStarted)
+
+      const queuedPush = yield* testContext
+        .pushEncoded(
+          ...Array.from({ length: 6 }, (_, index) =>
+            queuedFactory.todoCreated.next({ id: `queued-${index}`, text: `queued-${index}`, completed: false }),
+          ),
+        )
+        .pipe(Effect.result, Effect.forkChild)
+      yield* Deferred.await(localPushAdmitted)
+
+      // Advance the authoritative head while e1…e6 are reserved but not yet processed.
+      yield* testContext.mockSyncBackend.advance(
+        backendFactory.todoCreated.next({ id: 'remote-1', text: 'remote-1', completed: false }),
+      )
+      yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.filter((state) => state.upstreamHead.global === 1),
+        Stream.runFirstUnsafe,
+      )
+
+      yield* Deferred.succeed(allowLocalProcessing, undefined)
+      const queuedResult = yield* Fiber.join(queuedPush)
+      expect(Result.isFailure(queuedResult)).toBe(true)
+
+      const retryBase = backendFactory.todoCreated.next({ id: 'retry-2', text: 'retry-2', completed: false })
+      const retryPair = EventSequenceNumber.Client.nextPair({
+        seqNum: EventSequenceNumber.Client.fromString('e1r1'),
+        isClientOnly: false,
+        rebaseGeneration: 1,
+      })
+      const rebasedRetry = LiveStoreEvent.Client.EncodedWithMeta.make({
+        ...LiveStoreEvent.Global.toClientEncoded(retryBase),
+        ...retryPair,
+        clientId: 'shared-client',
+        sessionId: 'retry-session',
+      })
+
+      yield* leaderThreadCtx.syncProcessor.push([rebasedRetry])
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(5000))
+    }).pipe(
+      withTestCtx({
+        mockBackendOptions: { startConnected: true },
+        testing: {
+          syncProcessor: {
+            delays: {
+              localPushProcessing: Effect.gen(function* () {
+                yield* Deferred.succeed(localProcessingStarted, undefined)
+                yield* Deferred.await(allowLocalProcessing)
+              }),
+            },
+            hooks: {
+              localPushAdmitted: () => Deferred.succeed(localPushAdmitted, undefined),
+            },
+          },
+        },
+      })(test),
+    )
+  })
 
   // TODO tests for
   // - aborting local pushes

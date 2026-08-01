@@ -33,8 +33,16 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   `validatePushBatch` requires strictly ascending batches
   (`NonMonotonicBatchError`) whose first event is ahead of
   `pushHeadRef.current` (`LeaderAheadError`) and whose complete sequence/parent
-  chain is contiguous with that head (`NonContiguousBatchError`); `pushHead`
-  advances on push and on every pull merge.
+  chain is contiguous with that head (`NonContiguousBatchError`). Parent
+  continuity compares global/client position because a confirmed leader head
+  and a rebased session head may name the same position with different local
+  generations. Admission atomically records explicit per-item reservations
+  before queue publication; a reservation survives queue take and is released
+  only when its item is applied, dropped, or rejected. Pull reconciliation
+  derives `pushHead` from the authoritative head plus those live reservations,
+  so in-flight or old-generation suffixes cannot leave a ghost fence or expose
+  an unfenced gap (see
+  [.decisions/0002-explicit-leader-push-reservations.md](./.decisions/0002-explicit-leader-push-reservations.md)).
 - **Generations** (`:271-296, 321-366`): each queued item carries its
   seqNum's `rebaseGeneration`. After acquiring the mutex, items with a
   stale generation are dropped and their deferreds failed with

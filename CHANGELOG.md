@@ -11,9 +11,12 @@
 ### Changed
 
 - Removed redundant devenv package entries now owned by the task guard modules.
-- **Sync correctness:** Prevented a later client-session event from reaching the
-  leader before an older rejected pending prefix is reconciled, avoiding
-  duplicate event materialization during multi-writer rebases
+- **Sync correctness:** Prevented later client-session events from crossing an
+  older rejected pending prefix, and made leader admission retain explicit
+  reservation ownership through queue drain until apply, rejection, or stale
+  dropping. Parent contiguity now compares DAG position independently of local
+  rebase generation while stale epochs remain checked separately, avoiding
+  duplicate materialization and ghost fences during multi-writer rebases
   ([#1530](https://github.com/livestorejs/livestore/pull/1530)).
 
 ### Internal Changes

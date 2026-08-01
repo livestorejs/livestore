@@ -198,6 +198,9 @@ interface Options {
     readonly delays?: {
       readonly localPushProcessing?: Effect.Effect<void>
     }
+    readonly hooks?: {
+      readonly localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
+    }
   }
 }
 
@@ -240,8 +243,11 @@ export const make = Effect.fnUntraced(function* ({
     deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>,
   ]
   const localPushesQueue = yield* TxQueue.unbounded<LocalPushQueueItem>()
+  const reservedLocalPushItems = new Set<LocalPushQueueItem>()
   // Ensures mutual exclusion between local push and backend pull processing.
   const localPushBackendPullMutex = yield* Semaphore.make(1)
+  // Serializes validation, queue admission, and prefix-fence reconciliation.
+  const pushAdmissionSemaphore = yield* Semaphore.make(1)
 
   /**
    * Additionally to the `syncStateSref` we also need the `pushHeadRef` in order to prevent old/duplicate
@@ -252,10 +258,34 @@ export const make = Effect.fnUntraced(function* ({
    *
    * Thus the purpose of the pushHeadRef is the guard the integrity of the local push queue
    */
-  const pushHeadRef = { current: EventSequenceNumber.Client.ROOT }
-  const advancePushHead = (eventNum: EventSequenceNumber.Client.Composite) => {
-    pushHeadRef.current = EventSequenceNumber.Client.max(pushHeadRef.current, eventNum)
-  }
+  const pushHeadRef = { current: initialSyncState.localHead }
+  const reconcilePushHead = (authoritativeHead: EventSequenceNumber.Client.Composite) =>
+    pushAdmissionSemaphore.withPermits(1)(
+      Effect.gen(function* () {
+        const latestCurrentGenerationItem = [...reservedLocalPushItems].findLast(
+          ([event]) => event.seqNum.rebaseGeneration >= authoritativeHead.rebaseGeneration,
+        )
+        pushHeadRef.current = latestCurrentGenerationItem?.[0].seqNum ?? authoritativeHead
+        yield* syncDiagnostic('leader.push-fence.reconciled', {
+          authoritativeHead: EventSequenceNumber.Client.toString(authoritativeHead),
+          pushHead: EventSequenceNumber.Client.toString(pushHeadRef.current),
+          reservationCount: reservedLocalPushItems.size,
+        })
+      }).pipe(Effect.uninterruptible),
+    )
+  const releasePushReservations = (
+    items: ReadonlyArray<LocalPushQueueItem>,
+    authoritativeHead: EventSequenceNumber.Client.Composite,
+  ) =>
+    pushAdmissionSemaphore.withPermits(1)(
+      Effect.gen(function* () {
+        for (const item of items) reservedLocalPushItems.delete(item)
+        const latestCurrentGenerationItem = [...reservedLocalPushItems].findLast(
+          ([event]) => event.seqNum.rebaseGeneration >= authoritativeHead.rebaseGeneration,
+        )
+        pushHeadRef.current = latestCurrentGenerationItem?.[0].seqNum ?? authoritativeHead
+      }).pipe(Effect.uninterruptible),
+    )
 
   const backgroundApplyLocalPushes = Effect.gen(function* () {
     while (true) {
@@ -297,6 +327,8 @@ export const make = Effect.fnUntraced(function* ({
               }),
             ),
           )
+
+          yield* releasePushReservations(droppedItems, syncState.localHead)
         }
 
         if (filteredItems.length === 0) {
@@ -352,6 +384,11 @@ export const make = Effect.fnUntraced(function* ({
               ...remainingEventsMatchingGeneration.map(([_, deferred]) => deferred),
             ]
 
+            yield* releasePushReservations(
+              [...filteredItems, ...remainingEventsMatchingGeneration],
+              syncState.localHead,
+            )
+
             yield* Effect.forEach(allDeferredsToReject, (deferred) =>
               Deferred.fail(
                 deferred,
@@ -402,6 +439,8 @@ export const make = Effect.fnUntraced(function* ({
 
         yield* TxQueue.offerAll(syncBackendPushQueue, globalOrUnknownEvents)
 
+        yield* releasePushReservations(filteredItems, mergeResult.newSyncState.localHead)
+
         // A push is acknowledged only after the complete batch is materialized, published in
         // leader sync state, exposed to sessions, and queued for backend propagation.
         yield* Effect.forEach(deferreds, (deferred) => Deferred.succeed(deferred, void 0))
@@ -435,6 +474,10 @@ export const make = Effect.fnUntraced(function* ({
       pageInfo: SyncBackend.PullResPageInfo,
     ) =>
       Effect.gen(function* () {
+        yield* syncDiagnostic('leader.backend-pull.received', {
+          pageInfo: pageInfo._tag,
+          batch: summarizeClientBatch(newEvents),
+        })
         if (ctxRef.current?.devtoolsLatch !== undefined) {
           yield* ctxRef.current.devtoolsLatch.await
         }
@@ -536,7 +579,7 @@ export const make = Effect.fnUntraced(function* ({
           // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
           trimChangesetRows(db, newBackendHead)
 
-          advancePushHead(mergeResult.newSyncState.localHead)
+          yield* reconcilePushHead(mergeResult.newSyncState.localHead)
 
           yield* materializeEventsBatch({ batchItems: mergeResult.newEvents })
 
@@ -599,6 +642,8 @@ export const make = Effect.fnUntraced(function* ({
 
       const queueItems = yield* TxQueue.takeBetween(syncBackendPushQueue, 1, backendPushBatchSize)
 
+      yield* syncDiagnostic('leader.backend-push.started', { batch: summarizeClientBatch(queueItems) })
+
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
       if (ctxRef.current?.devtoolsLatch !== undefined) {
@@ -619,6 +664,11 @@ export const make = Effect.fnUntraced(function* ({
         const iteration = yield* Schedule.CurrentMetadata
 
         const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.result)
+
+        yield* syncDiagnostic('leader.backend-push.completed', {
+          batch: summarizeClientBatch(queueItems),
+          result: Result.isSuccess(pushResult) === true ? 'success' : pushResult.failure._tag,
+        })
 
         const retries = iteration.attempt
         if (retries > 0 && Result.isSuccess(pushResult) === true) {
@@ -659,19 +709,27 @@ export const make = Effect.fnUntraced(function* ({
     Effect.gen(function* () {
       if (newEvents.length === 0) return
 
-      // console.debug('push', newEvents)
-
-      yield* validatePushBatch(newEvents, pushHeadRef.current, isClientOnlyEvent)
-
-      advancePushHead(newEvents.at(-1)!.seqNum)
-
       const deferreds = yield* Effect.forEach(newEvents, () =>
         Deferred.make<void, LeaderAheadError | StaleRebaseGenerationError>(),
       )
 
       const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
 
-      yield* TxQueue.offerAll(localPushesQueue, items)
+      yield* pushAdmissionSemaphore.withPermits(1)(
+        Effect.gen(function* () {
+          yield* validatePushBatch(newEvents, pushHeadRef.current, isClientOnlyEvent)
+          for (const item of items) reservedLocalPushItems.add(item)
+          yield* TxQueue.offerAll(localPushesQueue, items)
+          pushHeadRef.current = newEvents.at(-1)!.seqNum
+          yield* syncDiagnostic('leader.push-fence.admitted', {
+            batch: summarizeClientBatch(newEvents),
+            pushHead: EventSequenceNumber.Client.toString(pushHeadRef.current),
+          })
+          if (testing.hooks?.localPushAdmitted !== undefined) {
+            yield* testing.hooks.localPushAdmitted(newEvents)
+          }
+        }).pipe(Effect.uninterruptible),
+      )
 
       yield* Effect.all(deferreds.map(Deferred.await))
     }).pipe(
@@ -747,6 +805,9 @@ export const make = Effect.fnUntraced(function* ({
       yield* backgroundBackendPulling({
         restartBackendPushing: (filteredRebasedPending) =>
           Effect.gen(function* () {
+            yield* syncDiagnostic('leader.backend-push.restarting', {
+              pending: summarizeClientBatch(filteredRebasedPending),
+            })
             // Stop current pushing fiber
             yield* FiberHandle.clear(backendPushingFiberHandle)
 
@@ -1079,7 +1140,7 @@ const validatePushBatch = (
 
       if (
         EventSequenceNumber.Client.isEqual(event.seqNum, expectedPair.seqNum) === false ||
-        EventSequenceNumber.Client.isEqual(event.parentSeqNum, expectedPair.parentSeqNum) === false
+        isSameSequencePosition(event.parentSeqNum, expectedPair.parentSeqNum) === false
       ) {
         return yield* NonContiguousBatchError.make({
           expectedSeqNum: expectedPair.seqNum,
@@ -1094,6 +1155,20 @@ const validatePushBatch = (
       precedingSeqNum = event.seqNum
     }
   })
+
+const summarizeClientBatch = (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => ({
+  count: events.length,
+  first: events[0]?.toJSON(),
+  last: events.at(-1)?.toJSON(),
+})
+
+const isSameSequencePosition = (
+  left: EventSequenceNumber.Client.Composite,
+  right: EventSequenceNumber.Client.Composite,
+) => left.global === right.global && left.client === right.client
+
+const syncDiagnostic = (transition: string, detail: unknown): Effect.Effect<void> =>
+  TRACE_VERBOSE === true ? Effect.logDebug(`[livestore-sync] ${transition} ${JSON.stringify(detail)}`) : Effect.void
 
 /**
  * Handles a BackendIdMismatchError based on the configured behavior.
