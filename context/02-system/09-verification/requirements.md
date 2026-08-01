@@ -13,6 +13,10 @@ Builds on [../requirements.md](../requirements.md) (`LS.SYS-*`). CI
 mechanics (runners, workflows) are owned by `../../03-delivery/`; this node
 owns what is verified and by what kind of evidence.
 
+Known realizations are listed in [realizations.md](./realizations.md). The
+registry records discovery and ownership; implementation-specific intent
+remains in the realization's owning repository.
+
 ## Requirements
 
 - **LS.SYS.VER-R07 Traceability annotations:** Test files declare which
