@@ -1,5 +1,6 @@
 import * as otel from '@opentelemetry/api'
 
+import type { MaterializationJournal } from '@livestore/common'
 import {
   type Bindable,
   type ClientSession,
@@ -1159,7 +1160,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *
    * This is called automatically when the store was created using the React or Effect API.
    */
-  shutdown = (cause?: Cause.Cause<UnknownError | MaterializeError>): Effect.Effect<void> => {
+  shutdown = (
+    cause?: Cause.Cause<UnknownError | MaterializeError | MaterializationJournal.MaterializationJournalError>,
+  ): Effect.Effect<void> => {
     this[StoreInternalsSymbol].isShutdown = true
     return this[StoreInternalsSymbol].clientSession.shutdown(
       cause !== undefined ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })),

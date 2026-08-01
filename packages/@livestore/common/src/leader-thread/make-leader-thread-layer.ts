@@ -25,6 +25,7 @@ import {
 } from '../adapter-types.ts'
 import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
+import type * as MaterializationJournal from '../MaterializationJournal.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
 import type * as StateHead from '../StateHead.ts'
@@ -97,7 +98,7 @@ export const makeLeaderThreadLayer = ({
 }: MakeLeaderThreadLayerParams): Layer.Layer<
   LeaderThreadCtx,
   UnknownError,
-  Scope.Scope | HttpClient.HttpClient | StateHead.StateHead
+  Scope.Scope | HttpClient.HttpClient | StateHead.StateHead | MaterializationJournal.MaterializationJournal
 > =>
   Effect.gen(function* () {
     const syncPayloadDecoded =

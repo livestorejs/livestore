@@ -4,6 +4,7 @@ import {
   type LockStatus,
   liveStoreStorageFormatVersion,
   makeClientSession,
+  MaterializationJournal,
   type SyncOptions,
   UnknownError,
   StateHead,
@@ -100,7 +101,7 @@ export const makeAdapter =
           syncPayloadEncoded,
           syncPayloadSchema,
           params,
-        }).pipe(Layer.provide(StateHead.layer({ dbState }))),
+        }).pipe(Layer.provide(Layer.mergeAll(StateHead.layer({ dbState }), MaterializationJournal.layer({ dbState })))),
       )
 
       const { leaderThread, initialSnapshot } = yield* Effect.gen(function* () {

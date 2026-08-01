@@ -1,7 +1,7 @@
 import { expect } from 'vitest'
 
-import type { BootStatus } from '@livestore/common'
-import { sql, StateHead } from '@livestore/common'
+import type { BootStatus, SqliteDb } from '@livestore/common'
+import { MATERIALIZATION_JOURNAL_META_TABLE, MaterializationJournal, sql, StateHead } from '@livestore/common'
 import { Eventlog, makeMaterializeEvent, recreateDb } from '@livestore/common/leader-thread'
 import type { UnknownEvents } from '@livestore/common/schema'
 import {
@@ -15,7 +15,7 @@ import {
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect, Option, Queue, Result, Schema } from '@livestore/utils/effect'
+import { Effect, Layer, Option, Queue, Result, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
 // Verifies the behaviour of LiveStore's unknown-event handling strategies across
@@ -33,6 +33,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
 
       expect(result.sessionChangeset._tag).toEqual('no-op')
       expect(Option.isNone(result.hash)).toBe(true)
+      expect(getMaterializationChangesetTag(dbState, event.seqNum)).toEqual('no-op')
 
       const rows = dbEventlog.select<{ name: string; schemaHash: number }>(sql`SELECT name, schemaHash FROM eventlog`)
       expect(rows).toEqual([{ name: event.name, schemaHash: UNKNOWN_EVENT_SCHEMA_HASH }])
@@ -42,13 +43,14 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
 
   Vitest.live('ignore strategy behaves like warn but silent', (test) =>
     Effect.gen(function* () {
-      const { materializeEvent, dbEventlog } = yield* setup({ strategy: 'ignore' })
+      const { materializeEvent, dbEventlog, dbState } = yield* setup({ strategy: 'ignore' })
       const event = makeUnknownEncodedEvent()
 
       const result = yield* materializeEvent(event, {})
 
       expect(result.sessionChangeset._tag).toEqual('no-op')
       expect(Option.isNone(result.hash)).toBe(true)
+      expect(getMaterializationChangesetTag(dbState, event.seqNum)).toEqual('no-op')
 
       const rows = dbEventlog.select<{ name: string; schemaHash: number }>(sql`SELECT name, schemaHash FROM eventlog`)
       expect(rows).toEqual([{ name: event.name, schemaHash: UNKNOWN_EVENT_SCHEMA_HASH }])
@@ -66,6 +68,9 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
       }
       const error = result.failure
       expect(error._tag).toEqual('MaterializeError')
+      if (error._tag !== 'MaterializeError') {
+        throw new Error(`Unexpected materialization failure: ${error._tag}`)
+      }
       if (error.cause._tag !== 'UnknownEventError') {
         throw new Error(`Unexpected failure cause: ${error.cause._tag}`)
       }
@@ -76,7 +81,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
   Vitest.live('callback strategy invokes observer once', (test) =>
     Effect.gen(function* () {
       const calls: Array<{ eventName: string; reason: string }> = []
-      const { materializeEvent } = yield* setup({
+      const { materializeEvent, dbState } = yield* setup({
         strategy: 'callback',
         onUnknownEvent: (context, error) => {
           calls.push({ eventName: context.event.name, reason: error.reason })
@@ -87,6 +92,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
       const result = yield* materializeEvent(event, {})
 
       expect(result.sessionChangeset._tag).toEqual('no-op')
+      expect(getMaterializationChangesetTag(dbState, event.seqNum)).toEqual('no-op')
       expect(calls).toEqual([{ eventName: event.name, reason: 'event-definition-missing' }])
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
@@ -112,7 +118,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
 
       const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
       const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog }).pipe(
-        Effect.provide(StateHead.layer({ dbState })),
+        Effect.provide(Layer.mergeAll(StateHead.layer({ dbState }), MaterializationJournal.layer({ dbState }))),
       )
       yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
       yield* Queue.shutdown(bootStatusQueue)
@@ -129,6 +135,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
       const result = yield* materializeEvent(event, {})
 
       expect(result.sessionChangeset._tag).toEqual('no-op')
+      expect(getMaterializationChangesetTag(dbState, event.seqNum)).toEqual('no-op')
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 
@@ -145,7 +152,14 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
         schema,
         dbState: rematerializedState,
         dbEventlog,
-      }).pipe(Effect.provide(StateHead.layer({ dbState: rematerializedState })))
+      }).pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            StateHead.layer({ dbState: rematerializedState }),
+            MaterializationJournal.layer({ dbState: rematerializedState }),
+          ),
+        ),
+      )
 
       const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
       yield* recreateDb({
@@ -158,6 +172,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
       yield* Queue.shutdown(bootStatusQueue)
 
       expect(yield* StateHead.make({ dbState: rematerializedState }).get).toEqual(event.seqNum)
+      expect(getMaterializationChangesetTag(rematerializedState, event.seqNum)).toEqual('no-op')
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 })
@@ -171,6 +186,18 @@ const makeUnknownEncodedEvent = () =>
     clientId: 'client-1',
     sessionId: 'session-1',
   })
+
+const getMaterializationChangesetTag = (dbState: SqliteDb, key: EventSequenceNumber.Client.Composite) => {
+  const row = dbState.select<{ changeset: Uint8Array<ArrayBuffer> | null }>(
+    sql`SELECT changeset FROM ${MATERIALIZATION_JOURNAL_META_TABLE}
+        WHERE seqNumGlobal = ${key.global}
+          AND seqNumClient = ${key.client}
+          AND seqNumRebaseGeneration = ${key.rebaseGeneration}
+        LIMIT 1`,
+  )[0]
+
+  return row === undefined ? undefined : row.changeset === null ? 'no-op' : 'changeset'
+}
 
 const makeSchemaWith = (config: UnknownEvents.HandlingConfig) =>
   makeSchema({
@@ -193,7 +220,7 @@ const setup = (config: UnknownEvents.HandlingConfig) =>
 
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
     const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog }).pipe(
-      Effect.provide(StateHead.layer({ dbState })),
+      Effect.provide(Layer.mergeAll(StateHead.layer({ dbState }), MaterializationJournal.layer({ dbState }))),
     )
     yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
     yield* Queue.shutdown(bootStatusQueue)

@@ -6,9 +6,12 @@ import {
   type MockSyncBackend,
   type MockSyncBackendOptions,
   makeMockSyncBackend,
+  MATERIALIZATION_JOURNAL_META_TABLE,
+  MaterializationJournal,
   NonContiguousBatchError,
   type RejectedPushError,
   ServerAheadError,
+  sql,
   StateHead,
   StaleRebaseGenerationError,
   type SyncBackend,
@@ -154,6 +157,59 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       expect([...retainedEvent.meta.sessionChangeset.data]).toEqual([...publishedEvent.meta.sessionChangeset.data])
       expect([...retainedEvent.meta.sessionChangeset.data]).not.toEqual([...sourceSessionChangeset])
       expect(retainedEvent.meta.materializerHashLeader).toEqual(publishedEvent.meta.materializerHashLeader)
+
+      const journalChangeset = leaderThreadCtx.dbState.select<{ changeset: Uint8Array<ArrayBuffer> | null }>(
+        sql`SELECT changeset FROM ${MATERIALIZATION_JOURNAL_META_TABLE}
+            WHERE seqNumGlobal = ${retainedEvent.seqNum.global}
+              AND seqNumClient = ${retainedEvent.seqNum.client}
+              AND seqNumRebaseGeneration = ${retainedEvent.seqNum.rebaseGeneration}`,
+      )[0]?.changeset
+      expect(journalChangeset).toBeInstanceOf(Uint8Array)
+    }).pipe(withTestCtx()(test)),
+  )
+
+  Vitest.live('records explicit no-op journal rows for non-mutating materializations', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+      yield* testContext.mockSyncBackend.disconnect
+
+      yield* testContext.pushEncoded(testContext.eventFactory.todoCompleted.next({ id: 'missing' }))
+
+      const downstreamItem = yield* Queue.take(testContext.pullQueue)
+      assert(downstreamItem.payload._tag === 'upstream-advance')
+      const pendingEvent = downstreamItem.payload.newEvents[0]!
+      expect(pendingEvent.meta.sessionChangeset._tag).toEqual('no-op')
+      const changeset = leaderThreadCtx.dbState.select<{ changeset: Uint8Array<ArrayBuffer> | null }>(
+        sql`SELECT changeset FROM ${MATERIALIZATION_JOURNAL_META_TABLE}
+            WHERE seqNumGlobal = ${pendingEvent.seqNum.global}
+              AND seqNumClient = ${pendingEvent.seqNum.client}
+              AND seqNumRebaseGeneration = ${pendingEvent.seqNum.rebaseGeneration}`,
+      )[0]?.changeset
+      expect(changeset).toBeNull()
+    }).pipe(withTestCtx()(test)),
+  )
+
+  Vitest.live('prunes materialization journal rows after confirmed events materialize', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      yield* testContext.pushEncoded(
+        testContext.eventFactory.todoCreated.next({ id: 'confirmed-leader', text: 'confirmed', completed: false }),
+      )
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
+      yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.filter((state) => state.pending.length === 0),
+        Stream.take(1),
+        Stream.runDrain,
+        Effect.timeout('5 seconds'),
+      )
+
+      const remainingJournalRows = leaderThreadCtx.dbState.select<{ count: number }>(
+        sql`SELECT COUNT(*) AS count FROM ${MATERIALIZATION_JOURNAL_META_TABLE}`,
+      )[0]!.count
+      expect(remainingJournalRows).toEqual(0)
     }).pipe(withTestCtx()(test)),
   )
 
@@ -419,6 +475,54 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       expect(queueResults[0]!.payload._tag).toEqual('upstream-advance')
       expect(queueResults[1]!.payload._tag).toEqual('upstream-rebase')
     }).pipe(withTestCtx()(test)),
+  )
+
+  Vitest.live('keeps rollback state, journal, and StateHead atomic when head persistence fails', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+      const backendFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
+      })
+
+      yield* testContext.mockSyncBackend.disconnect
+      yield* testContext.mockSyncBackend.advance(
+        backendFactory.todoCreated.next({ id: 'remote', text: 'remote', completed: false }),
+      )
+      yield* testContext.pushEncoded(
+        testContext.eventFactory.todoCreated.next({ id: 'local', text: 'local', completed: false }),
+      )
+
+      const headBeforeRollback = yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get
+      expect(leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query).map(({ id }) => id)).toEqual([
+        'local',
+      ])
+
+      const SQLITE_OK = 0
+      const SQLITE_DENY = 1
+      const SQLITE_INSERT = 18
+      testContext.sqlite3.set_authorizer(
+        leaderThreadCtx.dbState.metadata.dbPointer,
+        (_userData, actionCode, tableName) =>
+          actionCode === SQLITE_INSERT && tableName === '__livestore_state_head' ? SQLITE_DENY : SQLITE_OK,
+        undefined,
+      )
+
+      yield* testContext.mockSyncBackend.connect
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(3000))
+      const shutdownError = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
+
+      expect(shutdownError._tag).toEqual('MaterializeError')
+      expect(yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get).toEqual(headBeforeRollback)
+      expect(leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query).map(({ id }) => id)).toEqual([
+        'local',
+      ])
+      expect(
+        leaderThreadCtx.dbState.select<{ count: number }>(
+          sql`SELECT COUNT(*) AS count FROM ${MATERIALIZATION_JOURNAL_META_TABLE}`,
+        )[0]!.count,
+      ).toEqual(1)
+    }).pipe(withTestCtx({ syncOptions: { onSyncError: 'shutdown' }, captureShutdown: true })(test)),
   )
 
   Vitest.live('many local pushes', (test) =>
@@ -959,6 +1063,7 @@ class TestContext extends Context.Service<
   TestContext,
   {
     mockSyncBackend: MockSyncBackend
+    sqlite3: Awaited<ReturnType<typeof loadSqlite3Wasm>>
     shutdownDeferred: Deferred.Deferred<void, typeof Shutdown.All.Type>
     pullQueue: Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>
     eventFactory: LeaderEventFactory
@@ -1030,7 +1135,11 @@ const LeaderThreadCtxLive = ({
         ...omitUndefineds({ syncProcessor }),
       },
       ...omitUndefineds({ params }),
-    }).pipe(Layer.provide(StateHead.layer({ dbState })), Layer.provide(FetchHttpClient.layer))
+    }).pipe(
+      Layer.provide(
+        Layer.mergeAll(StateHead.layer({ dbState }), MaterializationJournal.layer({ dbState }), FetchHttpClient.layer),
+      ),
+    )
 
     const testContextLayer = Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
@@ -1066,6 +1175,7 @@ const LeaderThreadCtxLive = ({
         TestContext,
         TestContext.of({
           mockSyncBackend,
+          sqlite3,
           shutdownDeferred,
           pullQueue,
           eventFactory,

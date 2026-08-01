@@ -30,16 +30,17 @@ import {
 import { MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import type { UnknownEventError } from '../errors.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
+import * as MaterializationJournal from '../MaterializationJournal.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
+import * as SqliteDbHelper from '../sqlite-db-helper.ts'
 import * as StateHead from '../StateHead.ts'
 import type { BackendIdMismatchError, IsOfflineError, SyncBackend } from '../sync/sync.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
-import { rollback } from './materialize-event.ts'
 import {
   isRejectedPushError,
   LeaderAheadError,
@@ -229,6 +230,7 @@ export const make = Effect.fnUntraced(function* ({
   params,
   testing,
 }: Options) {
+  const materializationJournal = yield* MaterializationJournal.MaterializationJournal
   const stateHead = yield* StateHead.StateHead
   const { dbState, dbEventlog, devtoolsLatch, materializeEvent, shutdownChannel, span, syncBackend } = runtime
   const syncBackendPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
@@ -542,14 +544,24 @@ export const make = Effect.fnUntraced(function* ({
             yield* restartBackendPushing(globalOrUnknownRebasedPendingEvents)
 
             if (mergeResult.rollbackEvents.length > 0) {
-              yield* rollback({
-                dbState,
-                dbEventlog,
-                eventNumsToRollback: mergeResult.rollbackEvents.map((_) => _.seqNum),
-              })
-              yield* stateHead
-                .set(mergeResult.rollbackEvents[0]!.parentSeqNum)
-                .pipe(Effect.mapError((cause) => MaterializeError.make({ cause })))
+              const rollbackSeqNums = mergeResult.rollbackEvents.map((_) => _.seqNum)
+              const headAfterRollback = mergeResult.rollbackEvents[0]!.parentSeqNum
+
+              yield* Effect.gen(function* () {
+                yield* materializationJournal.rollback(rollbackSeqNums)
+                yield* stateHead.set(headAfterRollback)
+              }).pipe(
+                SqliteDbHelper.withSavepoint(dbState),
+                Effect.mapError((cause) =>
+                  MaterializationJournal.isMaterializationJournalError(cause) === true
+                    ? cause
+                    : MaterializeError.make({ cause }),
+                ),
+              )
+
+              yield* Eventlog.deleteEvents(dbEventlog, rollbackSeqNums).pipe(
+                Effect.mapError((cause) => MaterializeError.make({ cause })),
+              )
             }
 
             yield* connectedClientSessionPullQueues.offer({
@@ -583,9 +595,6 @@ export const make = Effect.fnUntraced(function* ({
             }
           }
 
-          // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
-          trimChangesetRows(dbState, newBackendHead)
-
           // The backend merge may advance or rebase the authoritative head. Realign the admission
           // fence now so newly arriving pushes are validated against that history, not the pre-pull head.
           yield* reconcilePushHead(mergeResult.newSyncState.localHead)
@@ -593,6 +602,9 @@ export const make = Effect.fnUntraced(function* ({
           // Apply the merged events to storage before publishing the new sync state below, so readers
           // cannot observe a leader head whose events have not yet been materialized.
           yield* materializeEventsBatch({ batchItems: mergeResult.newEvents })
+
+          // Discard leader materialization journal records which are no longer needed as we'll never have to rollback beyond this point.
+          yield* materializationJournal.discardUpTo(newBackendHead)
 
           yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
         }).pipe(Effect.exit)
@@ -768,7 +780,9 @@ export const make = Effect.fnUntraced(function* ({
       const handleBackendIdMismatchError = (error: BackendIdMismatchError) =>
         handleBackendIdMismatch({ error, onBackendIdMismatch, shutdownChannel, dbEventlog, dbState })
 
-      const maybeShutdownOnError = (cause: Cause.Cause<UnknownError | MaterializeError>) =>
+      const maybeShutdownOnError = (
+        cause: Cause.Cause<UnknownError | MaterializeError | MaterializationJournal.MaterializationJournalError>,
+      ) =>
         Effect.gen(function* () {
           if (onError === 'ignore') {
             if (LS_DEV === true) {
@@ -939,12 +953,6 @@ const makeMaterializeEventsBatch =
       }),
       Effect.tapCauseLogPretty,
     )
-
-const trimChangesetRows = (db: SqliteDb, newHead: EventSequenceNumber.Client.Composite) => {
-  // Since we're using the session changeset rows to query for the current head,
-  // we're keeping at least one row for the current head, and thus are using `<` instead of `<=`
-  db.execute(sql`DELETE FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE seqNumGlobal < ${newHead.global}`)
-}
 
 interface PullQueueSet {
   makeQueue: (
