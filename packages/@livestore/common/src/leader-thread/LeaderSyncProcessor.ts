@@ -977,8 +977,7 @@ const makeMaterializeEventsBatch =
       )
 
       for (let i = 0; i < batchItems.length; i++) {
-        const { sessionChangeset, hash } = yield* materializeEvent(batchItems[i]!)
-        batchItems[i]!.meta.sessionChangeset = sessionChangeset
+        const { hash } = yield* materializeEvent(batchItems[i]!)
         batchItems[i]!.meta.materializerHashLeader = hash
       }
 

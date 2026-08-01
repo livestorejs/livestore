@@ -125,10 +125,7 @@ export type MaterializeEvent = (
     skipEventlog?: boolean
   },
 ) => Effect.Effect<
-  {
-    sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any } | { _tag: 'no-op' }
-    hash: Option.Option<number>
-  },
+  { hash: Option.Option<number> },
   MaterializeError | MaterializationJournal.MaterializationJournalError
 >
 

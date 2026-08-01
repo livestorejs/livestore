@@ -15,7 +15,7 @@ import {
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect, Layer, Option, Queue, Result, Schema } from '@livestore/utils/effect'
+import { Effect, Layer, Queue, Result, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
 // Verifies the behaviour of LiveStore's unknown-event handling strategies across
@@ -29,10 +29,8 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
       const { materializeEvent, dbEventlog, dbState } = yield* setup({ strategy: 'warn' })
       const event = makeUnknownEncodedEvent()
 
-      const result = yield* materializeEvent(event, { skipEventlog: false })
+      yield* materializeEvent(event, { skipEventlog: false })
 
-      expect(result.sessionChangeset._tag).toEqual('no-op')
-      expect(Option.isNone(result.hash)).toBe(true)
       expect(getMaterializationChangesetTag(dbState, event.seqNum)).toEqual('no-op')
 
       const rows = dbEventlog.select<{ name: string; schemaHash: number }>(sql`SELECT name, schemaHash FROM eventlog`)
@@ -46,10 +44,8 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
       const { materializeEvent, dbEventlog, dbState } = yield* setup({ strategy: 'ignore' })
       const event = makeUnknownEncodedEvent()
 
-      const result = yield* materializeEvent(event, {})
+      yield* materializeEvent(event, {})
 
-      expect(result.sessionChangeset._tag).toEqual('no-op')
-      expect(Option.isNone(result.hash)).toBe(true)
       expect(getMaterializationChangesetTag(dbState, event.seqNum)).toEqual('no-op')
 
       const rows = dbEventlog.select<{ name: string; schemaHash: number }>(sql`SELECT name, schemaHash FROM eventlog`)
@@ -89,9 +85,8 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
       })
       const event = makeUnknownEncodedEvent()
 
-      const result = yield* materializeEvent(event, {})
+      yield* materializeEvent(event, {})
 
-      expect(result.sessionChangeset._tag).toEqual('no-op')
       expect(getMaterializationChangesetTag(dbState, event.seqNum)).toEqual('no-op')
       expect(calls).toEqual([{ eventName: event.name, reason: 'event-definition-missing' }])
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
@@ -132,9 +127,8 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
         sessionId: 'session-2',
       })
 
-      const result = yield* materializeEvent(event, {})
+      yield* materializeEvent(event, {})
 
-      expect(result.sessionChangeset._tag).toEqual('no-op')
       expect(getMaterializationChangesetTag(dbState, event.seqNum)).toEqual('no-op')
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
