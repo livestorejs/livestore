@@ -97,9 +97,10 @@ kinds (e.g. `04-docs/` vs `05-contributing/`) is reading order only.
 - **Plugin dimensions** (read models, sync providers, adapters, framework
   integrations, devtools surfaces) use the composable contract/realization
   pattern: the dimension node states the mechanism-agnostic contract once;
-  each realization is a child node whose requirements declare
-  `refines: <parent-id>`. Contrib-owned realizations get a contract-level stub
-  child here; their implementation specs live in `livestore-contrib`.
+  each in-repo realization is a child node whose requirements declare
+  `refines: <parent-id>`. Contrib-owned realizations are listed in the core
+  dimension's `realizations.md` registry; their implementation specs and
+  `LSC.*` IDs live in `livestore-contrib`.
 - Child requirements that constrain a parent concept declare a backticked
   `` `refines: <parent-ids>` `` marker at the end of the requirement bullet
   so the tree reads upward.
