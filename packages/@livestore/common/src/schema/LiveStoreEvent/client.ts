@@ -60,7 +60,7 @@ export type ForSchema<TSchema extends LiveStoreSchema> = {
 
 /**
  * Internal event representation with metadata for sync processing.
- * Includes changeset data and materializer hashes for conflict detection and rebasing.
+ * Includes materializer hashes for conflict detection and rebasing.
  *
  * Note: This class is exported for internal use. The preferred access is via `LiveStoreEvent.Client.EncodedWithMeta`.
  */
@@ -73,14 +73,6 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
   sessionId: Schema.String,
   // TODO get rid of `meta` again by cleaning up the usage implementations
   meta: Schema.Struct({
-    sessionChangeset: Schema.Union([
-      Schema.TaggedStruct('sessionChangeset', {
-        data: Schema.Uint8Array as any as Schema.Codec<Uint8Array<ArrayBuffer>>,
-        debug: Schema.Any.pipe(Schema.optional),
-      }),
-      Schema.TaggedStruct('no-op', {}),
-      Schema.TaggedStruct('unset', {}),
-    ]),
     syncMetadata: Schema.Option(Schema.Json),
     /** Used to detect if the materializer is side effecting (during dev) */
     materializerHashLeader: Schema.Option(Schema.Finite),
@@ -90,7 +82,6 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
     .pipe(
       Schema.withDecodingDefaultType(
         Effect.succeed({
-          sessionChangeset: { _tag: 'unset' as const },
           syncMetadata: Option.none(),
           materializerHashLeader: Option.none(),
           materializerHashSession: Option.none(),
@@ -98,7 +89,6 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
       ),
       Schema.withConstructorDefault(
         Effect.succeed({
-          sessionChangeset: { _tag: 'unset' as const },
           syncMetadata: Option.none(),
           materializerHashLeader: Option.none(),
           materializerHashSession: Option.none(),
@@ -169,7 +159,6 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
         rebaseGeneration: EventSequenceNumber.Client.REBASE_GENERATION_DEFAULT,
       },
       meta: {
-        sessionChangeset: { _tag: 'unset' as const },
         syncMetadata: meta.syncMetadata,
         materializerHashLeader: meta.materializerHashLeader,
         materializerHashSession: meta.materializerHashSession,

@@ -63,10 +63,6 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   ) => Effect.Effect<
     {
       writeTables: Set<string>
-      sessionChangeset:
-        | { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any }
-        | { _tag: 'no-op' }
-        | { _tag: 'unset' }
       materializerHash: Option.Option<number>
     },
     MaterializeError | MaterializationJournal.MaterializationJournalError
@@ -343,19 +339,12 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           if (mergeResult.newEvents.length > 0) {
             const writeTables = new Set<string>()
             for (const event of mergeResult.newEvents) {
-              const {
-                writeTables: newWriteTables,
-                sessionChangeset,
-                materializerHash,
-              } = yield* materializeEvent(event, {
+              const { writeTables: newWriteTables, materializerHash } = yield* materializeEvent(event, {
                 materializerHashLeader: event.meta.materializerHashLeader,
               })
               for (const table of newWriteTables) {
                 writeTables.add(table)
               }
-
-              // Kept temporarily for event-metadata compatibility. Rollback now uses the journal.
-              event.meta.sessionChangeset = sessionChangeset
               event.meta.materializerHashSession = materializerHash
             }
 
@@ -457,17 +446,12 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   )(function* (events) {
     const writeTables = new Set<string>()
     for (const event of events) {
-      const {
-        writeTables: newWriteTables,
-        sessionChangeset,
-        materializerHash,
-      } = yield* materializeEvent(event, {
+      const { writeTables: newWriteTables, materializerHash } = yield* materializeEvent(event, {
         materializerHashLeader: Option.none(),
       })
       for (const table of newWriteTables) {
         writeTables.add(table)
       }
-      event.meta.sessionChangeset = sessionChangeset
       event.meta.materializerHashSession = materializerHash
     }
     return { writeTables }

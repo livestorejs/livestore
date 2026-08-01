@@ -156,7 +156,6 @@ const makeClientProcessorHarness = Effect.fn(function* ({
     materializeEvent: () =>
       Effect.succeed({
         writeTables: new Set<string>(),
-        sessionChangeset: { _tag: 'no-op' as const },
         materializerHash: Option.none<number>(),
       }),
     refreshTables: () => undefined,
@@ -1310,7 +1309,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           }).pipe(
             Effect.as({
               writeTables: new Set<string>(),
-              sessionChangeset: { _tag: 'no-op' as const },
               materializerHash: Option.none<number>(),
             }),
           ),
@@ -1395,7 +1393,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         clientId: 'this-client',
         sessionId: 'static-session-id',
         meta: {
-          sessionChangeset: { _tag: 'no-op' } as const,
           syncMetadata: Option.none(),
           materializerHashSession: Option.none(),
           // Set a leader hash that won't match what our non-deterministic materializer computes
@@ -1435,7 +1432,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
             materializedEvents.push(event)
             return {
               writeTables: new Set<string>(),
-              sessionChangeset: { _tag: 'no-op' as const },
               materializerHash: Option.none<number>(),
             }
           }),
@@ -1515,7 +1511,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       expect(materializedEvents).toHaveLength(1)
       expect(materializedEvents[0]?.name).toEqual('unknown_event_test')
-      expect(materializedEvents[0]?.meta.sessionChangeset._tag).toEqual('no-op')
     }).pipe(withTestCtx(test)),
   )
 

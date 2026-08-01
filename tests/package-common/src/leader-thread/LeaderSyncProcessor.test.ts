@@ -130,7 +130,6 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
-      const sourceSessionChangeset = Uint8Array.from([255])
 
       yield* testContext.mockSyncBackend.disconnect
 
@@ -139,11 +138,6 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
           testContext.eventFactory.todoCreated.next({ id: 'local', text: 'local', completed: false }),
         ),
       })
-      localEvent.meta.sessionChangeset = {
-        _tag: 'sessionChangeset',
-        data: sourceSessionChangeset,
-        debug: undefined,
-      }
 
       yield* leaderThreadCtx.syncProcessor.push([localEvent])
 
@@ -152,11 +146,8 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       const retainedEvent = (yield* leaderThreadCtx.syncProcessor.syncState.get).pending[0]!
       const publishedEvent = downstreamItem.payload.newEvents[0]!
-      assert(retainedEvent.meta.sessionChangeset._tag === 'sessionChangeset')
-      assert(publishedEvent.meta.sessionChangeset._tag === 'sessionChangeset')
 
-      expect([...retainedEvent.meta.sessionChangeset.data]).toEqual([...publishedEvent.meta.sessionChangeset.data])
-      expect([...retainedEvent.meta.sessionChangeset.data]).not.toEqual([...sourceSessionChangeset])
+      expect(retainedEvent.meta.materializerHashLeader._tag).toEqual('Some')
       expect(retainedEvent.meta.materializerHashLeader).toEqual(publishedEvent.meta.materializerHashLeader)
 
       const journalChangeset = leaderThreadCtx.dbState.select<{ changeset: Uint8Array<ArrayBuffer> | null }>(
@@ -180,7 +171,6 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       const downstreamItem = yield* Queue.take(testContext.pullQueue)
       assert(downstreamItem.payload._tag === 'upstream-advance')
       const pendingEvent = downstreamItem.payload.newEvents[0]!
-      expect(pendingEvent.meta.sessionChangeset._tag).toEqual('no-op')
       const changeset = leaderThreadCtx.dbState.select<{ changeset: Uint8Array<ArrayBuffer> | null }>(
         sql`SELECT changeset FROM ${MATERIALIZATION_JOURNAL_META_TABLE}
             WHERE seqNumGlobal = ${pendingEvent.seqNum.global}

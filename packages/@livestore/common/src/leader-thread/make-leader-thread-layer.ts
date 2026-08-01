@@ -217,7 +217,7 @@ export const makeLeaderThreadLayer = ({
         devtoolsLatch: devtoolsContext.enabled === true ? devtoolsContext.syncBackendLatch : undefined,
         span,
       },
-      initialSyncState: getInitialSyncState({ dbEventlog, dbState, dbEventlogMissing }),
+      initialSyncState: getInitialSyncState({ dbEventlog, dbEventlogMissing }),
       initialBlockingSyncContext,
       onError: syncOptions?.onSyncError ?? 'ignore',
       onBackendIdMismatch: syncOptions?.onBackendIdMismatch ?? 'reset',
@@ -288,11 +288,9 @@ const hasEventlogTables = (db: SqliteDb) => {
 
 const getInitialSyncState = ({
   dbEventlog,
-  dbState,
   dbEventlogMissing,
 }: {
   dbEventlog: SqliteDb
-  dbState: SqliteDb
   dbEventlogMissing: boolean
 }) => {
   const initialBackendHead =
@@ -319,7 +317,6 @@ const getInitialSyncState = ({
         ? []
         : Eventlog.getEventsSince({
             dbEventlog,
-            dbState,
             since: {
               global: initialBackendHead,
               client: EventSequenceNumber.Client.DEFAULT,

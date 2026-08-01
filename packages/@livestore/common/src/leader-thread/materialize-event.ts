@@ -1,4 +1,4 @@
-import { isDevEnv, LS_DEV, shouldNeverHappen } from '@livestore/utils'
+import { isDevEnv, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 
 import { MaterializeError, MaterializerHashMismatchError, type SqliteDb } from '../adapter-types.ts'
@@ -62,10 +62,7 @@ export const makeMaterializeEvent = ({
           }).pipe(SqliteDbHelper.withSavepoint(dbState))
           dbState.debug.head = eventEncoded.seqNum
 
-          return {
-            sessionChangeset: { _tag: 'no-op' as const },
-            hash: Option.none(),
-          }
+          return { hash: Option.none() }
         }
 
         const { eventDef, materializer } = resolution
@@ -101,7 +98,7 @@ export const makeMaterializeEvent = ({
 
         // console.group('[@livestore/common:leader-thread:materializeEvent]', { eventName })
 
-        const changeset = yield* Effect.gen(function* () {
+        yield* Effect.gen(function* () {
           const session = dbState.session()
 
           for (const { statementSql, bindValues } of execArgsArr) {
@@ -121,8 +118,6 @@ export const makeMaterializeEvent = ({
               changeset !== undefined ? { _tag: 'changeset' as const, data: changeset } : { _tag: 'no-op' as const },
           })
           yield* stateHead.set(eventEncoded.seqNum)
-
-          return changeset
         }).pipe(SqliteDbHelper.withSavepoint(dbState))
 
         // console.groupEnd()
@@ -144,17 +139,7 @@ export const makeMaterializeEvent = ({
           //   console.debug('[@livestore/common:leader-thread] skipping eventlog write', mutation, statementSql, bindValues)
         }
 
-        return {
-          sessionChangeset:
-            changeset !== undefined
-              ? {
-                  _tag: 'sessionChangeset' as const,
-                  data: changeset,
-                  debug: LS_DEV === true ? execArgsArr : null,
-                }
-              : { _tag: 'no-op' as const },
-          hash: materializerHash,
-        }
+        return { hash: materializerHash }
       }).pipe(
         Effect.mapError((cause) =>
           MaterializationJournal.isMaterializationJournalError(cause) === true

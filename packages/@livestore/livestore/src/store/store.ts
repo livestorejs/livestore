@@ -237,7 +237,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               yield* stateHead.set(eventEncoded.seqNum)
               return {
                 writeTables: new Set<string>(),
-                sessionChangeset: { _tag: 'no-op' as const },
                 materializerHash: Option.none(),
               }
             }
@@ -309,7 +308,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             })
             yield* stateHead.set(eventEncoded.seqNum)
 
-            return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
+            return { writeTables: writeTablesForEvent, materializerHash }
           }).pipe(
             SqliteDbHelper.withSavepoint(clientSession.sqliteDb),
             Effect.provide(materializationLayer),

@@ -31,7 +31,7 @@ const withNodeFs = <R, E, A>(effect: Effect.Effect<A, E, R>) =>
  * (mock sync backend, shutdown plumbing, queues, etc.) because it verifies the
  * processor end-to-end. Here we only need three pieces:
  *   1. sqlite eventlog
- *   2. sqlite state DB (for the session changeset join)
+ *   2. sqlite state DB (for materialization and persisted state-head tracking)
  *   3. a controllable `syncState` subscription
  * Pulling those together directly keeps the unit test fast and focused while
  * still relying on the real persistence layer.
