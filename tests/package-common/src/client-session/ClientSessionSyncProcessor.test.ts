@@ -4,7 +4,7 @@ import type { LockStatus, MockSyncBackend } from '@livestore/common'
 import {
   type BootStatus,
   type ClientSession,
-  type ClientSessionLeaderThreadProxy,
+  ClientSessionLeaderThreadProxy,
   LeaderAheadError,
   makeMockSyncBackend,
   MaterializationJournal,
@@ -27,7 +27,6 @@ import { omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Cache,
-  type OtelTracer,
   Cause,
   Context,
   Deferred,
@@ -40,6 +39,7 @@ import {
   Latch,
   Layer,
   Option,
+  type OtelTracer,
   Queue,
   References,
   Result,
@@ -402,9 +402,12 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
                 events: {
                   pull: () =>
                     Stream.fromQueue(pullQueue).pipe(
-                      Stream.map((item) => ({
-                        payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [item] }),
-                      })),
+                      Stream.map((item) =>
+                        ClientSessionLeaderThreadProxy.PullItem.make({
+                          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [item] }),
+                          globalHead: EventSequenceNumber.Client.ROOT,
+                        }),
+                      ),
                     ),
                   push: () => Effect.void,
                   stream: () => Stream.empty,
@@ -622,7 +625,12 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         pull: () =>
           Stream.fromEffect(
             Deferred.succeed(pullStarted, undefined).pipe(
-              Effect.as({ payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [] }) }),
+              Effect.as(
+                ClientSessionLeaderThreadProxy.PullItem.make({
+                  payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [] }),
+                  globalHead: EventSequenceNumber.Client.ROOT,
+                }),
+              ),
             ),
           ),
         push: () => Effect.void,
@@ -745,7 +753,15 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const reconcileBarrier = yield* makeRebaseBarrier()
 
       const { processor, pushIds, close } = yield* makeClientProcessorHarness({
-        pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+        pull: () =>
+          Stream.fromQueue(pullQueue).pipe(
+            Stream.map((payload) =>
+              ClientSessionLeaderThreadProxy.PullItem.make({
+                payload,
+                globalHead: EventSequenceNumber.Client.ROOT,
+              }),
+            ),
+          ),
         // First push (the initial 'local' admission) blocks so 'local' stays pending until the
         // conflicting upstream forces a rebase; the rebase interrupts it. Later pushes record.
         push: (batch) => {
@@ -800,7 +816,15 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         const barrier = yield* makeRebaseBarrier()
 
         const { processor, pushIds, close } = yield* makeClientProcessorHarness({
-          pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+          pull: () =>
+            Stream.fromQueue(pullQueue).pipe(
+              Stream.map((payload) =>
+                ClientSessionLeaderThreadProxy.PullItem.make({
+                  payload,
+                  globalHead: EventSequenceNumber.Client.ROOT,
+                }),
+              ),
+            ),
           push: (batch) => {
             pushCallCount++
             return pushCallCount === 1
@@ -926,7 +950,15 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         sessionId: 'session-test',
       })
       const { processor, pushIds, close } = yield* makeClientProcessorHarness({
-        pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+        pull: () =>
+          Stream.fromQueue(pullQueue).pipe(
+            Stream.map((payload) =>
+              ClientSessionLeaderThreadProxy.PullItem.make({
+                payload,
+                globalHead: EventSequenceNumber.Client.ROOT,
+              }),
+            ),
+          ),
         push: () => Effect.fail(rejection).pipe(Effect.ensuring(Deferred.succeed(pushReturned, undefined))),
       })
 
@@ -1048,7 +1080,15 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       })
       let pushCount = 0
       const { processor, pushIds, close } = yield* makeClientProcessorHarness({
-        pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+        pull: () =>
+          Stream.fromQueue(pullQueue).pipe(
+            Stream.map((payload) =>
+              ClientSessionLeaderThreadProxy.PullItem.make({
+                payload,
+                globalHead: EventSequenceNumber.Client.ROOT,
+              }),
+            ),
+          ),
         push: () => {
           pushCount++
           return pushCount === 1
@@ -1266,9 +1306,12 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
                 events: {
                   pull: () =>
                     Stream.fromQueue(pullQueue).pipe(
-                      Stream.map((item) => ({
-                        payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [item] }),
-                      })),
+                      Stream.map((item) =>
+                        ClientSessionLeaderThreadProxy.PullItem.make({
+                          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [item] }),
+                          globalHead: EventSequenceNumber.Client.ROOT,
+                        }),
+                      ),
                     ),
                   push: () => Effect.void,
                   stream: () => Stream.empty,
@@ -1354,9 +1397,12 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
             push: () => Effect.void,
             pull: () =>
               Stream.fromQueue(upstreamQueue).pipe(
-                Stream.map((event) => ({
-                  payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [event] }),
-                })),
+                Stream.map((event) =>
+                  ClientSessionLeaderThreadProxy.PullItem.make({
+                    payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [event] }),
+                    globalHead: EventSequenceNumber.Client.ROOT,
+                  }),
+                ),
               ),
             stream: () => Stream.empty,
           },

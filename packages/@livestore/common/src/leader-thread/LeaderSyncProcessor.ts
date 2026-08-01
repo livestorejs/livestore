@@ -28,6 +28,7 @@ import {
 } from '@livestore/utils/effect'
 
 import { MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
+import { PullItem } from '../ClientSessionLeaderThreadProxy.ts'
 import type { UnknownEventError } from '../errors.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
 import * as MaterializationJournal from '../MaterializationJournal.ts'
@@ -92,13 +93,11 @@ export class LeaderSyncProcessor extends Context.Service<LeaderSyncProcessor, Se
 export interface Service {
   readonly [TypeId]: TypeId
   /** Used by client sessions to subscribe to upstream sync state changes */
-  readonly pull: (args: {
-    cursor: EventSequenceNumber.Client.Composite
-  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }>
+  readonly pull: (args: { cursor: EventSequenceNumber.Client.Composite }) => Stream.Stream<typeof PullItem.Type>
   /** The `pullQueue` API can be used instead of `pull` when more convenient */
   readonly pullQueue: (args: {
     cursor: EventSequenceNumber.Client.Composite
-  }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, never, Scope.Scope>
+  }) => Effect.Effect<Queue.Queue<typeof PullItem.Type>, never, Scope.Scope>
 
   /**
    * Used by client sessions to push events to the leader thread.
@@ -441,6 +440,7 @@ export const make = Effect.fnUntraced(function* ({
 
         yield* connectedClientSessionPullQueues.offer({
           payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: acceptedPendingEvents }),
+          globalHead: mergeResult.newSyncState.upstreamHead,
           leaderHead: mergeResult.newSyncState.localHead,
         })
 
@@ -566,6 +566,7 @@ export const make = Effect.fnUntraced(function* ({
 
             yield* connectedClientSessionPullQueues.offer({
               payload: SyncState.payloadFromMergeResult(mergeResult),
+              globalHead: mergeResult.newSyncState.upstreamHead,
               leaderHead: mergeResult.newSyncState.localHead,
             })
           } else {
@@ -580,6 +581,7 @@ export const make = Effect.fnUntraced(function* ({
 
             yield* connectedClientSessionPullQueues.offer({
               payload: SyncState.payloadFromMergeResult(mergeResult),
+              globalHead: mergeResult.newSyncState.upstreamHead,
               leaderHead: mergeResult.newSyncState.localHead,
             })
 
@@ -957,19 +959,20 @@ const makeMaterializeEventsBatch =
 interface PullQueueSet {
   makeQueue: (
     cursor: EventSequenceNumber.Client.Composite,
-  ) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, never, Scope.Scope>
+  ) => Effect.Effect<Queue.Queue<typeof PullItem.Type>, never, Scope.Scope>
   offer: (item: {
     payload: typeof SyncState.PayloadUpstream.Type
+    globalHead: EventSequenceNumber.Client.Composite
     leaderHead: EventSequenceNumber.Client.Composite
   }) => Effect.Effect<void, never>
 }
 
 const makePullQueueSet = Effect.gen(function* () {
-  const set = new Set<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>>()
+  const set = new Set<Queue.Queue<typeof PullItem.Type>>()
 
   type StringifiedSeqNum = string
   // NOTE this could grow unbounded for long running sessions
-  const cachedPayloads = new Map<StringifiedSeqNum, (typeof SyncState.PayloadUpstream.Type)[]>()
+  const cachedPullItems = new Map<StringifiedSeqNum, (typeof PullItem.Type)[]>()
 
   yield* Effect.addFinalizer(() =>
     Effect.gen(function* () {
@@ -983,33 +986,29 @@ const makePullQueueSet = Effect.gen(function* () {
 
   const makeQueue: PullQueueSet['makeQueue'] = (cursor) =>
     Effect.gen(function* () {
-      const queue = yield* Effect.acquireRelease(
-        Queue.unbounded<{
-          payload: typeof SyncState.PayloadUpstream.Type
-        }>(),
-        Queue.shutdown,
-      )
+      const queue = yield* Effect.acquireRelease(Queue.unbounded<typeof PullItem.Type>(), Queue.shutdown)
 
       yield* Effect.addFinalizer(() => Effect.sync(() => set.delete(queue)))
 
-      const payloadsSinceCursor = Array.from(cachedPayloads.entries())
-        .flatMap(([seqNumStr, payloads]) =>
-          payloads.map((payload) => ({ payload, seqNum: EventSequenceNumber.Client.fromString(seqNumStr) })),
+      const pullItemsSinceCursor = Array.from(cachedPullItems.entries())
+        .flatMap(([seqNumStr, items]) =>
+          items.map((item) => ({ item, seqNum: EventSequenceNumber.Client.fromString(seqNumStr) })),
         )
         .filter(({ seqNum }) => EventSequenceNumber.Client.isGreaterThan(seqNum, cursor))
         .toSorted((a, b) => EventSequenceNumber.Client.compare(a.seqNum, b.seqNum))
-        .map(({ payload }) => {
-          if (payload._tag === 'upstream-advance') {
-            return {
+        .map(({ item }) => {
+          if (item.payload._tag === 'upstream-advance') {
+            return PullItem.make({
+              globalHead: item.globalHead,
               payload: {
                 _tag: 'upstream-advance' as const,
-                newEvents: ReadonlyArray.dropWhile(payload.newEvents, (eventEncoded) =>
+                newEvents: ReadonlyArray.dropWhile(item.payload.newEvents, (eventEncoded) =>
                   EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, eventEncoded.seqNum),
                 ),
               },
-            }
+            })
           } else {
-            return { payload }
+            return item
           }
         })
 
@@ -1019,9 +1018,9 @@ const makePullQueueSet = Effect.gen(function* () {
       //     cursor,
       //   },
       //   '\n  mergePayloads',
-      //   ...Array.from(cachedPayloads.entries())
-      //     .flatMap(([seqNumStr, payloads]) =>
-      //       payloads.map((payload) => ({ payload, seqNum: EventSequenceNumber.fromString(seqNumStr) })),
+      //   ...Array.from(cachedPullItems.entries())
+      //     .flatMap(([seqNumStr, items]) =>
+      //       items.map(({ payload }) => ({ payload, seqNum: EventSequenceNumber.fromString(seqNumStr) })),
       //     )
       //     .map(({ payload, seqNum }) => [
       //       seqNum,
@@ -1031,8 +1030,8 @@ const makePullQueueSet = Effect.gen(function* () {
       //       'rollbackEvents',
       //       ...(payload._tag === 'upstream-rebase' ? payload.rollbackEvents.map((_) => _.toJSON()) : []),
       //     ]),
-      //   '\n  payloadsSinceCursor',
-      //   ...payloadsSinceCursor.map(({ payload }) => [
+      //   '\n  pullItemsSinceCursor',
+      //   ...pullItemsSinceCursor.map(({ payload }) => [
       //     payload._tag,
       //     'newEvents',
       //     ...payload.newEvents.map((_) => _.toJSON()),
@@ -1041,7 +1040,7 @@ const makePullQueueSet = Effect.gen(function* () {
       //   ]),
       // )
 
-      yield* Queue.offerAll(queue, payloadsSinceCursor)
+      yield* Queue.offerAll(queue, pullItemsSinceCursor)
 
       set.add(queue)
 
@@ -1051,21 +1050,17 @@ const makePullQueueSet = Effect.gen(function* () {
   const offer: PullQueueSet['offer'] = (item) =>
     Effect.gen(function* () {
       const seqNumStr = EventSequenceNumber.Client.toString(item.leaderHead)
-      if (cachedPayloads.has(seqNumStr) === true) {
-        cachedPayloads.get(seqNumStr)!.push(item.payload)
+      const pullItem = PullItem.make({ payload: item.payload, globalHead: item.globalHead })
+      if (cachedPullItems.has(seqNumStr) === true) {
+        cachedPullItems.get(seqNumStr)!.push(pullItem)
       } else {
-        cachedPayloads.set(seqNumStr, [item.payload])
+        cachedPullItems.set(seqNumStr, [pullItem])
       }
 
       // console.debug(`offering to ${set.size} queues`, item.leaderHead, JSON.stringify(item.payload, null, 2))
 
-      // Short-circuit if the payload is an empty upstream advance
-      if (item.payload._tag === 'upstream-advance' && item.payload.newEvents.length === 0) {
-        return
-      }
-
       for (const queue of set) {
-        yield* Queue.offer(queue, item)
+        yield* Queue.offer(queue, pullItem)
       }
     })
 

@@ -1,20 +1,24 @@
-import type { Effect, Stream, Subscribable } from '@livestore/utils/effect'
+import { type Effect, Schema, type Stream, type Subscribable } from '@livestore/utils/effect'
 
 import type { StorageMode } from './adapter-types.ts'
 import type { MigrationsReport } from './defs.ts'
 import type * as Devtools from './devtools/mod.ts'
 import type { RejectedPushError } from './leader-thread/RejectedPushError.ts'
 import type { StreamEventsOptions } from './leader-thread/types.ts'
-import type * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
+import * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
 import type { LiveStoreEvent } from './schema/mod.ts'
 import type { SyncBackend } from './sync/sync.ts'
-import type { PayloadUpstream, SyncState } from './sync/syncstate.ts'
+import { PayloadUpstream, type SyncState } from './sync/syncstate.ts'
+
+export const PullItem = Schema.Struct({
+  payload: PayloadUpstream,
+  /** The globally confirmed prefix after `payload` has been fully applied. */
+  globalHead: EventSequenceNumber.Client.Composite,
+})
 
 export interface ClientSessionLeaderThreadProxy {
   events: {
-    pull: (args: {
-      cursor: EventSequenceNumber.Client.Composite
-    }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type }>
+    pull: (args: { cursor: EventSequenceNumber.Client.Composite }) => Stream.Stream<typeof PullItem.Type>
     /** It's important that a client session doesn't call `push` concurrently. */
     push(batch: ReadonlyArray<LiveStoreEvent.Client.Encoded>): Effect.Effect<void, RejectedPushError>
     /** Stream events with filtering */

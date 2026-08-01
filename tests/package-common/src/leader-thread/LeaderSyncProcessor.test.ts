@@ -2,6 +2,7 @@ import { assert, expect } from 'vitest'
 
 import {
   BackendIdMismatchError,
+  type ClientSessionLeaderThreadProxy,
   type IntentionalShutdownCause,
   type MockSyncBackend,
   type MockSyncBackendOptions,
@@ -1065,7 +1066,7 @@ class TestContext extends Context.Service<
     mockSyncBackend: MockSyncBackend
     sqlite3: Awaited<ReturnType<typeof loadSqlite3Wasm>>
     shutdownDeferred: Deferred.Deferred<void, typeof Shutdown.All.Type>
-    pullQueue: Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>
+    pullQueue: Queue.Queue<typeof ClientSessionLeaderThreadProxy.PullItem.Type>
     eventFactory: LeaderEventFactory
     /** Equivalent to the ClientSessionSyncProcessor calling `.push` on the LeaderThreadCtx */
     pushEncoded: (
