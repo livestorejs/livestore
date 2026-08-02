@@ -298,12 +298,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               }
             }
 
-            const sessionChangeset = this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset
+            const changeset = this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset
             yield* materializationJournal.record({
               key: eventEncoded.seqNum,
               changeset:
-                sessionChangeset._tag === 'sessionChangeset'
-                  ? { _tag: 'changeset', data: sessionChangeset.data }
+                changeset !== undefined
+                  ? { _tag: 'changeset', data: changeset }
                   : { _tag: 'no-op' },
             })
             yield* stateHead.set(eventEncoded.seqNum)
