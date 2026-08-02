@@ -233,7 +233,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             if (resolution._tag === 'unknown') {
               // Runtime schema doesn't know this event yet; skip materialization but
               // keep the log entry so upgraded clients can replay it later.
-              yield* materializationJournal.record({ key: eventEncoded.seqNum, changeset: { _tag: 'no-op' } })
+              yield* materializationJournal.record({ key: eventEncoded.seqNum, changeset: null })
               yield* stateHead.set(eventEncoded.seqNum)
               return {
                 writeTables: new Set<string>(),
@@ -299,13 +299,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             }
 
             const changeset = this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset
-            yield* materializationJournal.record({
-              key: eventEncoded.seqNum,
-              changeset:
-                changeset !== undefined
-                  ? { _tag: 'changeset', data: changeset }
-                  : { _tag: 'no-op' },
-            })
+            yield* materializationJournal.record({ key: eventEncoded.seqNum, changeset })
             yield* stateHead.set(eventEncoded.seqNum)
 
             return { writeTables: writeTablesForEvent, materializerHash }

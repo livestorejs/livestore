@@ -40,18 +40,18 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       const key = EventSequenceNumber.Client.Composite.make({ global: 1, client: 2, rebaseGeneration: 3 })
       yield* journal.record({
         key,
-        changeset: { _tag: 'changeset', data: Uint8Array.from([1, 2, 3]) },
+        changeset: Uint8Array.from([1, 2, 3]),
       })
 
       const replacementChangeset = Uint8Array.from([4, 5, 6])
       yield* journal.record({
         key,
-        changeset: { _tag: 'changeset', data: replacementChangeset },
+        changeset: replacementChangeset,
       })
 
       expect(getRecord(dbState, key)).toEqual({
         key,
-        changeset: { _tag: 'changeset', data: replacementChangeset },
+        changeset: replacementChangeset,
       })
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
@@ -61,17 +61,17 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       const { dbState, journal } = yield* setup
 
       const key = EventSequenceNumber.Client.Composite.make({ global: 1, client: 2, rebaseGeneration: 3 })
-      yield* journal.record({ key, changeset: { _tag: 'no-op' } })
+      yield* journal.record({ key, changeset: null })
 
       const sameSequenceKey = EventSequenceNumber.Client.Composite.make({
         global: 1,
         client: 2,
         rebaseGeneration: 4,
       })
-      yield* journal.record({ key: sameSequenceKey, changeset: { _tag: 'no-op' } })
+      yield* journal.record({ key: sameSequenceKey, changeset: null })
 
       const laterKey = EventSequenceNumber.Client.Composite.make({ global: 1, client: 3, rebaseGeneration: 0 })
-      yield* journal.record({ key: laterKey, changeset: { _tag: 'no-op' } })
+      yield* journal.record({ key: laterKey, changeset: null })
 
       yield* journal.discardUpTo(key)
 
@@ -79,7 +79,7 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       expect(getRecord(dbState, sameSequenceKey)).toBeUndefined()
       expect(getRecord(dbState, laterKey)).toEqual({
         key: laterKey,
-        changeset: { _tag: 'no-op' },
+        changeset: null,
       })
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
@@ -94,7 +94,7 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       })
       yield* journal.record({
         key: insertKey,
-        changeset: { _tag: 'changeset', data: insertChangeset },
+        changeset: insertChangeset,
       })
 
       const updateKey = EventSequenceNumber.Client.Composite.make({ global: 2, client: 0, rebaseGeneration: 0 })
@@ -103,11 +103,11 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       })
       yield* journal.record({
         key: updateKey,
-        changeset: { _tag: 'changeset', data: updateChangeset },
+        changeset: updateChangeset,
       })
 
       const noOpKey = EventSequenceNumber.Client.Composite.make({ global: 3, client: 0, rebaseGeneration: 0 })
-      yield* journal.record({ key: noOpKey, changeset: { _tag: 'no-op' } })
+      yield* journal.record({ key: noOpKey, changeset: null })
 
       yield* journal.rollback([insertKey, noOpKey, updateKey])
 
@@ -128,7 +128,7 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       })
       yield* journal.record({
         key: recordedKey,
-        changeset: { _tag: 'changeset', data: changeset },
+        changeset,
       })
 
       const missingKey = EventSequenceNumber.Client.Composite.make({ global: 1, client: 0, rebaseGeneration: 0 })
@@ -142,7 +142,7 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       expect(dbState.select('SELECT id, value FROM journal_test')).toEqual([{ id: 1, value: 'kept' }])
       expect(getRecord(dbState, recordedKey)).toEqual({
         key: recordedKey,
-        changeset: { _tag: 'changeset', data: changeset },
+        changeset,
       })
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
@@ -157,14 +157,14 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       })
       yield* journal.record({
         key: validKey,
-        changeset: { _tag: 'changeset', data: validChangeset },
+        changeset: validChangeset,
       })
 
       const invalidKey = EventSequenceNumber.Client.Composite.make({ global: 1, client: 0, rebaseGeneration: 0 })
       const invalidChangeset = Uint8Array.from([1, 2, 3])
       yield* journal.record({
         key: invalidKey,
-        changeset: { _tag: 'changeset', data: invalidChangeset },
+        changeset: invalidChangeset,
       })
 
       const error = yield* journal.rollback([validKey, invalidKey]).pipe(Effect.flip)
@@ -175,11 +175,11 @@ Vitest.describe.concurrent('MaterializationJournal', () => {
       expect(dbState.select('SELECT id, value FROM journal_test')).toEqual([{ id: 1, value: 'kept' }])
       expect(getRecord(dbState, validKey)).toEqual({
         key: validKey,
-        changeset: { _tag: 'changeset', data: validChangeset },
+        changeset: validChangeset,
       })
       expect(getRecord(dbState, invalidKey)).toEqual({
         key: invalidKey,
-        changeset: { _tag: 'changeset', data: invalidChangeset },
+        changeset: invalidChangeset,
       })
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
@@ -210,7 +210,7 @@ const getRecord = (
 
   return {
     key,
-    changeset: row.changeset === null ? { _tag: 'no-op' } : { _tag: 'changeset', data: row.changeset },
+    changeset: row.changeset,
   }
 }
 
@@ -220,7 +220,7 @@ const captureChangeset = (dbState: SqliteDb, mutation: () => void): Uint8Array<A
   try {
     mutation()
     const changeset = session.changeset()
-    if (changeset === undefined) {
+    if (changeset === null) {
       throw new Error('Expected mutation to produce a SQLite changeset')
     }
     return changeset
