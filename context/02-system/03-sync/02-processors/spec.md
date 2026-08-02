@@ -123,9 +123,9 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   `Effect.runSyncWith` as an indivisible unit that can only interleave in the
   pull fiber's async gaps, so a synchronous commit admitted during a rebase
   park is folded into the reconciliation instead of being torn away by the
-  clear. This replaces the earlier blocking `rebaseOwnership` permit on `push`,
-  which violated the synchronous-commit invariant (LS.SYS.STORE-R09) by
-  suspending the commit path (see `.decisions/`, #1465). Deterministic
+  clear. This replaces the earlier design where `push` acquired the pull-
+  reconciliation mutex, which violated the synchronous-commit invariant
+  (LS.SYS.STORE-R09) by suspending the commit path (see `.decisions/`, #1465). Deterministic
   `rebaseBarriers` hooks at 3 labeled points let tests inject a concurrent
   push/shutdown into this window (the F1 no-loss oracle).
 - **Shutdown drain:** orderly shutdown closes new `push()` admission, stops

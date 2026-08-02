@@ -243,6 +243,8 @@ export const make = Effect.fnUntraced(function* ({
     deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>,
   ]
   const localPushesQueue = yield* TxQueue.unbounded<LocalPushQueueItem>()
+  // Reservations cover admitted pushes from validation until they are applied or rejected. The Set's
+  // insertion order mirrors admission order, so its last relevant item is the optimistic sequence head.
   const reservedLocalPushItems = new Set<LocalPushQueueItem>()
   // Ensures mutual exclusion between local push and backend pull processing.
   const localPushBackendPullMutex = yield* Semaphore.make(1)
@@ -250,15 +252,20 @@ export const make = Effect.fnUntraced(function* ({
   const pushAdmissionSemaphore = yield* Semaphore.make(1)
 
   /**
-   * Additionally to the `syncStateSref` we also need the `pushHeadRef` in order to prevent old/duplicate
-   * events from being pushed in a scenario like this:
-   * - client session A pushes e1
-   * - leader sync processor takes a bit and hasn't yet taken e1 from the localPushesQueue
-   * - client session B also pushes e1 (which should be rejected)
+   * Admission fence for local pushes. Unlike `syncState.localHead`, this advances as soon as an event
+   * is queued, so another session cannot claim the same sequence number while that event is waiting
+   * to be applied. With authoritative head e0 and reserved pushes e1/e2, this points to e2.
    *
-   * Thus the purpose of the pushHeadRef is the guard the integrity of the local push queue
+   * All reads and writes are protected by `pushAdmissionSemaphore` so validation and reservation are
+   * one atomic operation from the perspective of concurrent sessions and backend pulls.
    */
   const pushHeadRef = { current: initialSyncState.localHead }
+
+  /**
+   * A backend pull may advance or rebase authoritative history while local pushes remain reserved.
+   * Keep the fence at the newest reservation that is still valid for that history; if none remains,
+   * fall back to the authoritative head. Stale reservations are released later by the queue worker.
+   */
   const reconcilePushHead = (authoritativeHead: EventSequenceNumber.Client.Composite) =>
     pushAdmissionSemaphore.withPermits(1)(
       Effect.gen(function* () {
@@ -266,13 +273,12 @@ export const make = Effect.fnUntraced(function* ({
           ([event]) => event.seqNum.rebaseGeneration >= authoritativeHead.rebaseGeneration,
         )
         pushHeadRef.current = latestCurrentGenerationItem?.[0].seqNum ?? authoritativeHead
-        yield* syncDiagnostic('leader.push-fence.reconciled', {
-          authoritativeHead: EventSequenceNumber.Client.toString(authoritativeHead),
-          pushHead: EventSequenceNumber.Client.toString(pushHeadRef.current),
-          reservationCount: reservedLocalPushItems.size,
-        })
       }).pipe(Effect.uninterruptible),
     )
+  /**
+   * Stop completed, rejected, or stale queue items from extending the admission fence, then rebuild
+   * the fence from any pushes that are still reserved.
+   */
   const releasePushReservations = (
     items: ReadonlyArray<LocalPushQueueItem>,
     authoritativeHead: EventSequenceNumber.Client.Composite,
@@ -384,6 +390,8 @@ export const make = Effect.fnUntraced(function* ({
               ...remainingEventsMatchingGeneration.map(([_, deferred]) => deferred),
             ]
 
+            // The rejected batch and its drained same-generation suffix will never advance leader state,
+            // so release their sequence-number reservations before clients retry from the authoritative head.
             yield* releasePushReservations(
               [...filteredItems, ...remainingEventsMatchingGeneration],
               syncState.localHead,
@@ -474,10 +482,6 @@ export const make = Effect.fnUntraced(function* ({
       pageInfo: SyncBackend.PullResPageInfo,
     ) =>
       Effect.gen(function* () {
-        yield* syncDiagnostic('leader.backend-pull.received', {
-          pageInfo: pageInfo._tag,
-          batch: summarizeClientBatch(newEvents),
-        })
         if (ctxRef.current?.devtoolsLatch !== undefined) {
           yield* ctxRef.current.devtoolsLatch.await
         }
@@ -579,8 +583,12 @@ export const make = Effect.fnUntraced(function* ({
           // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
           trimChangesetRows(db, newBackendHead)
 
+          // The backend merge may advance or rebase the authoritative head. Realign the admission
+          // fence now so newly arriving pushes are validated against that history, not the pre-pull head.
           yield* reconcilePushHead(mergeResult.newSyncState.localHead)
 
+          // Apply the merged events to storage before publishing the new sync state below, so readers
+          // cannot observe a leader head whose events have not yet been materialized.
           yield* materializeEventsBatch({ batchItems: mergeResult.newEvents })
 
           yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
@@ -642,8 +650,6 @@ export const make = Effect.fnUntraced(function* ({
 
       const queueItems = yield* TxQueue.takeBetween(syncBackendPushQueue, 1, backendPushBatchSize)
 
-      yield* syncDiagnostic('leader.backend-push.started', { batch: summarizeClientBatch(queueItems) })
-
       yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
 
       if (ctxRef.current?.devtoolsLatch !== undefined) {
@@ -664,11 +670,6 @@ export const make = Effect.fnUntraced(function* ({
         const iteration = yield* Schedule.CurrentMetadata
 
         const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.result)
-
-        yield* syncDiagnostic('leader.backend-push.completed', {
-          batch: summarizeClientBatch(queueItems),
-          result: Result.isSuccess(pushResult) === true ? 'success' : pushResult.failure._tag,
-        })
 
         const retries = iteration.attempt
         if (retries > 0 && Result.isSuccess(pushResult) === true) {
@@ -715,16 +716,16 @@ export const make = Effect.fnUntraced(function* ({
 
       const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
 
+      // Validation, reservation, enqueueing, and fence advancement form one admission transaction.
+      // Serializing them prevents concurrent sessions from both validating against the same head and
+      // prevents backend reconciliation from changing the fence midway through admission.
       yield* pushAdmissionSemaphore.withPermits(1)(
+        // Cancellation must not leave reservations, queue contents, and the admission fence disagreeing.
         Effect.gen(function* () {
           yield* validatePushBatch(newEvents, pushHeadRef.current, isClientOnlyEvent)
           for (const item of items) reservedLocalPushItems.add(item)
           yield* TxQueue.offerAll(localPushesQueue, items)
           pushHeadRef.current = newEvents.at(-1)!.seqNum
-          yield* syncDiagnostic('leader.push-fence.admitted', {
-            batch: summarizeClientBatch(newEvents),
-            pushHead: EventSequenceNumber.Client.toString(pushHeadRef.current),
-          })
           if (testing.hooks?.localPushAdmitted !== undefined) {
             yield* testing.hooks.localPushAdmitted(newEvents)
           }
@@ -805,9 +806,6 @@ export const make = Effect.fnUntraced(function* ({
       yield* backgroundBackendPulling({
         restartBackendPushing: (filteredRebasedPending) =>
           Effect.gen(function* () {
-            yield* syncDiagnostic('leader.backend-push.restarting', {
-              pending: summarizeClientBatch(filteredRebasedPending),
-            })
             // Stop current pushing fiber
             yield* FiberHandle.clear(backendPushingFiberHandle)
 
@@ -1121,6 +1119,8 @@ const validatePushBatch = (
       })
     }
 
+    // A rebase replaces the optimistic history that the client built on. Events from an older
+    // generation may now have the wrong parent and must be recreated from the leader's current head.
     if (batch[0]!.seqNum.rebaseGeneration < pushHead.rebaseGeneration) {
       return yield* StaleRebaseGenerationError.make({
         currentRebaseGeneration: pushHead.rebaseGeneration,
@@ -1129,9 +1129,12 @@ const validatePushBatch = (
       })
     }
 
+    // Validate the batch as one unbroken chain starting at the admission fence. Checking only that
+    // numbers increase would still allow gaps or events that point at an unrelated parent.
     let precedingSeqNum = pushHead
     for (let i = 0; i < batch.length; i++) {
       const event = batch[i]!
+      // Global events advance the global position; client-only events advance its client-local suffix.
       const expectedPair = EventSequenceNumber.Client.nextPair({
         seqNum: precedingSeqNum,
         isClientOnly: isClientOnlyEvent(event),
@@ -1156,19 +1159,14 @@ const validatePushBatch = (
     }
   })
 
-const summarizeClientBatch = (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => ({
-  count: events.length,
-  first: events[0]?.toJSON(),
-  last: events.at(-1)?.toJSON(),
-})
-
+/**
+ * Parent linkage identifies a position in the event chain. Rebase generation describes the version
+ * of optimistic history, so it is validated on the event itself rather than as part of parent identity.
+ */
 const isSameSequencePosition = (
   left: EventSequenceNumber.Client.Composite,
   right: EventSequenceNumber.Client.Composite,
 ) => left.global === right.global && left.client === right.client
-
-const syncDiagnostic = (transition: string, detail: unknown): Effect.Effect<void> =>
-  TRACE_VERBOSE === true ? Effect.logDebug(`[livestore-sync] ${transition} ${JSON.stringify(detail)}`) : Effect.void
 
 /**
  * Handles a BackendIdMismatchError based on the configured behavior.

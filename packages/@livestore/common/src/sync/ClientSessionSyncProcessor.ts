@@ -111,7 +111,15 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
   const leaderPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta, Cause.Done>()
-  const rebaseOwnership = yield* Semaphore.make(1)
+  /**
+   * Prevents pull reconciliation, push-rejection handling, and shutdown from running concurrently.
+   * These transitions inspect or update the pending events, leader push queue, and rejection state,
+   * so each must observe the others either fully before or fully after—not midway through bookkeeping.
+   *
+   * Regular local commits do not acquire this mutex; they remain synchronous and are incorporated
+   * when `reconcileLeaderPushQueue` reads the current pending events transactionally.
+   */
+  const pullReconciliationMutex = yield* Semaphore.make(1)
   const shutdownDone = yield* Deferred.make<void>()
   const drainStartedSignal = yield* Deferred.make<void>()
   const rejectionObserved = yield* Deferred.make<void>()
@@ -126,7 +134,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   let leaderPushingFiberHandle: FiberHandle.FiberHandle<void, never> | undefined
   let pullingFiberHandle: FiberHandle.FiberHandle<void, never> | undefined
 
-  /** Rebuild the upstream FIFO from the authoritative live pending suffix without racing synchronous commits. */
+  /** Rebuild the leader push queue from the current pending events without racing synchronous commits. */
   const reconcileLeaderPushQueue = Effect.tx(
     Effect.gen(function* () {
       const livePending = syncStateRef.current.pending
@@ -168,15 +176,18 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
         yield* clientSession.leaderThread.events.push(batch).pipe(
           Effect.catchIf(isRejectedPushError, (error) =>
-            rebaseOwnership
+            // A pull carrying the leader's corrective history can complete before or after this
+            // rejection response. Use the same mutex as pull reconciliation so this decision uses
+            // one stable view of pending events and cannot install a stale rejection fence after recovery.
+            pullReconciliationMutex
               .withPermits(1)(
                 Effect.gen(function* () {
                   debugInfo.rejectCount++
                   if (shutdownStarted === true) return yield* Effect.die(error)
 
                   // A concurrent pull may have already confirmed or rebased this batch while the
-                  // push response was in flight. In that case, rebuild from the reconciled suffix
-                  // and continue instead of creating a fence that no future pull could release.
+                  // push response was in flight. In that case, rebuild the queue from the reconciled
+                  // pending events instead of creating a fence that no future pull could release.
                   if (isRejectedBatchRecovered(batch, syncStateRef.current.pending) === true) {
                     yield* reconcileLeaderPushQueue
                     yield* Deferred.succeed(rejectionObserved, undefined)
@@ -286,19 +297,19 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
             // Barrier: before the atomic queue reconciliation (the "discard + re-offer" step).
             // A `push` admitted here appends its event to `syncStateRef.current.pending` AND to
-            // `leaderPushQueue`; the reconciliation below re-reads the LIVE pending, so that event
-            // is preserved rather than torn away by the clear.
+            // `leaderPushQueue`; the reconciliation below re-reads the current pending events, so
+            // that event is preserved rather than removed by the queue clear.
             yield* rebaseBarrier('before_queue_reconcile')
 
             // Atomic queue reconciliation. `push` runs via `Effect.runSyncWith` (a synchronous run,
             // per the store's fully-synchronous commit contract), so it executes as an indivisible
             // unit that can only interleave in THIS fiber's async gaps — never inside a synchronous
-            // stretch. By reading the live pending, clearing, and re-offering with no async park
-            // between them, this block is atomic w.r.t. `push`. This replaces the blocking
-            // `rebaseOwnership` permit that previously forced `push` to wait: push↔rebase is now
-            // serialized WITHOUT ever suspending the synchronous commit path.
+            // stretch. By reading the current pending events, clearing, and re-offering with no async
+            // park between them, this block is atomic w.r.t. `push`. This replaces the blocking
+            // `pullReconciliationMutex` permit that previously forced `push` to wait: queue rebuilding
+            // and synchronous commits cannot interleave, without suspending the commit path.
             //
-            // We re-read `syncStateRef.current.pending` (the LIVE pending) instead of the stale
+            // We re-read the current `syncStateRef.current.pending` instead of the stale
             // `mergeResult.newSyncState.pending` snapshot captured at merge time, so any event a
             // concurrent push appended during the async steps above (fiber interrupt / rollback /
             // barriers) is included. `Effect.tx` commits the clear+offer as one transaction.
@@ -355,7 +366,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           // We're only triggering the sync state update after all events have been materialized
           yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
         }).pipe(
-          rebaseOwnership.withPermits(1),
+          pullReconciliationMutex.withPermits(1),
           Effect.tapCauseLogPretty,
           Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
         ),
@@ -374,12 +385,12 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   ) {
     if (Exit.isFailure(exit) === true) {
       if (pullingFiberHandle !== undefined) yield* FiberHandle.clear(pullingFiberHandle)
-      yield* rebaseOwnership.withPermits(1)(TxQueue.end(leaderPushQueue))
+      yield* pullReconciliationMutex.withPermits(1)(TxQueue.end(leaderPushQueue))
       if (leaderPushingFiberHandle !== undefined) yield* FiberHandle.clear(leaderPushingFiberHandle)
       return
     }
 
-    yield* rebaseOwnership.withPermits(1)(
+    yield* pullReconciliationMutex.withPermits(1)(
       Effect.gen(function* () {
         if (pullingFiberHandle !== undefined) yield* FiberHandle.clear(pullingFiberHandle)
         yield* TxQueue.end(leaderPushQueue)

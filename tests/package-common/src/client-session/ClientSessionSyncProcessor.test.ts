@@ -781,7 +781,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  // F1 no-loss oracle for shutdown↔rebase (guarded by the `rebaseOwnership` permit shared by the
+  // F1 no-loss oracle for shutdown↔rebase (guarded by the `pullReconciliationMutex` permit shared by the
   // pull tap and `runShutdown`): an orderly shutdown that interleaves a rebase at any point of the
   // discard→re-offer window must still flush the rebased pending event. Removing the permit from
   // `runShutdown` makes the pre-reconcile cases (points 1/2) fail — the queue is ended and the pull
@@ -818,7 +818,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         yield* barrier.awaitReached
 
         // Start an orderly shutdown while the rebase is parked. The success path takes the
-        // `rebaseOwnership` permit still held by the parked pull fiber, so it cannot end the queue
+        // `pullReconciliationMutex` permit still held by the parked pull fiber, so it cannot end the queue
         // until the rebase releases the permit (i.e. after re-offering the rebased pending event).
         const closeFiber = yield* close().pipe(Effect.forkChild)
         yield* barrier.release
