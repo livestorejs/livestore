@@ -49,8 +49,10 @@ export const STATE_HEAD_META_TABLE = '__livestore_state_head'
  * Single-row marker for the latest event sequence number reflected by the state DB.
  *
  * @remarks
- * This is separate from the session changeset table because confirmed changesets
- * can be removed after they are no longer needed for rollback.
+ * This is separate from the materialization journal, so a state database snapshot
+ * carries its own event sequence number. Journal rows are rollback records and
+ * may be pruned after event confirmation, so they are not a reliable marker for
+ * the event sequence number reflected by the current state database contents.
  */
 export const stateHeadMetaTable = table({
   name: STATE_HEAD_META_TABLE,
@@ -74,46 +76,31 @@ export const rebuildMetaTable = table({
   },
 })
 
-/**
- * Table which stores SQLite changeset blobs which is used for rolling back
- * read-model state during rebasing.
- */
-export const SESSION_CHANGESET_META_TABLE = '__livestore_session_changeset'
+export const MATERIALIZATION_JOURNAL_META_TABLE = '__livestore_materialization_journal'
 
-export const sessionChangesetMetaTable = table({
-  name: SESSION_CHANGESET_META_TABLE,
+/**
+ * Materialization journal used to roll back state database changes during rebasing.
+ */
+export const materializationJournalMetaTable = table({
+  name: MATERIALIZATION_JOURNAL_META_TABLE,
   columns: {
     // TODO bring back primary key
     seqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.Global.Schema }),
     seqNumClient: SqliteDsl.integer({ schema: EventSequenceNumber.Client.Schema }),
     seqNumRebaseGeneration: SqliteDsl.integer({}),
     changeset: SqliteDsl.blob({ nullable: true }),
-    debug: SqliteDsl.json({ nullable: true }),
   },
-  indexes: [{ columns: ['seqNumGlobal', 'seqNumClient'], name: 'idx_session_changeset_id' }],
+  // Retain the legacy physical index name for the same compatibility reason as the table name.
+  indexes: [{ columns: ['seqNumGlobal', 'seqNumClient'], name: 'idx_materialization_journal_id' }],
 })
 
-export type SessionChangesetMetaRow = typeof sessionChangesetMetaTable.Type
-
-// TODO: Rename the physical table once legacy session changeset consumers have been migrated.
-export const MATERIALIZATION_JOURNAL_META_TABLE = SESSION_CHANGESET_META_TABLE
-
-/**
- * Materialization journal used to roll back state database changes during rebasing.
- *
- * @remarks
- * This aliases the legacy table definition until all session changeset consumers
- * have adopted the journal service.
- */
-export const materializationJournalMetaTable = sessionChangesetMetaTable
-
-export type MaterializationJournalMetaRow = SessionChangesetMetaRow
+export type MaterializationJournalMetaRow = typeof materializationJournalMetaTable.Type
 
 export const stateSystemTables = [
   schemaMetaTable,
   schemaEventDefsMetaTable,
   stateHeadMetaTable,
-  sessionChangesetMetaTable,
+  materializationJournalMetaTable,
   rebuildMetaTable,
 ] as const
 

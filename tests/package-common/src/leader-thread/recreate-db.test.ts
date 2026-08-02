@@ -171,7 +171,7 @@ for (const failure of ['init', 'pre', 'replay', 'replay-after-batch', 'post', 'i
         if (failure === 'replay' || failure === 'replay-after-batch') {
           const committedEvents = failure === 'replay' ? 0 : 2
           expect(partial.select(todos)).toHaveLength(committedEvents)
-          expect(partial.select(SystemTables.sessionChangesetMetaTable)).toHaveLength(committedEvents)
+          expect(partial.select(SystemTables.materializationJournalMetaTable)).toHaveLength(committedEvents)
           expect((yield* StateHead.make({ dbState: partial }).get).global).toBe(committedEvents)
         }
         if (failure === 'post' || failure === 'interrupt') expect(partial.select(todos)).toHaveLength(5)
