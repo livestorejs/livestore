@@ -111,7 +111,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
   withChangeset<TRes>(callback: () => TRes): {
     result: TRes
-    changeset: Uint8Array<ArrayBuffer> | undefined
+    changeset: Uint8Array<ArrayBuffer> | null
   } {
     const session = this.db.session()
     const result = callback()
@@ -121,7 +121,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
     return {
       result,
-      changeset
+      changeset,
     }
   }
 

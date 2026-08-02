@@ -57,7 +57,7 @@ export const makeMaterializeEvent = ({
           }
 
           yield* Effect.gen(function* () {
-            yield* materializationJournal.record({ key: eventEncoded.seqNum, changeset: { _tag: 'no-op' } })
+            yield* materializationJournal.record({ key: eventEncoded.seqNum, changeset: null })
             yield* stateHead.set(eventEncoded.seqNum)
           }).pipe(SqliteDbHelper.withSavepoint(dbState))
           dbState.debug.head = eventEncoded.seqNum
@@ -112,11 +112,7 @@ export const makeMaterializeEvent = ({
           const changeset = session.changeset()
           session.finish()
 
-          yield* materializationJournal.record({
-            key: eventEncoded.seqNum,
-            changeset:
-              changeset !== undefined ? { _tag: 'changeset' as const, data: changeset } : { _tag: 'no-op' as const },
-          })
+          yield* materializationJournal.record({ key: eventEncoded.seqNum, changeset })
           yield* stateHead.set(eventEncoded.seqNum)
         }).pipe(SqliteDbHelper.withSavepoint(dbState))
 

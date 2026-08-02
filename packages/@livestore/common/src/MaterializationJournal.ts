@@ -1,6 +1,6 @@
 import { Context, Effect, Layer, Predicate, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import { SqliteError, type SqliteDb } from './adapter-types.ts'
+import { type SqliteDb, SqliteError } from './adapter-types.ts'
 import { execSql, execSqlPrepared } from './leader-thread/connection.ts'
 import * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
 import { SystemTables } from './schema/mod.ts'
@@ -25,11 +25,10 @@ export class MaterializationJournalError extends Schema.TaggedError<Materializat
   readonly [MaterializationJournalErrorTypeId] = MaterializationJournalErrorTypeId
 }
 
-export type MaterializationChangeset = { _tag: 'changeset'; data: Uint8Array<ArrayBuffer> } | { _tag: 'no-op' }
-
 export type MaterializationRecord = {
   key: EventSequenceNumber.Client.Composite
-  changeset: MaterializationChangeset
+  /** Changes recorded while materializing the event, or `null` when materialization did not change state. */
+  changeset: Uint8Array<ArrayBuffer> | null
 }
 
 export interface Service {
@@ -81,7 +80,7 @@ export const make = ({ dbState }: Options) => {
             seqNumGlobal: record.key.global,
             seqNumClient: record.key.client,
             seqNumRebaseGeneration: record.key.rebaseGeneration,
-            changeset: record.changeset._tag === 'changeset' ? record.changeset.data : null,
+            changeset: record.changeset,
           },
         })
 
@@ -93,7 +92,7 @@ export const make = ({ dbState }: Options) => {
     rollback: Effect.fnUntraced(
       function* (keys: ReadonlyArray<EventSequenceNumber.Client.Composite>) {
         const sortedKeys = keys.toSorted((a, b) => EventSequenceNumber.Client.compare(b, a))
-        const rollbackRecords = yield* Effect.forEach(
+        const rollbackChangesets = yield* Effect.forEach(
           sortedKeys,
           Effect.fnUntraced(function* (key) {
             const [statement, bindValues] = findManyRows({
@@ -121,21 +120,14 @@ export const make = ({ dbState }: Options) => {
               })
             }
 
-            return {
-              key,
-              changeset:
-                row.changeset === null
-                  ? { _tag: 'no-op' as const }
-                  : { _tag: 'changeset' as const, data: row.changeset },
-            }
+            return row.changeset
           }),
         )
 
-        for (const record of rollbackRecords) {
-          if (record.changeset._tag === 'changeset') {
-            const data = record.changeset.data
+        for (const changeset of rollbackChangesets) {
+          if (changeset !== null) {
             yield* Effect.try({
-              try: () => dbState.makeChangeset(data).invert().apply(),
+              try: () => dbState.makeChangeset(changeset).invert().apply(),
               catch: (cause) => new SqliteError({ cause }),
             })
           }
