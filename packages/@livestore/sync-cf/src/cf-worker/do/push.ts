@@ -1,7 +1,6 @@
 import { BackendIdMismatchError, ServerAheadError, SyncBackend, UnknownError } from '@livestore/common'
 import { type CfTypes, emitStreamResponse } from '@livestore/common-cf'
 import { splitArrayBySize } from '@livestore/common/sync'
-import { TRACE_VERBOSE } from '@livestore/utils'
 import { Effect, Option, ReadonlyArray as EffectArray, type RpcMessage, Schema } from '@livestore/utils/effect'
 
 import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
@@ -61,11 +60,14 @@ export const makePush =
         return yield* new BackendIdMismatchError({ expected: backendId, received: pushRequest.backendId.value })
       }
 
+      // A push is one ordered admit → persist → publish operation. `blockConcurrencyWhile` below protects
+      // the Durable Object state transition, while this semaphore keeps later pushes from overtaking this
+      // push during broadcasting without holding Cloudflare's concurrency gate across network I/O.
       yield* runSerializedPushAdmission(
         pushSemaphore,
         Effect.gen(function* () {
-          // Persistence stays inside the Durable Object storage transaction, while the
-          // surrounding admission remains uninterruptible through ordered broadcast.
+          // Keep the head check, durable append, and in-memory head update atomic with respect to other
+          // Durable Object requests. Broadcasting intentionally happens after this gate is released.
           const { createdAt } = yield* Effect.gen(function* () {
             const currentHead = currentHeadRef.current
             // TODO handle clientId unique conflict
@@ -81,8 +83,6 @@ export const makePush =
             yield* storage.appendEvents(pushRequest.batch, createdAt)
 
             updateCurrentHead(pushRequest.batch.at(-1)!.seqNum)
-
-            yield* syncDiagnostic('sync-cf.push.accepted', pushRequest.batch)
 
             return { createdAt }
           }).pipe(blockConcurrencyWhile(ctx))
@@ -160,11 +160,6 @@ export const makePush =
                   conn.send(jsonStringify(res))
                 }
               }
-
-              yield* syncDiagnostic(
-                'sync-cf.push.broadcast',
-                response.batch.map((item) => item.eventEncoded),
-              )
             }
 
             yield* Effect.logDebug(`Broadcasted to ${connectedClients.length} WebSocket clients`)
@@ -188,6 +183,8 @@ export const makePush =
         }).pipe(Effect.tapCauseLogPretty, Effect.withSpan('push-rpc-broadcast')),
       )
 
+      // Acknowledge only after the committed batch has been published, so a client cannot observe an
+      // advanced server head while the corresponding pull response is still waiting in a detached fiber.
       return SyncMessage.PushAck.make({})
     }).pipe(
       Effect.tap(
@@ -208,8 +205,16 @@ export const makePush =
     )
 
 /**
- * Serializes admission and defers interruption until persistence has been published to pull subscribers.
- * A committed head without its matching pull response leaves every `ServerAhead` pusher waiting forever.
+ * Serializes the complete push admission lifecycle, including publication to pull subscribers.
+ *
+ * This complements `blockConcurrencyWhile`: that Cloudflare primitive makes the durable state transition
+ * atomic with respect to other Durable Object requests, whereas this semaphore preserves push order after
+ * the storage gate is released and broadcasting begins. Keeping broadcast outside `blockConcurrencyWhile`
+ * avoids holding Cloudflare's concurrency gate across network I/O.
+ *
+ * Once admitted, the effect is uninterruptible so cancellation cannot leave a committed head without its
+ * matching pull response. Such a gap would make later pushers receive `ServerAhead` while waiting for a
+ * response that was never published.
  */
 export const runSerializedPushAdmission = <A, E, R>(
   semaphore: DoCtx.Service['pushSemaphore'],
@@ -217,6 +222,10 @@ export const runSerializedPushAdmission = <A, E, R>(
 ): Effect.Effect<A, E, R> => semaphore.withPermits(1)(admission.pipe(Effect.uninterruptible))
 
 /**
+ * Runs the storage-backed state transition behind Cloudflare's Durable Object concurrency gate.
+ * This scope should remain limited to local persistence and head mutation; ordered publication is handled
+ * separately by `runSerializedPushAdmission` so outbound work does not block unrelated Durable Object events.
+ *
  * @see https://developers.cloudflare.com/durable-objects/api/state/#blockconcurrencywhile
  */
 const blockConcurrencyWhile =
@@ -230,14 +239,3 @@ const blockConcurrencyWhile =
 
       return yield* exit
     })
-
-const syncDiagnostic = (transition: string, batch: ReadonlyArray<PushBatchItem>): Effect.Effect<void> =>
-  TRACE_VERBOSE === true
-    ? Effect.logDebug(
-        `[livestore-sync] ${transition} ${JSON.stringify({
-          count: batch.length,
-          first: batch[0],
-          last: batch.at(-1),
-        })}`,
-      )
-    : Effect.void

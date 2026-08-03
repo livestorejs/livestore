@@ -7,7 +7,7 @@ import { nanoid } from '@livestore/utils/nanoid'
 
 import type { Env, MakeDurableObjectClassOptions, RpcSubscription } from '../shared.ts'
 import { contextTable, eventlogTable } from './sqlite.ts'
-import { makeStorage, type SyncStorage } from './sync-storage.ts'
+import { makeStorage, type StorageEngine, type SyncStorage } from './sync-storage.ts'
 
 const CacheSymbol = Symbol('Cache')
 const InitializationSemaphoreSymbol = Symbol('InitializationSemaphore')
@@ -73,21 +73,7 @@ export const make = Effect.fn(
         }
 
         const storeId = getStoreId(from)
-        // Resolve storage engine
-        const makeEngine = Effect.gen(function* () {
-          const opt = doOptions?.storage
-          if (opt?._tag === 'd1') {
-            const db = (doSelf.env as any)[opt.binding]
-            if (db == null) {
-              return yield* UnknownError.make({ cause: new Error(`D1 binding '${opt.binding}' not found on env`) })
-            }
-            return { _tag: 'd1' as const, db }
-          } else if (opt?._tag === 'do-sqlite' || opt === undefined) {
-            return { _tag: 'do-sqlite' as const }
-          } else return shouldNeverHappen(`Invalid storage engine`, opt)
-        })
-
-        const engine = yield* makeEngine
+        const engine = yield* resolveStorageEngine(doOptions?.storage, doSelf.env)
 
         const storage = makeStorage(doSelf.ctx, storeId, engine)
 
@@ -116,7 +102,9 @@ export const make = Effect.fn(
         const currentHeadRef = { current: storageRow?.currentHead ?? EventSequenceNumber.Client.ROOT.global }
         const pushSemaphore = yield* Semaphore.make(1)
 
-        // TODO do concistency check with eventlog table to make sure the head is consistent
+        // TODO: Reconcile this persisted head with the event log's highest sequence number.
+        // D1 event batches and this DO-local context row cannot be updated atomically, so a
+        // failure between those writes can leave push admission using a stale head after restart.
 
         // Should be the same backendId for lifetime of the Durable Object
         const backendId = storageRow?.backendId ?? nanoid()
@@ -163,3 +151,26 @@ export const make = Effect.fn(
 )
 
 export const layer = (options: Options) => Layer.effect(DoCtx, make(options))
+
+/** Resolves storage configuration into the concrete database handle used at runtime. */
+const resolveStorageEngine = Effect.fn(function* (
+  storageOption: MakeDurableObjectClassOptions['storage'],
+  env: Env,
+): Effect.fn.Return<StorageEngine, UnknownError> {
+  if (storageOption === undefined || storageOption._tag === 'do-sqlite') {
+    return { _tag: 'do-sqlite' }
+  }
+
+  if (storageOption._tag === 'd1') {
+    const db = (env as Record<string, CfTypes.D1Database | undefined>)[storageOption.binding]
+    if (db === undefined) {
+      return yield* UnknownError.make({
+        cause: new Error(`D1 binding '${storageOption.binding}' not found on env`),
+      })
+    }
+
+    return { _tag: 'd1', db }
+  }
+
+  return shouldNeverHappen(`Invalid storage engine`, storageOption)
+})
