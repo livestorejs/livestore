@@ -8,6 +8,7 @@ import {
 } from '../../../genie/repo.ts'
 import commonCfPkg from '../common-cf/package.json.genie.ts'
 import commonPkg from '../common/package.json.genie.ts'
+import utilsDevPkg from '../utils-dev/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
@@ -17,7 +18,8 @@ const runtimeDeps = catalog.compose({
     external: catalog.pick('@cloudflare/workers-types'),
   },
   devDependencies: {
-    external: catalog.pick(...utilsEffectPeerDeps),
+    workspace: [utilsDevPkg],
+    external: catalog.pick(...utilsEffectPeerDeps, 'vitest'),
   },
   peerDependencies: {
     external: getUtilsPeerDeps(),
@@ -43,7 +45,7 @@ export default packageJson(
       },
     },
     scripts: {
-      test: "echo 'No tests yet'",
+      test: 'vitest run',
     },
   },
   runtimeDeps,
