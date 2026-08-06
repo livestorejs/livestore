@@ -38,9 +38,13 @@ interface SyncDoProbe {
   getHibernationProbe(): { instanceId: string; webSocketCount: number }
 }
 
+interface TestClientDoProbe {
+  getClientProbe(): { instanceId: string }
+}
+
 export interface Env {
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface & SyncDoProbe>
-  TEST_CLIENT_DO: CfTypes.DurableObjectNamespace
+  TEST_CLIENT_DO: CfTypes.DurableObjectNamespace<TestClientDoProbe>
   /** Eventlog database */
   DB: CfTypes.D1Database
 }
@@ -82,6 +86,8 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
   __DURABLE_OBJECT_BRAND = 'ClientDO' as never
   env: Env
   ctx: CfTypes.DurableObjectState
+  /** Never persisted: a different id means this DO was evicted and rebuilt. */
+  instanceId = crypto.randomUUID()
 
   constructor(state: CfTypes.DurableObjectState, env: Env) {
     super(state, env)
@@ -187,6 +193,10 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
     })
   }
 
+  getClientProbe(): { instanceId: string } {
+    return { instanceId: this.instanceId }
+  }
+
   async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
     await handleSyncUpdateRpc(payload)
   }
@@ -202,6 +212,11 @@ export default {
         return new Response('storeId required', { status: 400 })
       }
       const probe = await env.SYNC_BACKEND_DO.get(env.SYNC_BACKEND_DO.idFromName(storeId)).getHibernationProbe()
+      return new Response(JSON.stringify(probe), { headers: { 'content-type': 'application/json' } })
+    }
+
+    if (url.pathname.endsWith('/instance/client') === true) {
+      const probe = await env.TEST_CLIENT_DO.get(env.TEST_CLIENT_DO.idFromName('test-client-do')).getClientProbe()
       return new Response(JSON.stringify(probe), { headers: { 'content-type': 'application/json' } })
     }
 
