@@ -44,7 +44,7 @@ interface TestClientDoProbe {
 
 export interface Env {
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface & SyncDoProbe>
-  TEST_CLIENT_DO: CfTypes.DurableObjectNamespace<TestClientDoProbe>
+  TEST_CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback & TestClientDoProbe>
   /** Eventlog database */
   DB: CfTypes.D1Database
 }
