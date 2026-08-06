@@ -9,6 +9,8 @@ import {
   type Env,
   type ForwardedHeaders,
   type MakeDurableObjectClassOptions,
+  rpcSubscriptionKeyPrefix,
+  type RpcSubscription,
   type StoreId,
   WebSocketAttachmentSchema,
 } from '../shared.ts'
@@ -39,7 +41,7 @@ export const makePush =
   (pushRequest: Omit<SyncMessage.PushRequest, '_tag'>) =>
     Effect.gen(function* () {
       // yield* Effect.log(`Pushing ${decodedMessage.batch.length} events`, decodedMessage.batch)
-      const { backendId, storage, currentHeadRef, updateCurrentHead, rpcSubscriptions } = yield* DoCtx.DoCtx
+      const { backendId, storage, currentHeadRef, updateCurrentHead } = yield* DoCtx.DoCtx
 
       if (pushRequest.batch.length === 0) {
         return SyncMessage.PushAck.make({})
@@ -166,9 +168,11 @@ export const makePush =
           yield* Effect.logDebug(`Broadcasted to ${connectedClients.length} WebSocket clients`)
         }
 
-        // RPC broadcasting would require reconstructing client stubs from clientIds
-        if (rpcSubscriptions.size > 0) {
-          for (const subscription of rpcSubscriptions.values()) {
+        // Subscribers live in the DO's KV storage (single source of truth), so fan-out survives reconstruction.
+        // emitStreamResponse reconstructs each client stub from its callerContext.
+        const rpcSubscriptions = Array.from(ctx.storage.kv.list<RpcSubscription>({ prefix: rpcSubscriptionKeyPrefix }))
+        if (rpcSubscriptions.length > 0) {
+          for (const [, subscription] of rpcSubscriptions) {
             for (const { encoded } of responses) {
               yield* emitStreamResponse({
                 callerContext: subscription.callerContext,
@@ -179,7 +183,7 @@ export const makePush =
             }
           }
 
-          yield* Effect.logDebug(`Broadcasted to ${rpcSubscriptions.size} RPC clients`)
+          yield* Effect.logDebug(`Broadcasted to ${rpcSubscriptions.length} RPC clients`)
         }
       }).pipe(
         Effect.tapCauseLogPretty,

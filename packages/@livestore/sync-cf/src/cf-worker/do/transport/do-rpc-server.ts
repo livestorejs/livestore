@@ -3,6 +3,7 @@ import { type CfTypes, toDurableObjectHandler } from '@livestore/common-cf'
 import { Effect, Headers, Option, Stream } from '@livestore/utils/effect'
 
 import { SyncDoRpc } from '../../../common/do-rpc-schema.ts'
+import { rpcSubscriptionKeyPrefix, type RpcSubscription } from '../../shared.ts'
 import * as DoCtx from '../layer.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
@@ -17,25 +18,26 @@ export const createDoRpcHandler = (
 ): Effect.Effect<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream> =>
   Effect.gen({ self: this }, function* () {
     const { payload, input } = options
-    // const { rpcSubscriptions, backendId, doOptions, ctx, env } = yield* DoCtx
 
     // TODO add admin RPCs
     const RpcLive = SyncDoRpc.toLayer({
       'SyncDoRpc.Ping': () => Effect.void,
       'SyncDoRpc.Pull': (req, { headers }) =>
         Effect.gen({ self: this }, function* () {
-          const { rpcSubscriptions } = yield* DoCtx.DoCtx
+          const { ctx } = yield* DoCtx.DoCtx
 
           // TODO rename `req.rpcContext` to something more appropriate
           if (req.rpcContext !== undefined) {
-            // Key by client DO id, not storeId: one backend serves many client DOs, so storeId would clobber siblings.
-            rpcSubscriptions.set(req.rpcContext.callerContext.durableObjectId, {
+            const subscription: RpcSubscription = {
               storeId: req.storeId,
               subscribedAt: Date.now(),
               requestId: Headers.get(headers, 'x-rpc-request-id').pipe(Option.getOrThrow),
               callerContext: req.rpcContext.callerContext,
               ...(req.payload !== undefined ? { payload: req.payload } : {}),
-            })
+            }
+            // Keyed by client DO id (not storeId — one backend serves many client DOs). The DO's synchronous KV
+            // storage is the single source of truth, so the entry outlives backend reconstruction.
+            ctx.storage.kv.put(`${rpcSubscriptionKeyPrefix}${subscription.callerContext.durableObjectId}`, subscription)
           }
 
           // DO-RPC doesn't have HTTP headers context - headers are undefined
