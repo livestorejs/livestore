@@ -6,7 +6,7 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   type Context,
   Data,
-  type Duration,
+  Duration,
   Effect,
   FetchHttpClient,
   type HttpClient,
@@ -92,7 +92,9 @@ export const awaitDelivery = (
     Effect.timeoutOrElse({
       duration: timeout,
       orElse: () =>
-        new SyncDoProbeError({ message: `live subscriber never received "${id}" within ${String(timeout)}` }),
+        new SyncDoProbeError({
+          message: `live subscriber never received "${id}" within ${Duration.format(Duration.fromInputUnsafe(timeout))}`,
+        }),
     }),
   )
 
