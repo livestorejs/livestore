@@ -28,7 +28,8 @@ export const createDoRpcHandler = (
 
           // TODO rename `req.rpcContext` to something more appropriate
           if (req.rpcContext !== undefined) {
-            rpcSubscriptions.set(req.storeId, {
+            // Key by client DO id, not storeId: one backend serves many client DOs, so storeId would clobber siblings.
+            rpcSubscriptions.set(req.rpcContext.callerContext.durableObjectId, {
               storeId: req.storeId,
               subscribedAt: Date.now(),
               requestId: Headers.get(headers, 'x-rpc-request-id').pipe(Option.getOrThrow),
