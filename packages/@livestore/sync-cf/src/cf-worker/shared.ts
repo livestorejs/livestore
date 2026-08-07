@@ -168,6 +168,9 @@ export type RpcSubscription = {
   }
 }
 
+/** Key prefix for DO-RPC subscriptions persisted in the DO's synchronous KV storage. */
+export const rpcSubscriptionKeyPrefix = 'rpc-sub:'
+
 /**
  * Durable Object interface supporting the DO RPC protocol for DO <> DO syncing.
  */
