@@ -1,7 +1,7 @@
 /**
  * Push validation errors returned by {@link LeaderSyncProcessor.push}.
  *
- * All three errors share a common {@link RejectedPushErrorTypeId} so consumers can catch the
+ * All errors share a common {@link RejectedPushErrorTypeId} so consumers can catch the
  * family as a group via {@link isRejectedPushError} instead of matching individual tags.
  * Recovery is the same in every case: the client should rebase and retry.
  *
@@ -37,6 +37,24 @@ export class NonMonotonicBatchError extends Schema.TaggedErrorClass<NonMonotonic
 
   override get message(): string {
     return `Pushed events' sequence numbers are not strictly increasing at index ${this.violationIndex} (session ${this.sessionId}): ${EventSequenceNumber.Client.toString(this.precedingSeqNum)} >= ${EventSequenceNumber.Client.toString(this.violatingSeqNum)}`
+  }
+}
+
+/** A pushed batch skips an event required to connect it to the leader's admitted push prefix. */
+export class NonContiguousBatchError extends Schema.TaggedErrorClass<NonContiguousBatchError>(
+  `${RejectedPushErrorTypeId}/NonContiguousBatchError`,
+)('NonContiguousBatchError', {
+  expectedSeqNum: EventSequenceNumber.Client.Composite,
+  providedSeqNum: EventSequenceNumber.Client.Composite,
+  expectedParentSeqNum: EventSequenceNumber.Client.Composite,
+  providedParentSeqNum: EventSequenceNumber.Client.Composite,
+  violationIndex: Schema.Finite,
+  sessionId: Schema.String,
+}) {
+  readonly [RejectedPushErrorTypeId] = RejectedPushErrorTypeId
+
+  override get message(): string {
+    return `Pushed events are not contiguous at index ${this.violationIndex} (session ${this.sessionId}): expected ${EventSequenceNumber.Client.toString(this.expectedSeqNum)} after ${EventSequenceNumber.Client.toString(this.expectedParentSeqNum)}, got ${EventSequenceNumber.Client.toString(this.providedSeqNum)} after ${EventSequenceNumber.Client.toString(this.providedParentSeqNum)}`
   }
 }
 
@@ -88,7 +106,12 @@ export class LeaderAheadError extends Schema.TaggedErrorClass<LeaderAheadError>(
   }
 }
 
-export const RejectedPushError = Schema.Union([LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError])
+export const RejectedPushError = Schema.Union([
+  LeaderAheadError,
+  NonContiguousBatchError,
+  NonMonotonicBatchError,
+  StaleRebaseGenerationError,
+])
 
 export type RejectedPushError = typeof RejectedPushError.Type
 
