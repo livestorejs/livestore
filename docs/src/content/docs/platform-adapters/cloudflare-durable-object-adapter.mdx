@@ -113,7 +113,7 @@ Creates a LiveStore instance inside a Durable Object.
 
 ### `syncUpdateRpc(payload)`
 
-Client Durable Objects must implement this method so the sync backend can deliver live updates. `createStoreDoPromise` wires it up automatically—just forward the payload to `handleSyncUpdateRpc` (see the client Durable Object example above).
+Client Durable Objects must implement this method so the sync backend can deliver live updates. `createStoreDoPromise` wires it up automatically—just forward the DO's `ctx` and the payload to `handleSyncUpdateRpc(ctx, payload)` (see the client Durable Object example above).
 
 ## Resetting LiveStore persistence (development only)
 

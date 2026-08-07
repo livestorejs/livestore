@@ -18,6 +18,10 @@ class_name = "SyncBackendDO"
 name = "TEST_CLIENT_DO"
 class_name = "TestClientDo"
 
+[[durable_objects.bindings]]
+name = "STORE_CLIENT_DO"
+class_name = "StoreClientDo"
+
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["SyncBackendDO", "TestClientDo"]
+new_sqlite_classes = ["SyncBackendDO", "TestClientDo", "StoreClientDo"]
