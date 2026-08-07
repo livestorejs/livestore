@@ -149,6 +149,6 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
   async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
     // Make sure to wake up the store before processing the sync update
     await this.subscribeToStore()
-    await handleSyncUpdateRpc(payload)
+    await handleSyncUpdateRpc(this.ctx as SyncBackend.CfTypes.DurableObjectState, payload)
   }
 }

@@ -20,17 +20,7 @@ import { isProviderSelected } from './providers/registry.ts'
 const idleWindow: Duration.Input = '14 seconds' // past the ~9-11s workerd eviction window
 const testTimeoutMs = 120_000
 
-/**
- * The suite below is red until the client scopes its DO-RPC pull routing per DO instance, which lands in
- * the PR stacked on top of this one. Without it the module-global routing map survives reconstruction under
- * `wrangler dev`, so the drop is non-deterministic. Stacked merges require every PR below to have passing
- * checks, so the suite is gated off here and this flag is flipped to `true` alongside the fix.
- */
-const pullRoutingScopedPerInstance = false
-
-const describeDoRpcDo = Vitest.describe.skipIf(
-  pullRoutingScopedPerInstance === false || isProviderSelected('cf-do-rpc-do') === false,
-)
+const describeDoRpcDo = Vitest.describe.skipIf(isProviderSelected('cf-do-rpc-do') === false)
 
 describeDoRpcDo(`${CloudflareDoRpcProvider.doSqlite.name} sync provider — DO-RPC client reconstruction`, () => {
   const getContext = setupProviderRuntime(CloudflareDoRpcProvider.doSqlite.layer)

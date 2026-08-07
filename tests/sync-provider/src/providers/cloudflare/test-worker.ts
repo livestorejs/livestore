@@ -117,6 +117,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
 
               return yield* makeDoRpcSync({
                 syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
+                durableObjectState: this.ctx,
                 durableObjectContext: { bindingName: 'TEST_CLIENT_DO', durableObjectId: this.ctx.id.toString() },
               })({ storeId, clientId, payload }).pipe(Scope.provide(syncBackendScope), Effect.orDie)
             }),
@@ -207,7 +208,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
   }
 
   async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
-    await handleSyncUpdateRpc(payload)
+    await handleSyncUpdateRpc(this.ctx, payload)
   }
 }
 
@@ -254,7 +255,7 @@ export class StoreClientDo extends DurableObjectBase implements ClientDoWithRpcC
   }
 
   async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
-    await handleSyncUpdateRpc(payload)
+    await handleSyncUpdateRpc(this.ctx, payload)
   }
 }
 

@@ -162,6 +162,7 @@ Creates a Durable Object RPC-based sync backend (for internal use).
 
 **Options:**
 - `syncBackendStub` - Durable Object stub implementing `SyncBackendRpcInterface`
+- `durableObjectState` - The client Durable Object's `ctx` (`DurableObjectState`); scopes live-pull routing to this instance so it resets on reconstruction
 - `durableObjectContext` - Context for RPC callbacks:
   - `bindingName` - Wrangler binding name for the client DO
   - `durableObjectId` - Client Durable Object ID
@@ -171,9 +172,9 @@ Creates a Durable Object RPC-based sync backend (for internal use).
 - Real-time live pull via callbacks
 - Hibernation support
 
-### `handleSyncUpdateRpc(payload)`
+### `handleSyncUpdateRpc(ctx, payload)`
 
-Handles RPC callback for live pull updates in Durable Objects.
+Handles the RPC callback for live-pull updates in Durable Objects. Pass the client DO's `ctx` (`DurableObjectState`) so the update is routed to that instance's live pull; a reconstructed DO with no matching pull drops the update.
 
 <SNIPPETS.clientDo />
 

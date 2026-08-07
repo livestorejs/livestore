@@ -79,6 +79,7 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
   }
 
   async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
-    await handleSyncUpdateRpc(payload)
+    // @ts-expect-error TODO remove once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
+    await handleSyncUpdateRpc(this.ctx, payload)
   }
 }

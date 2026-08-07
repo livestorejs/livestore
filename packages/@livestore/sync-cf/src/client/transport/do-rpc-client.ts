@@ -27,13 +27,14 @@ type PushBatchItem = SyncMessage.PushRequest['batch'][number]
 
 export interface SyncBackendRpcStub extends CfTypes.DurableObjectStub, SyncBackendRpcInterface {}
 
-// TODO we probably need better scoping for the requestIdQueueMap (i.e. support multiple stores, ...)
-type EffectRpcRequestId = string // 0, 1, 2, ...
-const requestIdQueueMap = new Map<EffectRpcRequestId, Queue.Queue<SyncMessage.PullResponse>>()
-
 export interface DoRpcSyncOptions {
   /** Durable Object stub that implements the SyncDoRpc interface */
   syncBackendStub: SyncBackendRpcStub
+  /**
+   * State handle of the client DurableObject running this sync backend. Scopes live-pull routing to
+   * this instance so it resets when the DO is reconstructed (see {@link handleSyncUpdateRpc}).
+   */
+  durableObjectState: CfTypes.DurableObjectState
   /** Information about this DurableObject instance so the Sync DO instance can call back to this instance */
   durableObjectContext: {
     /** See `wrangler.toml` for the binding name */
@@ -49,7 +50,11 @@ export interface DoRpcSyncOptions {
  * Used internally by `@livestore/adapter-cf` to connect to the sync backend.
  */
 export const makeDoRpcSync =
-  ({ syncBackendStub, durableObjectContext }: DoRpcSyncOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
+  ({
+    syncBackendStub,
+    durableObjectState,
+    durableObjectContext,
+  }: DoRpcSyncOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
     Effect.gen(function* () {
       const isConnected = yield* SubscriptionRef.make(true)
@@ -85,11 +90,15 @@ export const makeDoRpcSync =
                   if (res._tag === 'None')
                     return shouldNeverHappen('There should at least be a no-more page info response')
 
+                  const requestId = res.value.rpcRequestId
+                  const routing = pullRoutingFor(durableObjectState)
+
                   const queue = yield* Effect.acquireRelease(Queue.unbounded<SyncMessage.PullResponse>(), (queue) =>
-                    Queue.shutdown(queue).pipe(Effect.asVoid),
+                    // Drop the routing entry on release so it can't outlive its (now shut-down) queue
+                    Effect.sync(() => routing.delete(requestId)).pipe(Effect.andThen(Queue.shutdown(queue))),
                   )
 
-                  requestIdQueueMap.set(res.value.rpcRequestId, queue)
+                  routing.set(requestId, queue)
 
                   return Stream.fromQueue(queue)
                 }).pipe(Stream.unwrap),
@@ -171,12 +180,12 @@ export const makeDoRpcSync =
  *   // ...
  *
  *   async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
- *     return handleSyncUpdateRpc(payload)
+ *     return handleSyncUpdateRpc(this.ctx, payload)
  *   }
  * }
  * ```
  */
-export const handleSyncUpdateRpc = (payload: Uint8Array<ArrayBuffer>) =>
+export const handleSyncUpdateRpc = (ctx: CfTypes.DurableObjectState, payload: Uint8Array<ArrayBuffer>) =>
   Effect.gen(function* () {
     const parser = RpcSerialization.msgPack.makeUnsafe()
     const decodedMessage = parser.decode(payload)
@@ -186,7 +195,7 @@ export const handleSyncUpdateRpc = (payload: Uint8Array<ArrayBuffer>) =>
       decodedPayload.values[0],
     )
 
-    const pullStreamQueue = requestIdQueueMap.get(decodedPayload.requestId)
+    const pullStreamQueue = pullRoutingFor(ctx).get(decodedPayload.requestId)
 
     if (pullStreamQueue === undefined) {
       // Case: DO was hibernated, so we need to manually update the store
@@ -201,3 +210,24 @@ const ResponseChunkEncoded = Schema.Struct({
   requestId: Schema.String,
   values: Schema.Array(Schema.Any),
 })
+
+type EffectRpcRequestId = string // 0, 1, 2, ...
+type PullRouting = Map<EffectRpcRequestId, Queue.Queue<SyncMessage.PullResponse>>
+
+/**
+ * Per-instance map from a live pull's request id to its response queue, keyed off the client DO's
+ * `DurableObjectState` (not a module global) for two independent reasons:
+ * - Per-instance: a reconstructed DO starts empty, so a reverse-RPC whose store is gone hits the
+ *   `handleSyncUpdateRpc` drop branch (the recovery hook) instead of a stale queue that outlived it.
+ * - Keyed by request id: a late chunk from a superseded pull generation finds no entry and is
+ *   dropped here — never reaching `SyncState.merge`, which dies on an event at/below the upstream head.
+ */
+const pullRoutingByInstance = new WeakMap<CfTypes.DurableObjectState, PullRouting>()
+
+const pullRoutingFor = (ctx: CfTypes.DurableObjectState): PullRouting => {
+  const existing = pullRoutingByInstance.get(ctx)
+  if (existing !== undefined) return existing
+  const routing: PullRouting = new Map()
+  pullRoutingByInstance.set(ctx, routing)
+  return routing
+}
