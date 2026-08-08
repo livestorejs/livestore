@@ -7,6 +7,7 @@ run_nix_gc_race_retry() {
   local task="$1"
   local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
   local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+  local daemon_socket_retry_delay="${NIX_DAEMON_SOCKET_RETRY_DELAY_SECONDS:-2}"
   local attempt=1
   local log log_dir stdout_pipe stderr_pipe rc path start now elapsed hb_pid stdout_tee_pid stderr_tee_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature saw_github_archive_503 saw_daemon_socket_failure had_errexit
 
@@ -23,36 +24,6 @@ run_nix_gc_race_retry() {
       echo "- Attempts: $attempt/$max"
       [ -z "${2:-}" ] || echo "- Note: $2"
     } >> "$GITHUB_STEP_SUMMARY"
-  }
-
-  repair_nix_daemon() {
-    if [ "${NIX_GC_RACE_SKIP_DAEMON_REPAIR:-0}" = 1 ]; then
-      echo "::warning::Nix daemon repair skipped by NIX_GC_RACE_SKIP_DAEMON_REPAIR=1"
-      return 0
-    fi
-
-    echo "::warning::Nix daemon socket is unavailable; attempting daemon restart before retry"
-
-    if command -v launchctl >/dev/null 2>&1; then
-      sudo launchctl kickstart -k system/org.nixos.nix-daemon >/dev/null 2>&1 || true
-    fi
-
-    if command -v systemctl >/dev/null 2>&1; then
-      sudo systemctl restart nix-daemon.socket >/dev/null 2>&1 || true
-      sudo systemctl restart nix-daemon.service >/dev/null 2>&1 || true
-      sudo systemctl restart nix-daemon >/dev/null 2>&1 || true
-    fi
-
-    if [ ! -S /nix/var/nix/daemon-socket/socket ] && [ -x /nix/var/nix/profiles/default/bin/nix-daemon ]; then
-      sudo /nix/var/nix/profiles/default/bin/nix-daemon --daemon >/tmp/nix-daemon-restart.log 2>&1 || true
-    fi
-
-    for _ in 1 2 3 4 5; do
-      [ -S /nix/var/nix/daemon-socket/socket ] && return 0
-      sleep 1
-    done
-
-    return 0
   }
 
   while [ "$attempt" -le "$max" ]; do
@@ -132,8 +103,7 @@ run_nix_gc_race_retry() {
     fi
 
     if [ "$saw_daemon_socket_failure" = true ]; then
-      repair_nix_daemon
-      echo "::warning::Nix daemon socket failure detected for $task (attempt $attempt/$max); retrying after daemon repair"
+      echo "::warning::Nix daemon socket failure detected for $task (attempt $attempt/$max); waiting $daemon_socket_retry_delay s for host supervision before retrying without mutating the host daemon"
     elif [ "$saw_github_archive_503" = true ]; then
       github_archive_delay_base="${NIX_GITHUB_ARCHIVE_503_BASE_DELAY_SECONDS:-15}"
       github_archive_delay=$((github_archive_delay_base * attempt + RANDOM % github_archive_delay_base))
@@ -151,6 +121,9 @@ run_nix_gc_race_retry() {
 
     [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
     rm -rf ~/.cache/nix/eval-cache-*
+    if [ "$saw_daemon_socket_failure" = true ] && [ "$attempt" -lt "$max" ]; then
+      sleep "$daemon_socket_retry_delay"
+    fi
     attempt=$((attempt + 1))
   done
 
@@ -159,4 +132,54 @@ run_nix_gc_race_retry() {
   echo "::error::Transient Nix retry exhausted for $task ($max attempts)"
   write_summary failure "Transient Nix retry exhausted"
   return 1
+}
+
+DEVENV_GC_ROOT_DIR="${RUNNER_TEMP:-/tmp}/genie-nix-gc-roots"
+DEVENV_GC_ROOT_ID=$(printf '%s' "${GITHUB_RUN_ID:-local-$$}-${GITHUB_RUN_ATTEMPT:-0}-${GITHUB_JOB:-job}" | tr -c 'A-Za-z0-9._-' '_')
+DEVENV_GC_ROOT="$DEVENV_GC_ROOT_DIR/devenv-$DEVENV_GC_ROOT_ID"
+
+resolve_devenv_once() {
+  mkdir -p "$DEVENV_GC_ROOT_DIR"
+  nix build \
+    --accept-flake-config \
+    --option extra-substituters https://devenv.cachix.org \
+    --option extra-trusted-public-keys devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw= \
+    --out-link "$DEVENV_GC_ROOT" \
+    --print-out-paths \
+    "github:cachix/devenv/$DEVENV_REV#devenv"
+}
+
+resolve_devenv() {
+  local invalid_path
+  local log
+  local rc
+
+  log=$(mktemp)
+  if resolve_devenv_once 2>"$log"; then
+    cat "$log" >&2
+    rm -f "$log"
+    return 0
+  else
+    rc=$?
+  fi
+  cat "$log" >&2
+  invalid_path=$(grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" "$log" |
+    head -1 | grep -o "/nix/store/[^']*" || true)
+  rm -f "$log"
+  [ -n "$invalid_path" ] || return "$rc"
+
+  echo "::warning::devenv resolution hit an invalid Nix store path; clearing the client eval cache and retrying once: $invalid_path" >&2
+  rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}/nix/eval-cache-"* ~/.cache/nix/eval-cache-*
+  nix-store --repair-path "$invalid_path" >/dev/null 2>&1 ||
+    nix-store --realise "$invalid_path" >/dev/null 2>&1 || true
+  if resolve_devenv_once; then
+    if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+      echo '### Recovered Nix store lifecycle incident' >> "$GITHUB_STEP_SUMMARY"
+      echo "- Invalid path: $invalid_path" >> "$GITHUB_STEP_SUMMARY"
+      echo '- Attempts: 2/2' >> "$GITHUB_STEP_SUMMARY"
+    fi
+    return 0
+  else
+    return $?
+  fi
 }
