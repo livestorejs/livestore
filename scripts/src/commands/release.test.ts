@@ -1,6 +1,26 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
 import { describe, expect, it } from 'vitest'
+import { parse } from 'yaml'
+
+import { Schema } from '@livestore/utils/effect'
 
 import { sliceChangelogSection } from './release.ts'
+
+const WorkflowStep = Schema.Struct({
+  name: Schema.optional(Schema.String),
+  run: Schema.optional(Schema.String),
+  'continue-on-error': Schema.optional(Schema.Boolean),
+})
+
+const ReleaseWorkflow = Schema.Struct({
+  jobs: Schema.Struct({
+    'publish-release': Schema.Struct({
+      steps: Schema.Array(WorkflowStep),
+    }),
+  }),
+})
 
 describe('sliceChangelogSection', () => {
   it('extracts the verbatim block for a stable version with date heading', () => {
@@ -61,6 +81,16 @@ describe('sliceChangelogSection', () => {
     )
   })
 
+  it('throws when the matching section is empty or whitespace-only', () => {
+    const empty = ['## 0.4.0', '', '## 0.3.0', '', 'old'].join('\n')
+    const whitespaceOnly = ['## 0.4.0', '', '  ', '\t', '', '## 0.3.0', '', 'old'].join('\n')
+
+    expect(() => sliceChangelogSection(empty, '0.4.0')).toThrow(/Changelog section for version 0\.4\.0 is empty/)
+    expect(() => sliceChangelogSection(whitespaceOnly, '0.4.0')).toThrow(
+      /Changelog section for version 0\.4\.0 is empty/,
+    )
+  })
+
   it('reads up to the next ## heading even with deeper ### subheadings in between', () => {
     const changelog = [
       '## 0.4.0 - 2026-06-02',
@@ -91,5 +121,39 @@ describe('sliceChangelogSection', () => {
   it('extracts the last section in the file (no following ## heading)', () => {
     const changelog = ['## 0.4.0 - 2026-06-02', '', 'final notes', ''].join('\n')
     expect(sliceChangelogSection(changelog, '0.4.0')).toBe('final notes\n')
+  })
+})
+
+describe('publish-release workflow', () => {
+  const workflowPath = fileURLToPath(new URL('../../../.github/workflows/release.yml', import.meta.url))
+  const workflow = Schema.decodeUnknownSync(ReleaseWorkflow)(parse(readFileSync(workflowPath, 'utf8')))
+  const steps = workflow.jobs['publish-release'].steps
+
+  it('creates or updates the GitHub Release only after npm publishing succeeds', () => {
+    const npmPublishIndex = steps.findIndex((step) => step.name === 'Publish stable package release')
+    const githubReleaseIndex = steps.findIndex((step) => step.name === 'Create or update GitHub Release')
+    const devtoolsPublishIndex = steps.findIndex((step) => step.name === 'Publish DevTools artifact release')
+
+    expect(npmPublishIndex).toBeGreaterThan(-1)
+    expect(githubReleaseIndex).toBeGreaterThan(npmPublishIndex)
+    expect(devtoolsPublishIndex).toBeGreaterThan(githubReleaseIndex)
+
+    const npmPublishStep = steps[npmPublishIndex]!
+    const githubReleaseStep = steps[githubReleaseIndex]!
+    const githubReleaseScript = githubReleaseStep.run!
+
+    expect(npmPublishStep['continue-on-error']).not.toBe(true)
+    expect(githubReleaseStep['continue-on-error']).not.toBe(true)
+    expect(githubReleaseScript).toContain('::error::Missing or empty committed GitHub Release notes: $notes_path')
+    expect(githubReleaseScript).toContain(`grep -q '[^[:space:]]' "$notes_path"`)
+    expect(githubReleaseScript).toContain('exit 1')
+    expect(githubReleaseScript).toContain('gh release view')
+    expect(githubReleaseScript).toContain('gh release edit')
+    expect(githubReleaseScript).toContain('gh release create')
+    expect(githubReleaseScript).toContain('--target "$GITHUB_SHA"')
+    expect(githubReleaseScript).toContain('--notes-file "$notes_path"')
+    expect(githubReleaseScript).toContain('prerelease_args+=(--prerelease)')
+    expect(githubReleaseScript).not.toMatch(/--notes(?:\s|")/)
+    expect(githubReleaseScript).not.toContain('gh release upload')
   })
 })
