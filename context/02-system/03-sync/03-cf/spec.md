@@ -42,7 +42,13 @@ arbitrates pushes and fans out live pull streams to subscribers
   uninterruptible background fiber re-chunks the batch and emits to two
   subscriber sets — hibernatable WebSockets (per-socket `pullRequestIds`
   attachments; hand-crafted RPC chunk frames) and DO-RPC subscriptions (an
-  in-memory map fed by live pulls).
+  in-memory map fed by live pulls). Each DO-RPC callback carries the
+  subscription's `storeId` (`push.ts` → `emitStreamResponse` →
+  `syncUpdateRpc(payload, storeId)`), so a client DO that was evicted and
+  reconstructed can re-boot its store — whose boot catches up — before
+  delivering, instead of dropping the update; the client-side re-boot is
+  `04-runtime`'s adapter concern
+  ([.decisions/0002-reverse-rpc-storeid-recovery.md](./.decisions/0002-reverse-rpc-storeid-recovery.md)).
 - **BackendId** (`layer.ts:98-114`): `nanoid()` on first context build,
   persisted in `contextTable`; pull/push carrying a different backendId
   fail with `BackendIdMismatchError` (client records it lazily from pull
@@ -78,9 +84,6 @@ Object hosting a store) is `04-runtime/`'s adapter concern
 
 Current reality a consumer must not read as guaranteed behavior:
 
-- **Hibernated DO-RPC clients drop live updates.** When the client DO was
-  hibernated, the pull-stream queue is gone and the update is only logged,
-  not applied (`client/transport/do-rpc-client.ts:189-197`; issue #1415).
 - **Cross-store subscription bleed risk.** The DO-RPC client's
   `requestIdQueueMap` is module-global with a scoping TODO
   (`do-rpc-client.ts:30`; issue #1416).
