@@ -57,6 +57,47 @@ sequenceDiagram
 Manual contrib release dispatch accepts an explicit version but must use a
 version already published by core (LS.DEL.REL-R05).
 
+## Registry Verification (LS.DEL.REL-R08, LS.DEL.REL-R09)
+
+Publishing is not complete when `npm publish` exits zero — it is complete when
+the registry serves what we intended. `publishReleasePackages`
+(`scripts/src/commands/release.ts`) therefore verifies each package after
+publishing and fails the release if the registry disagrees.
+
+Stable publishing passes `--provenance` under GitHub Actions, so the released
+artifact carries a SLSA attestation minted from the job's OIDC identity
+(LS.DEL.REL-R09).
+
+Three properties are checked per package against `npm view`:
+
+| Property | Source | Disagreement means |
+| --- | --- | --- |
+| version visible | `npm view <pkg>@<version>` | not propagated yet, or publish silently failed |
+| tarball digest | `dist.integrity` | the registry serves a different artifact than we packed |
+| dist-tag target | `npm view <pkg> dist-tags` | the release published but nothing resolves to it |
+
+The digest check applies only to packages this run actually packed and published.
+A re-run repairing a partial release (`--allow-existing`) skips packages already
+on the registry, and those have no local artifact to compare against — they are
+version- and dist-tag-verified only.
+
+Outcomes are a tagged union so retry policy is explicit rather than implied:
+
+- `pending` — the registry has not converged. Retried on a bounded schedule;
+  exhausting it fails the release.
+- `mismatch` — the registry contradicts what we published. Never retried: a
+  published version is immutable on npm, so only a human can resolve it.
+
+The dist-tag check is the one that closes the silent-drift gap. A publish can
+succeed while `latest` still resolves to the previous release, in which case
+`release/version.json` advances but `npm install` keeps serving the old version.
+Checking it at release time makes that a failed release instead of a defect
+discovered later from the outside.
+
+This mirrors the cohort verification the snapshot path performs inline in
+`release.yml` ("Verify complete immutable registry cohort"), so stable and
+snapshot releases are held to the same standard.
+
 ## Breaking-Change Mechanics (LS.DEL.REL-R06)
 
 Beta releases may break in three distinct ways (user-facing promise:

@@ -429,6 +429,8 @@ in
     # tolerated, and `quarantine:check` validates the ledger.
     effectUtilsPackages.ci-tools
     effectUtils.packages.${pkgs.system}.megarepo
+    # Shared npm release verification; see scripts/src/commands/release.ts
+    effectUtilsPackages.npm-release
     pkgs.jq
     pkgs.unzip
     pkgs.deno
