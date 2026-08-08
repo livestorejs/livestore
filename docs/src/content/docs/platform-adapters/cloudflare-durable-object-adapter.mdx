@@ -111,9 +111,16 @@ Creates a LiveStore instance inside a Durable Object.
 - `logger?` – Optional Effect logger layer to customize formatting/output
 - `logLevel?` – Optional minimum log level (use `"None"` to disable logs)
 
-### `syncUpdateRpc(payload)`
+### `syncUpdateRpc(payload, storeId?)`
 
-Client Durable Objects must implement this method so the sync backend can deliver live updates. `createStoreDoPromise` wires it up automatically—just forward the DO's `ctx` and the payload to `handleSyncUpdateRpc(ctx, payload)` (see the client Durable Object example above).
+Client Durable Objects must implement this method so the sync backend can deliver live updates over reverse-RPC. Forward the DO's `ctx` and the `payload` to `handleSyncUpdateRpc(ctx, payload)` (see the client Durable Object example above).
+
+The sync backend passes the subscription's `storeId` as an optional trailing argument, so implementing this method without it stays valid. A Durable Object can be evicted and reconstructed at any time, so a reverse-RPC may arrive at a DO that no longer holds its store in memory. You choose how to handle that:
+
+- **Eager (stay in sync):** re-boot the store before delivering — set `this.storeId = storeId`, then `await this.getStore()` (idempotent, and its boot runs a catch-up pull that recovers any events missed while the DO was gone). The client then behaves like a hibernating WebSocket client: in sync whenever awake, and it hibernates to $0 when no events arrive.
+- **Reactive (recover lazily):** skip the re-boot (omit the `storeId` parameter entirely). A store-less wake drops that one live update; the events are re-fetched on the next store access (e.g. the next `fetch` that calls `getStore`). Simpler, but live updates are not applied between reconstructions.
+
+`storeId` flows to your store boot, not into `handleSyncUpdateRpc` (routing doesn't need it).
 
 ## Resetting LiveStore persistence (development only)
 
