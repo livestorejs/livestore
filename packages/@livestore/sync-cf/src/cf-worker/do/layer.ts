@@ -5,7 +5,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Context, Effect, Layer, Predicate, Semaphore } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import type { Env, MakeDurableObjectClassOptions, RpcSubscription } from '../shared.ts'
+import type { Env, MakeDurableObjectClassOptions } from '../shared.ts'
 import { contextTable, eventlogTable } from './sqlite.ts'
 import { makeStorage, type StorageEngine, type SyncStorage } from './sync-storage.ts'
 
@@ -34,7 +34,6 @@ export interface Service {
   readonly doOptions: MakeDurableObjectClassOptions | undefined
   readonly env: Env
   readonly ctx: CfTypes.DurableObjectState
-  readonly rpcSubscriptions: Map<string, RpcSubscription>
 }
 
 export class DoCtx extends Context.Service<DoCtx, Service>()('@livestore/sync-cf/DoCtx') {}
@@ -120,8 +119,6 @@ export const make = Effect.fn(
           currentHeadRef.current = currentHead
         }
 
-        const rpcSubscriptions = new Map<string, RpcSubscription>()
-
         const storageCache = {
           storeId,
           backendId,
@@ -132,7 +129,6 @@ export const make = Effect.fn(
           doOptions,
           env: doSelf.env,
           ctx: doSelf.ctx,
-          rpcSubscriptions,
         }
 
         cacheHost[CacheSymbol] = storageCache
