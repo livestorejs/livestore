@@ -78,10 +78,8 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
     return this.subscribeToStore()
   }
 
-  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>, storeId?: string) {
-    // The reverse-RPC carries the storeId, so a reconstructed (store-less) DO can re-boot before
-    // delivering. `getStore` is idempotent and its boot catches up on the missed events.
-    if (storeId !== undefined) this.storeId = storeId
+  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>, storeId: string) {
+    this.storeId = storeId
     await this.getStore()
     // @ts-expect-error TODO remove once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
     await handleSyncUpdateRpc(this.ctx, payload)

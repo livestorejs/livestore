@@ -173,7 +173,7 @@ export const makeDoRpcSync =
 /**
  * Routes a reverse-RPC update from the sync backend into this client's live pull.
  *
- * The backend passes the subscription's `storeId` as an optional trailing argument to
+ * The backend passes the subscription's `storeId` as a required trailing argument to
  * `syncUpdateRpc`, so a reconstructed (store-less) DO can re-boot its store — whose boot runs a
  * catch-up pull — before delivering. Skip the re-boot and a store-less wake drops the update.
  * `storeId` flows to your store boot, not into `handleSyncUpdateRpc` (routing doesn't need it).
@@ -185,7 +185,7 @@ export const makeDoRpcSync =
  * export class MyDurableObject extends DurableObject implements ClientDoWithRpcCallback {
  *   // ...
  *
- *   async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>, storeId?: string) {
+ *   async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>, storeId: string) {
  *     await this.getStore(storeId) // idempotent: re-boots + catches up when the DO was reconstructed
  *     return handleSyncUpdateRpc(this.ctx, payload)
  *   }

@@ -242,8 +242,8 @@ export class StoreClientDo extends DurableObjectBase implements ClientDoWithRpcC
     return { instanceId: this.instanceId, todoIds }
   }
 
-  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>, storeId?: string) {
-    if (storeId !== undefined) await this.#boot(storeId)
+  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>, storeId: string) {
+    await this.#boot(storeId)
     await handleSyncUpdateRpc(this.ctx, payload)
   }
 

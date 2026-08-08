@@ -34,11 +34,14 @@ export interface ClientDoWithRpcCallback {
   __DURABLE_OBJECT_BRAND: never
   /**
    * Reverse-RPC entry point the sync backend calls to deliver a live update. The subscription's
-   * `storeId` is passed as an optional trailing argument so a reconstructed (store-less) DO can
-   * re-boot its store before delivering — a store-less wake would otherwise drop the update.
-   * Optional and trailing keeps this non-breaking: implementors that ignore it need not change.
+   * `storeId` is passed as a required trailing argument so a reconstructed (store-less) DO can
+   * re-boot its store before delivering — a store-less wake would otherwise drop the update. The
+   * backend always has it (required on the subscription record), so an eager client can rely on
+   * its presence instead of guarding a case that cannot occur. Requiring it stays non-breaking:
+   * implementors that ignore recovery may still declare a one-arg `syncUpdateRpc(payload)`, which
+   * remains assignable to this type.
    */
-  syncUpdateRpc: (payload: Uint8Array<ArrayBuffer>, storeId?: string) => Promise<void>
+  syncUpdateRpc: (payload: Uint8Array<ArrayBuffer>, storeId: string) => Promise<void>
 }
 
 /**

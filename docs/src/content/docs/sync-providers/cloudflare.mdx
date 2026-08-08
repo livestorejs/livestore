@@ -174,7 +174,7 @@ Creates a Durable Object RPC-based sync backend (for internal use).
 
 ### `handleSyncUpdateRpc(ctx, payload)`
 
-Handles the RPC callback for live-pull updates in Durable Objects. Pass the client DO's `ctx` (`DurableObjectState`) so the update is routed to that instance's live pull. The `syncUpdateRpc` method also receives the subscription's `storeId` as an optional trailing argument: a reconstructed (store-less) DO can re-boot its store from it and catch up rather than drop the update — see [the Durable Object adapter's recovery options](/platform-adapters/cloudflare-durable-object-adapter).
+Handles the RPC callback for live-pull updates in Durable Objects. Pass the client DO's `ctx` (`DurableObjectState`) so the update is routed to that instance's live pull. The `syncUpdateRpc` method also receives the subscription's `storeId` as a required trailing argument: a reconstructed (store-less) DO can re-boot its store from it and catch up rather than drop the update — see [the Durable Object adapter's recovery options](/platform-adapters/cloudflare-durable-object-adapter).
 
 <SNIPPETS.clientDo />
 

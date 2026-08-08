@@ -19,7 +19,7 @@ one-way `idFromName(storeId)`, so the storeId could not be recovered locally.
 - **(a) Thread `storeId` through the reverse-RPC — chosen.** The fan-out
   already knows each subscription's `storeId`; pass it into
   `emitStreamResponse` and on to the client's `syncUpdateRpc(payload, storeId)`
-  as an optional trailing argument. A store-less wake can then re-boot its
+  as a required trailing argument. A store-less wake can then re-boot its
   store (boot runs a catch-up pull)
   before delivering. Recovery stays the client/adapter's choice (eager
   re-boot vs lazy), keeping the provider mechanism-only.
@@ -48,9 +48,11 @@ Implementation: `common-cf/src/do-rpc/server.ts` (interface +
 - Supersedes 0001's accepted #1415 consequence: DO-RPC live delivery now
   survives client-DO reconstruction for eager clients, without pinning the DO
   awake — hibernation-to-$0 is preserved.
-- `syncUpdateRpc` gains an optional trailing `storeId` parameter, so the
-  change is non-breaking: existing `ClientDoWithRpcCallback` implementors
-  compile unchanged, and only clients that want recovery read it to re-boot
-  on a store-less wake.
+- `syncUpdateRpc` gains a required trailing `storeId` parameter. The backend
+  always supplies it (it is a required field on the subscription record), so an
+  eager client can rely on its presence instead of guarding a case that cannot
+  occur. Requiring it stays non-breaking: implementors that ignore recovery may
+  still declare a one-arg `syncUpdateRpc(payload)` (fewer parameters remain
+  assignable to the interface), and the sole caller already passes it.
 - Client-side recovery (re-boot + catch-up, or lazy opt-out) is the
   `04-runtime` adapter's concern; see that node's spec §Eviction and Resume.
