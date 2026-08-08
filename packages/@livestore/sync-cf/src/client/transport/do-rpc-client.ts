@@ -171,12 +171,9 @@ export const makeDoRpcSync =
     }).pipe(Effect.withSpan('rpc-sync-client:makeDoRpcSync'))
 
 /**
- * Routes a reverse-RPC update from the sync backend into this client's live pull.
+ * Routes an update from the sync backend into this client's live pull.
  *
- * The backend passes the subscription's `storeId` as a required trailing argument to
- * `syncUpdateRpc`, so a reconstructed (store-less) DO can re-boot its store — whose boot runs a
- * catch-up pull — before delivering. Skip the re-boot and a store-less wake drops the update.
- * `storeId` flows to your store boot, not into `handleSyncUpdateRpc` (routing doesn't need it).
+ * Only `ctx` and `payload` go here; `storeId` is for reloading your store on a rebuilt DO (see example).
  *
  * ```ts
  * import { DurableObject } from 'cloudflare:workers'
@@ -186,7 +183,7 @@ export const makeDoRpcSync =
  *   // ...
  *
  *   async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>, storeId: string) {
- *     await this.getStore(storeId) // idempotent: re-boots + catches up when the DO was reconstructed
+ *     await this.getStore(storeId)
  *     return handleSyncUpdateRpc(this.ctx, payload)
  *   }
  * }
