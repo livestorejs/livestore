@@ -38,6 +38,18 @@ Builds on [../requirements.md](../requirements.md) and
   2026-07-19 (#1465, store
   [`.decisions/0001`](../../05-store/.decisions/0001-client-session-shutdown-drain.md)).
   `refines: LS.SYS.STORE-R07`
+- **LS.SYS.SYNC.PROC-R04 Prefix-fenced upstream propagation:** At both the
+  session→leader and leader→backend boundaries, a rejected push or an
+  uncertain in-flight result fences every later pending event at that boundary.
+  Local commits remain synchronously admitted and materialized, but the driver
+  must not send them past the unresolved prefix. Pull reconciliation either
+  confirms an accepted prefix or rebases the complete remaining suffix; only
+  then may the driver reseed its FIFO from current pending and resume. An
+  upstream accepts or rejects a pushed batch as a unit and does not acknowledge
+  success before admission is complete. Adopted 2026-07-31 from SF-03 reduction
+  evidence and maintainer review; see
+  [decision 0001](./.decisions/0001-prefix-fence-unresolved-upstream.md).
+  `refines: LS.SYS.SYNC.SS-R03, LS.SYS.STORE-R04`
 
 Further processor requirements (e.g. the crash-atomicity contract of batch
 materialization) remain open pending `LS.SYS.STATE-DQ2`;

@@ -70,6 +70,9 @@ export interface MakeLeaderThreadLayerParams {
       delays?: {
         localPushProcessing?: Effect.Effect<void>
       }
+      hooks?: {
+        localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
+      }
     }
   }
 }
@@ -187,7 +190,7 @@ export const makeLeaderThreadLayer = ({
         }),
       },
       testing: {
-        ...omitUndefineds({ delays: testing?.syncProcessor?.delays }),
+        ...omitUndefineds({ delays: testing?.syncProcessor?.delays, hooks: testing?.syncProcessor?.hooks }),
       },
     })
 

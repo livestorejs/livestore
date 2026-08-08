@@ -30,16 +30,29 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
 - **Local pushes** (`:235-239, 263-296`): `localPushesQueue` holds
   `[event, deferred]` items; a background fiber drains
   `takeBetween(1, localPushBatchSize)` per cycle (default 10, `:214`).
-  `validatePushBatch` (`:1024-1054`) requires strictly ascending batches
+  `validatePushBatch` requires strictly ascending batches
   (`NonMonotonicBatchError`) whose first event is ahead of
-  `pushHeadRef.current` (`LeaderAheadError`); `pushHead` advances on push
-  and on every pull merge (`:648, 521`).
+  `pushHeadRef.current` (`LeaderAheadError`) and whose complete sequence/parent
+  chain is contiguous with that head (`NonContiguousBatchError`). Parent
+  continuity compares global/client position because a confirmed leader head
+  and a rebased session head may name the same position with different local
+  generations. Admission atomically records explicit per-item reservations
+  before queue publication; a reservation survives queue take and is released
+  only when its item is applied, dropped, or rejected. Pull reconciliation
+  derives `pushHead` from the authoritative head plus those live reservations,
+  so in-flight or old-generation suffixes cannot leave a ghost fence or expose
+  an unfenced gap (see
+  [.decisions/0002-explicit-leader-push-reservations.md](./.decisions/0002-explicit-leader-push-reservations.md)).
 - **Generations** (`:271-296, 321-366`): each queued item carries its
   seqNum's `rebaseGeneration`. After acquiring the mutex, items with a
   stale generation are dropped and their deferreds failed with
   `StaleRebaseGenerationError`. A merge `reject` fails the batch's
   deferreds with `LeaderAheadError`, bumps the generation, and drains
-  same-generation queued items — sessions rebase and re-push.
+  same-generation queued items present at that moment — sessions rebase and
+  re-push. The session driver fences later arrivals until that reconciliation;
+  leader-side contiguous-chain validation rejects a later suffix that bypasses
+  the fence (see resolved
+  [DELTA-001](./.delta/DELTA-001-session-rejection-prefix-bypass.md)).
 - **Backend pushing** (`:575-637`): drains
   `takeBetween(1, backendPushBatchSize)` (default 50, `:215`), pushes
   `toGlobal()` batches. Retry: `Schedule.exponential(1s)` clamped to 30s,
@@ -69,7 +82,9 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   is **not crash-atomic across the two databases**: a process death
   between the two COMMITs can diverge state from eventlog (healed only by
   state rebuild when the state DB is absent — see
-  `../../02-state/01-sqlite/`).
+  `../../02-state/01-sqlite/`). Local push acknowledgements are completed only
+  after the batch is materialized, published in leader sync state, offered to
+  session pull queues, and queued for backend propagation.
 - **Boot** (`:684-755`): initial sync state rehydrates from the eventlog
   (`../../04-runtime/spec.md` Leadership Handover); error routing via
   `onError: ignore|shutdown` and `BackendIdMismatchError` handling
@@ -80,13 +95,18 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
 `sync/ClientSessionSyncProcessor.ts`. One unbounded STM `leaderPushQueue`
 (`:104`) decouples `push()` (synchronous commit path) from leader I/O:
 
-- **Push** (`:341-343`): synchronously merge into local sync state and enqueue
+- **Push** (`:454-456`): synchronously merge into local sync state and enqueue
   the merge's `newEvents` without waiting for pull/rebase ownership; a background fiber drains
-  `takeBetween(1, leaderPushBatchSize)` and pushes to the leader (`:128-129`).
+  `takeBetween(1, leaderPushBatchSize)` and pushes to the leader (`:153-168`).
   Coalescing is opportunistic (whatever accumulated while the previous
   push was in flight); there is no time-based debounce. A rejected push
-  clears the whole queue (`:130-133`) — events are re-derived from the
-  next pull.
+  records the unresolved batch, clears the queue, and parks the sole worker.
+  Later commits remain synchronous and accumulate in pending/the FIFO without
+  crossing the boundary. Pull recovery atomically reseeds the FIFO from live
+  pending and restarts the worker. Rejection transition setup serializes with
+  pull so a late response cannot install a fence after that pull already
+  recovered the batch (resolved
+  [DELTA-001](./.delta/DELTA-001-session-rejection-prefix-bypass.md)).
 - **Pull** (`:145-168, 226-253`): a lazily-restarted stream from the
   leader (cursor = current `upstreamHead`) feeds `SyncState.merge`; a
   `reject` from upstream is impossible and dies (`:162-165`). New events
@@ -103,9 +123,9 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   `Effect.runSyncWith` as an indivisible unit that can only interleave in the
   pull fiber's async gaps, so a synchronous commit admitted during a rebase
   park is folded into the reconciliation instead of being torn away by the
-  clear. This replaces the earlier blocking `rebaseOwnership` permit on `push`,
-  which violated the synchronous-commit invariant (LS.SYS.STORE-R09) by
-  suspending the commit path (see `.decisions/`, #1465). Deterministic
+  clear. This replaces the earlier design where `push` acquired the pull-
+  reconciliation mutex, which violated the synchronous-commit invariant
+  (LS.SYS.STORE-R09) by suspending the commit path (see `.decisions/`, #1465). Deterministic
   `rebaseBarriers` hooks at 3 labeled points let tests inject a concurrent
   push/shutdown into this window (the F1 no-loss oracle).
 - **Shutdown drain:** orderly shutdown closes new `push()` admission, stops
