@@ -32,7 +32,13 @@ const erasedJsonCodec = (schema: Schema.Top) =>
 
 export interface ClientDoWithRpcCallback {
   __DURABLE_OBJECT_BRAND: never
-  syncUpdateRpc: (payload: Uint8Array<ArrayBuffer>) => Promise<void>
+  /**
+   * Reverse-RPC entry point the sync backend calls to deliver a live update. The subscription's
+   * `storeId` is passed as an optional trailing argument so a reconstructed (store-less) DO can
+   * re-boot its store before delivering — a store-less wake would otherwise drop the update.
+   * Optional and trailing keeps this non-breaking: implementors that ignore it need not change.
+   */
+  syncUpdateRpc: (payload: Uint8Array<ArrayBuffer>, storeId?: string) => Promise<void>
 }
 
 /**
@@ -208,11 +214,13 @@ export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(functio
   callerContext,
   env,
   requestId,
+  storeId,
   values,
 }: {
   env: Record<string, any>
   callerContext: { bindingName: string; durableObjectId: string }
   requestId: string
+  storeId: string
   values: ReadonlyArray.NonEmptyReadonlyArray<any>
 }) {
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- CF worker env bindings are typed as Record<string, any>; narrowing to known DO namespace
@@ -233,7 +241,7 @@ export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(functio
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- msgPack parser.encode returns unknown; the encoded result is a byte payload
   const serializedRes = parser.encode(res) as Uint8Array<ArrayBuffer>
 
-  yield* Effect.tryPromise(() => clientDo.syncUpdateRpc(serializedRes))
+  yield* Effect.tryPromise(() => clientDo.syncUpdateRpc(serializedRes, storeId))
 })
 
 /**

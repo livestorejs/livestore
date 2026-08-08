@@ -26,8 +26,8 @@ describeDoRpcDo(`${CloudflareDoRpcProvider.doSqlite.name} sync provider — DO-R
   const getContext = setupProviderRuntime(CloudflareDoRpcProvider.doSqlite.layer)
 
   Vitest.live(
-    'a reconstructed DO-RPC client store drops the reverse-RPC update from its materialized state',
-    () => storeDropsLiveUpdateAfterClientReconstruction.pipe(Effect.provide(getContext())),
+    'a reconstructed DO-RPC client store recovers the reverse-RPC update via re-boot and catch-up',
+    () => storeRecoversLiveUpdateAfterClientReconstruction.pipe(Effect.provide(getContext())),
     testTimeoutMs,
   )
 })
@@ -37,7 +37,7 @@ const catchupClient = EventFactory.clientIdentity('do-rpc-client-catchup', 'do-r
 
 type StoreProbe = { instanceId: string; todoIds: ReadonlyArray<string> }
 
-/** Boots the subscriber store inside StoreClientDo (livePull). Never re-boots — a reverse-RPC wake stays store-less. */
+/** Triggers the initial store boot inside StoreClientDo (a livePull subscriber). */
 const bootStoreClient = ({ port, storeId }: { port: number; storeId: string }) =>
   Effect.promise(() => fetch(`http://localhost:${port}/store/boot?storeId=${storeId}`, { method: 'POST' }))
 
@@ -90,21 +90,21 @@ const awaitClientReconstruction = ({
     return yield* new SyncDoProbeError({ message: 'client DO never reconstructed within the idle windows' })
   })
 
-// A DO-RPC client store loses a live update once it is reconstructed. Unlike the transport-level view,
-// this observes the client's OWN materialized state via the store API — heal-free — so the drop is real.
+// A reconstructed DO-RPC client store recovers a live update pushed while it was gone. We observe the
+// client's OWN materialized state via the store API — heal-free — so the recovery is real, not a probe artifact.
 //
-//   writer ──push──►  server  ──reverse-RPC──►  StoreClientDo (real subscriber store, livePull)
+//   writer ──push──►  server  ──reverse-RPC (carries storeId)──►  StoreClientDo (real subscriber store, livePull)
 //                     (subscription persisted in the server's KV)
 //
-//   1. boot + warm          push "before"  ──►  reverse-RPC applied + persisted to eventlog          ✓
+//   1. boot + warm          push "before"  ──►  reverse-RPC applied + persisted to eventlog             ✓
 //   2. idle the CLIENT ~14s  ──►  it evicts & rebuilds  ──►  its per-instance pull-routing map = { }
 //      (the server is probed every 3s, so only the client sleeps)
-//   3. rebuilt              push "after"   ──►  server still reverse-RPCs the client, but
-//      handleSyncUpdateRpc finds no queue for the request id ──►  update dropped, never persisted
+//   3. rebuilt              push "after"   ──►  the reverse-RPC carries the storeId, so the store-less
+//      wake re-boots the store; its catch-up pull recovers "after" ──►  applied + persisted             ✓
 //
-// Contract: the test passes by asserting the DROP — the reconstructed client's todos never gain
-// "after-reconstruct". When the client-recovery fix lands, flip the last assertion to `toContain`.
-const storeDropsLiveUpdateAfterClientReconstruction = Effect.gen(function* () {
+// Contract: the reconstructed client's materialized todos gain BOTH "before-reconstruct" and
+// "after-reconstruct" (the pre-recovery version asserted the drop via `not.toContain`).
+const storeRecoversLiveUpdateAfterClientReconstruction = Effect.gen(function* () {
   const { makeProvider, port } = yield* syncProvider
   const storeId = `do-rpc-client-reconstruction-${nanoid()}`
 
@@ -132,15 +132,17 @@ const storeDropsLiveUpdateAfterClientReconstruction = Effect.gen(function* () {
 
   yield* writer.push([writerFactory.todoCreated.next({ id: 'after-reconstruct', text: 'after', completed: false })])
 
-  // A brand-new subscriber still receives "after-reconstruct" from the server: proof the drop below is the
-  // reconstructed client losing it, not a broken push that would pass the negative assertion vacuously.
+  // A brand-new subscriber still receives "after-reconstruct" from the server: proof the push actually
+  // reached the backend, so the recovery below is the reconstructed client catching up — not a vacuous pass.
   const catchup = yield* makeProvider({ storeId, clientId: catchupClient.clientId, payload: undefined })
   yield* catchup.connect
   const catchupReceived = yield* collectReceivedIds(catchup)
   yield* awaitDelivery({ received: catchupReceived, id: 'after-reconstruct' })
 
-  // Heal-free read: "before" survived the eviction; "after" was dropped by the store-less reverse-RPC wake.
+  // Recovery: the store-less reverse-RPC wake re-boots the store, which catches up — so "after" now
+  // materializes on the reconstructed client too.
+  yield* awaitPersisted({ port, storeId, id: 'after-reconstruct' })
   const finalProbe = yield* probeStoreClient({ port, storeId })
   expect(finalProbe.todoIds).toContain('before-reconstruct')
-  expect(finalProbe.todoIds).not.toContain('after-reconstruct')
+  expect(finalProbe.todoIds).toContain('after-reconstruct')
 })

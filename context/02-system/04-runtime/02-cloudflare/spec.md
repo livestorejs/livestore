@@ -72,6 +72,18 @@ through the ordinary leader boot rehydration path
 ([../spec.md](../spec.md) Leadership Handover): upstream head and pending
 events are re-derived from DO storage and pending events are re-pushed.
 
+Live-pull delivery has its own reconstruction path. The sync backend
+delivers updates by calling the client DO's `syncUpdateRpc(payload, storeId)`
+reverse-RPC (`ClientDoWithRpcCallback`), a call that also wakes an evicted
+DO. Because the backend passes the subscription's `storeId`, a store-less
+wake can re-boot its store (`getStore(storeId)`, idempotent; its boot runs a
+catch-up pull) before forwarding the payload to
+`handleSyncUpdateRpc(ctx, payload)` — so a reconstructed client recovers the
+pushed update rather than dropping it (LS.SYS.RT.CF-R03). Opting out (no
+re-boot) drops that one live update and recovers lazily on the next store
+access. The provider side that threads `storeId` is `03-sync/03-cf`'s concern
+([../../03-sync/03-cf/.decisions/0002-reverse-rpc-storeid-recovery.md](../../03-sync/03-cf/.decisions/0002-reverse-rpc-storeid-recovery.md)).
+
 ## Open Design Questions
 
 - **LS.SYS.RT.CF-DQ1 Flush durability scope.** The commit-loss window is
