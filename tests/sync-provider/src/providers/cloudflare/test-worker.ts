@@ -2,10 +2,10 @@
 
 import { DurableObject } from 'cloudflare:workers'
 
-import { createStoreDoPromise, makeAdapter } from '@livestore/adapter-cloudflare'
+import { createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { type ClientDoWithRpcCallback, setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
 import type { CfDeclare } from '@livestore/common-cf/declare'
-import { createStore, provideOtel, type Store } from '@livestore/livestore'
+import { type Store } from '@livestore/livestore'
 import { schema, tables } from '@livestore/livestore/internal/testing-utils'
 import {
   type CfTypes,
@@ -214,8 +214,8 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
 
 /**
  * A real LiveStore client running inside a DO: it boots a store that subscribes to the sync backend,
- * so a reverse-RPC update is applied to (and persisted in) its own eventlog. Used to observe that a
- * reconstructed client drops the update, via a heal-free read of the persisted eventlog.
+ * so a reverse-RPC update is applied to (and materialized in) its own store. On reconstruction the
+ * store-less wake re-boots from the storeId carried in the reverse-RPC and catches up.
  */
 export class StoreClientDo extends DurableObjectBase implements ClientDoWithRpcCallback {
   __DURABLE_OBJECT_BRAND = 'ClientDO' as never
@@ -223,7 +223,7 @@ export class StoreClientDo extends DurableObjectBase implements ClientDoWithRpcC
   ctx: CfTypes.DurableObjectState
   /** Never persisted: a different id means this DO was evicted and rebuilt. */
   instanceId = crypto.randomUUID()
-  /** The live `livePull` subscriber. A reverse-RPC wake never boots it, so a reconstructed DO stays store-less. */
+  /** The live `livePull` subscriber. Dropped on reconstruction; a reverse-RPC wake re-boots it. */
   #store: Store<typeof schema> | undefined
 
   constructor(state: CfTypes.DurableObjectState, env: Env) {
@@ -233,6 +233,21 @@ export class StoreClientDo extends DurableObjectBase implements ClientDoWithRpcC
   }
 
   async bootStore(storeId: string): Promise<void> {
+    await this.#boot(storeId)
+  }
+
+  /** Materialized todos read from the (possibly just-recovered) store. */
+  async getStoreProbe(_storeId: string): Promise<{ instanceId: string; todoIds: string[] }> {
+    const todoIds = this.#store === undefined ? [] : this.#store.query(tables.todos).map((todo) => todo.id)
+    return { instanceId: this.instanceId, todoIds }
+  }
+
+  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>, storeId?: string) {
+    if (storeId !== undefined) await this.#boot(storeId)
+    await handleSyncUpdateRpc(this.ctx, payload)
+  }
+
+  async #boot(storeId: string): Promise<void> {
     if (this.#store !== undefined) return
     this.#store = await createStoreDoPromise({
       schema,
@@ -243,19 +258,6 @@ export class StoreClientDo extends DurableObjectBase implements ClientDoWithRpcC
       syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
       livePull: true,
     })
-  }
-
-  /** Materialized todos via the store API. A store-less DO (post-reconstruction) reads through a backend-less store that can't heal the drop. */
-  async getStoreProbe(storeId: string): Promise<{ instanceId: string; todoIds: string[] }> {
-    const todoIds =
-      this.#store === undefined
-        ? await readPersistedTodoIds({ storage: this.ctx.storage, storeId })
-        : this.#store.query(tables.todos).map((todo) => todo.id)
-    return { instanceId: this.instanceId, todoIds }
-  }
-
-  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
-    await handleSyncUpdateRpc(this.ctx, payload)
   }
 }
 
@@ -324,25 +326,3 @@ type SyncBackendArgs = {
   storeId: string
   payload: any
 }
-
-/**
- * Reads the materialized todos through a transient store over the DO's persisted storage.
- * No sync backend => no boot catch-up pull => the read can't heal a dropped update.
- */
-const readPersistedTodoIds = ({
-  storage,
-  storeId,
-}: {
-  storage: CfTypes.DurableObjectStorage
-  storeId: string
-}): Promise<string[]> =>
-  Effect.gen(function* () {
-    const adapter = makeAdapter({
-      clientId: 'store-client-do',
-      sessionId: 'store-client-do-session',
-      storage,
-      syncOptions: { initialSyncOptions: { _tag: 'Skip' } },
-    })
-    const store = yield* createStore({ schema, adapter, storeId })
-    return store.query(tables.todos).map((todo) => todo.id)
-  }).pipe(Effect.scoped, provideOtel({}), Effect.runPromise)

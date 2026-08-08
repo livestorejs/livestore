@@ -139,8 +139,10 @@ const storeDropsLiveUpdateAfterClientReconstruction = Effect.gen(function* () {
   const catchupReceived = yield* collectReceivedIds(catchup)
   yield* awaitDelivery({ received: catchupReceived, id: 'after-reconstruct' })
 
-  // Heal-free read: "before" survived the eviction; "after" was dropped by the store-less reverse-RPC wake.
+  // Recovery: the store-less reverse-RPC wake re-boots the store, which catches up — so "after" now
+  // materializes on the reconstructed client too.
+  yield* awaitPersisted({ port, storeId, id: 'after-reconstruct' })
   const finalProbe = yield* probeStoreClient({ port, storeId })
   expect(finalProbe.todoIds).toContain('before-reconstruct')
-  expect(finalProbe.todoIds).not.toContain('after-reconstruct')
+  expect(finalProbe.todoIds).toContain('after-reconstruct')
 })
