@@ -25,7 +25,6 @@ import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'
 
 /** Cloudflare HTTP-specific tests for response headers and HTTP transport features */
 
-/** Event factory + client identity for building a real push in the payload-threading regression test (#1417). */
 const makeFactory = EventFactory.makeFactory(events)
 const eventClient = EventFactory.clientIdentity('test-client', 'test-session')
 
@@ -130,10 +129,6 @@ describeHttpProviders('$name HTTP response headers', { timeout: 30000 }, ({ laye
     ),
   )
 
-  // Regression for #1417: the HTTP push handler must thread the client `payload` into the
-  // server-side `onPush` callback. WS/DO-RPC already do; HTTP hardcoded `undefined` and dropped it.
-  // The payload is consumed server-side and never echoed back, so we observe it via the test
-  // worker's `/instance/push-probe` route (records what `onPush` saw for the store).
   Vitest.live('HTTP push threads the client payload through to onPush', (test) =>
     Effect.gen(function* () {
       const storeId = `test-store-${name}-${test.task.name}-${testId}`

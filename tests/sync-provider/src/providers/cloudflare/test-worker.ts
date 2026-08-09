@@ -38,9 +38,9 @@ declare class WebSocketPair extends CfDeclare.WebSocketPair {}
 const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
 
 /**
- * Records the `payload` each `onPush` observes, keyed by storeId, so a test can assert a transport
- * threaded the client payload through to the DO callback (regression guard for #1417). The push and
- * the probe hit the same `idFromName(storeId)` DO instance, so this module-scoped map bridges them.
+ * Records what each `onPush` observes, keyed by storeId, so a test can assert a transport threaded
+ * the client payload through. Push and probe hit the same `idFromName(storeId)` DO instance, so this
+ * module-scoped map bridges them.
  */
 const observedPushPayloads = new Map<string, unknown>()
 
