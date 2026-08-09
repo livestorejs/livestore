@@ -42,11 +42,11 @@ const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
  * the client payload through. Push and probe hit the same `idFromName(storeId)` DO instance, so this
  * module-scoped map bridges them.
  */
-const observedPushPayloads = new Map<string, unknown>()
+const observedPushPayloads = new Map<string, Schema.Json | undefined>()
 
 interface SyncDoProbe {
   getHibernationProbe(): { instanceId: string; webSocketCount: number }
-  getPushProbe(storeId: string): { observed: boolean; payload: unknown }
+  getPushProbe(storeId: string): { observed: boolean; payload: Schema.Json | null }
 }
 
 interface TestClientDoProbe {
@@ -90,7 +90,7 @@ export class SyncBackendDO extends makeDurableObject({
     return { instanceId: this.instanceId, webSocketCount: this.#state.getWebSockets().length }
   }
 
-  getPushProbe(storeId: string): { observed: boolean; payload: unknown } {
+  getPushProbe(storeId: string): { observed: boolean; payload: Schema.Json | null } {
     return {
       observed: observedPushPayloads.has(storeId),
       payload: observedPushPayloads.get(storeId) ?? null,

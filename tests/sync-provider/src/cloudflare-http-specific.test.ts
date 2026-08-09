@@ -43,7 +43,7 @@ type RuntimeServices = SyncProviderImpl | HttpClient.HttpClient
 
 const describeHttpProviders = Vitest.describe.skipIf(skipUnlessHttpSelected).each(cloudflareHttpProviders)
 
-describeHttpProviders('$name HTTP response headers', { timeout: 30000 }, ({ layer, name }) => {
+describeHttpProviders('$name HTTP transport', { timeout: 30000 }, ({ layer, name }) => {
   let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
   let runtimeContext: Context.Context<RuntimeServices>
   let testId: string
