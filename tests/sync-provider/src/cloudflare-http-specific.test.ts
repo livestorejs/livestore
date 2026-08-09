@@ -3,6 +3,7 @@ import { expect } from 'vitest'
 import { EventFactory } from '@livestore/common/testing'
 import { nanoid } from '@livestore/livestore'
 import { events } from '@livestore/livestore/internal/testing-utils'
+import { SearchParamsSchema, SyncHttpRpc } from '@livestore/sync-cf/common'
 import { objectToString } from '@livestore/utils'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -17,7 +18,10 @@ import {
   Logger,
   ManagedRuntime,
   References,
-  type Schema,
+  RpcClient,
+  RpcSerialization,
+  Schema,
+  UrlParams,
 } from '@livestore/utils/effect'
 
 import { isProviderSelected, providerRegistry } from './providers/registry.ts'
@@ -78,48 +82,51 @@ describeHttpProviders('$name HTTP transport', { timeout: 30000 }, ({ layer, name
       ).pipe(Effect.provide(runtimeContext)),
     )
 
-  // Skipped: the hand-rolled RPC envelope below no longer completes, so the server's 10s
-  // timeout fires before `responseHeaders` is applied and the assertion sees `undefined`.
-  // The header feature itself works; the test's coupling to the wire format is the problem.
-  // https://github.com/livestorejs/livestore/issues/1490
-  Vitest.live.skip('HTTP responses include custom headers', (test) =>
+  Vitest.live('HTTP responses include custom headers', (test) =>
     Effect.gen(function* () {
+      const storeId = `test-store-${name}-${test.task.name}-${testId}`
       const syncBackend = yield* makeProvider(test.task.name)
-      const http = yield* HttpClient.HttpClient
 
-      // Get the sync backend URL from metadata
-      const metadata = syncBackend.metadata
-      expect(metadata.protocol).toBe('http')
-      const baseUrl = metadata.url
-
-      // Make a raw HTTP request to the ping endpoint
-      const searchParams = new URLSearchParams({
-        storeId: `test-store-${name}-${test.task.name}-${testId}`,
-        transport: 'http',
-      })
-
+      expect(syncBackend.metadata.protocol).toBe('http')
+      const baseUrl = syncBackend.metadata.url
       const baseUrlString = typeof baseUrl === 'string' ? baseUrl : objectToString(baseUrl)
-      const requestUrl = new URL(baseUrlString)
-      requestUrl.search = searchParams.toString()
-      const req = HttpClientRequest.post(requestUrl.href).pipe(
-        HttpClientRequest.setHeader('content-type', 'application/json'),
-        HttpClientRequest.setHeader('x-livestore-store-id', `test-store-${name}-${test.task.name}-${testId}`),
-        HttpClientRequest.bodyJsonUnsafe({
-          _tag: 'Request',
-          id: 'test-req-1',
-          tag: 'SyncHttpRpc.Ping',
-          payload: {
-            storeId: `test-store-${name}-${test.task.name}-${testId}`,
-            payload: undefined,
-          },
-        }),
-      )
 
-      const pingResponse = yield* http.execute(req).pipe(Effect.scoped)
+      // Route the request to the store's DO the same way the real HTTP client does.
+      const urlParams = yield* Schema.encodeEffect(SearchParamsSchema)({
+        storeId,
+        payload: undefined,
+        transport: 'http',
+      }).pipe(Effect.map(UrlParams.fromInput))
 
-      // Verify custom response headers are present
-      expect(pingResponse.headers['x-custom-header']).toBe('test-value')
-      expect(pingResponse.headers['x-livestore-version']).toBe('1.0.0')
+      // Drive a real, correctly-framed Ping through the supported RPC client and read the
+      // response headers off its own `transformClient` seam — the hook the client already
+      // exposes for request rewriting works just as well for observing the response.
+      const captured: { customHeader?: string; version?: string } = {}
+      const HttpProtocol = RpcClient.layerProtocolHttp({
+        url: baseUrlString,
+        transformClient: (client) =>
+          client.pipe(
+            HttpClient.mapRequest((request) =>
+              request.pipe(
+                HttpClientRequest.appendUrlParams(urlParams),
+                HttpClientRequest.setHeader('x-livestore-store-id', storeId),
+              ),
+            ),
+            HttpClient.tap((response) =>
+              Effect.sync(() => {
+                captured.customHeader = response.headers['x-custom-header']
+                captured.version = response.headers['x-livestore-version']
+              }),
+            ),
+          ),
+      }).pipe(Layer.provide(RpcSerialization.layerJson))
+
+      const rpcClient = yield* RpcClient.make(SyncHttpRpc).pipe(Effect.provide(HttpProtocol))
+
+      yield* rpcClient['SyncHttpRpc.Ping']({ storeId, payload: undefined })
+
+      expect(captured.customHeader).toBe('test-value')
+      expect(captured.version).toBe('1.0.0')
     }).pipe(
       Effect.provide(runtimeContext),
       Vitest.makeWithTestCtx({
