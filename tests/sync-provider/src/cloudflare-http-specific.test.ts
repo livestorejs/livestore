@@ -1,6 +1,8 @@
 import { expect } from 'vitest'
 
+import { EventFactory } from '@livestore/common/testing'
 import { nanoid } from '@livestore/livestore'
+import { events } from '@livestore/livestore/internal/testing-utils'
 import { objectToString } from '@livestore/utils'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -15,12 +17,17 @@ import {
   Logger,
   ManagedRuntime,
   References,
+  Schema,
 } from '@livestore/utils/effect'
 
 import { isProviderSelected, providerRegistry } from './providers/registry.ts'
 import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'
 
 /** Cloudflare HTTP-specific tests for response headers and HTTP transport features */
+
+/** Event factory + client identity for building a real push in the payload-threading regression test (#1417). */
+const makeFactory = EventFactory.makeFactory(events)
+const eventClient = EventFactory.clientIdentity('test-client', 'test-session')
 
 const cloudflareHttpKeys = ['cf-http-d1', 'cf-http-do'] as const
 const selectedHttpKeys = cloudflareHttpKeys.filter((key) => isProviderSelected(key))
@@ -58,14 +65,14 @@ describeHttpProviders('$name HTTP response headers', { timeout: 30000 }, ({ laye
 
   Vitest.afterAll(async () => await runtime.dispose())
 
-  const makeProvider = (testName?: string, options?: SyncProviderOptions) =>
+  const makeProvider = (testName?: string, options?: SyncProviderOptions, payload?: Schema.Json) =>
     Effect.suspend(() =>
       Effect.andThen(SyncProviderImpl, (_) =>
         _.makeProvider(
           {
             storeId: `test-store-${name}-${testName}-${testId}`,
             clientId: 'test-client',
-            payload: undefined,
+            payload,
           },
           options,
         ),
@@ -114,6 +121,44 @@ describeHttpProviders('$name HTTP response headers', { timeout: 30000 }, ({ laye
       // Verify custom response headers are present
       expect(pingResponse.headers['x-custom-header']).toBe('test-value')
       expect(pingResponse.headers['x-livestore-version']).toBe('1.0.0')
+    }).pipe(
+      Effect.provide(runtimeContext),
+      Vitest.makeWithTestCtx({
+        makeLayer: (_testContext) => Layer.mergeAll(Logger.layer([Logger.consolePretty()]), KeyValueStore.layerMemory),
+        forceOtel: true,
+      })(test),
+    ),
+  )
+
+  // Regression for #1417: the HTTP push handler must thread the client `payload` into the
+  // server-side `onPush` callback. WS/DO-RPC already do; HTTP hardcoded `undefined` and dropped it.
+  // The payload is consumed server-side and never echoed back, so we observe it via the test
+  // worker's `/instance/push-probe` route (records what `onPush` saw for the store).
+  Vitest.live('HTTP push threads the client payload through to onPush', (test) =>
+    Effect.gen(function* () {
+      const storeId = `test-store-${name}-${test.task.name}-${testId}`
+      const syncPayload = 'issue-1417-http-payload'
+
+      const syncBackend = yield* makeProvider(test.task.name, undefined, syncPayload)
+
+      yield* syncBackend.connect
+
+      const eventFactory = makeFactory({ client: eventClient })
+      yield* syncBackend.push([eventFactory.todoCreated.next({ id: 'e1', text: 'issue-1417', completed: false })])
+
+      // Ask the backend which payload `onPush` actually observed for this store.
+      const http = yield* HttpClient.HttpClient
+      const baseUrl = syncBackend.metadata.url
+      const baseUrlString = typeof baseUrl === 'string' ? baseUrl : objectToString(baseUrl)
+      const probeUrl = new URL(baseUrlString)
+      probeUrl.pathname = '/instance/push-probe'
+      probeUrl.search = new URLSearchParams({ storeId }).toString()
+
+      const response = yield* http.get(probeUrl.href).pipe(Effect.scoped)
+      const probe = (yield* response.json) as { observed: boolean; payload: unknown }
+
+      expect(probe.observed).toBe(true)
+      expect(probe.payload).toBe(syncPayload)
     }).pipe(
       Effect.provide(runtimeContext),
       Vitest.makeWithTestCtx({
