@@ -17,7 +17,7 @@ import {
   Logger,
   ManagedRuntime,
   References,
-  Schema,
+  type Schema,
 } from '@livestore/utils/effect'
 
 import { isProviderSelected, providerRegistry } from './providers/registry.ts'
