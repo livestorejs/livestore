@@ -122,6 +122,7 @@ export const createStoreDo = <
       syncOptions: {
         backend: makeDoRpcSync({
           syncBackendStub,
+          durableObjectState: ctx,
           durableObjectContext: { bindingName, durableObjectId },
         }),
         livePull, // Uses DO RPC callbacks for reactive pull

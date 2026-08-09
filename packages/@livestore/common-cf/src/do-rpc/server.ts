@@ -32,7 +32,11 @@ const erasedJsonCodec = (schema: Schema.Top) =>
 
 export interface ClientDoWithRpcCallback {
   __DURABLE_OBJECT_BRAND: never
-  syncUpdateRpc: (payload: Uint8Array<ArrayBuffer>) => Promise<void>
+  /**
+   * The sync backend calls this to deliver a live update; `storeId` lets a rebuilt DO reload its
+   * store before delivering. See the Cloudflare Durable Object adapter docs for the recovery options.
+   */
+  syncUpdateRpc: (payload: Uint8Array<ArrayBuffer>, storeId: string) => Promise<void>
 }
 
 /**
@@ -208,11 +212,13 @@ export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(functio
   callerContext,
   env,
   requestId,
+  storeId,
   values,
 }: {
   env: Record<string, any>
   callerContext: { bindingName: string; durableObjectId: string }
   requestId: string
+  storeId: string
   values: ReadonlyArray.NonEmptyReadonlyArray<any>
 }) {
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- CF worker env bindings are typed as Record<string, any>; narrowing to known DO namespace
@@ -233,7 +239,7 @@ export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(functio
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- msgPack parser.encode returns unknown; the encoded result is a byte payload
   const serializedRes = parser.encode(res) as Uint8Array<ArrayBuffer>
 
-  yield* Effect.tryPromise(() => clientDo.syncUpdateRpc(serializedRes))
+  yield* Effect.tryPromise(() => clientDo.syncUpdateRpc(serializedRes, storeId))
 })
 
 /**
