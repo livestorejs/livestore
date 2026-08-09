@@ -12,6 +12,7 @@ import {
   handleSyncRequest,
   makeDurableObject,
   matchSyncRequest,
+  rpcSubscriptionKeyPrefix,
   type SyncBackendRpcInterface,
 } from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc, makeDoRpcSync } from '@livestore/sync-cf/client'
@@ -47,6 +48,7 @@ const observedPushPayloads = new Map<string, Schema.Json | undefined>()
 interface SyncDoProbe {
   getHibernationProbe(): { instanceId: string; webSocketCount: number }
   getPushProbe(storeId: string): { observed: boolean; payload: Schema.Json | null }
+  getRpcSubscriptionCount(storeId: string): number
 }
 
 interface TestClientDoProbe {
@@ -55,6 +57,7 @@ interface TestClientDoProbe {
 
 interface StoreClientDoProbe {
   bootStore(storeId: string): Promise<void>
+  disposeStore(storeId: string): Promise<void>
   getStoreProbe(storeId: string): Promise<{ instanceId: string; todoIds: string[] }>
 }
 
@@ -95,6 +98,11 @@ export class SyncBackendDO extends makeDurableObject({
       observed: observedPushPayloads.has(storeId),
       payload: observedPushPayloads.get(storeId) ?? null,
     }
+  }
+
+  /** DO-RPC live-pull subscriptions persisted for this store (all rows belong to this per-store DO). */
+  getRpcSubscriptionCount(_storeId: string): number {
+    return Array.from(this.#state.storage.kv.list({ prefix: rpcSubscriptionKeyPrefix })).length
   }
 }
 
@@ -248,6 +256,13 @@ export class StoreClientDo extends DurableObjectBase implements ClientDoWithRpcC
     await this.#boot(storeId)
   }
 
+  /** Graceful client-done: an explicit store shutdown closes the sync backend scope (finalizers run). */
+  async disposeStore(_storeId: string): Promise<void> {
+    if (this.#store === undefined) return
+    await this.#store.shutdownPromise()
+    this.#store = undefined
+  }
+
   /** Materialized todos read from the (possibly just-recovered) store. */
   async getStoreProbe(_storeId: string): Promise<{ instanceId: string; todoIds: string[] }> {
     const todoIds = this.#store === undefined ? [] : this.#store.query(tables.todos).map((todo) => todo.id)
@@ -295,6 +310,17 @@ export default {
       return new Response(JSON.stringify(probe), { headers: { 'content-type': 'application/json' } })
     }
 
+    if (url.pathname.endsWith('/instance/rpc-subs') === true) {
+      const storeId = url.searchParams.get('storeId')
+      if (storeId === null) {
+        return new Response('storeId required', { status: 400 })
+      }
+      const count = await env.SYNC_BACKEND_DO.get(env.SYNC_BACKEND_DO.idFromName(storeId)).getRpcSubscriptionCount(
+        storeId,
+      )
+      return new Response(JSON.stringify({ count }), { headers: { 'content-type': 'application/json' } })
+    }
+
     if (url.pathname.endsWith('/instance/client') === true) {
       const probe = await env.TEST_CLIENT_DO.get(env.TEST_CLIENT_DO.idFromName('test-client-do')).getClientProbe()
       return new Response(JSON.stringify(probe), { headers: { 'content-type': 'application/json' } })
@@ -306,6 +332,15 @@ export default {
         return new Response('storeId required', { status: 400 })
       }
       await env.STORE_CLIENT_DO.get(env.STORE_CLIENT_DO.idFromName(storeId)).bootStore(storeId)
+      return new Response(null, { status: 204 })
+    }
+
+    if (url.pathname.endsWith('/store/dispose') === true) {
+      const storeId = url.searchParams.get('storeId')
+      if (storeId === null) {
+        return new Response('storeId required', { status: 400 })
+      }
+      await env.STORE_CLIENT_DO.get(env.STORE_CLIENT_DO.idFromName(storeId)).disposeStore(storeId)
       return new Response(null, { status: 204 })
     }
 
