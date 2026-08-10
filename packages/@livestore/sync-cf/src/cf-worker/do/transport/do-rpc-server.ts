@@ -22,6 +22,10 @@ export const createDoRpcHandler = (
     // TODO add admin RPCs
     const RpcLive = SyncDoRpc.toLayer({
       'SyncDoRpc.Ping': () => Effect.void,
+      'SyncDoRpc.Unsubscribe': (req) =>
+        Effect.sync(() => {
+          input.doSelf.ctx.storage.kv.delete(`${rpcSubscriptionKeyPrefix}${req.durableObjectId}`)
+        }),
       'SyncDoRpc.Pull': (req, { headers }) =>
         Effect.gen({ self: this }, function* () {
           const { ctx } = yield* DoCtx.DoCtx
