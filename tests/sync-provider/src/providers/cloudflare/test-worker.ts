@@ -37,8 +37,16 @@ declare class WebSocketPair extends CfDeclare.WebSocketPair {}
 /** Module-scoped JSON decoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
 const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
 
+/**
+ * Records what each `onPush` observes, keyed by storeId, so a test can assert a transport threaded
+ * the client payload through. Push and probe hit the same `idFromName(storeId)` DO instance, so this
+ * module-scoped map bridges them.
+ */
+const observedPushPayloads = new Map<string, Schema.Json | undefined>()
+
 interface SyncDoProbe {
   getHibernationProbe(): { instanceId: string; webSocketCount: number }
+  getPushProbe(storeId: string): { observed: boolean; payload: Schema.Json | null }
 }
 
 interface TestClientDoProbe {
@@ -59,12 +67,9 @@ export interface Env {
 }
 
 export class SyncBackendDO extends makeDurableObject({
-  // onPush: async (message) => {
-  //   console.log('onPush', message.batch)
-  // },
-  // onPull: async (message) => {
-  //   console.log('onPull', message)
-  // },
+  onPush: (_message, context) => {
+    observedPushPayloads.set(context.storeId, context.payload)
+  },
   http: {
     responseHeaders: {
       'X-Custom-Header': 'test-value',
@@ -83,6 +88,13 @@ export class SyncBackendDO extends makeDurableObject({
 
   getHibernationProbe(): { instanceId: string; webSocketCount: number } {
     return { instanceId: this.instanceId, webSocketCount: this.#state.getWebSockets().length }
+  }
+
+  getPushProbe(storeId: string): { observed: boolean; payload: Schema.Json | null } {
+    return {
+      observed: observedPushPayloads.has(storeId),
+      payload: observedPushPayloads.get(storeId) ?? null,
+    }
   }
 }
 
@@ -271,6 +283,15 @@ export default {
         return new Response('storeId required', { status: 400 })
       }
       const probe = await env.SYNC_BACKEND_DO.get(env.SYNC_BACKEND_DO.idFromName(storeId)).getHibernationProbe()
+      return new Response(JSON.stringify(probe), { headers: { 'content-type': 'application/json' } })
+    }
+
+    if (url.pathname.endsWith('/instance/push-probe') === true) {
+      const storeId = url.searchParams.get('storeId')
+      if (storeId === null) {
+        return new Response('storeId required', { status: 400 })
+      }
+      const probe = await env.SYNC_BACKEND_DO.get(env.SYNC_BACKEND_DO.idFromName(storeId)).getPushProbe(storeId)
       return new Response(JSON.stringify(probe), { headers: { 'content-type': 'application/json' } })
     }
 

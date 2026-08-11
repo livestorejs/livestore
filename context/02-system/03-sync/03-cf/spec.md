@@ -65,8 +65,11 @@ arbitrates pushes and fans out live pull streams to subscribers
 | Transport | Schema | Liveness | Notes |
 | --- | --- | --- | --- |
 | WebSocket | `ws-rpc-schema.ts` | server-held stream (`live` flag + `Stream.never`), pushed chunks | default; DO auto ping/pong; hibernation-aware |
-| HTTP | `http-rpc-schema.ts` | client-side polling (~5 s default) | 10 s hard request timeout; explicit `Ping` RPC; push `payload` not threaded (see gaps) |
+| HTTP | `http-rpc-schema.ts` | client-side polling (~5 s default) | 10 s hard request timeout; explicit `Ping` RPC |
 | DO-RPC | `do-rpc-schema.ts` | RPC callback queue (`rpcContext` presence = live) | for same-Cloudflare-app callers (`adapter-cloudflare`); explicit `Ping` |
+
+All three transports thread the client `payload` (per-connection auth/multi-tenancy
+context) into the DO `onPush`/`onPull` callbacks.
 
 Message payloads share `sync-message-types.ts`
 (PullRequest/PullResponse/PushRequest/PushAck/Ping/Pong + unwired admin
@@ -87,10 +90,6 @@ Current reality a consumer must not read as guaranteed behavior:
 - **Cross-store subscription bleed risk.** The DO-RPC client's
   `requestIdQueueMap` is module-global with a scoping TODO
   (`do-rpc-client.ts:30`; issue #1416).
-- **HTTP push drops `payload`.** The per-push payload (used for
-  auth/multi-tenancy) is passed as `undefined` server-side over HTTP but
-  threaded on WS/DO-RPC (`cf-worker/transport/http-rpc-server.ts:47`;
-  issue #1417).
 - **Live-subscriber leaks on abnormal disconnect.** WS `Interrupt` emits
   no Exit and DO-RPC `Interrupt` handling is a TODO
   (`cf-worker/durable-object.ts:136`, `cf-worker/do/pull.ts:19`;
