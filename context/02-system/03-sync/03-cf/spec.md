@@ -45,8 +45,14 @@ arbitrates pushes and fans out live pull streams to subscribers
   [.decisions/0002-atomic-push-publication.md](./.decisions/0002-atomic-push-publication.md)).
 - **Fan-out** (`push.ts`): accepted batches are re-chunked and emitted in
   admission order to two subscriber sets — hibernatable WebSockets (per-socket `pullRequestIds`
-  attachments; hand-crafted RPC chunk frames) and DO-RPC subscriptions (an
-  in-memory map fed by live pulls).
+  attachments; hand-crafted RPC chunk frames) and DO-RPC subscriptions (a
+  durable KV registry fed by live pulls). Each DO-RPC callback carries the
+  subscription's `storeId` (`push.ts` → `emitStreamResponse` →
+  `syncUpdateRpc(payload, storeId)`), so a client DO that was evicted and
+  reconstructed can re-boot its store — whose boot catches up — before
+  delivering, instead of dropping the update; the client-side re-boot is
+  `04-runtime`'s adapter concern
+  ([.decisions/0003-reverse-rpc-storeid-recovery.md](./.decisions/0003-reverse-rpc-storeid-recovery.md)).
 - **BackendId** (`layer.ts:98-114`): `nanoid()` on first context build,
   persisted in `contextTable`; pull/push carrying a different backendId
   fail with `BackendIdMismatchError` (client records it lazily from pull
@@ -60,11 +66,14 @@ arbitrates pushes and fans out live pull streams to subscribers
 
 ## Transports
 
-| Transport | Schema               | Liveness                                                         | Notes                                                                                  |
-| --------- | -------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| WebSocket | `ws-rpc-schema.ts`   | server-held stream (`live` flag + `Stream.never`), pushed chunks | default; DO auto ping/pong; hibernation-aware                                          |
-| HTTP      | `http-rpc-schema.ts` | client-side polling (~5 s default)                               | 10 s hard request timeout; explicit `Ping` RPC; push `payload` not threaded (see gaps) |
-| DO-RPC    | `do-rpc-schema.ts`   | RPC callback queue (`rpcContext` presence = live)                | for same-Cloudflare-app callers (`adapter-cloudflare`); explicit `Ping`                |
+| Transport | Schema | Liveness | Notes |
+| --- | --- | --- | --- |
+| WebSocket | `ws-rpc-schema.ts` | server-held stream (`live` flag + `Stream.never`), pushed chunks | default; DO auto ping/pong; hibernation-aware |
+| HTTP | `http-rpc-schema.ts` | client-side polling (~5 s default) | 10 s hard request timeout; explicit `Ping` RPC |
+| DO-RPC | `do-rpc-schema.ts` | RPC callback queue (`rpcContext` presence = live) | for same-Cloudflare-app callers (`adapter-cloudflare`); explicit `Ping` |
+
+All three transports thread the client `payload` (per-connection auth/multi-tenancy
+context) into the DO `onPush`/`onPull` callbacks.
 
 Message payloads share `sync-message-types.ts`
 (PullRequest/PullResponse/PushRequest/PushAck/Ping/Pong + unwired admin
@@ -82,16 +91,9 @@ Object hosting a store) is `04-runtime/`'s adapter concern
 
 Current reality a consumer must not read as guaranteed behavior:
 
-- **Hibernated DO-RPC clients drop live updates.** When the client DO was
-  hibernated, the pull-stream queue is gone and the update is only logged,
-  not applied (`client/transport/do-rpc-client.ts:189-197`; issue #1415).
 - **Cross-store subscription bleed risk.** The DO-RPC client's
   `requestIdQueueMap` is module-global with a scoping TODO
   (`do-rpc-client.ts:30`; issue #1416).
-- **HTTP push drops `payload`.** The per-push payload (used for
-  auth/multi-tenancy) is passed as `undefined` server-side over HTTP but
-  threaded on WS/DO-RPC (`cf-worker/transport/http-rpc-server.ts:47`;
-  issue #1417).
 - **Live-subscriber leaks on abnormal disconnect.** WS `Interrupt` emits
   no Exit and DO-RPC `Interrupt` handling is a TODO
   (`cf-worker/durable-object.ts:136`, `cf-worker/do/pull.ts:19`;

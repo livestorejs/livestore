@@ -111,9 +111,16 @@ Creates a LiveStore instance inside a Durable Object.
 - `logger?` – Optional Effect logger layer to customize formatting/output
 - `logLevel?` – Optional minimum log level (use `"None"` to disable logs)
 
-### `syncUpdateRpc(payload)`
+### `syncUpdateRpc(payload, storeId)`
 
-Client Durable Objects must implement this method so the sync backend can deliver live updates. `createStoreDoPromise` wires it up automatically—just forward the payload to `handleSyncUpdateRpc` (see the client Durable Object example above).
+Client Durable Objects must implement this method so the sync backend can deliver live updates to them. Forward the DO's `ctx` and the `payload` to `handleSyncUpdateRpc(ctx, payload)` (see the client Durable Object example above).
+
+Cloudflare can evict a Durable Object at any time and start a fresh instance on the next request. Because this call is what wakes the DO, it can arrive at an instance that no longer has your store in memory — and a fresh instance can't tell which `storeId` it belongs to on its own. That's why the sync backend also passes the `storeId`. You choose how to use it:
+
+- **Eager (stay in sync):** load the store before delivering — set `this.storeId = storeId`, then `await this.getStore()` (idempotent, and it catches up on any updates the DO missed while it was gone). The DO stays in sync whenever it is awake and costs nothing while idle.
+- **Reactive (recover lazily):** ignore `storeId` (you can omit the parameter). The DO drops that one live update and picks up the changes the next time your code loads the store (e.g. the next `fetch`). Simpler, but live updates are not applied while the DO is idle.
+
+Pass `storeId` to your store load (`getStore`), not to `handleSyncUpdateRpc` — that function only needs `ctx` and `payload`.
 
 ## Resetting LiveStore persistence (development only)
 

@@ -178,6 +178,7 @@ export const makePush =
                   callerContext: subscription.callerContext,
                   env,
                   requestId: subscription.requestId,
+                  storeId: subscription.storeId,
                   values: [encoded],
                 }).pipe(Effect.tapCauseLogPretty, Effect.exit)
               }

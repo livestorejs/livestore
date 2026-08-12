@@ -2,8 +2,11 @@
 
 import { DurableObject } from 'cloudflare:workers'
 
+import { createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { type ClientDoWithRpcCallback, setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
 import type { CfDeclare } from '@livestore/common-cf/declare'
+import { type Store } from '@livestore/livestore'
+import { schema, tables } from '@livestore/livestore/internal/testing-utils'
 import {
   type CfTypes,
   handleSyncRequest,
@@ -34,28 +37,39 @@ declare class WebSocketPair extends CfDeclare.WebSocketPair {}
 /** Module-scoped JSON decoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
 const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
 
+/**
+ * Records what each `onPush` observes, keyed by storeId, so a test can assert a transport threaded
+ * the client payload through. Push and probe hit the same `idFromName(storeId)` DO instance, so this
+ * module-scoped map bridges them.
+ */
+const observedPushPayloads = new Map<string, Schema.Json | undefined>()
+
 interface SyncDoProbe {
   getHibernationProbe(): { instanceId: string; webSocketCount: number }
+  getPushProbe(storeId: string): { observed: boolean; payload: Schema.Json | null }
 }
 
 interface TestClientDoProbe {
   getClientProbe(): { instanceId: string }
 }
 
+interface StoreClientDoProbe {
+  bootStore(storeId: string): Promise<void>
+  getStoreProbe(storeId: string): Promise<{ instanceId: string; todoIds: string[] }>
+}
+
 export interface Env {
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface & SyncDoProbe>
   TEST_CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback & TestClientDoProbe>
+  STORE_CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback & StoreClientDoProbe>
   /** Eventlog database */
   DB: CfTypes.D1Database
 }
 
 export class SyncBackendDO extends makeDurableObject({
-  // onPush: async (message) => {
-  //   console.log('onPush', message.batch)
-  // },
-  // onPull: async (message) => {
-  //   console.log('onPull', message)
-  // },
+  onPush: (_message, context) => {
+    observedPushPayloads.set(context.storeId, context.payload)
+  },
   http: {
     responseHeaders: {
       'X-Custom-Header': 'test-value',
@@ -74,6 +88,13 @@ export class SyncBackendDO extends makeDurableObject({
 
   getHibernationProbe(): { instanceId: string; webSocketCount: number } {
     return { instanceId: this.instanceId, webSocketCount: this.#state.getWebSockets().length }
+  }
+
+  getPushProbe(storeId: string): { observed: boolean; payload: Schema.Json | null } {
+    return {
+      observed: observedPushPayloads.has(storeId),
+      payload: observedPushPayloads.get(storeId) ?? null,
+    }
   }
 }
 
@@ -108,6 +129,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
 
               return yield* makeDoRpcSync({
                 syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
+                durableObjectState: this.ctx,
                 durableObjectContext: { bindingName: 'TEST_CLIENT_DO', durableObjectId: this.ctx.id.toString() },
               })({ storeId, clientId, payload }).pipe(Scope.provide(syncBackendScope), Effect.orDie)
             }),
@@ -198,7 +220,56 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
   }
 
   async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
-    await handleSyncUpdateRpc(payload)
+    await handleSyncUpdateRpc(this.ctx, payload)
+  }
+}
+
+/**
+ * A real LiveStore client running inside a DO: it boots a store that subscribes to the sync backend,
+ * so a reverse-RPC update is applied to (and materialized in) its own store. On reconstruction the
+ * store-less wake re-boots from the storeId carried in the reverse-RPC and catches up.
+ */
+export class StoreClientDo extends DurableObjectBase implements ClientDoWithRpcCallback {
+  __DURABLE_OBJECT_BRAND = 'ClientDO' as never
+  env: Env
+  ctx: CfTypes.DurableObjectState
+  /** Never persisted: a different id means this DO was evicted and rebuilt. */
+  instanceId = crypto.randomUUID()
+  /** The live `livePull` subscriber. Dropped on reconstruction; a reverse-RPC wake re-boots it. */
+  #store: Store<typeof schema> | undefined
+
+  constructor(state: CfTypes.DurableObjectState, env: Env) {
+    super(state, env)
+    this.ctx = state
+    this.env = env
+  }
+
+  async bootStore(storeId: string): Promise<void> {
+    await this.#boot(storeId)
+  }
+
+  /** Materialized todos read from the (possibly just-recovered) store. */
+  async getStoreProbe(_storeId: string): Promise<{ instanceId: string; todoIds: string[] }> {
+    const todoIds = this.#store === undefined ? [] : this.#store.query(tables.todos).map((todo) => todo.id)
+    return { instanceId: this.instanceId, todoIds }
+  }
+
+  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>, storeId: string) {
+    await this.#boot(storeId)
+    await handleSyncUpdateRpc(this.ctx, payload)
+  }
+
+  async #boot(storeId: string): Promise<void> {
+    if (this.#store !== undefined) return
+    this.#store = await createStoreDoPromise({
+      schema,
+      storeId,
+      clientId: 'store-client-do',
+      sessionId: 'store-client-do-session',
+      durableObject: { ctx: this.ctx, env: this.env, bindingName: 'STORE_CLIENT_DO' },
+      syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
+      livePull: true,
+    })
   }
 }
 
@@ -215,8 +286,35 @@ export default {
       return new Response(JSON.stringify(probe), { headers: { 'content-type': 'application/json' } })
     }
 
+    if (url.pathname.endsWith('/instance/push-probe') === true) {
+      const storeId = url.searchParams.get('storeId')
+      if (storeId === null) {
+        return new Response('storeId required', { status: 400 })
+      }
+      const probe = await env.SYNC_BACKEND_DO.get(env.SYNC_BACKEND_DO.idFromName(storeId)).getPushProbe(storeId)
+      return new Response(JSON.stringify(probe), { headers: { 'content-type': 'application/json' } })
+    }
+
     if (url.pathname.endsWith('/instance/client') === true) {
       const probe = await env.TEST_CLIENT_DO.get(env.TEST_CLIENT_DO.idFromName('test-client-do')).getClientProbe()
+      return new Response(JSON.stringify(probe), { headers: { 'content-type': 'application/json' } })
+    }
+
+    if (url.pathname.endsWith('/store/boot') === true) {
+      const storeId = url.searchParams.get('storeId')
+      if (storeId === null) {
+        return new Response('storeId required', { status: 400 })
+      }
+      await env.STORE_CLIENT_DO.get(env.STORE_CLIENT_DO.idFromName(storeId)).bootStore(storeId)
+      return new Response(null, { status: 204 })
+    }
+
+    if (url.pathname.endsWith('/store/probe') === true) {
+      const storeId = url.searchParams.get('storeId')
+      if (storeId === null) {
+        return new Response('storeId required', { status: 400 })
+      }
+      const probe = await env.STORE_CLIENT_DO.get(env.STORE_CLIENT_DO.idFromName(storeId)).getStoreProbe(storeId)
       return new Response(JSON.stringify(probe), { headers: { 'content-type': 'application/json' } })
     }
 

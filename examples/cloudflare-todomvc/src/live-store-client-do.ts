@@ -71,7 +71,9 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
     this.subscribeToStore()
   }
 
-  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
-    await handleSyncUpdateRpc(payload)
+  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>, storeId: string) {
+    this.storeId = storeId
+    await this.getStore()
+    await handleSyncUpdateRpc(this.ctx, payload)
   }
 }
