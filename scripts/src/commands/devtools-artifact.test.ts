@@ -4,6 +4,8 @@ import {
   type ArtifactManifest,
   type ArtifactMetadata,
   assertCertifiedDevtoolsArtifactForLivestore,
+  assertMonotonicArtifactTransition,
+  assertOfficialArtifactRelease,
   assertUncertifiedRepackMode,
   containsForbiddenPattern,
   type DevtoolsArtifactCertification,
@@ -33,6 +35,37 @@ const manifest = () =>
       tarballUrl: 'livestore-devtools-vite.tgz',
     },
   }) satisfies ArtifactManifest
+
+const officialMetadata = (overrides: Partial<ArtifactMetadata> = {}): ArtifactMetadata => ({
+  ...metadata,
+  devtoolsBuildId: 'dt-20260718-51c22feb',
+  builtAt: '2026-07-18T09:00:00.000Z',
+  sourceRevision: 'bf243c179c801511e2c0f9c9987d107b57484417',
+  files: {
+    tarball: {
+      name: 'livestore-devtools-vite.tgz',
+      sha256: 'a'.repeat(64),
+      integrity: 'sha512-tarball',
+    },
+    chromeZip: {
+      name: 'livestore-devtools-chrome.zip',
+      sha256: 'b'.repeat(64),
+      integrity: 'sha512-chrome',
+    },
+  },
+  ...overrides,
+})
+
+const officialManifest = (buildId = 'dt-20260718-51c22feb'): ArtifactManifest => ({
+  schemaVersion: 2,
+  artifact: {
+    metadataUrl: `https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-${buildId}/release-metadata.json`,
+    tarballUrl: `https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-${buildId}/livestore-devtools-vite.tgz`,
+    sha256: 'a'.repeat(64),
+    chromeZipUrl: `https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-${buildId}/livestore-devtools-chrome.zip`,
+    chromeZipSha256: 'b'.repeat(64),
+  },
+})
 
 const certification = (overrides: Partial<DevtoolsArtifactCertification> = {}) => ({
   livestoreVersion: '0.4.0-dev.25',
@@ -213,5 +246,103 @@ describe('artifact forbidden text patterns', () => {
     expect(containsForbiddenText('HOME: "/home/web_user"')).toBe(false)
     expect(containsForbiddenText('source: "/home/alice/project/src/file.ts"')).toBe(true)
     expect(containsForbiddenText('source: "/Users/alice/project/src/file.ts"')).toBe(true)
+  })
+})
+
+describe('official artifact release policy', () => {
+  it('accepts canonical official release assets with matching metadata', () => {
+    expect(() =>
+      assertOfficialArtifactRelease({ manifest: officialManifest(), metadata: officialMetadata() }),
+    ).not.toThrow()
+  })
+
+  it.each([
+    [
+      'foreign repository',
+      /livestorejs\/livestore-devtools-artifacts/,
+      'livestorejs/other-artifacts',
+      /must come from livestorejs\/livestore-devtools-artifacts release assets/,
+    ],
+    [
+      'mixed release tag',
+      /devtools-artifact-dt-20260718-51c22feb/,
+      'devtools-artifact-dt-20260718-deadbeef',
+      /does not match/,
+    ],
+    ['non-canonical filename', /livestore-devtools-vite\.tgz$/, 'devtools.tgz', /does not match/],
+  ])('rejects a %s', (_case, pattern, replacement, expected) => {
+    const canonical = officialManifest()
+    const manifestWithReplacement: ArtifactManifest = {
+      ...canonical,
+      artifact: {
+        ...canonical.artifact,
+        tarballUrl: canonical.artifact.tarballUrl.replace(pattern, replacement),
+      },
+    }
+    expect(() =>
+      assertOfficialArtifactRelease({ manifest: manifestWithReplacement, metadata: officialMetadata() }),
+    ).toThrow(expected)
+  })
+
+  it('rejects malformed, mismatched, or incomplete digests', () => {
+    const canonical = officialManifest()
+    const { chromeZipUrl: _chromeZipUrl, ...withoutChromeUrl } = canonical.artifact
+    expect(() =>
+      assertOfficialArtifactRelease({
+        manifest: { ...canonical, artifact: { ...canonical.artifact, sha256: 'A'.repeat(64) } },
+        metadata: officialMetadata(),
+      }),
+    ).toThrow(/lowercase SHA-256/)
+    expect(() =>
+      assertOfficialArtifactRelease({
+        manifest: { ...canonical, artifact: { ...canonical.artifact, sha256: 'c'.repeat(64) } },
+        metadata: officialMetadata(),
+      }),
+    ).toThrow(/does not match release metadata/)
+    expect(() =>
+      assertOfficialArtifactRelease({
+        manifest: { ...canonical, artifact: withoutChromeUrl },
+        metadata: officialMetadata(),
+      }),
+    ).toThrow(/requires matching Chrome ZIP/)
+  })
+
+  it.each([
+    [{ devtoolsBuildId: 'latest' }, /build id/],
+    [{ sourceRevision: 'bf243c1' }, /full source revision/],
+    [{ builtAt: 'not-a-date' }, /valid builtAt/],
+  ])('rejects invalid identity metadata %#', (overrides, expected) => {
+    expect(() =>
+      assertOfficialArtifactRelease({ manifest: officialManifest(), metadata: officialMetadata(overrides) }),
+    ).toThrow(expected)
+  })
+})
+
+describe('artifact transition policy', () => {
+  it('accepts a newer, distinct artifact build', () => {
+    expect(() =>
+      assertMonotonicArtifactTransition({
+        previous: officialMetadata(),
+        next: officialMetadata({ devtoolsBuildId: 'dt-20260719-deadbeef', builtAt: '2026-07-19T09:00:00.000Z' }),
+      }),
+    ).not.toThrow()
+  })
+
+  it.each([
+    [
+      'older timestamp',
+      { devtoolsBuildId: 'dt-20260717-deadbeef', builtAt: '2026-07-17T09:00:00.000Z' },
+      /move forward/,
+    ],
+    [
+      'equal timestamp',
+      { devtoolsBuildId: 'dt-20260719-deadbeef', builtAt: '2026-07-18T09:00:00.000Z' },
+      /move forward/,
+    ],
+    ['same build', { devtoolsBuildId: 'dt-20260718-51c22feb', builtAt: '2026-07-19T09:00:00.000Z' }, /new build/],
+  ])('rejects a %s', (_case, overrides, expected) => {
+    expect(() =>
+      assertMonotonicArtifactTransition({ previous: officialMetadata(), next: officialMetadata(overrides) }),
+    ).toThrow(expected)
   })
 })
