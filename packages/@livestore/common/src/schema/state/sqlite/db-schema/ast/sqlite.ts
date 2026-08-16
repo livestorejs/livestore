@@ -1,5 +1,5 @@
 import { omitUndefineds } from '@livestore/utils'
-import { type Option, Schema, SchemaAST, SchemaTransformation } from '@livestore/utils/effect'
+import { type Option, Schema, SchemaAST } from '@livestore/utils/effect'
 
 import { hashCode } from '../hash.ts'
 
@@ -84,7 +84,7 @@ export type DbSchema = {
 export const dbSchema = (tables: Table[]): DbSchema => ({ _tag: 'dbSchema', tables })
 
 /**
- * Helper to detect if a column is a JSON column (has parseJson transformation)
+ * Helper to detect if a column is a JSON column (encoded as a JSON string)
  */
 const isJsonColumn = (column: Column): boolean => {
   if (column.type._tag !== 'text') return false
@@ -92,8 +92,13 @@ const isJsonColumn = (column: Column): boolean => {
   return hasJsonStringEncoding(column.schema.ast)
 }
 
+/**
+ * `SchemaTransformation.fromJsonString` is a factory since Effect rc.109, so encoding links can no
+ * longer be matched by identity. `Schema.fromJsonString` annotates its encoded side as
+ * `application/json`, which identifies the link regardless of the reviver/replacer/space options.
+ */
 const hasJsonStringEncoding = (ast: SchemaAST.AST): boolean => {
-  if (ast.encoding?.some((link) => link.transformation === SchemaTransformation.fromJsonString) === true) {
+  if (ast.encoding?.some((link) => link.to.annotations?.contentMediaType === 'application/json') === true) {
     return true
   }
   return SchemaAST.isUnion(ast) === true && ast.types.some(hasJsonStringEncoding)
