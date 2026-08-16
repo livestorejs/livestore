@@ -2,6 +2,7 @@ import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
+import * as EventlogSqliteDb from '../EventlogSqliteDb.ts'
 import { migrateTable } from '../schema-management/migrations.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
@@ -17,7 +18,7 @@ import type { PreparedBindValues } from '../util.ts'
 import { sql } from '../util.ts'
 import { execSql } from './connection.ts'
 import type { InitialSyncInfo, StreamEventsOptions } from './types.ts'
-import { LeaderThreadCtx, STREAM_EVENTS_BATCH_SIZE_DEFAULT } from './types.ts'
+import { STREAM_EVENTS_BATCH_SIZE_DEFAULT } from './types.ts'
 
 export const initEventlogDb = (dbEventlog: SqliteDb) =>
   Effect.gen(function* () {
@@ -267,7 +268,7 @@ export const insertIntoEventlog = (
   })
 
 export const updateSyncMetadata = (items: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) =>
-  LeaderThreadCtx.pipe(Effect.flatMap(({ dbEventlog }) => updateSyncMetadataForDb(dbEventlog, items)))
+  EventlogSqliteDb.EventlogSqliteDb.pipe(Effect.flatMap((dbEventlog) => updateSyncMetadataForDb(dbEventlog, items)))
 
 export const updateSyncMetadataForDb = (
   dbEventlog: SqliteDb,
@@ -291,7 +292,7 @@ export const updateSyncMetadataForDb = (
   })
 
 export const getSyncBackendCursorInfo = (args: { remoteHead: EventSequenceNumber.Global.Type }) =>
-  LeaderThreadCtx.pipe(Effect.flatMap(({ dbEventlog }) => getSyncBackendCursorInfoForDb(dbEventlog, args)))
+  EventlogSqliteDb.EventlogSqliteDb.pipe(Effect.flatMap((dbEventlog) => getSyncBackendCursorInfoForDb(dbEventlog, args)))
 
 export const getSyncBackendCursorInfoForDb = (
   dbEventlog: SqliteDb,

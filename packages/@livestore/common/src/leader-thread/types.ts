@@ -93,8 +93,6 @@ export class LeaderThreadCtx extends Context.Service<
     storeId: string
     clientId: string
     makeSqliteDb: MakeSqliteDb
-    dbState: LeaderSqliteDb
-    dbEventlog: LeaderSqliteDb
     bootStatusQueue: Queue.Queue<BootStatus>
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>

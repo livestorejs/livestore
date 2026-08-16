@@ -18,6 +18,7 @@ import {
   QueryBuilderAstSymbol,
   resolveSessionIdSymbolInBindValues,
   SqliteDbHelper,
+  StateSqliteDb,
   StateHead,
   type StorageMode,
   type SyncState,
@@ -49,6 +50,7 @@ import { makeReactivityGraph } from '../live-queries/base-class.ts'
 import { makeExecBeforeFirstRun } from '../live-queries/client-document-get-query.ts'
 import { queryDb } from '../live-queries/db-query.ts'
 import type { Ref } from '../reactive.ts'
+import * as ReactiveStateSqliteDb from '../ReactiveStateSqliteDb.ts'
 import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
 import { ReferenceCountedSet } from '../utils/data-structures.ts'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.ts'
@@ -211,19 +213,22 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.storageMode = clientSession.leaderThread.initialState.storageMode
 
     const reactivityGraph = makeReactivityGraph()
-    const materializationLayer = Layer.mergeAll(
-      MaterializationJournal.layer({ dbState: clientSession.sqliteDb }),
-      StateHead.layer({ dbState: clientSession.sqliteDb }),
+    const sqliteDbWrapper = new SqliteDbWrapper({ otel: otelOptions, db: clientSession.sqliteDb })
+    const stateDbLayer = StateSqliteDb.layer(clientSession.sqliteDb)
+    const reactiveStateDbLayer = ReactiveStateSqliteDb.layer(sqliteDbWrapper)
+    const stateServicesLayer = Layer.mergeAll(MaterializationJournal.layer, StateHead.layer).pipe(
+      Layer.provide(stateDbLayer),
     )
+    const materializationLayer = Layer.mergeAll(stateDbLayer, reactiveStateDbLayer, stateServicesLayer)
 
     const syncProcessor = makeClientSessionSyncProcessor({
       schema,
       clientSession,
       materializeEvent: Effect.fn('client-session-sync-processor:materialize-event')(
         (eventEncoded, { materializerHashLeader }) =>
-          // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
-          Effect.gen({ self: this }, function* () {
+          Effect.gen(function* () {
             const materializationJournal = yield* MaterializationJournal.MaterializationJournal
+            const dbState = yield* ReactiveStateSqliteDb.ReactiveStateSqliteDb
             const stateHead = yield* StateHead.StateHead
             const resolution = yield* resolveEventDef(schema, {
               operation: '@livestore/livestore:store:materializeEvent',
@@ -246,7 +251,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             const execArgsArr = getExecStatementsFromMaterializer({
               eventDef,
               materializer,
-              dbState: this[StoreInternalsSymbol].sqliteDbWrapper,
+              dbState,
               event: { decoded: undefined, encoded: eventEncoded },
             })
 
@@ -274,10 +279,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               for (const {
                 statementSql,
                 bindValues,
-                writeTables = this[StoreInternalsSymbol].sqliteDbWrapper.getTablesUsed(statementSql),
+                writeTables = dbState.getTablesUsed(statementSql),
               } of execArgsArr) {
                 try {
-                  this[StoreInternalsSymbol].sqliteDbWrapper.cachedExecute(statementSql, bindValues, {
+                  dbState.cachedExecute(statementSql, bindValues, {
                     otelContext,
                     writeTables,
                   })
@@ -294,17 +299,17 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
                   writeTablesForEvent.add(table)
                 }
 
-                this[StoreInternalsSymbol].sqliteDbWrapper.debug.head = eventEncoded.seqNum
+                dbState.debug.head = eventEncoded.seqNum
               }
             }
 
-            const changeset = this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset
+            const changeset = dbState.withChangeset(exec).changeset
             yield* materializationJournal.record({ key: eventEncoded.seqNum, changeset })
             yield* stateHead.set(eventEncoded.seqNum)
 
             return { writeTables: writeTablesForEvent, materializerHash }
           }).pipe(
-            SqliteDbHelper.withSavepoint(clientSession.sqliteDb),
+            SqliteDbHelper.withStateDbSavepoint,
             Effect.provide(materializationLayer),
             Effect.mapError((cause) =>
               MaterializationJournal.isMaterializationJournalError(cause) === true
@@ -396,9 +401,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       yield* syncProcessor.boot
     })
-
-    // Build Sqlite wrapper last to avoid using getters before internals are set
-    const sqliteDbWrapper = new SqliteDbWrapper({ otel: otelOptions, db: clientSession.sqliteDb })
 
     // Initialize internals bag
     this[StoreInternalsSymbol] = {

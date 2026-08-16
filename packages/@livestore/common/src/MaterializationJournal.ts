@@ -1,11 +1,12 @@
 import { Context, Effect, Layer, Predicate, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import { type SqliteDb, SqliteError } from './adapter-types.ts'
+import { SqliteError } from './adapter-types.ts'
 import { execSql, execSqlPrepared } from './leader-thread/connection.ts'
 import * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
 import { SystemTables } from './schema/mod.ts'
 import { findManyRows, insertRow } from './sql-queries/index.ts'
 import * as SqliteDbHelper from './sqlite-db-helper.ts'
+import * as StateSqliteDb from './StateSqliteDb.ts'
 import { prepareBindValues, sql } from './util.ts'
 
 export const TypeId = '~@livestore/common/MaterializationJournal' as const
@@ -47,11 +48,9 @@ export class MaterializationJournal extends Context.Service<MaterializationJourn
   '@livestore/common/MaterializationJournal',
 ) {}
 
-interface Options {
-  readonly dbState: SqliteDb
-}
+export const make = Effect.gen(function* () {
+  const dbState = yield* StateSqliteDb.StateSqliteDb
 
-export const make = ({ dbState }: Options) => {
   const deleteByKeys = Effect.fnUntraced(function* (keys: ReadonlyArray<EventSequenceNumber.Client.Composite>) {
     // Keep DELETE statements below SQLite's bound-parameter limit.
     const keyChunks = ReadonlyArray.chunksOf(100)(keys)
@@ -159,9 +158,9 @@ export const make = ({ dbState }: Options) => {
       Effect.mapError((cause) => new MaterializationJournalError({ method: 'discardUpTo', cause })),
     ),
   })
-}
+})
 
-export const layer = (options: Options) => Layer.succeed(MaterializationJournal, make(options))
+export const layer = Layer.effect(MaterializationJournal, make)
 
 export const layerTest = Layer.succeed(
   MaterializationJournal,

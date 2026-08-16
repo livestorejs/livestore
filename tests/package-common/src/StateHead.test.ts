@@ -1,6 +1,6 @@
 import { expect } from 'vitest'
 
-import { migrateDb, StateHead } from '@livestore/common'
+import { migrateDb, type SqliteDb, StateHead, StateSqliteDb } from '@livestore/common'
 import { EventSequenceNumber } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
@@ -13,7 +13,7 @@ import { schema } from './leader-thread/fixture.ts'
 Vitest.describe.concurrent('StateHead', () => {
   Vitest.live('get returns the root head for an empty current-schema state database', (test) =>
     Effect.gen(function* () {
-      const stateHead = StateHead.make({ dbState: yield* makeDb })
+      const stateHead = yield* makeStateHead(yield* makeDb)
 
       expect(yield* stateHead.get).toEqual(EventSequenceNumber.Client.ROOT)
     }).pipe(Vitest.withTestCtx(test), Effect.provide(PlatformNode.NodeFileSystem.layer)),
@@ -24,16 +24,17 @@ Vitest.describe.concurrent('StateHead', () => {
       const dbState = yield* makeDb
       const head = EventSequenceNumber.Client.Composite.make({ global: 1, client: 0, rebaseGeneration: 0 })
 
-      yield* StateHead.make({ dbState }).set(head)
+      const stateHead = yield* makeStateHead(dbState)
+      yield* stateHead.set(head)
 
-      expect(yield* StateHead.make({ dbState }).get).toEqual(head)
+      expect(yield* stateHead.get).toEqual(head)
     }).pipe(Vitest.withTestCtx(test), Effect.provide(PlatformNode.NodeFileSystem.layer)),
   )
 
   Vitest.live('set replaces the complete persisted state head', (test) =>
     Effect.gen(function* () {
       const dbState = yield* makeDb
-      const stateHead = StateHead.make({ dbState })
+      const stateHead = yield* makeStateHead(dbState)
       const initialHead = EventSequenceNumber.Client.Composite.make({
         global: 3,
         client: 2,
@@ -60,3 +61,6 @@ const makeDb = Effect.gen(function* () {
   yield* migrateDb({ db: dbState, schema })
   return dbState
 })
+
+const makeStateHead = (dbState: SqliteDb) =>
+  StateHead.make.pipe(Effect.provideService(StateSqliteDb.StateSqliteDb, dbState))

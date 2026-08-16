@@ -17,6 +17,7 @@ import type { Adapter, BootWarningReason, ClientSession, LockStatus } from '@liv
 import {
   IntentionalShutdownCause,
   makeClientSession,
+  StateSqliteDb,
   StateHead,
   StoreInterrupted,
   UnknownError,
@@ -334,7 +335,8 @@ export const makeSingleTabAdapter =
 
       // The state snapshot carries its own cursor, so the fast path does not
       // need to export or transfer the eventlog database.
-      const initialLeaderHead = yield* StateHead.make({ dbState: sqliteDb }).get
+      const stateHead = yield* StateHead.make.pipe(Effect.provideService(StateSqliteDb.StateSqliteDb, sqliteDb))
+      const initialLeaderHead = yield* stateHead.get
 
       yield* Effect.addFinalizer((ex: Exit.Exit<unknown, unknown>) =>
         Effect.gen(function* () {

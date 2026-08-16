@@ -1,18 +1,19 @@
 import { Effect, Queue } from '@livestore/utils/effect'
 
 import type { MigrationsReport } from '../defs.ts'
+import type * as EventlogSqliteDb from '../EventlogSqliteDb.ts'
 import {
   type BootStatus,
   type MaterializeError,
   type MaterializationJournal,
   migrateDb,
   rematerializeFromEventlog,
-  type SqliteDb,
   type SqliteError,
   UnknownError,
 } from '../index.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { SystemTables } from '../schema/mod.ts'
+import * as StateSqliteDb from '../StateSqliteDb.ts'
 import { configureConnection, execSql } from './connection.ts'
 import type { MaterializeEvent } from './types.ts'
 import { STATE_REBUILD_BATCH_SIZE_DEFAULT } from './types.ts'
@@ -30,24 +31,22 @@ export const markStateAsCompleted = (db: SqliteDb): Effect.Effect<void, SqliteEr
   execSql(db, `INSERT OR IGNORE INTO ${SystemTables.REBUILD_META_TABLE} (id) VALUES (1)`, {})
 
 export const recreateDb = ({
-  dbState,
-  dbEventlog,
   schema,
   bootStatusQueue,
   materializeEvent,
   stateRebuildBatchSize = STATE_REBUILD_BATCH_SIZE_DEFAULT,
 }: {
-  dbState: SqliteDb
-  dbEventlog: SqliteDb
   schema: LiveStoreSchema
   bootStatusQueue: Queue.Queue<BootStatus>
   materializeEvent: MaterializeEvent
   stateRebuildBatchSize?: number
 }): Effect.Effect<
   { migrationsReport: MigrationsReport },
-  UnknownError | MaterializeError | MaterializationJournal.MaterializationJournalError | SqliteError
+  UnknownError | MaterializeError | MaterializationJournal.MaterializationJournalError | SqliteError,
+  EventlogSqliteDb.EventlogSqliteDb | StateSqliteDb.StateSqliteDb
 > =>
   Effect.gen(function* () {
+    const dbState = yield* StateSqliteDb.StateSqliteDb
     const hooks = schema.state.sqlite.migrations.hooks
 
     yield* Effect.addFinalizer(
@@ -71,7 +70,6 @@ export const recreateDb = ({
     yield* Effect.trySyncOrPromiseOrEffect(() => hooks?.pre?.(dbState)).pipe(UnknownError.mapToUnknownError)
 
     yield* rematerializeFromEventlog({
-      dbEventlog,
       dbState,
       schema,
       materializeEvent,

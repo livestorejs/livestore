@@ -1,10 +1,11 @@
 import { Context, Effect, Layer } from '@livestore/utils/effect'
 
-import type { SqliteDb, SqliteError } from './adapter-types.ts'
+import type { SqliteError } from './adapter-types.ts'
 import { execSql, selectSql } from './leader-thread/connection.ts'
 import * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
 import { SystemTables } from './schema/mod.ts'
 import { findManyRows, insertRow } from './sql-queries/index.ts'
+import * as StateSqliteDb from './StateSqliteDb.ts'
 
 export const TypeId = '~@livestore/common/StateHead' as const
 export type TypeId = typeof TypeId
@@ -24,11 +25,9 @@ export interface Service {
 
 export class StateHead extends Context.Service<StateHead, Service>()('@livestore/common/StateHead') {}
 
-interface Options {
-  readonly dbState: SqliteDb
-}
+export const make = Effect.gen(function* () {
+  const dbState = yield* StateSqliteDb.StateSqliteDb
 
-export const make = ({ dbState }: Options) => {
   return StateHead.of({
     [TypeId]: TypeId,
     set: (head) => {
@@ -66,9 +65,9 @@ export const make = ({ dbState }: Options) => {
       )
     }),
   })
-}
+})
 
-export const layer = (options: Options) => Layer.succeed(StateHead, make(options))
+export const layer = Layer.effect(StateHead, make)
 
 export const layerTest = Layer.succeed(
   StateHead,

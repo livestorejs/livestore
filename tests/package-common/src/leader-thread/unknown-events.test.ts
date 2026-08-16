@@ -1,7 +1,14 @@
 import { expect } from 'vitest'
 
 import type { BootStatus, SqliteDb } from '@livestore/common'
-import { MATERIALIZATION_JOURNAL_META_TABLE, MaterializationJournal, sql, StateHead } from '@livestore/common'
+import {
+  EventlogSqliteDb,
+  MATERIALIZATION_JOURNAL_META_TABLE,
+  MaterializationJournal,
+  sql,
+  StateHead,
+  StateSqliteDb,
+} from '@livestore/common'
 import { Eventlog, makeMaterializeEvent, recreateDb } from '@livestore/common/leader-thread'
 import type { UnknownEvents } from '@livestore/common/schema'
 import {
@@ -35,7 +42,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
 
       const rows = dbEventlog.select<{ name: string; schemaHash: number }>(sql`SELECT name, schemaHash FROM eventlog`)
       expect(rows).toEqual([{ name: event.name, schemaHash: UNKNOWN_EVENT_SCHEMA_HASH }])
-      expect(yield* StateHead.make({ dbState }).get).toEqual(event.seqNum)
+      expect(yield* getStateHead(dbState)).toEqual(event.seqNum)
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 
@@ -112,10 +119,12 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
       yield* Eventlog.initEventlogDb(dbEventlog)
 
       const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
-      const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog }).pipe(
-        Effect.provide(Layer.mergeAll(StateHead.layer({ dbState }), MaterializationJournal.layer({ dbState }))),
+      const materializeEvent = yield* makeMaterializeEvent({ schema }).pipe(
+        Effect.provide(makeDbServicesLayer(dbState, dbEventlog)),
       )
-      yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
+      yield* recreateDb({ schema, bootStatusQueue, materializeEvent }).pipe(
+        Effect.provide(makeDbServicesLayer(dbState, dbEventlog)),
+      )
       yield* Queue.shutdown(bootStatusQueue)
 
       const event = new LiveStoreEvent.Client.EncodedWithMeta({
@@ -144,28 +153,17 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
       const rematerializedState = yield* makeSqliteDb({ _tag: 'in-memory' })
       const rematerializeEvent = yield* makeMaterializeEvent({
         schema,
-        dbState: rematerializedState,
-        dbEventlog,
-      }).pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            StateHead.layer({ dbState: rematerializedState }),
-            MaterializationJournal.layer({ dbState: rematerializedState }),
-          ),
-        ),
-      )
+      }).pipe(Effect.provide(makeDbServicesLayer(rematerializedState, dbEventlog)))
 
       const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
       yield* recreateDb({
-        dbState: rematerializedState,
-        dbEventlog,
         schema,
         bootStatusQueue,
         materializeEvent: rematerializeEvent,
-      })
+      }).pipe(Effect.provide(makeDbServicesLayer(rematerializedState, dbEventlog)))
       yield* Queue.shutdown(bootStatusQueue)
 
-      expect(yield* StateHead.make({ dbState: rematerializedState }).get).toEqual(event.seqNum)
+      expect(yield* getStateHead(rematerializedState)).toEqual(event.seqNum)
       expect(getMaterializationChangesetTag(rematerializedState, event.seqNum)).toEqual('no-op')
     }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
@@ -213,11 +211,27 @@ const setup = (config: UnknownEvents.HandlingConfig) =>
     yield* Eventlog.initEventlogDb(dbEventlog)
 
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
-    const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog }).pipe(
-      Effect.provide(Layer.mergeAll(StateHead.layer({ dbState }), MaterializationJournal.layer({ dbState }))),
+    const materializeEvent = yield* makeMaterializeEvent({ schema }).pipe(
+      Effect.provide(makeDbServicesLayer(dbState, dbEventlog)),
     )
-    yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
+    yield* recreateDb({ schema, bootStatusQueue, materializeEvent }).pipe(
+      Effect.provide(makeDbServicesLayer(dbState, dbEventlog)),
+    )
     yield* Queue.shutdown(bootStatusQueue)
 
     return { materializeEvent, dbEventlog, dbState, schema }
   })
+
+const makeDbServicesLayer = (dbState: SqliteDb, dbEventlog: SqliteDb) => {
+  const sqliteDbLayer = Layer.mergeAll(StateSqliteDb.layer(dbState), EventlogSqliteDb.layer(dbEventlog))
+  const stateServicesLayer = Layer.mergeAll(StateHead.layer, MaterializationJournal.layer).pipe(
+    Layer.provide(sqliteDbLayer),
+  )
+  return Layer.mergeAll(sqliteDbLayer, stateServicesLayer)
+}
+
+const getStateHead = (dbState: SqliteDb) =>
+  StateHead.make.pipe(
+    Effect.provideService(StateSqliteDb.StateSqliteDb, dbState),
+    Effect.flatMap((stateHead) => stateHead.get),
+  )

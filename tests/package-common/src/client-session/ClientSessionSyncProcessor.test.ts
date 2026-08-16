@@ -5,12 +5,14 @@ import {
   type BootStatus,
   type ClientSession,
   ClientSessionLeaderThreadProxy,
+  EventlogSqliteDb,
   LeaderAheadError,
   MATERIALIZATION_JOURNAL_META_TABLE,
   makeMockSyncBackend,
   MaterializationJournal,
   sql,
   StateHead,
+  StateSqliteDb,
   SyncState,
   type UnknownError,
 } from '@livestore/common'
@@ -164,6 +166,7 @@ const makeClientProcessorHarness = Effect.fn(function* ({
   }).pipe(
     Effect.provide(
       Layer.mergeAll(
+        StateSqliteDb.layer(sqliteDb),
         StateHead.layerTest,
         Layer.succeed(
           MaterializationJournal.MaterializationJournal,
@@ -206,9 +209,10 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       store.commit(events.todoCreated({ id: '1', text: 't1', completed: false }))
 
       const syncState = yield* store[StoreInternalsSymbol].syncProcessor.syncState.get
-      expect(yield* StateHead.make({ dbState: store[StoreInternalsSymbol].sqliteDbWrapper }).get).toEqual(
-        syncState.localHead,
+      const stateHead = yield* StateHead.make.pipe(
+        Effect.provideService(StateSqliteDb.StateSqliteDb, store[StoreInternalsSymbol].sqliteDbWrapper),
       )
+      expect(yield* stateHead.get).toEqual(syncState.localHead)
 
       yield* mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
     }).pipe(withTestCtx(test)),
@@ -576,10 +580,16 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
             const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
 
             const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
-            const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog }).pipe(
-              Effect.provide(Layer.mergeAll(StateHead.layer({ dbState }), MaterializationJournal.layer({ dbState }))),
+            const sqliteDbLayer = Layer.mergeAll(StateSqliteDb.layer(dbState), EventlogSqliteDb.layer(dbEventlog))
+            const stateServicesLayer = Layer.mergeAll(StateHead.layer, MaterializationJournal.layer).pipe(
+              Layer.provide(sqliteDbLayer),
             )
-            yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
+            const materializeEvent = yield* makeMaterializeEvent({ schema }).pipe(
+              Effect.provide(Layer.mergeAll(sqliteDbLayer, stateServicesLayer)),
+            )
+            yield* recreateDb({ schema, bootStatusQueue, materializeEvent }).pipe(
+              Effect.provide(Layer.mergeAll(sqliteDbLayer, stateServicesLayer)),
+            )
 
             return { dbEventlog, dbState }
           }).pipe(Effect.orDie),
@@ -621,9 +631,10 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       ])
 
       const syncState = yield* store[StoreInternalsSymbol].syncProcessor.syncState.get
-      expect(yield* StateHead.make({ dbState: store[StoreInternalsSymbol].sqliteDbWrapper }).get).toEqual(
-        syncState.localHead,
+      const stateHead = yield* StateHead.make.pipe(
+        Effect.provideService(StateSqliteDb.StateSqliteDb, store[StoreInternalsSymbol].sqliteDbWrapper),
       )
+      expect(yield* stateHead.get).toEqual(syncState.localHead)
     }).pipe(withTestCtx(test)),
   )
 
@@ -1316,7 +1327,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
         params: { leaderPushBatchSize: 10 },
         confirmUnsavedChanges: false,
-      }).pipe(Effect.provide(materializationLayerTest))
+      }).pipe(Effect.provide(Layer.mergeAll(materializationLayerTest, StateSqliteDb.layer(clientSession.sqliteDb))))
 
       const encoded = yield* syncProcessor.encodeEvents([
         events.todoCreated({ id: 'post-rebase', text: 'after', completed: false }),
@@ -1483,7 +1494,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
         params: { leaderPushBatchSize: 10 },
         confirmUnsavedChanges: false,
-      }).pipe(Effect.provide(materializationLayerTest))
+      }).pipe(Effect.provide(Layer.mergeAll(materializationLayerTest, StateSqliteDb.layer(clientSession.sqliteDb))))
 
       const unknownEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
         name: 'unknown_event_test',

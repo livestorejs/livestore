@@ -6,6 +6,7 @@ import {
   migrateDb,
   prepareBindValues,
   SqliteError,
+  StateSqliteDb,
   sql,
   type MaterializationJournalMetaRow,
   type SqliteDb,
@@ -26,10 +27,9 @@ const setup = Effect.gen(function* () {
   yield* migrateDb({ db: dbState, schema })
   dbState.execute('CREATE TABLE journal_test (id INTEGER PRIMARY KEY, value TEXT NOT NULL)')
 
-  return {
-    dbState,
-    journal: MaterializationJournal.make({ dbState }),
-  }
+  const journal = yield* MaterializationJournal.make.pipe(Effect.provideService(StateSqliteDb.StateSqliteDb, dbState))
+
+  return { dbState, journal }
 })
 
 Vitest.describe.concurrent('MaterializationJournal', () => {

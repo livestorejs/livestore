@@ -27,10 +27,11 @@ import {
   TxQueue,
 } from '@livestore/utils/effect'
 
-import { MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
+import { MaterializeError, UnknownError } from '../adapter-types.ts'
 import { PullItem } from '../ClientSessionLeaderThreadProxy.ts'
 import type { UnknownEventError } from '../errors.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
+import * as EventlogSqliteDb from '../EventlogSqliteDb.ts'
 import * as MaterializationJournal from '../MaterializationJournal.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
@@ -38,6 +39,7 @@ import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } fr
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 import * as SqliteDbHelper from '../sqlite-db-helper.ts'
 import * as StateHead from '../StateHead.ts'
+import * as StateSqliteDb from '../StateSqliteDb.ts'
 import type { BackendIdMismatchError, IsOfflineError, SyncBackend } from '../sync/sync.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
@@ -209,8 +211,6 @@ interface Options {
  * depending on the outward-facing leader aggregate that contains the processor itself.
  */
 interface Runtime {
-  readonly dbState: SqliteDb
-  readonly dbEventlog: SqliteDb
   readonly materializeEvent: MaterializeEvent
   readonly syncBackend: SyncBackend.SyncBackend | undefined
   readonly shutdownChannel: ShutdownChannel
@@ -229,9 +229,11 @@ export const make = Effect.fnUntraced(function* ({
   params,
   testing,
 }: Options) {
+  const dbState = yield* StateSqliteDb.StateSqliteDb
+  const dbEventlog = yield* EventlogSqliteDb.EventlogSqliteDb
   const materializationJournal = yield* MaterializationJournal.MaterializationJournal
   const stateHead = yield* StateHead.StateHead
-  const { dbState, dbEventlog, devtoolsLatch, materializeEvent, shutdownChannel, span, syncBackend } = runtime
+  const { devtoolsLatch, materializeEvent, shutdownChannel, span, syncBackend } = runtime
   const syncBackendPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
   const localPushBatchSize = params.localPushBatchSize ?? 10
   const backendPushBatchSize = params.backendPushBatchSize ?? 50
@@ -1179,7 +1181,7 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
     )
 
     // Clear local databases so the client can start fresh on next boot
-    yield* clearLocalDatabases({ dbEventlog, dbState })
+    yield* clearLocalDatabases
 
     // Send shutdown signal with special reason
     yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'backend-id-mismatch' })).pipe(Effect.orDie)
@@ -1211,8 +1213,11 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
  * Clears local databases (eventlog and state) so the client can start fresh on next boot.
  * This is used when the sync backend identity has changed (i.e. backend was reset).
  */
-const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; dbState: SqliteDb }) =>
-  Effect.sync(() => {
+const clearLocalDatabases = Effect.gen(function* () {
+  const dbState = yield* StateSqliteDb.StateSqliteDb
+  const dbEventlog = yield* EventlogSqliteDb.EventlogSqliteDb
+
+  yield* Effect.sync(() => {
     // Clear eventlog tables
     dbEventlog.execute(sql`DELETE FROM ${EVENTLOG_META_TABLE}`)
     dbEventlog.execute(sql`DELETE FROM ${SYNC_STATUS_TABLE}`)
@@ -1225,6 +1230,7 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
       dbState.execute(`DROP TABLE IF EXISTS "${name}"`)
     }
   })
+})
 
 const snapshotTxQueue = <A>(queue: TxQueue.TxQueue<A>): Effect.Effect<ReadonlyArray<A>> =>
   Effect.tx(
