@@ -305,7 +305,7 @@ export const waSqliteTest = Cli.Command.make('wa-sqlite', {}, runWaSqliteTests)
 // TODO clean this up at some point
 
 /** A run in which the suite that had to prove something never executed. */
-export class NoTestsExecutedError extends Schema.TaggedErrorClass<NoTestsExecutedError>()('NoTestsExecutedError', {
+export class NoTestsExecutedError extends Schema.TaggedError<NoTestsExecutedError>()('NoTestsExecutedError', {
   reportPath: Schema.String,
   suiteFile: Schema.String,
 }) {}

@@ -20,7 +20,7 @@ import { Opfs, type WebError } from '@livestore/utils/effect/browser'
 
 import type * as WorkerSchema from './worker-schema.ts'
 
-export class PersistedSqliteError extends Schema.TaggedErrorClass<PersistedSqliteError>(
+export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>(
   '~@livestore/adapter-web/PersistedSqliteError',
 )('PersistedSqliteError', {
   message: Schema.String,

@@ -9,7 +9,6 @@ import {
   Effect,
   ManagedRuntime,
   Metric,
-  Option,
   ReadonlyArray,
   Schema,
   SchemaGetter,
@@ -49,7 +48,7 @@ const NumberFromDescriptionAnnotation = <T extends string>(typeLiteral: T) =>
             Effect.filterOrFail(
               (num) => !Number.isNaN(num),
               () =>
-                new SchemaIssue.InvalidValue(Option.some(description), {
+                new SchemaIssue.InvalidValue({
                   message: `Invalid ${rest.type} description: ${description}`,
                 }),
             ),

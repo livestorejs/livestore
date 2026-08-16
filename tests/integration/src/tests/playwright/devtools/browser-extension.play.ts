@@ -28,7 +28,7 @@ import { checkDevtoolsState, checkProtocolMismatchOverlay } from './shared.ts'
 
 const appStoreId = 'app-root'
 
-export class TestError extends Schema.TaggedErrorClass<TestError>()('TestError', {
+export class TestError extends Schema.TaggedError<TestError>()('TestError', {
   message: Schema.String,
 }) {}
 
@@ -154,7 +154,7 @@ const runTest =
     )
 
     return Effect.gen(function* () {
-      const parentSpanContext = (yield* Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)(
+      const parentSpanContext = (yield* Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Unknown))(
         process.env.SPAN_CONTEXT_JSON ?? '{}',
       )) as otel.SpanContext
       const parentSpan = OtelTracer.makeExternalSpan({
