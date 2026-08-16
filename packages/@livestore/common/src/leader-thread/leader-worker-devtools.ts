@@ -1,6 +1,7 @@
 import { Cause, Effect, FiberMap, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
+import * as EventlogSqliteDb from '../EventlogSqliteDb.ts'
 import {
   Devtools,
   devtoolsProtocolVersion,
@@ -11,6 +12,7 @@ import {
   UnknownError,
 } from '../index.ts'
 import { SystemTables } from '../schema/mod.ts'
+import * as StateSqliteDb from '../StateSqliteDb.ts'
 import type { DevtoolsOptions, PersistenceInfoPair } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
 
@@ -113,17 +115,10 @@ const listenToDevtools = ({
   persistenceInfo?: PersistenceInfoPair
 }) =>
   Effect.gen(function* () {
-    const {
-      syncBackend,
-      makeSqliteDb,
-      dbState,
-      dbEventlog,
-      shutdownStateSubRef,
-      shutdownChannel,
-      syncProcessor,
-      clientId,
-      devtools,
-    } = yield* LeaderThreadCtx
+    const dbState = yield* StateSqliteDb.StateSqliteDb
+    const dbEventlog = yield* EventlogSqliteDb.EventlogSqliteDb
+    const { syncBackend, makeSqliteDb, shutdownStateSubRef, shutdownChannel, syncProcessor, clientId, devtools } =
+      yield* LeaderThreadCtx
 
     type SubscriptionId = string
     const subscriptionFiberMap = yield* FiberMap.make<SubscriptionId>()

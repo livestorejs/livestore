@@ -1,7 +1,8 @@
 import { isDevEnv, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 
-import { MaterializeError, MaterializerHashMismatchError, type SqliteDb } from '../adapter-types.ts'
+import { MaterializeError, MaterializerHashMismatchError } from '../adapter-types.ts'
+import * as EventlogSqliteDb from '../EventlogSqliteDb.ts'
 import * as MaterializationJournal from '../MaterializationJournal.ts'
 import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.ts'
 import { logDeprecationWarnings } from '../schema/EventDef/deprecated.ts'
@@ -9,6 +10,7 @@ import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, resolveEventDef, UNKNOWN_EVENT_SCHEMA_HASH } from '../schema/mod.ts'
 import * as SqliteDbHelper from '../sqlite-db-helper.ts'
 import * as StateHead from '../StateHead.ts'
+import * as StateSqliteDb from '../StateSqliteDb.ts'
 import { execSqlPrepared } from './connection.ts'
 import * as Eventlog from './eventlog.ts'
 import type { MaterializeEvent } from './types.ts'
@@ -16,14 +18,19 @@ import type { MaterializeEvent } from './types.ts'
 // TODO refactor `makeMaterializeEvent` to not return an Effect for the constructor as it's not needed
 export const makeMaterializeEvent = ({
   schema,
-  dbState,
-  dbEventlog,
 }: {
   schema: LiveStoreSchema
-  dbState: SqliteDb
-  dbEventlog: SqliteDb
-}): Effect.Effect<MaterializeEvent, never, MaterializationJournal.MaterializationJournal | StateHead.StateHead> =>
+}): Effect.Effect<
+  MaterializeEvent,
+  never,
+  | EventlogSqliteDb.EventlogSqliteDb
+  | MaterializationJournal.MaterializationJournal
+  | StateHead.StateHead
+  | StateSqliteDb.StateSqliteDb
+> =>
   Effect.gen(function* () {
+    const dbState = yield* StateSqliteDb.StateSqliteDb
+    const dbEventlog = yield* EventlogSqliteDb.EventlogSqliteDb
     const materializationJournal = yield* MaterializationJournal.MaterializationJournal
     const stateHead = yield* StateHead.StateHead
     const eventDefSchemaHashMap = new Map(

@@ -2,7 +2,7 @@ import type * as otel from '@opentelemetry/api'
 
 import type { BootStatus, BootWarningReason, LogConfig, SqliteDb, SyncOptions } from '@livestore/common'
 import { MaterializationJournal } from '@livestore/common'
-import { Devtools, StateHead, UnknownError } from '@livestore/common'
+import { Devtools, EventlogSqliteDb, StateHead, StateSqliteDb, UnknownError } from '@livestore/common'
 import type { DevtoolsOptions, StreamEventsOptions } from '@livestore/common/leader-thread'
 import {
   configureConnection,
@@ -269,27 +269,26 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
 
           const devtoolsOptions = yield* makeDevtoolsOptions({ devtoolsEnabled, dbState, dbEventlog })
           const shutdownChannel = yield* makeShutdownChannel(storeId)
-
-          return yield* Layer.buildWithScope(
-            makeLeaderThreadLayer({
-              schema,
-              storeId,
-              clientId,
-              makeSqliteDb,
-              syncOptions,
-              dbState,
-              dbEventlog,
-              devtoolsOptions,
-              shutdownChannel,
-              syncPayloadEncoded,
-              syncPayloadSchema: syncPayloadSchema as Schema.Decoder<Schema.Json, never> | undefined,
-              params,
-              ...(bootWarning !== undefined ? { bootWarning } : {}),
-            }).pipe(
-              Layer.provide(Layer.mergeAll(StateHead.layer({ dbState }), MaterializationJournal.layer({ dbState }))),
-            ),
-            leaderThreadScope,
+          const sqliteDbLayer = Layer.mergeAll(StateSqliteDb.layer(dbState), EventlogSqliteDb.layer(dbEventlog))
+          const stateServicesLayer = Layer.mergeAll(StateHead.layer, MaterializationJournal.layer).pipe(
+            Layer.provide(sqliteDbLayer),
           )
+
+          const leaderThreadLayer = makeLeaderThreadLayer({
+            schema,
+            storeId,
+            clientId,
+            makeSqliteDb,
+            syncOptions,
+            devtoolsOptions,
+            shutdownChannel,
+            syncPayloadEncoded,
+            syncPayloadSchema: syncPayloadSchema as Schema.Decoder<Schema.Json, never> | undefined,
+            params,
+            ...(bootWarning !== undefined ? { bootWarning } : {}),
+          }).pipe(Layer.provide(Layer.mergeAll(sqliteDbLayer, stateServicesLayer)))
+
+          return yield* Layer.buildWithScope(Layer.mergeAll(leaderThreadLayer, sqliteDbLayer), leaderThreadScope)
         }).pipe(
           Scope.provide(leaderThreadScope),
           Effect.tapCauseLogPretty,
@@ -317,6 +316,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         GetRecreateSnapshot: () =>
           Effect.gen(function* () {
             const workerCtx = yield* LeaderThreadCtx
+            const dbState = yield* StateSqliteDb.StateSqliteDb
 
             // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
             // const cachedSnapshot =
@@ -324,7 +324,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
 
             // return cachedSnapshot ?? workerCtx.db.export()
 
-            const snapshot = workerCtx.dbState.export()
+            const snapshot = dbState.export()
             return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
           }).pipe(provideLeaderThread),
         PullStream: ({ cursor }) =>
@@ -346,27 +346,24 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
             Effect.withSpan('@livestore/adapter-web:worker:PushToLeader'),
           ),
         StreamEvents: (options) =>
-          LeaderThreadCtx.pipe(
-            Effect.map(({ dbEventlog, syncProcessor }) =>
-              streamEventsWithSyncState({
-                dbEventlog,
-                syncState: syncProcessor.syncState,
-                options: options as StreamEventsOptions,
-              }),
-            ),
-            provideLeaderThread,
-            Stream.unwrap,
-            Stream.withSpan('@livestore/adapter-web:worker:StreamEvents'),
-          ),
+          Effect.gen(function* () {
+            const { syncProcessor } = yield* LeaderThreadCtx
+            const dbEventlog = yield* EventlogSqliteDb.EventlogSqliteDb
+            return streamEventsWithSyncState({
+              dbEventlog,
+              syncState: syncProcessor.syncState,
+              options: options as StreamEventsOptions,
+            })
+          }).pipe(provideLeaderThread, Stream.unwrap, Stream.withSpan('@livestore/adapter-web:worker:StreamEvents')),
         Export: () =>
-          LeaderThreadCtx.pipe(
-            Effect.flatMap((_) => Effect.sync(() => _.dbState.export())),
+          StateSqliteDb.StateSqliteDb.pipe(
+            Effect.flatMap((dbState) => Effect.sync(() => dbState.export())),
             provideLeaderThread,
             Effect.withSpan('@livestore/adapter-web:worker:Export'),
           ),
         ExportEventlog: () =>
-          LeaderThreadCtx.pipe(
-            Effect.flatMap((_) => Effect.sync(() => _.dbEventlog.export())),
+          EventlogSqliteDb.EventlogSqliteDb.pipe(
+            Effect.flatMap((dbEventlog) => Effect.sync(() => dbEventlog.export())),
             provideLeaderThread,
             Effect.withSpan('@livestore/adapter-web:worker:ExportEventlog'),
           ),
@@ -378,8 +375,8 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           ),
         GetLeaderHead: () =>
           Effect.gen(function* () {
-            const workerCtx = yield* LeaderThreadCtx
-            return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
+            const dbEventlog = yield* EventlogSqliteDb.EventlogSqliteDb
+            return Eventlog.getClientHeadFromDb(dbEventlog)
           }).pipe(provideLeaderThread),
         GetLeaderSyncState: () =>
           Effect.gen(function* () {

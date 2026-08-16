@@ -3,6 +3,7 @@ import { assert, expect } from 'vitest'
 import {
   BackendIdMismatchError,
   type ClientSessionLeaderThreadProxy,
+  EventlogSqliteDb,
   type IntentionalShutdownCause,
   IsOfflineError,
   type MockSyncBackend,
@@ -13,8 +14,10 @@ import {
   NonContiguousBatchError,
   type RejectedPushError,
   ServerAheadError,
+  type SqliteDb,
   sql,
   StateHead,
+  StateSqliteDb,
   StaleRebaseGenerationError,
   type SyncBackend,
   type SyncOptions,
@@ -48,6 +51,12 @@ import {
 import { PlatformNode } from '@livestore/utils/node'
 
 import { events, schema, tables } from './fixture.ts'
+
+const getStateHead = (dbState: SqliteDb) =>
+  StateHead.make.pipe(
+    Effect.provideService(StateSqliteDb.StateSqliteDb, dbState),
+    Effect.flatMap((stateHead) => stateHead.get),
+  )
 
 /*
 TODO:
@@ -350,14 +359,14 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         Stream.runDrain,
       )
 
-      const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
+      const result = (yield* StateSqliteDb.StateSqliteDb).select(tables.todos.asSql().query)
       const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
 
       expect(result).toEqual([
         { id: '1', text: 't1', completed: 0, deletedAt: null },
         { id: '2', text: 't2', completed: 0, deletedAt: null },
       ])
-      expect(yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get).toEqual(syncState.localHead)
+      expect(yield* getStateHead(yield* StateSqliteDb.StateSqliteDb)).toEqual(syncState.localHead)
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
     }).pipe(withTestCtx()(test)),
@@ -387,7 +396,9 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       expect(retainedEvent.meta.materializerHashLeader._tag).toEqual('Some')
       expect(retainedEvent.meta.materializerHashLeader).toEqual(publishedEvent.meta.materializerHashLeader)
 
-      const journalChangeset = leaderThreadCtx.dbState.select<{ changeset: Uint8Array<ArrayBuffer> | null }>(
+      const journalChangeset = (yield* StateSqliteDb.StateSqliteDb).select<{
+        changeset: Uint8Array<ArrayBuffer> | null
+      }>(
         sql`SELECT changeset FROM ${MATERIALIZATION_JOURNAL_META_TABLE}
             WHERE seqNumGlobal = ${retainedEvent.seqNum.global}
               AND seqNumClient = ${retainedEvent.seqNum.client}
@@ -408,7 +419,9 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       const downstreamItem = yield* Queue.take(testContext.pullQueue)
       assert(downstreamItem.payload._tag === 'upstream-advance')
       const pendingEvent = downstreamItem.payload.newEvents[0]!
-      const changeset = leaderThreadCtx.dbState.select<{ changeset: Uint8Array<ArrayBuffer> | null }>(
+      const changeset = (yield* StateSqliteDb.StateSqliteDb).select<{
+        changeset: Uint8Array<ArrayBuffer> | null
+      }>(
         sql`SELECT changeset FROM ${MATERIALIZATION_JOURNAL_META_TABLE}
             WHERE seqNumGlobal = ${pendingEvent.seqNum.global}
               AND seqNumClient = ${pendingEvent.seqNum.client}
@@ -434,7 +447,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         Effect.timeout('5 seconds'),
       )
 
-      const remainingJournalRows = leaderThreadCtx.dbState.select<{ count: number }>(
+      const remainingJournalRows = (yield* StateSqliteDb.StateSqliteDb).select<{ count: number }>(
         sql`SELECT COUNT(*) AS count FROM ${MATERIALIZATION_JOURNAL_META_TABLE}`,
       )[0]!.count
       expect(remainingJournalRows).toEqual(0)
@@ -476,7 +489,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(5000))
 
-      const rows = leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)
+      const rows = (yield* StateSqliteDb.StateSqliteDb).select<{ id: string }>(tables.todos.asSql().query)
       expect(rows.map((row) => row.id).toSorted()).toEqual(['backend-1', 'backend-2', 'backend-3', 'local-after-pull'])
     }).pipe(
       withTestCtx({
@@ -527,7 +540,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       yield* leaderThreadCtx.syncProcessor.push([localEvent])
 
-      const rows = leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)
+      const rows = (yield* StateSqliteDb.StateSqliteDb).select<{ id: string }>(tables.todos.asSql().query)
       expect(rows.map((row) => row.id).toSorted()).toEqual(['backend-1', 'local-after-pull-failure'])
     }).pipe(
       withTestCtx({
@@ -592,7 +605,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       yield* leaderThreadCtx.syncProcessor.push([localEvent])
 
-      const rows = leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)
+      const rows = (yield* StateSqliteDb.StateSqliteDb).select<{ id: string }>(tables.todos.asSql().query)
       expect(rows.map((row) => row.id).toSorted()).toEqual(['backend-1', 'local-after-pull-interrupt'])
     }).pipe(
       withTestCtx({
@@ -682,7 +695,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       yield* Effect.sleep(20).pipe(Effect.withSpan('@livestore/common-tests:sync:sleep'))
 
-      const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
+      const result = (yield* StateSqliteDb.StateSqliteDb).select(tables.todos.asSql().query)
       expect(result).toEqual([{ id: '2', text: 't2', completed: 0, deletedAt: null }])
 
       // This will cause a rebase given mismatch: local insert(id: '2') vs remote insert(id: '1')
@@ -690,14 +703,14 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
 
-      const rebasedResult = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
+      const rebasedResult = (yield* StateSqliteDb.StateSqliteDb).select(tables.todos.asSql().query)
       expect(rebasedResult).toEqual([
         { id: '1', text: 't1', completed: 0, deletedAt: null },
         { id: '2', text: 't2', completed: 0, deletedAt: null },
       ])
 
       const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
-      expect(yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get).toEqual(syncState.localHead)
+      expect(yield* getStateHead(yield* StateSqliteDb.StateSqliteDb)).toEqual(syncState.localHead)
 
       const queueResults = yield* Queue.clear(testContext.pullQueue)
       expect(queueResults[0]!.payload._tag).toEqual('upstream-advance')
@@ -721,16 +734,15 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         testContext.eventFactory.todoCreated.next({ id: 'local', text: 'local', completed: false }),
       )
 
-      const headBeforeRollback = yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get
-      expect(leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query).map(({ id }) => id)).toEqual([
-        'local',
-      ])
+      const dbState = yield* StateSqliteDb.StateSqliteDb
+      const headBeforeRollback = yield* getStateHead(dbState)
+      expect(dbState.select<{ id: string }>(tables.todos.asSql().query).map(({ id }) => id)).toEqual(['local'])
 
       const SQLITE_OK = 0
       const SQLITE_DENY = 1
       const SQLITE_INSERT = 18
       testContext.sqlite3.set_authorizer(
-        leaderThreadCtx.dbState.metadata.dbPointer,
+        dbState.metadata.dbPointer,
         (_userData, actionCode, tableName) =>
           actionCode === SQLITE_INSERT && tableName === '__livestore_state_head' ? SQLITE_DENY : SQLITE_OK,
         undefined,
@@ -741,14 +753,11 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       const shutdownError = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
 
       expect(shutdownError._tag).toEqual('MaterializeError')
-      expect(yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get).toEqual(headBeforeRollback)
-      expect(leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query).map(({ id }) => id)).toEqual([
-        'local',
-      ])
+      expect(yield* getStateHead(dbState)).toEqual(headBeforeRollback)
+      expect(dbState.select<{ id: string }>(tables.todos.asSql().query).map(({ id }) => id)).toEqual(['local'])
       expect(
-        leaderThreadCtx.dbState.select<{ count: number }>(
-          sql`SELECT COUNT(*) AS count FROM ${MATERIALIZATION_JOURNAL_META_TABLE}`,
-        )[0]!.count,
+        dbState.select<{ count: number }>(sql`SELECT COUNT(*) AS count FROM ${MATERIALIZATION_JOURNAL_META_TABLE}`)[0]!
+          .count,
       ).toEqual(1)
     }).pipe(withTestCtx({ syncOptions: { onSyncError: 'shutdown' }, captureShutdown: true })(test)),
   )
@@ -775,7 +784,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         Stream.runDrain,
       )
 
-      const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
+      const result = (yield* StateSqliteDb.StateSqliteDb).select(tables.todos.asSql().query)
       expect(result.length).toEqual(numberOfPushes)
 
       const queueResults = yield* Queue.clear(testContext.pullQueue)
@@ -1098,7 +1107,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(4), Stream.runDrain, Effect.timeout(7000))
 
       // Verify they have been materialized locally as well
-      const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
+      const result = (yield* StateSqliteDb.StateSqliteDb).select(tables.todos.asSql().query)
       expect(result.length).toEqual(4)
     }).pipe(
       withTestCtx({ params: { backendPushBatchSize: 2 }, syncOptions: { livePull: false, onSyncError: 'ignore' } })(
@@ -1153,7 +1162,9 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(3000))
 
       // Verify data exists in eventlog before the error
-      const beforeRows = leaderThreadCtx.dbEventlog.select<{ name: string }>(`SELECT name FROM eventlog`)
+      const beforeRows = (yield* EventlogSqliteDb.EventlogSqliteDb).select<{ name: string }>(
+        `SELECT name FROM eventlog`,
+      )
       expect(beforeRows.length).toBeGreaterThan(0)
 
       // Fail the next push due to backend id mismatch
@@ -1171,12 +1182,11 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       expect((shutdownMsg as IntentionalShutdownCause).reason).toEqual('backend-id-mismatch')
 
       // Verify databases were cleared
-      const afterEventlogRows = leaderThreadCtx.dbEventlog.select<{ name: string }>(`SELECT name FROM eventlog`)
+      const dbEventlog = yield* EventlogSqliteDb.EventlogSqliteDb
+      const afterEventlogRows = dbEventlog.select<{ name: string }>(`SELECT name FROM eventlog`)
       expect(afterEventlogRows.length).toBe(0)
 
-      const afterSyncStatusRows = leaderThreadCtx.dbEventlog.select<{ head: number }>(
-        `SELECT head FROM __livestore_sync_status`,
-      )
+      const afterSyncStatusRows = dbEventlog.select<{ head: number }>(`SELECT head FROM __livestore_sync_status`)
       expect(afterSyncStatusRows.length).toBe(0)
     }).pipe(
       withTestCtx({ syncOptions: { onBackendIdMismatch: 'reset', livePull: false }, captureShutdown: true })(test),
@@ -1200,7 +1210,9 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       )
 
       // Verify data exists
-      const beforeRows = leaderThreadCtx.dbEventlog.select<{ name: string }>(`SELECT name FROM eventlog`)
+      const beforeRows = (yield* EventlogSqliteDb.EventlogSqliteDb).select<{ name: string }>(
+        `SELECT name FROM eventlog`,
+      )
       expect(beforeRows.length).toBeGreaterThan(0)
 
       // Fail the next push due to backend id mismatch
@@ -1217,7 +1229,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       expect(shutdownMsg._tag).toEqual('BackendIdMismatchError')
 
       // Verify databases were NOT cleared
-      const afterRows = leaderThreadCtx.dbEventlog.select<{ name: string }>(`SELECT name FROM eventlog`)
+      const afterRows = (yield* EventlogSqliteDb.EventlogSqliteDb).select<{ name: string }>(`SELECT name FROM eventlog`)
       expect(afterRows.length).toBeGreaterThan(0)
     }).pipe(
       withTestCtx({ syncOptions: { onBackendIdMismatch: 'shutdown', livePull: false }, captureShutdown: true })(test),
@@ -1252,7 +1264,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       yield* Effect.sleep(Duration.millis(500))
 
       // Verify data still exists (not cleared)
-      const afterRows = leaderThreadCtx.dbEventlog.select<{ name: string }>(`SELECT name FROM eventlog`)
+      const afterRows = (yield* EventlogSqliteDb.EventlogSqliteDb).select<{ name: string }>(`SELECT name FROM eventlog`)
       expect(afterRows.length).toBeGreaterThan(0)
 
       // Verify no shutdown happened (deferred should still be pending)
@@ -1338,6 +1350,10 @@ const LeaderThreadCtxLive = ({
 
     const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
     const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
+    const sqliteDbLayer = Layer.mergeAll(StateSqliteDb.layer(dbState), EventlogSqliteDb.layer(dbEventlog))
+    const stateServicesLayer = Layer.mergeAll(StateHead.layer, MaterializationJournal.layer).pipe(
+      Layer.provide(sqliteDbLayer),
+    )
     const leaderContextLayer = makeLeaderThreadLayer({
       schema,
       storeId: 'test',
@@ -1355,19 +1371,15 @@ const LeaderThreadCtxLive = ({
           initialSyncOptions: syncOptions?.initialSyncOptions,
         }),
       },
-      dbState,
-      dbEventlog,
       devtoolsOptions: { enabled: false },
       shutdownChannel: shutdownProxy?.webChannel ?? (yield* WebChannel.noopChannel<any, any>()),
       testing: {
         ...omitUndefineds({ syncProcessor }),
       },
       ...omitUndefineds({ params }),
-    }).pipe(
-      Layer.provide(
-        Layer.mergeAll(StateHead.layer({ dbState }), MaterializationJournal.layer({ dbState }), FetchHttpClient.layer),
-      ),
-    )
+    }).pipe(Layer.provide(Layer.mergeAll(sqliteDbLayer, stateServicesLayer, FetchHttpClient.layer)))
+
+    const runtimeLayer = Layer.mergeAll(leaderContextLayer, sqliteDbLayer)
 
     const testContextLayer = Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
@@ -1410,7 +1422,7 @@ const LeaderThreadCtxLive = ({
           pushEncoded,
         }),
       )
-    }).pipe(Layer.unwrap, Layer.provide(leaderContextLayer))
+    }).pipe(Layer.unwrap, Layer.provide(runtimeLayer))
 
-    return leaderContextLayer.pipe(Layer.merge(testContextLayer))
+    return runtimeLayer.pipe(Layer.merge(testContextLayer))
   }).pipe(Layer.unwrap)

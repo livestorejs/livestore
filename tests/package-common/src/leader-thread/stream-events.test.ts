@@ -1,7 +1,7 @@
 import { expect } from 'vitest'
 
 import type { BootStatus } from '@livestore/common'
-import { MaterializationJournal, StateHead, SyncState } from '@livestore/common'
+import { EventlogSqliteDb, MaterializationJournal, StateSqliteDb, StateHead, SyncState } from '@livestore/common'
 import { Eventlog, makeMaterializeEvent, recreateDb, streamEventsWithSyncState } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
@@ -46,10 +46,16 @@ const makeTestEnvironment = Effect.gen(function* () {
   yield* Eventlog.initEventlogDb(dbEventlog)
 
   const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
-  const materializeEvent = yield* makeMaterializeEvent({ schema: fixtureSchema, dbState, dbEventlog }).pipe(
-    Effect.provide(Layer.mergeAll(StateHead.layer({ dbState }), MaterializationJournal.layer({ dbState }))),
+  const sqliteDbLayer = Layer.mergeAll(StateSqliteDb.layer(dbState), EventlogSqliteDb.layer(dbEventlog))
+  const stateServicesLayer = Layer.mergeAll(StateHead.layer, MaterializationJournal.layer).pipe(
+    Layer.provide(sqliteDbLayer),
   )
-  yield* recreateDb({ dbState, dbEventlog, schema: fixtureSchema, bootStatusQueue, materializeEvent })
+  const materializeEvent = yield* makeMaterializeEvent({ schema: fixtureSchema }).pipe(
+    Effect.provide(Layer.mergeAll(sqliteDbLayer, stateServicesLayer)),
+  )
+  yield* recreateDb({ schema: fixtureSchema, bootStatusQueue, materializeEvent }).pipe(
+    Effect.provide(Layer.mergeAll(sqliteDbLayer, stateServicesLayer)),
+  )
   yield* Queue.shutdown(bootStatusQueue)
 
   const initialSyncState = SyncState.SyncState.make({

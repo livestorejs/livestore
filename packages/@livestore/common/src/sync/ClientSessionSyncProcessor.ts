@@ -27,6 +27,7 @@ import type { LiveStoreSchema } from '../schema/mod.ts'
 import { resolveSessionIdSymbolInEventArgs } from '../session-id-symbol.ts'
 import * as SqliteDbHelper from '../sqlite-db-helper.ts'
 import * as StateHead from '../StateHead.ts'
+import * as StateSqliteDb from '../StateSqliteDb.ts'
 import * as SyncState from './syncstate.ts'
 
 /** Serialize value to JSON string for trace attributes */
@@ -86,6 +87,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 }) {
   const materializationJournal = yield* MaterializationJournal.MaterializationJournal
   const stateHead = yield* StateHead.StateHead
+  const dbState = yield* StateSqliteDb.StateSqliteDb
   const eventSchema = LiveStoreEvent.Client.makeSchemaMemo(schema)
 
   const rebaseBarrier = (point: RebaseBarrierPoint): Effect.Effect<void> =>
@@ -284,7 +286,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
                 yield* materializationJournal.rollback(mergeResult.rollbackEvents.map((event) => event.seqNum))
                 yield* stateHead.set(headAfterRollback)
               }).pipe(
-                SqliteDbHelper.withSavepoint(clientSession.sqliteDb),
+                SqliteDbHelper.withSavepoint(dbState),
                 Effect.mapError((cause) =>
                   MaterializationJournal.isMaterializationJournalError(cause) === true
                     ? cause
