@@ -173,7 +173,7 @@ const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.Col
   }
 
   if (SchemaAST.isNumber(encodedAst) === true) {
-    if (hasCheck(coreAst.checks, 'isInt') === true || hasDateTypeConstructor(coreAst) === true) {
+    if (hasCheck(coreAst.checks, 'effect/schema/isInt') === true || hasDateRepresentation(coreAst) === true) {
       return SqliteDsl.integer({ schema: coreSchema, nullable })
     }
     return SqliteDsl.real({ schema: coreSchema, nullable })
@@ -227,7 +227,7 @@ const getLiteralColumnDefinition = (
     case 'string':
       return SqliteDsl.text({ schema, nullable })
     case 'number': {
-      if (hasCheck(sourceAst.checks, 'isInt') === true || hasDateTypeConstructor(sourceAst) === true) {
+      if (hasCheck(sourceAst.checks, 'effect/schema/isInt') === true || hasDateRepresentation(sourceAst) === true) {
         return SqliteDsl.integer({ schema, nullable })
       }
 
@@ -245,9 +245,9 @@ const getLiteralColumnDefinition = (
   }
 }
 
-/** Effect's built-in date codecs expose their semantic type through the Date type-constructor annotation. */
-const hasDateTypeConstructor = (ast: SchemaAST.AST): boolean =>
-  SchemaAST.resolveAt<{ readonly _tag: string }>('typeConstructor')(ast)?._tag === 'Date'
+/** Effect's built-in date codecs expose their semantic type through the Date representation annotation. */
+const hasDateRepresentation = (ast: SchemaAST.AST): boolean =>
+  SchemaAST.resolveAt<{ readonly id: string }>('representation')(ast)?.id === 'effect/schema/Date'
 
 const extractLiteralValues = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.LiteralValue> | null => {
   if (SchemaAST.isLiteral(ast) === true) return [ast.literal]
@@ -280,23 +280,26 @@ const getLiteralValueType = (
  *
  * Checks can be attached directly as `Filter`s or nested in `FilterGroup`s when
  * schemas compose multiple refinements, e.g. `Schema.Int.check(...)`.
+ *
+ * Effect rc.109 replaced the closed `meta` annotation with the open `representation`
+ * identity, so built-in checks are matched by their representation id.
  */
-const hasCheck = (checks: ReadonlyArray<SchemaAST.Check<unknown>> | undefined, tag: string): boolean => {
+const hasCheck = (checks: ReadonlyArray<SchemaAST.Check<unknown>> | undefined, representationId: string): boolean => {
   return (
     checks?.some((check) => {
       switch (check._tag) {
         case 'Filter':
-          return check.annotations?.meta?._tag === tag
+          return check.annotations?.representation?.id === representationId
         case 'FilterGroup':
-          return hasCheck(check.checks, tag)
+          return hasCheck(check.checks, representationId)
       }
     }) === true
   )
 }
 
 const isUint8ArraySchema = (ast: SchemaAST.AST): boolean => {
-  const typeConstructor = SchemaAST.resolveAt<{ readonly _tag: string }>('typeConstructor')(ast)
-  if (typeConstructor?._tag === 'Uint8Array') {
+  const representation = SchemaAST.resolveAt<{ readonly id: string }>('representation')(ast)
+  if (representation?.id === 'effect/schema/Uint8Array') {
     return true
   }
 
