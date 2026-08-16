@@ -13,6 +13,15 @@
 - **Cloudflare sync:** Serialize push admission through pull publication so an
   accepted event cannot advance the backend head without notifying subscribers
   ([#1537](https://github.com/livestorejs/livestore/pull/1537)).
+- **Effect v4 dependency cohort:** Updated the repository-wide Effect v4
+  dependency family from `4.0.0-beta.99` to `4.0.0-rc.109`. Applications must
+  bump their Effect peers to the matching release. Effect removed
+  `Schema.isDateValid` because `Schema.DateFromString` and
+  `Schema.DateFromMillis` now reject invalid dates on their own, so
+  `Schema.DateFromString.check(Schema.isDateValid())` becomes plain
+  `Schema.DateFromString`
+  ([#1557](https://github.com/livestorejs/livestore/issues/1557),
+  [Effect-TS/effect#6620](https://github.com/Effect-TS/effect/pull/6620)).
 - Removed redundant devenv package entries now owned by the task guard modules.
 - **Sync correctness:** Prevented later client-session events from crossing an
   older rejected pending prefix, and made leader admission retain explicit
@@ -32,6 +41,19 @@ For maintainers and contributors:
   ([#1559](https://github.com/livestorejs/livestore/issues/1559)). The trusted
   publisher leaves npm registry configuration unset so `actions/setup-node`
   does not inject its token-auth placeholder into the OIDC-only job.
+- **Effect rc.109 API burndown:** Ported the internal Effect surface that moved
+  between beta.99 and rc.109 — `Schema.TaggedErrorClass` →
+  `Schema.TaggedError`, `Schema.UnknownFromJsonString` →
+  `Schema.fromJsonString(Schema.Unknown)`, `Schema.toArbitraryLazy` →
+  `Schema.toArbitrary`, `Schedule.andThen` → `Schedule.concat`, and the
+  `SchemaIssue` constructors that dropped their `actual` argument. SQLite column
+  inference now keys off the open `representation` annotation instead of the
+  removed `typeConstructor`/`meta` annotations, and JSON-string columns are
+  detected through the `application/json` content annotation now that
+  `SchemaTransformation.fromJsonString` is a factory rather than a singleton.
+  The `@effect/vitest` record-arbitrary workaround was dropped because
+  [Effect-TS/effect#7148](https://github.com/Effect-TS/effect/pull/7148) fixed it
+  upstream ([#1557](https://github.com/livestorejs/livestore/issues/1557)).
 - **Tooling:** Shell entry no longer runs the full TypeScript build after
   dependency and generated-source setup. The shared Effect-utils
   `otel:profile:setup` task captures the strict setup graph through native
