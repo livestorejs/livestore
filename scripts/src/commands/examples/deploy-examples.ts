@@ -25,7 +25,7 @@ import {
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../../shared/misc.ts'
 import { emitWorkflowReportRecord, nowIsoUtc } from '../../shared/workflow-report.ts'
 
-export class ScriptError extends Schema.TaggedErrorClass<ScriptError>()('ScriptError', {
+export class ScriptError extends Schema.TaggedError<ScriptError>()('ScriptError', {
   message: Schema.String,
 }) {}
 

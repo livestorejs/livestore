@@ -16,13 +16,13 @@ import {
   Stream,
 } from '@livestore/utils/effect'
 
-export class NetlifyError extends Schema.TaggedErrorClass<NetlifyError>()('NetlifyError', {
+export class NetlifyError extends Schema.TaggedError<NetlifyError>()('NetlifyError', {
   reason: Schema.Literals(['auth', 'unknown']),
   message: Schema.String,
   cause: Schema.optional(Schema.Unknown),
 }) {}
 
-class FileReadError extends Schema.TaggedErrorClass<FileReadError>()('FileReadError', {
+class FileReadError extends Schema.TaggedError<FileReadError>()('FileReadError', {
   cause: Schema.Defect(),
   path: Schema.String,
 }) {}

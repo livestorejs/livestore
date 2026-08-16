@@ -31,7 +31,7 @@ import {
 } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
 
-export class UpdateDepsError extends Schema.TaggedErrorClass<UpdateDepsError>()('UpdateDepsError', {
+export class UpdateDepsError extends Schema.TaggedError<UpdateDepsError>()('UpdateDepsError', {
   message: Schema.String,
 }) {}
 

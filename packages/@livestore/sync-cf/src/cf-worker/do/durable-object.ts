@@ -34,7 +34,7 @@ const WebSocketPair = CfDeclare.WebSocketPair
 const WebSocketRequestResponsePair = CfDeclare.WebSocketRequestResponsePair
 
 /** Module-scoped JSON encoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
-const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
+const jsonStringify = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown))
 
 const DurableObjectBase = DurableObject as any as new (
   state: CfTypes.DurableObjectState,

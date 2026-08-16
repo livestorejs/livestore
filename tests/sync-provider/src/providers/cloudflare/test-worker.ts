@@ -35,7 +35,7 @@ declare class Response extends CfDeclare.Response {}
 declare class WebSocketPair extends CfDeclare.WebSocketPair {}
 
 /** Module-scoped JSON decoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
-const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
+const jsonParse = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))
 
 /**
  * Records what each `onPush` observes, keyed by storeId, so a test can assert a transport threaded

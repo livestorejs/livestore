@@ -10,7 +10,7 @@ import { Duration, Effect, FetchHttpClient, HttpClient, Layer, Schedule, Schema 
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
 
 /** The dev server did not become reachable within the readiness retry budget. */
-class DevServerNotReadyError extends Schema.TaggedErrorClass<DevServerNotReadyError>()('DevServerNotReadyError', {
+class DevServerNotReadyError extends Schema.TaggedError<DevServerNotReadyError>()('DevServerNotReadyError', {
   cause: Schema.Defect(),
 }) {}
 

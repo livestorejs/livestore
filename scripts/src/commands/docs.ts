@@ -42,12 +42,12 @@ const PROD_DEPLOY_STATE_FILE = `${PROD_DEPLOY_STATE_DIR}/deploy-state.json`
  * from a Netlify error or a shell `timeout(1)` kill (which surfaces as exit
  * code 124 / 137 outside Effect).
  */
-class DocsPhaseTimeoutError extends Schema.TaggedErrorClass<DocsPhaseTimeoutError>()('DocsPhaseTimeoutError', {
+class DocsPhaseTimeoutError extends Schema.TaggedError<DocsPhaseTimeoutError>()('DocsPhaseTimeoutError', {
   phase: Schema.String,
   durationMs: Schema.Finite,
 }) {}
 
-class DocsDeployProbeError extends Schema.TaggedErrorClass<DocsDeployProbeError>()('DocsDeployProbeError', {
+class DocsDeployProbeError extends Schema.TaggedError<DocsDeployProbeError>()('DocsDeployProbeError', {
   label: Schema.String,
   path: Schema.String,
   message: Schema.String,

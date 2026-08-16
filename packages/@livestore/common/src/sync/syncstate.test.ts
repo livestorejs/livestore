@@ -8,8 +8,8 @@ import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import * as SyncState from './syncstate.ts'
 
 /** Module-scoped JSON codecs; keeping the sync codecs out of Effect generators avoids `schemaSyncInEffect`. */
-const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
-const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
+const jsonStringify = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown))
+const jsonParse = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))
 
 const makeTestEvent = ({
   seqNum,

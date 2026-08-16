@@ -16,7 +16,7 @@ export const MaterializationJournalErrorTypeId = '~@livestore/common/Materializa
 export const isMaterializationJournalError = (u: unknown): u is MaterializationJournalError =>
   Predicate.hasProperty(u, MaterializationJournalErrorTypeId)
 
-export class MaterializationJournalError extends Schema.TaggedErrorClass<MaterializationJournalError>(
+export class MaterializationJournalError extends Schema.TaggedError<MaterializationJournalError>(
   MaterializationJournalErrorTypeId,
 )('MaterializationJournalError', {
   method: Schema.Literals(['record', 'rollback', 'discardUpTo']),

@@ -18,7 +18,7 @@ import * as DoCtx from './layer.ts'
 
 const pullResponseJsonSchema = Schema.toCodecJson(SyncMessage.PullResponse)
 const encodePullResponse = Schema.encodeSync(pullResponseJsonSchema)
-const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
+const jsonStringify = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown))
 type PullBatchItem = SyncMessage.PullResponse['batch'][number]
 type PushBatchItem = SyncMessage.PushRequest['batch'][number]
 
@@ -103,12 +103,10 @@ export const makePush =
           encode: (items: ReadonlyArray<PushBatchItem>) =>
             encodePullResponse(
               SyncMessage.PullResponse.make({
-                batch: items.map(
-                  (eventEncoded): PullBatchItem => ({
-                    eventEncoded,
-                    metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
-                  }),
-                ),
+                batch: items.map((eventEncoded): PullBatchItem => ({
+                  eventEncoded,
+                  metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
+                })),
                 pageInfo: SyncBackend.pageInfoNoMore,
                 backendId,
               }),

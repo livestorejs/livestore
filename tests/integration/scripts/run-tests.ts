@@ -36,7 +36,7 @@ const viteDevServer = ({
     yield* cmd(`./node_modules/.bin/vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`, {
       env: {
         // Relative to vite config
-        TEST_LIVESTORE_SCHEMA_PATH_JSON: yield* Schema.encodeEffect(Schema.UnknownFromJsonString)(
+        TEST_LIVESTORE_SCHEMA_PATH_JSON: yield* Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown))(
           './devtools/todomvc/livestore/schema.ts',
         ).pipe(Effect.orDie),
         LSD_DEVTOOLS_LOCAL_PREVIEW: useDevtoolsLocalPreview === true ? '1' : undefined,
