@@ -51,6 +51,10 @@ For maintainers and contributors:
   removed `typeConstructor`/`meta` annotations, and JSON-string columns are
   detected through the `application/json` content annotation now that
   `SchemaTransformation.fromJsonString` is a factory rather than a singleton.
+  Schema issues no longer carry a `toString()`
+  ([Effect-TS/effect#7093](https://github.com/Effect-TS/effect/pull/7093)), so
+  the Durable Object RPC server renders decode failures through
+  `SchemaIssue.makeFormatterDefault()` like the rest of the codebase.
   The `@effect/vitest` record-arbitrary workaround was dropped because
   [Effect-TS/effect#7148](https://github.com/Effect-TS/effect/pull/7148) fixed it
   upstream ([#1557](https://github.com/livestorejs/livestore/issues/1557)).

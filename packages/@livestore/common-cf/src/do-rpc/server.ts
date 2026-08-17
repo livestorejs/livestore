@@ -12,6 +12,7 @@ import {
   RpcSerialization,
   Result,
   Schema,
+  SchemaIssue,
   type Scope,
   Stream,
 } from '@livestore/utils/effect'
@@ -110,7 +111,7 @@ export const toDurableObjectHandler =
           // before dispatch so JSON-only representations such as `null` become their schema values.
           // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
           const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
-          const rawExit = Exit.die(payloadResult.failure.issue.toString())
+          const rawExit = Exit.die(SchemaIssue.makeFormatterDefault()(payloadResult.failure.issue))
           const encodedExit = yield* Schema.encodeUnknownEffect(erasedJsonCodec(exitSchema))(rawExit).pipe(
             Effect.provideContext(entry.context),
           )
