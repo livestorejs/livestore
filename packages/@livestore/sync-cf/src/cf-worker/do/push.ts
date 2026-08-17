@@ -103,10 +103,12 @@ export const makePush =
           encode: (items: ReadonlyArray<PushBatchItem>) =>
             encodePullResponse(
               SyncMessage.PullResponse.make({
-                batch: items.map((eventEncoded): PullBatchItem => ({
-                  eventEncoded,
-                  metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
-                })),
+                batch: items.map(
+                  (eventEncoded): PullBatchItem => ({
+                    eventEncoded,
+                    metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
+                  }),
+                ),
                 pageInfo: SyncBackend.pageInfoNoMore,
                 backendId,
               }),
