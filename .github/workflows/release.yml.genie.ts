@@ -575,7 +575,6 @@ echo "Snapshot promotion authorized: $authorized ($authorized_by)" >> "$GITHUB_S
           uses: 'actions/setup-node@v4',
           with: {
             'node-version': '24.15.0',
-            'registry-url': 'https://registry.npmjs.org',
           },
         },
         {
