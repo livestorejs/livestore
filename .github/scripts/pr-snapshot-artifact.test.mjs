@@ -286,6 +286,14 @@ test('generated promotion workflow is anchored to trusted main', async () => {
 
   const publish = workflow.slice(publishStart, nextJobStart)
   assert.match(publish, /pull-requests: read/)
+  const publishNodeSetupStart = publish.indexOf('- name: Use pinned npm trusted-publishing client')
+  const publishNodeSetupEnd = publish.indexOf(
+    '\n      - name: Download validated promotion artifact',
+    publishNodeSetupStart,
+  )
+  assert.notEqual(publishNodeSetupStart, -1)
+  assert.notEqual(publishNodeSetupEnd, -1)
+  assert.doesNotMatch(publish.slice(publishNodeSetupStart, publishNodeSetupEnd), /registry-url:/)
   assert.match(publish, /group: 'pr-snapshot-\$\{\{ needs\.validate-pr-snapshot\.outputs\.head-sha \}\}'/)
   assert.match(publish, /\.base\.ref/)
   assert.match(publish, /\.head\.repo\.full_name/)

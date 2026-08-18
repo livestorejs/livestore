@@ -26,7 +26,9 @@ For maintainers and contributors:
 - **Release tooling:** Pull-request CI now packs exact-head snapshot candidates
   for forks without secrets. Maintainers can allow npm publication for a fork's
   current and later PR heads with the revocable `ci:publish-snapshot` label
-  ([#1559](https://github.com/livestorejs/livestore/issues/1559)).
+  ([#1559](https://github.com/livestorejs/livestore/issues/1559)). The trusted
+  publisher leaves npm registry configuration unset so `actions/setup-node`
+  does not inject its token-auth placeholder into the OIDC-only job.
 - **Tooling:** Shell entry no longer runs the full TypeScript build after
   dependency and generated-source setup. The shared Effect-utils
   `otel:profile:setup` task captures the strict setup graph through native
