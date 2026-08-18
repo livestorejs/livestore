@@ -23,6 +23,9 @@
 
 For maintainers and contributors:
 
+- **Release tooling:** GitHub Release and git tag creation now runs directly
+  after npm publication instead of depending on the DevTools artifact publisher
+  ([#1497](https://github.com/livestorejs/livestore/issues/1497)).
 - **Tooling:** Shell entry no longer runs the full TypeScript build after
   dependency and generated-source setup. The shared Effect-utils
   `otel:profile:setup` task captures the strict setup graph through native
