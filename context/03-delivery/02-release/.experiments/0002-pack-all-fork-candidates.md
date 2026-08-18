@@ -21,14 +21,18 @@ only as the trusted publication gate?
   fork packaging and a dedicated label-triggered packaging workflow.
 - Measured a successful repository-owned snapshot pack run as a proxy for the
   incremental compute cost.
+- Created a disposable draft fork PR against `main`, ran the generated fork CI,
+  downloaded its candidate, and exercised the trusted validator locally.
+- Applied and removed the live trust label while re-reading the exact PR tuple
+  to test authorization and revocation without publishing to npm.
 - Checked GitHub's official fork-token, rerun, cache, `pull_request_target`, and
   `workflow_run` security contracts.
 
 ## Result
 
-Verdict: **PARTIAL**. The local and live read-only seams support the design, but
-no disposable hosted fork candidate was created, so upload through trusted
-validation remains unproven end to end.
+Verdict: **PASS** for candidate production, identity resolution, trusted
+validation, and pre-publication revocation. npm publication remains deliberately
+untested until the trusted workflow is merged to the default branch.
 
 Evidence established:
 
@@ -37,7 +41,7 @@ Evidence established:
 - PR #1558's successful fork run has `pull_requests: []`; the commit-to-PR API
   also returns no association. Trusted resolution must match the exact tuple
   `(head repository, head branch, head SHA)` to one open PR, then re-read it.
-- The existing artifact validator passed 11/11 adversarial tests. It rejects
+- The artifact validator passed 12/12 adversarial tests. It rejects
   digest and identity drift, unexpected files, traversal, lifecycle scripts,
   `.npmrc`, hostile `publishConfig`, oversized archives, and topology drift.
 - State enumeration confirmed that a changed head invalidates the old
@@ -46,6 +50,18 @@ Evidence established:
 - A representative successful pack job took 20m50s; its pack step took 17m34s
   and produced a 4,282,985-byte artifact. Unconditional packaging pays roughly
   this runner cost for every fork update, labeled or not.
+- Disposable fork PR #1561 produced candidate
+  `pr-snapshot-b15256f1cb92153260ab35d6290f482666d02760-1` in hosted run
+  `32121765725`. The pack job completed in 20m25s and uploaded a 4,283,167-byte
+  artifact.
+- The trusted validator accepted that downloaded fork artifact as the exact
+  14-package cohort at version
+  `0.0.0-snapshot-pr.1561.b15256f1cb92153260ab35d6290f482666d02760`.
+  Its manifest digest was
+  `c787bfdeb0207460ebb3ffb2c44e8b6b858120b707365bf2252aa70818aea02b`.
+- Exact tuple resolution found only PR #1561. With the live label applied the
+  current head was authorized; after label removal the same current head was
+  denied.
 - Applying the label cannot backfill PR #1558's old run: its pack job was
   skipped and no candidate exists. GitHub reruns preserve the original SHA/ref
   and do not provide a reliable new-workflow backfill.
@@ -70,9 +86,10 @@ validation, scheduling, and revocation changes remain. Its distinct tradeoffs
 are approximately 21 runner-minutes per fork update and no automatic backfill
 for pre-feature runs such as #1558.
 
-A hosted disposable fork test must prove candidate upload, exact tuple
-resolution, trusted validation, and final label/head denial before this option
-receives a full PASS.
+The disposable hosted test proves every seam available before merge. A true npm
+promotion must wait for the trusted `workflow_run` definition to land on the
+default branch; GitHub intentionally runs that workflow from the default branch,
+not from untrusted fork code.
 
 ## VRS Impact
 
