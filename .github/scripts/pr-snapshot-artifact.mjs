@@ -122,8 +122,9 @@ export const successfulProducerAttempt = ({ jobs, jobName }) => {
   return Math.max(...matches.map((job) => positiveInteger(job.run_attempt, `${jobName} run attempt`)))
 }
 
-export const selectEligibleProducerRun = ({ runs, prNumber, headSha }) => {
-  const parsedPrNumber = positiveInteger(prNumber, 'PR number')
+export const selectEligibleProducerRun = ({ runs, headRepository, headBranch, headSha }) => {
+  if (typeof headRepository !== 'string' || headRepository === '') fail('Head repository is required')
+  if (typeof headBranch !== 'string' || headBranch === '') fail('Head branch is required')
   if (shaPattern.test(headSha) === false) fail(`Invalid head SHA: ${headSha}`)
   if (Array.isArray(runs) === false) fail('Workflow runs response is not an array')
 
@@ -133,9 +134,9 @@ export const selectEligibleProducerRun = ({ runs, prNumber, headSha }) => {
         (run) =>
           run?.event === 'pull_request' &&
           run?.conclusion === 'success' &&
-          run.pullRequests?.some(
-            (pullRequest) => pullRequest?.number === parsedPrNumber && pullRequest?.headSha === headSha,
-          ) === true &&
+          run?.headRepository === headRepository &&
+          run?.headBranch === headBranch &&
+          run?.headSha === headSha &&
           Number.isSafeInteger(run.packAttempt) === true &&
           run.packAttempt > 0 &&
           run.artifacts?.some(
@@ -154,6 +155,22 @@ export const hasCurrentHeadApproval = ({ headSha, currentHeadSha, reviews }) => 
 
 export const isAuthorizedReviewState = ({ headSha, currentHeadSha, reviewDecision, reviews }) =>
   reviewDecision === 'APPROVED' && hasCurrentHeadApproval({ headSha, currentHeadSha, reviews })
+
+export const isAuthorizedSnapshotState = ({
+  repository,
+  headRepository,
+  headSha,
+  currentHeadSha,
+  labelNames,
+  reviewDecision,
+  reviews,
+}) => {
+  if (headSha !== currentHeadSha) return false
+  if (headRepository !== repository) {
+    return Array.isArray(labelNames) === true && labelNames.includes('ci:publish-snapshot')
+  }
+  return isAuthorizedReviewState({ headSha, currentHeadSha, reviewDecision, reviews })
+}
 
 export const assessRegistryCohort = ({ expectedVersion, packageStates, hasVerifiedReceipt }) => {
   if (typeof expectedVersion !== 'string' || expectedVersion === '') fail('Expected registry version is required')
