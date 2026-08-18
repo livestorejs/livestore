@@ -50,6 +50,14 @@ const ReleasePlan = Schema.Struct({
   npmTag: Schema.String,
 })
 
+/** Plan consumed by `npm-release verify`; mirrors that CLI's input contract. */
+const RegistryVerifyPlan = Schema.Struct({
+  schemaVersion: Schema.Literal(1),
+  version: Schema.String,
+  npmTag: Schema.String,
+  packages: Schema.Array(Schema.Struct({ name: Schema.String, tarball: Schema.optional(Schema.String) })),
+})
+
 type TReleasePlan = (typeof ReleasePlan)['Type']
 
 type TReleaseTopology = {
@@ -437,6 +445,56 @@ const packPackageForPublish = ({ cwd, pkg, version }: { cwd: string; pkg: string
     return `${packDir}/${tarballs[0]}`
   })
 
+/**
+ * Hand verification to `npm-release`, the shared implementation in effect-utils.
+ *
+ * Every publisher in the fleet asks the same question after publishing — does the
+ * registry serve the version, the artifact we packed, and a dist-tag resolving to
+ * it — and each used to answer it differently. The CLI is the one interface that
+ * reaches an Effect release command, a workflow shell step, and a plain Node
+ * script alike, so the answer is now identical everywhere.
+ *
+ * `tarball` is sent only for packages this run packed; a package skipped as
+ * already-published has no local artifact to compare against.
+ */
+const verifyReleaseOnRegistry = ({
+  cwd,
+  version,
+  npmTag,
+  packages,
+  packedTarballs,
+}: {
+  cwd: string
+  version: string
+  npmTag: string
+  packages: ReadonlyArray<string>
+  packedTarballs: ReadonlyMap<string, string>
+}) =>
+  Effect.gen(function* () {
+    const fsEffect = yield* FileSystem.FileSystem
+    // `tmp/` is gitignored; `release/` holds tracked release inputs and must not
+    // collect scratch artifacts that could be committed by accident.
+    const planDir = `${cwd}/tmp/npm-release`
+    const planPath = `${planDir}/registry-verify-plan.json`
+
+    const encodedPlan = yield* Schema.encodeEffect(Schema.jsonStringIndented(RegistryVerifyPlan))({
+      schemaVersion: 1,
+      version,
+      npmTag,
+      packages: packages.map((pkg) => {
+        const tarball = packedTarballs.get(pkg)
+        return tarball === undefined ? { name: pkg } : { name: pkg, tarball }
+      }),
+    }).pipe(Effect.orDie)
+
+    yield* fsEffect.makeDirectory(planDir, { recursive: true })
+    yield* fsEffect.writeFileString(planPath, `${encodedPlan}\n`)
+
+    yield* cmd(['npm-release', 'verify', '--plan', planPath]).pipe(
+      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
+    )
+  })
+
 const publishReleasePackages = ({
   cwd,
   version,
@@ -456,6 +514,8 @@ const publishReleasePackages = ({
 }) =>
   Effect.gen(function* () {
     const isCI = process.env.CI === 'true' || process.env.CI === '1'
+    /** Tarball each package packed, so verification can prove the registry serves that exact artifact. */
+    const packedTarballs = new Map<string, string>()
 
     /**
      * Regenerate all genie-managed files with the release version (writable for pnpm publish).
@@ -496,6 +556,7 @@ const publishReleasePackages = ({
       }
 
       const packedTarballPath = yield* packPackageForPublish({ cwd, pkg, version })
+      packedTarballs.set(pkg, packedTarballPath)
       const publishArgs = [
         'npm',
         'publish',
@@ -504,7 +565,14 @@ const publishReleasePackages = ({
         '--access=public',
         '--ignore-scripts',
       ]
-      if (dryRun === true) publishArgs.push('--dry-run')
+      if (dryRun === true) {
+        publishArgs.push('--dry-run')
+      } else if (process.env.GITHUB_ACTIONS === 'true') {
+        // SLSA provenance attestation, minted from the job's OIDC id-token. The snapshot
+        // path and the DevTools artifact publisher already do this; without it stable
+        // releases would be the only artifact we ship unattested.
+        publishArgs.push('--provenance')
+      }
       const versionIsVisible = cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
         Effect.provide(cwdLayer),
         Effect.as(true),
@@ -536,14 +604,7 @@ const publishReleasePackages = ({
     }
 
     if (dryRun === false) {
-      yield* Effect.log('Verifying packages are available on the registry...')
-      for (const pkg of packages) {
-        yield* cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
-          Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
-          Effect.retry(Schedule.spaced('5 seconds').pipe(Schedule.upTo({ times: 60 }))),
-        )
-        yield* Effect.log(`Verified ${pkg}@${version}`)
-      }
+      yield* verifyReleaseOnRegistry({ cwd, version, npmTag, packages, packedTarballs })
     }
   }).pipe(Effect.ensuring(restoreGeneratedReleaseFiles(cwd)))
 
