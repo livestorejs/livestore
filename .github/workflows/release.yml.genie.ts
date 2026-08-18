@@ -124,7 +124,7 @@ export default githubWorkflow({
       ...livestoreDefaultRefPolicyJob,
       if: "github.event_name != 'schedule'",
     },
-    'dispatch-approved-pr-snapshots': {
+    'dispatch-authorized-pr-snapshots': {
       if: "github.event_name == 'schedule'",
       'runs-on': 'ubuntu-24.04',
       permissions: {
@@ -146,14 +146,14 @@ scripts/src/generated/release-topology.json`,
           },
         },
         {
-          name: 'Dispatch incomplete approved cohorts to trusted main workflow',
+          name: 'Dispatch incomplete authorized cohorts to trusted main workflow',
           run: `set -euo pipefail
 test "$GITHUB_WORKFLOW_REF" = "$GITHUB_REPOSITORY/.github/workflows/release.yml@refs/heads/main"
 prs_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls?state=open&base=main&per_page=100" --slurp)
 release_workflow_id=$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/release.yml" --jq .id)
 [[ "$release_workflow_id" =~ ^[1-9][0-9]*$ ]]
 scan_failed=false
-while IFS=$'\t' read -r pr_number head_sha head_ref; do
+while IFS=$'\t' read -r pr_number head_sha head_repository head_ref fork_label_present; do
   cohort_failed=false
   verified_receipt=false
   registry_state_file="$RUNNER_TEMP/registry-state-$pr_number.json"
@@ -161,13 +161,18 @@ while IFS=$'\t' read -r pr_number head_sha head_ref; do
 
   [[ "$pr_number" =~ ^[1-9][0-9]*$ ]]
   [[ "$head_sha" =~ ^[0-9a-f]{40}$ ]]
+  test -n "$head_repository"
   test -n "$head_ref"
-  review_json=$(gh api graphql \
-    -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewDecision}}}' \
-    -f owner="\${GITHUB_REPOSITORY%%/*}" \
-    -f name="\${GITHUB_REPOSITORY#*/}" \
-    -F number="$pr_number")
-  if [ "$(jq -r '.data.repository.pullRequest.reviewDecision // ""' <<<"$review_json")" != APPROVED ]; then
+  if [ "$head_repository" = "$GITHUB_REPOSITORY" ]; then
+    review_json=$(gh api graphql \
+      -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewDecision}}}' \
+      -f owner="\${GITHUB_REPOSITORY%%/*}" \
+      -f name="\${GITHUB_REPOSITORY#*/}" \
+      -F number="$pr_number")
+    if [ "$(jq -r '.data.repository.pullRequest.reviewDecision // ""' <<<"$review_json")" != APPROVED ]; then
+      continue
+    fi
+  elif [ "$fork_label_present" != true ]; then
     continue
   fi
 
@@ -199,8 +204,8 @@ while IFS=$'\t' read -r pr_number head_sha head_ref; do
     selected_run_id="$candidate_run_id"
     selected_pack_attempt="$pack_attempt"
     break
-  done < <(jq -r --arg sha "$head_sha" --argjson pr_number "$pr_number" \
-    '[.[] | .workflow_runs[] | select(.event == "pull_request" and .conclusion == "success" and .head_repository.full_name == env.GITHUB_REPOSITORY and any(.pull_requests[]?; .number == $pr_number and .head.sha == $sha))] | sort_by(.created_at) | reverse | .[].id' \
+  done < <(jq -r --arg sha "$head_sha" --arg head_repository "$head_repository" --arg head_ref "$head_ref" \
+    '[.[] | .workflow_runs[] | select(.event == "pull_request" and .conclusion == "success" and .head_repository.full_name == $head_repository and .head_branch == $head_ref and .head_sha == $sha)] | sort_by(.created_at) | reverse | .[].id' \
     <<<"$runs_json")
   if [ -z "$selected_run_id" ]; then
     echo "PR #$pr_number has no exact successful pack artifact yet; skipping"
@@ -261,8 +266,8 @@ while IFS=$'\t' read -r pr_number head_sha head_ref; do
     -f pr_number="$pr_number" \
     -f head_sha="$head_sha" \
     -f ci_run_id="$selected_run_id"
-done < <(jq -r --arg repository "$GITHUB_REPOSITORY" \
-  '.[][] | select(.draft == false and .base.ref == "main" and .head.repo.full_name == $repository) | [.number, .head.sha, .head.ref] | @tsv' \
+done < <(jq -r \
+  '.[][] | select(.draft == false and .base.ref == "main") | [.number, .head.sha, .head.repo.full_name, .head.ref, (any(.labels[]?; .name == "ci:publish-snapshot") | tostring)] | @tsv' \
   <<<"$prs_json")
 if [ "$scan_failed" = true ]; then
   exit 1
@@ -271,7 +276,7 @@ fi`,
       ],
     },
     'validate-pr-snapshot': {
-      if: "(github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'promote-pr-snapshot')",
+      if: "(github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.mode == 'promote-pr-snapshot')",
       'runs-on': 'ubuntu-24.04',
       permissions: {
         actions: 'read',
@@ -319,15 +324,23 @@ run_json=$(gh api "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id")
 test "$(jq -r '.event' <<<"$run_json")" = pull_request
 test "$(jq -r '.status' <<<"$run_json")" = completed
 test "$(jq -r '.conclusion' <<<"$run_json")" = success
-test "$(jq -r '.head_repository.full_name' <<<"$run_json")" = "$GITHUB_REPOSITORY"
 test "$(jq -r '.path' <<<"$run_json")" = .github/workflows/ci.yml
+run_head_repository=$(jq -r '.head_repository.full_name' <<<"$run_json")
+run_head_branch=$(jq -r '.head_branch' <<<"$run_json")
+run_head_sha=$(jq -r '.head_sha' <<<"$run_json")
+test -n "$run_head_repository"
+test -n "$run_head_branch"
+[[ "$run_head_sha" =~ ^[0-9a-f]{40}$ ]]
 if [ "$GITHUB_EVENT_NAME" = workflow_run ]; then
-  test "$(jq '.pull_requests | length' <<<"$run_json")" = 1
-  pr_number=$(jq -r '.pull_requests[0].number' <<<"$run_json")
-  head_sha=$(jq -r '.pull_requests[0].head.sha' <<<"$run_json")
+  prs_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls?state=open&base=main&per_page=100" --slurp)
+  matching_prs=$(jq --arg head_repository "$run_head_repository" --arg head_branch "$run_head_branch" --arg head_sha "$run_head_sha" \
+    '[.[][] | select(.draft == false and .base.ref == "main" and .head.repo.full_name == $head_repository and .head.ref == $head_branch and .head.sha == $head_sha)]' \
+    <<<"$prs_json")
+  test "$(jq 'length' <<<"$matching_prs")" = 1
+  pr_number=$(jq -r '.[0].number' <<<"$matching_prs")
+  head_sha="$run_head_sha"
 else
-  jq -e --arg sha "$head_sha" --argjson pr_number "$pr_number" \
-    'any(.pull_requests[]?; .number == $pr_number and .head.sha == $sha)' <<<"$run_json" >/dev/null
+  test "$run_head_sha" = "$head_sha"
 fi
 [[ "$pr_number" =~ ^[1-9][0-9]*$ ]]
 [[ "$head_sha" =~ ^[0-9a-f]{40}$ ]]
@@ -341,8 +354,9 @@ pr_json=$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$pr_number")
 
 test "$(jq -r '.state' <<<"$pr_json")" = open
 test "$(jq -r '.base.ref' <<<"$pr_json")" = main
-test "$(jq -r '.head.repo.full_name' <<<"$pr_json")" = "$GITHUB_REPOSITORY"
 test "$(jq -r '.head.sha' <<<"$pr_json")" = "$head_sha"
+test "$(jq -r '.head.repo.full_name' <<<"$pr_json")" = "$run_head_repository"
+test "$(jq -r '.head.ref' <<<"$pr_json")" = "$run_head_branch"
 
 echo "head-sha=$head_sha" >> "$GITHUB_OUTPUT"
 echo "pr-number=$pr_number" >> "$GITHUB_OUTPUT"
@@ -496,7 +510,7 @@ jq -n \
       steps: [
         {
           id: 'approval',
-          name: 'Require ordinary approval for the unchanged head',
+          name: 'Require current-head review or fork trust label',
           env: {
             EXPECTED_HEAD_SHA: '${{ needs.validate-pr-snapshot.outputs.head-sha }}',
             GH_TOKEN: '${{ github.token }}',
@@ -504,25 +518,33 @@ jq -n \
           },
           run: `set -euo pipefail
 pr_json=$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
-reviews_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews?per_page=100" --slurp | jq -s 'flatten')
-owner="\${GITHUB_REPOSITORY%%/*}"
-name="\${GITHUB_REPOSITORY#*/}"
-review_decision=$(gh api graphql \
-  -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewDecision}}}' \
-  -f owner="$owner" -f name="$name" -F number="$PR_NUMBER" \
-  --jq '.data.repository.pullRequest.reviewDecision')
 authorized=false
+authorized_by='none'
 if [ "$(jq -r '.state' <<<"$pr_json")" = open ] && \
    [ "$(jq -r '.draft' <<<"$pr_json")" = false ] && \
    [ "$(jq -r '.base.ref' <<<"$pr_json")" = main ] && \
-   [ "$(jq -r '.head.repo.full_name' <<<"$pr_json")" = "$GITHUB_REPOSITORY" ] && \
-   [ "$(jq -r '.head.sha' <<<"$pr_json")" = "$EXPECTED_HEAD_SHA" ] && \
-   [ "$review_decision" = APPROVED ] && \
-   jq -e --arg sha "$EXPECTED_HEAD_SHA" 'any(.[]; .state == "APPROVED" and .commit_id == $sha)' <<<"$reviews_json" >/dev/null; then
-  authorized=true
+   [ "$(jq -r '.head.sha' <<<"$pr_json")" = "$EXPECTED_HEAD_SHA" ]; then
+  head_repository=$(jq -r '.head.repo.full_name' <<<"$pr_json")
+  if [ "$head_repository" = "$GITHUB_REPOSITORY" ]; then
+    reviews_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews?per_page=100" --slurp | jq -s 'flatten')
+    owner="\${GITHUB_REPOSITORY%%/*}"
+    name="\${GITHUB_REPOSITORY#*/}"
+    review_decision=$(gh api graphql \
+      -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewDecision}}}' \
+      -f owner="$owner" -f name="$name" -F number="$PR_NUMBER" \
+      --jq '.data.repository.pullRequest.reviewDecision')
+    if [ "$review_decision" = APPROVED ] && \
+       jq -e --arg sha "$EXPECTED_HEAD_SHA" 'any(.[]; .state == "APPROVED" and .commit_id == $sha)' <<<"$reviews_json" >/dev/null; then
+      authorized=true
+      authorized_by='current-head review'
+    fi
+  elif jq -e 'any(.labels[]?; .name == "ci:publish-snapshot")' <<<"$pr_json" >/dev/null; then
+    authorized=true
+    authorized_by='ci:publish-snapshot fork trust label'
+  fi
 fi
 echo "authorized=$authorized" >> "$GITHUB_OUTPUT"
-echo "Snapshot promotion authorized: $authorized" >> "$GITHUB_STEP_SUMMARY"`,
+echo "Snapshot promotion authorized: $authorized ($authorized_by)" >> "$GITHUB_STEP_SUMMARY"`,
         },
       ],
     },
@@ -565,27 +587,31 @@ echo "Snapshot promotion authorized: $authorized" >> "$GITHUB_STEP_SUMMARY"`,
           },
         },
         {
-          name: 'Recheck unchanged-head approval before OIDC publication',
+          name: 'Recheck current-head authorization before OIDC publication',
           env: {
             EXPECTED_HEAD_SHA: '${{ needs.validate-pr-snapshot.outputs.head-sha }}',
             PR_NUMBER: '${{ needs.validate-pr-snapshot.outputs.pr-number }}',
           },
           run: `set -euo pipefail
 pr_json=$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
-reviews_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews?per_page=100" --slurp | jq -s 'flatten')
-owner="\${GITHUB_REPOSITORY%%/*}"
-name="\${GITHUB_REPOSITORY#*/}"
-review_decision=$(gh api graphql \
-  -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewDecision}}}' \
-  -f owner="$owner" -f name="$name" -F number="$PR_NUMBER" \
-  --jq '.data.repository.pullRequest.reviewDecision')
 test "$(jq -r '.state' <<<"$pr_json")" = open
 test "$(jq -r '.draft' <<<"$pr_json")" = false
 test "$(jq -r '.base.ref' <<<"$pr_json")" = main
-test "$(jq -r '.head.repo.full_name' <<<"$pr_json")" = "$GITHUB_REPOSITORY"
 test "$(jq -r '.head.sha' <<<"$pr_json")" = "$EXPECTED_HEAD_SHA"
-test "$review_decision" = APPROVED
-jq -e --arg sha "$EXPECTED_HEAD_SHA" 'any(.[]; .state == "APPROVED" and .commit_id == $sha)' <<<"$reviews_json" >/dev/null`,
+head_repository=$(jq -r '.head.repo.full_name' <<<"$pr_json")
+if [ "$head_repository" = "$GITHUB_REPOSITORY" ]; then
+  reviews_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews?per_page=100" --slurp | jq -s 'flatten')
+  owner="\${GITHUB_REPOSITORY%%/*}"
+  name="\${GITHUB_REPOSITORY#*/}"
+  review_decision=$(gh api graphql \
+    -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewDecision}}}' \
+    -f owner="$owner" -f name="$name" -F number="$PR_NUMBER" \
+    --jq '.data.repository.pullRequest.reviewDecision')
+  test "$review_decision" = APPROVED
+  jq -e --arg sha "$EXPECTED_HEAD_SHA" 'any(.[]; .state == "APPROVED" and .commit_id == $sha)' <<<"$reviews_json" >/dev/null
+else
+  jq -e 'any(.labels[]?; .name == "ci:publish-snapshot")' <<<"$pr_json" >/dev/null
+fi`,
         },
         {
           name: 'Verify promotion handoff',
@@ -719,7 +745,7 @@ echo "Verified $verified immutable package versions and SHA-512 integrities; tag
             SOURCE_RUN_URL: '${{ needs.validate-pr-snapshot.outputs.source-run-url }}',
           },
           run: `cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-## Repository-owned PR snapshot
+## PR snapshot
 
 - PR: #$PR_NUMBER
 - Head: \`\${{ needs.validate-pr-snapshot.outputs.head-sha }}\`

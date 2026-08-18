@@ -133,7 +133,9 @@ export default githubWorkflow({
   jobs: {
     'source-policy': livestoreDefaultRefPolicyJob,
     'pack-pr-snapshot': {
-      if: "github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository",
+      // Fork candidates are untrusted data: this job has no secrets or write
+      // token, and the main-branch release workflow validates every tarball.
+      if: "github.event_name == 'pull_request'",
       'runs-on': 'ubuntu-24.04',
       permissions: { contents: 'read' },
       env: {

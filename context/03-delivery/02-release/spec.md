@@ -57,6 +57,40 @@ sequenceDiagram
 Manual contrib release dispatch accepts an explicit version but must use a
 version already published by core (LS.DEL.REL-R05).
 
+## Pull-Request Snapshot Promotion (LS.DEL.REL-R08)
+
+```text
+pull_request CI (untrusted)             release.yml on main (trusted)
+----------------------------------      --------------------------------
+pack exact PR head without secrets ---> resolve exact repo/branch/SHA run
+upload immutable candidate              validate bounded package cohort
+                                        re-read open PR + current head
+same-repo PR: current-head approval ---> authorize
+fork PR: ci:publish-snapshot label ----> authorize while label remains
+                                        recheck immediately before npm OIDC
+                                        publish exact-SHA immutable versions
+```
+
+The `pack-pr-snapshot` job runs for every pull request, including forks, with
+`contents: read`, no npm authority, and no CACHIX credential. Its artifact is
+untrusted data. The trusted main-branch workflow downloads but never executes
+the candidate, validates its exact package topology, version, dependency pins,
+paths, sizes, lifecycle-script absence, and digests, and publishes tarballs with
+scripts disabled.
+
+GitHub Actions may omit fork PR associations from workflow-run records. The
+publisher therefore identifies a producer by the exact tuple of head repository,
+head branch, and head SHA, requires it to resolve to exactly one open non-draft
+PR targeting `main`, and binds the manifest to that PR number and run attempt.
+
+Repository-owned PR authorization remains the authoritative review decision plus
+an approval naming the current head. For a fork PR, the persistent
+`ci:publish-snapshot` label trusts control of that PR's mutable head repository
+and branch: later commits remain eligible while the label is present. Removing
+the label cancels any candidate whose npm publication has not started. Published
+npm versions are immutable and are not revoked by removing the label. Decision
+and rejected alternatives: [.decisions/0002](./.decisions/0002-fork-snapshot-trust-label.md).
+
 ## Breaking-Change Mechanics (LS.DEL.REL-R06)
 
 Beta releases may break in three distinct ways (user-facing promise:

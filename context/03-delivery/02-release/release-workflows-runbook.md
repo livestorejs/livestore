@@ -66,6 +66,19 @@ CI=1 mono release snapshot --git-sha=<git-sha> --dry-run --yes
 Local snapshot publishing should be rare; prefer the CI snapshot workflow so npm
 provenance and package identity match the reviewed commit.
 
+Pull-request CI packs an immutable exact-head candidate for repository-owned and
+fork PRs. Repository-owned candidates publish after the ordinary current-head
+approval. Fork candidates publish while a maintainer-managed
+`ci:publish-snapshot` label is present. The label trusts control of that PR's
+head repository and branch, including later commits while it remains present;
+remove it to stop publication that has not started.
+
+The trusted workflow resolves fork producers by exact head repository, branch,
+and SHA because GitHub may omit fork PR associations. It rechecks the open PR,
+unchanged head, and live label immediately before npm OIDC publication. A fork
+PR whose earlier CI run predates this behavior needs a new PR update before a
+candidate exists; applying the label does not backfill a skipped pack job.
+
 ### Stable release groups
 
 Stable releases use Changesets to calculate the next fixed-group version, then
