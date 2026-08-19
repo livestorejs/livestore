@@ -1,10 +1,6 @@
 import { prSnapshotReleaseJobs } from '#mr/effect-utils/genie/ci-workflow.ts'
 
-import {
-  prSnapshotAttestationPredicateType,
-  prSnapshotValidatorPath,
-  releaseTopologyPath,
-} from '../../genie/pr-snapshot-paths.ts'
+import { prSnapshotAttestationPredicateType, releaseTopologyPath } from '../../genie/pr-snapshot-paths.ts'
 import {
   bashShellDefaults,
   defaultActionlintConfig,
@@ -55,7 +51,6 @@ const releasePlanPaths = [
 
 const prSnapshot = prSnapshotReleaseJobs({
   topologyPath: releaseTopologyPath,
-  validatorScriptPath: prSnapshotValidatorPath,
   attestationPredicateType: prSnapshotAttestationPredicateType,
 })
 

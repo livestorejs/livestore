@@ -1,11 +1,9 @@
 /**
- * Repo-local paths threaded into the shared PR snapshot job factory.
+ * Repo-local paths for the shared PR snapshot pipeline.
  *
- * Kept in one place because each is referenced from both workflows: a divergence between the pack
- * job's `--topology` and the validator's would not fail loudly, it would validate the wrong cohort.
+ * Only values that genuinely differ per repository live here. The emitted validator paths are
+ * identical in every consumer, so they are defaults in the shared factory rather than restated.
  */
 
 export const releaseTopologyPath = 'scripts/src/generated/release-topology.json'
-export const prSnapshotValidatorPath = '.github/scripts/pr-snapshot-artifact.mjs'
-export const prSnapshotValidatorTestPath = '.github/scripts/pr-snapshot-artifact.test.mjs'
 export const prSnapshotAttestationPredicateType = 'https://livestore.dev/attestations/pr-snapshot-candidate/v1'

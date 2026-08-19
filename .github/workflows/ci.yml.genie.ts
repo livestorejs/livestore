@@ -1,11 +1,7 @@
 import { prSnapshotPackJob } from '#mr/effect-utils/genie/ci-workflow.ts'
 
 import { playwrightSuites, syncProviderMatrix } from '../../genie/ci.ts'
-import {
-  prSnapshotValidatorPath,
-  prSnapshotValidatorTestPath,
-  releaseTopologyPath,
-} from '../../genie/pr-snapshot-paths.ts'
+import { releaseTopologyPath } from '../../genie/pr-snapshot-paths.ts'
 import {
   bashShellDefaults,
   defaultActionlintConfig,
@@ -141,8 +137,6 @@ export default githubWorkflow({
     'source-policy': livestoreDefaultRefPolicyJob,
     ...prSnapshotPackJob({
       topologyPath: releaseTopologyPath,
-      validatorScriptPath: prSnapshotValidatorPath,
-      validatorTestPath: prSnapshotValidatorTestPath,
       setupStepsAfterCheckout: livestoreSetupStepsAfterCheckout,
       packTask: 'release:snapshot:pack:git-sha',
     }),
