@@ -3,24 +3,24 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "99c8c7764359de121e59577e4270c1c290d6e236",
+      "ref": "schickling/2026-08-19-pr-snapshot-shared",
+      "commit": "0a7c9621230e7a3e798265f7c3b430fee7f35a6f",
       "pinned": true,
       "lockedAt": "2026-07-27T20:15:32.646Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
       "ref": "main",
-      "commit": "e5998a45f69960b38eb2b8cb67cbb07b9e6962c7",
+      "commit": "92922ee7de0a2d932121e37677f3e75ea38482f1",
       "pinned": false,
-      "lockedAt": "2026-05-24T05:29:38.531Z"
+      "lockedAt": "2026-08-19T09:18:36.534Z"
     },
     "livestore-contrib": {
       "url": "https://github.com/livestorejs/livestore-contrib",
       "ref": "main",
-      "commit": "e941d6af9d68875bd85a6f4573cf73e63a95056f",
+      "commit": "1398c6463d7aae5abd2db3036a20d2ddc89370ef",
       "pinned": false,
-      "lockedAt": "2026-07-15T13:23:04.718Z"
+      "lockedAt": "2026-08-19T09:18:36.534Z"
     }
   }
 }

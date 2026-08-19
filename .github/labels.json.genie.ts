@@ -68,11 +68,6 @@ const livestoreDomainLabels: readonly LabelDef[] = [
   { name: 'web:ssr', color: 'f2e7f6', description: 'SSR / server rendering · Set: manual' },
   { name: 'website', color: 'aaaaaa', description: 'Website / docs site · Set: manual' },
   { name: 'ci:deploy-docs', color: '0E8A16', description: 'Trigger docs deployment for fork PRs · Set: manual' },
-  {
-    name: 'ci:publish-snapshot',
-    color: '0E8A16',
-    description: 'Trust this fork PR branch for snapshot publishing · Set: manual',
-  },
 ]
 
 /** Workflow / process / experience labels specific to livestore. */
