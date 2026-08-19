@@ -25,6 +25,11 @@ export default oxfmtConfig({
     // Exclude Netlify build artifacts — bundled .mjs files trigger oxfmt sort_imports panic (oxc#17788)
     // TODO(oep-c28): Remove once oxfmt ≥0.24.0 lands in nixpkgs (also add **/.netlify/** to effect-utils base)
     'docs/.netlify/**',
+    // Emitted verbatim from a shared source in effect-utils, which formats at a different print
+    // width. The file is generated, read-only and never hand-edited, so formatting it here would
+    // only make the two repos disagree about the bytes of a security-relevant validator.
+    '.github/scripts/pr-snapshot-artifact.mjs',
+    '.github/scripts/pr-snapshot-artifact.test.mjs',
     '**/playwright-report/**',
     '**/test-results/**',
   ],

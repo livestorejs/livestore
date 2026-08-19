@@ -34,6 +34,8 @@
     "**/*.mdx",
     "docs/.astro/**",
     "docs/.netlify/**",
+    ".github/scripts/pr-snapshot-artifact.mjs",
+    ".github/scripts/pr-snapshot-artifact.test.mjs",
     "**/playwright-report/**",
     "**/test-results/**"
   ]
