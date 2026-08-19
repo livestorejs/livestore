@@ -1,4 +1,4 @@
-import { prSnapshotReleaseJobs } from '#mr/effect-utils/genie/ci-workflow.ts'
+import { prSnapshotForeignEventGuard, prSnapshotReleaseJobs } from '#mr/effect-utils/genie/ci-workflow.ts'
 
 import { prSnapshotAttestationPredicateType, releaseTopologyPath } from '../../genie/pr-snapshot-paths.ts'
 import {
@@ -110,7 +110,10 @@ export default githubWorkflow({
   jobs: {
     'source-policy': {
       ...livestoreDefaultRefPolicyJob,
-      if: "github.event_name != 'schedule'",
+      // Also excludes `workflow_run`. The ref policy answers pull requests, main pushes and manual
+      // dispatch; running it again on every producer CI completion spends a runner per pull request
+      // to re-check refs nothing has changed since the run that just finished.
+      if: prSnapshotForeignEventGuard,
     },
     ...prSnapshot.jobs,
     'create-release-pr': {

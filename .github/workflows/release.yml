@@ -452,7 +452,7 @@ jobs:
           process.exit(1)
           NODE
         shell: bash
-    if: github.event_name != 'schedule'
+    if: github.event_name != 'schedule' && github.event_name != 'workflow_run'
   dispatch-authorized-pr-snapshots:
     if: github.event_name == 'schedule'
     runs-on: ubuntu-24.04
