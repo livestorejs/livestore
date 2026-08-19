@@ -91,6 +91,14 @@ the label cancels any candidate whose npm publication has not started. Published
 npm versions are immutable and are not revoked by removing the label. Decision
 and rejected alternatives: [.decisions/0002](./.decisions/0002-fork-snapshot-trust-label.md).
 
+The job graph and the candidate validator are shared rather than local to this
+repository: both are supplied by `effect-utils` and consumed here and by
+livestore-contrib, so the rules deciding what may be published are one
+implementation rather than two that can drift. The validator is emitted from
+that shared source, so the two repositories agree on the bytes that gate
+publication. Decision and rejected alternatives:
+[.decisions/0003](./.decisions/0003-share-the-pr-snapshot-pipeline.md).
+
 ## Breaking-Change Mechanics (LS.DEL.REL-R06)
 
 Beta releases may break in three distinct ways (user-facing promise:
