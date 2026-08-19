@@ -7,7 +7,7 @@ const runtimeDeps = catalog.compose({
     workspace: [utilsPkg],
   },
   devDependencies: {
-    external: effectDevDeps('@playwright/test', '@types/node'),
+    external: effectDevDeps('@playwright/test', '@types/node', 'vitest'),
   },
   peerDependencies: {
     external: {
@@ -26,7 +26,7 @@ export default packageJson(
       '.': './src/index.ts',
     },
     scripts: {
-      test: "echo 'No tests'",
+      test: 'vitest',
     },
   },
   runtimeDeps,
