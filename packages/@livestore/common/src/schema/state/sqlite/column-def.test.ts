@@ -28,8 +28,8 @@ describe('getColumnDefForSchema', () => {
       expect(columnDef.columnType).toBe('text')
       expect(Schema.toEncoded(columnDef.schema).ast._tag).toBe('String')
       expect(
-        SchemaAST.resolveAt<{ readonly _tag: string }>('typeConstructor')(Schema.toType(columnDef.schema).ast),
-      ).toEqual({ _tag: 'Date' })
+        SchemaAST.resolveAt<{ readonly id: string }>('representation')(Schema.toType(columnDef.schema).ast)?.id,
+      ).toBe('effect/schema/Date')
     })
 
     it('should map Schema.DateFromMillis to integer column', () => {
@@ -37,8 +37,8 @@ describe('getColumnDefForSchema', () => {
       expect(columnDef.columnType).toBe('integer')
       expect(Schema.toEncoded(columnDef.schema).ast._tag).toBe('Number')
       expect(
-        SchemaAST.resolveAt<{ readonly _tag: string }>('typeConstructor')(Schema.toType(columnDef.schema).ast),
-      ).toEqual({ _tag: 'Date' })
+        SchemaAST.resolveAt<{ readonly id: string }>('representation')(Schema.toType(columnDef.schema).ast)?.id,
+      ).toBe('effect/schema/Date')
     })
 
     it('should map Schema.BigInt to text column', () => {
@@ -303,8 +303,8 @@ describe('getColumnDefForSchema', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.Uint8Array)
       expect(columnDef.columnType).toBe('blob')
       expect(
-        SchemaAST.resolveAt<{ readonly _tag: string }>('typeConstructor')(Schema.toType(columnDef.schema).ast),
-      ).toEqual({ _tag: 'Uint8Array' })
+        SchemaAST.resolveAt<{ readonly id: string }>('representation')(Schema.toType(columnDef.schema).ast)?.id,
+      ).toBe('effect/schema/Uint8Array')
 
       const asserts = new TestSchema.Asserts(columnDef.schema)
       await asserts.decoding().succeed(new Uint8Array([1, 2, 3]))

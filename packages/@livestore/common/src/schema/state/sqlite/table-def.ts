@@ -303,20 +303,25 @@ const getPropertySignatures = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.Prop
       }
 
       const propertySignatures = [propertySignature, ...matchingPropertySignatures]
+      /**
+       * `SchemaAST.optionalKey` became internal in Effect rc.109, so the optional-key marker is
+       * applied by constructing the union with an optional `Context`. Equivalent here because the
+       * union is freshly built and therefore carries no encoding chain to propagate the marker to.
+       */
+      const hasOptionalMember =
+        propertySignatures.some((memberPropertySignature) => SchemaAST.isOptional(memberPropertySignature.type)) ===
+        true
+      const keyContext = hasOptionalMember === true ? new SchemaAST.Context(true, false) : undefined
       const union = new SchemaAST.Union(
         propertySignatures.map((memberPropertySignature) => memberPropertySignature.type),
         ast.mode,
+        undefined,
+        undefined,
+        undefined,
+        keyContext,
       )
 
-      return [
-        new SchemaAST.PropertySignature(
-          propertySignature.name,
-          propertySignatures.some((memberPropertySignature) => SchemaAST.isOptional(memberPropertySignature.type)) ===
-            true
-            ? SchemaAST.optionalKey(union)
-            : union,
-        ),
-      ]
+      return [new SchemaAST.PropertySignature(propertySignature.name, union)]
     })
   }
 

@@ -19,19 +19,19 @@ export type ReleaseSnapshotOptions = {
   readonly tscBin?: string | undefined
 }
 
-class PackageJsonParseError extends Schema.TaggedErrorClass<PackageJsonParseError>()('PackageJsonParseError', {
+class PackageJsonParseError extends Schema.TaggedError<PackageJsonParseError>()('PackageJsonParseError', {
   message: Schema.String,
   cause: Schema.Defect(),
 }) {}
 
 /** Expected failures in the release/publish flow (validation, packing, npm state). */
-class ReleaseError extends Schema.TaggedErrorClass<ReleaseError>()('ReleaseError', {
+class ReleaseError extends Schema.TaggedError<ReleaseError>()('ReleaseError', {
   message: Schema.String,
   cause: Schema.optional(Schema.Defect()),
 }) {}
 
 /** Module-scoped JSON decoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
-const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
+const jsonParse = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))
 
 type TDependencyField = 'dependencies' | 'devDependencies' | 'peerDependencies' | 'optionalDependencies'
 

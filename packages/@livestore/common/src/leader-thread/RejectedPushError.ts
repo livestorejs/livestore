@@ -21,7 +21,7 @@ export const RejectedPushErrorTypeId = '~@livestore/common/RejectedPushError' as
  * This is a defensive check — callers are expected to construct monotonic event batches.
  * The client should rebase and retry.
  */
-export class NonMonotonicBatchError extends Schema.TaggedErrorClass<NonMonotonicBatchError>(
+export class NonMonotonicBatchError extends Schema.TaggedError<NonMonotonicBatchError>(
   `${RejectedPushErrorTypeId}/NonMonotonicBatchError`,
 )('NonMonotonicBatchError', {
   /** The sequence number that broke the monotonic invariant (i.e. the one that is >= the next). */
@@ -41,7 +41,7 @@ export class NonMonotonicBatchError extends Schema.TaggedErrorClass<NonMonotonic
 }
 
 /** A pushed batch skips an event required to connect it to the leader's admitted push prefix. */
-export class NonContiguousBatchError extends Schema.TaggedErrorClass<NonContiguousBatchError>(
+export class NonContiguousBatchError extends Schema.TaggedError<NonContiguousBatchError>(
   `${RejectedPushErrorTypeId}/NonContiguousBatchError`,
 )('NonContiguousBatchError', {
   expectedSeqNum: EventSequenceNumber.Client.Composite,
@@ -65,7 +65,7 @@ export class NonContiguousBatchError extends Schema.TaggedErrorClass<NonContiguo
  *
  * This happens when events were enqueued before a backend-pull-triggered rebase incremented the generation.
  */
-export class StaleRebaseGenerationError extends Schema.TaggedErrorClass<StaleRebaseGenerationError>(
+export class StaleRebaseGenerationError extends Schema.TaggedError<StaleRebaseGenerationError>(
   `${RejectedPushErrorTypeId}/StaleRebaseGenerationError`,
 )('StaleRebaseGenerationError', {
   /** The leader's current rebase generation. */
@@ -91,7 +91,7 @@ export class StaleRebaseGenerationError extends Schema.TaggedErrorClass<StaleReb
  * This occurs when another client session (or a backend pull) has pushed events that the current
  * session hasn't seen yet.
  */
-export class LeaderAheadError extends Schema.TaggedErrorClass<LeaderAheadError>(
+export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>(
   `${RejectedPushErrorTypeId}/LeaderAheadError`,
 )('LeaderAheadError', {
   minimumExpectedNum: EventSequenceNumber.Client.Composite,

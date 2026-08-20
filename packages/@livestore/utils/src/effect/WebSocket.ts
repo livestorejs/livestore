@@ -2,7 +2,7 @@ import type { Schedule, Scope } from 'effect'
 import { Effect, Exit, identity, Schema } from 'effect'
 import { HttpClient } from 'effect/unstable/http'
 
-export class WebSocketError extends Schema.TaggedErrorClass<WebSocketError>('~@livestore/utils/WebSocketError')(
+export class WebSocketError extends Schema.TaggedError<WebSocketError>('~@livestore/utils/WebSocketError')(
   'WebSocketError',
   {
     cause: Schema.Defect(),

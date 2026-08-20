@@ -27,7 +27,7 @@ const todoDeleted = Events.synced({
   name: 'v1.TodoDeleted',
   schema: Schema.Struct({
     todoId: Schema.String,
-    deletedAt: Schema.DateFromString.check(Schema.isDateValid()),
+    deletedAt: Schema.DateFromString,
   }),
 })
 

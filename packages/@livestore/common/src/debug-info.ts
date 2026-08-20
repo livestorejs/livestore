@@ -33,7 +33,7 @@ const BoundArraySchemaFromSelf = <A, I, RD, RE>(
     description: 'Bounded array',
     toFormatter: () => (_) => `BoundArray(${_.length})`,
     toArbitrary: () => (fc) => {
-      const itemArbitrary = Schema.toArbitraryLazy(item)(fc)
+      const itemArbitrary = Schema.toArbitrary(item)(fc)
       return fc
         .integer({ min: 0, max: 100 })
         .chain((sizeLimit) =>
