@@ -135,6 +135,21 @@ export default githubWorkflow({
 
   jobs: {
     'source-policy': livestoreDefaultRefPolicyJob,
+    'minimal-dev': {
+      if: "github.event_name == 'pull_request'",
+      'runs-on': 'ubuntu-latest',
+      steps: [
+        {
+          name: 'Checkout code',
+          uses: 'actions/checkout@v4',
+          with: { ref: PR_HEAD_SHA },
+        },
+        {
+          name: 'Verify minimal development setup',
+          run: 'docker build --tag livestore-minimal-dev:ci .',
+        },
+      ],
+    },
     ...prSnapshotPackJob({
       topologyPath: releaseTopologyPath,
       setupStepsAfterCheckout: livestoreSetupStepsAfterCheckout,

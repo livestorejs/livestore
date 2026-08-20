@@ -406,6 +406,16 @@ jobs:
           process.exit(1)
           NODE
         shell: bash
+  minimal-dev:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify minimal development setup
+        run: 'docker build --tag livestore-minimal-dev:ci .'
   pack-pr-snapshot:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
