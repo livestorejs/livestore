@@ -1,3 +1,5 @@
+// Generated file - DO NOT EDIT
+// Source: pr-snapshot-artifact.mjs.genie.ts
 import { createHash } from 'node:crypto'
 import { lstat, readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -71,7 +73,8 @@ const tarEntries = (tarball) => {
       fail(`Unsafe tar entry path: ${entryPath}`)
     }
     if (entryPath === 'package/.npmrc') fail('Package tarball must not contain .npmrc')
-    if (type !== '0' && type !== '5') fail(`Unsupported tar entry type ${JSON.stringify(type)}: ${entryPath}`)
+    if (type !== '0' && type !== '5')
+      fail(`Unsupported tar entry type ${JSON.stringify(type)}: ${entryPath}`)
 
     entries.push({ path: entryPath, type, body: archive.subarray(bodyStart, bodyEnd) })
     if (entries.length > maxTarEntries) fail(`Tarball exceeds ${maxTarEntries} entries`)
@@ -82,8 +85,11 @@ const tarEntries = (tarball) => {
 }
 
 const parsePackage = (tarball) => {
-  const manifests = tarEntries(tarball).filter((entry) => entry.path === 'package/package.json' && entry.type === '0')
-  if (manifests.length !== 1) fail(`Expected exactly one package/package.json, found ${manifests.length}`)
+  const manifests = tarEntries(tarball).filter(
+    (entry) => entry.path === 'package/package.json' && entry.type === '0',
+  )
+  if (manifests.length !== 1)
+    fail(`Expected exactly one package/package.json, found ${manifests.length}`)
 
   try {
     return JSON.parse(manifests[0].body.toString('utf8'))
@@ -96,11 +102,19 @@ const readTopology = async (topologyPath) => {
   const bytes = await readFile(topologyPath)
   const topology = JSON.parse(bytes.toString('utf8'))
   const names = topology.publishablePackageNames
-  if (Array.isArray(names) === false || names.length === 0 || names.some((name) => typeof name !== 'string') === true) {
+  if (
+    Array.isArray(names) === false ||
+    names.length === 0 ||
+    names.some((name) => typeof name !== 'string') === true
+  ) {
     fail('Trusted release topology has no valid publishablePackageNames')
   }
-  if (new Set(names).size !== names.length) fail('Trusted release topology contains duplicate package names')
-  return { packageNames: [...names].toSorted((a, b) => a.localeCompare(b)), topologyDigest: sha256(bytes) }
+  if (new Set(names).size !== names.length)
+    fail('Trusted release topology contains duplicate package names')
+  return {
+    packageNames: [...names].toSorted((a, b) => a.localeCompare(b)),
+    topologyDigest: sha256(bytes),
+  }
 }
 
 export const snapshotTag = ({ prNumber, headSha }) => {
@@ -119,11 +133,14 @@ export const successfulProducerAttempt = ({ jobs, jobName }) => {
   if (Array.isArray(jobs) === false) fail('Workflow jobs response is not an array')
   const matches = jobs.filter((job) => job?.name === jobName && job?.conclusion === 'success')
   if (matches.length === 0) fail(`Expected at least one successful ${jobName} job`)
-  return Math.max(...matches.map((job) => positiveInteger(job.run_attempt, `${jobName} run attempt`)))
+  return Math.max(
+    ...matches.map((job) => positiveInteger(job.run_attempt, `${jobName} run attempt`)),
+  )
 }
 
 export const selectEligibleProducerRun = ({ runs, headRepository, headBranch, headSha }) => {
-  if (typeof headRepository !== 'string' || headRepository === '') fail('Head repository is required')
+  if (typeof headRepository !== 'string' || headRepository === '')
+    fail('Head repository is required')
   if (typeof headBranch !== 'string' || headBranch === '') fail('Head branch is required')
   if (shaPattern.test(headSha) === false) fail(`Invalid head SHA: ${headSha}`)
   if (Array.isArray(runs) === false) fail('Workflow runs response is not an array')
@@ -140,10 +157,14 @@ export const selectEligibleProducerRun = ({ runs, headRepository, headBranch, he
           Number.isSafeInteger(run.packAttempt) === true &&
           run.packAttempt > 0 &&
           run.artifacts?.some(
-            (artifact) => artifact?.name === `pr-snapshot-${headSha}-${run.packAttempt}` && artifact?.expired === false,
+            (artifact) =>
+              artifact?.name === `pr-snapshot-${headSha}-${run.packAttempt}` &&
+              artifact?.expired === false,
           ) === true,
       )
-      .toSorted((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)))[0] ?? null
+      .toSorted((left, right) =>
+        String(right.createdAt).localeCompare(String(left.createdAt)),
+      )[0] ?? null
   )
 }
 
@@ -173,8 +194,10 @@ export const isAuthorizedSnapshotState = ({
 }
 
 export const assessRegistryCohort = ({ expectedVersion, packageStates, hasVerifiedReceipt }) => {
-  if (typeof expectedVersion !== 'string' || expectedVersion === '') fail('Expected registry version is required')
-  if (Array.isArray(packageStates) === false || packageStates.length === 0) fail('Registry package states are required')
+  if (typeof expectedVersion !== 'string' || expectedVersion === '')
+    fail('Expected registry version is required')
+  if (Array.isArray(packageStates) === false || packageStates.length === 0)
+    fail('Registry package states are required')
   if (typeof hasVerifiedReceipt !== 'boolean') fail('Verified receipt state must be boolean')
 
   for (const state of packageStates) {
@@ -193,18 +216,23 @@ export const assessRegistryCohort = ({ expectedVersion, packageStates, hasVerifi
   }
 
   const allVersionsPresent = packageStates.every((state) => state.version === expectedVersion)
-  return allVersionsPresent === true && hasVerifiedReceipt === true ? { action: 'complete' } : { action: 'dispatch' }
+  return allVersionsPresent === true && hasVerifiedReceipt === true
+    ? { action: 'complete' }
+    : { action: 'dispatch' }
 }
 
 const validatePackageManifest = ({ packageJson, expectedName, expectedVersion, packageNames }) => {
   if (packageJson.name !== expectedName)
     fail(`Package name mismatch: expected ${expectedName}, got ${packageJson.name}`)
   if (packageJson.version !== expectedVersion) {
-    fail(`Package version mismatch for ${expectedName}: expected ${expectedVersion}, got ${packageJson.version}`)
+    fail(
+      `Package version mismatch for ${expectedName}: expected ${expectedVersion}, got ${packageJson.version}`,
+    )
   }
 
   for (const script of Object.keys(packageJson.scripts ?? {})) {
-    if (lifecycleScripts.has(script) === true) fail(`Package ${expectedName} contains lifecycle script ${script}`)
+    if (lifecycleScripts.has(script) === true)
+      fail(`Package ${expectedName} contains lifecycle script ${script}`)
   }
 
   if (packageJson.publishConfig !== undefined) {
@@ -272,7 +300,11 @@ export const createManifest = async ({
       fail(`Unsafe tarball name: ${file}`)
     const fileStat = await lstat(path.join(artifactDir, file))
     artifactBytes += fileStat.size
-    if (fileStat.isFile() === false || fileStat.size > maxTarballBytes || artifactBytes > maxArtifactBytes)
+    if (
+      fileStat.isFile() === false ||
+      fileStat.size > maxTarballBytes ||
+      artifactBytes > maxArtifactBytes
+    )
       fail(`Tarball is not a bounded regular file: ${file}`)
     const bytes = await readFile(path.join(artifactDir, file))
     const packageJson = parsePackage(bytes)
@@ -321,7 +353,8 @@ export const validateManifest = async ({
   if (shaPattern.test(headSha) === false) fail(`Invalid trusted head SHA: ${headSha}`)
   const manifestPath = path.join(artifactDir, 'manifest.json')
   const manifestStat = await lstat(manifestPath)
-  if (manifestStat.isFile() === false || manifestStat.size > 1024 * 1024) fail('Manifest is not a bounded regular file')
+  if (manifestStat.isFile() === false || manifestStat.size > 1024 * 1024)
+    fail('Manifest is not a bounded regular file')
   const manifestBytes = await readFile(manifestPath)
   const manifest = JSON.parse(manifestBytes.toString('utf8'))
   assertExactKeys(
@@ -352,19 +385,25 @@ export const validateManifest = async ({
     version: expectedVersion,
   }
   for (const [key, value] of Object.entries(expectedIdentity)) {
-    if (manifest[key] !== value) fail(`Manifest ${key} mismatch: expected ${value}, got ${manifest[key]}`)
+    if (manifest[key] !== value)
+      fail(`Manifest ${key} mismatch: expected ${value}, got ${manifest[key]}`)
   }
 
   const { packageNames, topologyDigest } = await readTopology(topologyPath)
   if (manifest.topologySha256 !== topologyDigest) {
-    fail(`Manifest topologySha256 mismatch: expected ${topologyDigest}, got ${manifest.topologySha256}`)
+    fail(
+      `Manifest topologySha256 mismatch: expected ${topologyDigest}, got ${manifest.topologySha256}`,
+    )
   }
-  if (Array.isArray(manifest.packages) === false || manifest.packages.length !== packageNames.length) {
+  if (
+    Array.isArray(manifest.packages) === false ||
+    manifest.packages.length !== packageNames.length
+  ) {
     fail(`Manifest package count mismatch: expected ${packageNames.length}`)
   }
   const actualFiles = (await readdir(artifactDir)).toSorted((a, b) => a.localeCompare(b))
-  const expectedFiles = ['manifest.json', ...manifest.packages.map(({ file }) => file)].toSorted((a, b) =>
-    a.localeCompare(b),
+  const expectedFiles = ['manifest.json', ...manifest.packages.map(({ file }) => file)].toSorted(
+    (a, b) => a.localeCompare(b),
   )
   if (JSON.stringify(actualFiles) !== JSON.stringify(expectedFiles))
     fail('Artifact contains missing or unexpected files')
@@ -390,7 +429,11 @@ export const validateManifest = async ({
     const tarballPath = path.join(artifactDir, entry.file)
     const fileStat = await lstat(tarballPath)
     artifactBytes += fileStat.size
-    if (fileStat.isFile() === false || fileStat.size > maxTarballBytes || artifactBytes > maxArtifactBytes) {
+    if (
+      fileStat.isFile() === false ||
+      fileStat.size > maxTarballBytes ||
+      artifactBytes > maxArtifactBytes
+    ) {
       fail(`Tarball is not a bounded regular file: ${entry.file}`)
     }
     const bytes = await readFile(tarballPath)
@@ -402,7 +445,10 @@ export const validateManifest = async ({
       packageNames,
     })
   }
-  if (JSON.stringify([...seenNames].toSorted((a, b) => a.localeCompare(b))) !== JSON.stringify(packageNames))
+  if (
+    JSON.stringify([...seenNames].toSorted((a, b) => a.localeCompare(b))) !==
+    JSON.stringify(packageNames)
+  )
     fail('Manifest package set does not match trusted topology')
 
   const publishEntries = manifest.packages
@@ -428,7 +474,10 @@ const parseArgs = (args) => {
   return values
 }
 
-if (process.argv[1] !== undefined && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+if (
+  process.argv[1] !== undefined &&
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
+) {
   const [mode, ...rawArgs] = process.argv.slice(2)
   const args = parseArgs(rawArgs)
   const common = {
