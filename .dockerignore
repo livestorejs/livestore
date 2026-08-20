@@ -1,0 +1,5 @@
+.git
+.devenv
+.direnv
+**/node_modules
+result
