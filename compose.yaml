@@ -1,0 +1,12 @@
+services:
+  development:
+    build: .
+    working_dir: /workspace
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-100}"
+    environment:
+      HOME: /tmp/livestore-home
+    volumes:
+      - .:/workspace
+    command: bash
+    stdin_open: true
+    tty: true

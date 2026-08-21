@@ -1,5 +1,3 @@
-import { execSync } from 'node:child_process'
-
 import { liveStoreVersion } from '@livestore/common'
 import { isNonEmptyString } from '@livestore/utils'
 
@@ -13,7 +11,11 @@ export const officeHours = [
 export const getBranchName = () =>
   isNonEmptyString(process.env.GITHUB_BRANCH_NAME) === true
     ? process.env.GITHUB_BRANCH_NAME
-    : execSync('git rev-parse --abbrev-ref HEAD').toString().trim()
+    : isNonEmptyString(process.env.GITHUB_HEAD_REF) === true
+      ? process.env.GITHUB_HEAD_REF
+      : isNonEmptyString(process.env.GITHUB_REF_NAME) === true
+        ? process.env.GITHUB_REF_NAME
+        : 'main'
 
 export const versionNpmSuffix = liveStoreVersion.includes('dev') === true ? `@${liveStoreVersion}` : ''
 

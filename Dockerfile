@@ -16,4 +16,7 @@ RUN node --version \
   && pnpm --version \
   && pnpm install --frozen-lockfile \
   && pnpm exec tsc -b packages/@livestore/livestore --pretty false \
-  && pnpm --filter @livestore/common exec vitest run src/schema/EventSequenceNumber.test.ts
+  && pnpm --filter @livestore/common exec vitest run \
+  && pnpm --filter livestore-example-web-todomvc run build \
+  && pnpm --filter livestore-example-cloudflare-todomvc run build \
+  && pnpm --filter @local/docs run check
