@@ -217,6 +217,9 @@ export const make = Effect.fnUntraced(function* ({
 }: Options) {
   const stateHead = yield* StateHead.StateHead
   const syncBackendPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
+  // A dropping capacity-one signal coalesces repeated requests while the single pull owner
+  // retires the current generation and replaces it from the persisted cursor.
+  const backendPullRestartQueue = yield* TxQueue.dropping<void>(1)
   const localPushBatchSize = params.localPushBatchSize ?? 10
   const backendPushBatchSize = params.backendPushBatchSize ?? 50
 
@@ -666,7 +669,7 @@ export const make = Effect.fnUntraced(function* ({
       // - Delay clamped at 30s (continues retrying at 30s)
       // - Resets automatically after successful push
       // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
-      yield* Effect.gen(function* () {
+      const continuePushing = yield* Effect.gen(function* () {
         const iteration = yield* Schedule.CurrentMetadata
 
         const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.result)
@@ -684,13 +687,15 @@ export const make = Effect.fnUntraced(function* ({
           })
           const error = pushResult.failure
           if (error._tag === 'ServerAheadError') {
-            // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
-            yield* Effect.logDebug('handled backend-push-error (waiting for interupt caused by pull)', { error })
-            return yield* Effect.never
+            yield* Effect.logDebug('handled backend-push-error (requesting pull restart)', { error })
+            yield* TxQueue.offer(backendPullRestartQueue, undefined)
+            return false
           }
 
           return yield* error
         }
+
+        return true
       }).pipe(
         // Retry transient errors
         Effect.retry({
@@ -702,6 +707,10 @@ export const make = Effect.fnUntraced(function* ({
         // This is needed to narrow the Error type. Our retry policy runs indefinitely, but Effect.retry does not narrow the Error type.
         Effect.catchIf((error) => error._tag === 'IsOfflineError' || error._tag === 'UnknownError', Effect.die),
       )
+
+      // The rejected batch remains represented by sync-state pending. Stop this sole drain
+      // worker so later events cannot bypass it; pull reconciliation will rebuild and restart it.
+      if (continuePushing === false) return
     }
   }).pipe(Effect.interruptible)
 
@@ -796,14 +805,13 @@ export const make = Effect.fnUntraced(function* ({
       yield* backgroundApplyLocalPushes.pipe(Effect.catchCause(maybeShutdownOnError), Effect.forkScoped)
 
       const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
+      const backendPullingFiberHandle = yield* FiberHandle.make<void, never>()
       const backendPushingEffect = backgroundBackendPushing.pipe(
         Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
         Effect.catchCause(maybeShutdownOnError),
       )
 
-      yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
-
-      yield* backgroundBackendPulling({
+      const backendPullingEffect = backgroundBackendPulling({
         restartBackendPushing: (filteredRebasedPending) =>
           Effect.gen(function* () {
             // Stop current pushing fiber
@@ -828,8 +836,25 @@ export const make = Effect.fnUntraced(function* ({
         // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
         // This might be a bug in Effect. Only seems to happen in the browser.
         Effect.provideService(References.UnhandledLogLevel, undefined),
-        Effect.forkScoped,
       )
+
+      // Pull has one owner. A ServerAhead signal retires the old generation before a
+      // replacement re-reads the persisted cursor, preventing overlapping live pulls.
+      const backgroundBackendPullRestarting = Effect.gen(function* () {
+        while (true) {
+          yield* TxQueue.take(backendPullRestartQueue)
+          yield* FiberHandle.clear(backendPullingFiberHandle)
+          // Discard a request that arrived while the old generation was being retired.
+          yield* TxQueue.poll(backendPullRestartQueue)
+          yield* FiberHandle.run(backendPullingFiberHandle, backendPullingEffect)
+        }
+      }).pipe(Effect.interruptible)
+
+      // Start pull ownership before pushing so an immediately stale rehydrated batch can
+      // always hand its catch-up request to the restart supervisor.
+      yield* FiberHandle.run(backendPullingFiberHandle, backendPullingEffect)
+      yield* backgroundBackendPullRestarting.pipe(Effect.forkScoped)
+      yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 
       return { initialLeaderHead: initialSyncState.localHead }
     }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot')),

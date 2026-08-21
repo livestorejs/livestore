@@ -8,7 +8,6 @@ import {
   makeMockSyncBackend,
   NonContiguousBatchError,
   type RejectedPushError,
-  ServerAheadError,
   StateHead,
   StaleRebaseGenerationError,
   type SyncBackend,
@@ -665,38 +664,83 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   // - aborting local pushes
   // - processHead works properly
 
-  Vitest.live('simulate ServerAheadError push error', (test) =>
+  Vitest.live('actively catches up after an accepted push loses its pull publication', (test) =>
     Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
       const eventFactory = testContext.eventFactory
       const backendFactory = makeEventFactory({
         client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
+        startSeq: 2,
+        initialParent: 1,
       })
 
-      // Cause the next push to fail with ServerAheadError so the pushing fiber parks (Effect.never)
-      yield* testContext.mockSyncBackend.failNextPushes(
-        1,
-        () =>
-          new ServerAheadError({
-            minimumExpectedNum: EventSequenceNumber.Global.make(2),
-            providedNum: EventSequenceNumber.Global.make(1),
-          }),
+      const initialPullCursor = yield* testContext.mockSyncBackend.pullRequests.pipe(
+        Stream.runFirstUnsafe,
+        Effect.timeout(5000),
+      )
+      expect(initialPullCursor).toEqual(EventSequenceNumber.Client.ROOT.global)
+
+      // Fault point 1: the backend accepts and persists A1, but its active pull never sees A1.
+      yield* testContext.mockSyncBackend.dropNextPushPublications(1)
+      const localA1 = eventFactory.todoCreated.next({ id: 'local-a1', text: 'local-a1', completed: false })
+      yield* testContext.pushEncoded(localA1)
+
+      const firstPushAttempt = yield* testContext.mockSyncBackend.pushAttempts.pipe(
+        Stream.runFirstUnsafe,
+        Effect.timeout(5000),
+      )
+      expect(firstPushAttempt).toEqual([localA1])
+      expect(yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.runFirstUnsafe, Effect.timeout(5000))).toEqual(
+        localA1,
       )
 
-      // Enqueue one local event which will attempt a push and hit the simulated error
-      yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: 'stall', text: 'stall', completed: false }))
+      // Fault point 2: another client advances the backend to B2 without waking the stale pull.
+      const remoteB2 = backendFactory.todoCreated.next({ id: 'remote-b2', text: 'remote-b2', completed: false })
+      yield* testContext.mockSyncBackend.advanceWithoutPublication(remoteB2)
 
-      // Waiting a bit to make sure we've already attempted to push to the backend
-      // TODO replace this sleep with a an API that allows us to wait until the push was processed by the sync backend
-      yield* Effect.sleep(50)
+      // A2 still chains from A1. The mock now derives ServerAheadError naturally from backend head B2.
+      const localA2 = eventFactory.todoCreated.next({ id: 'local-a2', text: 'local-a2', completed: false })
+      yield* testContext.pushEncoded(localA2)
+      const stalePushAttempt = yield* testContext.mockSyncBackend.pushAttempts.pipe(
+        Stream.runFirstUnsafe,
+        Effect.timeout(5000),
+      )
+      expect(stalePushAttempt).toEqual([localA2])
 
-      // Sync protocol requires that the sync backend emits a new pull chunk alongside the ServerAheadError
-      yield* testContext.mockSyncBackend.advance(
-        backendFactory.todoCreated.next({ id: '1', text: 't1', completed: false }),
+      // ServerAhead actively replaces pull from the still-persisted root cursor. The fresh
+      // generation snapshots A1+B2, confirms A1, rebases A2 to e3, and resumes pushing.
+      const catchUpCursor = yield* testContext.mockSyncBackend.pullRequests.pipe(
+        Stream.runFirstUnsafe,
+        Effect.timeout(5000),
+      )
+      expect(catchUpCursor).toEqual(EventSequenceNumber.Client.ROOT.global)
+
+      const rebasedA2 = yield* testContext.mockSyncBackend.pushedEvents.pipe(
+        Stream.runFirstUnsafe,
+        Effect.timeout(5000),
+      )
+      expect(rebasedA2.seqNum).toEqual(EventSequenceNumber.Global.make(3))
+      expect(rebasedA2.args).toEqual(localA2.args)
+
+      yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.filter((state) => state.upstreamHead.global === 3 && state.pending.length === 0),
+        Stream.runFirstUnsafe,
+        Effect.timeout(5000),
       )
 
-      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(5000))
-    }).pipe(withTestCtx()(test)),
+      const storedEvents = yield* testContext.mockSyncBackend.storedEvents
+      expect(storedEvents.map(({ seqNum, args }) => ({ seqNum, args }))).toEqual([
+        { seqNum: EventSequenceNumber.Global.make(1), args: localA1.args },
+        { seqNum: EventSequenceNumber.Global.make(2), args: remoteB2.args },
+        { seqNum: EventSequenceNumber.Global.make(3), args: localA2.args },
+      ])
+      expect(yield* testContext.mockSyncBackend.activePulls.current).toEqual(1)
+      expect(yield* testContext.mockSyncBackend.activePulls.maximum).toEqual(1)
+
+      const rows = leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)
+      expect(rows.map(({ id }) => id).toSorted()).toEqual(['local-a1', 'local-a2', 'remote-b2'])
+    }).pipe(withTestCtx({ mockBackendOptions: { startConnected: true } })(test)),
   )
 
   // - test for filtering out local push queue items with an older rebase generation
