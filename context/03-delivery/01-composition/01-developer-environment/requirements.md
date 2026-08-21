@@ -31,8 +31,10 @@ contract for setup work. It refines the broader tooling-composition outcome in
   first preparing Nix, devenv, or megarepo state. `refines: LS.DEL.COMP-R18`
 - **LS.DEL.COMP.DEV-R06 Interactive checkout ownership:** The Minimal Setup
   interactive environment must bind one exclusive checkout, preserve the
-  caller's numeric ownership by default, and avoid prescribing application
-  ports that belong to individual examples. `refines: LS.DEL.COMP-R18`
+  caller's numeric ownership when the caller supplies `LOCAL_UID` and
+  `LOCAL_GID` (repository defaults cover the standard development host), and
+  avoid prescribing application ports that belong to individual examples.
+  `refines: LS.DEL.COMP-R18`
 - **LS.DEL.COMP.DEV-R07 Setup before validation:** Minimal Setup must establish
   and diagnose prerequisites and dependency readiness without implying that
   source validation or the full CI bar has passed. Its bootstrap must remain

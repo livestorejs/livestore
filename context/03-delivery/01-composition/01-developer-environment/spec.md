@@ -40,7 +40,7 @@ identical tool closures
 | Frozen workspace install | Required | Required |
 | Reference-aware TypeScript build | Required | Required |
 | Stable core unit tests | Required | Required |
-| Vite application build and development | Required | Required |
+| Vite application build | Required | Required |
 | Local Wrangler build | Required | Required |
 | Docs source check | Required | Required |
 | Use committed SQLite distribution | Required | Required |

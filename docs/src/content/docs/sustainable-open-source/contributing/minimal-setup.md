@@ -41,6 +41,8 @@ Setup only makes dependencies ready. Run the checks that match your work:
 | ----------------- | --------------------------------------------------------------- |
 | Core TypeScript   | `pnpm exec tsc -b packages/@livestore/livestore --pretty false` |
 | Stable core units | `pnpm --filter @livestore/common exec vitest run`               |
+| Vite example      | `pnpm --filter livestore-example-web-todomvc run build`         |
+| Cloudflare Worker | `pnpm --filter livestore-example-cloudflare-todomvc run build`  |
 | Docs source       | `pnpm --filter @local/docs run check`                           |
 
 Before a maintainer-ready handoff, use the full setup for any required checks
@@ -54,6 +56,14 @@ regression oracle for this lane:
 ```bash
 docker compose build
 LOCAL_UID="$(id -u)" LOCAL_GID="$(id -g)" docker compose run --rm development
+```
+
+The image ships its install under `/app`, while Compose bind-mounts your fresh
+checkout at `/workspace`. Prepare the mounted checkout once inside the container
+before working in it:
+
+```bash
+./scripts/bootstrap-minimal.sh
 ```
 
 Compose bind-mounts the source tree. Use an exclusive checkout and do not run
