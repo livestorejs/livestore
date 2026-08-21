@@ -63,7 +63,7 @@ Use GitHub issues or an issue checklist for non-trivial work.
 
 ### Development Workflow
 
-- Run the full test suite before pushing: `devenv tasks run test:run`
+- Run the test suites before pushing (there is no single `test:run` task): `devenv tasks run test:unit`, plus the relevant `test:integration:*` and `test:perf` tasks (all `test:*` tasks are defined in `nix/devenv-modules/tasks/local/mono-wrappers.nix`)
 - Ensure TypeScript compilation passes: `devenv tasks run ts:check`
 - Use `devenv tasks run lint:full:fix` to automatically fix formatting issues
 
