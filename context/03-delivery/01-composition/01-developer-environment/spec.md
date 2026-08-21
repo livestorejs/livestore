@@ -1,6 +1,7 @@
 # Developer Environment — Spec
 
-This document specifies shell readiness and setup diagnostics. It builds on
+This document specifies portable and hermetic development lanes, shell
+readiness, and setup diagnostics. It builds on
 [requirements.md](./requirements.md).
 
 ## Status
@@ -9,11 +10,98 @@ Draft.
 
 ## Scope
 
-Defines: automatic shell setup, explicit source-validation gates, setup
-profiling, and local trace handling. Does not define: the shared Effect-utils
-implementation, CI workflow composition, or production observability.
+Defines: portable development, automatic hermetic shell setup, explicit
+source-validation gates, setup profiling, and local trace handling. Does not
+define: individual example ports, the shared Effect-utils implementation, or
+production observability.
 
-## Shell Readiness
+## Development Lanes
+
+```text
+exclusive checkout
+  |
+  +-- Minimal Setup -- bootstrap -- host-native default
+  |                  `- Docker ---- finite oracle + optional Compose shell
+  |
+  `-- full lane ----- devenv ----- dependencies + generated sources
+                     `- Nix ------- browsers, WASM, release, infrastructure
+```
+
+Minimal Setup is the default for ordinary TypeScript changes. The full
+lane is an escalation target for capabilities whose correctness depends on the
+hermetic repository toolchain. The two lanes share the committed pnpm lockfile
+and source tree; they do not claim identical tool closures
+([decision 0003](./.decisions/0003-two-development-lanes.md)).
+
+| Capability | Portable lane | Full lane |
+| --- | --- | --- |
+| Frozen workspace install | Required | Required |
+| Reference-aware TypeScript build | Required | Required |
+| Stable core unit tests | Required | Required |
+| Vite application build and development | Required | Required |
+| Local Wrangler build | Required | Required |
+| Docs source check | Required | Required |
+| Browser and Playwright tests | Not provided | Required |
+| Full docs build, including diagrams | Not provided | Required |
+| Genie regeneration | Not provided | Required |
+| wa-sqlite rebuild | Not provided | Required |
+| Release and infrastructure operations | Not provided | Required |
+
+## Minimal Setup
+
+The host-native entry point is `scripts/bootstrap-minimal.sh`. It verifies
+Node.js major 24, Bun, and the exact pnpm version declared by
+`package.json#packageManager`, then runs a frozen workspace install. It never
+installs or upgrades tools globally. Bun 1.3.13 is the known-good version in
+the Docker oracle; the host admission contract requires Bun to be present but
+does not impose that exact version.
+
+The root `Dockerfile` is the executable cold-start contract. It starts from the
+official Node 24 image, copies the Bun binary from the pinned official Bun
+image, installs the pnpm version declared by `package.json#packageManager`
+directly, invokes the shared bootstrap, and runs the finite capability set in
+the table above. It does not
+install Nix, a browser, Genie, Git history, release credentials, or
+infrastructure tools.
+
+Documentation source links resolve branch authority in this order:
+`GITHUB_BRANCH_NAME`, `GITHUB_HEAD_REF`, `GITHUB_REF_NAME`, then the current
+Git branch. Resolution fails with an actionable error when none is available.
+Because the Docker context intentionally excludes Git metadata, the Dockerfile
+explicitly sets `GITHUB_BRANCH_NAME=main`; it does not hide that authority in a
+source-code default.
+
+The optional root `compose.yaml` makes the same image interactive. The `development`
+service bind-mounts the current checkout at `/workspace`, uses the caller's
+`LOCAL_UID` and `LOCAL_GID` when supplied (with repository defaults for the
+standard development host), and keeps package-manager state in a writable
+temporary home. It intentionally declares no application ports. Because tools
+write dependencies and build outputs through the bind mount, the checkout must
+be exclusively owned by that developer or agent.
+
+```bash
+docker compose build
+LOCAL_UID="$(id -u)" LOCAL_GID="$(id -g)" docker compose run --rm development
+./scripts/bootstrap-minimal.sh
+```
+
+The generated pull-request workflow contains an independent `minimal-dev` job
+on a stock hosted Ubuntu runner. Its only preparation is checkout; `docker
+build .` performs the gate. The generated repository ruleset requires the
+stable `minimal-dev` context. The Dockerfile, workflow generator, generated
+workflow, and generated ruleset are reviewed together when the contract
+changes (LS.DEL.COMP.DEV-R03, R05, R06).
+
+## Full Lane
+
+The full lane begins with `devenv shell`. It owns browser installation, full
+docs rendering, Genie and other generated sources, wa-sqlite's Nix/Emscripten
+build, release workflows, infrastructure checks, and repository-wide parity.
+Failing a portable command because one of these capabilities is absent is an
+escalation signal, not permission to skip or approximate the check
+(LS.DEL.COMP.DEV-R04).
+
+## Full-Lane Shell Readiness
 
 Shell entry establishes dependency and generated-source readiness through
 `pnpm:install` and `genie:run`. It does not run the full TypeScript build.
