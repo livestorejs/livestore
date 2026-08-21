@@ -187,7 +187,7 @@ function SyncIndicator() {
   const store = useStore(storeOptions)
   const status = store.useSyncStatus()
   
-  return <span>{status.isSynced ? '✓ Synced' : `Syncing (${status.pendingCount} pending)...`}</span>
+  return <span>{status.isBackendSynced ? '✓ Backend confirmed' : 'Syncing...'}</span>
 }
 ```
 

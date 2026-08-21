@@ -92,18 +92,23 @@ You can create and use multiple stores in the same app. This can be useful when 
 
 ## Sync Status
 
-LiveStore provides APIs to monitor the synchronization status between the client session and the leader thread. This is useful for displaying sync indicators or performing health checks.
+LiveStore provides one sync status spanning both propagation boundaries: client session to leader, and leader to sync backend. The status distinguishes leader acceptance from backend confirmation without classifying why delivery remains pending.
 
 ### SyncStatus type
 
 ```ts
 type SyncStatus = {
-  localHead: string      // e.g., "e5.2" or "e5.2r1"
-  upstreamHead: string   // e.g., "e3"
-  pendingCount: number   // Number of events pending sync
-  isSynced: boolean      // true when pendingCount === 0
+  localHead: string            // Latest session head
+  upstreamHead: string         // Latest leader head observed by the session
+  pendingCount: number         // Events pending from session to leader
+  isSynced: boolean            // true when pendingCount === 0
+  backendHead: string          // Latest backend-confirmed head observed through the leader
+  backendPendingCount: number  // Synced events accepted by the leader, awaiting backend confirmation
+  isBackendSynced: boolean     // true when neither boundary has pending events
 }
 ```
+
+`isSynced` retains its session-to-leader meaning. Use `isBackendSynced` when an application needs the end-to-end answer. Because `syncStatus()` is synchronous, backend fields represent the latest leader state observed by the session and may briefly lag behind confirmation.
 
 ### `store.syncStatus()`
 
@@ -111,8 +116,8 @@ Returns the current sync status synchronously.
 
 ```ts
 const status = store.syncStatus()
-if (!status.isSynced) {
-  console.log(`${status.pendingCount} events pending sync`)
+if (status.isSynced && !status.isBackendSynced) {
+  console.log(`${status.backendPendingCount} events awaiting backend confirmation`)
 }
 ```
 
@@ -122,7 +127,7 @@ Subscribes to sync status changes. The callback is invoked immediately with the 
 
 ```ts
 const unsubscribe = store.subscribeSyncStatus((status) => {
-  updateUI(status.isSynced ? 'Synced' : 'Syncing...')
+  updateUI(status.isBackendSynced ? 'Backend confirmed' : 'Syncing...')
 })
 
 // Later, stop listening
@@ -137,7 +142,7 @@ Returns an Effect Stream of sync status updates. For Effect-based workflows.
 import { Effect, Stream } from 'effect'
 
 store.syncStatusStream().pipe(
-  Stream.tap((status) => Effect.log(`Sync: ${status.isSynced}`)),
+  Stream.tap((status) => Effect.log(`Backend confirmed: ${status.isBackendSynced}`)),
   Stream.runDrain,
 )
 ```
