@@ -18,9 +18,15 @@ Builds on [../requirements.md](../requirements.md) and
 - **LS.SYS.SYNC.PROC-R01 Bounded transient-only retry:** Backend pushes are
   batch-bounded and retried with capped exponential backoff only on
   transient errors (offline/unknown); `ServerAheadError` is never retried in
-  place — the push fiber parks and yields to the pull-driven rebase restart
-  (spec: [Leader Sync Processor](./spec.md#leader-sync-processor)). Adopted
-  2026-07-16 (interview). `refines: LS.SYS.SYNC-R03`
+  place. The unresolved backend prefix remains fenced while the processor
+  actively replaces its backend pull from the persisted cursor. Only pull
+  confirmation or rebase may reseed backend pushing from current pending and
+  resume it. At most one backend-pull generation may be active during this
+  recovery. Adopted 2026-07-16 (interview); active catch-up clarified
+  2026-08-21 from [#1462](https://github.com/livestorejs/livestore/issues/1462)
+  reduction evidence and maintainer direction (see
+  [decision 0003](./.decisions/0003-active-server-ahead-catchup.md)).
+  `refines: LS.SYS.SYNC-R03`
 - **LS.SYS.SYNC.PROC-R02 Pull precedence:** Backend-pull application and
   local-push application are mutually exclusive, and the pull side takes
   precedence when both contend (spec: [Leader Sync

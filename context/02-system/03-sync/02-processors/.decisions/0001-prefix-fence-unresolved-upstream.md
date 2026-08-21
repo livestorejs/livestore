@@ -53,7 +53,9 @@ transaction spanning the session, leader, and backend.
 - Upstream admission must accept or reject a batch as a unit and acknowledge
   only after admission completes. Defensive generation/session fencing at the
   receiver prevents a buggy downstream from bypassing its prefix.
-- The existing leader→backend `ServerAheadError` path already approximates the
-  chosen state machine by parking until pull interrupts and reseeds it. The
-  client-session path now uses the same park, reconcile, reseed, and resume
-  transition; the leader additionally rejects non-contiguous pushed batches.
+- The leader→backend `ServerAheadError` path uses the same fence, reconcile,
+  reseed, and resume transition. Decision
+  [0003](./0003-active-server-ahead-catchup.md) supersedes its passive wake-up
+  mechanism by requiring the processor to replace backend pull actively. The
+  client-session path retains pull-driven recovery; the leader additionally
+  rejects non-contiguous pushed batches.
