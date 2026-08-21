@@ -62,6 +62,7 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+          source-tag: v3.21.9
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -247,6 +248,7 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+          source-tag: v3.21.9
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
