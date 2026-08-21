@@ -53,18 +53,18 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   leader-side contiguous-chain validation rejects a later suffix that bypasses
   the fence (see resolved
   [DELTA-001](./.delta/DELTA-001-session-rejection-prefix-bypass.md)).
-- **Backend pushing** (`:575-637`): drains
+- **Backend pushing** (`:647-715`): drains
   `takeBetween(1, backendPushBatchSize)` (default 50, `:215`), pushes
   `toGlobal()` batches. Retry: `Schedule.exponential(1s)` clamped to 30s,
   no jitter, no attempt cap, and only for transient errors
-  (`IsOfflineError`/`UnknownError`, `:627-631`). `ServerAheadError` is NOT
+  (`IsOfflineError`/`UnknownError`, `:700-708`). `ServerAheadError` is NOT
   retried in place: it fences that unresolved prefix and requests a fresh
   backend pull from the persisted cursor. Pull confirmation or rebase then
   interrupts the fenced push, re-seeds its queue from current pending, and
   restarts it. A `ServerAheadError` therefore cannot depend on an already-lost
   live publication to wake the push path (see
   [.decisions/0003](./.decisions/0003-active-server-ahead-catchup.md)).
-- **Backend pulling** (`:397-573`): cursor =
+- **Backend pulling** (`:400-645`): cursor =
   `Eventlog.getSyncBackendCursorInfo(remoteHead)` — the persisted backend
   head (`SYNC_STATUS_TABLE.head`) plus provider-opaque `syncMetadataJson`
   (`eventlog.ts:280-300`). Each chunk merges with
@@ -93,7 +93,7 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   `../../02-state/01-sqlite/`). Local push acknowledgements are completed only
   after the batch is materialized, published in leader sync state, offered to
   session pull queues, and queued for backend propagation.
-- **Boot** (`:684-755`): initial sync state rehydrates from the eventlog
+- **Boot** (`:758-860`): initial sync state rehydrates from the eventlog
   (`../../04-runtime/spec.md` Leadership Handover); error routing via
   `onError: ignore|shutdown` and `BackendIdMismatchError` handling
   (`reset|shutdown|ignore`; reset clears local databases, `:1060-1123`).
