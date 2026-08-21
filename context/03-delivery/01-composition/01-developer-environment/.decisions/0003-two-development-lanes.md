@@ -1,4 +1,4 @@
-# 0003 — Support portable and hermetic development lanes
+# 0003 — Support Minimal Setup and Full Setup (Nix + devenv)
 
 Status: accepted
 
@@ -10,13 +10,13 @@ and [experiment 0003](../.experiments/0003-portable-development-boundary.md).
 
 The hermetic Nix/devenv environment provides repository-wide parity but makes
 ordinary TypeScript contributions depend on fleet-specific tooling. A
-conventional environment can already exercise a substantial, coherent subset
+Minimal Setup can already exercise a substantial, coherent subset
 of the repository without weakening those checks.
 
 The discussion identified a long first Nix setup and large download as a
 material admission cost, especially when Nix feels unfamiliar or intrusive on
 macOS. Its directional goal was to cover the TypeScript-heavy majority of
-contributions conventionally while retaining Nix/devenv as the holistic
+contributions through Minimal Setup while retaining Full Setup (Nix + devenv) as the holistic
 dependency and final-validation authority. The stated proportion was an
 estimate, not measured coverage.
 
@@ -37,7 +37,7 @@ boundary instead of adding tools one failure at a time.
 
 | Option | Consequence |
 | --- | --- |
-| A. Minimal and full lanes with a shared bootstrap and Docker oracle (chosen) | Host-native default plus a finite measured gate and explicit escalation |
+| A. Minimal Setup and Full Setup (Nix + devenv) with a shared bootstrap and Docker oracle (chosen) | Host-native default plus a finite measured gate and explicit escalation |
 | B. Keep devenv as the only supported environment | One tool closure, but Nix and composition admit every contribution |
 | C. Expand Docker until it matches the full environment | Duplicates browsers, Nix, generators, release, and infrastructure tooling |
 | D. Document host commands without an executable oracle | Least configuration, but no failure-capable drift check |
@@ -46,7 +46,7 @@ boundary instead of adding tools one failure at a time.
 
 Choose A. A non-installing bootstrap is the host-native Minimal Setup entry
 point. The root Dockerfile is its cold-start oracle and the root Compose
-service is an optional bind-mounted form. The full devenv/Nix lane remains
+service is an optional bind-mounted form. Full Setup (Nix + devenv) remains
 authoritative beyond the measured portable boundary.
 
 ## Consequences
@@ -61,10 +61,10 @@ authoritative beyond the measured portable boundary.
   readiness and installs dependencies without globally installing tools; it is
   not a validation umbrella.
 - Browser downloads, generated-source tooling, wa-sqlite rebuilds, release
-  state, and infrastructure remain single-owned by the full lane.
+  state, and infrastructure remain single-owned by Full Setup (Nix + devenv).
 - Compose writes through an exclusively owned checkout and does not attempt to
   coordinate shared worktree state or application ports.
 - Pull requests cannot drift the portable contract unnoticed because its
   stable CI context builds the canonical Dockerfile.
-- Contributor feedback is reviewed as boundary evidence so the two lanes do
+- Contributor feedback is reviewed as boundary evidence so the two setups do
   not decay into recurring setup exceptions.

@@ -1,6 +1,6 @@
 # Developer Environment — Spec
 
-This document specifies portable and hermetic development lanes, shell
+This document specifies Minimal Setup and Full Setup (Nix + devenv), shell
 readiness, and setup diagnostics. It builds on
 [requirements.md](./requirements.md).
 
@@ -10,12 +10,12 @@ Draft.
 
 ## Scope
 
-Defines: portable development, automatic hermetic shell setup, explicit
+Defines: the two development setups, automatic full-shell setup, explicit
 source-validation gates, setup profiling, and local trace handling. Does not
 define: individual example ports, the shared Effect-utils implementation, or
 production observability.
 
-## Development Lanes
+## Development Setups
 
 ```text
 exclusive checkout
@@ -23,19 +23,19 @@ exclusive checkout
   +-- Minimal Setup -- bootstrap -- host-native default
   |                  `- Docker ---- finite oracle + optional Compose shell
   |
-  `-- full lane ----- devenv ----- dependencies + generated sources
-                     `- Nix ------- browsers, WASM, release, infrastructure
+  `-- Full Setup (Nix + devenv) -- dependencies + generated sources
+                                  `- browsers, WASM, release, infrastructure
 ```
 
-Minimal Setup is the conventional path for the TypeScript-heavy majority of
+Minimal Setup targets the TypeScript-heavy majority of
 contributions. This is a design target informed by contributor experience, not
-a measured coverage percentage. The full lane remains the holistic authority
+a measured coverage percentage. Full Setup (Nix + devenv) remains the holistic authority
 for runtime, build and development dependencies, and the final CI bar. The two
-lanes share the committed pnpm lockfile and source tree; they do not claim
+setups share the committed pnpm lockfile and source tree; they do not claim
 identical tool closures
 ([decision 0003](./.decisions/0003-two-development-lanes.md)).
 
-| Capability | Portable lane | Full lane |
+| Capability | Minimal Setup | Full Setup (Nix + devenv) |
 | --- | --- | --- |
 | Frozen workspace install | Required | Required |
 | Reference-aware TypeScript build | Required | Required |
@@ -64,7 +64,7 @@ prerequisites. The bootstrap establishes dependency readiness only; it does
 not claim that TypeScript, tests, docs, or the full CI bar have passed.
 
 Committed SQLite distribution artifacts make ordinary use and TypeScript
-changes portable. Rebuilding those artifacts crosses into the full lane
+changes possible. Rebuilding those artifacts crosses into Full Setup (Nix + devenv)
 because Nix/Emscripten owns that build closure.
 
 The optional root `Dockerfile` is the executable cold-start contract and a
@@ -109,16 +109,16 @@ case first become clean-environment experiments; recurring contributor friction
 is evidence for revising the boundary rather than triggering ad hoc expansion
 (LS.DEL.COMP.DEV-R08).
 
-## Full Lane
+## Full Setup (Nix + devenv)
 
-The full lane begins with `devenv shell`. It owns browser installation, full
+Full Setup (Nix + devenv) begins with `devenv shell`. It owns browser installation, full
 docs rendering, Genie and other generated sources, wa-sqlite's Nix/Emscripten
 build, release workflows, infrastructure checks, and repository-wide parity.
 Failing a portable command because one of these capabilities is absent is an
 escalation signal, not permission to skip or approximate the check
 (LS.DEL.COMP.DEV-R04).
 
-## Full-Lane Shell Readiness
+## Full Setup (Nix + devenv) Shell Readiness
 
 Shell entry establishes dependency and generated-source readiness through
 `pnpm:install` and `genie:run`. It does not run the full TypeScript build.
@@ -154,5 +154,5 @@ material inputs
 
 Setup captures are local diagnostic artifacts under the ignored `tmp/` tree.
 They are not uploaded automatically. This keeps machine-local paths and command
-metadata in a private-by-default evidence lane while stable task names,
+metadata in a private-by-default evidence path while stable task names,
 outcomes, cache decisions, and durations remain queryable.

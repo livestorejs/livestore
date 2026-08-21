@@ -17,10 +17,10 @@ Before you start contributing, please check with the maintainers if the changes 
 
 Choose the smallest environment that covers your contribution:
 
-- [Minimal setup](./minimal-setup/) is the conventional path for most
+- [Minimal Setup](./minimal-setup/) is the path for most
   TypeScript, core unit-test, Vite, local Wrangler, and docs-check work. Docker
   is available there as an optional alternative.
-- [Full setup with Nix and devenv](./full-setup/) owns browser tests, generated
+- [Full Setup (Nix + devenv)](./full-setup/) owns browser tests, generated
   sources, SQLite distribution rebuilds, releases, infrastructure, and final
   repository-wide validation.
 

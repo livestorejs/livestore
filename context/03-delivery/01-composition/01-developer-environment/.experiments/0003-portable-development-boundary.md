@@ -1,4 +1,4 @@
-# 0003 — Portable development capability boundary
+# 0003 — Minimal Setup capability boundary
 
 Date: 2026-08-21
 
@@ -13,7 +13,7 @@ launchers, or credentials?
 - Used the 2026-08-20
   [developer setup discussion](https://app.notion.com/p/schickling/3c2e3d41f4a380b58b07daa038191f3e)
   as qualitative admission evidence. It reported roughly an hour for an
-  initial Nix setup with a large download and proposed conventional coverage
+  initial Nix setup with a large download and proposed Minimal Setup coverage
   for the TypeScript-heavy majority. These are participant observations and a
   directional estimate, not benchmark measurements.
 - Built the root Dockerfile from a clean Linux/amd64 context using the official
@@ -72,13 +72,13 @@ container cache; these timings are evidence, not performance requirements.
 
 ## Conclusion
 
-The portable lane can reliably own frozen installation, ordinary TypeScript
+Minimal Setup can reliably own frozen installation, ordinary TypeScript
 work, stable core unit tests, representative Vite build/development, local
 Wrangler builds, and docs source checking without another tool layer.
 
 Browser execution, full docs rendering, generated-source regeneration,
 wa-sqlite rebuilding, release-history operations, and infrastructure checks
-cross a material tool or state boundary. They remain full-lane capabilities;
+cross a material tool or state boundary. They remain Full Setup (Nix + devenv) capabilities;
 their absence must stay visible rather than being converted into skipped or
 weakened portable checks. Contrib composition remains unclaimed until it has
 its own clean-checkout evidence.

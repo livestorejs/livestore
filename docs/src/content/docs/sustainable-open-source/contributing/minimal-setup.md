@@ -1,11 +1,11 @@
 ---
-title: Minimal setup
-description: A conventional setup for TypeScript-heavy LiveStore contributions.
+title: Minimal Setup
+description: The lightweight setup for TypeScript-heavy LiveStore contributions.
 ---
 
-Minimal setup covers most TypeScript changes, stable core unit tests,
+Minimal Setup covers most TypeScript changes, stable core unit tests,
 representative Vite and local Wrangler builds, and docs source checks. Use the
-[full Nix and devenv setup](./full-setup/) when your work needs browsers,
+[Full Setup (Nix + devenv)](./full-setup/) when your work needs browsers,
 generated sources, a SQLite distribution rebuild, releases, infrastructure, or
 final repository-wide validation.
 

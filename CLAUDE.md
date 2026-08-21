@@ -17,7 +17,7 @@ installs tools globally. Bun 1.3.13 is the known-good Docker realization.
 The optional root `compose.yaml` supplies that toolchain in an exclusive
 bind-mounted checkout.
 
-### Full setup
+### Full Setup (Nix + devenv)
 
 Run `devenv shell` for Playwright and full docs builds, generated-source or
 wa-sqlite changes, release and infrastructure work, or repository-wide parity.
