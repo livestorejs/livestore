@@ -374,17 +374,16 @@ export const isQueryable = (value: unknown): value is Queryable<unknown> =>
 /**
  * Represents the current synchronization status of the store.
  *
- * This provides visibility into the sync state between the client session
- * and the leader thread, allowing applications to show sync indicators
- * or determine backend health.
+ * This provides visibility into both propagation boundaries: client session
+ * to leader thread, and leader thread to sync backend.
  *
  * @example
  * ```ts
  * const status = store.syncStatus()
- * if (status.isSynced) {
- *   console.log('All changes synced')
+ * if (status.isBackendSynced) {
+ *   console.log('All changes confirmed by the sync backend')
  * } else {
- *   console.log(`${status.pendingCount} events pending sync`)
+ *   console.log(`${status.backendPendingCount} events awaiting backend confirmation`)
  * }
  * ```
  */
@@ -395,7 +394,7 @@ export type SyncStatus = {
    */
   localHead: string
   /**
-   * The upstream head sequence number (what the leader thread has confirmed).
+   * The latest leader head observed by the client session.
    * Represented as a string in the format "e{global}" (e.g., "e3").
    */
   upstreamHead: string
@@ -408,4 +407,19 @@ export type SyncStatus = {
    * True when there are no pending events (pendingCount === 0).
    */
   isSynced: boolean
+  /**
+   * Latest backend-confirmed head observed through the leader thread.
+   */
+  backendHead: string
+  /**
+   * Number of synced events accepted by the leader but not yet confirmed by the backend.
+   */
+  backendPendingCount: number
+  /**
+   * Whether the latest observed state has no pending events at either boundary.
+   *
+   * This conservative synchronous value may briefly remain false while a newer
+   * leader observation is in transit, but stale leader state cannot produce true.
+   */
+  isBackendSynced: boolean
 }

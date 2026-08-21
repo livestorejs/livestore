@@ -39,6 +39,7 @@ import {
   Result,
   Schema,
   Stream,
+  SubscriptionRef,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
@@ -185,6 +186,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * Store internals. Not part of the public API — shapes and semantics may change without notice.
    */
   readonly [StoreInternalsSymbol]: StoreInternals
+
+  /** Latest leader sync state observed by this session; populated before Store boot completes. */
+  private readonly leaderSyncStateRef = SubscriptionRef.make<SyncState.SyncState | undefined>(undefined).pipe(
+    Effect.runSync,
+  )
 
   //#region constructor
   constructor({
@@ -382,6 +388,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           commitsSpan.end()
           queriesSpan.end()
         }),
+      )
+
+      yield* clientSession.leaderThread.syncState.pipe(
+        Effect.flatMap((syncState) => SubscriptionRef.set(this.leaderSyncStateRef, syncState)),
+      )
+      yield* clientSession.leaderThread.syncState.changes.pipe(
+        Stream.runForEach((syncState) => SubscriptionRef.set(this.leaderSyncStateRef, syncState)),
+        Effect.forkScoped,
       )
 
       yield* syncProcessor.boot
@@ -1026,43 +1040,37 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   /**
    * Returns the current synchronization status of the store.
    *
-   * This is a synchronous operation that returns the sync state between the
-   * client session and the leader thread. Use this to display sync indicators
-   * or check if local changes have been pushed to the leader.
+   * This is a synchronous operation that returns the latest observed sync state
+   * across the session-to-leader and leader-to-backend boundaries.
    *
    * @example
    * ```ts
    * const status = store.syncStatus()
-   * console.log(status.isSynced ? 'Synced' : `${status.pendingCount} pending`)
+   * console.log(status.isBackendSynced ? 'Backend confirmed' : 'Syncing')
    * ```
    *
    * @example
    * ```ts
-   * // Health check for backend connectivity
+   * // The session can be caught up with its leader while backend confirmation is pending.
    * const status = store.syncStatus()
-   * if (!status.isSynced && status.pendingCount > 100) {
-   *   console.warn('Large backlog of unsynced events')
+   * if (status.isSynced && !status.isBackendSynced) {
+   *   console.log(`${status.backendPendingCount} events awaiting backend confirmation`)
    * }
    * ```
    */
   syncStatus = (): SyncStatus => {
     this.checkShutdown('syncStatus')
 
-    const syncState = this[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync)
-    const pendingCount = syncState.pending.length
+    const sessionSyncState = this[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync)
+    const leaderSyncState = this.getLeaderSyncState()
 
-    return {
-      localHead: EventSequenceNumber.Client.toString(syncState.localHead),
-      upstreamHead: EventSequenceNumber.Client.toString(syncState.upstreamHead),
-      pendingCount,
-      isSynced: pendingCount === 0,
-    }
+    return this.makeSyncStatus(sessionSyncState, leaderSyncState)
   }
 
   /**
    * Returns an Effect Stream of sync status updates.
    *
-   * Emits the current status immediately and then whenever the sync state changes.
+   * Emits the current status immediately and then whenever either boundary changes.
    * Use this for Effect-based workflows or when you need more control over the stream.
    *
    * @example
@@ -1074,11 +1082,17 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * ```
    */
   syncStatusStream = (): Stream.Stream<SyncStatus> => {
-    const syncStateSubscribable = this[StoreInternalsSymbol].syncProcessor.syncState
+    const sessionSyncState = this[StoreInternalsSymbol].syncProcessor.syncState
+    const leaderSyncStateChanges = SubscriptionRef.changes(this.leaderSyncStateRef).pipe(
+      Stream.filter((syncState): syncState is SyncState.SyncState => syncState !== undefined),
+    )
 
-    return Stream.concat(
-      Stream.fromEffect(syncStateSubscribable.pipe(Effect.map(this.makeSyncStatus))),
-      syncStateSubscribable.changes.pipe(Stream.map(this.makeSyncStatus)),
+    return Stream.merge(sessionSyncState.changes, leaderSyncStateChanges).pipe(
+      Stream.mapEffect(() =>
+        Effect.all([sessionSyncState, SubscriptionRef.get(this.leaderSyncStateRef)]).pipe(
+          Effect.map(([session, leader]) => this.makeSyncStatus(session, this.requireLeaderSyncState(leader))),
+        ),
+      ),
     )
   }
 
@@ -1115,20 +1129,32 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     }
   }
 
-  private makeSyncStatus = (syncState: {
-    localHead: EventSequenceNumber.Client.Composite
-    upstreamHead: EventSequenceNumber.Client.Composite
-    pending: readonly any[]
-  }): SyncStatus => {
-    const pendingCount = syncState.pending.length
+  private makeSyncStatus = (session: SyncState.SyncState, leader: SyncState.SyncState): SyncStatus => {
+    const pendingCount = session.pending.length
+    const backendPendingCount = leader.pending.filter(
+      (event) => this.schema.eventsDefsMap.get(event.name)?.options.clientOnly !== true,
+    ).length
+    const leaderObservationCoversSession = EventSequenceNumber.Client.isGreaterThanOrEqual(
+      leader.localHead,
+      session.upstreamHead,
+    )
 
     return {
-      localHead: EventSequenceNumber.Client.toString(syncState.localHead),
-      upstreamHead: EventSequenceNumber.Client.toString(syncState.upstreamHead),
+      localHead: EventSequenceNumber.Client.toString(session.localHead),
+      upstreamHead: EventSequenceNumber.Client.toString(session.upstreamHead),
       pendingCount,
       isSynced: pendingCount === 0,
+      backendHead: EventSequenceNumber.Client.toString(leader.upstreamHead),
+      backendPendingCount,
+      isBackendSynced: pendingCount === 0 && backendPendingCount === 0 && leaderObservationCoversSession,
     }
   }
+
+  private getLeaderSyncState = (): SyncState.SyncState =>
+    this.leaderSyncStateRef.pipe(SubscriptionRef.get, Effect.runSync, this.requireLeaderSyncState)
+
+  private requireLeaderSyncState = (syncState: SyncState.SyncState | undefined): SyncState.SyncState =>
+    syncState ?? shouldNeverHappen('Leader sync state was not initialized before Store use')
 
   /**
    * This can be used in combination with `skipRefresh` when committing events.
