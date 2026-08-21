@@ -1,0 +1,14 @@
+services:
+  development:
+    # Build the same known-good toolchain that CI verifies.
+    build: .
+    working_dir: /workspace
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-100}"
+    environment:
+      HOME: /tmp/livestore-home
+    volumes:
+      # The checkout is bind-mounted and must have one active install owner at a time.
+      - .:/workspace
+    command: bash
+    stdin_open: true
+    tty: true

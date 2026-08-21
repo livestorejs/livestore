@@ -406,6 +406,16 @@ jobs:
           process.exit(1)
           NODE
         shell: bash
+  minimal-dev:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify minimal development setup
+        run: 'docker build --tag livestore-minimal-dev:ci .'
   pack-pr-snapshot:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
@@ -449,6 +459,7 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+          source-tag: v3.21.9
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -633,6 +644,7 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+          source-tag: v3.21.9
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -812,6 +824,7 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+          source-tag: v3.21.9
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -998,6 +1011,7 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+          source-tag: v3.21.9
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -1176,6 +1190,7 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+          source-tag: v3.21.9
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -1364,6 +1379,7 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+          source-tag: v3.21.9
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -1558,6 +1574,7 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+          source-tag: v3.21.9
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -1765,6 +1782,7 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+          source-tag: v3.21.9
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -1957,6 +1975,7 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+          source-tag: v3.21.9
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -2158,6 +2177,7 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+          source-tag: v3.21.9
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -2379,6 +2399,7 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+          source-tag: v3.21.9
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -2588,6 +2609,7 @@ jobs:
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
+          source-tag: v3.21.9
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |

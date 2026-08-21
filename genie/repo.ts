@@ -387,10 +387,17 @@ export const livestoreSetupStepsAfterCheckout = [
   // scripts dir before any retry-wrapped command runs, and before any alternate
   // checkout can replace the workspace. Required by the genie CI workflow validator.
   prepareCiScriptsStep,
-  installNixStep({
-    extraConf:
-      'extra-substituters = https://cache.nixos.org\nextra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=',
-  }),
+  (() => {
+    const base = installNixStep({
+      extraConf:
+        'extra-substituters = https://cache.nixos.org\nextra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=',
+    })
+    // Pin the nix-installer (and with it Determinate Nix) to the last Nix 2.34-based
+    // release. Nix 2.35 validates `github:` flake-ref parameters, which rejects
+    // Effect-TS/tsgo's `typescript-go-src = github:...?submodules=1` declaration while
+    // resolving megarepo sync inputs. Unpin once upstream tsgo drops that parameter.
+    return { ...base, with: { ...base.with, 'source-tag': 'v3.21.9' } }
+  })(),
   cachixCliBuildStep,
   (() => {
     const base = cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' })

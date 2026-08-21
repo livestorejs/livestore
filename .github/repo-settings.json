@@ -35,6 +35,9 @@
             "context": "changeset-check"
           },
           {
+            "context": "minimal-dev"
+          },
+          {
             "context": "type-check"
           },
           {
