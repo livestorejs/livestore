@@ -13,6 +13,26 @@ Please note that LiveStore is still in active development with many things yet s
 
 Before you start contributing, please check with the maintainers if the changes you'd like to make are likely to be accepted. Please get in touch via the `#contrib` channel on [Discord](https://discord.gg/RbMcjUAPd7).
 
+## Development setup
+
+Most TypeScript, core unit-test, Vite, local Wrangler, and docs-check work can
+use the portable development environment:
+
+```bash
+docker compose build
+LOCAL_UID="$(id -u)" LOCAL_GID="$(id -g)" docker compose run --rm development
+pnpm install --frozen-lockfile
+```
+
+The checkout is bind-mounted into the container, so use an exclusive checkout.
+The container deliberately has no browser, Nix, Genie, release state, or
+infrastructure tooling.
+
+Use `devenv shell` for Playwright and full docs builds, generated-source or
+wa-sqlite changes, releases, infrastructure, and repository-wide parity. The
+exact capability boundary and validation commands are specified in the
+[developer-environment contract](./context/03-delivery/01-composition/01-developer-environment/spec.md).
+
 ## Areas for contribution
 
 There are many ways to contribute to LiveStore.

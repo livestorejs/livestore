@@ -2,7 +2,17 @@
 
 ## Setup
 
-This repository uses [`devenv`](https://devenv.sh) for development environment management. Run `devenv shell` to enter the development environment.
+Use the root `compose.yaml` for ordinary TypeScript, core unit-test, Vite,
+local Wrangler, and docs-check work in an exclusive checkout:
+
+```bash
+LOCAL_UID="$(id -u)" LOCAL_GID="$(id -g)" docker compose run --rm development
+```
+
+Run `devenv shell` for browser and full docs tests, generated-source or
+wa-sqlite changes, release and infrastructure work, or repository-wide parity.
+The authoritative boundary is
+[`context/03-delivery/01-composition/01-developer-environment/spec.md`](./context/03-delivery/01-composition/01-developer-environment/spec.md).
 
 ## Intent Layer (`context/`)
 
