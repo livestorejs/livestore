@@ -11,8 +11,10 @@ contract for setup work. It refines the broader tooling-composition outcome in
   without requiring full source validation. TypeScript build and check tasks
   remain explicit developer and CI gates. `refines: LS.DEL.COMP-R18`
 - **LS.DEL.COMP.DEV-R02 Two supported lanes:** A fresh exclusive checkout must
-  offer both a portable development lane that does not require Nix, devenv, or
-  megarepo tooling and a full hermetic lane for repository-wide maintenance.
+  offer both a conventional lane for the common TypeScript-heavy contribution
+  path without Nix, devenv, or megarepo tooling and a full hermetic lane for
+  repository-wide maintenance. Nix/devenv remains the holistic authority for
+  runtime, build, development dependencies, and final CI parity.
   `refines: LS.DEL.COMP-R18`
 - **LS.DEL.COMP.DEV-R03 Portable TypeScript loop:** The portable lane must
   perform a frozen dependency install, reference-aware TypeScript build,
@@ -31,3 +33,11 @@ contract for setup work. It refines the broader tooling-composition outcome in
   interactive environment must bind one exclusive checkout, preserve the
   caller's numeric ownership by default, and avoid prescribing application
   ports that belong to individual examples. `refines: LS.DEL.COMP-R18`
+- **LS.DEL.COMP.DEV-R07 Setup before validation:** Minimal Setup must establish
+  and diagnose prerequisites and dependency readiness without implying that
+  source validation or the full CI bar has passed. Its bootstrap must remain
+  optional and must not install tools globally. `refines: LS.DEL.COMP-R18`
+- **LS.DEL.COMP.DEV-R08 Evidence-led boundary:** The portable capability set
+  must expand only after a clean-environment experiment proves the added work
+  without accumulating another parallel toolchain. Contributor feedback must
+  remain an input to revising the boundary. `refines: LS.DEL.COMP-R18`

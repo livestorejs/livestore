@@ -27,10 +27,12 @@ exclusive checkout
                      `- Nix ------- browsers, WASM, release, infrastructure
 ```
 
-Minimal Setup is the default for ordinary TypeScript changes. The full
-lane is an escalation target for capabilities whose correctness depends on the
-hermetic repository toolchain. The two lanes share the committed pnpm lockfile
-and source tree; they do not claim identical tool closures
+Minimal Setup is the conventional path for the TypeScript-heavy majority of
+contributions. This is a design target informed by contributor experience, not
+a measured coverage percentage. The full lane remains the holistic authority
+for runtime, build and development dependencies, and the final CI bar. The two
+lanes share the committed pnpm lockfile and source tree; they do not claim
+identical tool closures
 ([decision 0003](./.decisions/0003-two-development-lanes.md)).
 
 | Capability | Portable lane | Full lane |
@@ -41,6 +43,7 @@ and source tree; they do not claim identical tool closures
 | Vite application build and development | Required | Required |
 | Local Wrangler build | Required | Required |
 | Docs source check | Required | Required |
+| Use committed SQLite distribution | Required | Required |
 | Browser and Playwright tests | Not provided | Required |
 | Full docs build, including diagrams | Not provided | Required |
 | Genie regeneration | Not provided | Required |
@@ -49,14 +52,23 @@ and source tree; they do not claim identical tool closures
 
 ## Minimal Setup
 
-The host-native entry point is `scripts/bootstrap-minimal.sh`. It verifies
+The optional host-native diagnostic is `scripts/bootstrap-minimal.sh`. It verifies
 Node.js major 24, Bun, and the exact pnpm version declared by
 `package.json#packageManager`, then runs a frozen workspace install. It never
 installs or upgrades tools globally. Bun 1.3.13 is the known-good version in
 the Docker oracle; the host admission contract requires Bun to be present but
 does not impose that exact version.
 
-The root `Dockerfile` is the executable cold-start contract. It starts from the
+Developers may run the equivalent install directly after checking the same
+prerequisites. The bootstrap establishes dependency readiness only; it does
+not claim that TypeScript, tests, docs, or the full CI bar have passed.
+
+Committed SQLite distribution artifacts make ordinary use and TypeScript
+changes portable. Rebuilding those artifacts crosses into the full lane
+because Nix/Emscripten owns that build closure.
+
+The optional root `Dockerfile` is the executable cold-start contract and a
+familiar alternative when host tooling is undesirable. It starts from the
 official Node 24 image, copies the Bun binary from the pinned official Bun
 image, installs the pnpm version declared by `package.json#packageManager`
 directly, invokes the shared bootstrap, and runs the finite capability set in
@@ -91,6 +103,11 @@ build .` performs the gate. The generated repository ruleset requires the
 stable `minimal-dev` context. The Dockerfile, workflow generator, generated
 workflow, and generated ruleset are reviewed together when the contract
 changes (LS.DEL.COMP.DEV-R03, R05, R06).
+
+The boundary is intentionally finite. Requests to add another tool or special
+case first become clean-environment experiments; recurring contributor friction
+is evidence for revising the boundary rather than triggering ad hoc expansion
+(LS.DEL.COMP.DEV-R08).
 
 ## Full Lane
 

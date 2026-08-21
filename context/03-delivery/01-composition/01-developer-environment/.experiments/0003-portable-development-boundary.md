@@ -10,6 +10,12 @@ launchers, or credentials?
 
 ## Method
 
+- Used the 2026-08-20
+  [developer setup discussion](https://app.notion.com/p/schickling/3c2e3d41f4a380b58b07daa038191f3e)
+  as qualitative admission evidence. It reported roughly an hour for an
+  initial Nix setup with a large download and proposed conventional coverage
+  for the TypeScript-heavy majority. These are participant observations and a
+  directional estimate, not benchmark measurements.
 - Built the root Dockerfile from a clean Linux/amd64 context using the official
   Node 24 and Bun 1.3.13 images and directly installed repository-pinned pnpm
   11.8.0.
@@ -38,6 +44,12 @@ launchers, or credentials?
 | Changesets history status | CONDITIONAL | pnpm command present; Git binary and `.git` history absent |
 | Infrastructure check | FAIL | Nix absent |
 | Contrib composition | NO VERDICT | Core experiment did not materialize or build the external contrib checkout |
+
+The discussion also identified unfamiliarity and perceived host intrusion on
+macOS, concern that a portable path could become tool-by-tool whack-a-mole, and
+the need to use contributor feedback to revisit the boundary. These findings
+shape admission and maintenance policy; they are not container performance
+results.
 
 The initial finite Docker oracle completed an uncached build in 101.8s. The
 expanded oracle, including the full stable core suite, Vite build, Wrangler

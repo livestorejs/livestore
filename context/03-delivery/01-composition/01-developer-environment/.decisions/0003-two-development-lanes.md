@@ -2,8 +2,9 @@
 
 Status: accepted
 
-Evidence: user confirmation on 2026-08-21 and
-[experiment 0003](../.experiments/0003-portable-development-boundary.md).
+Evidence: the 2026-08-20
+[developer setup discussion](https://app.notion.com/p/schickling/3c2e3d41f4a380b58b07daa038191f3e)
+and [experiment 0003](../.experiments/0003-portable-development-boundary.md).
 
 ## Context
 
@@ -11,6 +12,13 @@ The hermetic Nix/devenv environment provides repository-wide parity but makes
 ordinary TypeScript contributions depend on fleet-specific tooling. A
 conventional environment can already exercise a substantial, coherent subset
 of the repository without weakening those checks.
+
+The discussion identified a long first Nix setup and large download as a
+material admission cost, especially when Nix feels unfamiliar or intrusive on
+macOS. Its directional goal was to cover the TypeScript-heavy majority of
+contributions conventionally while retaining Nix/devenv as the holistic
+dependency and final-validation authority. The stated proportion was an
+estimate, not measured coverage.
 
 ## Evidence and Argument
 
@@ -20,6 +28,10 @@ using only the pinned JavaScript toolchain. Independent failures located a
 clear boundary at browsers, Genie, Nix, Git history, release state, and
 infrastructure tooling. A disposable bind-mounted Compose checkout reproduced
 the portable loop as the non-root checkout owner.
+
+Committed SQLite distribution artifacts make ordinary use portable, while a
+rebuild requires the full Nix/Emscripten closure. This supplies a principled
+boundary instead of adding tools one failure at a time.
 
 ## Options
 
@@ -45,9 +57,14 @@ authoritative beyond the measured portable boundary.
   Docker pins Bun 1.3.13 as its known-good realization.
 - The portable promise remains finite; adding a capability requires clean-image
   evidence and extending the Docker gate.
+- The bootstrap is an optional diagnostic for people and agents. It verifies
+  readiness and installs dependencies without globally installing tools; it is
+  not a validation umbrella.
 - Browser downloads, generated-source tooling, wa-sqlite rebuilds, release
   state, and infrastructure remain single-owned by the full lane.
 - Compose writes through an exclusively owned checkout and does not attempt to
   coordinate shared worktree state or application ports.
 - Pull requests cannot drift the portable contract unnoticed because its
   stable CI context builds the canonical Dockerfile.
+- Contributor feedback is reviewed as boundary evidence so the two lanes do
+  not decay into recurring setup exceptions.
