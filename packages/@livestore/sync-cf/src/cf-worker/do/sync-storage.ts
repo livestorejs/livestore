@@ -7,6 +7,8 @@ import { SyncMetadata } from '../../common/sync-message-types.ts'
 import { PERSISTENCE_FORMAT_VERSION, type StoreId } from '../shared.ts'
 import { eventlogTable } from './sqlite.ts'
 
+export type StorageEngine = { _tag: 'd1'; db: CfTypes.D1Database } | { _tag: 'do-sqlite' }
+
 export type SyncStorage = {
   dbName: string
   getEvents: (cursor: number | undefined) => Effect.Effect<
@@ -26,11 +28,7 @@ export type SyncStorage = {
   resetStore: Effect.Effect<void, UnknownError>
 }
 
-export const makeStorage = (
-  ctx: CfTypes.DurableObjectState,
-  storeId: StoreId,
-  engine: { _tag: 'd1'; db: CfTypes.D1Database } | { _tag: 'do-sqlite' },
-): SyncStorage => {
+export const makeStorage = (ctx: CfTypes.DurableObjectState, storeId: StoreId, engine: StorageEngine): SyncStorage => {
   const dbName = `eventlog_${PERSISTENCE_FORMAT_VERSION}_${toValidTableName(storeId)}`
 
   const execDb = <T>(cb: (db: CfTypes.D1Database) => Promise<CfTypes.D1Result<T>>) =>

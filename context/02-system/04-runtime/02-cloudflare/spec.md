@@ -82,7 +82,7 @@ catch-up pull) before forwarding the payload to
 pushed update rather than dropping it (LS.SYS.RT.CF-R03). Opting out (no
 re-boot) drops that one live update and recovers lazily on the next store
 access. The provider side that threads `storeId` is `03-sync/03-cf`'s concern
-([../../03-sync/03-cf/.decisions/0002-reverse-rpc-storeid-recovery.md](../../03-sync/03-cf/.decisions/0002-reverse-rpc-storeid-recovery.md)).
+([../../03-sync/03-cf/.decisions/0003-reverse-rpc-storeid-recovery.md](../../03-sync/03-cf/.decisions/0003-reverse-rpc-storeid-recovery.md)).
 
 ## Open Design Questions
 

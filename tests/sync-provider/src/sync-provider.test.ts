@@ -9,6 +9,7 @@ import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   type Context,
+  Deferred,
   Duration,
   Effect,
   FetchHttpClient,
@@ -19,7 +20,9 @@ import {
   Logger,
   ManagedRuntime,
   Option,
+  Queue,
   References,
+  Result,
   Schedule,
   Schema,
   Stream,
@@ -37,7 +40,7 @@ const defaultClient = EventFactory.clientIdentity('test-client', 'test-session')
 
 const makeFactory = EventFactory.makeFactory(events)
 
-const providerLayers = selectedProviderKeys().map((key) => providerRegistry[key])
+const providerLayers = selectedProviderKeys().map((key) => ({ key, ...providerRegistry[key] }))
 
 type RuntimeServices = SyncProviderImpl | HttpClient.HttpClient
 
@@ -57,7 +60,7 @@ const runFirstNonEmpty = <T, E, R>(stream: Stream.Stream<SyncBackend.PullResItem
   )
 
 /** Verifies: LS.SYS.SYNC-R02, LS.SYS.SYNC-R03, LS.SYS.SYNC-R04, LS.SYS.SYNC-R05, LS.SYS.SYNC.CF-R05, LS.SYS.VER.CONF-R01 */
-Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, ({ layer, name }) => {
+Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, ({ key, layer, name }) => {
   let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
   let runtimeContext: Context.Context<RuntimeServices>
   let testId: string
@@ -196,6 +199,46 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       expect(secondPull).toEqual(SyncBackend.pullResItemEmpty())
     }).pipe(withTestCtx()(test)),
   )
+
+  Vitest.describe.skipIf(key !== 'cf-ws-do')('serialized admission', () => {
+    Vitest.live('serializes concurrent pushes that share the same parent', (test) =>
+      Effect.gen(function* () {
+        const syncBackend = yield* makeProvider(test.task.name)
+        const contenders = Array.from({ length: 8 }, (_, index) =>
+          makeFactory({
+            client: EventFactory.clientIdentity(`contender-${index}`, `session-${index}`),
+            startSeq: 1,
+            initialParent: 'root',
+          }).todoCreated.next({ id: `contender-${index}`, text: `Contender ${index}`, completed: false }),
+        )
+        const ready = yield* Queue.unbounded<void>()
+        const release = yield* Deferred.make<void>()
+
+        const fibers = yield* Effect.forEach(contenders, (event) =>
+          Effect.gen(function* () {
+            yield* Queue.offer(ready, undefined)
+            yield* Deferred.await(release)
+            return yield* syncBackend.push([event]).pipe(Effect.result)
+          }).pipe(Effect.forkChild),
+        )
+
+        // All contenders cross the same explicit start barrier before backend admission.
+        yield* Effect.forEach(contenders, () => Queue.take(ready))
+        yield* Deferred.succeed(release, undefined)
+
+        const results = yield* Effect.forEach(fibers, Fiber.join)
+        const successes = results.filter(Result.isSuccess)
+        const failures = results.filter(Result.isFailure)
+
+        expect(successes).toHaveLength(1)
+        expect(failures).toHaveLength(contenders.length - 1)
+        expect(failures.every((result) => result.failure._tag === 'ServerAheadError')).toBe(true)
+
+        const pulled = yield* syncBackend.pull(Option.none()).pipe(Stream.runCollectReadonlyArray)
+        expect(pulled.flatMap((item) => item.batch)).toHaveLength(1)
+      }).pipe(withTestCtx()(test)),
+    )
+  })
 
   Vitest.describe('large batches handling', () => {
     const MIN_BATCH_PAYLOAD_BYTES = 1_000_000

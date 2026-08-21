@@ -41,7 +41,7 @@ export const makePush =
   (pushRequest: Omit<SyncMessage.PushRequest, '_tag'>) =>
     Effect.gen(function* () {
       // yield* Effect.log(`Pushing ${decodedMessage.batch.length} events`, decodedMessage.batch)
-      const { backendId, storage, currentHeadRef, updateCurrentHead } = yield* DoCtx.DoCtx
+      const { backendId, storage, currentHeadRef, updateCurrentHead, pushSemaphore } = yield* DoCtx.DoCtx
 
       if (pushRequest.batch.length === 0) {
         return SyncMessage.PushAck.make({})
@@ -61,141 +61,136 @@ export const makePush =
         return yield* new BackendIdMismatchError({ expected: backendId, received: pushRequest.backendId.value })
       }
 
-      // This part of the code needs to run sequentially to avoid race conditions
-      const { createdAt } = yield* Effect.gen(function* () {
-        const currentHead = currentHeadRef.current
-        // TODO handle clientId unique conflict
-        // Validate the batch
-        const firstEventParent = pushRequest.batch[0]!.parentSeqNum
-        if (firstEventParent !== currentHead) {
-          // yield* Effect.logDebug('ServerAheadError: backend head mismatch', {
-          //   expectedHead: currentHead,
-          //   providedHead: firstEventParent,
-          //   batchSize: pushRequest.batch.length,
-          //   backendId,
-          // })
+      // A push is one ordered admit → persist → publish operation. `blockConcurrencyWhile` below protects
+      // the Durable Object state transition, while this semaphore keeps later pushes from overtaking this
+      // push during broadcasting without holding Cloudflare's concurrency gate across network I/O.
+      yield* runSerializedPushAdmission(
+        pushSemaphore,
+        Effect.gen(function* () {
+          // Keep the head check, durable append, and in-memory head update atomic with respect to other
+          // Durable Object requests. Broadcasting intentionally happens after this gate is released.
+          const { createdAt } = yield* Effect.gen(function* () {
+            const currentHead = currentHeadRef.current
+            // TODO handle clientId unique conflict
+            // Validate the batch
+            const firstEventParent = pushRequest.batch[0]!.parentSeqNum
+            if (firstEventParent !== currentHead) {
+              return yield* new ServerAheadError({ minimumExpectedNum: currentHead, providedNum: firstEventParent })
+            }
 
-          return yield* new ServerAheadError({ minimumExpectedNum: currentHead, providedNum: firstEventParent })
-        }
+            const createdAt = new Date().toISOString()
 
-        const createdAt = new Date().toISOString()
+            // TODO possibly model this as a queue in order to speed up subsequent pushes
+            yield* storage.appendEvents(pushRequest.batch, createdAt)
 
-        // TODO possibly model this as a queue in order to speed up subsequent pushes
-        yield* storage.appendEvents(pushRequest.batch, createdAt)
+            updateCurrentHead(pushRequest.batch.at(-1)!.seqNum)
 
-        updateCurrentHead(pushRequest.batch.at(-1)!.seqNum)
+            return { createdAt }
+          }).pipe(blockConcurrencyWhile(ctx))
 
-        return { createdAt }
-      }).pipe(blockConcurrencyWhile(ctx))
+          const connectedClients = ctx.getWebSockets()
 
-      // Run in background but already return the push ack to the client
-      yield* Effect.gen(function* () {
-        const connectedClients = ctx.getWebSockets()
+          // Preparing chunks of responses to make sure we don't exceed the WS message size limit.
+          if (EffectArray.isReadonlyArrayNonEmpty(pushRequest.batch) === false) {
+            return
+          }
 
-        // Preparing chunks of responses to make sure we don't exceed the WS message size limit.
-        if (EffectArray.isReadonlyArrayNonEmpty(pushRequest.batch) === false) {
-          return
-        }
+          const responses = yield* splitArrayBySize({
+            maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+            maxBytes: MAX_WS_MESSAGE_BYTES,
+            encode: (items: ReadonlyArray<PushBatchItem>) =>
+              encodePullResponse(
+                SyncMessage.PullResponse.make({
+                  batch: items.map(
+                    (eventEncoded): PullBatchItem => ({
+                      eventEncoded,
+                      metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
+                    }),
+                  ),
+                  pageInfo: SyncBackend.pageInfoNoMore,
+                  backendId,
+                }),
+              ),
+          })(pushRequest.batch).pipe(
+            Effect.map((eventBatch) =>
+              eventBatch.map((events) => {
+                const batchWithMetadata = events.map((eventEncoded) => ({
+                  eventEncoded,
+                  metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
+                }))
 
-        const responses = yield* splitArrayBySize({
-          maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
-          maxBytes: MAX_WS_MESSAGE_BYTES,
-          encode: (items: ReadonlyArray<PushBatchItem>) =>
-            encodePullResponse(
-              SyncMessage.PullResponse.make({
-                batch: items.map(
-                  (eventEncoded): PullBatchItem => ({
-                    eventEncoded,
-                    metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
-                  }),
-                ),
-                pageInfo: SyncBackend.pageInfoNoMore,
-                backendId,
+                const response = SyncMessage.PullResponse.make({
+                  batch: batchWithMetadata,
+                  pageInfo: SyncBackend.pageInfoNoMore,
+                  backendId,
+                })
+
+                return {
+                  response,
+                  encoded: encodePullResponse(response),
+                }
               }),
             ),
-        })(pushRequest.batch).pipe(
-          Effect.map((eventBatch) =>
-            eventBatch.map((events) => {
-              const batchWithMetadata = events.map((eventEncoded) => ({
-                eventEncoded,
-                metadata: Option.some(SyncMessage.SyncMetadata.make({ createdAt })),
-              }))
+          )
 
-              const response = SyncMessage.PullResponse.make({
-                batch: batchWithMetadata,
-                pageInfo: SyncBackend.pageInfoNoMore,
-                backendId,
-              })
+          // Dual broadcasting: WebSocket + RPC clients
 
-              return {
-                response,
-                encoded: encodePullResponse(response),
+          // Broadcast to WebSocket clients
+          if (connectedClients.length > 0) {
+            for (const { response, encoded } of responses) {
+              // Only calling once for now.
+              if (options?.onPullRes !== undefined) {
+                yield* Effect.trySyncOrPromiseOrEffect(() => options.onPullRes!(response)).pipe(
+                  UnknownError.mapToUnknownError,
+                )
               }
-            }),
-          ),
-        )
 
-        // Dual broadcasting: WebSocket + RPC clients
+              // NOTE we're also sending the pullRes chunk to the pushing ws client as confirmation
+              for (const conn of connectedClients) {
+                const attachment = yield* Schema.decodeEffect(WebSocketAttachmentSchema)(conn.deserializeAttachment())
 
-        // Broadcast to WebSocket clients
-        if (connectedClients.length > 0) {
-          for (const { response, encoded } of responses) {
-            // Only calling once for now.
-            if (options?.onPullRes !== undefined) {
-              yield* Effect.trySyncOrPromiseOrEffect(() => options.onPullRes!(response)).pipe(
-                UnknownError.mapToUnknownError,
-              )
-            }
-
-            // NOTE we're also sending the pullRes chunk to the pushing ws client as confirmation
-            for (const conn of connectedClients) {
-              const attachment = yield* Schema.decodeEffect(WebSocketAttachmentSchema)(conn.deserializeAttachment())
-
-              // We're doing something a bit "advanced" here as we're directly emitting Effect RPC-compatible
-              // response messsages on the Effect RPC-managed websocket connection to the WS client.
-              // For this we need to get the RPC `requestId` from the WebSocket attachment.
-              for (const requestId of attachment.pullRequestIds) {
-                const res: RpcMessage.ResponseChunkEncoded = {
-                  _tag: 'Chunk',
-                  requestId,
-                  values: [encoded],
+                // We're doing something a bit "advanced" here as we're directly emitting Effect RPC-compatible
+                // response messsages on the Effect RPC-managed websocket connection to the WS client.
+                // For this we need to get the RPC `requestId` from the WebSocket attachment.
+                for (const requestId of attachment.pullRequestIds) {
+                  const res: RpcMessage.ResponseChunkEncoded = {
+                    _tag: 'Chunk',
+                    requestId,
+                    values: [encoded],
+                  }
+                  conn.send(jsonStringify(res))
                 }
-                conn.send(jsonStringify(res))
               }
             }
+
+            yield* Effect.logDebug(`Broadcasted to ${connectedClients.length} WebSocket clients`)
           }
 
-          yield* Effect.logDebug(`Broadcasted to ${connectedClients.length} WebSocket clients`)
-        }
-
-        // Subscribers live in the DO's KV storage (single source of truth), so fan-out survives reconstruction.
-        // emitStreamResponse reconstructs each client stub from its callerContext.
-        const rpcSubscriptions = Array.from(ctx.storage.kv.list<RpcSubscription>({ prefix: rpcSubscriptionKeyPrefix }))
-        if (rpcSubscriptions.length > 0) {
-          for (const [, subscription] of rpcSubscriptions) {
-            for (const { encoded } of responses) {
-              yield* emitStreamResponse({
-                callerContext: subscription.callerContext,
-                env,
-                requestId: subscription.requestId,
-                storeId: subscription.storeId,
-                values: [encoded],
-              }).pipe(Effect.tapCauseLogPretty, Effect.exit)
+          // Subscribers live in the DO's KV storage (single source of truth), so fan-out survives reconstruction.
+          // emitStreamResponse reconstructs each client stub from its callerContext.
+          const rpcSubscriptions = Array.from(
+            ctx.storage.kv.list<RpcSubscription>({ prefix: rpcSubscriptionKeyPrefix }),
+          )
+          if (rpcSubscriptions.length > 0) {
+            for (const [, subscription] of rpcSubscriptions) {
+              for (const { encoded } of responses) {
+                yield* emitStreamResponse({
+                  callerContext: subscription.callerContext,
+                  env,
+                  requestId: subscription.requestId,
+                  storeId: subscription.storeId,
+                  values: [encoded],
+                }).pipe(Effect.tapCauseLogPretty, Effect.exit)
+              }
             }
-          }
 
-          yield* Effect.logDebug(`Broadcasted to ${rpcSubscriptions.length} RPC clients`)
-        }
-      }).pipe(
-        Effect.tapCauseLogPretty,
-        Effect.withSpan('push-rpc-broadcast'),
-        Effect.uninterruptible, // We need to make sure Effect RPC doesn't interrupt this fiber
-        Effect.forkChild,
+            yield* Effect.logDebug(`Broadcasted to ${rpcSubscriptions.length} RPC clients`)
+          }
+        }).pipe(Effect.tapCauseLogPretty, Effect.withSpan('push-rpc-broadcast')),
       )
 
-      // We need to yield here to make sure the fork above is kicked off before we let Effect RPC finish the request
-      yield* Effect.yieldNow
-
+      // Acknowledge only after the committed batch has been published, so a client cannot observe an
+      // advanced server head while the corresponding pull response is still waiting in a detached fiber.
       return SyncMessage.PushAck.make({})
     }).pipe(
       Effect.tap(
@@ -216,6 +211,27 @@ export const makePush =
     )
 
 /**
+ * Serializes the complete push admission lifecycle, including publication to pull subscribers.
+ *
+ * This complements `blockConcurrencyWhile`: that Cloudflare primitive makes the durable state transition
+ * atomic with respect to other Durable Object requests, whereas this semaphore preserves push order after
+ * the storage gate is released and broadcasting begins. Keeping broadcast outside `blockConcurrencyWhile`
+ * avoids holding Cloudflare's concurrency gate across network I/O.
+ *
+ * Once admitted, the effect is uninterruptible so cancellation cannot leave a committed head without its
+ * matching pull response. Such a gap would make later pushers receive `ServerAhead` while waiting for a
+ * response that was never published.
+ */
+export const runSerializedPushAdmission = <A, E, R>(
+  semaphore: DoCtx.Service['pushSemaphore'],
+  admission: Effect.Effect<A, E, R>,
+): Effect.Effect<A, E, R> => semaphore.withPermits(1)(admission.pipe(Effect.uninterruptible))
+
+/**
+ * Runs the storage-backed state transition behind Cloudflare's Durable Object concurrency gate.
+ * This scope should remain limited to local persistence and head mutation; ordered publication is handled
+ * separately by `runSerializedPushAdmission` so outbound work does not block unrelated Durable Object events.
+ *
  * @see https://developers.cloudflare.com/durable-objects/api/state/#blockconcurrencywhile
  */
 const blockConcurrencyWhile =

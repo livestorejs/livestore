@@ -41,6 +41,6 @@ with per-transport liveness on top (see [spec.md](../spec.md) §Transports).
 - On DO-RPC the client DO is not pinned awake, so it may be reconstructed
   store-less between phase-2 events; correct liveness therefore depends on the
   reverse-RPC carrying `storeId` so a reconstructed client re-boots and catches
-  up (see [0002-reverse-rpc-storeid-recovery.md](./0002-reverse-rpc-storeid-recovery.md)).
+  up (see [0003-reverse-rpc-storeid-recovery.md](./0003-reverse-rpc-storeid-recovery.md)).
 - Hibernatable *outgoing* WS support (workerd#4864) could later simplify
   phase 2 (see root roadmap, Cloudflare runtime directions).

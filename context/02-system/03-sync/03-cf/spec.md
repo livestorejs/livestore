@@ -32,23 +32,27 @@ arbitrates pushes and fans out live pull streams to subscribers
   `currentHead`, `backendId`). `<V>` = `PERSISTENCE_FORMAT_VERSION`
   (currently 7, `cf-worker/shared.ts:135`); bumping it renames the tables —
   a soft reset that orphans old data (LS.SYS.SYNC.CF-R03).
-- **Push arbitration** (`cf-worker/do/push.ts:63-87`): inside
-  `ctx.blockConcurrencyWhile`, accept iff
+- **Push arbitration** (`cf-worker/do/push.ts`): Durable Object context
+  initialization is single-flight, yielding one shared head reference and push
+  semaphore per instance. Under that semaphore, accept iff
   `batch[0].parentSeqNum === currentHead` (else `ServerAheadError` with
   `minimumExpectedNum`), append client-supplied sequence numbers, advance
-  `currentHead`. Empty batches short-circuit to an ack. There is no
-  explicit idempotency/dedup beyond the head check (TODO `push.ts:65`).
-- **Fan-out** (`push.ts:90-187`): after the serialized section, an
-  uninterruptible background fiber re-chunks the batch and emits to two
-  subscriber sets — hibernatable WebSockets (per-socket `pullRequestIds`
-  attachments; hand-crafted RPC chunk frames) and DO-RPC subscriptions (an
-  in-memory map fed by live pulls). Each DO-RPC callback carries the
+  `currentHead`, and publish the matching pull response before honoring
+  interruption or admitting the next push. Persistence remains inside
+  `ctx.blockConcurrencyWhile`; the larger admission-to-publication transition
+  is serialized and uninterruptible. Empty batches short-circuit to an ack.
+  There is no explicit idempotency/dedup beyond the head check (see
+  [.decisions/0002-atomic-push-publication.md](./.decisions/0002-atomic-push-publication.md)).
+- **Fan-out** (`push.ts`): accepted batches are re-chunked and emitted in
+  admission order to two subscriber sets — hibernatable WebSockets (per-socket `pullRequestIds`
+  attachments; hand-crafted RPC chunk frames) and DO-RPC subscriptions (a
+  durable KV registry fed by live pulls). Each DO-RPC callback carries the
   subscription's `storeId` (`push.ts` → `emitStreamResponse` →
   `syncUpdateRpc(payload, storeId)`), so a client DO that was evicted and
   reconstructed can re-boot its store — whose boot catches up — before
   delivering, instead of dropping the update; the client-side re-boot is
   `04-runtime`'s adapter concern
-  ([.decisions/0002-reverse-rpc-storeid-recovery.md](./.decisions/0002-reverse-rpc-storeid-recovery.md)).
+  ([.decisions/0003-reverse-rpc-storeid-recovery.md](./.decisions/0003-reverse-rpc-storeid-recovery.md)).
 - **BackendId** (`layer.ts:98-114`): `nanoid()` on first context build,
   persisted in `contextTable`; pull/push carrying a different backendId
   fail with `BackendIdMismatchError` (client records it lazily from pull

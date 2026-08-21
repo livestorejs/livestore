@@ -1,4 +1,4 @@
-# 0002 — Reverse-RPC carries storeId so reconstructed client DOs recover live updates
+# 0003 — Reverse-RPC carries storeId so reconstructed client DOs recover live updates
 
 Status: accepted (recorded 2026-08-08).
 
