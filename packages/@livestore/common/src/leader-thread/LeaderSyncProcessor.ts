@@ -217,6 +217,8 @@ export const make = Effect.fnUntraced(function* ({
 }: Options) {
   const stateHead = yield* StateHead.StateHead
   const syncBackendPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
+  // One pending restart request is enough; extra requests can be dropped until it is handled.
+  const backendPullRestartQueue = yield* TxQueue.dropping<void>(1)
   const localPushBatchSize = params.localPushBatchSize ?? 10
   const backendPushBatchSize = params.backendPushBatchSize ?? 50
 
@@ -666,7 +668,7 @@ export const make = Effect.fnUntraced(function* ({
       // - Delay clamped at 30s (continues retrying at 30s)
       // - Resets automatically after successful push
       // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
-      yield* Effect.gen(function* () {
+      const continuePushing = yield* Effect.gen(function* () {
         const iteration = yield* Schedule.CurrentMetadata
 
         const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.result)
@@ -684,13 +686,17 @@ export const make = Effect.fnUntraced(function* ({
           })
           const error = pushResult.failure
           if (error._tag === 'ServerAheadError') {
-            // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
-            yield* Effect.logDebug('handled backend-push-error (waiting for interupt caused by pull)', { error })
-            return yield* Effect.never
+            // ServerAhead does not guarantee that the current live pull will publish the
+            // missing events, so start a fresh pull from our persisted cursor.
+            yield* Effect.logDebug('handled backend-push-error (requesting pull restart)', { error })
+            yield* TxQueue.offer(backendPullRestartQueue, undefined)
+            return false
           }
 
           return yield* error
         }
+
+        return true
       }).pipe(
         // Retry transient errors
         Effect.retry({
@@ -702,6 +708,10 @@ export const make = Effect.fnUntraced(function* ({
         // This is needed to narrow the Error type. Our retry policy runs indefinitely, but Effect.retry does not narrow the Error type.
         Effect.catchIf((error) => error._tag === 'IsOfflineError' || error._tag === 'UnknownError', Effect.die),
       )
+
+      // Stop pushing so later events cannot skip this rejected batch. Pull reconciliation
+      // will rebase the pending events and restart pushing.
+      if (continuePushing === false) return
     }
   }).pipe(Effect.interruptible)
 
@@ -801,9 +811,7 @@ export const make = Effect.fnUntraced(function* ({
         Effect.catchCause(maybeShutdownOnError),
       )
 
-      yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
-
-      yield* backgroundBackendPulling({
+      const backendPullingEffect = backgroundBackendPulling({
         restartBackendPushing: (filteredRebasedPending) =>
           Effect.gen(function* () {
             // Stop current pushing fiber
@@ -828,8 +836,24 @@ export const make = Effect.fnUntraced(function* ({
         // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
         // This might be a bug in Effect. Only seems to happen in the browser.
         Effect.provideService(References.UnhandledLogLevel, undefined),
-        Effect.forkScoped,
       )
+
+      // A restart request interrupts the current pull before starting another one from
+      // the persisted cursor, so two live pulls can never overlap.
+      const backgroundBackendPullingSupervised = Effect.gen(function* () {
+        while (true) {
+          const outcome = yield* Effect.raceFirst(
+            backendPullingEffect.pipe(Effect.as('pull-ended' as const)),
+            TxQueue.take(backendPullRestartQueue).pipe(Effect.as('restart-requested' as const)),
+          )
+
+          if (outcome === 'pull-ended') return
+        }
+      }).pipe(Effect.interruptible)
+
+      // Start pulling before pushing so a stale rehydrated batch can always request a restart.
+      yield* backgroundBackendPullingSupervised.pipe(Effect.forkScoped)
+      yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 
       return { initialLeaderHead: initialSyncState.localHead }
     }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot')),
