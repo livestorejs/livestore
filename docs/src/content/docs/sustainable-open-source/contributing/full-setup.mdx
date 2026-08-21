@@ -1,6 +1,6 @@
 ---
-title: Monorepo
-description: Notes on the monorepo setup of LiveStore.
+title: Full setup with Nix and devenv
+description: The complete development environment and validation path for LiveStore.
 ---
 
 import { REACT_VERSION, EFFECT_VERSION } from '../../../../../../packages/@local/shared/src/CONSTANTS'
@@ -20,20 +20,23 @@ experience is recommended:
 - Experience with TypeScript monorepo setups
 - Experience with distributed systems
 
-### Required tooling: Nix + devenv
+### Nix and devenv
 
-LiveStore requires [Nix](https://nixos.org/) with [devenv](https://devenv.sh)
-to manage all development dependencies (Node.js, Bun, pnpm, oxlint, OTEL stack,
-Playwright browsers, etc.). Enter the development shell with `devenv shell`.
+The full setup uses [Nix](https://nixos.org/) with
+[devenv](https://devenv.sh) to manage the complete development dependency set,
+including oxlint plugins, generated-source tooling, telemetry, browsers, and
+SQLite distribution rebuilds. Enter it with `devenv shell`.
 
-#### Why this is a hard requirement
+#### Why the full lane remains authoritative
 
 LiveStore is developed alongside a family of projects that share tooling
 through [`effect-utils`](https://github.com/overengineeringstudio/effect-utils)
 — a Nix flake that provides the exact oxlint (with custom plugins),
 `genie` config generator, `megarepo` CLI, OTEL dashboards, and
-Playwright integration used here. Standing this up outside of Nix/devenv
-means reimplementing a moving target and drifting from CI.
+Playwright integration used here. Standing up this complete closure outside
+Nix/devenv means reimplementing a moving target and drifting from CI. The
+separate [Minimal setup](./minimal-setup/) is supported for its deliberately
+smaller capability set.
 
 By requiring Nix + devenv we get:
 
@@ -59,13 +62,6 @@ After installing Nix, install
 into the repo, also install [direnv](https://direnv.net) — the repo ships
 an `.envrc` that wires devenv into direnv. Not required.
 
-### Manual setup (discouraged)
-
-It is technically possible to set up the toolchain manually (Node.js, Bun,
-pnpm, etc.), but this path is **not supported**: you'll diverge from CI,
-miss linter plugins, and have to track tool versions by hand. Use Nix +
-devenv unless you have a very specific reason not to.
-
 ## Initial setup
 
 ```bash
@@ -76,8 +72,8 @@ devenv shell
 
 Entering the shell builds the Nix environment, puts the full toolchain
 (Node.js, Bun, pnpm, `mono`, oxlint, oxfmt, etc.) on `$PATH`, and
-runs the project `setup` task (which installs pnpm deps, regenerates
-`genie` outputs, and builds TypeScript).
+runs setup tasks that install dependencies and regenerate managed sources.
+Source validation remains explicit; setup completion is not a passing build.
 
 ## Working with devenv
 

@@ -21,6 +21,9 @@ bind-mounted checkout.
 
 Run `devenv shell` for Playwright and full docs builds, generated-source or
 wa-sqlite changes, release and infrastructure work, or repository-wide parity.
+Before final handoff, escalate to this lane whenever the relevant validation
+extends beyond the finite Minimal Setup checks; setup success never substitutes
+for the full required CI bar.
 The authoritative boundary is
 [`context/03-delivery/01-composition/01-developer-environment/spec.md`](./context/03-delivery/01-composition/01-developer-environment/spec.md).
 

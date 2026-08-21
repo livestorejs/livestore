@@ -89,7 +89,8 @@ const docsRedirects = Object.fromEntries([
 
   ...docsRedirect('/contributing/contributing', '/sustainable-open-source/contributing/info'),
   ...docsRedirect('/contributing/docs', '/sustainable-open-source/contributing/docs'),
-  ...docsRedirect('/contributing/monorepo', '/sustainable-open-source/contributing/monorepo'),
+  ...docsRedirect('/contributing/monorepo', '/sustainable-open-source/contributing/full-setup'),
+  ...docsRedirect('/sustainable-open-source/contributing/monorepo', '/sustainable-open-source/contributing/full-setup'),
 ]) satisfies Record<string, string>
 
 // Netlify preview domain (see https://docs.netlify.com/configure-builds/environment-variables/#build-metadata)

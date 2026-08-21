@@ -15,39 +15,17 @@ Before you start contributing, please check with the maintainers if the changes 
 
 ## Development setup
 
-### Minimal Setup
+Choose the smallest environment that covers your contribution:
 
-Most TypeScript, core unit-test, Vite, local Wrangler, and docs-check work uses
-the host-native Minimal Setup. Install Node.js 24 and Bun, and provide the exact
-pnpm version declared by `package.json#packageManager`. Then run:
+- [Minimal setup](./minimal-setup/) is the conventional path for most
+  TypeScript, core unit-test, Vite, local Wrangler, and docs-check work. Docker
+  is available there as an optional alternative.
+- [Full setup with Nix and devenv](./full-setup/) owns browser tests, generated
+  sources, SQLite distribution rebuilds, releases, infrastructure, and final
+  repository-wide validation.
 
-```bash
-./scripts/bootstrap-minimal.sh
-```
-
-The script verifies those prerequisites and performs a frozen dependency
-install. It does not install or upgrade tools globally.
-
-#### Docker (optional)
-
-The repository also provides the known-good Node 24, pnpm 11.8.0, and Bun
-1.3.13 toolchain as a container:
-
-```bash
-docker compose build
-LOCAL_UID="$(id -u)" LOCAL_GID="$(id -g)" docker compose run --rm development
-./scripts/bootstrap-minimal.sh
-```
-
-Compose bind-mounts the source tree, so use an exclusive checkout and do not run
-host and container installs concurrently.
-
-### Full setup with Nix and devenv
-
-Use `devenv shell` for Playwright and full docs builds, generated-source or
-wa-sqlite changes, releases, infrastructure, and repository-wide parity. The
-exact boundary is maintained in the
-[developer-environment contract](https://github.com/livestorejs/livestore/tree/main/context/03-delivery/01-composition/01-developer-environment/spec.md).
+Setup makes dependencies ready. It does not replace the validation appropriate
+to your change or the full CI bar.
 
 ## Areas for contribution
 
