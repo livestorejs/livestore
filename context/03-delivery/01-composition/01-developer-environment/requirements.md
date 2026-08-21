@@ -10,3 +10,36 @@ contract for setup work. It refines the broader tooling-composition outcome in
   development shell establishes dependency and generated-source readiness
   without requiring full source validation. TypeScript build and check tasks
   remain explicit developer and CI gates. `refines: LS.DEL.COMP-R18`
+- **LS.DEL.COMP.DEV-R02 Two supported setups:** A fresh exclusive checkout must
+  offer both Minimal Setup for the common TypeScript-heavy contribution path
+  without Nix, devenv, or megarepo tooling and Full Setup (Nix + devenv) for
+  repository-wide maintenance. Full Setup (Nix + devenv) remains the holistic authority for
+  runtime, build, development dependencies, and final CI parity.
+  `refines: LS.DEL.COMP-R18`
+- **LS.DEL.COMP.DEV-R03 Minimal Setup TypeScript loop:** Minimal Setup must
+  perform a frozen dependency install, reference-aware TypeScript build,
+  stable core unit suite, representative Vite application build, local
+  Cloudflare Worker build, and docs source check with repository-pinned
+  JavaScript tooling. It must admit Node.js major 24, the exact pnpm version
+  declared by `package.json#packageManager`, and Bun. `refines: LS.DEL.COMP-R18`
+- **LS.DEL.COMP.DEV-R04 Explicit escalation boundary:** Browser tests, the full
+  docs build, generated-source regeneration, wa-sqlite rebuilding, release
+  operations, and infrastructure validation must direct developers to the
+  Full Setup (Nix + devenv) rather than silently weakening those checks. `refines: LS.DEL.COMP-R18`
+- **LS.DEL.COMP.DEV-R05 Independent cold-start gate:** Pull-request validation
+  must exercise Minimal Setup from a stock hosted environment without
+  first preparing Nix, devenv, or megarepo state. `refines: LS.DEL.COMP-R18`
+- **LS.DEL.COMP.DEV-R06 Interactive checkout ownership:** The Minimal Setup
+  interactive environment must bind one exclusive checkout, preserve the
+  caller's numeric ownership when the caller supplies `LOCAL_UID` and
+  `LOCAL_GID` (repository defaults cover the standard development host), and
+  avoid prescribing application ports that belong to individual examples.
+  `refines: LS.DEL.COMP-R18`
+- **LS.DEL.COMP.DEV-R07 Setup before validation:** Minimal Setup must establish
+  and diagnose prerequisites and dependency readiness without implying that
+  source validation or the full CI bar has passed. Its bootstrap must remain
+  optional and must not install tools globally. `refines: LS.DEL.COMP-R18`
+- **LS.DEL.COMP.DEV-R08 Evidence-led boundary:** The Minimal Setup capability set
+  must expand only after a clean-environment experiment proves the added work
+  without accumulating another parallel toolchain. Contributor feedback must
+  remain an input to revising the boundary. `refines: LS.DEL.COMP-R18`

@@ -13,6 +13,20 @@ Please note that LiveStore is still in active development with many things yet s
 
 Before you start contributing, please check with the maintainers if the changes you'd like to make are likely to be accepted. Please get in touch via the `#contrib` channel on [Discord](https://discord.gg/RbMcjUAPd7).
 
+## Development setup
+
+Choose the smallest environment that covers your contribution:
+
+- [Minimal Setup](./minimal-setup/) is the path for most
+  TypeScript, core unit-test, Vite, local Wrangler, and docs-check work. Docker
+  is available there as an optional alternative.
+- [Full Setup (Nix + devenv)](./full-setup/) owns browser tests, generated
+  sources, SQLite distribution rebuilds, releases, infrastructure, and final
+  repository-wide validation.
+
+Setup makes dependencies ready. It does not replace the validation appropriate
+to your change or the full CI bar.
+
 ## Areas for contribution
 
 There are many ways to contribute to LiveStore.
