@@ -58,9 +58,12 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   `toGlobal()` batches. Retry: `Schedule.exponential(1s)` clamped to 30s,
   no jitter, no attempt cap, and only for transient errors
   (`IsOfflineError`/`UnknownError`, `:627-631`). `ServerAheadError` is NOT
-  retried in place: the push fiber parks on `Effect.never` (`:617-621`)
-  and the pull side interrupts it — `restartBackendPushing` (`:729-741`)
-  clears the fiber, re-seeds the queue from rebased pending, restarts.
+  retried in place: it fences that unresolved prefix and requests a fresh
+  backend pull from the persisted cursor. Pull confirmation or rebase then
+  interrupts the fenced push, re-seeds its queue from current pending, and
+  restarts it. A `ServerAheadError` therefore cannot depend on an already-lost
+  live publication to wake the push path (see
+  [.decisions/0003](./.decisions/0003-active-server-ahead-catchup.md)).
 - **Backend pulling** (`:397-573`): cursor =
   `Eventlog.getSyncBackendCursorInfo(remoteHead)` — the persisted backend
   head (`SYNC_STATUS_TABLE.head`) plus provider-opaque `syncMetadataJson`
@@ -70,7 +73,12 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   sync metadata for confirmed events; rebase additionally rolls back
   state+eventlog rows and re-seeds pushing from rebased pending
   (`:466-516`). Backend head advances via `Eventlog.updateBackendHead`
-  (`:462-464`).
+  (`:462-464`). Normal operation and `ServerAheadError` recovery share one
+  pull owner: recovery retires the current pull generation before starting a
+  replacement, so repeated recovery requests coalesce rather than create
+  overlapping live pulls. Each replacement derives its cursor anew from the
+  persisted backend head; the error's reported head is a catch-up signal, not
+  event data and not a cursor substitute.
 - **Pull precedence** (`:241, 393, 408-438`): a 1-permit semaphore
   (`localPushBackendPullMutex`) makes local-push application and pull-chunk
   application mutually exclusive; the pull side holds the permit for a
