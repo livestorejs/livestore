@@ -122,6 +122,12 @@ Cloudflare can evict a Durable Object at any time and start a fresh instance on 
 
 Pass `storeId` to your store load (`getStore`), not to `handleSyncUpdateRpc` — that function only needs `ctx` and `payload`.
 
+### Live-pull subscription lifecycle
+
+With `livePull: true`, booting a store registers a live-pull subscription on the sync backend so updates can arrive via `syncUpdateRpc`. Shutting the store down (`store.shutdown()`) releases it, and the sync backend stops delivering to — and waking — the Durable Object.
+
+Eviction is deliberately different: Cloudflare discards the isolate without running any cleanup, so an evicted Durable Object keeps its subscription. That retention is what lets the next update wake it and drive recovery (see the options above); the subscription is never dropped on silence, so a hibernating client never loses its place.
+
 ## Resetting LiveStore persistence (development only)
 
 When iterating locally, you can instruct the adapter to wipe the Durable Object’s LiveStore databases before booting by enabling `resetPersistence`. Guard this behind a protected route or admin token.

@@ -52,4 +52,12 @@ export class SyncDoRpc extends RpcGroup.make(
     },
     success: Schema.Void,
   }),
+  Rpc.make('SyncDoRpc.Unsubscribe', {
+    payload: {
+      /** Client DO id whose live-pull subscription row to drop. */
+      durableObjectId: Schema.String,
+      ...commonPayloadFields,
+    },
+    success: Schema.Void,
+  }),
 ) {}

@@ -94,10 +94,12 @@ Current reality a consumer must not read as guaranteed behavior:
 - **Cross-store subscription bleed risk.** The DO-RPC client's
   `requestIdQueueMap` is module-global with a scoping TODO
   (`do-rpc-client.ts:30`; issue #1416).
-- **Live-subscriber leaks on abnormal disconnect.** WS `Interrupt` emits
-  no Exit and DO-RPC `Interrupt` handling is a TODO
-  (`cf-worker/durable-object.ts:136`, `cf-worker/do/pull.ts:19`;
-  issue #1418).
+- **Live-subscriber teardown is graceful-only.** A DO-RPC client drops its
+  subscription on graceful `store.shutdown()`
+  ([.decisions/0003](./.decisions/0003-do-rpc-graceful-unsubscribe.md)), but a
+  client evicted and never returning keeps its row by design (never reaped on
+  silence — 0002), and WS `Interrupt` still emits no Exit
+  (`cf-worker/durable-object.ts:136`; issue #1418).
 - **Admin RPCs are defined but unwired** in all three transports
   (`AdminResetRoom`/`AdminInfo`).
 - **No head↔eventlog consistency check at load** (`layer.ts:96`), and

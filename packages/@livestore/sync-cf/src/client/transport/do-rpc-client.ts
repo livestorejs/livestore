@@ -68,6 +68,15 @@ export const makeDoRpcSync =
 
       const rpcClient = yield* RpcClient.make(SyncDoRpc).pipe(Effect.provide(context))
 
+      // Runs only on graceful shutdown (which closes this scope), never on eviction (finalizers are skipped),
+      // so it can't drop a row a hibernating client still needs. Registered after `rpcClient` to send before teardown.
+      yield* Effect.addFinalizer(() =>
+        rpcClient['SyncDoRpc.Unsubscribe']({
+          storeId,
+          durableObjectId: durableObjectContext.durableObjectId,
+        }).pipe(Effect.timeout('5 seconds'), Effect.tapCauseLogPretty, Effect.ignore),
+      )
+
       // Nothing to do here
       const connect = Effect.void
 
