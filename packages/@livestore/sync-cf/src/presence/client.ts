@@ -4,7 +4,6 @@ import {
   Ref,
   Schedule,
   Schema,
-  Scope,
   Stream,
   SubscriptionRef,
 } from '@livestore/utils/effect'
@@ -33,15 +32,15 @@ export interface PresenceClient {
   /** Live stream of room snapshots. */
   readonly snapshots: Stream.Stream<PresenceSnapshot, never>
   /** Send a state update (cursor, typing, textCursor, …). Coalesces rapid calls. */
-  setState: (patch: Omit<Partial<PresenceState>, 'clientId' | 'online' | 'updatedAt'>) => Effect.Effect<void, never, Scope.Scope>
+  setState: (patch: Omit<Partial<PresenceState>, 'clientId' | 'online' | 'updatedAt'>) => Effect.Effect<void>
   /** Convenience for Figma-style cursor movement at high frequency. */
-  setCursor: (x: number, y: number) => Effect.Effect<void, never, Scope.Scope>
+  setCursor: (x: number, y: number) => Effect.Effect<void>
   /** Convenience for the typing indicator. */
-  setTyping: (typing: boolean) => Effect.Effect<void, never, Scope.Scope>
+  setTyping: (typing: boolean) => Effect.Effect<void>
   /** Convenience for a Google-Docs-style text cursor. */
-  setTextCursor: (offset: number) => Effect.Effect<void, never, Scope.Scope>
+  setTextCursor: (offset: number) => Effect.Effect<void>
   /** Mark the client offline and disconnect. */
-  leave: Effect.Effect<void, never, Scope.Scope>
+  leave: Effect.Effect<void>
 }
 
 /**
@@ -53,7 +52,7 @@ export interface PresenceClient {
  */
 export const makePresenceClient = (
   options: PresenceClientOptions,
-): Effect.Effect<PresenceClient, never, Scope.Scope> =>
+): Effect.Effect<PresenceClient, never, never> =>
   Effect.gen(function* () {
     const encodeClientMessage = Schema.encodeSync(PresenceClientMessage)
     const decodeServerMessage = Schema.decodeUnknownSync(PresenceServerMessage)
@@ -79,10 +78,7 @@ export const makePresenceClient = (
         return existing
       }
 
-      const socket = yield* Effect.acquireRelease(
-        openSocket(options.url),
-        (ws) => Effect.sync(() => ws.close(1000, 'client-dispose')),
-      )
+      const socket = yield* openSocket(options.url)
       yield* Ref.set(socketRef, socket)
 
       yield* Effect.sync(() => {
@@ -129,7 +125,7 @@ export const makePresenceClient = (
       yield* send(socket, encodeClientMessage({ _tag: 'PresenceClient.state', state }))
     })
 
-    yield* Effect.forkScoped(
+    yield* Effect.forkDetach(
       flushThrottled.pipe(Effect.repeat(Schedule.fixed(options.heartbeatInterval ?? '10 seconds'))),
     )
 
