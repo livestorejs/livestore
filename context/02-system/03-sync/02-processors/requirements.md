@@ -50,6 +50,24 @@ Builds on [../requirements.md](../requirements.md) and
   evidence and maintainer review; see
   [decision 0001](./.decisions/0001-prefix-fence-unresolved-upstream.md).
   `refines: LS.SYS.SYNC.SS-R03, LS.SYS.STORE-R04`
+- **LS.SYS.SYNC.PROC-R05 Poisoned canonical prefix:** Pull application commits
+  state, eventlog, changesets, persisted backend cursor, and published sync
+  heads as one error boundary. A deterministic application failure preserves
+  the last valid cursor and heads, rolls back the complete attempted batch,
+  stops backend propagation, and fences every later local or canonical event
+  behind the poisoned event. The processor emits a structured poisoned-event
+  failure to Store lifecycle supervision even when generic sync-error handling
+  is configured to ignore errors. Adopted 2026-08-22 (#732 reproduction and
+  user confirmation); see
+  [decision 0003](./.decisions/0003-fence-poisoned-canonical-events.md).
+  `refines: LS.SYS.EVT-R11, LS.SYS.STATE-R08, LS.SYS.SYNC.PROC-R04, LS.SYS.STORE-R07`
+- **LS.SYS.SYNC.PROC-R06 Retry by failure phase:** Connectivity and provider
+  failures that occur before canonical application are transient and retry
+  from the persisted last-valid cursor. Deterministic payload/materialization
+  failures are not retried unchanged inside a worker; lifecycle supervision
+  stops the Store and surfaces diagnostics so recovery can occur after schema,
+  materializer, local state, or canonical data repair. Adopted 2026-08-22
+  (#732 reproduction and user confirmation). `refines: LS.SYS.SYNC-R03`
 
 Further processor requirements (e.g. the crash-atomicity contract of batch
 materialization) remain open pending `LS.SYS.STATE-DQ2`;

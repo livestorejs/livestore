@@ -48,3 +48,10 @@ former `LS.SYS.STORE-R03`/`-R05` were re-homed there (2026-07-16) as
 - **LS.SYS.STORE-R12 Storage mode surfaced:** The store exposes whether its
   state is persisted or in-memory (`storageMode`). Adopted 2026-07-16
   (interview).
+- **LS.SYS.STORE-R13 Supervised poisoned-event failure:** A poisoned canonical
+  event is a Store lifecycle failure, not an application commit result. The
+  Store shuts down through its central lifecycle channel and exposes structured
+  diagnostics containing the event and last valid head, so applications cannot
+  continue against a Store whose sync workers have terminated. Adopted
+  2026-08-22 (#732 reproduction and user confirmation).
+  `refines: LS.SYS.STORE-R01, LS.SYS.STORE-R07`

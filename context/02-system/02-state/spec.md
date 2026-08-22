@@ -59,12 +59,20 @@ The classification is contract (LS.SYS.STATE-R07):
 
 | Failure | Kind |
 | --- | --- |
-| `MaterializeError` (materializer threw / bad SQL) | recoverable tagged error |
-| `MaterializerHashMismatchError` (dev determinism check) | recoverable tagged error |
+| `MaterializeError` (materializer threw / bad SQL) | tagged error; poisoned when applying canonical input |
+| `MaterializerHashMismatchError` (dev determinism check) | tagged error; poisoned when applying canonical input |
 | Unknown event definition on **write** (`eventlog.ts:228`) | defect (`shouldNeverHappen`) |
 | Missing event definition during materialization (`materialize-event.ts:133`) | defect (`shouldNeverHappen`) |
 
 Unknown events on **read** are tolerated (`../01-event-model/spec.md`).
+
+Payload decode failures for known events, materializer evaluation failures,
+materializer-hash mismatches, and SQLite mutation failures are deterministic
+for the same event, schema, and pre-event state. A canonical event that reaches
+one of these failures is poisoned. Applying a batch containing it rolls back
+the complete batch, including state-head, eventlog, changeset, and cursor
+bookkeeping (LS.SYS.STATE-R08). The processor reports the failing event and the
+last valid head; it does not classify an unchanged retry as transient.
 
 ## Realization Contract
 

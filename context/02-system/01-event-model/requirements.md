@@ -63,3 +63,9 @@ and root LS-R04…R06. Code: `packages/@livestore/common/src/schema/EventDef/`,
   sequence number, and client/session identity — decodable without external
   context (sharpens LS.SYS.EVT-R08 to a column-level enumeration; see
   [spec.md](./spec.md) §Eventlog). Adopted 2026-07-16 (interview).
+- **LS.SYS.EVT-R11 Canonical payload validity:** A canonical synced event whose
+  name resolves to a known definition but whose encoded payload does not decode
+  is a poisoned event. The engine must not record it as locally confirmed or
+  skip it to admit later canonical events, because later materializers may
+  depend on the missing state transition. Adopted 2026-08-22 (#732 reproduction
+  and user confirmation). `refines: LS.SYS.EVT-R03, LS.SYS.EVT-R07`
