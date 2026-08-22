@@ -92,6 +92,120 @@ const seedPaginatedBackendTodos = (mockBackend: MockSyncBackend) => {
 
 /** Verifies: LS.SYS.SYNC.PROC-R01, LS.SYS.SYNC.PROC-R02, LS.SYS.SYNC.PROC-R04, LS.SYS.SYNC.SS-R06, LS.SYS.SYNC-R03, LS.SYS.RT-R10 */
 Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
+  Vitest.live('malformed canonical event fails lifecycle and fences the later suffix', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+      const malformedBase = testContext.eventFactory.todoCreated.next({
+        id: 'malformed',
+        text: 'malformed',
+        completed: false,
+      })
+      const malformed = LiveStoreEvent.Global.Encoded.make({
+        ...malformedBase,
+        args: { id: 'malformed', text: 'malformed', completed: null },
+      })
+      const validAfter = testContext.eventFactory.todoCreated.next({
+        id: 'valid-after',
+        text: 'valid-after',
+        completed: false,
+      })
+
+      yield* testContext.mockSyncBackend.advance(malformed, validAfter)
+
+      const error = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(5000))
+      assert(error._tag === 'PoisonedEventError')
+      expect(error.event.seqNum.global).toBe(1)
+      expect(error.cause.cause._tag).toBe('EventPayloadDecodeError')
+      expect(error.lastValidUpstreamHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(error.lastValidLocalHead).toEqual(EventSequenceNumber.Client.ROOT)
+
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+      expect(syncState.localHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(syncState.upstreamHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(
+        leaderThreadCtx.dbEventlog.select<{ count: number }>('SELECT count(*) AS count FROM eventlog')[0]?.count,
+      ).toBe(0)
+      expect(
+        leaderThreadCtx.dbEventlog.select<{ head: number }>('SELECT head FROM __livestore_sync_status')[0]?.head,
+      ).toBe(0)
+
+      yield* testContext.mockSyncBackend.advance(
+        testContext.eventFactory.todoCreated.next({ id: 'still-fenced', text: 'still-fenced', completed: false }),
+      )
+      yield* Effect.sleep(50)
+      expect(leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)).toEqual([])
+    }).pipe(withTestCtx({ syncOptions: { onSyncError: 'ignore' }, captureShutdown: true })(test)),
+  )
+
+  Vitest.live('materialization failure rolls back the canonical batch and preserves the cursor', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      yield* testContext.mockSyncBackend.advance(
+        testContext.eventFactory.todoCreated.next({ id: 'rolled-back', text: 'rolled-back', completed: false }),
+        testContext.eventFactory.materializationFailed.next({ id: 'poisoned' }),
+        testContext.eventFactory.todoCreated.next({ id: 'fenced', text: 'fenced', completed: false }),
+      )
+
+      const error = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(5000))
+      assert(error._tag === 'PoisonedEventError')
+      expect(error.event.name).toBe('materializationFailed')
+      expect(error.event.seqNum.global).toBe(2)
+      expect(error.cause.cause._tag).toBe('SqliteError')
+
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+      expect(syncState.localHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(syncState.upstreamHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)).toEqual([])
+      expect(
+        leaderThreadCtx.dbEventlog.select<{ count: number }>('SELECT count(*) AS count FROM eventlog')[0]?.count,
+      ).toBe(0)
+      expect(
+        leaderThreadCtx.dbEventlog.select<{ head: number }>('SELECT head FROM __livestore_sync_status')[0]?.head,
+      ).toBe(0)
+    }).pipe(withTestCtx({ syncOptions: { onSyncError: 'ignore' }, captureShutdown: true })(test)),
+  )
+
+  Vitest.live('poisoned rebase restores the previous valid pending tail', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+      const backendFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('mock-backend', 'poison-session'),
+      })
+
+      yield* testContext.mockSyncBackend.disconnect
+      yield* testContext.pushEncoded(
+        testContext.eventFactory.todoCreated.next({ id: 'local-pending', text: 'local-pending', completed: false }),
+      )
+      yield* testContext.mockSyncBackend.advance(backendFactory.materializationFailed.next({ id: 'remote-poison' }))
+      yield* testContext.mockSyncBackend.connect
+
+      const error = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(5000))
+      assert(error._tag === 'PoisonedEventError')
+      expect(error.event.name).toBe('materializationFailed')
+
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+      expect(syncState.upstreamHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(syncState.localHead.global).toBe(1)
+      expect(syncState.pending.map((event) => event.name)).toEqual(['todoCreated'])
+      expect(yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get).toEqual(syncState.localHead)
+      expect(leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query).map((row) => row.id)).toEqual([
+        'local-pending',
+      ])
+      expect(leaderThreadCtx.dbEventlog.select<{ name: string }>('SELECT name FROM eventlog')).toEqual([
+        { name: 'todoCreated' },
+      ])
+      expect(
+        leaderThreadCtx.dbEventlog.select<{ head: number }>('SELECT head FROM __livestore_sync_status')[0]?.head,
+      ).toBe(0)
+    }).pipe(withTestCtx({ syncOptions: { onSyncError: 'ignore' }, captureShutdown: true })(test)),
+  )
+
   Vitest.live('sync', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx

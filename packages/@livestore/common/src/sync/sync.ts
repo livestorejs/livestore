@@ -15,7 +15,10 @@ export type SyncOptions<TPayload = Schema.Json> = {
    *
    * Options:
    * `shutdown` will stop the sync processor and cause the app to crash.
-   * `ignore` will log the error and let the app continue running acting as if it was offline.
+   * `ignore` logs non-deterministic sync errors and lets the app continue as if
+   * it were offline. Deterministic materialization failures and poisoned
+   * canonical events always fail the Store lifecycle because continuing would
+   * expose state derived from an incomplete canonical prefix.
    *
    * @default 'ignore'
    * */

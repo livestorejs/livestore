@@ -39,6 +39,10 @@ export const events = {
     name: 'todoDeletedNonPure',
     schema: Schema.Struct({ id: Schema.String }),
   }),
+  materializationFailed: Events.synced({
+    name: 'materializationFailed',
+    schema: Schema.Struct({ id: Schema.String }),
+  }),
 }
 
 const materializers = State.SQLite.materializers(events, {
@@ -46,6 +50,11 @@ const materializers = State.SQLite.materializers(events, {
   todoCompleted: ({ id }) => todos.update({ completed: true }).where({ id }),
   // This materialize is non-pure as `new Date()` is side effecting
   todoDeletedNonPure: ({ id }) => todos.update({ deletedAt: new Date() }).where({ id }),
+  materializationFailed: ({ id }) => ({
+    sql: 'INSERT INTO missing_materialization_target (id) VALUES ($id)',
+    bindValues: { id },
+    writeTables: new Set(['missing_materialization_target']),
+  }),
 })
 
 export const tables = { todos, appConfig }
