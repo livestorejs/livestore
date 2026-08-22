@@ -5,6 +5,7 @@ export {
   type DebugInfo,
   IntentionalShutdownCause,
   liveStoreVersion,
+  PoisonedEventError,
   type MutableDebugInfo,
   type PreparedBindValues,
   prepareBindValues,

@@ -29,10 +29,15 @@ import {
   TxQueue,
 } from '@livestore/utils/effect'
 
-import { MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
+import {
+  MaterializationBoundaryError,
+  MaterializeError,
+  PoisonedEventError,
+  type SqliteDb,
+  UnknownError,
+} from '../adapter-types.ts'
 import type { UnknownEventError } from '../errors.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
-import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
@@ -50,7 +55,7 @@ import {
   type RejectedPushError,
   StaleRebaseGenerationError,
 } from './RejectedPushError.ts'
-import type { ShutdownChannel } from './shutdown-channel.ts'
+import type { LifecycleShutdown } from './shutdown-channel.ts'
 import type { InitialBlockingSyncContext } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
 
@@ -136,10 +141,12 @@ interface Options {
   /** Initial sync state rehydrated from the persisted eventlog or initial sync state */
   readonly initialSyncState: SyncState.SyncState
   /**
-   * What to do when a failure (any cause) occurs (except `BackendIdMismatchError`).
+   * What to do when a generic terminal failure occurs (except `BackendIdMismatchError`).
    *
-   * - `'shutdown'`: Send the error to the shutdown channel and terminate the sync processor.
-   * - `'ignore'`: Continue running.
+   * - `'shutdown'`: Send the error to Store lifecycle and terminate the sync processor.
+   * - `'ignore'`: Log and park the affected worker with its unresolved prefix intact.
+   *
+   * Deterministic materialization failures always fail Store lifecycle.
    */
   readonly onError: 'shutdown' | 'ignore'
   /**
@@ -207,7 +214,7 @@ interface Options {
     }
     readonly hooks?: {
       readonly localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
-      readonly backendPullCursorAdvanced?: (head: EventSequenceNumber.Client.Composite) => Effect.Effect<void>
+      readonly backendPullApplicationStarted?: (head: EventSequenceNumber.Client.Composite) => Effect.Effect<void>
       readonly backendPullRestartRequested?: () => Effect.Effect<void>
       /** Test-only observation of a worker reaching the terminal supervision boundary. */
       readonly workerTerminal?: (args: { worker: SyncWorker; cause: Cause.Cause<unknown> }) => Effect.Effect<void>
@@ -265,6 +272,9 @@ export const make = Effect.fnUntraced(function* ({
   // boundary also preserves the original application failure when retirement and failure race.
   const backendPullApplicationFence = yield* Semaphore.make(1)
   const backendPullRetirementRequested = yield* Ref.make(false)
+  // Application failure is recorded while the retirement fence is held. A queued restart consults
+  // this handoff before interrupting transport work, so the real failure cannot be masked by retirement.
+  const backendPullApplicationFailure = yield* Ref.make<Option.Option<Cause.Cause<unknown>>>(Option.none())
   // Serializes validation, queue admission, and prefix-fence reconciliation.
   const pushAdmissionSemaphore = yield* Semaphore.make(1)
 
@@ -474,17 +484,21 @@ export const make = Effect.fnUntraced(function* ({
   })
 
   const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcessor:backend-pulling')(function* ({
-    restartBackendPushing,
+    pauseBackendPushing,
+    resumeBackendPushing,
   }: {
-    restartBackendPushing: (
+    pauseBackendPushing: Effect.Effect<void>
+    resumeBackendPushing: (
       filteredRebasedPending: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
     ) => Effect.Effect<void, never, LeaderThreadCtx | HttpClient.HttpClient>
   }) {
-    const { syncBackend, dbState: db, dbEventlog, schema } = yield* LeaderThreadCtx
+    const { syncBackend, dbState: db, dbEventlog } = yield* LeaderThreadCtx
 
     if (syncBackend === undefined) return
 
     let pullMutexHeld = false
+    let backendPushingPaused = false
+    let poisoned = false
 
     const releasePullMutexIfHeld = Effect.gen(function* () {
       if (pullMutexHeld === false) return
@@ -493,6 +507,28 @@ export const make = Effect.fnUntraced(function* ({
     })
 
     const isPullPaginationComplete = (pageInfo: SyncBackend.PullResPageInfo) => pageInfo._tag === 'NoMore'
+
+    const pauseBackendPropagation = Effect.gen(function* () {
+      if (backendPushingPaused === true) return
+      yield* pauseBackendPushing
+      backendPushingPaused = true
+    })
+
+    const resumeBackendPropagation = (
+      pending: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+    ): Effect.Effect<void, never, LeaderThreadCtx | HttpClient.HttpClient> =>
+      Effect.gen(function* () {
+        if (backendPushingPaused === false) return
+        yield* resumeBackendPushing(pending.filter((event) => !isClientOnlyEvent(event)))
+        backendPushingPaused = false
+      })
+
+    const resumeBackendPropagationFromCurrentState = Effect.gen(function* () {
+      const currentSyncState = yield* Effect.fromNullishOr(yield* SubscriptionRef.get(syncStateSref)).pipe(
+        Effect.orDieDebugger,
+      )
+      yield* resumeBackendPropagation(currentSyncState.pending)
+    })
 
     const onNewPullChunk = (
       newEvents: LiveStoreEvent.Client.EncodedWithMeta[],
@@ -505,6 +541,7 @@ export const make = Effect.fnUntraced(function* ({
 
         if (newEvents.length === 0) {
           if (isPullPaginationComplete(pageInfo) === true) {
+            yield* resumeBackendPropagationFromCurrentState
             yield* releasePullMutexIfHeld
           }
           return
@@ -516,6 +553,10 @@ export const make = Effect.fnUntraced(function* ({
           pullMutexHeld = true
         }
 
+        const lastValidSyncState = yield* Effect.fromNullishOr(yield* SubscriptionRef.get(syncStateSref)).pipe(
+          Effect.orDieDebugger,
+        )
+
         const chunkExit = yield* backendPullApplicationFence
           .withPermits(1)(
             Effect.gen(function* () {
@@ -523,17 +564,13 @@ export const make = Effect.fnUntraced(function* ({
               // that entered before the flag was set is allowed to finish and retain its real exit.
               if ((yield* Ref.get(backendPullRetirementRequested)) === true) return yield* Effect.interrupt
 
-              const syncState = yield* Effect.fromNullishOr(yield* SubscriptionRef.get(syncStateSref)).pipe(
-                Effect.orDieDebugger,
-              )
-
               yield* Effect.annotateCurrentSpan({
                 'merge.newEventsCount': newEvents.length,
                 ...(TRACE_VERBOSE === true ? { 'merge.newEvents': jsonStringify(newEvents) } : {}),
               })
 
               const mergeResult = yield* SyncState.merge({
-                syncState,
+                syncState: lastValidSyncState,
                 payload: SyncState.PayloadUpstreamAdvance.make({ newEvents }),
                 isClientOnlyEvent,
                 isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
@@ -546,10 +583,13 @@ export const make = Effect.fnUntraced(function* ({
 
               const newBackendHead = newEvents.at(-1)!.seqNum
 
-              Eventlog.updateBackendHead(dbEventlog, newBackendHead)
-              if (testing.hooks?.backendPullCursorAdvanced !== undefined) {
-                yield* testing.hooks.backendPullCursorAdvanced(newBackendHead)
+              if (testing.hooks?.backendPullApplicationStarted !== undefined) {
+                yield* testing.hooks.backendPullApplicationStarted(newBackendHead)
               }
+
+              // Canonical application owns backend propagation until the complete page commits. This prevents
+              // a queued local suffix from being published against a head that may turn out to be poisoned.
+              yield* pauseBackendPropagation
 
               if (mergeResult._tag === 'rebase') {
                 yield* Effect.spanEvent(`pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`, {
@@ -558,74 +598,81 @@ export const make = Effect.fnUntraced(function* ({
                   rollbackCount: mergeResult.rollbackEvents.length,
                   ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
                 })
-
-                const globalOrUnknownRebasedPendingEvents = mergeResult.newSyncState.pending.filter(
-                  (e) => !isClientOnlyEvent(e),
-                )
-                yield* restartBackendPushing(globalOrUnknownRebasedPendingEvents)
-
-                if (mergeResult.rollbackEvents.length > 0) {
-                  yield* rollback({
-                    dbState: db,
-                    dbEventlog,
-                    eventNumsToRollback: mergeResult.rollbackEvents.map((_) => _.seqNum),
-                  })
-                  yield* stateHead
-                    .set(mergeResult.rollbackEvents[0]!.parentSeqNum)
-                    .pipe(Effect.mapError((cause) => MaterializeError.make({ cause })))
-                }
-
-                yield* connectedClientSessionPullQueues.offer({
-                  payload: SyncState.payloadFromMergeResult(mergeResult),
-                  leaderHead: mergeResult.newSyncState.localHead,
-                })
               } else {
                 yield* Effect.spanEvent(`pull:advance`, {
                   newEventsCount: newEvents.length,
                   ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
                 })
-
-                // Ensure push fiber is active after advance by restarting with current pending (non-client-only) events
-                const globalOrUnknownPendingEvents = mergeResult.newSyncState.pending.filter(
-                  (e) => !isClientOnlyEvent(e),
-                )
-                yield* restartBackendPushing(globalOrUnknownPendingEvents)
-
-                yield* connectedClientSessionPullQueues.offer({
-                  payload: SyncState.payloadFromMergeResult(mergeResult),
-                  leaderHead: mergeResult.newSyncState.localHead,
-                })
-
-                if (mergeResult.confirmedEvents.length > 0) {
-                  // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
-                  // `newEvents` instead which we filter via `mergeResult.confirmedEvents`
-                  const confirmedNewEvents = newEvents.filter((event) =>
-                    mergeResult.confirmedEvents.some((confirmedEvent) =>
-                      EventSequenceNumber.Client.isEqual(event.seqNum, confirmedEvent.seqNum),
-                    ),
-                  )
-                  yield* Eventlog.updateSyncMetadata(confirmedNewEvents).pipe(Effect.orDieDebugger)
-                }
               }
 
-              // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
-              trimChangesetRows(db, newBackendHead)
+              const confirmedNewEvents =
+                mergeResult._tag === 'advance' && mergeResult.confirmedEvents.length > 0
+                  ? newEvents.filter((event) =>
+                      mergeResult.confirmedEvents.some((confirmedEvent) =>
+                        EventSequenceNumber.Client.isEqual(event.seqNum, confirmedEvent.seqNum),
+                      ),
+                    )
+                  : []
+
+              yield* materializeEventsBatch({
+                batchItems: mergeResult.newEvents,
+                ...(mergeResult._tag === 'rebase' && mergeResult.rollbackEvents.length > 0
+                  ? {
+                      beforeMaterialization: Effect.gen(function* () {
+                        yield* rollback({
+                          dbState: db,
+                          dbEventlog,
+                          eventNumsToRollback: mergeResult.rollbackEvents.map((event) => event.seqNum),
+                        })
+                        yield* stateHead
+                          .set(mergeResult.rollbackEvents[0]!.parentSeqNum)
+                          .pipe(Effect.mapError((cause) => MaterializeError.make({ cause })))
+                      }),
+                    }
+                  : {}),
+                afterMaterialization: Effect.gen(function* () {
+                  if (confirmedNewEvents.length > 0) {
+                    yield* Eventlog.updateSyncMetadata(confirmedNewEvents).pipe(
+                      Effect.mapError((cause) => MaterializeError.make({ cause })),
+                    )
+                  }
+                  Eventlog.updateBackendHead(dbEventlog, newBackendHead)
+                  trimChangesetRows(db, newBackendHead)
+                }),
+              })
 
               // The backend merge may advance or rebase the authoritative head. Realign the admission
               // fence now so newly arriving pushes are validated against that history, not the pre-pull head.
               yield* reconcilePushHead(mergeResult.newSyncState.localHead)
 
-              // Apply the merged events to storage before publishing the new sync state below, so readers
-              // cannot observe a leader head whose events have not yet been materialized.
-              yield* materializeEventsBatch({ batchItems: mergeResult.newEvents })
-
               yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
-            }),
+
+              yield* connectedClientSessionPullQueues.offer({
+                payload: SyncState.payloadFromMergeResult(mergeResult),
+                leaderHead: mergeResult.newSyncState.localHead,
+              })
+
+              if (isPullPaginationComplete(pageInfo) === true) {
+                yield* resumeBackendPropagation(mergeResult.newSyncState.pending)
+              }
+            }).pipe(
+              Effect.catchTag('MaterializeError', (cause) => {
+                poisoned = true
+                return Effect.fail(
+                  PoisonedEventError.make({
+                    event: cause.event ?? toDiagnosticEvent(newEvents[0]!),
+                    lastValidUpstreamHead: lastValidSyncState.upstreamHead,
+                    lastValidLocalHead: lastValidSyncState.localHead,
+                    cause,
+                  }),
+                )
+              }),
+              Effect.tapCause((cause) => Ref.set(backendPullApplicationFailure, Option.some(cause))),
+            ),
           )
           .pipe(Effect.exit)
 
         if (Exit.isFailure(chunkExit) === true) {
-          yield* releasePullMutexIfHeld
           return yield* Effect.failCause(chunkExit.cause)
         }
 
@@ -634,10 +681,12 @@ export const make = Effect.fnUntraced(function* ({
         }
       })
 
-    const syncState = yield* Effect.fromNullishOr(yield* SubscriptionRef.get(syncStateSref)).pipe(Effect.orDieDebugger)
-    const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo({ remoteHead: syncState.upstreamHead.global })
-
-    const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
+    const initialPullSyncState = yield* Effect.fromNullishOr(yield* SubscriptionRef.get(syncStateSref)).pipe(
+      Effect.orDieDebugger,
+    )
+    const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo({
+      remoteHead: initialPullSyncState.upstreamHead.global,
+    })
 
     yield* syncBackend.pull(cursorInfo, { live: livePull }).pipe(
       // TODO only take from queue while connected
@@ -651,9 +700,7 @@ export const make = Effect.fnUntraced(function* ({
             batch.map((_) =>
               LiveStoreEvent.Client.EncodedWithMeta.fromGlobal(_.eventEncoded, {
                 syncMetadata: _.metadata,
-                // TODO we can't really know the materializer result here yet beyond the first event batch item as we need to materialize it one by one first
-                // This is a bug and needs to be fixed https://github.com/livestorejs/livestore/issues/503#issuecomment-3114533165
-                materializerHashLeader: hashMaterializerResult(LiveStoreEvent.Global.toClientEncoded(_.eventEncoded)),
+                materializerHashLeader: Option.none(),
                 materializerHashSession: Option.none(),
               }),
             ),
@@ -664,7 +711,13 @@ export const make = Effect.fnUntraced(function* ({
       ),
       Stream.runDrain,
       Effect.interruptible,
-      Effect.ensuring(releasePullMutexIfHeld),
+      Effect.ensuring(
+        Effect.gen(function* () {
+          if (poisoned === true) return
+          yield* resumeBackendPropagationFromCurrentState
+          yield* releasePullMutexIfHeld
+        }),
+      ),
     )
 
     // Should only ever happen when livePull is false
@@ -791,7 +844,7 @@ export const make = Effect.fnUntraced(function* ({
     // Starts various background loops
     boot: Effect.gen(function* () {
       const span = yield* Effect.currentSpan.pipe(Effect.orDie)
-      const { devtools, shutdownChannel } = yield* LeaderThreadCtx
+      const { devtools, lifecycleShutdown } = yield* LeaderThreadCtx
       const services = yield* Effect.context<LeaderThreadCtx>()
 
       ctxRef.current = {
@@ -815,14 +868,15 @@ export const make = Effect.fnUntraced(function* ({
       }
 
       const handleBackendIdMismatchError = (error: BackendIdMismatchError) =>
-        handleBackendIdMismatch({ error, onBackendIdMismatch, shutdownChannel })
+        handleBackendIdMismatch({ error, onBackendIdMismatch, lifecycleShutdown })
 
       /**
        * Terminal worker failures remain owned by the processor. Ignore mode parks the worker instead
        * of completing its fiber, leaving its uncertain prefix available to an existing recovery path.
        */
       const superviseTerminalWorker =
-        (worker: SyncWorker) => (cause: Cause.Cause<BackendIdMismatchError | UnknownError | MaterializeError>) =>
+        (worker: SyncWorker) =>
+        (cause: Cause.Cause<BackendIdMismatchError | UnknownError | MaterializeError | PoisonedEventError>) =>
           Effect.gen(function* () {
             if (Cause.hasInterruptsOnly(cause) === true) return
 
@@ -830,17 +884,26 @@ export const make = Effect.fnUntraced(function* ({
               yield* testing.hooks.workerTerminal({ worker, cause })
             }
 
+            const error = Option.getOrUndefined(Cause.findErrorOption(cause))
+
+            // Deterministic application failure is lifecycle-fatal in every mode. Parking only the
+            // dead worker would leave the Store queryable while its canonical prefix is fenced.
+            if (error?._tag === 'MaterializeError' || error?._tag === 'PoisonedEventError') {
+              yield* Effect.logError('Fatal deterministic sync application failure', error)
+              yield* lifecycleShutdown(error).pipe(Effect.orDie)
+              return yield* Effect.never
+            }
+
             if (onError === 'ignore') {
               yield* Effect.logError(
-                `Sync ${worker} worker parked after terminal failure (${Option.getOrUndefined(Cause.findErrorOption(cause))?._tag ?? cause.toString()})`,
+                `Sync ${worker} worker parked after terminal failure (${error?._tag ?? cause.toString()})`,
                 Cause.pretty(cause),
               )
               return yield* Effect.never
             }
 
-            const error = Option.getOrUndefined(Cause.findErrorOption(cause))
             const errorToSend = error === undefined ? UnknownError.make({ cause }) : error
-            yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
+            yield* lifecycleShutdown(errorToSend).pipe(Effect.orDie)
 
             return yield* Effect.failCause(cause).pipe(Effect.orDie)
           })
@@ -857,11 +920,9 @@ export const make = Effect.fnUntraced(function* ({
       )
 
       const backendPullingGenerationEffect = backgroundBackendPulling({
-        restartBackendPushing: (filteredRebasedPending) =>
+        pauseBackendPushing: FiberHandle.clear(backendPushingFiberHandle),
+        resumeBackendPushing: (filteredRebasedPending) =>
           Effect.gen(function* () {
-            // Stop current pushing fiber
-            yield* FiberHandle.clear(backendPushingFiberHandle)
-
             // Reset the sync backend push queue
             yield* TxQueue.clear(syncBackendPushQueue)
             yield* TxQueue.offerAll(syncBackendPushQueue, filteredRebasedPending)
@@ -883,12 +944,18 @@ export const make = Effect.fnUntraced(function* ({
 
       /** Generic pull parking remains owned by the persistent pull owner so ServerAhead can replace it. */
       const handleTerminalBackendPullCause = (
-        cause: Cause.Cause<BackendIdMismatchError | UnknownError | MaterializeError>,
+        cause: Cause.Cause<BackendIdMismatchError | UnknownError | MaterializeError | PoisonedEventError>,
       ) => {
         const error = Option.getOrUndefined(Cause.findErrorOption(cause))
 
         if (error?._tag === 'BackendIdMismatchError') {
           return handleBackendIdMismatchError(error).pipe(Effect.as('terminal-policy-ended' as const))
+        }
+
+        // A queued transport restart never competes with deterministic application failure. Poison owns
+        // the lifecycle transition; replacing its generation would only hide the blocked canonical prefix.
+        if (error?._tag === 'MaterializeError' || error?._tag === 'PoisonedEventError') {
+          return superviseTerminalWorker('backend-pull')(cause).pipe(Effect.as('terminal-policy-ended' as const))
         }
 
         return Effect.raceFirst(
@@ -901,6 +968,7 @@ export const make = Effect.fnUntraced(function* ({
       // canonical application leaves its fence, then observes the generation exit before replacement.
       const backgroundBackendPullingSupervised = Effect.gen(function* () {
         while (true) {
+          yield* Ref.set(backendPullApplicationFailure, Option.none())
           const pullFiber = yield* backendPullingGenerationEffect.pipe(Effect.forkScoped)
           const outcome = yield* Effect.raceFirst(
             Fiber.await(pullFiber).pipe(Effect.map((exit) => ({ _tag: 'pull-ended' as const, exit }))),
@@ -920,12 +988,16 @@ export const make = Effect.fnUntraced(function* ({
           }
 
           yield* Ref.set(backendPullRetirementRequested, true)
-          // Wait for an application already inside the fence, then release the fence before
-          // interrupting so pull cleanup cannot deadlock on coordination owned by this processor.
+          // Wait for an application already inside the fence. If it failed, preserve its exact cause;
+          // otherwise retire transport work cooperatively before starting the replacement generation.
           yield* backendPullApplicationFence.withPermits(1)(Effect.void)
-          yield* Fiber.interrupt(pullFiber)
+          const applicationFailure = yield* Ref.get(backendPullApplicationFailure)
+          if (Option.isNone(applicationFailure) === true) {
+            yield* Fiber.interrupt(pullFiber)
+          }
           const retiredExit = yield* Fiber.await(pullFiber)
           yield* Ref.set(backendPullRetirementRequested, false)
+          yield* Ref.set(backendPullApplicationFailure, Option.none())
           // Coalesce any request that arrived while the owner was retiring this generation.
           yield* TxQueue.poll(backendPullRestartQueue)
 
@@ -1023,12 +1095,15 @@ export const layer = (options: Options) => Layer.effect(LeaderSyncProcessor, mak
 
 type MaterializeEventsBatch = (_: {
   batchItems: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
+  beforeMaterialization?: Effect.Effect<void, MaterializeError, LeaderThreadCtx>
+  afterMaterialization?: Effect.Effect<void, MaterializeError, LeaderThreadCtx>
 }) => Effect.Effect<void, MaterializeError, LeaderThreadCtx>
 
-// TODO how to handle errors gracefully
-const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems }) =>
+const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, beforeMaterialization, afterMaterialization }) =>
   Effect.gen(function* () {
     const { dbState: db, dbEventlog, materializeEvent } = yield* LeaderThreadCtx
+    const previousStateDebugHead = db.debug.head
+    const previousEventlogDebugHead = dbEventlog.debug.head
 
     // NOTE We always start a transaction to ensure consistency between db and eventlog (even for single-item batches)
     db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
@@ -1041,8 +1116,14 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems }) =>
         // Rollback in case of an error
         db.execute('ROLLBACK', undefined)
         dbEventlog.execute('ROLLBACK', undefined)
+        db.debug.head = previousStateDebugHead
+        dbEventlog.debug.head = previousEventlogDebugHead
       }),
     )
+
+    if (beforeMaterialization !== undefined) {
+      yield* beforeMaterialization
+    }
 
     for (let i = 0; i < batchItems.length; i++) {
       const { sessionChangeset, hash } = yield* materializeEvent(batchItems[i]!)
@@ -1050,9 +1131,14 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems }) =>
       batchItems[i]!.meta.materializerHashLeader = hash
     }
 
+    if (afterMaterialization !== undefined) {
+      yield* afterMaterialization
+    }
+
     db.execute('COMMIT', undefined) // Commit the transaction
     dbEventlog.execute('COMMIT', undefined) // Commit the transaction
   }).pipe(
+    Effect.catchDefect((cause) => MaterializeError.make({ cause: MaterializationBoundaryError.make({ cause }) })),
     Effect.uninterruptible,
     Effect.scoped,
     Effect.withSpan('@livestore/common:LeaderSyncProcessor:materializeEventItems', {
@@ -1060,6 +1146,15 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems }) =>
     }),
     Effect.tapCauseLogPretty,
   )
+
+const toDiagnosticEvent = (event: LiveStoreEvent.Client.EncodedWithMeta): LiveStoreEvent.Client.Encoded => ({
+  name: event.name,
+  args: event.args,
+  seqNum: event.seqNum,
+  parentSeqNum: event.parentSeqNum,
+  clientId: event.clientId,
+  sessionId: event.sessionId,
+})
 
 const trimChangesetRows = (db: SqliteDb, newHead: EventSequenceNumber.Client.Composite) => {
   // Since we're using the session changeset rows to query for the current head,
@@ -1285,11 +1380,11 @@ const isSameSequencePosition = (
 const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor:handleBackendIdMismatch')(function* ({
   error,
   onBackendIdMismatch,
-  shutdownChannel,
+  lifecycleShutdown,
 }: {
   error: BackendIdMismatchError
   onBackendIdMismatch: 'reset' | 'shutdown' | 'ignore'
-  shutdownChannel: ShutdownChannel
+  lifecycleShutdown: LifecycleShutdown
 }) {
   const { dbEventlog, dbState } = yield* LeaderThreadCtx
 
@@ -1303,7 +1398,7 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
     yield* clearLocalDatabases({ dbEventlog, dbState })
 
     // Send shutdown signal with special reason
-    yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'backend-id-mismatch' })).pipe(Effect.orDie)
+    yield* lifecycleShutdown(IntentionalShutdownCause.make({ reason: 'backend-id-mismatch' })).pipe(Effect.orDie)
 
     return yield* Effect.die(error)
   }
@@ -1314,7 +1409,7 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
       error,
     )
 
-    yield* shutdownChannel.send(error).pipe(Effect.orDie)
+    yield* lifecycleShutdown(error).pipe(Effect.orDie)
 
     return yield* Effect.die(error)
   }

@@ -8,6 +8,7 @@ import {
   type ClientSessionDevtoolsChannel,
   type IntentionalShutdownCause,
   type MaterializeError,
+  type PoisonedEventError,
   type MigrationsReport,
   provideOtel,
   type ServerAheadError,
@@ -333,11 +334,21 @@ export const createStore = <
 
       const services = yield* Effect.context<Scope.Scope>()
       let shutdownSyncProcessor: ((exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>) | undefined
+      let lifecycleStore: Store<TSchema, TContext> | undefined
+      const lifecycleClosed = { current: false }
 
       const shutdown = (
-        exit: Exit.Exit<IntentionalShutdownCause, UnknownError | MaterializeError | BackendIdMismatchError>,
+        exit: Exit.Exit<
+          IntentionalShutdownCause,
+          UnknownError | MaterializeError | PoisonedEventError | BackendIdMismatchError
+        >,
       ) =>
         Effect.gen(function* () {
+          lifecycleClosed.current = true
+          if (lifecycleStore !== undefined) {
+            lifecycleStore[StoreInternalsSymbol].isShutdown = true
+          }
+
           // Hard outer bound on the DETACHED teardown: the processor drain `awaitEmpty`s the
           // leader-push worker, which never completes if the leader is dead/unresponsive. Without a
           // bound the drain would block forever, so `Scope.close(lifetimeScope)` (in `ensuring`)
@@ -427,6 +438,10 @@ export const createStore = <
           eventQueryBatchSize: params?.eventQueryBatchSize ?? STORE_DEFAULT_PARAMS.eventQueryBatchSize,
         },
       })
+      lifecycleStore = store
+      if (lifecycleClosed.current === true) {
+        store[StoreInternalsSymbol].isShutdown = true
+      }
       shutdownSyncProcessor = store[StoreInternalsSymbol].syncProcessor.shutdown
 
       // Starts background fibers (syncing, event processing, etc) for store

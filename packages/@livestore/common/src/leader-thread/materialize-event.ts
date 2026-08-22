@@ -1,7 +1,13 @@
 import { isDevEnv, LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import { MaterializeError, MaterializerHashMismatchError, type SqliteDb } from '../adapter-types.ts'
+import {
+  EventPayloadDecodeError,
+  MaterializeError,
+  MaterializerEvaluationError,
+  MaterializerHashMismatchError,
+  type SqliteDb,
+} from '../adapter-types.ts'
 import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.ts'
 import { logDeprecationWarnings } from '../schema/EventDef/deprecated.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
@@ -69,11 +75,27 @@ export const makeMaterializeEvent = ({
         // Log deprecation warnings for deprecated events/fields
         yield* logDeprecationWarnings(eventDef, eventEncoded.args as Record<string, unknown>)
 
-        const execArgsArr = getExecStatementsFromMaterializer({
-          eventDef,
-          materializer,
-          dbState,
-          event: { decoded: undefined, encoded: eventEncoded },
+        const decodedArgs = yield* Schema.decodeUnknownEffect(eventDef.schema)(eventEncoded.args).pipe(
+          Effect.mapError((cause) =>
+            EventPayloadDecodeError.make({
+              eventName: eventEncoded.name,
+              message: String(cause),
+            }),
+          ),
+        )
+
+        const execArgsArr = yield* Effect.try({
+          try: () =>
+            getExecStatementsFromMaterializer({
+              eventDef,
+              materializer,
+              dbState,
+              event: {
+                decoded: { ...eventEncoded, args: decodedArgs },
+                encoded: undefined,
+              },
+            }),
+          catch: (cause) => MaterializerEvaluationError.make({ eventName: eventEncoded.name, cause }),
         })
 
         const materializerHash = isDevEnv() === true ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
@@ -159,7 +181,19 @@ export const makeMaterializeEvent = ({
           hash: materializerHash,
         }
       }).pipe(
-        Effect.mapError((cause) => MaterializeError.make({ cause })),
+        Effect.mapError((cause) =>
+          MaterializeError.make({
+            cause,
+            event: {
+              name: eventEncoded.name,
+              args: eventEncoded.args,
+              seqNum: eventEncoded.seqNum,
+              parentSeqNum: eventEncoded.parentSeqNum,
+              clientId: eventEncoded.clientId,
+              sessionId: eventEncoded.sessionId,
+            },
+          }),
+        ),
         Effect.withSpan(`@livestore/common:leader-thread:materializeEvent`, {
           attributes: {
             eventName: eventEncoded.name,

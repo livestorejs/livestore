@@ -28,7 +28,7 @@ import type {
 import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import type * as LeaderSyncProcessor from './LeaderSyncProcessor.ts'
-import type { ShutdownChannel } from './shutdown-channel.ts'
+import type { LifecycleShutdown, ShutdownChannel } from './shutdown-channel.ts'
 
 export type ShutdownState = 'running' | 'shutting-down'
 
@@ -98,6 +98,8 @@ export class LeaderThreadCtx extends Context.Service<
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
     shutdownChannel: ShutdownChannel
+    /** Topology-aware delivery to the Store lifecycle; worker transports fall back to `shutdownChannel`. */
+    lifecycleShutdown: LifecycleShutdown
     eventSchema: LiveStoreEvent.ForEventDef.ForRecord<any>
     devtools: DevtoolsContext
     syncBackend: SyncBackend.SyncBackend | undefined

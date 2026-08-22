@@ -68,7 +68,6 @@ const withTestCtx = (
     seedMockBackend?: (mockBackend: MockSyncBackend) => Effect.Effect<void>
     mockBackendOverride?: (mock: MockSyncBackend) => SyncBackend.SyncBackendConstructor
     coordinatePullApplication?: boolean
-    failCoordinatedPullApplication?: boolean
   } = {},
 ) =>
   Vitest.makeWithTestCtx({
@@ -96,6 +95,120 @@ const seedPaginatedBackendTodos = (mockBackend: MockSyncBackend) => {
 
 /** Verifies: LS.SYS.SYNC.PROC-R01, LS.SYS.SYNC.PROC-R02, LS.SYS.SYNC.PROC-R04, LS.SYS.SYNC.SS-R06, LS.SYS.SYNC-R03, LS.SYS.RT-R10 */
 Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
+  Vitest.live('malformed canonical event fails lifecycle and fences the later suffix', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+      const malformedBase = testContext.eventFactory.todoCreated.next({
+        id: 'malformed',
+        text: 'malformed',
+        completed: false,
+      })
+      const malformed = LiveStoreEvent.Global.Encoded.make({
+        ...malformedBase,
+        args: { id: 'malformed', text: 'malformed', completed: null },
+      })
+      const validAfter = testContext.eventFactory.todoCreated.next({
+        id: 'valid-after',
+        text: 'valid-after',
+        completed: false,
+      })
+
+      yield* testContext.mockSyncBackend.advance(malformed, validAfter)
+
+      const error = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(5000))
+      assert(error._tag === 'PoisonedEventError')
+      expect(error.event.seqNum.global).toBe(1)
+      expect(error.cause.cause._tag).toBe('EventPayloadDecodeError')
+      expect(error.lastValidUpstreamHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(error.lastValidLocalHead).toEqual(EventSequenceNumber.Client.ROOT)
+
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+      expect(syncState.localHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(syncState.upstreamHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(
+        leaderThreadCtx.dbEventlog.select<{ count: number }>('SELECT count(*) AS count FROM eventlog')[0]?.count,
+      ).toBe(0)
+      expect(
+        leaderThreadCtx.dbEventlog.select<{ head: number }>('SELECT head FROM __livestore_sync_status')[0]?.head,
+      ).toBe(0)
+
+      yield* testContext.mockSyncBackend.advance(
+        testContext.eventFactory.todoCreated.next({ id: 'still-fenced', text: 'still-fenced', completed: false }),
+      )
+      yield* Effect.sleep(50)
+      expect(leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)).toEqual([])
+    }).pipe(withTestCtx({ syncOptions: { onSyncError: 'ignore' }, captureShutdown: true })(test)),
+  )
+
+  Vitest.live('materialization failure rolls back the canonical batch and preserves the cursor', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      yield* testContext.mockSyncBackend.advance(
+        testContext.eventFactory.todoCreated.next({ id: 'rolled-back', text: 'rolled-back', completed: false }),
+        testContext.eventFactory.materializationFailed.next({ id: 'poisoned' }),
+        testContext.eventFactory.todoCreated.next({ id: 'fenced', text: 'fenced', completed: false }),
+      )
+
+      const error = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(5000))
+      assert(error._tag === 'PoisonedEventError')
+      expect(error.event.name).toBe('materializationFailed')
+      expect(error.event.seqNum.global).toBe(2)
+      expect(error.cause.cause._tag).toBe('SqliteError')
+
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+      expect(syncState.localHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(syncState.upstreamHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)).toEqual([])
+      expect(
+        leaderThreadCtx.dbEventlog.select<{ count: number }>('SELECT count(*) AS count FROM eventlog')[0]?.count,
+      ).toBe(0)
+      expect(
+        leaderThreadCtx.dbEventlog.select<{ head: number }>('SELECT head FROM __livestore_sync_status')[0]?.head,
+      ).toBe(0)
+    }).pipe(withTestCtx({ syncOptions: { onSyncError: 'ignore' }, captureShutdown: true })(test)),
+  )
+
+  Vitest.live('poisoned rebase restores the previous valid pending tail', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+      const backendFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('mock-backend', 'poison-session'),
+      })
+
+      yield* testContext.mockSyncBackend.disconnect
+      yield* testContext.pushEncoded(
+        testContext.eventFactory.todoCreated.next({ id: 'local-pending', text: 'local-pending', completed: false }),
+      )
+      yield* testContext.mockSyncBackend.advance(backendFactory.materializationFailed.next({ id: 'remote-poison' }))
+      yield* testContext.mockSyncBackend.connect
+
+      const error = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(5000))
+      assert(error._tag === 'PoisonedEventError')
+      expect(error.event.name).toBe('materializationFailed')
+
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+      expect(syncState.upstreamHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(syncState.localHead.global).toBe(1)
+      expect(syncState.pending.map((event) => event.name)).toEqual(['todoCreated'])
+      expect(yield* StateHead.make({ dbState: leaderThreadCtx.dbState }).get).toEqual(syncState.localHead)
+      expect(leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query).map((row) => row.id)).toEqual([
+        'local-pending',
+      ])
+      expect(leaderThreadCtx.dbEventlog.select<{ name: string }>('SELECT name FROM eventlog')).toEqual([
+        { name: 'todoCreated' },
+      ])
+      expect(
+        leaderThreadCtx.dbEventlog.select<{ head: number }>('SELECT head FROM __livestore_sync_status')[0]?.head,
+      ).toBe(0)
+    }).pipe(withTestCtx({ syncOptions: { onSyncError: 'ignore' }, captureShutdown: true })(test)),
+  )
+
   Vitest.live('sync', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
@@ -748,6 +861,79 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     }).pipe(withTestCtx({ mockBackendOptions: { startConnected: true } })(test)),
   )
 
+  Vitest.live('preserves poison when a ServerAhead replacement pull encounters it', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+      const eventFactory = testContext.eventFactory
+      const backendFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('mock-backend', 'poison-replacement-session'),
+        startSeq: 2,
+        initialParent: 1,
+      })
+
+      expect(yield* testContext.mockSyncBackend.pullRequests.pipe(Stream.runFirstUnsafe, Effect.timeout(5000))).toBe(
+        EventSequenceNumber.Client.ROOT.global,
+      )
+
+      // A1 is accepted but withheld from the active pull, leaving its persisted cursor at root.
+      yield* testContext.mockSyncBackend.dropNextPushPublications(1)
+      const localA1 = eventFactory.todoCreated.next({ id: 'poison-local-a1', text: 'local-a1', completed: false })
+      yield* testContext.pushEncoded(localA1)
+      yield* testContext.mockSyncBackend.pushAttempts.pipe(Stream.runFirstUnsafe, Effect.timeout(5000))
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.runFirstUnsafe, Effect.timeout(5000))
+
+      // The unseen canonical suffix is poisoned. A2 then observes ServerAhead and queues replacement.
+      const poisonedB2 = backendFactory.materializationFailed.next({ id: 'replacement-poison' })
+      yield* testContext.mockSyncBackend.advanceWithoutPublication(poisonedB2)
+      const localA2 = eventFactory.todoCreated.next({ id: 'poison-local-a2', text: 'local-a2', completed: false })
+      yield* testContext.pushEncoded(localA2)
+      yield* testContext.mockSyncBackend.pushAttempts.pipe(Stream.runFirstUnsafe, Effect.timeout(5000))
+
+      expect(yield* testContext.mockSyncBackend.pullRequests.pipe(Stream.runFirstUnsafe, Effect.timeout(5000))).toBe(
+        EventSequenceNumber.Client.ROOT.global,
+      )
+
+      const error = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(5000))
+      assert(error._tag === 'PoisonedEventError')
+      expect(error.event.name).toBe('materializationFailed')
+      expect(error.event.seqNum.global).toBe(2)
+      expect(error.lastValidUpstreamHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(error.lastValidLocalHead.global).toEqual(localA2.seqNum)
+
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+      expect(syncState.upstreamHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(syncState.localHead.global).toEqual(localA2.seqNum)
+      expect(syncState.pending.map((event) => event.args)).toEqual([localA1.args, localA2.args])
+      expect(
+        leaderThreadCtx.dbEventlog.select<{ head: number }>('SELECT head FROM __livestore_sync_status')[0]?.head,
+      ).toBe(0)
+      expect(
+        leaderThreadCtx.dbState
+          .select<{ id: string }>(tables.todos.asSql().query)
+          .map(({ id }) => id)
+          .toSorted(),
+      ).toEqual(['poison-local-a1', 'poison-local-a2'])
+
+      // A later canonical event remains behind the poisoned prefix, and the queued restart did not
+      // create another generation or replace the lifecycle failure with transport interruption.
+      yield* testContext.mockSyncBackend.advance(
+        backendFactory.todoCreated.next({ id: 'fenced-after-poison', text: 'fenced', completed: false }),
+      )
+      yield* Effect.sleep(50)
+      expect(yield* testContext.mockSyncBackend.pullRequestCount).toBe(2)
+      expect(
+        leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query).map(({ id }) => id),
+      ).not.toContain('fenced-after-poison')
+    }).pipe(
+      withTestCtx({
+        mockBackendOptions: { startConnected: true },
+        syncOptions: { onSyncError: 'ignore' },
+        captureShutdown: true,
+      })(test),
+    ),
+  )
+
   Vitest.live('restarts a completed finite pull after ServerAhead', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
@@ -831,7 +1017,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       const remoteB1 = backendFactory.todoCreated.next({ id: 'fenced-remote', text: 'remote', completed: false })
       yield* testContext.mockSyncBackend.advance(remoteB1)
-      yield* Deferred.await(pullApplicationControl.cursorAdvanced).pipe(Effect.timeout(5000))
+      yield* Deferred.await(pullApplicationControl.applicationStarted).pipe(Effect.timeout(5000))
       yield* Deferred.await(pullApplicationControl.restartRequested).pipe(Effect.timeout(5000))
 
       // Retirement is waiting outside the application fence; no replacement is active yet.
@@ -878,8 +1064,9 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     ),
   )
 
-  Vitest.live('preserves a terminal canonical pull failure instead of replacing its generation', (test) =>
+  Vitest.live('does not let a queued ServerAhead restart mask in-flight poison', (test) =>
     Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
       const backendFactory = makeEventFactory({
         client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
@@ -898,29 +1085,31 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       })
       yield* testContext.pushEncoded(localA1)
       yield* Deferred.await(pullApplicationControl.pushWaiting).pipe(Effect.timeout(5000))
+      expect((yield* leaderThreadCtx.syncProcessor.syncState.get).localHead.global).toEqual(localA1.seqNum)
 
-      const remoteB1 = backendFactory.todoCreated.next({
-        id: 'failed-application-remote',
-        text: 'remote',
-        completed: false,
-      })
+      const remoteB1 = backendFactory.materializationFailed.next({ id: 'in-flight-poison' })
       yield* testContext.mockSyncBackend.advance(remoteB1)
-      yield* Deferred.await(pullApplicationControl.cursorAdvanced).pipe(Effect.timeout(5000))
+      yield* Deferred.await(pullApplicationControl.applicationStarted).pipe(Effect.timeout(5000))
       yield* Deferred.await(pullApplicationControl.restartRequested).pipe(Effect.timeout(5000))
 
       expect(yield* testContext.mockSyncBackend.pullRequestCount).toEqual(1)
       yield* Deferred.succeed(pullApplicationControl.allowApplication, undefined)
 
       const shutdownError = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(5000))
-      expect(shutdownError._tag).toEqual('UnknownError')
+      assert(shutdownError._tag === 'PoisonedEventError')
+      expect(shutdownError.event.name).toEqual('materializationFailed')
+      expect(shutdownError.lastValidUpstreamHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(shutdownError.lastValidLocalHead.global).toEqual(localA1.seqNum)
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+      expect(syncState.upstreamHead).toEqual(EventSequenceNumber.Client.ROOT)
+      expect(syncState.localHead.global).toEqual(localA1.seqNum)
       expect(yield* testContext.mockSyncBackend.pullRequestCount).toEqual(1)
       expect(yield* testContext.mockSyncBackend.activePulls.current).toEqual(0)
     }).pipe(
       withTestCtx({
         mockBackendOptions: { startConnected: true },
-        syncOptions: { onSyncError: 'shutdown' },
+        syncOptions: { onSyncError: 'ignore' },
         coordinatePullApplication: true,
-        failCoordinatedPullApplication: true,
         captureShutdown: true,
       })(test),
     ),
@@ -1443,7 +1632,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 type LeaderEventFactory = ReturnType<typeof makeEventFactory>
 
 interface PullApplicationControl {
-  cursorAdvanced: Deferred.Deferred<void>
+  applicationStarted: Deferred.Deferred<void>
   allowApplication: Deferred.Deferred<void>
   pushWaiting: Deferred.Deferred<void>
   restartRequested: Deferred.Deferred<void>
@@ -1473,7 +1662,6 @@ const LeaderThreadCtxLive = ({
   seedMockBackend,
   mockBackendOverride,
   coordinatePullApplication,
-  failCoordinatedPullApplication,
 }: {
   syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor']
   params?: MakeLeaderThreadLayerParams['params']
@@ -1484,7 +1672,6 @@ const LeaderThreadCtxLive = ({
   seedMockBackend?: (mockBackend: MockSyncBackend) => Effect.Effect<void>
   mockBackendOverride?: (mock: MockSyncBackend) => SyncBackend.SyncBackendConstructor
   coordinatePullApplication?: boolean
-  failCoordinatedPullApplication?: boolean
 }) =>
   Effect.gen(function* () {
     const mockSyncBackend = yield* makeMockSyncBackend(mockBackendOptions)
@@ -1492,7 +1679,7 @@ const LeaderThreadCtxLive = ({
     const pullApplicationControl =
       coordinatePullApplication === true
         ? {
-            cursorAdvanced: yield* Deferred.make<void>(),
+            applicationStarted: yield* Deferred.make<void>(),
             allowApplication: yield* Deferred.make<void>(),
             pushWaiting: yield* Deferred.make<void>(),
             restartRequested: yield* Deferred.make<void>(),
@@ -1528,7 +1715,7 @@ const LeaderThreadCtxLive = ({
                     if (interceptNextPush === false) return yield* syncBackend.push(batch)
                     interceptNextPush = false
                     yield* Deferred.succeed(pullApplicationControl.pushWaiting, undefined)
-                    yield* Deferred.await(pullApplicationControl.cursorAdvanced)
+                    yield* Deferred.await(pullApplicationControl.applicationStarted)
                     return yield* new ServerAheadError({
                       minimumExpectedNum: EventSequenceNumber.Global.make(2),
                       providedNum: EventSequenceNumber.Global.make(1),
@@ -1564,13 +1751,10 @@ const LeaderThreadCtxLive = ({
                 ...syncProcessor,
                 hooks: {
                   ...syncProcessor?.hooks,
-                  backendPullCursorAdvanced: () =>
+                  backendPullApplicationStarted: () =>
                     Effect.gen(function* () {
-                      yield* Deferred.succeed(pullApplicationControl.cursorAdvanced, undefined)
+                      yield* Deferred.succeed(pullApplicationControl.applicationStarted, undefined)
                       yield* Deferred.await(pullApplicationControl.allowApplication)
-                      if (failCoordinatedPullApplication === true) {
-                        return yield* Effect.die(new Error('simulated canonical pull application failure'))
-                      }
                     }),
                   backendPullRestartRequested: () =>
                     Deferred.succeed(pullApplicationControl.restartRequested, undefined),

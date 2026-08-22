@@ -30,6 +30,11 @@
   offline failures. Generic unclassified failures park the affected supervised
   worker instead of retrying forever or terminating silently while the Store
   remains open ([#1577](https://github.com/livestorejs/livestore/issues/1577)).
+- **Sync correctness:** Malformed known canonical events and deterministic
+  materialization failures now roll back the complete pull batch, preserve the
+  last valid cursor, fence later propagation, and fail Store lifecycle in both
+  worker-backed and in-process adapter topologies
+  ([#732](https://github.com/livestorejs/livestore/issues/732)).
 
 ### Internal Changes
 

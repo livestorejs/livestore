@@ -7,6 +7,7 @@ import {
   type IntentionalShutdownCause,
   isQueryBuilder,
   type MaterializeError,
+  type PoisonedEventError,
   type QueryBuilder,
   type StoreInterrupted,
   type UnknownError,
@@ -47,16 +48,16 @@ export type LiveStoreContext<TSchema extends LiveStoreSchema = LiveStoreSchema.A
     }
   | {
       stage: 'shutdown'
-      cause: IntentionalShutdownCause | StoreInterrupted | UnknownError
+      cause: IntentionalShutdownCause | StoreInterrupted | UnknownError | PoisonedEventError
     }
 
 export type ShutdownDeferred = Deferred.Deferred<
   IntentionalShutdownCause,
-  UnknownError | StoreInterrupted | MaterializeError | BackendIdMismatchError
+  UnknownError | StoreInterrupted | MaterializeError | PoisonedEventError | BackendIdMismatchError
 >
 export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.make<
   IntentionalShutdownCause,
-  UnknownError | StoreInterrupted | MaterializeError | BackendIdMismatchError
+  UnknownError | StoreInterrupted | MaterializeError | PoisonedEventError | BackendIdMismatchError
 >()
 
 /**

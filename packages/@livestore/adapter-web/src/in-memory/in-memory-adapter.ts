@@ -9,7 +9,7 @@ import {
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
-import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
+import type { DevtoolsOptions, LeaderSqliteDb, LifecycleShutdown } from '@livestore/common/leader-thread'
 import {
   configureConnection,
   Eventlog,
@@ -25,6 +25,7 @@ import { tryAsFunctionAndNew } from '@livestore/utils'
 import {
   type Scope,
   Effect,
+  Exit,
   FetchHttpClient,
   Layer,
   Queue,
@@ -160,6 +161,8 @@ export const makeInMemoryAdapter =
         importSnapshot: options.importSnapshot,
         devtoolsEnabled,
         sharedWorker: sharedWorkerClient === undefined ? undefined : makeWebmeshWorkerProxy(sharedWorkerClient),
+        lifecycleShutdown: (cause) =>
+          shutdown(cause._tag === 'IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
       })
 
       sqliteDb.import(initialSnapshot)
@@ -216,6 +219,7 @@ export interface MakeLeaderThreadArgs {
   importSnapshot: Uint8Array<ArrayBuffer> | undefined
   devtoolsEnabled: boolean
   sharedWorker: WebmeshWorkerProxy | undefined
+  lifecycleShutdown: LifecycleShutdown
 }
 
 const makeLeaderThread = ({
@@ -229,6 +233,7 @@ const makeLeaderThread = ({
   importSnapshot,
   devtoolsEnabled,
   sharedWorker,
+  lifecycleShutdown,
 }: MakeLeaderThreadArgs) =>
   Effect.gen(function* () {
     const services = yield* Effect.context()
@@ -271,6 +276,7 @@ const makeLeaderThread = ({
         dbEventlog,
         devtoolsOptions,
         shutdownChannel,
+        lifecycleShutdown,
         syncPayloadEncoded,
         syncPayloadSchema: syncPayloadSchema as Schema.Decoder<Schema.Json, never> | undefined,
       }).pipe(Layer.provide(StateHead.layer({ dbState }))),
