@@ -56,8 +56,9 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
 - **Backend pushing** (`:575-637`): drains
   `takeBetween(1, backendPushBatchSize)` (default 50, `:215`), pushes
   `toGlobal()` batches. Retry: `Schedule.exponential(1s)` clamped to 30s,
-  no jitter, no attempt cap, and only for transient errors
-  (`IsOfflineError`/`UnknownError`, `:627-631`). `ServerAheadError` is NOT
+  no jitter, no attempt cap, and only for positively identified connectivity
+  errors (`IsOfflineError`, `:700-708`). `UnknownError` is terminal.
+  `ServerAheadError` is NOT
   retried in place: it fences that unresolved prefix and requests a fresh
   backend pull from the persisted cursor. Pull confirmation or rebase then
   interrupts the fenced push, re-seeds its queue from current pending, and
@@ -78,7 +79,11 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   replacement, so repeated recovery requests coalesce rather than create
   overlapping live pulls. Each replacement derives its cursor anew from the
   persisted backend head; the error's reported head is a catch-up signal, not
-  event data and not a cursor substitute.
+  event data and not a cursor substitute. Pull application and generation
+  retirement share an explicit coordination boundary: retirement waits until
+  the current canonical application completes, and a terminal application
+  failure prevents replacement. After a finite pull completes, the owner stays
+  parked so a later `ServerAheadError` can start a new generation.
 - **Pull precedence** (`:241, 393, 408-438`): a 1-permit semaphore
   (`localPushBackendPullMutex`) makes local-push application and pull-chunk
   application mutually exclusive; the pull side holds the permit for a

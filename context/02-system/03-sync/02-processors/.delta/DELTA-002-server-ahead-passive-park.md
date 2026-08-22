@@ -30,8 +30,11 @@ active catch-up transition in
 
 On `ServerAheadError`, keep the rejected backend prefix fenced and request a
 fresh pull from the persisted backend cursor. Retire the current pull
-generation before starting its replacement, coalesce concurrent requests, and
-resume backend pushing only after ordinary pull confirmation or rebase has
-reseeded the FIFO from current pending. Add deterministic fault injection that
-separates backend push admission from pull publication and proves recovery
-without relying on timing or a leader restart.
+generation at an explicit between-application boundary before starting its
+replacement, coalesce concurrent requests, and keep the single owner available
+after finite pull completion. An in-flight canonical application completes or
+fails before retirement; a terminal application failure must not be masked by
+replacement. Resume backend pushing only after ordinary pull confirmation or
+rebase has reseeded the FIFO from current pending. Add deterministic fault
+injection that separates backend push admission from pull publication and
+proves recovery without relying on timing or a leader restart.
