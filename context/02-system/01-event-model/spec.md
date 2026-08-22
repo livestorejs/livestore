@@ -61,6 +61,14 @@ Conversions: `toGlobal()` / `EncodedWithMeta.fromGlobal` and
 composite ones via `Client.fromGlobal`). All shapes are Effect Schema
 structs; encoding happens at the boundary (LS.SYS.EVT-R03).
 
+A known canonical event whose encoded payload fails its definition's decoder
+is a **poisoned event** (LS.SYS.EVT-R11). This differs from an event whose name
+is unknown to the current client: unknown-event handling may intentionally
+retain that event as an opaque no-op, whereas a known event declares a state
+transition whose invalid payload cannot be interpreted. The engine fences at
+the preceding valid event. Advancing past the malformed event would create a
+canonical history whose derived state omits a required transition.
+
 ## Sequence Numbers
 
 `EventSequenceNumber.Client.Composite = { global, client, rebaseGeneration }`.

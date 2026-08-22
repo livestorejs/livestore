@@ -31,6 +31,11 @@ The worker adapter falls back to single-tab automatically when
 `SharedWorker` is unavailable (e.g. Android Chrome). Single-tab warns that
 multiple tabs on one `storeId` can conflict.
 
+The worker and single-tab variants transport leader failures over their
+shutdown channels. The in-memory variant has no lifecycle receiver in another
+worker, so its inline leader invokes the adapter-provided Store shutdown
+callback directly (LS.SYS.RT.WEB-R06).
+
 ## Devtools Wiring
 
 The adapter exports `./devtools-web-channel` (webmesh `direct` mode) and

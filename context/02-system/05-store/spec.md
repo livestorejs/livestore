@@ -82,6 +82,14 @@ per-commit root span with links.
 ## Lifecycle
 
 - Every public operation guards on `isShutdown` (`checkShutdown`).
+- A poisoned canonical event reaches the adapter's central lifecycle path as a
+  structured failure carrying the event identity, deterministic application
+  cause, and last valid head. Worker-backed leaders use their shutdown channel;
+  in-process leaders invoke the existing Store shutdown callback directly.
+  Lifecycle supervision marks the Store failed and closes its lifetime scope
+  regardless of `onSyncError: 'ignore'`; recovery is a Store restart after the
+  schema, materializer, state, or canonical data has been repaired. Application
+  commit sites do not handle this per event (LS.SYS.STORE-R13).
 - `shutdown` first drains admitted client-session events to the leader, then
   closes the store's `lifetimeScope`. **Durability contract (Q2, see
   [`.decisions/0001-client-session-shutdown-drain.md`](./.decisions/0001-client-session-shutdown-drain.md)):
