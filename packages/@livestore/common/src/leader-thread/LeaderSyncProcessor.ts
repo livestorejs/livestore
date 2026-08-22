@@ -200,6 +200,9 @@ interface Options {
     readonly delays?: {
       readonly localPushProcessing?: Effect.Effect<void>
     }
+    readonly schedules?: {
+      readonly backendPushRetry?: Schedule.Schedule<unknown>
+    }
     readonly hooks?: {
       readonly localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
       /** Test-only observation of a worker reaching the terminal supervision boundary. */
@@ -698,9 +701,11 @@ export const make = Effect.fnUntraced(function* ({
       }).pipe(
         // Retry transient errors
         Effect.retry({
-          schedule: Schedule.exponential(Duration.seconds(1)).pipe(
-            Schedule.modifyDelay(({ duration }) => Effect.succeed(Duration.min(duration, Duration.seconds(30)))), // Cap delay at 30s intervals.
-          ),
+          schedule:
+            testing.schedules?.backendPushRetry ??
+            Schedule.exponential(Duration.seconds(1)).pipe(
+              Schedule.modifyDelay(({ duration }) => Effect.succeed(Duration.min(duration, Duration.seconds(30)))), // Cap delay at 30s intervals.
+            ),
           while: (error) => error._tag === 'IsOfflineError',
         }),
         // This is needed to narrow the Error type. Our retry policy runs indefinitely, but Effect.retry does not narrow the Error type.

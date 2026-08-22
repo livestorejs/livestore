@@ -11,6 +11,7 @@ import {
   Option,
   Queue,
   ReadonlyArray,
+  type Schedule,
   Schema,
   Stream,
   Subscribable,
@@ -70,6 +71,9 @@ export interface MakeLeaderThreadLayerParams {
     syncProcessor?: {
       delays?: {
         localPushProcessing?: Effect.Effect<void>
+      }
+      schedules?: {
+        backendPushRetry?: Schedule.Schedule<unknown>
       }
       hooks?: {
         localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
@@ -195,7 +199,11 @@ export const makeLeaderThreadLayer = ({
         }),
       },
       testing: {
-        ...omitUndefineds({ delays: testing?.syncProcessor?.delays, hooks: testing?.syncProcessor?.hooks }),
+        ...omitUndefineds({
+          delays: testing?.syncProcessor?.delays,
+          schedules: testing?.syncProcessor?.schedules,
+          hooks: testing?.syncProcessor?.hooks,
+        }),
       },
     })
 
