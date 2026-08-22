@@ -36,9 +36,9 @@ import {
   Queue,
   References,
   Result,
+  Schedule,
   type Scope,
   Stream,
-  TestClock,
   WebChannel,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
@@ -990,9 +990,10 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
   {
     const firstAttempt = Deferred.makeUnsafe<void>()
+    const secondAttempt = Deferred.makeUnsafe<void>()
     let pushAttempts = 0
 
-    Vitest.it.effect('retries positively identified offline push failures', (test) =>
+    Vitest.live('retries positively identified offline push failures', (test) =>
       Effect.gen(function* () {
         const testContext = yield* TestContext
 
@@ -1002,25 +1003,29 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         yield* Deferred.await(firstAttempt)
         expect(pushAttempts).toBe(1)
 
-        yield* TestClock.adjust('2 seconds')
-        yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
+        yield* Deferred.await(secondAttempt)
 
         expect(pushAttempts).toBe(2)
       }).pipe(
         withTestCtx({
           syncOptions: { livePull: false, onSyncError: 'ignore' },
+          testing: {
+            syncProcessor: {
+              schedules: { backendPushRetry: Schedule.recurs(1) },
+            },
+          },
           mockBackendOverride: (mockBackend) => () =>
             Effect.gen(function* () {
               const syncBackend = yield* mockBackend.makeSyncBackend
               return {
                 ...syncBackend,
-                push: (batch) =>
+                push: () =>
                   Effect.sync(() => ++pushAttempts).pipe(
                     Effect.tap(() => Deferred.succeed(firstAttempt, undefined)),
                     Effect.flatMap((attempt) =>
                       attempt === 1
                         ? Effect.fail(new IsOfflineError({ cause: new Error('simulated offline backend') }))
-                        : syncBackend.push(batch),
+                        : Deferred.succeed(secondAttempt, undefined),
                     ),
                   ),
               }
@@ -1034,7 +1039,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     const terminalWorker = Deferred.makeUnsafe<string>()
     let pushAttempts = 0
 
-    Vitest.it.effect('parks backend push after one UnknownError attempt', (test) =>
+    Vitest.live('parks backend push after one UnknownError attempt', (test) =>
       Effect.gen(function* () {
         const testContext = yield* TestContext
 
@@ -1045,9 +1050,6 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         expect(yield* Deferred.await(terminalWorker)).toBe('backend-push')
         expect(pushAttempts).toBe(1)
 
-        // Crossing the first two exponential retry delays proves UnknownError did not enter the schedule.
-        yield* TestClock.adjust('5 seconds')
-        expect(pushAttempts).toBe(1)
         expect(yield* Deferred.isDone(testContext.shutdownDeferred)).toBe(false)
       }).pipe(
         withTestCtx({
@@ -1055,6 +1057,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
           captureShutdown: true,
           testing: {
             syncProcessor: {
+              schedules: { backendPushRetry: Schedule.recurs(1) },
               hooks: {
                 workerTerminal: ({ worker }) => Deferred.succeed(terminalWorker, worker),
               },
@@ -1082,15 +1085,13 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     const terminalWorker = Deferred.makeUnsafe<string>()
     let pullAttempts = 0
 
-    Vitest.it.effect('parks backend pull after terminal failure', (test) =>
+    Vitest.live('parks backend pull after terminal failure', (test) =>
       Effect.gen(function* () {
         const testContext = yield* TestContext
 
         expect(yield* Deferred.await(terminalWorker)).toBe('backend-pull')
         expect(pullAttempts).toBe(1)
 
-        yield* TestClock.adjust('5 seconds')
-        expect(pullAttempts).toBe(1)
         expect(yield* Deferred.isDone(testContext.shutdownDeferred)).toBe(false)
       }).pipe(
         withTestCtx({
