@@ -19,6 +19,8 @@ export type SyncOptions<TPayload = Schema.Json> = {
    * `ignore` will log the generic error, park the affected sync worker with its unresolved work
    * intact, and let the app continue running. An existing protocol recovery path may replace the
    * worker; the terminal failure itself is not retried automatically.
+   * Deterministic canonical materialization failures override `ignore`: LiveStore preserves the
+   * last valid prefix, fences later propagation, and fails the owning Store lifecycle.
    *
    * @default 'ignore'
    * */

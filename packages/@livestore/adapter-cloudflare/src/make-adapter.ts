@@ -20,7 +20,16 @@ import { getStateDbBaseName } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/livestore'
 import { CF_SQL_VFS_REQUIRED_PRAGMAS, sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { Effect, FetchHttpClient, Layer, Queue, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
+import {
+  Effect,
+  Exit,
+  FetchHttpClient,
+  Layer,
+  Queue,
+  Schedule,
+  SubscriptionRef,
+  WebChannel,
+} from '@livestore/utils/effect'
 
 import { makeSqliteDb as makeDoSqliteDb } from './make-sqlite-db.ts'
 
@@ -42,7 +51,8 @@ export const makeAdapter =
     Effect.gen(function* () {
       const {
         storeId,
-        /* devtoolsEnabled, shutdown, bootStatusQueue,  */
+        shutdown,
+        /* devtoolsEnabled, bootStatusQueue,  */
         syncPayloadEncoded,
         syncPayloadSchema,
         schema,
@@ -92,6 +102,8 @@ export const makeAdapter =
           dbEventlog,
           devtoolsOptions,
           shutdownChannel,
+          lifecycleShutdown: (cause) =>
+            shutdown(cause._tag === 'IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
           syncPayloadEncoded,
           syncPayloadSchema,
         }).pipe(Layer.provide(StateHead.layer({ dbState }))),

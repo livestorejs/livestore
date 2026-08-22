@@ -1,18 +1,19 @@
-import { expect } from 'vitest'
+import { assert, expect } from 'vitest'
 
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import type { MockSyncBackend } from '@livestore/common'
 import { type ClientSessionLeaderThreadProxy, makeMockSyncBackend, type UnknownError } from '@livestore/common'
-import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
+import { LiveStoreEvent, type LiveStoreSchema } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
-import { createStore, makeShutdownDeferred } from '@livestore/livestore'
+import { createStore, makeShutdownDeferred, StoreInternalsSymbol } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   type OtelTracer,
   type Scope,
   Context,
+  Deferred,
   Effect,
   FetchHttpClient,
   Layer,
@@ -23,7 +24,7 @@ import {
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
 
-import { events, schema } from '../utils/tests/fixture.ts'
+import { events, schema, tables } from '../utils/tests/fixture.ts'
 
 const withTestCtx = Vitest.makeWithTestCtx({
   makeLayer: () =>
@@ -76,6 +77,30 @@ Vitest.describe('Store events API', () => {
       expect(resumedEvent.args).toMatchObject({ id: '2' })
     }).pipe(withTestCtx(test)),
   )
+
+  Vitest.live('routes poison directly into an in-memory Store lifecycle even in ignore mode', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, mockSyncBackend, shutdownDeferred } = yield* TestContext
+      const store = yield* makeStore({ onSyncError: 'ignore' })
+      yield* mockSyncBackend.connect
+
+      const eventFactory = EventFactory.makeFactory(events)({
+        client: EventFactory.clientIdentity('poison-producer', 'poison-session'),
+      })
+      const validBase = eventFactory.todoCreated.next({ id: 'malformed', text: 'malformed', completed: false })
+      const malformed = LiveStoreEvent.Global.Encoded.make({
+        ...validBase,
+        args: { id: 'malformed', text: 'malformed', completed: null },
+      })
+
+      yield* mockSyncBackend.advance(malformed)
+
+      const error = yield* Deferred.await(shutdownDeferred).pipe(Effect.flip, Effect.timeout(5000))
+      assert(error._tag === 'PoisonedEventError')
+      expect(store[StoreInternalsSymbol].isShutdown).toBe(true)
+      expect(() => store.query(tables.todos)).toThrow()
+    }).pipe(withTestCtx(test)),
+  )
 })
 
 class TestContext extends Context.Service<
@@ -83,6 +108,7 @@ class TestContext extends Context.Service<
   {
     makeStore: (args?: {
       boot?: (store: Store) => void
+      onSyncError?: 'shutdown' | 'ignore'
       testing?: {
         overrides?: {
           clientSession?: {
@@ -106,7 +132,7 @@ const TestContextLive = Layer.effect(
 
     const makeStore: typeof TestContext.Service.makeStore = (args) => {
       const adapter = makeInMemoryAdapter({
-        sync: { backend: () => mockSyncBackend.makeSyncBackend, onSyncError: 'shutdown' },
+        sync: { backend: () => mockSyncBackend.makeSyncBackend, onSyncError: args?.onSyncError ?? 'shutdown' },
         ...omitUndefineds({ testing: args?.testing }),
       })
       return createStore({

@@ -38,7 +38,7 @@ import { bootDevtools } from './leader-worker-devtools.ts'
 import * as LeaderSyncProcessor from './LeaderSyncProcessor.ts'
 import { makeMaterializeEvent } from './materialize-event.ts'
 import { recreateDb } from './recreate-db.ts'
-import type { ShutdownChannel } from './shutdown-channel.ts'
+import type { LifecycleShutdown, ShutdownChannel } from './shutdown-channel.ts'
 import type {
   DevtoolsContext,
   DevtoolsOptions,
@@ -61,6 +61,8 @@ export interface MakeLeaderThreadLayerParams {
   dbEventlog: LeaderSqliteDb
   devtoolsOptions: DevtoolsOptions
   shutdownChannel: ShutdownChannel
+  /** Direct Store lifecycle delivery for in-process topologies; defaults to worker channel delivery. */
+  lifecycleShutdown?: LifecycleShutdown
   /** Boot warning to emit (e.g., OPFS unavailable in private browsing) */
   bootWarning?: BootStatus
   params?: {
@@ -77,7 +79,7 @@ export interface MakeLeaderThreadLayerParams {
       }
       hooks?: {
         localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
-        backendPullCursorAdvanced?: (head: EventSequenceNumber.Client.Composite) => Effect.Effect<void>
+        backendPullApplicationStarted?: (head: EventSequenceNumber.Client.Composite) => Effect.Effect<void>
         backendPullRestartRequested?: () => Effect.Effect<void>
         workerTerminal?: (args: {
           worker: LeaderSyncProcessor.SyncWorker
@@ -100,6 +102,7 @@ export const makeLeaderThreadLayer = ({
   dbEventlog,
   devtoolsOptions,
   shutdownChannel,
+  lifecycleShutdown = shutdownChannel.send,
   bootWarning,
   params,
   testing,
@@ -236,6 +239,7 @@ export const makeLeaderThreadLayer = ({
       eventSchema: LiveStoreEvent.Client.makeSchema(schema),
       shutdownStateSubRef: yield* SubscriptionRef.make<ShutdownState>('running'),
       shutdownChannel,
+      lifecycleShutdown,
       syncBackend,
       syncProcessor,
       materializeEvent,

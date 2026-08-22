@@ -4,7 +4,8 @@ import { DurableObject } from 'cloudflare:workers'
 
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { CfDeclare } from '@livestore/common-cf/declare'
-import type { Store } from '@livestore/livestore'
+import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
+import { type Store, StoreInternalsSymbol } from '@livestore/livestore'
 import {
   type CfTypes,
   handleSyncRequest,
@@ -12,8 +13,9 @@ import {
   matchSyncRequest,
   type SyncBackendRpcInterface,
 } from '@livestore/sync-cf/cf-worker'
-import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
+import { handleSyncUpdateRpc, makeDoRpcSync } from '@livestore/sync-cf/client'
 import { shouldNeverHappen } from '@livestore/utils'
+import { Effect, FetchHttpClient, KeyValueStore, Layer, Option, Stream } from '@livestore/utils/effect'
 
 import { events, schema, tables } from '../schema.ts'
 
@@ -134,6 +136,52 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
       return makeCfResponse('Method not allowed', { status: 405 })
     }
 
+    if (url.pathname === '/store/poison' && request.method === 'POST') {
+      const store = await this.ensureStore({ storeId, resetPersistence: false })
+      const malformed = LiveStoreEvent.Global.Encoded.make({
+        name: 'todoCreated',
+        args: { id: 'poisoned', title: null },
+        seqNum: EventSequenceNumber.Global.make(1),
+        parentSeqNum: EventSequenceNumber.Client.ROOT.global,
+        clientId: 'poison-producer',
+        sessionId: 'poison-session',
+      })
+
+      const env = this.env
+      const durableObjectState = this.ctx
+      await Effect.gen(function* () {
+        const producer = yield* makeDoRpcSync({
+          syncBackendStub: env.SYNC_BACKEND_DO.get(env.SYNC_BACKEND_DO.idFromName(storeId)),
+          durableObjectState,
+          durableObjectContext: { bindingName: 'TEST_STORE_DO', durableObjectId: durableObjectState.id.toString() },
+        })({ storeId, clientId: 'poison-producer', payload: undefined })
+
+        // Establish the backend identity before publishing the malformed canonical event.
+        yield* producer.pull(Option.none(), { live: false }).pipe(Stream.runDrain)
+        yield* producer.push([malformed])
+      }).pipe(
+        Effect.provide(Layer.merge(KeyValueStore.layerMemory, FetchHttpClient.layer)),
+        Effect.scoped,
+        Effect.runPromise,
+      )
+
+      const deadline = Date.now() + 5000
+      while (store[StoreInternalsSymbol].isShutdown === false && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 10))
+      }
+
+      let queryable = true
+      try {
+        store.query(tables.todos)
+      } catch {
+        queryable = false
+      }
+
+      return makeCfResponse(JSON.stringify({ shutdown: store[StoreInternalsSymbol].isShutdown, queryable }), {
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
     if (url.pathname === '/store/persistence' && request.method === 'GET') {
       // Expose the persistence metadata without mutating it so tests can
       // compare the counts before and after the reset-only flow.
@@ -247,6 +295,7 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
           sessionId: crypto.randomUUID(),
           durableObject: { ctx: this.ctx, env: this.env, bindingName: 'TEST_STORE_DO' },
           syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
+          livePull: true,
           resetPersistence,
         })
 

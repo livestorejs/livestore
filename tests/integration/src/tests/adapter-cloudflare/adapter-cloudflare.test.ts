@@ -123,6 +123,15 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
             ),
           ),
 
+      poisonStore: () =>
+        client
+          .post('/store/poison')
+          .pipe(
+            Effect.flatMap(
+              HttpClientResponse.schemaBodyJson(Schema.Struct({ shutdown: Schema.Boolean, queryable: Schema.Boolean })),
+            ),
+          ),
+
       shutdownStore: () =>
         client
           .post('/store/shutdown')
@@ -131,6 +140,16 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
   })
 
 Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
+  Vitest.live('routes poison into the Store lifecycle without a shutdown channel listener', (test) =>
+    Effect.gen(function* () {
+      const server = yield* WranglerDevServer.WranglerDevServer
+      const storeId = `cf-poison-${nanoid(6)}`
+      const { poisonStore } = yield* makeStoreHelpers(server.url, storeId)
+
+      expect(yield* poisonStore()).toEqual({ shutdown: true, queryable: false })
+    }).pipe(withTestCtx(test)),
+  )
+
   Vitest.live('keeps Durable Object state when resetPersistence is not requested', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServer.WranglerDevServer
