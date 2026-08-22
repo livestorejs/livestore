@@ -3,7 +3,10 @@ title: Presence
 description: How to implement presence functionality with LiveStore
 ---
 
-LiveStore doesn't yet have any built-in presence functionality (e.g. to track online/offline users).
+LiveStore ships an ephemeral, non-persistent presence channel via
+`@livestore/sync-cf/presence`. Unlike synced state, presence is broadcast-only
+and never written to the eventlog or SQLite — ideal for high-frequency,
+short-lived state.
 
 Common presence use cases are:
 
@@ -12,4 +15,5 @@ Common presence use cases are:
 - Text cursor (similar to Google Docs)
 - Cursor movements (similar to Figma)
 
-For now it's recommend to implement presence functionality in your application or use a third party service (e.g. Liveblocks).
+See the [kanban with presence example](https://github.com/livestorejs/livestore-contrib)
+for a full reference.
