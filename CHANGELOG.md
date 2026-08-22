@@ -21,6 +21,12 @@
   rebase generation while stale epochs remain checked separately, avoiding
   duplicate materialization and ghost fences during multi-writer rebases
   ([#1530](https://github.com/livestorejs/livestore/pull/1530)).
+- **Sync materialization:** Malformed known canonical events and deterministic
+  materialization failures now roll back the complete pull batch, preserve the
+  last valid cursor, fence later propagation, and fail Store lifecycle with a
+  structured `PoisonedEventError` instead of leaving a healthy-looking Store
+  with terminated sync workers
+  ([#732](https://github.com/livestorejs/livestore/issues/732)).
 
 ### Internal Changes
 

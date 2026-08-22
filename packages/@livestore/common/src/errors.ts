@@ -82,10 +82,47 @@ export class UnknownEventError extends Schema.TaggedErrorClass<UnknownEventError
   note: Schema.optional(Schema.String),
 }) {}
 
+export class EventPayloadDecodeError extends Schema.TaggedErrorClass<EventPayloadDecodeError>(
+  '~@livestore/common/EventPayloadDecodeError',
+)('EventPayloadDecodeError', {
+  eventName: Schema.String,
+  message: Schema.String,
+}) {}
+
+export class MaterializerEvaluationError extends Schema.TaggedErrorClass<MaterializerEvaluationError>(
+  '~@livestore/common/MaterializerEvaluationError',
+)('MaterializerEvaluationError', {
+  eventName: Schema.String,
+  cause: Schema.Defect(),
+}) {}
+
+export class MaterializationBoundaryError extends Schema.TaggedErrorClass<MaterializationBoundaryError>(
+  '~@livestore/common/MaterializationBoundaryError',
+)('MaterializationBoundaryError', {
+  cause: Schema.Defect(),
+}) {}
+
 export class MaterializeError extends Schema.TaggedErrorClass<MaterializeError>('~@livestore/common/MaterializeError')(
   'MaterializeError',
   {
-    cause: Schema.Union([MaterializerHashMismatchError, SqliteError, UnknownEventError]),
+    cause: Schema.Union([
+      EventPayloadDecodeError,
+      MaterializationBoundaryError,
+      MaterializerEvaluationError,
+      MaterializerHashMismatchError,
+      SqliteError,
+      UnknownEventError,
+    ]),
+    event: Schema.optional(LiveStoreEvent.Client.Encoded),
     note: Schema.optional(Schema.String),
   },
 ) {}
+
+export class PoisonedEventError extends Schema.TaggedErrorClass<PoisonedEventError>(
+  '~@livestore/common/PoisonedEventError',
+)('PoisonedEventError', {
+  event: LiveStoreEvent.Client.Encoded,
+  lastValidUpstreamHead: LiveStoreEvent.Client.Encoded.fields.seqNum,
+  lastValidLocalHead: LiveStoreEvent.Client.Encoded.fields.seqNum,
+  cause: MaterializeError,
+}) {}

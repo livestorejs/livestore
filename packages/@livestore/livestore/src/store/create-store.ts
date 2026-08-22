@@ -8,6 +8,7 @@ import {
   type ClientSessionDevtoolsChannel,
   type IntentionalShutdownCause,
   type MaterializeError,
+  type PoisonedEventError,
   type MigrationsReport,
   provideOtel,
   type ServerAheadError,
@@ -335,7 +336,10 @@ export const createStore = <
       let shutdownSyncProcessor: ((exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>) | undefined
 
       const shutdown = (
-        exit: Exit.Exit<IntentionalShutdownCause, UnknownError | MaterializeError | BackendIdMismatchError>,
+        exit: Exit.Exit<
+          IntentionalShutdownCause,
+          UnknownError | MaterializeError | PoisonedEventError | BackendIdMismatchError
+        >,
       ) =>
         Effect.gen(function* () {
           // Hard outer bound on the DETACHED teardown: the processor drain `awaitEmpty`s the
