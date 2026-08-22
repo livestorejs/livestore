@@ -26,6 +26,10 @@
   rebase generation while stale epochs remain checked separately, avoiding
   duplicate materialization and ghost fences during multi-writer rebases
   ([#1530](https://github.com/livestorejs/livestore/pull/1530)).
+- **Sync recovery:** Sync processors now retry only positively identified
+  offline failures. Unclassified failures park the affected supervised worker
+  instead of retrying forever or terminating silently while the Store remains
+  open ([#1577](https://github.com/livestorejs/livestore/issues/1577)).
 
 ### Internal Changes
 

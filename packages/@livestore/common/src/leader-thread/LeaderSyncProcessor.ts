@@ -57,6 +57,8 @@ import { LeaderThreadCtx } from './types.ts'
 export const TypeId = '~@livestore/common/LeaderSyncProcessor' as const
 export type TypeId = typeof TypeId
 
+export type SyncWorker = 'local-apply' | 'backend-push' | 'backend-pull'
+
 /**
  * The LeaderSyncProcessor manages synchronization of events between
  * the local state and the sync backend, ensuring efficient and orderly processing.
@@ -204,6 +206,8 @@ interface Options {
       readonly localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
       readonly backendPullCursorAdvanced?: (head: EventSequenceNumber.Client.Composite) => Effect.Effect<void>
       readonly backendPullRestartRequested?: () => Effect.Effect<void>
+      /** Test-only observation of a worker reaching the terminal supervision boundary. */
+      readonly workerTerminal?: (args: { worker: SyncWorker; cause: Cause.Cause<unknown> }) => Effect.Effect<void>
     }
   }
 }
@@ -730,7 +734,7 @@ export const make = Effect.fnUntraced(function* ({
           while: (error) => error._tag === 'IsOfflineError',
         }),
         // This is needed to narrow the Error type. Our retry policy runs indefinitely, but Effect.retry does not narrow the Error type.
-        Effect.catchIf((error) => error._tag === 'IsOfflineError', Effect.die),
+        Effect.catchTag('IsOfflineError', Effect.die),
       )
 
       // Stop pushing so later events cannot skip this rejected batch. Pull reconciliation
@@ -808,16 +812,26 @@ export const make = Effect.fnUntraced(function* ({
       const handleBackendIdMismatchError = (error: BackendIdMismatchError) =>
         handleBackendIdMismatch({ error, onBackendIdMismatch, shutdownChannel })
 
-      const maybeShutdownOnError = (cause: Cause.Cause<UnknownError | MaterializeError>) =>
+      /**
+       * Terminal worker failures remain owned by the processor. Ignore mode parks the worker instead
+       * of completing its fiber, leaving its uncertain prefix available to an existing recovery path.
+       */
+      const superviseTerminalWorker =
+        (worker: SyncWorker) =>
+        (cause: Cause.Cause<BackendIdMismatchError | UnknownError | MaterializeError>) =>
         Effect.gen(function* () {
+          if (Cause.hasInterruptsOnly(cause) === true) return
+
+          if (testing.hooks?.workerTerminal !== undefined) {
+            yield* testing.hooks.workerTerminal({ worker, cause })
+          }
+
           if (onError === 'ignore') {
-            if (LS_DEV === true) {
-              yield* Effect.logDebug(
-                `Ignoring sync error (${Option.getOrUndefined(Cause.findErrorOption(cause))?._tag ?? cause.toString()})`,
-                Cause.pretty(cause),
-              )
-            }
-            return
+            yield* Effect.logError(
+              `Sync ${worker} worker parked after terminal failure (${Option.getOrUndefined(Cause.findErrorOption(cause))?._tag ?? cause.toString()})`,
+              Cause.pretty(cause),
+            )
+            return yield* Effect.never
           }
 
           const error = Option.getOrUndefined(Cause.findErrorOption(cause))
@@ -827,12 +841,15 @@ export const make = Effect.fnUntraced(function* ({
           return yield* Effect.failCause(cause).pipe(Effect.orDie)
         })
 
-      yield* backgroundApplyLocalPushes.pipe(Effect.catchCause(maybeShutdownOnError), Effect.forkScoped)
+      yield* backgroundApplyLocalPushes.pipe(
+        Effect.catchCause(superviseTerminalWorker('local-apply')),
+        Effect.forkScoped,
+      )
 
       const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
       const backendPushingEffect = backgroundBackendPushing.pipe(
         Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
-        Effect.catchCause(maybeShutdownOnError),
+        Effect.catchCause(superviseTerminalWorker('backend-push')),
       )
 
       const backendPullingGenerationEffect = backgroundBackendPulling({
@@ -860,17 +877,21 @@ export const make = Effect.fnUntraced(function* ({
         Effect.provideService(References.UnhandledLogLevel, undefined),
       )
 
-      const handleTerminalBackendPullExit = (
-        exit: Exit.Exit<void, BackendIdMismatchError | UnknownError | MaterializeError>,
-      ) =>
-        Exit.match(exit, {
-          onSuccess: () => Effect.void,
-          onFailure: (cause) =>
-            Effect.failCause(cause).pipe(
-              Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
-              Effect.catchCause(maybeShutdownOnError),
-            ),
-        })
+      /** Generic pull parking remains owned by the persistent pull owner so ServerAhead can replace it. */
+      const handleTerminalBackendPullCause = (
+        cause: Cause.Cause<BackendIdMismatchError | UnknownError | MaterializeError>,
+      ) => {
+        const error = Option.getOrUndefined(Cause.findErrorOption(cause))
+
+        if (error?._tag === 'BackendIdMismatchError') {
+          return handleBackendIdMismatchError(error).pipe(Effect.as('terminal-policy-ended' as const))
+        }
+
+        return Effect.raceFirst(
+          superviseTerminalWorker('backend-pull')(cause).pipe(Effect.as('terminal-policy-ended' as const)),
+          TxQueue.take(backendPullRestartQueue).pipe(Effect.as('restart-requested' as const)),
+        )
+      }
 
       // The owner persists beyond finite generations. Restart retires transport work only after
       // canonical application leaves its fence, then observes the generation exit before replacement.
@@ -884,7 +905,8 @@ export const make = Effect.fnUntraced(function* ({
 
           if (outcome !== 'restart-requested') {
             if (Exit.isFailure(outcome.exit) === true) {
-              yield* handleTerminalBackendPullExit(outcome.exit)
+              const terminalOutcome = yield* handleTerminalBackendPullCause(outcome.exit.cause)
+              if (terminalOutcome === 'restart-requested') continue
               return
             }
 
@@ -904,7 +926,8 @@ export const make = Effect.fnUntraced(function* ({
           yield* TxQueue.poll(backendPullRestartQueue)
 
           if (Exit.isFailure(retiredExit) === true && Cause.hasInterruptsOnly(retiredExit.cause) === false) {
-            yield* handleTerminalBackendPullExit(retiredExit)
+            const terminalOutcome = yield* handleTerminalBackendPullCause(retiredExit.cause)
+            if (terminalOutcome === 'restart-requested') continue
             return
           }
         }
@@ -1292,13 +1315,12 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
     return yield* Effect.die(error)
   }
 
-  // ignore mode
-  if (LS_DEV === true) {
-    yield* Effect.logDebug(
-      'Ignoring BackendIdMismatchError (sync backend was reset but client continues with stale data)',
-      error,
-    )
-  }
+  // Ignore mode deliberately leaves this worker terminal while the Store continues.
+  yield* Effect.logError(
+    'Sync worker parked after BackendIdMismatchError (backend was reset but client continues with stale data)',
+    error,
+  )
+  return yield* Effect.never
 })
 
 /**

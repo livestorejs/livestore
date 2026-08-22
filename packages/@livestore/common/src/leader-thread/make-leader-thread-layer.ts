@@ -1,5 +1,6 @@
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import {
+  type Cause,
   type HttpClient,
   type Scope,
   Deferred,
@@ -74,6 +75,10 @@ export interface MakeLeaderThreadLayerParams {
         localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
         backendPullCursorAdvanced?: (head: EventSequenceNumber.Client.Composite) => Effect.Effect<void>
         backendPullRestartRequested?: () => Effect.Effect<void>
+        workerTerminal?: (args: {
+          worker: LeaderSyncProcessor.SyncWorker
+          cause: Cause.Cause<unknown>
+        }) => Effect.Effect<void>
       }
     }
   }
