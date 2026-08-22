@@ -1,6 +1,6 @@
 # DELTA-003 — Unknown failures retry forever or silently terminate sync workers
 
-Status: open
+Status: resolved (2026-08-22)
 
 Numbering note: DELTA-002 is reserved by the open ServerAhead intent PR #1575.
 
@@ -40,3 +40,16 @@ claiming that the terminal attempt succeeded.
 Add deterministic tests that distinguish retryable recovery from terminal
 parking, prove an `UnknownError` causes one push attempt rather than a retry
 loop, and cover terminal handling for all three worker roles under ignore mode.
+
+## Resolution
+
+Backend push now retries only `IsOfflineError`; `UnknownError` reaches the
+terminal supervision boundary after one attempt. Backend push, backend pull,
+and local apply all use the named supervision policy. Ignore mode logs at error
+level in every build and parks forever, while interrupt-only causes still end
+normally during scope shutdown. A pull reconciliation can continue to clear
+and replace a parked backend-push worker from current pending state.
+
+Deterministic tests observe the supervision boundary for all three roles and
+advance the test clock to prove the retry schedule distinguishes
+`IsOfflineError` from `UnknownError`.

@@ -12,7 +12,7 @@ import {
 
 import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
-import type { BackendIdMismatchError, ServerAheadError } from './errors.ts'
+import type { BackendIdMismatchError, IsOfflineError, ServerAheadError } from './errors.ts'
 import * as SyncBackend from './sync-backend.ts'
 import { validatePushPayload } from './validate-push-payload.ts'
 
@@ -22,17 +22,17 @@ export interface MockSyncBackend {
   disconnect: Effect.Effect<void>
   makeSyncBackend: Effect.Effect<SyncBackend.SyncBackend, UnknownError, Scope.Scope>
   advance: (...batch: LiveStoreEvent.Global.Encoded[]) => Effect.Effect<void>
-  /** Fail the next N push calls with an UnknownError, ServerAheadError, BackendIdMismatchError, or custom error */
+  /** Fail the next N push calls with a supported sync error or custom error. */
   failNextPushes: (
     count: number,
     error?: (
       batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>,
-    ) => Effect.Effect<never, UnknownError | ServerAheadError | BackendIdMismatchError>,
+    ) => Effect.Effect<never, UnknownError | IsOfflineError | ServerAheadError | BackendIdMismatchError>,
   ) => Effect.Effect<void>
-  /** Fail the next N pull calls with an UnknownError, BackendIdMismatchError, or custom error */
+  /** Fail the next N pull calls with a supported sync error or custom error. */
   failNextPulls: (
     count: number,
-    error?: () => Effect.Effect<never, UnknownError | BackendIdMismatchError>,
+    error?: () => Effect.Effect<never, UnknownError | IsOfflineError | BackendIdMismatchError>,
   ) => Effect.Effect<void>
 }
 
@@ -70,11 +70,11 @@ export const makeMockSyncBackend = (
     // Failure simulation state
     const failPushRef = yield* Ref.make<
       FailureState<
-        UnknownError | ServerAheadError | BackendIdMismatchError,
+        UnknownError | IsOfflineError | ServerAheadError | BackendIdMismatchError,
         [ReadonlyArray<LiveStoreEvent.Global.Encoded>]
       >
     >({ remaining: 0, error: undefined })
-    const failPullRef = yield* Ref.make<FailureState<UnknownError | BackendIdMismatchError, []>>({
+    const failPullRef = yield* Ref.make<FailureState<UnknownError | IsOfflineError | BackendIdMismatchError, []>>({
       remaining: 0,
       error: undefined,
     })
@@ -230,11 +230,13 @@ export const makeMockSyncBackend = (
       count: number,
       error?: (
         batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>,
-      ) => Effect.Effect<never, UnknownError | ServerAheadError | BackendIdMismatchError>,
+      ) => Effect.Effect<never, UnknownError | IsOfflineError | ServerAheadError | BackendIdMismatchError>,
     ) => Ref.set(failPushRef, { remaining: count, error })
 
-    const failNextPulls = (count: number, error?: () => Effect.Effect<never, UnknownError | BackendIdMismatchError>) =>
-      Ref.set(failPullRef, { remaining: count, error })
+    const failNextPulls = (
+      count: number,
+      error?: () => Effect.Effect<never, UnknownError | IsOfflineError | BackendIdMismatchError>,
+    ) => Ref.set(failPullRef, { remaining: count, error })
 
     return {
       pushedEvents: Stream.fromQueue(pushedEventsQueue),
