@@ -1,6 +1,6 @@
 # DELTA-003 — Unknown failures retry forever or silently terminate sync workers
 
-Status: open
+Status: resolved (2026-08-22)
 
 This delta follows
 [DELTA-002](./DELTA-002-server-ahead-passive-park.md), which owns active
@@ -46,3 +46,19 @@ Add deterministic tests that distinguish retryable recovery from terminal
 parking, prove an `UnknownError` causes one push attempt rather than a retry
 loop, cover terminal handling for all three worker roles under ignore mode, and
 compose parked-pull supervision with active `ServerAheadError` replacement.
+
+## Resolution
+
+Backend push now retries only `IsOfflineError`; `UnknownError` reaches the
+generic terminal supervision boundary after one attempt. Backend push, backend
+pull, and local apply all use the named supervision policy. Ignore mode logs at
+error level in every build and parks generic terminal work, while
+interrupt-only causes still end normally during scope shutdown. Pull
+reconciliation can clear and replace a parked backend-push worker from current
+pending state; active `ServerAheadError` catch-up can replace a parked backend
+pull from the persisted cursor without overlapping pull generations.
+
+Deterministic tests observe the supervision boundary for all three roles and
+use an injected immediate retry schedule and deferred barriers to distinguish
+`IsOfflineError` from `UnknownError`. Combined coverage proves a parked backend
+pull remains replaceable through the persistent ServerAhead pull owner.
