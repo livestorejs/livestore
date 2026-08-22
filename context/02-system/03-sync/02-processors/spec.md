@@ -85,6 +85,19 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   failure prevents replacement. After a finite pull completes, the owner stays
   parked so a later `ServerAheadError` can start a new generation
   (`:838-915`).
+- **Poison fence:** applying a non-empty pull chunk first pauses backend
+  pushing. State rollback/materialization, eventlog writes, changesets, sync
+  metadata, and the persisted backend cursor then share one rollback boundary.
+  Only after that boundary commits does the processor publish sync state,
+  notify sessions, and resume backend pushing. A known-payload decode failure,
+  materializer evaluation/hash failure, or SQLite mutation failure wraps the
+  failing canonical event and last-valid head in a structured poisoned-event
+  diagnostic. The pull worker does not retry the unchanged event, backend
+  pushing remains fenced, and Store lifecycle supervision shuts the Store down
+  regardless of `onSyncError: 'ignore'` (LS.SYS.SYNC.PROC-R06/R07). A queued
+  `ServerAheadError` retirement waits outside the canonical-application
+  boundary; if application fails, poison reaches lifecycle supervision before
+  any replacement can interrupt or mask it.
 - **Pull precedence** (`:241, 393, 408-438`): a 1-permit semaphore
   (`localPushBackendPullMutex`) makes local-push application and pull-chunk
   application mutually exclusive; the pull side holds the permit for a
@@ -103,6 +116,9 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   (`../../04-runtime/spec.md` Leadership Handover); error routing via
   `onError: ignore|shutdown` and `BackendIdMismatchError` handling
   (`reset|shutdown|ignore`; reset clears local databases, `:1060-1123`).
+  Generic terminal failures use the R05 parking policy, but a poisoned
+  canonical event is never ignored: it is a lifecycle-fatal supervised failure
+  so no Store remains apparently healthy with dead sync workers.
 
 ### Worker supervision
 
@@ -112,8 +128,8 @@ stay inside their operation loop. `ServerAheadError` stays inside
 reconciliation. A more-specific lifecycle-fatal family may take precedence;
 otherwise terminal failures reach the generic supervision boundary:
 
-- `onSyncError: 'shutdown'` sends the failure through the shutdown channel and
-  terminates the Store.
+- `onSyncError: 'shutdown'` sends a generic terminal failure through Store
+  lifecycle delivery and terminates the Store.
 - `onSyncError: 'ignore'` logs a generic terminal failure and parks the affected
   worker rather than letting its fiber return. Its in-flight prefix remains
   unresolved.
@@ -123,8 +139,11 @@ otherwise terminal failures reach the generic supervision boundary:
   also retire and replace a parked backend pull from the persisted cursor.
   Replacement is not acknowledgement of the failed attempt and is not a reason
   to retry `UnknownError` in place.
+- A deterministic materialization failure or `PoisonedEventError` takes
+  precedence over both generic branches, reaches central Store lifecycle
+  delivery regardless of `onSyncError`, and remains fenced until teardown.
 
-Local-apply failures retain their deferred acknowledgements and reservations;
+Local-apply failures retain their deferred acknowledgements and admitted prefix;
 backend-push failures retain the pending prefix as the source for later
 reconciliation. Local apply has no equivalent independent recovery path and
 remains parked until scope shutdown unless a future, more-specific policy owns

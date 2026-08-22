@@ -80,6 +80,30 @@ Builds on [../requirements.md](../requirements.md) and
   state machine or per-commit receipt API. Adopted 2026-08-22 (#1577, [decision
   0004](./.decisions/0004-supervised-sync-failures.md)).
   `refines: LS.SYS.SYNC-R03, LS.SYS.SYNC.PROC-R04`
+- **LS.SYS.SYNC.PROC-R06 Poisoned canonical prefix:** Pull application commits
+  state, eventlog, changesets, persisted backend cursor, and published sync
+  heads as one error boundary. A deterministic application failure preserves
+  the last valid cursor and heads, rolls back the complete attempted batch,
+  stops backend propagation, and fences every later local or canonical event
+  behind the poisoned event. The processor emits a structured poisoned-event
+  failure to Store lifecycle supervision even when generic sync-error handling
+  is configured to ignore errors. Adopted 2026-08-22 (#732 reproduction and
+  user confirmation); see
+  [decision 0005](./.decisions/0005-fence-poisoned-canonical-events.md).
+  `refines: LS.SYS.EVT-R11, LS.SYS.STATE-R08, LS.SYS.SYNC.PROC-R04, LS.SYS.STORE-R07`
+- **LS.SYS.SYNC.PROC-R07 Recovery by classified failure:** Automatic retry
+  requires positive evidence that the failure is retryable. A classified
+  connectivity failure (`IsOfflineError` today) retries from the persisted
+  last-valid cursor. `ServerAheadError` requests cooperative backend-pull
+  replacement rather than in-place retry; provider-specific and backend
+  identity failures retain their dedicated policies. An unclassified
+  `UnknownError` is terminal and reaches R05 supervision. Deterministic
+  canonical payload or materialization failure is poison under R06: it is not
+  retried unchanged, takes precedence over generic ignore-mode parking, and
+  fails Store lifecycle so recovery can occur only after schema, materializer,
+  local state, or canonical data repair. Merely occurring before canonical
+  application does not make a provider failure transient. Adopted 2026-08-22
+  (#732 reproduction and user confirmation). `refines: LS.SYS.SYNC-R03`
 
 Further processor requirements (e.g. the crash-atomicity contract of batch
 materialization) remain open pending `LS.SYS.STATE-DQ2`;

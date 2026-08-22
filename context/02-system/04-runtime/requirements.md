@@ -76,9 +76,11 @@ contrib-owned — see [realizations.md](./realizations.md), decision
   leader-thread proxy, lock status, shutdown handling, and devtools
   connectivity (where supported). `refines: LS-R07`
 - **LS.SYS.RT-R06 Shutdown-cause propagation:** Shutdown and terminal failure
-  causes propagate to all contexts of a client (shutdown channel); sessions
-  distinguish intentional shutdown from failure. Single-context realizations
-  may degenerate to no channel.
+  causes reach central Store lifecycle and propagate to every context of a
+  client; sessions distinguish intentional shutdown from failure.
+  Worker-backed realizations transport causes through the shutdown channel.
+  A single-context realization may omit that transport, but must invoke the
+  existing Store lifecycle callback directly before a terminal worker parks.
 - **LS.SYS.RT-R07 Storage-mode transparency:** Persistence may degrade to
   in-memory (e.g. private browsing); the adapter must surface the effective
   storage mode and a boot warning instead of failing silently.

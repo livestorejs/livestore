@@ -40,8 +40,10 @@ place.
 Colocation and the `SqlStorage` API force several degenerate or adapted
 behaviors versus the portable contract:
 
-- **No shutdown channel** — `WebChannel.noopChannel`; with a single context
-  there is nothing to broadcast to (degenerate case of LS.SYS.RT-R06).
+- **No shutdown broadcast channel** — there is no second context to notify.
+  The colocated leader delivers terminal failures directly through the
+  adapter-provided Store lifecycle callback; the no-op channel remains only as
+  a transport placeholder (LS.SYS.RT.CF-R07).
 - **Devtools disabled** — `devtoolsOptions.enabled` is hardcoded false; the
   websocket webmesh connect is commented out (stub). `webmeshMode` is
   `'proxy'` (web adapters use `'direct'`).
