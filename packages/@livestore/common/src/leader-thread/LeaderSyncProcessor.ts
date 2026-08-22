@@ -55,6 +55,8 @@ import { LeaderThreadCtx } from './types.ts'
 export const TypeId = '~@livestore/common/LeaderSyncProcessor' as const
 export type TypeId = typeof TypeId
 
+export type SyncWorker = 'local-apply' | 'backend-push' | 'backend-pull'
+
 /**
  * The LeaderSyncProcessor manages synchronization of events between
  * the local state and the sync backend, ensuring efficient and orderly processing.
@@ -200,6 +202,8 @@ interface Options {
     }
     readonly hooks?: {
       readonly localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
+      /** Test-only observation of a worker reaching the terminal supervision boundary. */
+      readonly workerTerminal?: (args: { worker: SyncWorker; cause: Cause.Cause<unknown> }) => Effect.Effect<void>
     }
   }
 }
@@ -697,10 +701,10 @@ export const make = Effect.fnUntraced(function* ({
           schedule: Schedule.exponential(Duration.seconds(1)).pipe(
             Schedule.modifyDelay(({ duration }) => Effect.succeed(Duration.min(duration, Duration.seconds(30)))), // Cap delay at 30s intervals.
           ),
-          while: (error) => error._tag === 'IsOfflineError' || error._tag === 'UnknownError',
+          while: (error) => error._tag === 'IsOfflineError',
         }),
         // This is needed to narrow the Error type. Our retry policy runs indefinitely, but Effect.retry does not narrow the Error type.
-        Effect.catchIf((error) => error._tag === 'IsOfflineError' || error._tag === 'UnknownError', Effect.die),
+        Effect.catchTag('IsOfflineError', Effect.die),
       )
     }
   }).pipe(Effect.interruptible)
@@ -774,16 +778,24 @@ export const make = Effect.fnUntraced(function* ({
       const handleBackendIdMismatchError = (error: BackendIdMismatchError) =>
         handleBackendIdMismatch({ error, onBackendIdMismatch, shutdownChannel })
 
-      const maybeShutdownOnError = (cause: Cause.Cause<UnknownError | MaterializeError>) =>
+      /**
+       * Terminal worker failures remain owned by the processor. Ignore mode parks the worker instead
+       * of completing its fiber, leaving its uncertain prefix available to an existing recovery path.
+       */
+      const superviseTerminalWorker = (worker: SyncWorker) => (cause: Cause.Cause<UnknownError | MaterializeError>) =>
         Effect.gen(function* () {
+          if (Cause.hasInterruptsOnly(cause) === true) return
+
+          if (testing.hooks?.workerTerminal !== undefined) {
+            yield* testing.hooks.workerTerminal({ worker, cause })
+          }
+
           if (onError === 'ignore') {
-            if (LS_DEV === true) {
-              yield* Effect.logDebug(
-                `Ignoring sync error (${Option.getOrUndefined(Cause.findErrorOption(cause))?._tag ?? cause.toString()})`,
-                Cause.pretty(cause),
-              )
-            }
-            return
+            yield* Effect.logError(
+              `Sync ${worker} worker parked after terminal failure (${Option.getOrUndefined(Cause.findErrorOption(cause))?._tag ?? cause.toString()})`,
+              Cause.pretty(cause),
+            )
+            return yield* Effect.never
           }
 
           const error = Option.getOrUndefined(Cause.findErrorOption(cause))
@@ -793,12 +805,15 @@ export const make = Effect.fnUntraced(function* ({
           return yield* Effect.failCause(cause).pipe(Effect.orDie)
         })
 
-      yield* backgroundApplyLocalPushes.pipe(Effect.catchCause(maybeShutdownOnError), Effect.forkScoped)
+      yield* backgroundApplyLocalPushes.pipe(
+        Effect.catchCause(superviseTerminalWorker('local-apply')),
+        Effect.forkScoped,
+      )
 
       const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
       const backendPushingEffect = backgroundBackendPushing.pipe(
         Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
-        Effect.catchCause(maybeShutdownOnError),
+        Effect.catchCause(superviseTerminalWorker('backend-push')),
       )
 
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
@@ -824,7 +839,7 @@ export const make = Effect.fnUntraced(function* ({
           until: (error): error is Exclude<typeof error, IsOfflineError> => error._tag !== 'IsOfflineError',
         }),
         Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
-        Effect.catchCause(maybeShutdownOnError),
+        Effect.catchCause(superviseTerminalWorker('backend-pull')),
         // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
         // This might be a bug in Effect. Only seems to happen in the browser.
         Effect.provideService(References.UnhandledLogLevel, undefined),
@@ -1209,13 +1224,12 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
     return yield* Effect.die(error)
   }
 
-  // ignore mode
-  if (LS_DEV === true) {
-    yield* Effect.logDebug(
-      'Ignoring BackendIdMismatchError (sync backend was reset but client continues with stale data)',
-      error,
-    )
-  }
+  // Ignore mode deliberately leaves this worker terminal while the Store continues.
+  yield* Effect.logError(
+    'Sync worker parked after BackendIdMismatchError (backend was reset but client continues with stale data)',
+    error,
+  )
+  return yield* Effect.never
 })
 
 /**
