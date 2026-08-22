@@ -22,10 +22,14 @@ export interface MockSyncBackend {
   pushAttempts: Stream.Stream<ReadonlyArray<LiveStoreEvent.Global.Encoded>>
   /** Cursor position used by each evaluated pull stream. */
   pullRequests: Stream.Stream<EventSequenceNumber.Global.Type>
+  /** Cursor position of each finite pull after its stream has completed. */
+  completedPulls: Stream.Stream<EventSequenceNumber.Global.Type>
   activePulls: {
     current: Effect.Effect<number>
     maximum: Effect.Effect<number>
   }
+  pullRequestCount: Effect.Effect<number>
+  pushAttemptCount: Effect.Effect<number>
   storedEvents: Effect.Effect<ReadonlyArray<LiveStoreEvent.Global.Encoded>>
   connect: Effect.Effect<void>
   disconnect: Effect.Effect<void>
@@ -71,12 +75,15 @@ export const makeMockSyncBackend = (
     const droppedPushPublicationsRef = yield* Ref.make(0)
     const activePullCountRef = yield* Ref.make(0)
     const maximumActivePullCountRef = yield* Ref.make(0)
+    const pullRequestCountRef = yield* Ref.make(0)
+    const pushAttemptCountRef = yield* Ref.make(0)
 
     // Queues for streaming
     const syncPullQueues = new Set<Queue.Queue<LiveStoreEvent.Global.Encoded>>()
     const pushedEventsQueue = yield* Queue.unbounded<LiveStoreEvent.Global.Encoded>()
     const pushAttemptsQueue = yield* Queue.unbounded<ReadonlyArray<LiveStoreEvent.Global.Encoded>>()
     const pullRequestsQueue = yield* Queue.unbounded<EventSequenceNumber.Global.Type>()
+    const completedPullsQueue = yield* Queue.unbounded<EventSequenceNumber.Global.Type>()
 
     yield* Effect.addFinalizer(() =>
       Effect.gen(function* () {
@@ -196,18 +203,30 @@ export const makeMockSyncBackend = (
         connect: SubscriptionRef.set(syncIsConnectedRef, true),
         ping: Effect.void,
         pull: (cursor, pullOptions) =>
-          Stream.fromEffect(Queue.offer(pullRequestsQueue, cursorPosition(cursor))).pipe(
+          Stream.fromEffect(
+            Effect.all([
+              Ref.update(pullRequestCountRef, (count) => count + 1),
+              Queue.offer(pullRequestsQueue, cursorPosition(cursor)),
+            ]),
+          ).pipe(
             Stream.tap(() =>
               checkFailure(
                 failPullRef,
                 new UnknownError({ cause: new Error('MockSyncBackend: simulated pull failure') }),
               ),
             ),
-            Stream.flatMap(() => (pullOptions?.live === true ? pullLive(cursor) : pullNonLive(cursor))),
+            Stream.flatMap(() =>
+              pullOptions?.live === true
+                ? pullLive(cursor)
+                : pullNonLive(cursor).pipe(
+                    Stream.ensuring(Queue.offer(completedPullsQueue, cursorPosition(cursor)).pipe(Effect.asVoid)),
+                  ),
+            ),
             Stream.withSpan('MockSyncBackend:pull', { parent: span }),
           ),
         push: (batch) =>
           Effect.gen(function* () {
+            yield* Ref.update(pushAttemptCountRef, (count) => count + 1)
             yield* Queue.offer(pushAttemptsQueue, batch)
             const currentHead = yield* Ref.get(syncHeadRef)
             yield* validatePushPayload(batch, currentHead)
@@ -281,10 +300,13 @@ export const makeMockSyncBackend = (
       pushedEvents: Stream.fromQueue(pushedEventsQueue),
       pushAttempts: Stream.fromQueue(pushAttemptsQueue),
       pullRequests: Stream.fromQueue(pullRequestsQueue),
+      completedPulls: Stream.fromQueue(completedPullsQueue),
       activePulls: {
         current: Ref.get(activePullCountRef),
         maximum: Ref.get(maximumActivePullCountRef),
       },
+      pullRequestCount: Ref.get(pullRequestCountRef),
+      pushAttemptCount: Ref.get(pushAttemptCountRef),
       storedEvents: Ref.get(allEventsRef),
       connect: SubscriptionRef.set(syncIsConnectedRef, true),
       disconnect: SubscriptionRef.set(syncIsConnectedRef, false),

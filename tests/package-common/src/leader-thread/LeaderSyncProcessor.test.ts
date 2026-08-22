@@ -8,6 +8,7 @@ import {
   makeMockSyncBackend,
   NonContiguousBatchError,
   type RejectedPushError,
+  ServerAheadError,
   StateHead,
   StaleRebaseGenerationError,
   type SyncBackend,
@@ -64,6 +65,8 @@ const withTestCtx = (
     mockBackendOptions?: MockSyncBackendOptions
     seedMockBackend?: (mockBackend: MockSyncBackend) => Effect.Effect<void>
     mockBackendOverride?: (mock: MockSyncBackend) => SyncBackend.SyncBackendConstructor
+    coordinatePullApplication?: boolean
+    failCoordinatedPullApplication?: boolean
   } = {},
 ) =>
   Vitest.makeWithTestCtx({
@@ -743,6 +746,184 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     }).pipe(withTestCtx({ mockBackendOptions: { startConnected: true } })(test)),
   )
 
+  Vitest.live('restarts a completed finite pull after ServerAhead', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+      const eventFactory = testContext.eventFactory
+      const backendFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
+        startSeq: 2,
+        initialParent: 1,
+      })
+
+      const completedInitialCursor = yield* testContext.mockSyncBackend.completedPulls.pipe(
+        Stream.runFirstUnsafe,
+        Effect.timeout(5000),
+      )
+      expect(completedInitialCursor).toEqual(EventSequenceNumber.Client.ROOT.global)
+      expect(yield* testContext.mockSyncBackend.pullRequests.pipe(Stream.runFirstUnsafe, Effect.timeout(5000))).toEqual(
+        EventSequenceNumber.Client.ROOT.global,
+      )
+
+      yield* testContext.mockSyncBackend.dropNextPushPublications(1)
+      const localA1 = eventFactory.todoCreated.next({ id: 'finite-a1', text: 'finite-a1', completed: false })
+      yield* testContext.pushEncoded(localA1)
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.runFirstUnsafe, Effect.timeout(5000))
+
+      const remoteB2 = backendFactory.todoCreated.next({ id: 'finite-b2', text: 'finite-b2', completed: false })
+      yield* testContext.mockSyncBackend.advanceWithoutPublication(remoteB2)
+
+      const localA2 = eventFactory.todoCreated.next({ id: 'finite-a2', text: 'finite-a2', completed: false })
+      yield* testContext.pushEncoded(localA2)
+
+      const catchUpCursor = yield* testContext.mockSyncBackend.pullRequests.pipe(
+        Stream.runFirstUnsafe,
+        Effect.timeout(5000),
+      )
+      expect(catchUpCursor).toEqual(EventSequenceNumber.Client.ROOT.global)
+
+      const rebasedA2 = yield* testContext.mockSyncBackend.pushedEvents.pipe(
+        Stream.runFirstUnsafe,
+        Effect.timeout(5000),
+      )
+      expect(rebasedA2.seqNum).toEqual(EventSequenceNumber.Global.make(3))
+      expect(rebasedA2.args).toEqual(localA2.args)
+
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+      expect(syncState.upstreamHead.global).toEqual(2)
+      expect(syncState.pending.map((event) => event.args)).toEqual([localA2.args])
+
+      expect(yield* testContext.mockSyncBackend.pullRequestCount).toEqual(2)
+      expect((yield* testContext.mockSyncBackend.storedEvents).map((event) => event.args)).toEqual([
+        localA1.args,
+        remoteB2.args,
+        localA2.args,
+      ])
+    }).pipe(withTestCtx({ mockBackendOptions: { startConnected: true }, syncOptions: { livePull: false } })(test)),
+  )
+
+  Vitest.live('finishes canonical pull application before replacing its generation', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+      const eventFactory = testContext.eventFactory
+      const backendFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
+      })
+
+      const pullApplicationControl = testContext.pullApplicationControl
+      assert(pullApplicationControl !== undefined, 'pull application controls were not configured')
+
+      expect(yield* testContext.mockSyncBackend.pullRequests.pipe(Stream.runFirstUnsafe, Effect.timeout(5000))).toEqual(
+        EventSequenceNumber.Client.ROOT.global,
+      )
+
+      // Keep the successful rebased push from publishing into the generation being retired;
+      // this test isolates the retirement/application boundary from a second confirmation chunk.
+      yield* testContext.mockSyncBackend.dropNextPushPublications(1)
+
+      const localA1 = eventFactory.todoCreated.next({ id: 'fenced-local', text: 'local', completed: false })
+      yield* testContext.pushEncoded(localA1)
+      yield* Deferred.await(pullApplicationControl.pushWaiting).pipe(Effect.timeout(5000))
+
+      const remoteB1 = backendFactory.todoCreated.next({ id: 'fenced-remote', text: 'remote', completed: false })
+      yield* testContext.mockSyncBackend.advance(remoteB1)
+      yield* Deferred.await(pullApplicationControl.cursorAdvanced).pipe(Effect.timeout(5000))
+      yield* Deferred.await(pullApplicationControl.restartRequested).pipe(Effect.timeout(5000))
+
+      // Retirement is waiting outside the application fence; no replacement is active yet.
+      expect(yield* testContext.mockSyncBackend.pullRequestCount).toEqual(1)
+      expect(yield* testContext.mockSyncBackend.activePulls.current).toEqual(1)
+
+      yield* Deferred.succeed(pullApplicationControl.allowApplication, undefined)
+
+      const replacementCursor = yield* testContext.mockSyncBackend.pullRequests.pipe(
+        Stream.runFirstUnsafe,
+        Effect.timeout(5000),
+      )
+      expect(replacementCursor).toEqual(EventSequenceNumber.Global.make(1))
+
+      const rebasedLocal = yield* testContext.mockSyncBackend.pushedEvents.pipe(
+        Stream.runFirstUnsafe,
+        Effect.timeout(5000),
+      )
+      expect(rebasedLocal.seqNum).toEqual(EventSequenceNumber.Global.make(2))
+      expect(rebasedLocal.args).toEqual(localA1.args)
+
+      yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.filter((state) => state.upstreamHead.global === 2 && state.pending.length === 0),
+        Stream.runFirstUnsafe,
+        Effect.timeout(5000),
+      )
+
+      expect(yield* testContext.mockSyncBackend.activePulls.maximum).toEqual(1)
+      expect((yield* testContext.mockSyncBackend.storedEvents).map((event) => event.args)).toEqual([
+        remoteB1.args,
+        localA1.args,
+      ])
+      expect(
+        leaderThreadCtx.dbState
+          .select<{ id: string }>(tables.todos.asSql().query)
+          .map(({ id }) => id)
+          .toSorted(),
+      ).toEqual(['fenced-local', 'fenced-remote'])
+    }).pipe(
+      withTestCtx({
+        mockBackendOptions: { startConnected: true },
+        coordinatePullApplication: true,
+      })(test),
+    ),
+  )
+
+  Vitest.live('preserves a terminal canonical pull failure instead of replacing its generation', (test) =>
+    Effect.gen(function* () {
+      const testContext = yield* TestContext
+      const backendFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
+      })
+      const pullApplicationControl = testContext.pullApplicationControl
+      assert(pullApplicationControl !== undefined, 'pull application controls were not configured')
+
+      expect(yield* testContext.mockSyncBackend.pullRequests.pipe(Stream.runFirstUnsafe, Effect.timeout(5000))).toEqual(
+        EventSequenceNumber.Client.ROOT.global,
+      )
+
+      const localA1 = testContext.eventFactory.todoCreated.next({
+        id: 'failed-application-local',
+        text: 'local',
+        completed: false,
+      })
+      yield* testContext.pushEncoded(localA1)
+      yield* Deferred.await(pullApplicationControl.pushWaiting).pipe(Effect.timeout(5000))
+
+      const remoteB1 = backendFactory.todoCreated.next({
+        id: 'failed-application-remote',
+        text: 'remote',
+        completed: false,
+      })
+      yield* testContext.mockSyncBackend.advance(remoteB1)
+      yield* Deferred.await(pullApplicationControl.cursorAdvanced).pipe(Effect.timeout(5000))
+      yield* Deferred.await(pullApplicationControl.restartRequested).pipe(Effect.timeout(5000))
+
+      expect(yield* testContext.mockSyncBackend.pullRequestCount).toEqual(1)
+      yield* Deferred.succeed(pullApplicationControl.allowApplication, undefined)
+
+      const shutdownError = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(5000))
+      expect(shutdownError._tag).toEqual('UnknownError')
+      expect(yield* testContext.mockSyncBackend.pullRequestCount).toEqual(1)
+      expect(yield* testContext.mockSyncBackend.activePulls.current).toEqual(0)
+    }).pipe(
+      withTestCtx({
+        mockBackendOptions: { startConnected: true },
+        syncOptions: { onSyncError: 'shutdown' },
+        coordinatePullApplication: true,
+        failCoordinatedPullApplication: true,
+        captureShutdown: true,
+      })(test),
+    ),
+  )
+
   // - test for filtering out local push queue items with an older rebase generation
   //   this can happen in a scenario like this
   //   1) local push events are queued (rebase generation 0) + queue is not yet processed (probably requires delay to simulate)
@@ -788,35 +969,21 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     }).pipe(withTestCtx()(test)),
   )
 
-  // Regression test for push fiber stalling when livePull=false and backend push errors occur
-  Vitest.live('recovers from backend push errors without live pull', (test) =>
+  Vitest.live('does not retry an UnknownError from backend push', (test) =>
     Effect.gen(function* () {
-      const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
       const eventFactory = testContext.eventFactory
 
-      // Make next few pushes fail at the mock backend level
-      yield* testContext.mockSyncBackend.failNextPushes(2)
-
-      // Push a few local events; initial push attempts will fail
+      yield* testContext.mockSyncBackend.failNextPushes(1)
       yield* testContext.pushEncoded(
-        eventFactory.todoCreated.next({ id: 'p1', text: 'a', completed: false }),
-        eventFactory.todoCreated.next({ id: 'p2', text: 'b', completed: false }),
-        eventFactory.todoCreated.next({ id: 'p3', text: 'c', completed: false }),
-        eventFactory.todoCreated.next({ id: 'p4', text: 'd', completed: false }),
+        eventFactory.todoCreated.next({ id: 'unknown', text: 'unknown', completed: false }),
       )
 
-      // Expect all 4 to eventually be pushed to the backend (with timeout to catch stalls)
-      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(4), Stream.runDrain, Effect.timeout(7000))
-
-      // Verify they have been materialized locally as well
-      const result = leaderThreadCtx.dbState.select(tables.todos.asSql().query)
-      expect(result.length).toEqual(4)
-    }).pipe(
-      withTestCtx({ params: { backendPushBatchSize: 2 }, syncOptions: { livePull: false, onSyncError: 'ignore' } })(
-        test,
-      ),
-    ),
+      const shutdownError = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
+      expect(shutdownError._tag).toEqual('UnknownError')
+      expect(yield* testContext.mockSyncBackend.pushAttemptCount).toEqual(1)
+      expect(yield* testContext.mockSyncBackend.storedEvents).toEqual([])
+    }).pipe(withTestCtx({ syncOptions: { livePull: false, onSyncError: 'shutdown' }, captureShutdown: true })(test)),
   )
 
   // Should escalate and shutdown on BackendIdMismatchError when onBackendIdMismatch='shutdown' (legacy behavior)
@@ -999,6 +1166,13 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
 type LeaderEventFactory = ReturnType<typeof makeEventFactory>
 
+interface PullApplicationControl {
+  cursorAdvanced: Deferred.Deferred<void>
+  allowApplication: Deferred.Deferred<void>
+  pushWaiting: Deferred.Deferred<void>
+  restartRequested: Deferred.Deferred<void>
+}
+
 class TestContext extends Context.Service<
   TestContext,
   {
@@ -1006,6 +1180,7 @@ class TestContext extends Context.Service<
     shutdownDeferred: Deferred.Deferred<void, typeof Shutdown.All.Type>
     pullQueue: Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>
     eventFactory: LeaderEventFactory
+    pullApplicationControl: PullApplicationControl | undefined
     /** Equivalent to the ClientSessionSyncProcessor calling `.push` on the LeaderThreadCtx */
     pushEncoded: (
       ...events: ReadonlyArray<LiveStoreEvent.Global.Encoded>
@@ -1021,6 +1196,8 @@ const LeaderThreadCtxLive = ({
   mockBackendOptions,
   seedMockBackend,
   mockBackendOverride,
+  coordinatePullApplication,
+  failCoordinatedPullApplication,
 }: {
   syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor']
   params?: MakeLeaderThreadLayerParams['params']
@@ -1030,9 +1207,21 @@ const LeaderThreadCtxLive = ({
   mockBackendOptions?: MockSyncBackendOptions
   seedMockBackend?: (mockBackend: MockSyncBackend) => Effect.Effect<void>
   mockBackendOverride?: (mock: MockSyncBackend) => SyncBackend.SyncBackendConstructor
+  coordinatePullApplication?: boolean
+  failCoordinatedPullApplication?: boolean
 }) =>
   Effect.gen(function* () {
     const mockSyncBackend = yield* makeMockSyncBackend(mockBackendOptions)
+
+    const pullApplicationControl =
+      coordinatePullApplication === true
+        ? {
+            cursorAdvanced: yield* Deferred.make<void>(),
+            allowApplication: yield* Deferred.make<void>(),
+            pushWaiting: yield* Deferred.make<void>(),
+            restartRequested: yield* Deferred.make<void>(),
+          }
+        : undefined
 
     if (seedMockBackend !== undefined) {
       yield* seedMockBackend(mockSyncBackend)
@@ -1049,6 +1238,28 @@ const LeaderThreadCtxLive = ({
 
     const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
     const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
+    const syncBackendConstructor =
+      pullApplicationControl === undefined
+        ? (mockBackendOverride?.(mockSyncBackend) ?? syncOptions?.backend ?? (() => mockSyncBackend.makeSyncBackend))
+        : () =>
+            Effect.gen(function* () {
+              const syncBackend = yield* mockSyncBackend.makeSyncBackend
+              let interceptNextPush = true
+              return {
+                ...syncBackend,
+                push: (batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>) =>
+                  Effect.gen(function* () {
+                    if (interceptNextPush === false) return yield* syncBackend.push(batch)
+                    interceptNextPush = false
+                    yield* Deferred.succeed(pullApplicationControl.pushWaiting, undefined)
+                    yield* Deferred.await(pullApplicationControl.cursorAdvanced)
+                    return yield* new ServerAheadError({
+                      minimumExpectedNum: EventSequenceNumber.Global.make(2),
+                      providedNum: EventSequenceNumber.Global.make(1),
+                    })
+                  }),
+              }
+            })
     const leaderContextLayer = makeLeaderThreadLayer({
       schema,
       storeId: 'test',
@@ -1057,8 +1268,7 @@ const LeaderThreadCtxLive = ({
       syncPayloadSchema: undefined,
       makeSqliteDb,
       syncOptions: {
-        backend:
-          mockBackendOverride?.(mockSyncBackend) ?? syncOptions?.backend ?? (() => mockSyncBackend.makeSyncBackend),
+        backend: syncBackendConstructor,
         ...omitUndefineds({
           livePull: syncOptions?.livePull,
           onSyncError: syncOptions?.onSyncError,
@@ -1071,7 +1281,25 @@ const LeaderThreadCtxLive = ({
       devtoolsOptions: { enabled: false },
       shutdownChannel: shutdownProxy?.webChannel ?? (yield* WebChannel.noopChannel<any, any>()),
       testing: {
-        ...omitUndefineds({ syncProcessor }),
+        syncProcessor:
+          pullApplicationControl === undefined
+            ? syncProcessor
+            : {
+                ...syncProcessor,
+                hooks: {
+                  ...syncProcessor?.hooks,
+                  backendPullCursorAdvanced: () =>
+                    Effect.gen(function* () {
+                      yield* Deferred.succeed(pullApplicationControl.cursorAdvanced, undefined)
+                      yield* Deferred.await(pullApplicationControl.allowApplication)
+                      if (failCoordinatedPullApplication === true) {
+                        return yield* Effect.die(new Error('simulated canonical pull application failure'))
+                      }
+                    }),
+                  backendPullRestartRequested: () =>
+                    Deferred.succeed(pullApplicationControl.restartRequested, undefined),
+                },
+              },
       },
       ...omitUndefineds({ params }),
     }).pipe(Layer.provide(StateHead.layer({ dbState })), Layer.provide(FetchHttpClient.layer))
@@ -1113,6 +1341,7 @@ const LeaderThreadCtxLive = ({
           shutdownDeferred,
           pullQueue,
           eventFactory,
+          pullApplicationControl,
           pushEncoded,
         }),
       )

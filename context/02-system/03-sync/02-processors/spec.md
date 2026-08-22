@@ -53,11 +53,11 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   leader-side contiguous-chain validation rejects a later suffix that bypasses
   the fence (see resolved
   [DELTA-001](./.delta/DELTA-001-session-rejection-prefix-bypass.md)).
-- **Backend pushing** (`:647-715`): drains
-  `takeBetween(1, backendPushBatchSize)` (default 50, `:215`), pushes
+- **Backend pushing** (`:667-740`): drains
+  `takeBetween(1, backendPushBatchSize)` (default 50, `:227`), pushes
   `toGlobal()` batches. Retry: `Schedule.exponential(1s)` clamped to 30s,
   no jitter, no attempt cap, and only for positively identified connectivity
-  errors (`IsOfflineError`, `:700-708`). `UnknownError` is terminal.
+  errors (`IsOfflineError`, `:724-733`). `UnknownError` is terminal.
   `ServerAheadError` is NOT
   retried in place: it fences that unresolved prefix and requests a fresh
   backend pull from the persisted cursor. Pull confirmation or rebase then
@@ -65,7 +65,7 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   restarts it. A `ServerAheadError` therefore cannot depend on an already-lost
   live publication to wake the push path (see
   [.decisions/0003](./.decisions/0003-active-server-ahead-catchup.md)).
-- **Backend pulling** (`:400-645`): cursor =
+- **Backend pulling** (`:469-665`): cursor =
   `Eventlog.getSyncBackendCursorInfo(remoteHead)` — the persisted backend
   head (`SYNC_STATUS_TABLE.head`) plus provider-opaque `syncMetadataJson`
   (`eventlog.ts:280-300`). Each chunk merges with
@@ -73,8 +73,8 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   current pending, offers the payload to session pull queues, and persists
   sync metadata for confirmed events; rebase additionally rolls back
   state+eventlog rows and re-seeds pushing from rebased pending
-  (`:466-516`). Backend head advances via `Eventlog.updateBackendHead`
-  (`:462-464`). Normal operation and `ServerAheadError` recovery share one
+  (`:547-615`). Backend head advances via `Eventlog.updateBackendHead`
+  (`:540-545`). Normal operation and `ServerAheadError` recovery share one
   pull owner: recovery retires the current pull generation before starting a
   replacement, so repeated recovery requests coalesce rather than create
   overlapping live pulls. Each replacement derives its cursor anew from the
@@ -83,7 +83,8 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   retirement share an explicit coordination boundary: retirement waits until
   the current canonical application completes, and a terminal application
   failure prevents replacement. After a finite pull completes, the owner stays
-  parked so a later `ServerAheadError` can start a new generation.
+  parked so a later `ServerAheadError` can start a new generation
+  (`:838-915`).
 - **Pull precedence** (`:241, 393, 408-438`): a 1-permit semaphore
   (`localPushBackendPullMutex`) makes local-push application and pull-chunk
   application mutually exclusive; the pull side holds the permit for a
