@@ -71,6 +71,16 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   state+eventlog rows and re-seeds pushing from rebased pending
   (`:466-516`). Backend head advances via `Eventlog.updateBackendHead`
   (`:462-464`).
+- **Poison fence:** applying a non-empty pull chunk first pauses backend
+  pushing. State rollback/materialization, eventlog writes, changesets, sync
+  metadata, and the persisted backend cursor then share one rollback boundary.
+  Only after that boundary commits does the processor publish sync state,
+  notify sessions, and resume backend pushing. A known-payload decode failure,
+  materializer evaluation/hash failure, or SQLite mutation failure wraps the
+  failing canonical event and last-valid head in a structured poisoned-event
+  diagnostic. The pull worker does not retry the unchanged event, backend
+  pushing remains fenced, and Store lifecycle supervision shuts the Store down
+  regardless of `onSyncError: 'ignore'` (LS.SYS.SYNC.PROC-R05/R06).
 - **Pull precedence** (`:241, 393, 408-438`): a 1-permit semaphore
   (`localPushBackendPullMutex`) makes local-push application and pull-chunk
   application mutually exclusive; the pull side holds the permit for a
@@ -89,6 +99,9 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   (`../../04-runtime/spec.md` Leadership Handover); error routing via
   `onError: ignore|shutdown` and `BackendIdMismatchError` handling
   (`reset|shutdown|ignore`; reset clears local databases, `:1060-1123`).
+  Generic ignored failures may be logged without shutting down, but a poisoned
+  canonical event is never ignored: it is a terminal supervised lifecycle
+  failure so no Store remains apparently healthy with dead sync workers.
 
 ## Client Session Sync Processor
 
