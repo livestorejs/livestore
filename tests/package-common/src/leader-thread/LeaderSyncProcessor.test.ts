@@ -1123,6 +1123,78 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   {
     const terminalWorker = Deferred.makeUnsafe<string>()
 
+    Vitest.live('ServerAhead catch-up replaces a parked backend pull', (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+
+        expect(yield* Deferred.await(terminalWorker)).toBe('backend-pull')
+        expect(
+          yield* testContext.mockSyncBackend.pullRequests.pipe(Stream.runFirstUnsafe, Effect.timeout(5000)),
+        ).toEqual(EventSequenceNumber.Client.ROOT.global)
+
+        const localEvent = testContext.eventFactory.todoCreated.next({
+          id: 'local-after-park',
+          text: 'local-after-park',
+          completed: false,
+        })
+        yield* testContext.pushEncoded(localEvent)
+
+        // The backend already contains e1, so the stale e1 push requests ServerAhead catch-up.
+        // The persistent pull owner replaces the parked generation from its still-authoritative root cursor.
+        expect(
+          yield* testContext.mockSyncBackend.pullRequests.pipe(Stream.runFirstUnsafe, Effect.timeout(5000)),
+        ).toEqual(EventSequenceNumber.Client.ROOT.global)
+
+        const recoveredPush = yield* testContext.mockSyncBackend.pushedEvents.pipe(
+          Stream.runFirstUnsafe,
+          Effect.timeout(5000),
+        )
+        expect(recoveredPush.args).toEqual(localEvent.args)
+
+        yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+          Stream.filter((state) => state.upstreamHead.global === 2 && state.pending.length === 0),
+          Stream.runFirstUnsafe,
+          Effect.timeout(5000),
+        )
+
+        expect(yield* testContext.mockSyncBackend.pullRequestCount).toBe(2)
+        expect(yield* testContext.mockSyncBackend.activePulls.maximum).toBe(1)
+        expect(yield* Deferred.isDone(testContext.shutdownDeferred)).toBe(false)
+      }).pipe(
+        withTestCtx({
+          mockBackendOptions: { startConnected: true },
+          syncOptions: { livePull: true, onSyncError: 'ignore' },
+          captureShutdown: true,
+          seedMockBackend: (mockBackend) => {
+            const backendFactory = makeEventFactory({
+              client: EventFactory.clientIdentity('parked-pull-backend', 'recovery-session'),
+            })
+            return Effect.gen(function* () {
+              yield* mockBackend.advanceWithoutPublication(
+                backendFactory.todoCreated.next({ id: 'remote', text: 'remote', completed: false }),
+              )
+              yield* mockBackend.failNextPulls(
+                1,
+                () => new UnknownError({ cause: new Error('simulated unclassified pull failure') }),
+              )
+            })
+          },
+          testing: {
+            syncProcessor: {
+              hooks: {
+                workerTerminal: ({ worker }) => Deferred.succeed(terminalWorker, worker),
+              },
+            },
+          },
+        })(test),
+      ),
+    )
+  }
+
+  {
+    const terminalWorker = Deferred.makeUnsafe<string>()
+
     Vitest.live('replaces a parked backend push after pull reconciliation', (test) =>
       Effect.gen(function* () {
         const testContext = yield* TestContext
@@ -1356,7 +1428,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
   // NOTE: Pull path test is skipped because the MockSyncBackend's failNextPulls works on the
   // initial pull, not on live pulls after advance. The core functionality for handling
-  // BackendIdMismatchError is shared with the push path via maybeShutdownOnError.
+  // BackendIdMismatchError is shared with the push path via the dedicated backend-identity policy.
   // The real pull scenario is tested in integration tests with actual sync providers.
   Vitest.live.skip('clears databases on BackendIdMismatchError pull with reset', (test) =>
     Effect.gen(function* () {

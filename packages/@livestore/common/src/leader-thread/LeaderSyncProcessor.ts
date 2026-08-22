@@ -822,29 +822,28 @@ export const make = Effect.fnUntraced(function* ({
        * of completing its fiber, leaving its uncertain prefix available to an existing recovery path.
        */
       const superviseTerminalWorker =
-        (worker: SyncWorker) =>
-        (cause: Cause.Cause<BackendIdMismatchError | UnknownError | MaterializeError>) =>
-        Effect.gen(function* () {
-          if (Cause.hasInterruptsOnly(cause) === true) return
+        (worker: SyncWorker) => (cause: Cause.Cause<BackendIdMismatchError | UnknownError | MaterializeError>) =>
+          Effect.gen(function* () {
+            if (Cause.hasInterruptsOnly(cause) === true) return
 
-          if (testing.hooks?.workerTerminal !== undefined) {
-            yield* testing.hooks.workerTerminal({ worker, cause })
-          }
+            if (testing.hooks?.workerTerminal !== undefined) {
+              yield* testing.hooks.workerTerminal({ worker, cause })
+            }
 
-          if (onError === 'ignore') {
-            yield* Effect.logError(
-              `Sync ${worker} worker parked after terminal failure (${Option.getOrUndefined(Cause.findErrorOption(cause))?._tag ?? cause.toString()})`,
-              Cause.pretty(cause),
-            )
-            return yield* Effect.never
-          }
+            if (onError === 'ignore') {
+              yield* Effect.logError(
+                `Sync ${worker} worker parked after terminal failure (${Option.getOrUndefined(Cause.findErrorOption(cause))?._tag ?? cause.toString()})`,
+                Cause.pretty(cause),
+              )
+              return yield* Effect.never
+            }
 
-          const error = Option.getOrUndefined(Cause.findErrorOption(cause))
-          const errorToSend = error === undefined ? UnknownError.make({ cause }) : error
-          yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
+            const error = Option.getOrUndefined(Cause.findErrorOption(cause))
+            const errorToSend = error === undefined ? UnknownError.make({ cause }) : error
+            yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
 
-          return yield* Effect.failCause(cause).pipe(Effect.orDie)
-        })
+            return yield* Effect.failCause(cause).pipe(Effect.orDie)
+          })
 
       yield* backgroundApplyLocalPushes.pipe(
         Effect.catchCause(superviseTerminalWorker('local-apply')),

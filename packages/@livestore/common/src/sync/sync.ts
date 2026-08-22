@@ -11,13 +11,14 @@ export type SyncOptions<TPayload = Schema.Json> = {
   /** @default { _tag: 'Skip' } */
   initialSyncOptions?: InitialSyncOptions
   /**
-   * What to do if there is an error during sync.
+   * What to do for a generic terminal error during sync. More-specific failure
+   * families may define a higher-priority lifecycle policy.
    *
    * Options:
    * `shutdown` will stop the sync processor and cause the app to crash.
-   * `ignore` will log the error, park the affected sync worker with its unresolved work intact,
-   * and let the app continue running. An existing protocol recovery path may replace the worker;
-   * the terminal failure itself is not retried automatically.
+   * `ignore` will log the generic error, park the affected sync worker with its unresolved work
+   * intact, and let the app continue running. An existing protocol recovery path may replace the
+   * worker; the terminal failure itself is not retried automatically.
    *
    * @default 'ignore'
    * */
