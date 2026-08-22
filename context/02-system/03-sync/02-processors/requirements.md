@@ -17,10 +17,15 @@ Builds on [../requirements.md](../requirements.md) and
 
 - **LS.SYS.SYNC.PROC-R01 Bounded transient-only retry:** Backend pushes are
   batch-bounded and retried with capped exponential backoff only on
-  transient errors (offline/unknown); `ServerAheadError` is never retried in
-  place — the push fiber parks and yields to the pull-driven rebase restart
-  (spec: [Leader Sync Processor](./spec.md#leader-sync-processor)). Adopted
-  2026-07-16 (interview). `refines: LS.SYS.SYNC-R03`
+  positively identified retryable failures (`IsOfflineError` today).
+  `UnknownError` is terminal rather than a transient signal;
+  `ServerAheadError` is never retried in place and yields to pull-driven
+  reconciliation (spec: [Leader Sync
+  Processor](./spec.md#leader-sync-processor)). Retry schedules remain owned by
+  the processor rather than application configuration. Adopted 2026-07-16
+  (interview); recovery taxonomy clarified 2026-08-22 (#1577, [decision
+  0004](./.decisions/0004-supervised-sync-failures.md)).
+  `refines: LS.SYS.SYNC-R03`
 - **LS.SYS.SYNC.PROC-R02 Pull precedence:** Backend-pull application and
   local-push application are mutually exclusive, and the pull side takes
   precedence when both contend (spec: [Leader Sync
@@ -50,6 +55,18 @@ Builds on [../requirements.md](../requirements.md) and
   evidence and maintainer review; see
   [decision 0001](./.decisions/0001-prefix-fence-unresolved-upstream.md).
   `refines: LS.SYS.SYNC.SS-R03, LS.SYS.STORE-R04`
+- **LS.SYS.SYNC.PROC-R05 Supervised worker termination:** The leader's backend
+  push, backend pull, and local-apply workers never return unnoticed after a
+  terminal failure. With `onSyncError: 'shutdown'`, the failure terminates the
+  Store. With `onSyncError: 'ignore'`, the processor logs the cause and holds
+  the affected worker in an explicit terminal parked state until scope shutdown
+  or an existing protocol recovery path replaces it. Recovery reconstructs
+  work from authoritative processor state; it never acknowledges or drops an
+  uncertain prefix and never converts a terminal failure into an implicit retry.
+  This supervision is internal and does not require an application-facing sync
+  state machine or per-commit receipt API. Adopted 2026-08-22 (#1577, [decision
+  0004](./.decisions/0004-supervised-sync-failures.md)).
+  `refines: LS.SYS.SYNC-R03, LS.SYS.SYNC.PROC-R04`
 
 Further processor requirements (e.g. the crash-atomicity contract of batch
 materialization) remain open pending `LS.SYS.STATE-DQ2`;

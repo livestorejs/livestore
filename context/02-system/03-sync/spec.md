@@ -68,9 +68,17 @@ SyncBackend = {
 | Family | Members | Recovery |
 | --- | --- | --- |
 | `RejectedPushError` (leader push validation) | `NonMonotonicBatchError`, `StaleRebaseGenerationError`, `LeaderAheadError` | rebase and retry |
-| Backend | `IsOfflineError`, `BackendIdMismatchError`, `ServerAheadError` | wait/reconnect; `ServerAheadError` yields to the pull-driven rebase ([02-processors](./02-processors/spec.md)) |
+| Retryable connectivity | `IsOfflineError` | retry with the processor-owned reconnect schedule |
+| Reconciliation | `ServerAheadError` | yield to the pull-driven rebase; never retry the stale batch in place ([02-processors](./02-processors/spec.md)) |
+| Backend identity | `BackendIdMismatchError` | apply the configured reset, shutdown, or terminal-ignore policy |
 | Transport | `OversizeChunkItemError` | surface (payload cannot be chunked) |
-| Defects | `UnknownError` | surface, don't retry |
+| Unclassified defect | `UnknownError` | terminal; surface or park according to `onSyncError`, never retry automatically |
+
+The taxonomy is recovery evidence, not a provider convenience. A transport may
+map a failure to `IsOfflineError` only when it can positively identify lost
+connectivity. Authorization, rate-limit, protocol, malformed-response, storage,
+and unexpected failures must not be collapsed into the retryable family.
+Providers that cannot classify a failure preserve it as `UnknownError`.
 
 ## Next-Gen Sync
 

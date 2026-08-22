@@ -29,10 +29,13 @@ ID note: former LS.SYS.SYNC-R02…R05 moved to LS.SYS.SYNC.SS-R01…R04 when
   `connect/pull/push/ping` plus connectivity signal, capability flags, and
   metadata against the schema-defined event encoding — nothing else about
   the engine. `refines: LS-R08`
-- **LS.SYS.SYNC-R03 Typed failure taxonomy:** Push rejection and backend
-  failures are tagged error families with a uniform recovery rule (rebase
-  and retry); defects stay distinguishable from expected sync conditions
-  like being offline. `refines: LS.SYS-R03`
+- **LS.SYS.SYNC-R03 Recovery-classified failure taxonomy:** Sync failures are
+  tagged by the recovery the processor can justify. Only positively identified
+  retryable failures are retried automatically; reconciliation signals,
+  backend-identity mismatches, terminal payload failures, and unclassified
+  defects remain distinguishable and follow their own recovery paths.
+  `UnknownError` is the unclassified terminal family, never evidence that an
+  operation is safe to retry. `refines: LS.SYS-R03`
 - **LS.SYS.SYNC-R04 Bounded transport batches:** Providers bound push/pull
   batches (≤100 events per message at the Cloudflare transports) and chunk
   oversized payloads below the transport frame limit; batches are strictly
