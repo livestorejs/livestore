@@ -10,6 +10,11 @@
 
 ### Changed
 
+- **Sync recovery:** A leader that receives `ServerAheadError` now actively
+  restarts backend pull from its persisted cursor. Accepted pushes whose live
+  publication was lost can be confirmed or rebased without permanently
+  blocking later pending events
+  ([#1462](https://github.com/livestorejs/livestore/issues/1462)).
 - **Cloudflare sync:** Serialize push admission through pull publication so an
   accepted event cannot advance the backend head without notifying subscribers
   ([#1537](https://github.com/livestorejs/livestore/pull/1537)).

@@ -18,10 +18,27 @@ import { validatePushPayload } from './validate-push-payload.ts'
 
 export interface MockSyncBackend {
   pushedEvents: Stream.Stream<LiveStoreEvent.Global.Encoded>
+  /** Every push attempt, including batches rejected before persistence. */
+  pushAttempts: Stream.Stream<ReadonlyArray<LiveStoreEvent.Global.Encoded>>
+  /** Cursor position used by each evaluated pull stream. */
+  pullRequests: Stream.Stream<EventSequenceNumber.Global.Type>
+  /** Cursor position of each finite pull after its stream has completed. */
+  completedPulls: Stream.Stream<EventSequenceNumber.Global.Type>
+  activePulls: {
+    current: Effect.Effect<number>
+    maximum: Effect.Effect<number>
+  }
+  pullRequestCount: Effect.Effect<number>
+  pushAttemptCount: Effect.Effect<number>
+  storedEvents: Effect.Effect<ReadonlyArray<LiveStoreEvent.Global.Encoded>>
   connect: Effect.Effect<void>
   disconnect: Effect.Effect<void>
   makeSyncBackend: Effect.Effect<SyncBackend.SyncBackend, UnknownError, Scope.Scope>
   advance: (...batch: LiveStoreEvent.Global.Encoded[]) => Effect.Effect<void>
+  /** Persist backend events without publishing them to currently active pulls. */
+  advanceWithoutPublication: (...batch: LiveStoreEvent.Global.Encoded[]) => Effect.Effect<void>
+  /** Persist the next N successful pushes but omit their live pull publication. */
+  dropNextPushPublications: (count: number) => Effect.Effect<void>
   /** Fail the next N push calls with an UnknownError, ServerAheadError, BackendIdMismatchError, or custom error */
   failNextPushes: (
     count: number,
@@ -55,10 +72,18 @@ export const makeMockSyncBackend = (
     const syncHeadRef = yield* Ref.make(EventSequenceNumber.Client.ROOT.global)
     const allEventsRef = yield* Ref.make<LiveStoreEvent.Global.Encoded[]>([])
     const syncIsConnectedRef = yield* SubscriptionRef.make(options?.startConnected ?? false)
+    const droppedPushPublicationsRef = yield* Ref.make(0)
+    const activePullCountRef = yield* Ref.make(0)
+    const maximumActivePullCountRef = yield* Ref.make(0)
+    const pullRequestCountRef = yield* Ref.make(0)
+    const pushAttemptCountRef = yield* Ref.make(0)
 
     // Queues for streaming
     const syncPullQueues = new Set<Queue.Queue<LiveStoreEvent.Global.Encoded>>()
     const pushedEventsQueue = yield* Queue.unbounded<LiveStoreEvent.Global.Encoded>()
+    const pushAttemptsQueue = yield* Queue.unbounded<ReadonlyArray<LiveStoreEvent.Global.Encoded>>()
+    const pullRequestsQueue = yield* Queue.unbounded<EventSequenceNumber.Global.Type>()
+    const completedPullsQueue = yield* Queue.unbounded<EventSequenceNumber.Global.Type>()
 
     yield* Effect.addFinalizer(() =>
       Effect.gen(function* () {
@@ -124,36 +149,51 @@ export const makeMockSyncBackend = (
       )
 
     const makeSyncBackend = Effect.gen(function* () {
-      // Every backend connection needs its own live cursor. A shared queue would
-      // load-balance events across Clients instead of broadcasting the log.
-      const syncPullQueue = yield* Effect.acquireRelease(
-        Queue.unbounded<LiveStoreEvent.Global.Encoded>(),
-        Queue.shutdown,
-      )
-      yield* semaphore.withPermits(1)(
-        Effect.gen(function* () {
-          const existingEvents = yield* Ref.get(allEventsRef)
-          syncPullQueues.add(syncPullQueue)
-          yield* Queue.offerAll(syncPullQueue, existingEvents)
-        }),
-      )
-      yield* Effect.addFinalizer(() => Effect.sync(() => syncPullQueues.delete(syncPullQueue)))
+      // A live subscription belongs to one evaluated pull, not the backend object. Restarting
+      // pull must therefore allocate a fresh subscriber and replay the cursor-to-head snapshot.
+      const pullLive = (cursor: Option.Option<{ eventSequenceNumber: EventSequenceNumber.Global.Type }>) =>
+        Stream.unwrap(
+          Effect.gen(function* () {
+            const lastSeen = cursorPosition(cursor)
+            const syncPullQueue = yield* Effect.acquireRelease(
+              Effect.gen(function* () {
+                const queue = yield* Queue.unbounded<LiveStoreEvent.Global.Encoded>()
+                yield* semaphore.withPermits(1)(
+                  Effect.gen(function* () {
+                    const existingEvents = yield* Ref.get(allEventsRef)
+                    syncPullQueues.add(queue)
+                    const activePullCount = yield* Ref.updateAndGet(activePullCountRef, (count) => count + 1)
+                    yield* Ref.update(maximumActivePullCountRef, (maximum) => Math.max(maximum, activePullCount))
+                    yield* Queue.offerAll(
+                      queue,
+                      existingEvents.filter((event) => event.seqNum > lastSeen),
+                    )
+                  }),
+                )
+                return queue
+              }),
+              (queue) =>
+                semaphore.withPermits(1)(
+                  Effect.gen(function* () {
+                    syncPullQueues.delete(queue)
+                    yield* Ref.update(activePullCountRef, (count) => count - 1)
+                    yield* Queue.shutdown(queue)
+                  }),
+                ),
+            )
 
-      const pullLive = (cursor: Option.Option<{ eventSequenceNumber: EventSequenceNumber.Global.Type }>) => {
-        const lastSeen = cursorPosition(cursor)
-        return Stream.concat(
-          Stream.make(SyncBackend.pullResItemEmpty()),
-          Stream.fromQueue(syncPullQueue).pipe(
-            Stream.chunks,
-            Stream.map((chunk) => ({
-              batch: [...chunk]
-                .filter((eventEncoded) => eventEncoded.seqNum > lastSeen)
-                .map((eventEncoded) => ({ eventEncoded, metadata: Option.none() })),
-              pageInfo: SyncBackend.pageInfoNoMore,
-            })),
-          ),
+            return Stream.concat(
+              Stream.make(SyncBackend.pullResItemEmpty()),
+              Stream.fromQueue(syncPullQueue).pipe(
+                Stream.chunks,
+                Stream.map((chunk) => ({
+                  batch: [...chunk].map((eventEncoded) => ({ eventEncoded, metadata: Option.none() })),
+                  pageInfo: SyncBackend.pageInfoNoMore,
+                })),
+              ),
+            )
+          }),
         )
-      }
 
       // TODO consider making offline state actively error pull/push.
       // Currently, offline only reflects in `isConnected`, while operations still succeed,
@@ -164,16 +204,30 @@ export const makeMockSyncBackend = (
         ping: Effect.void,
         pull: (cursor, pullOptions) =>
           Stream.fromEffect(
-            checkFailure(
-              failPullRef,
-              new UnknownError({ cause: new Error('MockSyncBackend: simulated pull failure') }),
-            ),
+            Effect.all([
+              Ref.update(pullRequestCountRef, (count) => count + 1),
+              Queue.offer(pullRequestsQueue, cursorPosition(cursor)),
+            ]),
           ).pipe(
-            Stream.flatMap(() => (pullOptions?.live === true ? pullLive(cursor) : pullNonLive(cursor))),
+            Stream.tap(() =>
+              checkFailure(
+                failPullRef,
+                new UnknownError({ cause: new Error('MockSyncBackend: simulated pull failure') }),
+              ),
+            ),
+            Stream.flatMap(() =>
+              pullOptions?.live === true
+                ? pullLive(cursor)
+                : pullNonLive(cursor).pipe(
+                    Stream.ensuring(Queue.offer(completedPullsQueue, cursorPosition(cursor)).pipe(Effect.asVoid)),
+                  ),
+            ),
             Stream.withSpan('MockSyncBackend:pull', { parent: span }),
           ),
         push: (batch) =>
           Effect.gen(function* () {
+            yield* Ref.update(pushAttemptCountRef, (count) => count + 1)
+            yield* Queue.offer(pushAttemptsQueue, batch)
             const currentHead = yield* Ref.get(syncHeadRef)
             yield* validatePushPayload(batch, currentHead)
 
@@ -185,13 +239,16 @@ export const makeMockSyncBackend = (
 
             yield* Effect.sleep(10).pipe(Effect.withSpan('MockSyncBackend:push:sleep')) // Simulate network latency
 
-            yield* Queue.offerAll(pushedEventsQueue, batch)
-            yield* Effect.forEach(syncPullQueues, (queue) => Queue.offerAll(queue, batch), {
-              concurrency: 'unbounded',
-              discard: true,
-            })
             yield* Ref.update(allEventsRef, (events) => events.concat(batch))
             yield* Ref.set(syncHeadRef, batch.at(-1)!.seqNum)
+            yield* Queue.offerAll(pushedEventsQueue, batch)
+
+            const publish = yield* Ref.modify(droppedPushPublicationsRef, (remaining) =>
+              remaining > 0 ? [false, remaining - 1] : [true, remaining],
+            )
+            if (publish === true) {
+              yield* publishToActivePulls(syncPullQueues, batch)
+            }
           }).pipe(
             Effect.withSpan('MockSyncBackend:push', {
               parent: span,
@@ -210,14 +267,11 @@ export const makeMockSyncBackend = (
       })
     })
 
-    const advance = (...batch: LiveStoreEvent.Global.Encoded[]) =>
+    const advanceBatch = (batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>, publish: boolean) =>
       Effect.gen(function* () {
         yield* Ref.set(syncHeadRef, batch.at(-1)!.seqNum)
         yield* Ref.update(allEventsRef, (events) => events.concat(batch))
-        yield* Effect.forEach(syncPullQueues, (queue) => Queue.offerAll(queue, batch), {
-          concurrency: 'unbounded',
-          discard: true,
-        })
+        if (publish === true) yield* publishToActivePulls(syncPullQueues, batch)
       }).pipe(
         Effect.withSpan('MockSyncBackend:advance', {
           parent: span,
@@ -225,6 +279,12 @@ export const makeMockSyncBackend = (
         }),
         semaphore.withPermits(1),
       )
+
+    const advance = (...batch: LiveStoreEvent.Global.Encoded[]) => advanceBatch(batch, true)
+
+    const advanceWithoutPublication = (...batch: LiveStoreEvent.Global.Encoded[]) => advanceBatch(batch, false)
+
+    const dropNextPushPublications = (count: number) => Ref.set(droppedPushPublicationsRef, Math.max(0, count))
 
     const failNextPushes = (
       count: number,
@@ -238,10 +298,22 @@ export const makeMockSyncBackend = (
 
     return {
       pushedEvents: Stream.fromQueue(pushedEventsQueue),
+      pushAttempts: Stream.fromQueue(pushAttemptsQueue),
+      pullRequests: Stream.fromQueue(pullRequestsQueue),
+      completedPulls: Stream.fromQueue(completedPullsQueue),
+      activePulls: {
+        current: Ref.get(activePullCountRef),
+        maximum: Ref.get(maximumActivePullCountRef),
+      },
+      pullRequestCount: Ref.get(pullRequestCountRef),
+      pushAttemptCount: Ref.get(pushAttemptCountRef),
+      storedEvents: Ref.get(allEventsRef),
       connect: SubscriptionRef.set(syncIsConnectedRef, true),
       disconnect: SubscriptionRef.set(syncIsConnectedRef, false),
       makeSyncBackend,
       advance,
+      advanceWithoutPublication,
+      dropNextPushPublications,
       failNextPushes,
       failNextPulls,
     }
@@ -270,3 +342,12 @@ const chunkEvents = (events: ReadonlyArray<LiveStoreEvent.Global.Encoded>, chunk
   if (chunks.length === 0) chunks.push({ events: [], remaining: 0 })
   return chunks
 }
+
+const publishToActivePulls = (
+  syncPullQueues: ReadonlySet<Queue.Queue<LiveStoreEvent.Global.Encoded>>,
+  batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>,
+) =>
+  Effect.forEach(syncPullQueues, (queue) => Queue.offerAll(queue, batch), {
+    concurrency: 'unbounded',
+    discard: true,
+  })

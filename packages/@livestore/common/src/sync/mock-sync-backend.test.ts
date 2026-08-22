@@ -66,6 +66,28 @@ Vitest.describe('makeMockSyncBackend', () => {
       Vitest.expect((yield* Fiber.join(pull)).batch.map((entry) => entry.eventEncoded)).toEqual([next])
     }),
   )
+
+  Vitest.live('a replacement live pull snapshots pushes whose publication was dropped', () =>
+    Effect.gen(function* () {
+      const mockBackend = yield* makeMockSyncBackend({ startConnected: true })
+      const backend = yield* mockBackend.makeSyncBackend
+      const firstPull = yield* backend.pull(Option.none(), { live: true }).pipe(Stream.runDrain, Effect.forkScoped)
+
+      yield* mockBackend.pullRequests.pipe(Stream.runFirstUnsafe)
+      yield* mockBackend.dropNextPushPublications(1)
+      const event = makeEvent(1)
+      yield* backend.push([event])
+      yield* Fiber.interrupt(firstPull)
+
+      const replacementItem = yield* backend.pull(Option.none(), { live: true }).pipe(
+        Stream.filter((item) => item.batch.length > 0),
+        Stream.runFirstUnsafe,
+      )
+
+      Vitest.expect(replacementItem.batch.map((entry) => entry.eventEncoded)).toEqual([event])
+      Vitest.expect(yield* mockBackend.activePulls.maximum).toEqual(1)
+    }),
+  )
 })
 
 const makeEvent = (seqNum: number): LiveStoreEvent.Global.Encoded => ({

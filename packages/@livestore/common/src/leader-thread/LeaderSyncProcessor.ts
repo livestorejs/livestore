@@ -10,11 +10,13 @@ import {
   Duration,
   Effect,
   Exit,
+  Fiber,
   FiberHandle,
   Layer,
   Option,
   Predicate,
   Queue,
+  Ref,
   ReadonlyArray,
   References,
   Result,
@@ -200,6 +202,8 @@ interface Options {
     }
     readonly hooks?: {
       readonly localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
+      readonly backendPullCursorAdvanced?: (head: EventSequenceNumber.Client.Composite) => Effect.Effect<void>
+      readonly backendPullRestartRequested?: () => Effect.Effect<void>
     }
   }
 }
@@ -217,6 +221,8 @@ export const make = Effect.fnUntraced(function* ({
 }: Options) {
   const stateHead = yield* StateHead.StateHead
   const syncBackendPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
+  // One pending restart request is enough; extra requests can be dropped until it is handled.
+  const backendPullRestartQueue = yield* TxQueue.dropping<void>(1)
   const localPushBatchSize = params.localPushBatchSize ?? 10
   const backendPushBatchSize = params.backendPushBatchSize ?? 50
 
@@ -248,6 +254,10 @@ export const make = Effect.fnUntraced(function* ({
   const reservedLocalPushItems = new Set<LocalPushQueueItem>()
   // Ensures mutual exclusion between local push and backend pull processing.
   const localPushBackendPullMutex = yield* Semaphore.make(1)
+  // Pull replacement may interrupt transport work, but never canonical application. This poison-agnostic
+  // boundary also preserves the original application failure when retirement and failure race.
+  const backendPullApplicationFence = yield* Semaphore.make(1)
+  const backendPullRetirementRequested = yield* Ref.make(false)
   // Serializes validation, queue admission, and prefix-fence reconciliation.
   const pushAdmissionSemaphore = yield* Semaphore.make(1)
 
@@ -499,100 +509,113 @@ export const make = Effect.fnUntraced(function* ({
           pullMutexHeld = true
         }
 
-        const chunkExit = yield* Effect.gen(function* () {
-          const syncState = yield* Effect.fromNullishOr(yield* SubscriptionRef.get(syncStateSref)).pipe(
-            Effect.orDieDebugger,
-          )
+        const chunkExit = yield* backendPullApplicationFence
+          .withPermits(1)(
+            Effect.gen(function* () {
+              // Once retirement is requested, no new canonical application may begin. An application
+              // that entered before the flag was set is allowed to finish and retain its real exit.
+              if ((yield* Ref.get(backendPullRetirementRequested)) === true) return yield* Effect.interrupt
 
-          yield* Effect.annotateCurrentSpan({
-            'merge.newEventsCount': newEvents.length,
-            ...(TRACE_VERBOSE === true ? { 'merge.newEvents': jsonStringify(newEvents) } : {}),
-          })
-
-          const mergeResult = yield* SyncState.merge({
-            syncState,
-            payload: SyncState.PayloadUpstreamAdvance.make({ newEvents }),
-            isClientOnlyEvent,
-            isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-            ignoreClientOnlyEvents: true,
-          })
-
-          if (mergeResult._tag === 'reject') {
-            return yield* Effect.dieDebugger('The leader thread should never reject upstream advances')
-          }
-
-          const newBackendHead = newEvents.at(-1)!.seqNum
-
-          Eventlog.updateBackendHead(dbEventlog, newBackendHead)
-
-          if (mergeResult._tag === 'rebase') {
-            yield* Effect.spanEvent(`pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`, {
-              newEventsCount: newEvents.length,
-              ...(TRACE_VERBOSE === true ? { newEvents: jsonStringify(newEvents) } : {}),
-              rollbackCount: mergeResult.rollbackEvents.length,
-              ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
-            })
-
-            const globalOrUnknownRebasedPendingEvents = mergeResult.newSyncState.pending.filter(
-              (e) => !isClientOnlyEvent(e),
-            )
-            yield* restartBackendPushing(globalOrUnknownRebasedPendingEvents)
-
-            if (mergeResult.rollbackEvents.length > 0) {
-              yield* rollback({
-                dbState: db,
-                dbEventlog,
-                eventNumsToRollback: mergeResult.rollbackEvents.map((_) => _.seqNum),
-              })
-              yield* stateHead
-                .set(mergeResult.rollbackEvents[0]!.parentSeqNum)
-                .pipe(Effect.mapError((cause) => MaterializeError.make({ cause })))
-            }
-
-            yield* connectedClientSessionPullQueues.offer({
-              payload: SyncState.payloadFromMergeResult(mergeResult),
-              leaderHead: mergeResult.newSyncState.localHead,
-            })
-          } else {
-            yield* Effect.spanEvent(`pull:advance`, {
-              newEventsCount: newEvents.length,
-              ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
-            })
-
-            // Ensure push fiber is active after advance by restarting with current pending (non-client-only) events
-            const globalOrUnknownPendingEvents = mergeResult.newSyncState.pending.filter((e) => !isClientOnlyEvent(e))
-            yield* restartBackendPushing(globalOrUnknownPendingEvents)
-
-            yield* connectedClientSessionPullQueues.offer({
-              payload: SyncState.payloadFromMergeResult(mergeResult),
-              leaderHead: mergeResult.newSyncState.localHead,
-            })
-
-            if (mergeResult.confirmedEvents.length > 0) {
-              // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
-              // `newEvents` instead which we filter via `mergeResult.confirmedEvents`
-              const confirmedNewEvents = newEvents.filter((event) =>
-                mergeResult.confirmedEvents.some((confirmedEvent) =>
-                  EventSequenceNumber.Client.isEqual(event.seqNum, confirmedEvent.seqNum),
-                ),
+              const syncState = yield* Effect.fromNullishOr(yield* SubscriptionRef.get(syncStateSref)).pipe(
+                Effect.orDieDebugger,
               )
-              yield* Eventlog.updateSyncMetadata(confirmedNewEvents).pipe(Effect.orDieDebugger)
-            }
-          }
 
-          // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
-          trimChangesetRows(db, newBackendHead)
+              yield* Effect.annotateCurrentSpan({
+                'merge.newEventsCount': newEvents.length,
+                ...(TRACE_VERBOSE === true ? { 'merge.newEvents': jsonStringify(newEvents) } : {}),
+              })
 
-          // The backend merge may advance or rebase the authoritative head. Realign the admission
-          // fence now so newly arriving pushes are validated against that history, not the pre-pull head.
-          yield* reconcilePushHead(mergeResult.newSyncState.localHead)
+              const mergeResult = yield* SyncState.merge({
+                syncState,
+                payload: SyncState.PayloadUpstreamAdvance.make({ newEvents }),
+                isClientOnlyEvent,
+                isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+                ignoreClientOnlyEvents: true,
+              })
 
-          // Apply the merged events to storage before publishing the new sync state below, so readers
-          // cannot observe a leader head whose events have not yet been materialized.
-          yield* materializeEventsBatch({ batchItems: mergeResult.newEvents })
+              if (mergeResult._tag === 'reject') {
+                return yield* Effect.dieDebugger('The leader thread should never reject upstream advances')
+              }
 
-          yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
-        }).pipe(Effect.exit)
+              const newBackendHead = newEvents.at(-1)!.seqNum
+
+              Eventlog.updateBackendHead(dbEventlog, newBackendHead)
+              if (testing.hooks?.backendPullCursorAdvanced !== undefined) {
+                yield* testing.hooks.backendPullCursorAdvanced(newBackendHead)
+              }
+
+              if (mergeResult._tag === 'rebase') {
+                yield* Effect.spanEvent(`pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`, {
+                  newEventsCount: newEvents.length,
+                  ...(TRACE_VERBOSE === true ? { newEvents: jsonStringify(newEvents) } : {}),
+                  rollbackCount: mergeResult.rollbackEvents.length,
+                  ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+                })
+
+                const globalOrUnknownRebasedPendingEvents = mergeResult.newSyncState.pending.filter(
+                  (e) => !isClientOnlyEvent(e),
+                )
+                yield* restartBackendPushing(globalOrUnknownRebasedPendingEvents)
+
+                if (mergeResult.rollbackEvents.length > 0) {
+                  yield* rollback({
+                    dbState: db,
+                    dbEventlog,
+                    eventNumsToRollback: mergeResult.rollbackEvents.map((_) => _.seqNum),
+                  })
+                  yield* stateHead
+                    .set(mergeResult.rollbackEvents[0]!.parentSeqNum)
+                    .pipe(Effect.mapError((cause) => MaterializeError.make({ cause })))
+                }
+
+                yield* connectedClientSessionPullQueues.offer({
+                  payload: SyncState.payloadFromMergeResult(mergeResult),
+                  leaderHead: mergeResult.newSyncState.localHead,
+                })
+              } else {
+                yield* Effect.spanEvent(`pull:advance`, {
+                  newEventsCount: newEvents.length,
+                  ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+                })
+
+                // Ensure push fiber is active after advance by restarting with current pending (non-client-only) events
+                const globalOrUnknownPendingEvents = mergeResult.newSyncState.pending.filter(
+                  (e) => !isClientOnlyEvent(e),
+                )
+                yield* restartBackendPushing(globalOrUnknownPendingEvents)
+
+                yield* connectedClientSessionPullQueues.offer({
+                  payload: SyncState.payloadFromMergeResult(mergeResult),
+                  leaderHead: mergeResult.newSyncState.localHead,
+                })
+
+                if (mergeResult.confirmedEvents.length > 0) {
+                  // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
+                  // `newEvents` instead which we filter via `mergeResult.confirmedEvents`
+                  const confirmedNewEvents = newEvents.filter((event) =>
+                    mergeResult.confirmedEvents.some((confirmedEvent) =>
+                      EventSequenceNumber.Client.isEqual(event.seqNum, confirmedEvent.seqNum),
+                    ),
+                  )
+                  yield* Eventlog.updateSyncMetadata(confirmedNewEvents).pipe(Effect.orDieDebugger)
+                }
+              }
+
+              // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
+              trimChangesetRows(db, newBackendHead)
+
+              // The backend merge may advance or rebase the authoritative head. Realign the admission
+              // fence now so newly arriving pushes are validated against that history, not the pre-pull head.
+              yield* reconcilePushHead(mergeResult.newSyncState.localHead)
+
+              // Apply the merged events to storage before publishing the new sync state below, so readers
+              // cannot observe a leader head whose events have not yet been materialized.
+              yield* materializeEventsBatch({ batchItems: mergeResult.newEvents })
+
+              yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
+            }),
+          )
+          .pipe(Effect.exit)
 
         if (Exit.isFailure(chunkExit) === true) {
           yield* releasePullMutexIfHeld
@@ -666,7 +689,7 @@ export const make = Effect.fnUntraced(function* ({
       // - Delay clamped at 30s (continues retrying at 30s)
       // - Resets automatically after successful push
       // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
-      yield* Effect.gen(function* () {
+      const continuePushing = yield* Effect.gen(function* () {
         const iteration = yield* Schedule.CurrentMetadata
 
         const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.result)
@@ -684,24 +707,35 @@ export const make = Effect.fnUntraced(function* ({
           })
           const error = pushResult.failure
           if (error._tag === 'ServerAheadError') {
-            // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
-            yield* Effect.logDebug('handled backend-push-error (waiting for interupt caused by pull)', { error })
-            return yield* Effect.never
+            // ServerAhead does not guarantee that the current live pull will publish the
+            // missing events, so start a fresh pull from our persisted cursor.
+            yield* Effect.logDebug('handled backend-push-error (requesting pull restart)', { error })
+            yield* TxQueue.offer(backendPullRestartQueue, undefined)
+            if (testing.hooks?.backendPullRestartRequested !== undefined) {
+              yield* testing.hooks.backendPullRestartRequested()
+            }
+            return false
           }
 
           return yield* error
         }
+
+        return true
       }).pipe(
         // Retry transient errors
         Effect.retry({
           schedule: Schedule.exponential(Duration.seconds(1)).pipe(
             Schedule.modifyDelay(({ duration }) => Effect.succeed(Duration.min(duration, Duration.seconds(30)))), // Cap delay at 30s intervals.
           ),
-          while: (error) => error._tag === 'IsOfflineError' || error._tag === 'UnknownError',
+          while: (error) => error._tag === 'IsOfflineError',
         }),
         // This is needed to narrow the Error type. Our retry policy runs indefinitely, but Effect.retry does not narrow the Error type.
-        Effect.catchIf((error) => error._tag === 'IsOfflineError' || error._tag === 'UnknownError', Effect.die),
+        Effect.catchIf((error) => error._tag === 'IsOfflineError', Effect.die),
       )
+
+      // Stop pushing so later events cannot skip this rejected batch. Pull reconciliation
+      // will rebase the pending events and restart pushing.
+      if (continuePushing === false) return
     }
   }).pipe(Effect.interruptible)
 
@@ -801,9 +835,7 @@ export const make = Effect.fnUntraced(function* ({
         Effect.catchCause(maybeShutdownOnError),
       )
 
-      yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
-
-      yield* backgroundBackendPulling({
+      const backendPullingGenerationEffect = backgroundBackendPulling({
         restartBackendPushing: (filteredRebasedPending) =>
           Effect.gen(function* () {
             // Stop current pushing fiber
@@ -823,13 +855,64 @@ export const make = Effect.fnUntraced(function* ({
           // See https://github.com/Effect-TS/effect/issues/6122
           until: (error): error is Exclude<typeof error, IsOfflineError> => error._tag !== 'IsOfflineError',
         }),
-        Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
-        Effect.catchCause(maybeShutdownOnError),
         // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
         // This might be a bug in Effect. Only seems to happen in the browser.
         Effect.provideService(References.UnhandledLogLevel, undefined),
-        Effect.forkScoped,
       )
+
+      const handleTerminalBackendPullExit = (
+        exit: Exit.Exit<void, BackendIdMismatchError | UnknownError | MaterializeError>,
+      ) =>
+        Exit.match(exit, {
+          onSuccess: () => Effect.void,
+          onFailure: (cause) =>
+            Effect.failCause(cause).pipe(
+              Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
+              Effect.catchCause(maybeShutdownOnError),
+            ),
+        })
+
+      // The owner persists beyond finite generations. Restart retires transport work only after
+      // canonical application leaves its fence, then observes the generation exit before replacement.
+      const backgroundBackendPullingSupervised = Effect.gen(function* () {
+        while (true) {
+          const pullFiber = yield* backendPullingGenerationEffect.pipe(Effect.forkScoped)
+          const outcome = yield* Effect.raceFirst(
+            Fiber.await(pullFiber).pipe(Effect.map((exit) => ({ _tag: 'pull-ended' as const, exit }))),
+            TxQueue.take(backendPullRestartQueue).pipe(Effect.as('restart-requested' as const)),
+          )
+
+          if (outcome !== 'restart-requested') {
+            if (Exit.isFailure(outcome.exit) === true) {
+              yield* handleTerminalBackendPullExit(outcome.exit)
+              return
+            }
+
+            // A finite pull may complete long before ServerAhead reveals missing publication.
+            yield* TxQueue.take(backendPullRestartQueue)
+            continue
+          }
+
+          yield* Ref.set(backendPullRetirementRequested, true)
+          // Wait for an application already inside the fence, then release the fence before
+          // interrupting so pull cleanup cannot deadlock on coordination owned by this processor.
+          yield* backendPullApplicationFence.withPermits(1)(Effect.void)
+          yield* Fiber.interrupt(pullFiber)
+          const retiredExit = yield* Fiber.await(pullFiber)
+          yield* Ref.set(backendPullRetirementRequested, false)
+          // Coalesce any request that arrived while the owner was retiring this generation.
+          yield* TxQueue.poll(backendPullRestartQueue)
+
+          if (Exit.isFailure(retiredExit) === true && Cause.hasInterruptsOnly(retiredExit.cause) === false) {
+            yield* handleTerminalBackendPullExit(retiredExit)
+            return
+          }
+        }
+      }).pipe(Effect.interruptible)
+
+      // Start pulling before pushing so a stale rehydrated batch can always request a restart.
+      yield* backgroundBackendPullingSupervised.pipe(Effect.forkScoped)
+      yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 
       return { initialLeaderHead: initialSyncState.localHead }
     }).pipe(Effect.withSpanScoped('@livestore/common:LeaderSyncProcessor:boot')),
