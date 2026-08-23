@@ -17,6 +17,10 @@ export const PresenceState = Schema.Struct({
   cursor: Schema.optional(Schema.Struct({ x: Schema.Finite, y: Schema.Finite })),
   /** Google-Docs-style text cursor position within a document. */
   textCursor: Schema.optional(Schema.Finite),
+  /** Which card is being dragged and the current drag delta (Figma/PartyKit-style). */
+  dragging: Schema.optional(
+    Schema.Struct({ cardId: Schema.String, deltaX: Schema.Finite, deltaY: Schema.Finite }),
+  ),
   /** Unix epoch milliseconds of the last client update. */
   updatedAt: Schema.Finite,
 }).annotate({ title: 'PresenceState' })

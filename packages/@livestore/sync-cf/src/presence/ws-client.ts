@@ -79,6 +79,7 @@ export const makePresenceWsClient = (
             typing: patch.typing ?? current?.typing,
             cursor: patch.cursor ?? current?.cursor,
             textCursor: patch.textCursor ?? current?.textCursor,
+            dragging: patch.dragging ?? current?.dragging,
             updatedAt: Date.now(),
           },
         }).pipe(Effect.catch(() => Effect.void))
@@ -93,6 +94,7 @@ export const makePresenceWsClient = (
       setCursor: (x, y) => update({ cursor: { x, y } }),
       setTyping: (typing) => update({ typing }),
       setTextCursor: (offset) => update({ textCursor: offset }),
+      setDragging: (drag) => update({ dragging: drag }),
       leave: Effect.gen(function* () {
         yield* rpcClient['PresenceWsRpc.Leave']({ storeId: options.storeId, clientId: options.clientId }).pipe(
           Effect.catch(() => Effect.void),

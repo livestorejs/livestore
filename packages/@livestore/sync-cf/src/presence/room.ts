@@ -61,6 +61,7 @@ export const makePresenceRoom = (
             typing: existing?.typing,
             cursor: existing?.cursor,
             textCursor: existing?.textCursor,
+            dragging: existing?.dragging,
             updatedAt: Date.now(),
           }
           const next = new Map(members)

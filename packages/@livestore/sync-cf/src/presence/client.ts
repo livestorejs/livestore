@@ -39,6 +39,8 @@ export interface PresenceClient {
   setTyping: (typing: boolean) => Effect.Effect<void>
   /** Convenience for a Google-Docs-style text cursor. */
   setTextCursor: (offset: number) => Effect.Effect<void>
+  /** Broadcast that the client is dragging a card (PartyKit-style live drag). */
+  setDragging: (drag: { cardId: string; deltaX: number; deltaY: number } | undefined) => Effect.Effect<void>
   /** Mark the client offline and disconnect. */
   leave: Effect.Effect<void>
 }
@@ -119,6 +121,7 @@ export const makePresenceClient = (
         typing: pending.typing,
         cursor: pending.cursor,
         textCursor: pending.textCursor,
+        dragging: pending.dragging,
         updatedAt: Date.now(),
       }
       yield* Ref.set(throttledRef, { last: Date.now(), pending: {} })
@@ -151,6 +154,7 @@ export const makePresenceClient = (
       setCursor: (x, y) => setState({ cursor: { x, y } }),
       setTyping: (typing) => setState({ typing }),
       setTextCursor: (offset) => setState({ textCursor: offset }),
+      setDragging: (drag) => setState({ dragging: drag }),
       leave: Effect.gen(function* () {
         const socket = yield* Ref.get(socketRef)
         if (socket !== undefined) {
