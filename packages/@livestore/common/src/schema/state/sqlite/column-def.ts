@@ -246,8 +246,7 @@ const getLiteralColumnDefinition = (
 }
 
 /** Effect's built-in date codecs expose their semantic type through the Date representation annotation. */
-const hasDateRepresentation = (ast: SchemaAST.AST): boolean =>
-  SchemaAST.resolveAt<{ readonly id: string }>('representation')(ast)?.id === 'effect/schema/Date'
+const hasDateRepresentation = (ast: SchemaAST.AST): boolean => hasRepresentation(ast, 'effect/schema/Date')
 
 const extractLiteralValues = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.LiteralValue> | null => {
   if (SchemaAST.isLiteral(ast) === true) return [ast.literal]
@@ -298,8 +297,8 @@ const hasCheck = (checks: ReadonlyArray<SchemaAST.Check<unknown>> | undefined, r
 }
 
 const isUint8ArraySchema = (ast: SchemaAST.AST): boolean => {
-  const representation = SchemaAST.resolveAt<{ readonly id: string }>('representation')(ast)
-  if (representation?.id === 'effect/schema/Uint8Array') {
+  // `resolveAt` reads the last check's annotations, which can mask the declaration's representation.
+  if (hasRepresentation(ast, 'effect/schema/Uint8Array') === true) {
     return true
   }
 
@@ -313,4 +312,11 @@ const isUint8ArraySchema = (ast: SchemaAST.AST): boolean => {
   }
 
   return false
+}
+
+const hasRepresentation = (ast: SchemaAST.AST, id: string): boolean => {
+  const representation = ast.annotations?.representation
+  return (
+    typeof representation === 'object' && representation !== null && 'id' in representation && representation.id === id
+  )
 }

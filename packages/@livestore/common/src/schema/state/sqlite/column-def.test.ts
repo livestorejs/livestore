@@ -41,6 +41,12 @@ describe('getColumnDefForSchema', () => {
       ).toBe('effect/schema/Date')
     })
 
+    it('should preserve the Date representation through checks', () => {
+      const schema = Schema.DateFromMillis.check(Schema.isGreaterThanDate(new Date(0)))
+
+      expect(State.SQLite.getColumnDefForSchema(schema).columnType).toBe('integer')
+    })
+
     it('should map Schema.BigInt to text column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.BigInt)
       expect(columnDef.columnType).toBe('text')
@@ -308,6 +314,12 @@ describe('getColumnDefForSchema', () => {
 
       const asserts = new TestSchema.Asserts(columnDef.schema)
       await asserts.decoding().succeed(new Uint8Array([1, 2, 3]))
+    })
+
+    it('should preserve the Uint8Array representation through checks', () => {
+      const schema = Schema.Uint8Array.check(Schema.makeFilter((value) => value.byteLength > 0))
+
+      expect(State.SQLite.getColumnDefForSchema(schema).columnType).toBe('blob')
     })
   })
 
