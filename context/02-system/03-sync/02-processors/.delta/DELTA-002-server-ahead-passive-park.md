@@ -1,6 +1,6 @@
 # DELTA-002 — ServerAhead recovery passively waits for pull publication
 
-Status: open
+Status: resolved (2026-08-21)
 
 ## Divergence
 
@@ -38,3 +38,28 @@ replacement. Resume backend pushing only after ordinary pull confirmation or
 rebase has reseeded the FIFO from current pending. Add deterministic fault
 injection that separates backend push admission from pull publication and
 proves recovery without relying on timing or a leader restart.
+
+## Resolution
+
+The leader now sends `ServerAheadError` through a capacity-one restart signal
+and stops the sole backend-push worker. A persistent pull owner marks the active
+generation for retirement, waits at a canonical-application fence, and allows
+an application already inside that fence to finish. Pull cleanup then runs
+outside the fence, the owner inspects the generation exit, and a terminal
+application failure wins instead of being masked by replacement. Otherwise the
+owner evaluates one replacement pull whose cursor is re-read from the persisted
+backend head. The same owner remains parked after a finite pull. Normal pull
+merge confirms or rebases the fenced prefix, rebuilds the push FIFO from live
+pending, and starts pushing again. Backend push retry is limited to typed
+connectivity failure; `UnknownError` is terminal.
+
+The mock backend now allocates a subscriber per evaluated live pull and
+atomically snapshots persisted history when that pull starts. Deterministic
+fault controls can persist a successful push or external advance without live
+publication. The regression composes both faults, obtains a natural
+`ServerAheadError`, observes the replacement pull from the stale persisted
+cursor, and proves one pull generation, one materialization per event, and an
+empty pending suffix after recovery. Additional regressions pause canonical
+application immediately after cursor advancement to prove retirement cannot
+truncate the chunk, and prove a later `ServerAheadError` restarts a completed
+finite pull.

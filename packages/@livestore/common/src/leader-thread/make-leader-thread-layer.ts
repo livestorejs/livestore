@@ -72,6 +72,8 @@ export interface MakeLeaderThreadLayerParams {
       }
       hooks?: {
         localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
+        backendPullCursorAdvanced?: (head: EventSequenceNumber.Client.Composite) => Effect.Effect<void>
+        backendPullRestartRequested?: () => Effect.Effect<void>
       }
     }
   }
