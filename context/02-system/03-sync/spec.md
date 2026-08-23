@@ -68,7 +68,7 @@ SyncBackend = {
 | Family | Members | Recovery |
 | --- | --- | --- |
 | `RejectedPushError` (leader push validation) | `NonMonotonicBatchError`, `StaleRebaseGenerationError`, `LeaderAheadError` | rebase and retry |
-| Backend | `IsOfflineError`, `BackendIdMismatchError`, `ServerAheadError` | wait/reconnect; `ServerAheadError` yields to the pull-driven rebase ([02-processors](./02-processors/spec.md)) |
+| Backend | `IsOfflineError`, `BackendIdMismatchError`, `ServerAheadError` | wait/reconnect; `ServerAheadError` fences the push and actively replaces pull from the persisted cursor until confirmation or rebase ([02-processors](./02-processors/spec.md)) |
 | Transport | `OversizeChunkItemError` | surface (payload cannot be chunked) |
 | Defects | `UnknownError` | surface, don't retry |
 
