@@ -1,19 +1,19 @@
 import { BackendIdMismatchError, ServerAheadError, UnknownError } from '@livestore/common'
 import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
 
-import { PresenceSnapshot, PresenceState } from '../presence/schema.ts'
+import { PresenceSnapshot } from '../presence/schema.ts'
 import * as SyncMessage from './sync-message-types.ts'
 
 /**
  * WebSocket RPC Schema for LiveStore CF Sync Provider
  *
- * This defines the RPC endpoints available over WebSocket transport.
- * Unlike HTTP transport which uses request/response patterns for each operation,
- * WebSocket transport maintains a persistent connection and uses streaming responses.
- *
  * Presence RPCs ride the same socket + party as the eventlog sync: one DO per
- * `storeId` hosts both the durable log and the ephemeral presence room
+ * `storeId` hosts both the durable log and the ephemeral presence channels
  * (partykit-style single party). Presence state is never persisted.
+ *
+ * Channels are declared once on the server (`makeDurableObject({ presence: {
+ * schemas: { cursor: …, chat: … } } })`) and mirrored by clients for typed
+ * updates; the party validates every patch against the channel schema.
  */
 export class SyncWsRpc extends RpcGroup.make(
   Rpc.make('SyncWsRpc.Pull', {
@@ -40,6 +40,7 @@ export class SyncWsRpc extends RpcGroup.make(
   Rpc.make('SyncWsRpc.PresenceJoin', {
     payload: Schema.Struct({
       storeId: Schema.String,
+      channel: Schema.String,
       clientId: Schema.String,
       name: Schema.optional(Schema.String),
     }),
@@ -48,13 +49,17 @@ export class SyncWsRpc extends RpcGroup.make(
   Rpc.make('SyncWsRpc.PresenceUpdate', {
     payload: Schema.Struct({
       storeId: Schema.String,
-      state: PresenceState,
+      channel: Schema.String,
+      clientId: Schema.String,
+      /** Channel-validated JSON patch; merged over the member's state. */
+      patch: Schema.Json,
     }),
     success: Schema.Void,
   }),
   Rpc.make('SyncWsRpc.PresenceLeave', {
     payload: Schema.Struct({
       storeId: Schema.String,
+      channel: Schema.String,
       clientId: Schema.String,
     }),
     success: Schema.Void,
@@ -62,10 +67,10 @@ export class SyncWsRpc extends RpcGroup.make(
   Rpc.make('SyncWsRpc.PresenceSnapshots', {
     payload: Schema.Struct({
       storeId: Schema.String,
+      channel: Schema.String,
     }),
     success: PresenceSnapshot,
     stream: true,
   }),
   // Ping <> Pong is handled by DO WS auto-response
-  // TODO add admin RPCs
 ) {}

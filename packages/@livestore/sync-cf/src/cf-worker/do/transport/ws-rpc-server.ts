@@ -8,27 +8,46 @@ import {
   type MakeDurableObjectClassOptions,
   WebSocketAttachmentSchema,
 } from '../../shared.ts'
-import { makePresenceRoom, type PresenceRoom, type PresenceRoomOptions } from '../../../presence/room.ts'
+import { makePresenceRoom, type PresenceRoom } from '../../../presence/room.ts'
 import * as DoCtx from '../layer.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
 
 export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtx.DoCtxInput, 'from'>) => {
   /**
-   * Ephemeral presence rooms hosted by this party — one per storeId the DO
-   * serves. Single-party model: the same DO that arbitrates the durable
-   * eventlog also fans out presence. Never persisted; pruned by idle TTL.
+   * Ephemeral presence channels hosted by this party — single-party model: the
+   * same DO that arbitrates the durable eventlog also fans out presence.
+   * Channels + their schemas are declared once via
+   * `makeDurableObject({ presence: { schemas } })`; never persisted, pruned by
+   * idle TTL. Undefined when the host declares no channels.
    */
-  const rooms = new Map<string, PresenceRoom>()
-  const roomOptions: PresenceRoomOptions | undefined = doOptions?.presence?.room
+  const schemas = doOptions?.presence?.schemas
+  const hasPresence = schemas !== undefined && Object.keys(schemas).length > 0
 
-  const getRoom = Effect.fnUntraced(function* (storeId: string) {
-    const existing = rooms.get(storeId)
-    if (existing !== undefined) return existing
-    const room = yield* makePresenceRoom(storeId, roomOptions)
-    rooms.set(storeId, room)
-    return room
-  })
+  // One room per DO instance (the party), cached with its sweeper scope.
+  // Lazily created once per DO instance; the room's sweeper runs detached so
+  // no scope management is needed here.
+  let cachedRoom: PresenceRoom | undefined
+
+  const getRoom = (): Effect.Effect<PresenceRoom> =>
+    Effect.suspend(() => {
+      if (cachedRoom !== undefined) return Effect.succeed(cachedRoom)
+      if (!hasPresence) {
+        return Effect.die('Presence RPC received but no presence schemas are configured')
+      }
+      return Effect.map(
+        makePresenceRoom('__party__', {
+          ...doOptions!.presence!.room,
+          channels: Object.fromEntries(
+            Object.entries(schemas!).map(([name, schema]) => [name, { schema }]),
+          ),
+        }),
+        (room) => {
+          cachedRoom = room
+          return room
+        },
+      )
+    })
 
   const handlersLayer = SyncWsRpc.toLayer({
     'SyncWsRpc.Pull': (req) =>
@@ -62,25 +81,25 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtx.DoCtxInput, 'fro
         ),
         Effect.tapCauseLogPretty,
       ),
-    'SyncWsRpc.PresenceJoin': ({ storeId, clientId, name }) =>
+    'SyncWsRpc.PresenceJoin': ({ storeId, channel, clientId, name }) =>
       Effect.gen(function* () {
-        const room = yield* getRoom(storeId)
-        yield* room.join(clientId, name)
+        const room = yield* getRoom()
+        yield* room.join(channel, clientId, name).pipe(Effect.ignore)
       }),
-    'SyncWsRpc.PresenceUpdate': ({ storeId, state }) =>
+    'SyncWsRpc.PresenceUpdate': ({ storeId, channel, clientId, patch }) =>
       Effect.gen(function* () {
-        const room = yield* getRoom(storeId)
-        yield* room.update(state)
+        const room = yield* getRoom()
+        yield* room.update(channel, clientId, patch).pipe(Effect.ignore)
       }),
-    'SyncWsRpc.PresenceLeave': ({ storeId, clientId }) =>
+    'SyncWsRpc.PresenceLeave': ({ storeId, channel, clientId }) =>
       Effect.gen(function* () {
-        const room = yield* getRoom(storeId)
-        yield* room.leave(clientId)
+        const room = yield* getRoom()
+        yield* room.leave(channel, clientId).pipe(Effect.ignore).pipe(Effect.tapCauseLogPretty)
       }),
-    'SyncWsRpc.PresenceSnapshots': ({ storeId }) =>
+    'SyncWsRpc.PresenceSnapshots': ({ storeId, channel }) =>
       Effect.gen(function* () {
-        const room = yield* getRoom(storeId)
-        return room.snapshots
+        const room = yield* getRoom()
+        return room.snapshots(channel)
       }).pipe(Stream.unwrap),
   })
 

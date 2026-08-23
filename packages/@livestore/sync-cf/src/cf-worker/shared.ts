@@ -82,6 +82,22 @@ export type MakeDurableObjectClassOptions = {
    * same DO arbitrates the durable eventlog and fans out presence).
    */
   presence?: {
+    /**
+     * Named presence channel schemas, declared once here and mirrored by
+     * clients for end-to-end typed updates. Every patch a client broadcasts is
+     * validated server-side against the channel schema before fan-out.
+     *
+     * @example
+     * ```ts
+     * presence: {
+     *   schemas: {
+     *     cursor: Schema.Struct({ cursor: Schema.Struct({ x: Schema.Finite, y: Schema.Finite }), dragging: Schema.optional(Schema.Struct({ cardId: Schema.String, deltaX: Schema.Finite, deltaY: Schema.Finite })) }),
+     *     chat: Schema.Struct({ name: Schema.String, typing: Schema.Boolean }),
+     *   },
+     * }
+     * ```
+     */
+    schemas?: Record<string, Schema.Codec<any, any>>
     room?: import('../presence/room.ts').PresenceRoomOptions
   }
 

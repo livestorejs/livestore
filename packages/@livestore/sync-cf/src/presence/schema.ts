@@ -1,77 +1,58 @@
 import { Schema } from '@livestore/utils/effect'
 
 /**
- * Presence state for a single client. Ephemeral — never persisted, never
- * written to the eventlog or any SQLite database.
+ * A member of a presence room: identity + liveness plus an opaque per-channel
+ * `state` payload (validated against the channel's schema by the party).
  */
-export const PresenceState = Schema.Struct({
-  /** Stable client identifier (e.g. the LiveStore `clientId`). */
+export const PresenceMember = Schema.Struct({
   clientId: Schema.String,
-  /** Human-readable display name, if provided. */
   name: Schema.optional(Schema.String),
-  /** Whether the client is currently online (drives the online count). */
   online: Schema.Boolean,
-  /** Whether the user is currently typing. */
-  typing: Schema.optional(Schema.Boolean),
-  /** Figma-style pointer position (viewport / board coordinates). */
-  cursor: Schema.optional(Schema.Struct({ x: Schema.Finite, y: Schema.Finite })),
-  /** Google-Docs-style text cursor position within a document. */
-  textCursor: Schema.optional(Schema.Finite),
-  /** Which card is being dragged and the current drag delta (Figma/PartyKit-style). */
-  dragging: Schema.optional(
-    Schema.Struct({ cardId: Schema.String, deltaX: Schema.Finite, deltaY: Schema.Finite }),
-  ),
-  /** Unix epoch milliseconds of the last client update. */
+  /** Channel-validated state payload (JSON). */
+  state: Schema.optional(Schema.Json),
   updatedAt: Schema.Finite,
-}).annotate({ title: 'PresenceState' })
+}).annotate({ title: 'PresenceMember' })
 
-export type PresenceState = typeof PresenceState.Type
+export type PresenceMember = typeof PresenceMember.Type
 
 /**
- * Server → client broadcast of the full current room snapshot. Sent whenever
- * any member joins, leaves, or updates their state.
+ * Server → client snapshot of one channel's room. Sent whenever any member
+ * joins, leaves, updates their state, or is pruned by the idle sweeper.
  */
 export const PresenceSnapshot = Schema.Struct({
   storeId: Schema.String,
-  clients: Schema.Array(PresenceState),
+  channel: Schema.String,
+  members: Schema.Array(PresenceMember),
 }).annotate({ title: 'PresenceSnapshot' })
 
 export type PresenceSnapshot = typeof PresenceSnapshot.Type
 
-/** Client → server: join the room. */
-export const PresenceJoin = Schema.TaggedStruct('PresenceClient.join', {
+/**
+ * Wire payloads for the presence RPCs. The `state` field travels as JSON and
+ * is decoded/validated server-side against the channel's registered schema.
+ */
+export const PresenceJoinPayload = Schema.Struct({
+  storeId: Schema.String,
+  channel: Schema.String,
   clientId: Schema.String,
   name: Schema.optional(Schema.String),
 })
 
-/** Client → server: update own presence state. */
-export const PresenceUpdate = Schema.TaggedStruct('PresenceClient.state', {
-  state: PresenceState,
+export const PresenceUpdatePayload = Schema.Struct({
+  storeId: Schema.String,
+  channel: Schema.String,
+  clientId: Schema.String,
+  /** JSON-encoded partial state; merged over the member's current state. */
+  patch: Schema.Json,
 })
 
-/** Client → server: leave the room. */
-export const PresenceLeave = Schema.TaggedStruct('PresenceClient.leave', {
+export const PresenceLeavePayload = Schema.Struct({
+  storeId: Schema.String,
+  channel: Schema.String,
   clientId: Schema.String,
 })
 
-/**
- * Client → server messages.
- */
-export const PresenceClientMessage = Schema.Union([PresenceJoin, PresenceUpdate, PresenceLeave])
-export type PresenceClientMessage = typeof PresenceClientMessage.Type
-
-/** Server → client: full room snapshot. */
-export const PresenceSnapshotMessage = Schema.TaggedStruct('PresenceServer.snapshot', {
-  snapshot: PresenceSnapshot,
+export const PresenceSnapshotsPayload = Schema.Struct({
+  storeId: Schema.String,
+  channel: Schema.String,
 })
-
-/** Server → client: error. */
-export const PresenceErrorMessage = Schema.TaggedStruct('PresenceServer.error', {
-  message: Schema.String,
-})
-
-/**
- * Server → client messages.
- */
-export const PresenceServerMessage = Schema.Union([PresenceSnapshotMessage, PresenceErrorMessage])
-export type PresenceServerMessage = typeof PresenceServerMessage.Type
