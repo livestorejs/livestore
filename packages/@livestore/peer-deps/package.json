@@ -1,6 +1,6 @@
 {
   "name": "@livestore/peer-deps",
-  "version": "0.4.0",
+  "version": "0.5.0-dev.0",
   "description": "This is a convenience package that can be installed to satisfy peer dependencies of Livestore packages.",
   "license": "Apache-2.0",
   "repository": {
