@@ -11,11 +11,14 @@ export type SyncOptions<TPayload = Schema.Json> = {
   /** @default { _tag: 'Skip' } */
   initialSyncOptions?: InitialSyncOptions
   /**
-   * What to do if there is an error during sync.
+   * What to do for a generic terminal error during sync. More-specific failure
+   * families may define a higher-priority lifecycle policy.
    *
    * Options:
    * `shutdown` will stop the sync processor and cause the app to crash.
-   * `ignore` will log the error and let the app continue running acting as if it was offline.
+   * `ignore` will log the generic error, park the affected sync worker with its unresolved work
+   * intact, and let the app continue running. An existing protocol recovery path may replace the
+   * worker; the terminal failure itself is not retried automatically.
    *
    * @default 'ignore'
    * */
@@ -34,8 +37,8 @@ export type SyncOptions<TPayload = Schema.Json> = {
    *   This is the recommended option for development.
    * - `'shutdown'`: Shutdown without clearing local storage.
    *   On restart, the client will still have stale data and hit the same error.
-   * - `'ignore'`: Log the error and continue running.
-   *   The client will show stale data but keep running (effectively offline mode).
+   * - `'ignore'`: Log the error, park the affected sync worker, and continue running.
+   *   The client will show stale data (effectively offline mode).
    *
    * @default 'reset'
    */

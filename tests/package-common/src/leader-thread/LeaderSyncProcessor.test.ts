@@ -2,6 +2,7 @@ import { assert, expect } from 'vitest'
 
 import {
   BackendIdMismatchError,
+  IsOfflineError,
   type IntentionalShutdownCause,
   type MockSyncBackend,
   type MockSyncBackendOptions,
@@ -35,6 +36,7 @@ import {
   Queue,
   References,
   Result,
+  Schedule,
   type Scope,
   Stream,
   WebChannel,
@@ -986,6 +988,280 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     }).pipe(withTestCtx({ syncOptions: { livePull: false, onSyncError: 'shutdown' }, captureShutdown: true })(test)),
   )
 
+  {
+    const firstAttempt = Deferred.makeUnsafe<void>()
+    const secondAttempt = Deferred.makeUnsafe<void>()
+    let pushAttempts = 0
+
+    Vitest.live('retries positively identified offline push failures', (test) =>
+      Effect.gen(function* () {
+        const testContext = yield* TestContext
+
+        yield* testContext.pushEncoded(
+          testContext.eventFactory.todoCreated.next({ id: 'offline-retry', text: 'offline', completed: false }),
+        )
+        yield* Deferred.await(firstAttempt)
+        expect(pushAttempts).toBe(1)
+
+        yield* Deferred.await(secondAttempt)
+
+        expect(pushAttempts).toBe(2)
+      }).pipe(
+        withTestCtx({
+          syncOptions: { livePull: false, onSyncError: 'ignore' },
+          testing: {
+            syncProcessor: {
+              schedules: { backendPushRetry: Schedule.recurs(1) },
+            },
+          },
+          mockBackendOverride: (mockBackend) => () =>
+            Effect.gen(function* () {
+              const syncBackend = yield* mockBackend.makeSyncBackend
+              return {
+                ...syncBackend,
+                push: () =>
+                  Effect.sync(() => ++pushAttempts).pipe(
+                    Effect.tap(() => Deferred.succeed(firstAttempt, undefined)),
+                    Effect.flatMap((attempt) =>
+                      attempt === 1
+                        ? Effect.fail(new IsOfflineError({ cause: new Error('simulated offline backend') }))
+                        : Deferred.succeed(secondAttempt, undefined),
+                    ),
+                  ),
+              }
+            }),
+        })(test),
+      ),
+    )
+  }
+
+  {
+    const terminalWorker = Deferred.makeUnsafe<string>()
+    let pushAttempts = 0
+
+    Vitest.live('parks backend push after one UnknownError attempt', (test) =>
+      Effect.gen(function* () {
+        const testContext = yield* TestContext
+
+        yield* testContext.pushEncoded(
+          testContext.eventFactory.todoCreated.next({ id: 'unknown-terminal', text: 'terminal', completed: false }),
+        )
+
+        expect(yield* Deferred.await(terminalWorker)).toBe('backend-push')
+        expect(pushAttempts).toBe(1)
+
+        expect(yield* Deferred.isDone(testContext.shutdownDeferred)).toBe(false)
+      }).pipe(
+        withTestCtx({
+          syncOptions: { livePull: false, onSyncError: 'ignore' },
+          captureShutdown: true,
+          testing: {
+            syncProcessor: {
+              schedules: { backendPushRetry: Schedule.recurs(1) },
+              hooks: {
+                workerTerminal: ({ worker }) => Deferred.succeed(terminalWorker, worker),
+              },
+            },
+          },
+          mockBackendOverride: (mockBackend) => () =>
+            Effect.gen(function* () {
+              const syncBackend = yield* mockBackend.makeSyncBackend
+              return {
+                ...syncBackend,
+                push: () =>
+                  Effect.sync(() => ++pushAttempts).pipe(
+                    Effect.andThen(
+                      Effect.fail(new UnknownError({ cause: new Error('simulated unclassified push failure') })),
+                    ),
+                  ),
+              }
+            }),
+        })(test),
+      ),
+    )
+  }
+
+  {
+    const terminalWorker = Deferred.makeUnsafe<string>()
+    let pullAttempts = 0
+
+    Vitest.live('parks backend pull after terminal failure', (test) =>
+      Effect.gen(function* () {
+        const testContext = yield* TestContext
+
+        expect(yield* Deferred.await(terminalWorker)).toBe('backend-pull')
+        expect(pullAttempts).toBe(1)
+
+        expect(yield* Deferred.isDone(testContext.shutdownDeferred)).toBe(false)
+      }).pipe(
+        withTestCtx({
+          syncOptions: { livePull: true, onSyncError: 'ignore' },
+          captureShutdown: true,
+          testing: {
+            syncProcessor: {
+              hooks: {
+                workerTerminal: ({ worker }) => Deferred.succeed(terminalWorker, worker),
+              },
+            },
+          },
+          mockBackendOverride: (mockBackend) => () =>
+            Effect.gen(function* () {
+              const syncBackend = yield* mockBackend.makeSyncBackend
+              return {
+                ...syncBackend,
+                pull: () => {
+                  pullAttempts++
+                  return Stream.fail(new UnknownError({ cause: new Error('simulated unclassified pull failure') }))
+                },
+              }
+            }),
+        })(test),
+      ),
+    )
+  }
+
+  {
+    const terminalWorker = Deferred.makeUnsafe<string>()
+
+    Vitest.live('ServerAhead catch-up replaces a parked backend pull', (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+
+        expect(yield* Deferred.await(terminalWorker)).toBe('backend-pull')
+        expect(
+          yield* testContext.mockSyncBackend.pullRequests.pipe(Stream.runFirstUnsafe, Effect.timeout(5000)),
+        ).toEqual(EventSequenceNumber.Client.ROOT.global)
+
+        const localEvent = testContext.eventFactory.todoCreated.next({
+          id: 'local-after-park',
+          text: 'local-after-park',
+          completed: false,
+        })
+        yield* testContext.pushEncoded(localEvent)
+
+        // The backend already contains e1, so the stale e1 push requests ServerAhead catch-up.
+        // The persistent pull owner replaces the parked generation from its still-authoritative root cursor.
+        expect(
+          yield* testContext.mockSyncBackend.pullRequests.pipe(Stream.runFirstUnsafe, Effect.timeout(5000)),
+        ).toEqual(EventSequenceNumber.Client.ROOT.global)
+
+        const recoveredPush = yield* testContext.mockSyncBackend.pushedEvents.pipe(
+          Stream.runFirstUnsafe,
+          Effect.timeout(5000),
+        )
+        expect(recoveredPush.args).toEqual(localEvent.args)
+
+        yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+          Stream.filter((state) => state.upstreamHead.global === 2 && state.pending.length === 0),
+          Stream.runFirstUnsafe,
+          Effect.timeout(5000),
+        )
+
+        expect(yield* testContext.mockSyncBackend.pullRequestCount).toBe(2)
+        expect(yield* testContext.mockSyncBackend.activePulls.maximum).toBe(1)
+        expect(yield* Deferred.isDone(testContext.shutdownDeferred)).toBe(false)
+      }).pipe(
+        withTestCtx({
+          mockBackendOptions: { startConnected: true },
+          syncOptions: { livePull: true, onSyncError: 'ignore' },
+          captureShutdown: true,
+          seedMockBackend: (mockBackend) => {
+            const backendFactory = makeEventFactory({
+              client: EventFactory.clientIdentity('parked-pull-backend', 'recovery-session'),
+            })
+            return Effect.gen(function* () {
+              yield* mockBackend.advanceWithoutPublication(
+                backendFactory.todoCreated.next({ id: 'remote', text: 'remote', completed: false }),
+              )
+              yield* mockBackend.failNextPulls(
+                1,
+                () => new UnknownError({ cause: new Error('simulated unclassified pull failure') }),
+              )
+            })
+          },
+          testing: {
+            syncProcessor: {
+              hooks: {
+                workerTerminal: ({ worker }) => Deferred.succeed(terminalWorker, worker),
+              },
+            },
+          },
+        })(test),
+      ),
+    )
+  }
+
+  {
+    const terminalWorker = Deferred.makeUnsafe<string>()
+
+    Vitest.live('replaces a parked backend push after pull reconciliation', (test) =>
+      Effect.gen(function* () {
+        const testContext = yield* TestContext
+        const backendFactory = makeEventFactory({
+          client: EventFactory.clientIdentity('recovery-backend', 'recovery-session'),
+        })
+
+        yield* testContext.mockSyncBackend.failNextPushes(
+          1,
+          () => new UnknownError({ cause: new Error('simulated uncertain push outcome') }),
+        )
+        yield* testContext.pushEncoded(
+          testContext.eventFactory.todoCreated.next({ id: 'local-recovered', text: 'local', completed: false }),
+        )
+        expect(yield* Deferred.await(terminalWorker)).toBe('backend-push')
+
+        // An authoritative pull rebases current pending and replaces the parked push worker.
+        yield* testContext.mockSyncBackend.advance(
+          backendFactory.todoCreated.next({ id: 'remote', text: 'remote', completed: false }),
+        )
+
+        const recoveredPush = yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runHead)
+        assert(recoveredPush._tag === 'Some')
+        expect(recoveredPush.value.args).toMatchObject({ id: 'local-recovered' })
+      }).pipe(
+        withTestCtx({
+          syncOptions: { livePull: true, onSyncError: 'ignore' },
+          testing: {
+            syncProcessor: {
+              hooks: {
+                workerTerminal: ({ worker }) => Deferred.succeed(terminalWorker, worker),
+              },
+            },
+          },
+        })(test),
+      ),
+    )
+  }
+
+  {
+    const terminalWorker = Deferred.makeUnsafe<string>()
+
+    Vitest.live('parks local apply after terminal failure', (test) =>
+      Effect.gen(function* () {
+        const testContext = yield* TestContext
+
+        expect(yield* Deferred.await(terminalWorker)).toBe('local-apply')
+        expect(yield* Deferred.isDone(testContext.shutdownDeferred)).toBe(false)
+      }).pipe(
+        withTestCtx({
+          syncOptions: { livePull: false, onSyncError: 'ignore' },
+          captureShutdown: true,
+          testing: {
+            syncProcessor: {
+              delays: {
+                localPushProcessing: Effect.die(new Error('simulated local-apply defect')),
+              },
+              hooks: {
+                workerTerminal: ({ worker }) => Deferred.succeed(terminalWorker, worker),
+              },
+            },
+          },
+        })(test),
+      ),
+    )
+  }
+
   // Should escalate and shutdown on BackendIdMismatchError when onBackendIdMismatch='shutdown' (legacy behavior)
   Vitest.live('shutdowns on BackendIdMismatchError push', (test) =>
     Effect.gen(function* () {
@@ -1152,7 +1428,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
   // NOTE: Pull path test is skipped because the MockSyncBackend's failNextPulls works on the
   // initial pull, not on live pulls after advance. The core functionality for handling
-  // BackendIdMismatchError is shared with the push path via maybeShutdownOnError.
+  // BackendIdMismatchError is shared with the push path via the dedicated backend-identity policy.
   // The real pull scenario is tested in integration tests with actual sync providers.
   Vitest.live.skip('clears databases on BackendIdMismatchError pull with reset', (test) =>
     Effect.gen(function* () {
