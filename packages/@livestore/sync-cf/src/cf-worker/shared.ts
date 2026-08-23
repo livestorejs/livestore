@@ -78,6 +78,14 @@ export type MakeDurableObjectClassOptions = {
   storage?: { _tag: 'do-sqlite' } | { _tag: 'd1'; binding: string }
 
   /**
+   * Ephemeral presence room hosted by this party (single-party model: the
+   * same DO arbitrates the durable eventlog and fans out presence).
+   */
+  presence?: {
+    room?: import('../presence/room.ts').PresenceRoomOptions
+  }
+
+  /**
    * Enabled transports for sync backend
    * - `http`: HTTP JSON-RPC
    * - `ws`: WebSocket

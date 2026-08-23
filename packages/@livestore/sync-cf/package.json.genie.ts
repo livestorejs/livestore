@@ -36,8 +36,6 @@ export default packageJson(
       './cf-worker': './src/cf-worker/mod.ts',
       './presence': './src/presence/mod.ts',
       './presence/client': './src/presence/client.ts',
-      './presence/ws-client': './src/presence/ws-client.ts',
-      './presence/node-server': './src/presence/node-server.ts',
       './presence/hooks': './src/presence/hooks.ts',
     },
     files: [...livestorePackageDefaults.files, 'README.md'],

@@ -3,12 +3,33 @@ import { WsContext } from '@livestore/common-cf'
 import { Effect, identity, Layer, Result, RpcServer, Schema, Stream } from '@livestore/utils/effect'
 
 import { SyncWsRpc } from '../../../common/ws-rpc-schema.ts'
-import { headersRecordToMap, WebSocketAttachmentSchema } from '../../shared.ts'
+import {
+  headersRecordToMap,
+  type MakeDurableObjectClassOptions,
+  WebSocketAttachmentSchema,
+} from '../../shared.ts'
+import { makePresenceRoom, type PresenceRoom, type PresenceRoomOptions } from '../../../presence/room.ts'
 import * as DoCtx from '../layer.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
 
 export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtx.DoCtxInput, 'from'>) => {
+  /**
+   * Ephemeral presence rooms hosted by this party — one per storeId the DO
+   * serves. Single-party model: the same DO that arbitrates the durable
+   * eventlog also fans out presence. Never persisted; pruned by idle TTL.
+   */
+  const rooms = new Map<string, PresenceRoom>()
+  const roomOptions: PresenceRoomOptions | undefined = doOptions?.presence?.room
+
+  const getRoom = Effect.fnUntraced(function* (storeId: string) {
+    const existing = rooms.get(storeId)
+    if (existing !== undefined) return existing
+    const room = yield* makePresenceRoom(storeId, roomOptions)
+    rooms.set(storeId, room)
+    return room
+  })
+
   const handlersLayer = SyncWsRpc.toLayer({
     'SyncWsRpc.Pull': (req) =>
       Effect.gen(function* () {
@@ -41,6 +62,26 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtx.DoCtxInput, 'fro
         ),
         Effect.tapCauseLogPretty,
       ),
+    'SyncWsRpc.PresenceJoin': ({ storeId, clientId, name }) =>
+      Effect.gen(function* () {
+        const room = yield* getRoom(storeId)
+        yield* room.join(clientId, name)
+      }),
+    'SyncWsRpc.PresenceUpdate': ({ storeId, state }) =>
+      Effect.gen(function* () {
+        const room = yield* getRoom(storeId)
+        yield* room.update(state)
+      }),
+    'SyncWsRpc.PresenceLeave': ({ storeId, clientId }) =>
+      Effect.gen(function* () {
+        const room = yield* getRoom(storeId)
+        yield* room.leave(clientId)
+      }),
+    'SyncWsRpc.PresenceSnapshots': ({ storeId }) =>
+      Effect.gen(function* () {
+        const room = yield* getRoom(storeId)
+        return room.snapshots
+      }).pipe(Stream.unwrap),
   })
 
   return RpcServer.layer(SyncWsRpc).pipe(Layer.provide(handlersLayer))
