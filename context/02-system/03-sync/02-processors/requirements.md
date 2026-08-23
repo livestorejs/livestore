@@ -17,9 +17,9 @@ Builds on [../requirements.md](../requirements.md) and
 
 - **LS.SYS.SYNC.PROC-R01 Bounded transient-only retry:** Backend pushes are
   batch-bounded and retried with capped exponential backoff only on
-  positively identified connectivity errors. `UnknownError` surfaces as a
-  terminal failure, and `ServerAheadError` is never retried in place. The
-  unresolved backend prefix remains fenced while the processor actively
+  positively identified connectivity failures (`IsOfflineError` today).
+  `UnknownError` is terminal, and `ServerAheadError` is never retried in place.
+  The unresolved backend prefix remains fenced while the processor actively
   replaces its backend pull from the persisted cursor. Replacement retires the
   current generation only between canonical pull applications; an in-flight
   application finishes or fails first, and its terminal failure takes
@@ -27,12 +27,15 @@ Builds on [../requirements.md](../requirements.md) and
   finite pull so a later catch-up request can start another generation. Only
   pull confirmation or rebase may reseed backend pushing from current pending
   and resume it. At most one backend-pull generation may be active during this
-  recovery. Adopted 2026-07-16 (interview); active catch-up clarified
-  2026-08-21 from [#1462](https://github.com/livestorejs/livestore/issues/1462)
-  reduction evidence and maintainer direction; retirement precedence and
-  terminal-error classification clarified 2026-08-22 from convergence review
-  (see
-  [decision 0003](./.decisions/0003-active-server-ahead-catchup.md)).
+  recovery. Retry schedules remain owned by the processor rather than
+  application configuration. Adopted 2026-07-16 (interview); active catch-up
+  clarified 2026-08-21 from
+  [#1462](https://github.com/livestorejs/livestore/issues/1462) reduction
+  evidence and maintainer direction; retirement precedence and terminal-error
+  classification clarified 2026-08-22 from convergence review (see [decision
+  0003](./.decisions/0003-active-server-ahead-catchup.md)); recovery taxonomy
+  clarified 2026-08-22 (#1577, [decision
+  0004](./.decisions/0004-supervised-sync-failures.md)).
   `refines: LS.SYS.SYNC-R03`
 - **LS.SYS.SYNC.PROC-R02 Pull precedence:** Backend-pull application and
   local-push application are mutually exclusive, and the pull side takes
@@ -63,6 +66,20 @@ Builds on [../requirements.md](../requirements.md) and
   evidence and maintainer review; see
   [decision 0001](./.decisions/0001-prefix-fence-unresolved-upstream.md).
   `refines: LS.SYS.SYNC.SS-R03, LS.SYS.STORE-R04`
+- **LS.SYS.SYNC.PROC-R05 Supervised worker termination:** The leader's backend
+  push, backend pull, and local-apply workers never return unnoticed after a
+  terminal failure. A more-specific lifecycle-fatal failure family may take
+  precedence over the generic sync-error policy. Otherwise, with
+  `onSyncError: 'shutdown'`, the failure terminates the Store; with
+  `onSyncError: 'ignore'`, the processor logs the cause and holds the affected
+  worker in an explicit terminal parked state until scope shutdown or an
+  existing protocol recovery path replaces it. Recovery reconstructs work from
+  authoritative processor state; it never acknowledges or drops an uncertain
+  prefix and never converts a terminal failure into an implicit retry.
+  This supervision is internal and does not require an application-facing sync
+  state machine or per-commit receipt API. Adopted 2026-08-22 (#1577, [decision
+  0004](./.decisions/0004-supervised-sync-failures.md)).
+  `refines: LS.SYS.SYNC-R03, LS.SYS.SYNC.PROC-R04`
 
 Further processor requirements (e.g. the crash-atomicity contract of batch
 materialization) remain open pending `LS.SYS.STATE-DQ2`;

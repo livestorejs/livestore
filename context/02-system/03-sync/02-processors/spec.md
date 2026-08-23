@@ -57,7 +57,7 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   `takeBetween(1, backendPushBatchSize)` (default 50, `:227`), pushes
   `toGlobal()` batches. Retry: `Schedule.exponential(1s)` clamped to 30s,
   no jitter, no attempt cap, and only for positively identified connectivity
-  errors (`IsOfflineError`, `:724-733`). `UnknownError` is terminal.
+  failures (`IsOfflineError`, `:724-733`). `UnknownError` is terminal.
   `ServerAheadError` is NOT
   retried in place: it fences that unresolved prefix and requests a fresh
   backend pull from the persisted cursor. Pull confirmation or rebase then
@@ -103,6 +103,33 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   (`../../04-runtime/spec.md` Leadership Handover); error routing via
   `onError: ignore|shutdown` and `BackendIdMismatchError` handling
   (`reset|shutdown|ignore`; reset clears local databases, `:1060-1123`).
+
+### Worker supervision
+
+(LS.SYS.SYNC.PROC-R05) Backend push, backend pull, and local-apply each run
+under the same generic terminal-failure policy. Retryable connectivity failures
+stay inside their operation loop. `ServerAheadError` stays inside
+reconciliation. A more-specific lifecycle-fatal family may take precedence;
+otherwise terminal failures reach the generic supervision boundary:
+
+- `onSyncError: 'shutdown'` sends the failure through the shutdown channel and
+  terminates the Store.
+- `onSyncError: 'ignore'` logs a generic terminal failure and parks the affected
+  worker rather than letting its fiber return. Its in-flight prefix remains
+  unresolved.
+- An existing protocol recovery path may interrupt and replace a parked worker
+  from authoritative state. In particular, a later pull reconciliation clears,
+  reseeds, and replaces backend pushing. Active `ServerAheadError` catch-up may
+  also retire and replace a parked backend pull from the persisted cursor.
+  Replacement is not acknowledgement of the failed attempt and is not a reason
+  to retry `UnknownError` in place.
+
+Local-apply failures retain their deferred acknowledgements and reservations;
+backend-push failures retain the pending prefix as the source for later
+reconciliation. Local apply has no equivalent independent recovery path and
+remains parked until scope shutdown unless a future, more-specific policy owns
+the failure. No application callback, receipt, retry schedule, public
+worker-health surface, or recovery state machine is introduced.
 
 ## Client Session Sync Processor
 
@@ -166,3 +193,5 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
 - Per-event `materializerHashLeader` beyond the first item of a pull chunk
   is unknown (TODO, `:555-556`, issue #503).
 - Metrics for retry/queue health are an acknowledged TODO (`:599`).
+- Terminal worker state is internal and observable through logs but has no
+  first-class public status surface; adding one requires a separate contract.
