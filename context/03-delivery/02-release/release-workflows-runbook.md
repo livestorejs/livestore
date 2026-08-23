@@ -130,12 +130,14 @@ automation and then validated by CI before auto-merge.
 
 ### Release notes artifact
 
-Alongside `release/release-plan.json`, the release PR generator extracts the
-current version's `CHANGELOG.md` section into `release/release-notes.md` via
-the `release:notes:extract` task (which calls
-`mono release extract-release-notes`). The extracted file is committed to the
-release-plan PR so reviewers see exactly what will land on the GitHub Release
-page.
+Alongside `release/release-plan.json`, the release PR generator extracts
+reviewable `CHANGELOG.md` content into `release/release-notes.md` via the
+`release:notes:extract` task (which calls
+`mono release extract-release-notes`). Stable releases use the exact promoted
+version section. Prereleases use `Unreleased`, because they intentionally
+preserve pending Changesets and therefore do not promote that content to an
+exact version heading. The extracted file is committed to the release-plan PR
+so reviewers see exactly what will land on the GitHub Release page.
 
 The DevTools artifact publish step then uses that file when it creates or
 updates the GitHub Release tag:
@@ -202,11 +204,11 @@ plus serverless + edge bundling) and the upload in one bounded step. The build
 still spawns Chromium for mermaid, so the `timeout(1)` wrapper around this one
 phase remains the orphan-Chromium backstop.
 
-| Phase          | Task                                  | Purpose                                                                          |
-| -------------- | ------------------------------------- | -------------------------------------------------------------------------------- |
+| Phase          | Task                                  | Purpose                                                                                             |
+| -------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | `build-deploy` | `docs:deploy:prod:phase:build-deploy` | `mono docs deploy --prod --step=upload` (runs `netlify deploy --build`), writes `deploy-state.json` |
-| `verify`       | `docs:deploy:prod:phase:verify`       | `mono docs deploy --prod --step=verify`, posts job summary                       |
-| `purge`        | `docs:deploy:prod:phase:purge`        | `mono docs deploy --prod --step=purge`, purges Netlify CDN                       |
+| `verify`       | `docs:deploy:prod:phase:verify`       | `mono docs deploy --prod --step=verify`, posts job summary                                          |
+| `purge`        | `docs:deploy:prod:phase:purge`        | `mono docs deploy --prod --step=purge`, purges Netlify CDN                                          |
 
 The `build-deploy` phase writes Netlify identifiers to `tmp/ci-docs-prod/deploy-state.json`
 so `verify` and `purge` can run as independent processes (and independent Actions

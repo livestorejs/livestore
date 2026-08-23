@@ -171,12 +171,20 @@ export const sliceChangelogSection = (changelog: string, version: string): strin
   return `${lines.slice(start, end).join('\n')}\n`
 }
 
-const extractReleaseNotes = ({ cwd, version }: { cwd: string; version: string }) =>
+/**
+ * Stable releases review the changelog section already promoted to their exact
+ * version. Prereleases intentionally preserve pending Changesets, so their
+ * reviewable notes still live under `Unreleased` when the release PR is built.
+ */
+export const releaseNotesSectionForPlan = ({ version, npmTag }: { version: string; npmTag: string }) =>
+  npmTag === 'latest' ? version : 'Unreleased'
+
+const extractReleaseNotes = ({ cwd, version, npmTag }: { cwd: string; version: string; npmTag: string }) =>
   Effect.gen(function* () {
     const fsEffect = yield* FileSystem.FileSystem
     const changelogPath = `${cwd}/CHANGELOG.md`
     const changelog = yield* fsEffect.readFileString(changelogPath)
-    const section = sliceChangelogSection(changelog, version)
+    const section = sliceChangelogSection(changelog, releaseNotesSectionForPlan({ version, npmTag }))
     yield* fsEffect.makeDirectory(`${cwd}/release`, { recursive: true })
     const outPath = releaseNotesPath(cwd)
     yield* fsEffect.writeFileString(outPath, section)
@@ -800,7 +808,7 @@ export const releaseNotesExtractCommand = Cli.Command.make(
   },
   Effect.fn(function* ({ plan: planPath, cwd }) {
     const plan = yield* readReleasePlan(cwd, planPath)
-    const outPath = yield* extractReleaseNotes({ cwd, version: plan.version })
+    const outPath = yield* extractReleaseNotes({ cwd, version: plan.version, npmTag: plan.npmTag })
     yield* Effect.log(`Wrote release notes for ${plan.version} to ${outPath}`)
     console.log(outPath)
   }),
