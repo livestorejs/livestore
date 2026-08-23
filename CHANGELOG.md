@@ -15,11 +15,12 @@
   ([#1537](https://github.com/livestorejs/livestore/pull/1537)).
 - **Effect v4 dependency cohort:** Updated the repository-wide Effect v4
   dependency family from `4.0.0-beta.99` to `4.0.0-rc.111`. Applications must
-  bump their Effect peers to the matching release. Effect removed
+  use rc.111 or a compatible later Effect 4 release. Effect removed
   `Schema.isDateValid` because `Schema.DateFromString` and
   `Schema.DateFromMillis` now reject invalid dates on their own, so
   `Schema.DateFromString.check(Schema.isDateValid())` becomes plain
-  `Schema.DateFromString`
+  `Schema.DateFromString`. SQLite column inference also preserves INTEGER and
+  BLOB storage for refined `Schema.DateFromMillis` and `Schema.Uint8Array`
   ([#1557](https://github.com/livestorejs/livestore/issues/1557),
   [Effect-TS/effect#6620](https://github.com/Effect-TS/effect/pull/6620)).
   Thanks [@JamieMason](https://github.com/JamieMason) for the migration work.

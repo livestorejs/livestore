@@ -16,4 +16,4 @@
 
 Breaking: move the LiveStore package group to Effect `4.0.0-rc.111`.
 
-Applications must bump their Effect peers to the matching release. Effect's `Schema.isDateValid` was removed because `Schema.DateFromString` and `Schema.DateFromMillis` now reject invalid dates on their own, so `Schema.DateFromString.check(Schema.isDateValid())` becomes plain `Schema.DateFromString`.
+Applications must use rc.111 or a compatible later Effect 4 release. Effect's `Schema.isDateValid` was removed because `Schema.DateFromString` and `Schema.DateFromMillis` now reject invalid dates on their own, so `Schema.DateFromString.check(Schema.isDateValid())` becomes plain `Schema.DateFromString`. SQLite column inference also preserves INTEGER and BLOB storage for refined `Schema.DateFromMillis` and `Schema.Uint8Array` schemas.
