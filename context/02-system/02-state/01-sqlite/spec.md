@@ -27,7 +27,12 @@ const todos = State.SQLite.table({
 `table-def.ts` / `column-def.ts` / `column-spec.ts` build a SQLite AST
 (`db-schema/`) from which DDL, row schemas, and the query-builder types are
 derived (LS.SYS.STATE.SQLITE-R01). Column annotations carry
-schema-level metadata.
+schema-level metadata. Without an explicit column-type annotation, inference
+uses the schema's encoded shape: Date codecs encoded as milliseconds map to
+`INTEGER`, including when refined with additional checks, while `Uint8Array`
+codecs map to `BLOB`, also when refined. The inferred column retains the
+original schema so those refinements continue to validate values decoded from
+SQLite.
 
 ## Query Builder
 
@@ -56,7 +61,7 @@ materializer; `get(id?)` is a typed query. Mechanics:
   `INSERT … ON CONFLICT (id) DO UPDATE` (`client-document-def.ts:305-321`)
   — last-write-wins per key (LS.SYS.STATE.SQLITE-R07).
 - The `value` column stores full documents decoded through an
-  *optimistic* schema (`client-document-def.ts:66`) so historical value
+  _optimistic_ schema (`client-document-def.ts:66`) so historical value
   formats remain readable after the document schema evolves.
 - `SessionIdSymbol` keys the document to the current session and is
   resolved before materialization (materializing an unresolved symbol is a
@@ -68,16 +73,16 @@ materializer; `get(id?)` is a typed query. Mechanics:
 
 ## System Tables
 
-| Group | Tables | Purpose |
-| --- | --- | --- |
-| Eventlog | `eventlog` (`eventlog-tables.ts`) | one row per event: composite seqNum triple (PK) + parent triple, `name`, `argsJson`, `clientId`, `sessionId`, per-row `schemaHash`, `syncMetadataJson`; indexed on seqNum |
-| Sync status | `__livestore_sync_status` | upstream head + `backendId` (backend-identity change detection) |
-| Schema meta | `__livestore_schema`, `__livestore_schema_event_defs` (`state-tables.ts`) | table-AST and event-definition hashes for drift detection |
-| Changeset/rollback | `__livestore_session_changeset` (`state-tables.ts`) | per-event SQLite session changesets enabling rebase rollback (LS.SYS.STATE.SQLITE-R06) |
+| Group              | Tables                                                                    | Purpose                                                                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Eventlog           | `eventlog` (`eventlog-tables.ts`)                                         | one row per event: composite seqNum triple (PK) + parent triple, `name`, `argsJson`, `clientId`, `sessionId`, per-row `schemaHash`, `syncMetadataJson`; indexed on seqNum |
+| Sync status        | `__livestore_sync_status`                                                 | upstream head + `backendId` (backend-identity change detection)                                                                                                           |
+| Schema meta        | `__livestore_schema`, `__livestore_schema_event_defs` (`state-tables.ts`) | table-AST and event-definition hashes for drift detection                                                                                                                 |
+| Changeset/rollback | `__livestore_session_changeset` (`state-tables.ts`)                       | per-event SQLite session changesets enabling rebase rollback (LS.SYS.STATE.SQLITE-R06)                                                                                    |
 
 (LS.SYS.STATE.SQLITE-R04.) Note the eventlog and changeset groups span two
-databases: changeset rows live in the *state* DB while event rows live in
-the *eventlog* DB; `getEventsSince` joins across both to serve rebase
+databases: changeset rows live in the _state_ DB while event rows live in
+the _eventlog_ DB; `getEventsSince` joins across both to serve rebase
 rollback.
 
 ## Schema Change

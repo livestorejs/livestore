@@ -316,10 +316,14 @@ describe('getColumnDefForSchema', () => {
       await asserts.decoding().succeed(new Uint8Array([1, 2, 3]))
     })
 
-    it('should preserve the Uint8Array representation through checks', () => {
+    it('should preserve Uint8Array checks on blob columns', () => {
       const schema = Schema.Uint8Array.check(Schema.makeFilter((value) => value.byteLength > 0))
+      const columnDef = State.SQLite.getColumnDefForSchema(schema)
 
-      expect(State.SQLite.getColumnDefForSchema(schema).columnType).toBe('blob')
+      expect(columnDef.columnType).toBe('blob')
+      expect(columnDef.schema).toBe(schema)
+      expect(Schema.decodeUnknownSync(columnDef.schema)(new Uint8Array([1]))).toEqual(new Uint8Array([1]))
+      expect(() => Schema.decodeUnknownSync(columnDef.schema)(new Uint8Array())).toThrow()
     })
   })
 
