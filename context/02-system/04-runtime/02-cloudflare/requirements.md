@@ -31,3 +31,8 @@ a Cloudflare Durable Object as a headless client. Refines
   flush (see
   [.reference/cloudflare-do-durability.md](./.reference/cloudflare-do-durability.md)).
   Decided 2026-07-16 (interview).
+- **LS.SYS.RT.CF-R07 In-process lifecycle delivery:** The colocated leader
+  routes terminal failures directly to the Store lifecycle callback. The
+  realization may omit cross-context shutdown transport, but a no-op channel
+  must not leave a queryable Store with a terminal sync worker.
+  `refines: LS.SYS.RT-R06`

@@ -32,11 +32,20 @@ LS-R04…R06, LS-R10, LS-T04. Realization:
   contract; the engine core depends only on the contract. `refines: LS-R10`
 - **LS.SYS.STATE-R06 Read-only queries:** The app query surface cannot mutate
   state.
-- **LS.SYS.STATE-R07 Error classification:** Materializer failures are
-  recoverable tagged errors (`MaterializeError`, materializer-hash
-  mismatch); contract violations (unknown event on write, missing event
+- **LS.SYS.STATE-R07 Error classification:** Materializer failures are tagged
+  errors (`MaterializeError`, materializer-hash mismatch), not defects;
+  canonical occurrences become supervised poisoned-event failures under
+  LS.SYS.STATE-R08. Contract violations (unknown event on write, missing event
   definition during materialization) are defects (see [spec.md](./spec.md)
-  §Error classification). Adopted 2026-07-16 (interview).
+  §Error classification). Adopted 2026-07-16 (interview); canonical
+  classification sharpened 2026-08-22 (#732).
+- **LS.SYS.STATE-R08 Deterministic failure atomicity:** Payload decoding,
+  materializer evaluation, determinism validation, and mutation execution form
+  one deterministic application boundary. If any step fails, no mutation,
+  changeset, eventlog row, state head, or canonical cursor from that batch may
+  remain committed. When the input is canonical, the failing event is poisoned
+  rather than skipped. Adopted 2026-08-22 (#732 reproduction and user
+  confirmation). `refines: LS.SYS.STATE-R02, LS.SYS.STATE-R03`
 
 ## Open Design Questions
 

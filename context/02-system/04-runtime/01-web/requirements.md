@@ -23,3 +23,7 @@ Re-homed 2026-07-16: `LS.SYS.RT.WEB-R01` → `LS.SYS.RT.WEB.TOPO-R01`,
 - **LS.SYS.RT.WEB-R05 Devtools channel:** The adapter exposes a devtools web
   channel (webmesh) so browser devtools can attach to sessions and leader.
   `refines: LS-R13`
+- **LS.SYS.RT.WEB-R06 In-process lifecycle delivery:** The in-memory variant
+  routes leader terminal failures directly to the Store lifecycle callback;
+  the absence of a worker-side shutdown-channel listener must not leave a
+  queryable Store with a terminal sync worker. `refines: LS.SYS.RT-R06`

@@ -63,7 +63,9 @@ An `Adapter` is a function from adapter args to a booted `ClientSession`
 
 The leader side is assembled by `makeLeaderThreadLayer`
 (`common/src/leader-thread/`): eventlog init, materializer wiring, optional
-sync backend, devtools hooks, shutdown channel.
+sync backend, devtools hooks, and topology-aware lifecycle delivery. Worker
+leaders send through the shutdown channel; an in-process leader uses the
+adapter's existing Store shutdown callback directly.
 
 ## Proxy Contract
 
@@ -168,13 +170,16 @@ The session ⇄ leader boundary has a typed failure contract:
   `StaleRebaseGenerationError` (`leader-thread/RejectedPushError.ts`).
   The session responds by rebasing and retrying; events are never dropped
   (LS.SYS.RT-R10). Semantics: [../03-sync/](../03-sync/spec.md).
-- **Shutdown broadcast:** the shutdown channel carries
+- **Lifecycle failure delivery:** the shutdown channel carries
   `IntentionalShutdownCause` (reasons: `devtools-reset`, `devtools-import`,
   `adapter-reset`, `manual`, `backend-id-mismatch`) *and* terminal failure
   causes (`UnknownError`, `BackendIdMismatchError`, `MaterializeError`) —
   it is a failure broadcast, not an intentional-only signal. Sessions map
   intentional causes to a successful exit and everything else to a failed
-  exit. Cloudflare has no channel (noop; single-context).
+  exit. In-process leaders, including the in-memory web and Cloudflare
+  realizations, deliver the same cause directly to the adapter's Store
+  lifecycle callback; a no-op cross-context channel never makes lifecycle
+  delivery itself a no-op.
 - **Boot defect:** leader boot asserts `backendHead <= localHead` and dies
   otherwise (LS.SYS.RT-R13) — the sole handover safety check; there is no
   cross-source reconciliation beyond it.

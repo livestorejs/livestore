@@ -19,6 +19,10 @@
   carrying an older generation.
 - **Pending event** — An event committed locally but not yet confirmed by
   the sync backend.
+- **Poisoned event** — A canonical synced event that the current schema and
+  read model cannot apply deterministically, for example because its known
+  payload does not decode or its materializer fails. It fences the canonical
+  prefix at the preceding valid event until the data or code is repaired.
 - **Upstream head** — The latest backend-confirmed eventlog position
   (persisted leader-side as `backendHead`).
 - **Local head** — The latest locally committed eventlog position, including
@@ -126,7 +130,7 @@ in their name:
 
 - **Event family** (leitwort "event") — anchor **Event**; followers Event
   definition, Eventlog, Event sequence number, Synced event, Client-only
-  event, Pending event, Derived event.
+  event, Pending event, Poisoned event, Derived event.
 - **Client family** (leitwort "client") — anchor **Client**; followers
   Client session, Client document.
 - **Sync family** (leitwort "sync") — no single anchor noun; Sync provider,
