@@ -101,13 +101,10 @@ export const exportMarkdownCommand = Cli.Command.make(
     }),
 )
 
-export class SnippetManifestMissing extends Schema.TaggedErrorClass<SnippetManifestMissing>()(
-  'SnippetManifestMissing',
-  {
-    message: Schema.String,
-    checked: Schema.Array(Schema.String),
-  },
-) {}
+export class SnippetManifestMissing extends Schema.TaggedError<SnippetManifestMissing>()('SnippetManifestMissing', {
+  message: Schema.String,
+  checked: Schema.Array(Schema.String),
+}) {}
 
 type DocMeta = {
   readonly id: string

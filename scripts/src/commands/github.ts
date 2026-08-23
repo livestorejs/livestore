@@ -319,7 +319,7 @@ const base64Url = (input: Buffer | string) =>
   (Buffer.isBuffer(input) === true ? input : Buffer.from(input)).toString('base64url')
 
 /** Failures while authenticating to, or reading, the live GitHub App definition. */
-class GitHubAppError extends Schema.TaggedErrorClass<GitHubAppError>()('GitHubAppError', {
+class GitHubAppError extends Schema.TaggedError<GitHubAppError>()('GitHubAppError', {
   message: Schema.String,
   cause: Schema.optional(Schema.Defect()),
 }) {}

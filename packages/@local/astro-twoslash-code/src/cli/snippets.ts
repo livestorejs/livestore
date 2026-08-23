@@ -122,8 +122,8 @@ import { resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths
 import type { SnippetBundle } from '../vite/snippet-graph.ts'
 import { buildSnippetBundle, __internal as snippetGraphInternal } from '../vite/snippet-graph.ts'
 
-const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
-const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
+const jsonStringify = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown))
+const jsonParse = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))
 const jsonStringifyPretty = (value: unknown): string => JSON.stringify(value, null, 2)
 
 type THastRendererResult = {
@@ -144,7 +144,7 @@ const SNIPPET_IMPORT_REGEX = /['"]([^'"\n]+\?snippet[^'"]*)['"]/g
 const SUPPORTED_SOURCE_EXTENSIONS = new Set(['.astro', '.md', '.mdx', '.ts', '.mts', '.tsx', '.js', '.mjs', '.jsx'])
 const EXCLUDED_DIRECTORIES = new Set(['node_modules', '.git', '.cache', 'dist', '.astro', '.netlify', 'logs'])
 
-export class SnippetBuildError extends Schema.TaggedErrorClass<SnippetBuildError>()('SnippetBuildError', {
+export class SnippetBuildError extends Schema.TaggedError<SnippetBuildError>()('SnippetBuildError', {
   message: Schema.String,
   cause: Schema.optional(Schema.Unknown),
   entry: Schema.optional(Schema.String),

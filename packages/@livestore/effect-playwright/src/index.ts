@@ -258,11 +258,8 @@ export const pageConsole = ({
     ),
   )
 
-export class SiteError extends Schema.TaggedErrorClass<SiteError>('~@livestore/effect-playwright/SiteError')(
-  'SiteError',
-  {
-    // TODO remove `label` again once error tracing works properly with Playwright
-    label: Schema.String,
-    messages: Schema.Union([Schema.Array(ConsoleMessage), Schema.Defect()]),
-  },
-) {}
+export class SiteError extends Schema.TaggedError<SiteError>('~@livestore/effect-playwright/SiteError')('SiteError', {
+  // TODO remove `label` again once error tracing works properly with Playwright
+  label: Schema.String,
+  messages: Schema.Union([Schema.Array(ConsoleMessage), Schema.Defect()]),
+}) {}

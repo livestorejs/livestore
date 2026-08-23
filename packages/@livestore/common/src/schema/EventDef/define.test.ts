@@ -9,7 +9,7 @@ describe('synced event wire schema', () => {
   const event = synced({
     name: 'v1.Occurred',
     schema: Schema.Struct({
-      occurredAt: Schema.DateFromString.check(Schema.isDateValid()),
+      occurredAt: Schema.DateFromString,
     }),
   })
   const jsonSchema = Schema.fromJsonString(event.schema)

@@ -6,11 +6,11 @@ import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 import type { RenderResult } from './renderer.ts'
 
 const jsonStringifyPretty = (value: unknown): string => JSON.stringify(value, null, 2)
-const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
+const jsonParse = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown))
 
 const hashString = (value: string): string => crypto.createHash('sha256').update(value).digest('hex')
 
-export class FileSystemError extends Schema.TaggedErrorClass<FileSystemError>()('Tldraw.FileSystemError', {
+export class FileSystemError extends Schema.TaggedError<FileSystemError>()('Tldraw.FileSystemError', {
   path: Schema.String,
   operation: Schema.String,
   cause: Schema.Any,
