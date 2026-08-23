@@ -33,13 +33,13 @@ packages:
   - tests/wa-sqlite
 
 overrides:
-  effect: 4.0.0-rc.109
-  '@effect/platform-browser': 4.0.0-rc.109
-  '@effect/platform-bun': 4.0.0-rc.109
-  '@effect/platform-node': 4.0.0-rc.109
-  '@effect/platform-node-shared': 4.0.0-rc.109
-  '@effect/opentelemetry': 4.0.0-rc.109
-  '@effect/vitest': 4.0.0-rc.109
+  effect: 4.0.0-rc.111
+  '@effect/platform-browser': 4.0.0-rc.111
+  '@effect/platform-bun': 4.0.0-rc.111
+  '@effect/platform-node': 4.0.0-rc.111
+  '@effect/platform-node-shared': 4.0.0-rc.111
+  '@effect/opentelemetry': 4.0.0-rc.111
+  '@effect/vitest': 4.0.0-rc.111
   react: 19.2.3
   react-dom: 19.2.3
   '@tanstack/router-core': 1.145.7
@@ -91,12 +91,12 @@ minimumReleaseAgeExclude:
   - '@effect/platform'
   - '@types/node'
   - effect
-  - '@effect/opentelemetry@4.0.0-rc.109'
-  - '@effect/platform-browser@4.0.0-rc.109'
-  - '@effect/platform-bun@4.0.0-rc.109'
-  - '@effect/platform-node@4.0.0-rc.109'
-  - '@effect/platform-node-shared@4.0.0-rc.109'
-  - '@effect/vitest@4.0.0-rc.109'
+  - '@effect/opentelemetry@4.0.0-rc.111'
+  - '@effect/platform-browser@4.0.0-rc.111'
+  - '@effect/platform-bun@4.0.0-rc.111'
+  - '@effect/platform-node@4.0.0-rc.111'
+  - '@effect/platform-node-shared@4.0.0-rc.111'
+  - '@effect/vitest@4.0.0-rc.111'
 
 supportedArchitectures:
   os: [linux, darwin]

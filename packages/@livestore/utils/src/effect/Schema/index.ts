@@ -50,7 +50,7 @@ export const pluck =
  * Use a concrete schema for known shapes (adds validation) or `Schema.Unknown`
  * for open-ended ones (the indented analogue of `fromJsonString(Schema.Unknown)`).
  *
- * TODO collapse into `fromJsonString(schema, { space })` now that Effect rc.109 accepts a
+ * TODO collapse into `fromJsonString(schema, { space })` now that Effect 4 accepts a
  * `space` option; kept separate here to keep the Effect upgrade free of release-tooling changes.
  */
 export const jsonStringIndented = <S extends Schema.Top>(schema: S, space: number | string = 2) =>
