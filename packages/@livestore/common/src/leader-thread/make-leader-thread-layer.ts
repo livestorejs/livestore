@@ -175,9 +175,28 @@ export const makeLeaderThreadLayer = ({
         ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
         : { migrationsReport: { migrations: [] } }
 
+    const devtoolsContext =
+      devtoolsOptions.enabled === true
+        ? {
+            enabled: true as const,
+            syncBackendLatch: yield* Latch.make(true),
+            syncBackendLatchState: yield* SubscriptionRef.make<{ latchClosed: boolean }>({ latchClosed: false }),
+          }
+        : { enabled: false as const }
+
+    const span = yield* Effect.currentSpan.pipe(Effect.option, Effect.map(Option.getOrUndefined))
+
     const syncProcessor = yield* LeaderSyncProcessor.make({
       schema,
-      dbState,
+      runtime: {
+        dbState,
+        dbEventlog,
+        materializeEvent,
+        syncBackend,
+        shutdownChannel,
+        devtoolsLatch: devtoolsContext.enabled === true ? devtoolsContext.syncBackendLatch : undefined,
+        span,
+      },
       initialSyncState: getInitialSyncState({ dbEventlog, dbState, dbEventlogMissing }),
       initialBlockingSyncContext,
       onError: syncOptions?.onSyncError ?? 'ignore',
@@ -198,15 +217,6 @@ export const makeLeaderThreadLayer = ({
       Queue.unbounded<Devtools.Leader.MessageToApp>(),
       Queue.shutdown,
     )
-
-    const devtoolsContext =
-      devtoolsOptions.enabled === true
-        ? {
-            enabled: true as const,
-            syncBackendLatch: yield* Latch.make(true),
-            syncBackendLatchState: yield* SubscriptionRef.make<{ latchClosed: boolean }>({ latchClosed: false }),
-          }
-        : { enabled: false as const }
 
     const networkStatus = yield* makeNetworkStatusSubscribable({ syncBackend, devtoolsContext })
 
