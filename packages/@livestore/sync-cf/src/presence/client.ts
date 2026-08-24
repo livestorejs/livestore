@@ -6,7 +6,6 @@ import {
   RpcSerialization,
   Schedule,
   Scope,
-  Schema,
   Socket,
   Stream,
   SubscriptionRef,
@@ -15,72 +14,49 @@ import {
 import { SyncWsRpc } from '../common/ws-rpc-schema.ts'
 import type { PresenceSnapshot } from './schema.ts'
 
-export interface PresenceChannelOptions {
+export interface PresenceClientOptions {
+  /** Sync backend URL (same endpoint the LiveStore worker uses). */
   url: string
   storeId: string
   clientId: string
-  /** Optional display name shared with peers on every channel. */
   name?: string
-  /**
-   * Sync payload (e.g. auth token) forwarded to the backend's
-   * `validatePayload` during connection establishment.
-   */
-  payload?: Schema.Json | undefined
-  /** How often to re-emit state so rooms keep this client alive. */
+  payload?: unknown
+  /** How often to heartbeat so the party keeps this client alive. */
   heartbeatIntervalMs?: number
-  /** Coalescing window in ms for high-frequency updates (cursor/drag). @default 40 */
+  /** Coalescing window in ms for cursor/drag streams. @default 40 */
   throttleIntervalMs?: number
 }
 
-/**
- * Channel definitions mirrored from the party's server-side declaration.
- *
- * Define the schemas once in a shared module, pass them to
- * `makeDurableObject({ presence: { schemas } })` on the server and to
- * `makePresenceClient({ channels })` in the app — `setState`/`snapshots` are
- * then fully typed per channel.
- */
-export type PresenceChannels = Record<string, Schema.Codec<any, any>>
+/** Patch of ephemeral presence state. `undefined`/`null` values clear the key. */
+export type PresenceStatePatch = Record<string, unknown>
 
-type ChannelsOf<TChannels extends PresenceChannels> = {
-  [K in keyof TChannels & string]: Schema.Schema.Type<TChannels[K]>
-}
-
-export interface PresenceClient<TChannels extends PresenceChannels> {
+export interface PresenceClient<TChannels extends Record<string, any>> {
   readonly storeId: string
   readonly clientId: string
-  /** Synchronous read handle for one channel's room snapshot. */
+  snapshots: <K extends keyof TChannels & string>(channel: K) => Stream.Stream<PresenceSnapshot, never>
   snapshotRef: <K extends keyof TChannels & string>(
     channel: K,
   ) => SubscriptionRef.SubscriptionRef<PresenceSnapshot>
-  /** Live stream of snapshots for one channel (current value first). */
-  snapshots: <K extends keyof TChannels & string>(channel: K) => Stream.Stream<PresenceSnapshot, never>
-  /** Merge a typed patch into this client's state on `channel`. */
-  setState: <K extends keyof TChannels & string>(
-    channel: K,
-    patch: Partial<ChannelsOf<TChannels>[K]>,
-  ) => Effect.Effect<void>
-  /** Mark this client offline on all channels and disconnect. */
+  /** Set fields on this client's presence state for `channel`. `undefined`/`null` values clear the key. */
+  /** Set fields on this client's presence state for `channel`. */
+  setState: (channel: string, patch: Record<string, unknown>) => Effect.Effect<void>
   leave: Effect.Effect<void>
 }
 
 /**
- * Creates an ephemeral presence client attached to the sync party.
+ * Ephemeral presence client attached to the sync party.
  *
- * Single-party model: presence rides the same sync backend (and Durable
- * Object) as the durable eventlog via `SyncWsRpc` presence RPCs — one party
- * per storeId hosts both. Presence state is broadcast only; it is never
- * written to the eventlog or SQLite.
- *
- * Channels must be declared once on the server via
- * `makeDurableObject({ presence: { schemas } })`; the same schemas are passed
- * here so patches are encoded/typed client-side and validated server-side.
+ * Sends FULL accumulated state (not patches) so clearing a field (e.g.
+ * dropping a drag) is reliably reflected on the server. Re-joins all channels
+ * on socket reconnect.
  */
-export const makePresenceClient = <TChannels extends PresenceChannels>(
-  options: PresenceChannelOptions & { channels: TChannels },
+export const makePresenceClient = <TChannels extends Record<string, any>>(
+  options: PresenceClientOptions & { channels: TChannels },
 ): Effect.Effect<PresenceClient<TChannels>, never, Scope.Scope> =>
   Effect.gen(function* () {
     const channelNames = Object.keys(options.channels)
+    const heartbeatIntervalMs = options.heartbeatIntervalMs ?? 5_000
+    const throttleIntervalMs = options.throttleIntervalMs ?? 40
 
     const snapshotRefs = yield* Ref.make(new Map<string, SubscriptionRef.SubscriptionRef<PresenceSnapshot>>())
 
@@ -96,8 +72,17 @@ export const makePresenceClient = <TChannels extends PresenceChannels>(
       return ref
     })
 
+    // Full accumulated state per channel (not patches). `setState` merges into
+    // this; `undefined`/`null` values delete keys. Flush sends the whole thing.
+    const stateRef = yield* Ref.make(new Map<string, Record<string, unknown>>())
+    const throttledRef = yield* Ref.make(new Map<string, { last: number }>())
+
     const ProtocolLive = RpcClient.layerProtocolSocket().pipe(
-      Layer.provide(Socket.layerWebSocket(`${options.url}?storeId=${encodeURIComponent(options.storeId)}&transport=ws${options.payload !== undefined ? `&payload=${encodeURIComponent(JSON.stringify(options.payload))}` : ''}`)),
+      Layer.provide(
+        Socket.layerWebSocket(
+          `${options.url}?storeId=${encodeURIComponent(options.storeId)}&transport=ws${options.payload !== undefined ? `&payload=${encodeURIComponent(JSON.stringify(options.payload))}` : ''}`,
+        ),
+      ),
       Layer.provide(Socket.layerWebSocketConstructorGlobal),
       Layer.provide(RpcSerialization.layerJson),
     )
@@ -105,8 +90,7 @@ export const makePresenceClient = <TChannels extends PresenceChannels>(
     const ctx = yield* Layer.build(ProtocolLive)
     const rpcClient = yield* RpcClient.make(SyncWsRpc).pipe(Effect.provide(ctx))
 
-    // Join every declared channel, then subscribe to each room's snapshots.
-    yield* Effect.forEach(channelNames, (channel) =>
+    const joinAll = Effect.forEach(channelNames, (channel) =>
       rpcClient['SyncWsRpc.PresenceJoin']({
         storeId: options.storeId,
         channel,
@@ -115,70 +99,63 @@ export const makePresenceClient = <TChannels extends PresenceChannels>(
       }).pipe(Effect.ignore),
     )
 
-    yield* Effect.forkScoped(
-      Effect.forEach(channelNames, (channel) =>
-        rpcClient['SyncWsRpc.PresenceSnapshots']({ storeId: options.storeId, channel }).pipe(
-          Stream.tap((snapshot) =>
-            Effect.gen(function* () {
-              const ref = yield* getSnapshotRef(channel)
-              yield* SubscriptionRef.set(ref, snapshot)
-            }),
-          ),
-          Stream.runDrain,
-          Effect.interruptible,
-          Effect.ignore,
+    const subscribeAll = Effect.forEach(channelNames, (channel) =>
+      rpcClient['SyncWsRpc.PresenceSnapshots']({ storeId: options.storeId, channel }).pipe(
+        Stream.mapEffect((snapshot) =>
+          Effect.gen(function* () {
+            const ref = yield* getSnapshotRef(channel)
+            yield* SubscriptionRef.set(ref, snapshot)
+          }),
         ),
+        Stream.runDrain,
+        Effect.interruptible,
+        Effect.ignore,
       ),
     )
 
-    // Per-channel coalescing throttle state; heartbeats flush all channels so
-    // the party's idle TTL keeps live clients.
-    const throttledRef = yield* Ref.make(
-      new Map<string, { last: number; pending: Record<string, unknown> }>(),
-    )
-    const heartbeatIntervalMs = options.heartbeatIntervalMs ?? 5_000
+    // Join + subscribe now.
+    yield* joinAll
+    yield* Effect.forkDetach(subscribeAll)
 
-    const flushChannel = (channel: string) =>
+    const sendState = (channel: string) =>
       Effect.gen(function* () {
-        const stateMap = yield* Ref.get(throttledRef)
-        const entry = stateMap.get(channel)
-        if (entry === undefined || Object.keys(entry.pending).length === 0) return
-        const def = options.channels[channel]
-        if (def === undefined) return
-        // Client-side encode against the channel schema; the party validates
-        // the same schema before fan-out (end-to-end typed).
-        // Send the raw patch as JSON: schema transforms can drop optional
-        // primitive fields on encode/decode round-trips. Types are enforced at
-        // compile time via `channels`; the party validates before fan-out.
-        const encoded = entry.pending
-        yield* Ref.update(throttledRef, (map) => new Map(map).set(channel, { last: Date.now(), pending: {} }))
+        const state = (yield* Ref.get(stateRef)).get(channel)
+        if (state === undefined) return
         yield* rpcClient['SyncWsRpc.PresenceUpdate']({
           storeId: options.storeId,
           channel,
           clientId: options.clientId,
-          patch: encoded as any,
+          patch: state as any,
         }).pipe(Effect.ignore)
       })
 
-    // Heartbeat flushes every declared channel so the party's idle TTL keeps
-    // this client alive even when idle.
-    yield* Effect.forkScoped(
+    const flushChannel = (channel: string) =>
+      Effect.gen(function* () {
+        const last = (yield* Ref.get(throttledRef)).get(channel)?.last ?? 0
+        if (Date.now() - last < throttleIntervalMs) return
+        yield* Ref.update(throttledRef, (map) => new Map(map).set(channel, { last: Date.now() }))
+        yield* sendState(channel)
+      })
+
+    // Heartbeat: send full state for all channels so the party keeps this
+    // client alive. Detached: runs for the process lifetime.
+    yield* Effect.forkDetach(
       Effect.gen(function* () {
         while (true) {
           yield* Effect.sleep(heartbeatIntervalMs)
           for (const channel of channelNames) {
-            yield* flushChannel(channel)
+            yield* sendState(channel)
           }
         }
-      }).pipe(Effect.interruptible),
+      }).pipe(Effect.interruptible, Effect.ignore),
     )
 
     return {
       storeId: options.storeId,
       clientId: options.clientId,
 
-      snapshotRef: ((channel: string) =>
-        Effect.runSync(getSnapshotRef(channel))) as any,
+      snapshotRef: ((channel: string) => Effect.runSync(getSnapshotRef(channel))) as any,
+
       snapshots: ((channel: string) =>
         Effect.map(getSnapshotRef(channel), (ref) => SubscriptionRef.changes(ref)).pipe(
           Stream.unwrap,
@@ -186,18 +163,18 @@ export const makePresenceClient = <TChannels extends PresenceChannels>(
 
       setState: (((channel: string, patch: Record<string, unknown>) =>
         Effect.gen(function* () {
-          const stateMap = yield* Ref.get(throttledRef)
-          const entry = stateMap.get(channel) ?? { last: 0, pending: {} as Record<string, unknown> }
-          yield* Ref.update(throttledRef, (map) =>
-            new Map(map).set(channel, {
-              last: entry.last,
-              pending: { ...entry.pending, ...patch },
-            }),
-          )
-          const elapsed = Date.now() - entry.last
-          if (elapsed >= (options.throttleIntervalMs ?? 40)) {
-            yield* flushChannel(channel)
+          const prevState = (yield* Ref.get(stateRef)).get(channel) ?? {}
+          // Merge patch; `undefined`/`null` values delete keys.
+          const next: Record<string, unknown> = { ...prevState }
+          for (const [key, value] of Object.entries(patch)) {
+            if (value === undefined || value === null) {
+              delete next[key]
+            } else {
+              next[key] = value
+            }
           }
+          yield* Ref.update(stateRef, (map) => new Map(map).set(channel, next))
+          yield* flushChannel(channel)
         }).pipe(Effect.ignore)) as any),
 
       leave: Effect.gen(function* () {

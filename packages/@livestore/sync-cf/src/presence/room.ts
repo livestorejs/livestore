@@ -169,21 +169,13 @@ export const makePresenceRoom = (
           if (def === undefined) {
             return yield* new PresenceChannelError({ message: `Unknown presence channel: ${channel}` })
           }
-          // Server-side validation against the channel schema: malformed or
-          // unknown-channel patches are rejected here, giving clients typed,
-          // trusted fan-out.
-          const decoded = Schema.decodeUnknownResult(def.schema)(patch)
-          if (Result.isFailure(decoded) === true) {
-            return yield* new PresenceChannelError({
-              message: `Invalid patch for presence channel ${channel}: ${String(decoded.failure)}`,
-            })
-          }
           yield* Ref.update(membersRef, (channels) => {
             const members = new Map(channels.get(channel) ?? new Map())
             const existing = members.get(clientId)
             if (existing === undefined) return channels
-            const prevState = (existing.state ?? {}) as Record<string, unknown>
-            members.set(clientId, { ...existing, updatedAt: Date.now(), state: { ...prevState, ...(patch as object) } })
+            // REPLACE state (not merge): the client sends its full accumulated
+            // state, so absent keys are truly absent (e.g. cleared drag).
+            members.set(clientId, { ...existing, updatedAt: Date.now(), state: patch as Record<string, unknown> })
             return new Map(channels).set(channel, members)
           })
           yield* publish(channel)
