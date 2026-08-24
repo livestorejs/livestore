@@ -434,16 +434,16 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/adapter-cloudflare':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/adapter-cloudflare
       '@livestore/livestore':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/sync-cf':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/sync-cf
     devDependencies:
       wrangler:
@@ -493,25 +493,25 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/adapter-cloudflare':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/adapter-cloudflare
       '@livestore/adapter-web':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/livestore
       '@livestore/react':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/react
       '@livestore/sqlite-wasm':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/sqlite-wasm
       '@livestore/sync-cf':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/wa-sqlite
       react:
         specifier: 19.2.3
@@ -560,25 +560,25 @@ importers:
         specifier: 2.2.0
         version: 2.2.0(react@19.2.3)
       '@livestore/adapter-web':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/react
       '@livestore/sync-cf':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/utils':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/utils
       '@livestore/wa-sqlite':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -717,19 +717,19 @@ importers:
   examples/web-todomvc:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -781,19 +781,19 @@ importers:
   examples/web-todomvc-script:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/sync-cf':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/wa-sqlite
     devDependencies:
       '@cloudflare/vite-plugin':
@@ -821,22 +821,22 @@ importers:
   examples/web-todomvc-sync-cf:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/react
       '@livestore/sync-cf':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0
+        specifier: 0.5.0-dev.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -16195,7 +16195,7 @@ snapshots:
       terminal-link: 2.1.1
       undici: 6.25.0
       wrap-ansi: 7.0.0
-      ws: 8.21.0
+      ws: 8.21.3
     optionalDependencies:
       react-native: 0.81.4(@babel/core@7.29.0)(@types/react@19.2.7)(react@19.2.3)
     transitivePeerDependencies:
@@ -16272,7 +16272,7 @@ snapshots:
       terminal-link: 2.1.1
       undici: 6.25.0
       wrap-ansi: 7.0.0
-      ws: 8.21.0
+      ws: 8.21.3
     optionalDependencies:
       react-native: 0.81.4(@babel/core@7.29.0)(@types/react@19.2.7)(react@19.2.3)
     transitivePeerDependencies:
@@ -16405,7 +16405,7 @@ snapshots:
 
   '@expo/mcp-tunnel@0.0.8':
     dependencies:
-      ws: 8.21.0
+      ws: 8.21.3
       zod: 3.25.76
       zod-to-json-schema: 3.25.2(zod@3.25.76)
     transitivePeerDependencies:
@@ -25622,7 +25622,7 @@ snapshots:
       whatwg-encoding: 3.1.1
       whatwg-mimetype: 4.0.0
       whatwg-url: 14.2.0
-      ws: 8.21.0
+      ws: 8.21.3
       xml-name-validator: 5.0.0
     transitivePeerDependencies:
       - bufferutil
