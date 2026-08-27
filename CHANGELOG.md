@@ -8,6 +8,16 @@
 
 ## Unreleased
 
+### Added
+
+- **Cloudflare presence:** `@livestore/sync-cf/presence` hosts ephemeral
+  rooms on the same WebSocket as the eventlog. Isolation is by `roomId`
+  (so a typing indicator in one conversation is not broadcast to the
+  whole store). Channels are declared schemas, decoded before fan-out.
+  Auth follows the existing two-gate pattern (`validatePayload` plus
+  `onJoin` / `onUpdate` / `onLeave`). `PresenceUpdate` can be
+  rate-limited per client. Socket close evicts the member.
+
 ### Changed
 
 - **Cloudflare sync:** Serialize push admission through pull publication so an

@@ -1,0 +1,113 @@
+---
+title: Presence
+description: Ephemeral rooms, typed channels, auth, and rate limits on the Cloudflare sync backend
+sidebar:
+  order: 23
+---
+
+import SchemasSnippet from '../../_assets/code/patterns/presence/schemas.ts?snippet'
+import DeclareChannelsSnippet from '../../_assets/code/patterns/presence/declare-channels.ts?snippet'
+import ClientSnippet from '../../_assets/code/patterns/presence/client.ts?snippet'
+import RoomsSnippet from '../../_assets/code/patterns/presence/rooms.ts?snippet'
+import AuthSnippet from '../../_assets/code/patterns/presence/auth.ts?snippet'
+import RateLimitSnippet from '../../_assets/code/patterns/presence/rate-limit.ts?snippet'
+import HooksSnippet from '../../_assets/code/patterns/presence/hooks.ts?snippet'
+
+:::caution[Experimental]
+Presence is experimental and under active development. The API may change.
+:::
+
+`@livestore/sync-cf` hosts an ephemeral presence channel next to the durable eventlog. Presence is broadcast-only: it is never written to SQLite or the eventlog, which is what you want for high-frequency, short-lived state.
+
+Use it for:
+
+- Who is online in a room
+- Typing indicators
+- Text carets
+- Pointer cursors and live drags
+
+Durable facts (a card moved, a message was sent) still belong in LiveStore events. Presence is only "what is happening right now."
+
+## How it is hosted
+
+One Durable Object per `storeId` already arbitrates the eventlog. Presence rides the same WebSocket (`/sync`) and the same `validatePayload` gate. Inside that isolate, isolation is by **room**, not by store:
+
+```
+storeId  →  Durable Object
+              ├── eventlog (durable)
+              └── rooms (ephemeral)
+                    ├── default
+                    ├── chat:alice-bob     ← typing stays here
+                    └── chat:carol-dave
+```
+
+A typing indicator in `chat:alice-bob` is never visible to members of `chat:carol-dave`. Channels (`cursor`, `typing`, …) are typed topics *inside* a room.
+
+## Declare channel schemas
+
+Define schemas once and pass them to both the Durable Object and the client. The server schema-decodes every update before fan-out.
+
+<SchemasSnippet />
+
+<DeclareChannelsSnippet />
+
+## Set and subscribe
+
+`makePresenceClient` joins the `default` room unless you pass `room`. `setState` merges locally and sends the full accumulated object so clearing a field (for example dropping a drag) is reflected on the server.
+
+<ClientSnippet />
+
+## Rooms
+
+For a chat app, each conversation is a room. Only members of that room see each other's typing.
+
+<RoomsSnippet />
+
+`presence.room(id)` joins lazily on the first `setState` or `snapshots` call. One client can be in many rooms at once.
+
+Use `onJoin` (below) to reject rooms the caller is not allowed to see.
+
+## Auth
+
+Presence uses the same two gates as [sync auth](/patterns/auth/):
+
+1. **`validatePayload`** on the worker — runs once at WebSocket upgrade. A failed token never reaches the Durable Object.
+2. **`onJoin` / `onUpdate`** inside the Durable Object — re-check the payload (it is still the original client input) and authorize the *room*.
+
+<AuthSnippet />
+
+- `clientId` is a LiveStore instance id, not a user. Bind user identity through `syncPayload` / forwarded headers, the same way you do for `onPush`.
+- The socket is bound to the first `clientId` it joins as. Later RPCs that spoof another `clientId` are rejected.
+- Cookie / header auth works via `forwardHeaders`; hooks receive `context.headers`.
+
+## Rate limiting
+
+Cursor streams can be tens of updates per second per client. Cap `PresenceUpdate` per client on the server. Join and leave are not limited.
+
+<RateLimitSnippet />
+
+- `ignore` drops the update and keeps the socket open (the usual choice).
+- `close` closes the socket with code `4008`.
+- The client already coalesces at `throttleIntervalMs` (default 40ms). The server limit is the backstop against a runaway or hostile client.
+
+## Hooks
+
+`onJoin`, `onUpdate`, and `onLeave` have the same shape as `onPush`: sync, `Promise`, or Effect. Throw or fail to reject the mutation.
+
+<HooksSnippet />
+
+Typical uses:
+
+- Log or ship analytics
+- Authorize a room (see above)
+- Persist a *semantic* fact by also committing a LiveStore event from the client (for example `cardMoved` at drag end). Do not persist cursor ticks — they would flood the eventlog.
+
+Socket close evicts the client from every room it joined.
+
+## Idle TTL
+
+Members whose last update is older than `memberIdleTtlMs` (default 15s) are swept. The client heartbeats every 5s by default. After Durable Object hibernation the next update recreates the member.
+
+## Example
+
+See the [kanban with presence](https://github.com/livestorejs/livestore-contrib) example for live cursors, live drags, and a durable board on the same `/sync` endpoint.

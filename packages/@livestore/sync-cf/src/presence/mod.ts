@@ -1,3 +1,5 @@
 export * from './schema.ts'
 export * from './room.ts'
 export * from './client.ts'
+export * from './rate-limit.ts'
+export * from './server.ts'

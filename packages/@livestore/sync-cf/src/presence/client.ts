@@ -4,7 +4,6 @@ import {
   Ref,
   RpcClient,
   RpcSerialization,
-  Schedule,
   Scope,
   Socket,
   Stream,
@@ -12,7 +11,7 @@ import {
 } from '@livestore/utils/effect'
 
 import { SyncWsRpc } from '../common/ws-rpc-schema.ts'
-import type { PresenceSnapshot } from './schema.ts'
+import { DEFAULT_PRESENCE_ROOM_ID, type PresenceSnapshot } from './schema.ts'
 
 export interface PresenceClientOptions {
   /** Sync backend URL (same endpoint the LiveStore worker uses). */
@@ -21,61 +20,87 @@ export interface PresenceClientOptions {
   clientId: string
   name?: string
   payload?: unknown
-  /** How often to heartbeat so the party keeps this client alive. */
+  /**
+   * Default room this client joins. Isolation unit: members of other rooms
+   * never see this client's state. @default 'default'
+   */
+  room?: string
+  /** Extra rooms to join at connect time (in addition to `room`). */
+  rooms?: ReadonlyArray<string>
+  /** How often to heartbeat so idle-TTL does not prune this client. */
   heartbeatIntervalMs?: number
-  /** Coalescing window in ms for cursor/drag streams. @default 40 */
+  /** Coalescing window in ms for high-frequency streams. @default 40 */
   throttleIntervalMs?: number
 }
 
-/** Patch of ephemeral presence state. `undefined`/`null` values clear the key. */
 export type PresenceStatePatch = Record<string, unknown>
 
-export interface PresenceClient<TChannels extends Record<string, any>> {
-  readonly storeId: string
-  readonly clientId: string
-  snapshots: <K extends keyof TChannels & string>(channel: K) => Stream.Stream<PresenceSnapshot, never>
-  snapshotRef: <K extends keyof TChannels & string>(
-    channel: K,
-  ) => SubscriptionRef.SubscriptionRef<PresenceSnapshot>
-  /** Set fields on this client's presence state for `channel`. `undefined`/`null` values clear the key. */
-  /** Set fields on this client's presence state for `channel`. */
-  setState: (channel: string, patch: Record<string, unknown>) => Effect.Effect<void>
+/** Local merge used by `setState`. `null` / `undefined` deletes the key. */
+export const mergePresencePatch = (prev: PresenceStatePatch, patch: PresenceStatePatch): PresenceStatePatch => {
+  const next: PresenceStatePatch = { ...prev }
+  for (const [field, value] of Object.entries(patch)) {
+    if (value === undefined || value === null) {
+      delete next[field]
+    } else {
+      next[field] = value
+    }
+  }
+  return next
+}
+
+export interface PresenceRoomHandle<TChannels extends Record<string, unknown>> {
+  readonly roomId: string
+  snapshots: <K extends keyof TChannels & string>(channel: K) => Stream.Stream<PresenceSnapshot>
+  snapshotRef: <K extends keyof TChannels & string>(channel: K) => SubscriptionRef.SubscriptionRef<PresenceSnapshot>
+  setState: <K extends keyof TChannels & string>(channel: K, patch: PresenceStatePatch) => Effect.Effect<void>
+  join: Effect.Effect<void>
   leave: Effect.Effect<void>
 }
 
+export interface PresenceClient<TChannels extends Record<string, unknown>> extends PresenceRoomHandle<TChannels> {
+  readonly storeId: string
+  readonly clientId: string
+  /** Handle for another room. Joins lazily on first `setState` / `snapshots`. */
+  room: (roomId: string) => PresenceRoomHandle<TChannels>
+}
+
+type ChannelState = Record<string, unknown>
+
 /**
- * Ephemeral presence client attached to the sync party.
- *
- * Sends FULL accumulated state (not patches) so clearing a field (e.g.
- * dropping a drag) is reliably reflected on the server. Re-joins all channels
- * on socket reconnect.
+ * Ephemeral presence client. Sends the full accumulated channel state (not
+ * merge-patches) so clearing a field is reflected on the server.
  */
-export const makePresenceClient = <TChannels extends Record<string, any>>(
+export const makePresenceClient = <TChannels extends Record<string, unknown>>(
   options: PresenceClientOptions & { channels: TChannels },
 ): Effect.Effect<PresenceClient<TChannels>, never, Scope.Scope> =>
   Effect.gen(function* () {
     const channelNames = Object.keys(options.channels)
+    const defaultRoomId = options.room ?? DEFAULT_PRESENCE_ROOM_ID
     const heartbeatIntervalMs = options.heartbeatIntervalMs ?? 5_000
     const throttleIntervalMs = options.throttleIntervalMs ?? 40
 
-    const snapshotRefs = yield* Ref.make(new Map<string, SubscriptionRef.SubscriptionRef<PresenceSnapshot>>())
+    const snapshotRefs = yield* Ref.make(
+      new Map<string, SubscriptionRef.SubscriptionRef<PresenceSnapshot>>(),
+    )
+    const stateRef = yield* Ref.make(new Map<string, ChannelState>())
+    const throttledRef = yield* Ref.make(new Map<string, number>())
+    const joinedRooms = yield* Ref.make(new Set<string>())
 
-    const getSnapshotRef = Effect.fnUntraced(function* (channel: string) {
-      const existing = (yield* Ref.get(snapshotRefs)).get(channel)
+    const refKey = (roomId: string, channel: string) => `${roomId}\0${channel}`
+
+    const getSnapshotRef = Effect.fnUntraced(function* (roomId: string, channel: string) {
+      const key = refKey(roomId, channel)
+      const existing = (yield* Ref.get(snapshotRefs)).get(key)
       if (existing !== undefined) return existing
       const ref = yield* SubscriptionRef.make<PresenceSnapshot>({
         storeId: options.storeId,
+        roomId,
         channel,
         members: [],
       })
-      yield* Ref.update(snapshotRefs, (map) => new Map(map).set(channel, ref))
+      yield* Ref.update(snapshotRefs, (map) => new Map(map).set(key, ref))
       return ref
     })
-
-    // Full accumulated state per channel (not patches). `setState` merges into
-    // this; `undefined`/`null` values delete keys. Flush sends the whole thing.
-    const stateRef = yield* Ref.make(new Map<string, Record<string, unknown>>())
-    const throttledRef = yield* Ref.make(new Map<string, { last: number }>())
 
     const ProtocolLive = RpcClient.layerProtocolSocket().pipe(
       Layer.provide(
@@ -90,101 +115,128 @@ export const makePresenceClient = <TChannels extends Record<string, any>>(
     const ctx = yield* Layer.build(ProtocolLive)
     const rpcClient = yield* RpcClient.make(SyncWsRpc).pipe(Effect.provide(ctx))
 
-    const joinAll = Effect.forEach(channelNames, (channel) =>
-      rpcClient['SyncWsRpc.PresenceJoin']({
-        storeId: options.storeId,
-        channel,
-        clientId: options.clientId,
-        name: options.name,
-      }).pipe(Effect.ignore),
-    )
-
-    const subscribeAll = Effect.forEach(channelNames, (channel) =>
-      rpcClient['SyncWsRpc.PresenceSnapshots']({ storeId: options.storeId, channel }).pipe(
-        Stream.mapEffect((snapshot) =>
-          Effect.gen(function* () {
-            const ref = yield* getSnapshotRef(channel)
-            yield* SubscriptionRef.set(ref, snapshot)
-          }),
-        ),
-        Stream.runDrain,
-        Effect.interruptible,
-        Effect.ignore,
-      ),
-    )
-
-    // Join + subscribe now.
-    yield* joinAll
-    yield* Effect.forkDetach(subscribeAll)
-
-    const sendState = (channel: string) =>
+    const joinRoom = (roomId: string) =>
       Effect.gen(function* () {
-        const state = (yield* Ref.get(stateRef)).get(channel)
+        const joined = yield* Ref.get(joinedRooms)
+        if (joined.has(roomId)) return
+        yield* Effect.forEach(channelNames, (channel) =>
+          rpcClient['SyncWsRpc.PresenceJoin']({
+            storeId: options.storeId,
+            roomId,
+            channel,
+            clientId: options.clientId,
+            name: options.name,
+          }).pipe(Effect.ignore),
+        )
+        yield* Effect.forEach(channelNames, (channel) =>
+          rpcClient['SyncWsRpc.PresenceSnapshots']({
+            storeId: options.storeId,
+            roomId,
+            channel,
+          }).pipe(
+            Stream.mapEffect((snapshot) =>
+              Effect.gen(function* () {
+                const ref = yield* getSnapshotRef(roomId, channel)
+                yield* SubscriptionRef.set(ref, snapshot)
+              }),
+            ),
+            Stream.runDrain,
+            Effect.interruptible,
+            Effect.ignore,
+            Effect.forkDetach,
+          ),
+        )
+        yield* Ref.update(joinedRooms, (set) => new Set(set).add(roomId))
+      })
+
+    const leaveRoom = (roomId: string) =>
+      Effect.gen(function* () {
+        yield* Effect.forEach(channelNames, (channel) =>
+          rpcClient['SyncWsRpc.PresenceLeave']({
+            storeId: options.storeId,
+            roomId,
+            channel,
+            clientId: options.clientId,
+          }).pipe(Effect.ignore),
+        )
+        yield* Ref.update(joinedRooms, (set) => {
+          const next = new Set(set)
+          next.delete(roomId)
+          return next
+        })
+      })
+
+    const sendState = (roomId: string, channel: string) =>
+      Effect.gen(function* () {
+        const state = (yield* Ref.get(stateRef)).get(refKey(roomId, channel))
         if (state === undefined) return
         yield* rpcClient['SyncWsRpc.PresenceUpdate']({
           storeId: options.storeId,
+          roomId,
           channel,
           clientId: options.clientId,
-          patch: state as any,
+          patch: state,
         }).pipe(Effect.ignore)
       })
 
-    const flushChannel = (channel: string) =>
+    const flushChannel = (roomId: string, channel: string) =>
       Effect.gen(function* () {
-        const last = (yield* Ref.get(throttledRef)).get(channel)?.last ?? 0
+        const key = refKey(roomId, channel)
+        const last = (yield* Ref.get(throttledRef)).get(key) ?? 0
         if (Date.now() - last < throttleIntervalMs) return
-        yield* Ref.update(throttledRef, (map) => new Map(map).set(channel, { last: Date.now() }))
-        yield* sendState(channel)
+        yield* Ref.update(throttledRef, (map) => new Map(map).set(key, Date.now()))
+        yield* sendState(roomId, channel)
       })
 
-    // Heartbeat: send full state for all channels so the party keeps this
-    // client alive. Detached: runs for the process lifetime.
+    const setStateIn = (roomId: string, channel: string, patch: PresenceStatePatch) =>
+      Effect.gen(function* () {
+        yield* joinRoom(roomId)
+        const key = refKey(roomId, channel)
+        const prevState = (yield* Ref.get(stateRef)).get(key) ?? {}
+        const next = mergePresencePatch(prevState, patch)
+        yield* Ref.update(stateRef, (map) => new Map(map).set(key, next))
+        yield* flushChannel(roomId, channel)
+      }).pipe(Effect.ignore)
+
+    const makeHandle = (roomId: string): PresenceRoomHandle<TChannels> => ({
+      roomId,
+      snapshotRef: ((channel: string) => Effect.runSync(getSnapshotRef(roomId, channel))) as PresenceRoomHandle<TChannels>['snapshotRef'],
+      snapshots: ((channel: string) =>
+        Effect.map(getSnapshotRef(roomId, channel), (ref) => SubscriptionRef.changes(ref)).pipe(
+          Stream.unwrap,
+        )) as PresenceRoomHandle<TChannels>['snapshots'],
+      setState: (channel, patch) => setStateIn(roomId, channel, patch),
+      join: joinRoom(roomId),
+      leave: leaveRoom(roomId),
+    })
+
+    const initialRooms = [defaultRoomId, ...(options.rooms ?? [])]
+    yield* Effect.forEach(initialRooms, joinRoom)
+
     yield* Effect.forkDetach(
       Effect.gen(function* () {
         while (true) {
           yield* Effect.sleep(heartbeatIntervalMs)
-          for (const channel of channelNames) {
-            yield* sendState(channel)
+          const joined = yield* Ref.get(joinedRooms)
+          for (const roomId of joined) {
+            for (const channel of channelNames) {
+              yield* sendState(roomId, channel)
+            }
           }
         }
       }).pipe(Effect.interruptible, Effect.ignore),
     )
 
+    const defaultHandle = makeHandle(defaultRoomId)
+
     return {
       storeId: options.storeId,
       clientId: options.clientId,
-
-      snapshotRef: ((channel: string) => Effect.runSync(getSnapshotRef(channel))) as any,
-
-      snapshots: ((channel: string) =>
-        Effect.map(getSnapshotRef(channel), (ref) => SubscriptionRef.changes(ref)).pipe(
-          Stream.unwrap,
-        )) as any,
-
-      setState: (((channel: string, patch: Record<string, unknown>) =>
-        Effect.gen(function* () {
-          const prevState = (yield* Ref.get(stateRef)).get(channel) ?? {}
-          // Merge patch; `undefined`/`null` values delete keys.
-          const next: Record<string, unknown> = { ...prevState }
-          for (const [key, value] of Object.entries(patch)) {
-            if (value === undefined || value === null) {
-              delete next[key]
-            } else {
-              next[key] = value
-            }
-          }
-          yield* Ref.update(stateRef, (map) => new Map(map).set(channel, next))
-          yield* flushChannel(channel)
-        }).pipe(Effect.ignore)) as any),
-
+      ...defaultHandle,
       leave: Effect.gen(function* () {
-        yield* Effect.forEach(channelNames, (channel) =>
-          rpcClient['SyncWsRpc.PresenceLeave']({
-            storeId: options.storeId,
-            channel,
-            clientId: options.clientId,
-          }).pipe(Effect.ignore),
-        )
+        const joined = yield* Ref.get(joinedRooms)
+        yield* Effect.forEach([...joined], leaveRoom)
       }),
+      room: (roomId) => makeHandle(roomId),
     }
   })

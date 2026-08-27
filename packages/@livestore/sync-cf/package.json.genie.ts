@@ -36,7 +36,6 @@ export default packageJson(
       './cf-worker': './src/cf-worker/mod.ts',
       './presence': './src/presence/mod.ts',
       './presence/client': './src/presence/client.ts',
-      './presence/hooks': './src/presence/hooks.ts',
     },
     files: [...livestorePackageDefaults.files, 'README.md'],
     publishConfig: {
@@ -47,7 +46,6 @@ export default packageJson(
         './cf-worker': './dist/cf-worker/mod.js',
         './presence': './dist/presence/mod.js',
         './presence/client': './dist/presence/client.js',
-        './presence/hooks': './dist/presence/hooks.js',
       },
     },
     scripts: {

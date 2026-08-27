@@ -1,21 +1,20 @@
+import { omitUndefineds } from '@livestore/utils'
 import { Effect, Ref, Result, Schedule, Schema, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { PresenceSnapshot } from './schema.ts'
 
 /**
- * A named presence channel definition, declared once on the server (the party)
+ * A named presence channel definition, declared once on the Durable Object
  * and mirrored by clients for end-to-end type safety. `schema` validates every
- * state patch a client may broadcast on this channel.
+ * state payload a client may broadcast on this channel.
  */
 export interface PresenceChannelDef {
-  /** Validates/decodes each state patch merged onto a member. */
   readonly schema: Parameters<typeof Schema.decodeUnknownSync>[0]
 }
 
 export interface PresenceRoomOptions {
   /**
    * Members whose last update is older than this are considered gone (ms).
-   *
    * Clients should heartbeat at well under half of this so active members are
    * never pruned.
    *
@@ -23,180 +22,245 @@ export interface PresenceRoomOptions {
    */
   readonly memberIdleTtlMs?: number
   /**
-   * How often the room sweeps for expired members (ms).
+   * How often the hub sweeps for expired members (ms).
    *
    * @default 5_000
    */
   readonly sweepIntervalMs?: number
 }
 
-export interface PresenceRoom {
+export class PresenceChannelError extends Schema.TaggedError<PresenceChannelError>(
+  '@livestore/presence/PresenceChannelError',
+)('PresenceChannelError', { message: Schema.String }) {}
+
+type Member = {
+  clientId: string
+  name?: string
+  updatedAt: number
+  state: unknown
+}
+
+/** roomId → channel → clientId → member */
+type RoomTree = ReadonlyMap<string, ReadonlyMap<string, Map<string, Member>>>
+
+export interface PresenceHub {
   readonly storeId: string
   join: (
+    roomId: string,
     channel: string,
     clientId: string,
     name: string | undefined,
   ) => Effect.Effect<void, PresenceChannelError>
   /**
-   * Merges a validated JSON patch into the member's state on `channel`.
-   * Fails (typed `PresenceChannelError`) for unknown channels or invalid patches.
+   * Replaces the member's channel state with a schema-decoded payload.
+   * Unknown members are created (hibernation / missed join).
    */
-  update: (channel: string, clientId: string, patch: unknown) => Effect.Effect<void, PresenceChannelError>
-  leave: (channel: string, clientId: string) => Effect.Effect<void>
-  /** Live stream of channel snapshots; emits the current value on subscribe. */
-  snapshots: (channel: string) => Stream.Stream<PresenceSnapshot, never>
+  update: (roomId: string, channel: string, clientId: string, patch: unknown) => Effect.Effect<void, PresenceChannelError>
+  leave: (roomId: string, channel: string, clientId: string) => Effect.Effect<void>
+  /** Evict this client from every room and channel (socket close). */
+  leaveClient: (clientId: string) => Effect.Effect<void>
+  snapshots: (roomId: string, channel: string) => Stream.Stream<PresenceSnapshot>
 }
 
-export class PresenceChannelError extends Schema.TaggedError<PresenceChannelError>(
-  '@livestore/presence/PresenceChannelError',
-)('PresenceChannelError', { message: Schema.String }) {}
+const snapshotKey = (roomId: string, channel: string) => `${roomId}\0${channel}`
 
 const makeSnapshot = (
   storeId: string,
+  roomId: string,
   channel: string,
-  members: ReadonlyMap<string, { clientId: string; name?: string; updatedAt: number; state: unknown }>,
+  members: ReadonlyMap<string, Member>,
   ttlMs: number,
 ): PresenceSnapshot => ({
   storeId,
+  roomId,
   channel,
   members: [...members.values()]
     .filter((m) => Date.now() - m.updatedAt < ttlMs && m.state !== undefined)
     .toSorted((a, b) => a.clientId.localeCompare(b.clientId))
-    .map(({ clientId, name, updatedAt, state }) => ({ clientId, name, online: true, updatedAt, state: state as any })),
+    .map(({ clientId, name, updatedAt, state }) => ({
+      clientId,
+      name,
+      online: true,
+      updatedAt,
+      state: state as PresenceSnapshot['members'][number]['state'],
+    })),
 })
 
 /**
- * Channel-aware presence room for one `storeId`.
+ * In-memory presence hub for one store (one Durable Object).
  *
- * Channels are declared once by the party (`channels` map of name → schema def)
- * and mirrored by clients for typed updates. Every mutation republishes the
- * affected channel's snapshot; an idle-TTL sweeper prunes silent members so
- * closed tabs disappear even without a clean leave.
+ * Isolation is by `roomId`: a typing indicator in `chat:alice-bob` is never
+ * visible to members of `chat:carol-dave`. Channels are typed topics inside
+ * a room (cursor, typing, …), declared once via `channels`.
  */
-export const makePresenceRoom = (
+export const makePresenceHub = (
   storeId: string,
   options: PresenceRoomOptions & {
     channels: Record<string, PresenceChannelDef>
   },
-): Effect.Effect<PresenceRoom, never, never> =>
+): Effect.Effect<PresenceHub> =>
   Effect.gen(function* () {
     const memberIdleTtlMs = options.memberIdleTtlMs ?? 15_000
     const sweepIntervalMs = options.sweepIntervalMs ?? 5_000
 
-    // channel → clientId → member
-    const membersRef = yield* Ref.make<ReadonlyMap<string, Map<string, {
-      clientId: string
-      name?: string
-      updatedAt: number
-      state: unknown
-    }>>>(new Map())
+    const roomsRef = yield* Ref.make<RoomTree>(new Map())
+    const snapshotRefs = yield* Ref.make(
+      new Map<string, SubscriptionRef.SubscriptionRef<PresenceSnapshot>>(),
+    )
 
-    const snapshotRefs = yield* Ref.make(new Map<string, SubscriptionRef.SubscriptionRef<PresenceSnapshot>>())
+    const membersOf = (rooms: RoomTree, roomId: string, channel: string): Map<string, Member> =>
+      rooms.get(roomId)?.get(channel) ?? new Map()
 
-    const snapshotFor = (channel: string, members: ReadonlyMap<string, {
-      clientId: string
-      name?: string
-      updatedAt: number
-      state: unknown
-    }>): PresenceSnapshot => makeSnapshot(storeId, channel, members, memberIdleTtlMs)
-
-    const getSnapshotRef = Effect.fnUntraced(function* (channel: string) {
-      const existing = (yield* Ref.get(snapshotRefs)).get(channel)
+    const getSnapshotRef = Effect.fnUntraced(function* (roomId: string, channel: string) {
+      const key = snapshotKey(roomId, channel)
+      const existing = (yield* Ref.get(snapshotRefs)).get(key)
       if (existing !== undefined) return existing
       const ref = yield* SubscriptionRef.make<PresenceSnapshot>(
-        snapshotFor(channel, (yield* Ref.get(membersRef)).get(channel) ?? new Map()),
+        makeSnapshot(storeId, roomId, channel, membersOf(yield* Ref.get(roomsRef), roomId, channel), memberIdleTtlMs),
       )
-      yield* Ref.update(snapshotRefs, (map) => new Map(map).set(channel, ref))
+      yield* Ref.update(snapshotRefs, (map) => new Map(map).set(key, ref))
       return ref
     })
 
-    const publish = Effect.fnUntraced(function* (channel: string) {
-      const ref = yield* getSnapshotRef(channel)
-      const members = (yield* Ref.get(membersRef)).get(channel) ?? new Map()
-      // Prune expired members while publishing.
+    const publish = Effect.fnUntraced(function* (roomId: string, channel: string) {
+      const ref = yield* getSnapshotRef(roomId, channel)
       const now = Date.now()
-      let changed = false
-      const pruned = new Map(members)
-      for (const [id, member] of pruned) {
-        if (now - member.updatedAt >= memberIdleTtlMs) {
-          pruned.delete(id)
-          changed = true
+      yield* Ref.update(roomsRef, (rooms) => {
+        const members = new Map(membersOf(rooms, roomId, channel))
+        for (const [id, member] of members) {
+          if (now - member.updatedAt >= memberIdleTtlMs) members.delete(id)
         }
-      }
-      if (changed === true) {
-        yield* Ref.update(membersRef, (channels) => new Map(channels).set(channel, pruned))
-      }
-      yield* SubscriptionRef.set(ref, makeSnapshot(storeId, channel, pruned, memberIdleTtlMs))
+        return setMembers(rooms, roomId, channel, members)
+      })
+      const members = membersOf(yield* Ref.get(roomsRef), roomId, channel)
+      yield* SubscriptionRef.set(ref, makeSnapshot(storeId, roomId, channel, members, memberIdleTtlMs))
     })
 
-    // Periodic sweep across all live channels so silent disconnects expire
-    // without further room traffic. Detached: the room lives for the process/DO
-    // lifetime; members are pruned by idle TTL, not scope teardown.
+    // One sweeper for every room. Detached: the hub lives for the DO lifetime.
     yield* Effect.forkDetach(
       Effect.gen(function* () {
-        const channels = yield* Ref.get(snapshotRefs)
-        for (const channel of channels.keys()) {
-          yield* publish(channel)
+        const refs = yield* Ref.get(snapshotRefs)
+        for (const key of refs.keys()) {
+          const sep = key.indexOf('\0')
+          yield* publish(key.slice(0, sep), key.slice(sep + 1))
         }
       }).pipe(Effect.schedule(Schedule.fixed(sweepIntervalMs)), Effect.forever),
     )
 
+    const requireChannel = (channel: string) => {
+      const def = options.channels[channel]
+      if (def === undefined) {
+        return Effect.fail(new PresenceChannelError({ message: `Unknown presence channel: ${channel}` }))
+      }
+      return Effect.succeed(def)
+    }
+
     return {
       storeId,
 
-      join: (channel, clientId, name) =>
+      join: (roomId, channel, clientId, name) =>
         Effect.gen(function* () {
-          if (options.channels[channel] === undefined) {
-            return yield* new PresenceChannelError({ message: `Unknown presence channel: ${channel}` })
-          }
-          yield* Ref.update(membersRef, (channels) => {
-            const members = new Map(channels.get(channel) ?? new Map())
+          yield* requireChannel(channel)
+          yield* Ref.update(roomsRef, (rooms) => {
+            const members = new Map(membersOf(rooms, roomId, channel))
             const existing = members.get(clientId)
-            members.set(clientId, {
+            members.set(
               clientId,
-              name: name ?? existing?.name,
-              updatedAt: Date.now(),
-              state: existing?.state,
+              omitUndefineds({
+                clientId,
+                name: name ?? existing?.name,
+                updatedAt: Date.now(),
+                state: existing?.state,
+              }),
+            )
+            return setMembers(rooms, roomId, channel, members)
+          })
+          yield* publish(roomId, channel)
+        }),
+
+      update: (roomId, channel, clientId, patch) =>
+        Effect.gen(function* () {
+          const def = yield* requireChannel(channel)
+          const decoded = Schema.decodeUnknownResult(def.schema)(patch)
+          if (Result.isFailure(decoded)) {
+            return yield* new PresenceChannelError({
+              message: `Invalid presence state for channel ${channel}`,
             })
-            return new Map(channels).set(channel, members)
-          })
-          yield* publish(channel)
-        }),
-
-      update: (channel, clientId, patch) =>
-        Effect.gen(function* () {
-          const def = options.channels[channel]
-          if (def === undefined) {
-            return yield* new PresenceChannelError({ message: `Unknown presence channel: ${channel}` })
           }
-          yield* Ref.update(membersRef, (channels) => {
-            const members = new Map(channels.get(channel) ?? new Map())
+          yield* Ref.update(roomsRef, (rooms) => {
+            const members = new Map(membersOf(rooms, roomId, channel))
             const existing = members.get(clientId)
-            if (existing === undefined) return channels
-            // REPLACE state (not merge): the client sends its full accumulated
-            // state, so absent keys are truly absent (e.g. cleared drag).
-            members.set(clientId, { ...existing, updatedAt: Date.now(), state: patch as Record<string, unknown> })
-            return new Map(channels).set(channel, members)
+            members.set(
+              clientId,
+              omitUndefineds({
+                clientId,
+                name: existing?.name,
+                updatedAt: Date.now(),
+                state: decoded.success,
+              }),
+            )
+            return setMembers(rooms, roomId, channel, members)
           })
-          yield* publish(channel)
+          yield* publish(roomId, channel)
         }),
 
-      leave: (channel, clientId) =>
+      leave: (roomId, channel, clientId) =>
         Effect.gen(function* () {
-          yield* Ref.update(membersRef, (channels) => {
-            const members = new Map(channels.get(channel) ?? new Map())
+          yield* Ref.update(roomsRef, (rooms) => {
+            const members = new Map(membersOf(rooms, roomId, channel))
             members.delete(clientId)
-            return new Map(channels).set(channel, members)
+            return setMembers(rooms, roomId, channel, members)
           })
-          yield* publish(channel)
+          yield* publish(roomId, channel)
         }),
 
-      snapshots: (channel) =>
+      leaveClient: (clientId) =>
+        Effect.gen(function* () {
+          const rooms = yield* Ref.get(roomsRef)
+          const touched: Array<readonly [string, string]> = []
+          yield* Ref.update(roomsRef, (current) => {
+            let next = current
+            for (const [roomId, channels] of current) {
+              for (const [channel, members] of channels) {
+                if (members.has(clientId) === false) continue
+                const copy = new Map(members)
+                copy.delete(clientId)
+                next = setMembers(next, roomId, channel, copy)
+                touched.push([roomId, channel])
+              }
+            }
+            return next
+          })
+          yield* Effect.forEach(touched, ([roomId, channel]) => publish(roomId, channel))
+        }),
+
+      snapshots: (roomId, channel) =>
         Stream.unwrap(
           Effect.gen(function* () {
-            const ref = yield* getSnapshotRef(channel)
+            const ref = yield* getSnapshotRef(roomId, channel)
             return SubscriptionRef.changes(ref)
           }),
         ),
     }
   })
+
+const setMembers = (
+  rooms: RoomTree,
+  roomId: string,
+  channel: string,
+  members: Map<string, Member>,
+): RoomTree => {
+  const channels = new Map(rooms.get(roomId) ?? new Map())
+  if (members.size === 0) {
+    channels.delete(channel)
+  } else {
+    channels.set(channel, members)
+  }
+  const next = new Map(rooms)
+  if (channels.size === 0) {
+    next.delete(roomId)
+  } else {
+    next.set(roomId, channels)
+  }
+  return next
+}

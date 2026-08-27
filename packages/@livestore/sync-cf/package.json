@@ -19,8 +19,7 @@
     "./client": "./src/client/mod.ts",
     "./common": "./src/common/mod.ts",
     "./presence": "./src/presence/mod.ts",
-    "./presence/client": "./src/presence/client.ts",
-    "./presence/hooks": "./src/presence/hooks.ts"
+    "./presence/client": "./src/presence/client.ts"
   },
   "publishConfig": {
     "access": "public",
@@ -29,8 +28,7 @@
       "./common": "./dist/common/mod.js",
       "./cf-worker": "./dist/cf-worker/mod.js",
       "./presence": "./dist/presence/mod.js",
-      "./presence/client": "./dist/presence/client.js",
-      "./presence/hooks": "./dist/presence/hooks.js"
+      "./presence/client": "./dist/presence/client.js"
     }
   },
   "scripts": {

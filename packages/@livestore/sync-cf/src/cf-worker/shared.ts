@@ -78,27 +78,36 @@ export type MakeDurableObjectClassOptions = {
   storage?: { _tag: 'do-sqlite' } | { _tag: 'd1'; binding: string }
 
   /**
-   * Ephemeral presence room hosted by this party (single-party model: the
-   * same DO arbitrates the durable eventlog and fans out presence).
+   * Ephemeral presence hosted by this Durable Object (same isolate as the
+   * eventlog). Isolation is by `roomId`; channels are typed topics inside a room.
    */
   presence?: {
     /**
      * Named presence channel schemas, declared once here and mirrored by
-     * clients for end-to-end typed updates. Every patch a client broadcasts is
-     * validated server-side against the channel schema before fan-out.
+     * clients. Every update is schema-decoded before fan-out.
      *
      * @example
      * ```ts
      * presence: {
      *   schemas: {
-     *     cursor: Schema.Struct({ cursor: Schema.Struct({ x: Schema.Finite, y: Schema.Finite }), dragging: Schema.optional(Schema.Struct({ cardId: Schema.String, deltaX: Schema.Finite, deltaY: Schema.Finite })) }),
-     *     chat: Schema.Struct({ name: Schema.String, typing: Schema.Boolean }),
+     *     cursor: Schema.Struct({ x: Schema.Finite, y: Schema.Finite }),
+     *     typing: Schema.Struct({ isTyping: Schema.Boolean }),
      *   },
      * }
      * ```
      */
     schemas?: Record<string, Schema.Codec<any, any>>
     room?: import('../presence/room.ts').PresenceRoomOptions
+    /**
+     * Per-mutation hooks. Same shape as `onPush` / `onPull`: throw or fail
+     * to reject. Use `onJoin` to authorize a room (e.g. only conversation
+     * members see each other's typing). Use any hook to log or persist.
+     */
+    onJoin?: import('../presence/server.ts').PresenceHook
+    onUpdate?: import('../presence/server.ts').PresenceHook
+    onLeave?: import('../presence/server.ts').PresenceHook
+    /** Per-client minimum interval for `PresenceUpdate`. */
+    rateLimit?: import('../presence/rate-limit.ts').PresenceRateLimitOptions
   }
 
   /**
@@ -212,6 +221,8 @@ export const WebSocketAttachmentSchema = Schema.fromJsonString(
     pullRequestIds: Schema.Array(Schema.Union([Schema.String, Schema.Finite])),
     // Headers forwarded from the initial request (via forwardHeaders option)
     headers: Schema.optional(Schema.Record(Schema.String, Schema.String)),
+    // Bound on first PresenceJoin so later RPCs cannot spoof another clientId.
+    presenceClientId: Schema.optional(Schema.String),
   }),
 )
 
