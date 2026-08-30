@@ -24,7 +24,7 @@ core source of truth                          contrib source of truth
 packages/@livestore/*                         packages/@livestore/*
 docs/                                         examples/
 megarepo.lock                                 megarepo.lock
-  effect-utils  pinned                          effect-utils  pinned
+  effect-utils  unpinned                        effect-utils  unpinned
   effect        unpinned                        effect        unpinned
   livestore-contrib unpinned                    livestore     pinned
 repos/                                        repos/
