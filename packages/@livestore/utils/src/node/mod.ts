@@ -1,7 +1,7 @@
 import * as http from 'node:http'
 
 import { NodeFileSystem } from '@effect/platform-node'
-import { Effect, Layer } from 'effect'
+import { Effect, FileSystem, Layer, Option } from 'effect'
 
 import { OtelTracer, Tracer, UnknownError } from '../effect/mod.ts'
 import { makeNoopTracer } from '../NoopTracer.ts'
@@ -49,3 +49,18 @@ export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend((
 })
 
 export { NodeFileSystem }
+
+/**
+ * Effect 4 uses Node's native recursive watcher when no custom watch backend
+ * registers for the requested path. Keep the public Effect 3 compatibility
+ * layer while deliberately deferring to that native implementation.
+ */
+export const NodeRecursiveWatchLayer: Layer.Layer<FileSystem.WatchBackend> = Layer.succeed(
+  FileSystem.WatchBackend,
+  FileSystem.WatchBackend.of({
+    register: () => Option.none(),
+  }),
+)
+
+/** FileSystem layer retaining the public recursive-watch composition API. */
+export const NodeFileSystemWithWatch = NodeFileSystem.layer.pipe(Layer.provideMerge(NodeRecursiveWatchLayer))
