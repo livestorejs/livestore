@@ -450,20 +450,6 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - name: Prepare CI helper scripts
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts_src='genie/ci-scripts'
-          scripts_dst='${{ runner.temp }}/genie-ci-scripts'
-          if [ ! -d "$scripts_src" ]; then
-            echo "::error::CI helper script directory is missing: $scripts_src"
-            exit 1
-          fi
-          rm -rf "$scripts_dst"
-          mkdir -p "$scripts_dst"
-          cp -R "$scripts_src/." "$scripts_dst/"
-          chmod +x "$scripts_dst"/*.sh
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -477,6 +463,21 @@ jobs:
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
           source-tag: v3.21.9
+      - name: Prepare CI helper scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts_src='genie/ci-scripts'
+          scripts_dst='${{ github.workspace }}/.genie-ci-runtime'
+          if [ ! -d "$scripts_src" ]; then
+            echo "::error::CI helper script directory is missing: $scripts_src"
+            exit 1
+          fi
+          rm -rf "$scripts_dst"
+          mkdir -p "$scripts_dst"
+          cp -R "$scripts_src/." "$scripts_dst/"
+          rm -f "$scripts_dst"/*.genie.ts
+          chmod +x "$scripts_dst"/*.sh
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -499,7 +500,7 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
           if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
             echo '\''::error::megarepo.lock missing members["effect-utils"].commit'\''
@@ -545,14 +546,14 @@ jobs:
           key: "livestore-pnpm-state-v1-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Resolve devenv' 'DEVENV_REV=$(jq -r .nodes.devenv.locked.rev '\''devenv.lock'\'')
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             printf '\''::error::%s missing .nodes.devenv.locked.rev\n'\'' '\''devenv.lock'\''
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ github.workspace }}/.genie-ci-runtime/resolve-devenv.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"

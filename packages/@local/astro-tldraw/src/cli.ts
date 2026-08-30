@@ -2,7 +2,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { type Duration, Effect, FileSystem, type PlatformError, Result, Schema, Stream } from '@livestore/utils/effect'
-import { NodeFileSystemWithWatch } from '@livestore/utils/node'
+import { NodeFileSystem } from '@livestore/utils/node'
 
 import {
   FileSystemError,
@@ -364,11 +364,7 @@ export const watchDiagrams = (options: WatchDiagramsOptions): Effect.Effect<void
   })
   return watchDiagramsInternal(baseOptions, normalizedWatch).pipe(
     Effect.withSpan('tldraw.watch-diagrams'),
-    /**
-     * Must use NodeFileSystemWithWatch to ensure recursive file watching works correctly.
-     * @see https://github.com/Effect-TS/effect/issues/5913
-     */
-    Effect.provide(NodeFileSystemWithWatch),
+    Effect.provide(NodeFileSystem.layer),
   )
 }
 

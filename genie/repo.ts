@@ -46,12 +46,7 @@ import {
 } from '#mr/effect-utils/genie/external.ts'
 import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from '#mr/effect-utils/genie/oxfmt-base.ts'
 
-import {
-  effectV4Catalog,
-  livestoreOnlyCatalog,
-  livestoreWorkspaceCatalog,
-  obsoleteEffectV3Packages,
-} from './external.ts'
+import { effectV4Catalog, livestoreOnlyCatalog, livestoreWorkspaceCatalog } from './external.ts'
 import { livestoreCurrentPackageNames, type LivestorePackageName } from './repo-topology.ts'
 
 export { baseTsconfigCompilerOptions, reactJsx }
@@ -142,29 +137,9 @@ const releaseVersion = repo.readJson<{
   readonly version: string
 }>('release/version.json')
 
-/** TODO: Remove once effect-utils upgrades its TypeScript catalog pin: https://github.com/overengineeringstudio/effect-utils/issues/892 */
-const livestoreCatalogOverrides = {
-  typescript: '6.0.3',
-} as const
-
-const obsoleteEffectV3PackageNames = new Set<string>(obsoleteEffectV3Packages)
-
-const effectV4CatalogPackageNames = new Set<string>(Object.keys(effectV4Catalog))
-
-/**
- * Keep inheriting non-Effect tooling versions from effect-utils while LiveStore
- * owns the Effect v4 package surface for this migration slice.
- */
-const effectUtilsCatalogWithoutEffectV3 = Object.fromEntries(
-  Object.entries(effectUtilsCatalog).filter(
-    ([name]) => obsoleteEffectV3PackageNames.has(name) === false && effectV4CatalogPackageNames.has(name) === false,
-  ),
-)
-
-/** Composed catalog - effect-utils base + LiveStore overrides + Effect v4 + livestore-specific + workspace packages */
+/** Composed catalog - effect-utils base + Effect v4 + livestore-specific + workspace packages */
 export const catalog = defineCatalog({
-  ...effectUtilsCatalogWithoutEffectV3,
-  ...livestoreCatalogOverrides,
+  ...effectUtilsCatalog,
   ...effectV4Catalog,
   ...livestoreWorkspaceCatalog,
   ...livestoreOnlyCatalog,
@@ -297,6 +272,7 @@ import {
   checkoutStep,
   defaultRefPolicyCheckJob,
   prepareCiScriptsStep,
+  preparedCiRuntimeScriptsDir,
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
   restoreMegarepoStoreStep,
@@ -360,7 +336,7 @@ const withNixRetry = <TStep extends { readonly name: string; readonly run: strin
 ): TStep => ({
   ...step,
   run: [
-    `__genie_ci_retry_script='\${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'`,
+    `__genie_ci_retry_script='${preparedCiRuntimeScriptsDir}/run-with-nix-gc-race-retry.sh'`,
     `bash "$__genie_ci_retry_script" ${shellSingleQuote(step.name)} ${shellSingleQuote(run)}`,
   ].join('\n'),
 })
@@ -383,10 +359,8 @@ const stableStoreSyncStep = applyMegarepoLockStep({ cacheableStore: true })
  * Uses shared step atoms from effect-utils/genie/ci-workflow.ts.
  */
 export const livestoreSetupStepsAfterCheckout = [
-  // Copy CI helper scripts (e.g. the nix-gc-race retry wrapper) into the prepared
-  // scripts dir before any retry-wrapped command runs, and before any alternate
-  // checkout can replace the workspace. Required by the genie CI workflow validator.
-  prepareCiScriptsStep,
+  // Copy CI helper scripts after checkout and Nix installation so retry-wrapped
+  // commands keep a stable helper path. Required by the genie CI workflow validator.
   (() => {
     const base = installNixStep({
       extraConf:
@@ -398,6 +372,7 @@ export const livestoreSetupStepsAfterCheckout = [
     // resolving megarepo sync inputs. Unpin once upstream tsgo drops that parameter.
     return { ...base, with: { ...base.with, 'source-tag': 'v3.21.9' } }
   })(),
+  prepareCiScriptsStep,
   cachixCliBuildStep,
   (() => {
     const base = cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' })
