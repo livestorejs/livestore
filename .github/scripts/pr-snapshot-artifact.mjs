@@ -1,6 +1,7 @@
 // Generated file - DO NOT EDIT
 // Source: pr-snapshot-artifact.mjs.genie.ts
 import { createHash } from 'node:crypto'
+import { lstatSync, readFileSync } from 'node:fs'
 import { lstat, readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -31,7 +32,7 @@ const fail = (message) => {
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex')
 
-const parseOctal = (bytes, label) => {
+const parseOctal = ({ bytes, label }) => {
   const value = Buffer.from(bytes).toString('ascii').replaceAll('\0', '').trim()
   if (/^[0-7]+$/.test(value) === false) fail(`Invalid tar ${label}: ${JSON.stringify(value)}`)
   return Number.parseInt(value, 8)
@@ -45,21 +46,21 @@ const tarEntries = (tarball) => {
     const header = archive.subarray(offset, offset + 512)
     if (header.every((byte) => byte === 0) === true) break
 
-    const storedChecksum = parseOctal(header.subarray(148, 156), 'checksum')
+    const storedChecksum = parseOctal({ bytes: header.subarray(148, 156), label: 'checksum' })
     const checksumHeader = Buffer.from(header)
     checksumHeader.fill(0x20, 148, 156)
     const actualChecksum = checksumHeader.reduce((sum, byte) => sum + byte, 0)
     if (storedChecksum !== actualChecksum) fail('Tar header checksum mismatch')
 
-    const readString = (start, end) => {
+    const readString = ({ start, end }) => {
       const decoded = Buffer.from(header.subarray(start, end)).toString('utf8')
       const nullIndex = decoded.indexOf(String.fromCharCode(0))
       return nullIndex === -1 ? decoded : decoded.slice(0, nullIndex)
     }
-    const name = readString(0, 100)
-    const prefix = readString(345, 500)
+    const name = readString({ start: 0, end: 100 })
+    const prefix = readString({ start: 345, end: 500 })
     const rawEntryPath = prefix === '' ? name : `${prefix}/${name}`
-    const size = parseOctal(header.subarray(124, 136), 'size')
+    const size = parseOctal({ bytes: header.subarray(124, 136), label: 'size' })
     const type = header[156] === 0 ? '0' : String.fromCharCode(header[156])
     const bodyStart = offset + 512
     const bodyEnd = bodyStart + size
@@ -118,13 +119,13 @@ const readTopology = async (topologyPath) => {
 }
 
 export const snapshotTag = ({ prNumber, headSha }) => {
-  const parsedPrNumber = positiveInteger(prNumber, 'PR number')
+  const parsedPrNumber = positiveInteger({ value: prNumber, label: 'PR number' })
   if (shaPattern.test(headSha) === false) fail(`Invalid head SHA: ${headSha}`)
   return `pr-${parsedPrNumber}-${headSha}`
 }
 
 export const snapshotVersion = ({ prNumber, headSha }) => {
-  const parsedPrNumber = positiveInteger(prNumber, 'PR number')
+  const parsedPrNumber = positiveInteger({ value: prNumber, label: 'PR number' })
   if (shaPattern.test(headSha) === false) fail(`Invalid head SHA: ${headSha}`)
   return `0.0.0-snapshot-pr.${parsedPrNumber}.${headSha}`
 }
@@ -134,7 +135,9 @@ export const successfulProducerAttempt = ({ jobs, jobName }) => {
   const matches = jobs.filter((job) => job?.name === jobName && job?.conclusion === 'success')
   if (matches.length === 0) fail(`Expected at least one successful ${jobName} job`)
   return Math.max(
-    ...matches.map((job) => positiveInteger(job.run_attempt, `${jobName} run attempt`)),
+    ...matches.map((job) =>
+      positiveInteger({ value: job.run_attempt, label: `${jobName} run attempt` }),
+    ),
   )
 }
 
@@ -185,10 +188,12 @@ export const isAuthorizedSnapshotState = ({
   labelNames,
   reviewDecision,
   reviews,
+  trustLabel,
 }) => {
   if (headSha !== currentHeadSha) return false
   if (headRepository !== repository) {
-    return Array.isArray(labelNames) === true && labelNames.includes('ci:publish-snapshot')
+    if (typeof trustLabel !== 'string' || trustLabel === '') fail('Fork trust label is required')
+    return Array.isArray(labelNames) === true && labelNames.includes(trustLabel)
   }
   return isAuthorizedReviewState({ headSha, currentHeadSha, reviewDecision, reviews })
 }
@@ -243,7 +248,11 @@ const validatePackageManifest = ({ packageJson, expectedName, expectedVersion, p
     ) {
       fail(`Package ${expectedName} has invalid publishConfig`)
     }
-    assertExactKeys(packageJson.publishConfig, ['access'], `Package ${expectedName} publishConfig`)
+    assertExactKeys({
+      value: packageJson.publishConfig,
+      expected: ['access'],
+      label: `Package ${expectedName} publishConfig`,
+    })
     if (packageJson.publishConfig.access !== 'public') {
       fail(`Package ${expectedName} publishConfig must set access to public`)
     }
@@ -259,7 +268,7 @@ const validatePackageManifest = ({ packageJson, expectedName, expectedVersion, p
   }
 }
 
-const assertExactKeys = (value, expected, label) => {
+const assertExactKeys = ({ value, expected, label }) => {
   const actual = Object.keys(value).toSorted((a, b) => a.localeCompare(b))
   const wanted = [...expected].toSorted((a, b) => a.localeCompare(b))
   if (JSON.stringify(actual) !== JSON.stringify(wanted)) {
@@ -267,7 +276,7 @@ const assertExactKeys = (value, expected, label) => {
   }
 }
 
-const positiveInteger = (value, label) => {
+const positiveInteger = ({ value, label }) => {
   const parsed = Number(value)
   if (Number.isSafeInteger(parsed) === false || parsed < 1) fail(`Invalid ${label}: ${value}`)
   return parsed
@@ -283,7 +292,7 @@ export const createManifest = async ({
   runAttempt,
 }) => {
   if (shaPattern.test(headSha) === false) fail(`Invalid head SHA: ${headSha}`)
-  const parsedPrNumber = positiveInteger(prNumber, 'PR number')
+  const parsedPrNumber = positiveInteger({ value: prNumber, label: 'PR number' })
   const version = snapshotVersion({ prNumber: parsedPrNumber, headSha })
   const { packageNames, topologyDigest } = await readTopology(topologyPath)
   const files = (await readdir(artifactDir))
@@ -298,7 +307,7 @@ export const createManifest = async ({
   for (const file of files) {
     if (path.basename(file) !== file || /^[a-zA-Z0-9._-]+\.tgz$/.test(file) === false)
       fail(`Unsafe tarball name: ${file}`)
-    const fileStat = await lstat(path.join(artifactDir, file))
+    const fileStat = lstatSync(path.join(artifactDir, file))
     artifactBytes += fileStat.size
     if (
       fileStat.isFile() === false ||
@@ -306,7 +315,7 @@ export const createManifest = async ({
       artifactBytes > maxArtifactBytes
     )
       fail(`Tarball is not a bounded regular file: ${file}`)
-    const bytes = await readFile(path.join(artifactDir, file))
+    const bytes = readFileSync(path.join(artifactDir, file))
     const packageJson = parsePackage(bytes)
     if (typeof packageJson.name !== 'string') fail(`Tarball ${file} has no package name`)
     packages.push({ name: packageJson.name, file, sha256: sha256(bytes) })
@@ -316,7 +325,7 @@ export const createManifest = async ({
     fail('Tarball package set does not match release topology')
   }
   for (const entry of packages) {
-    const bytes = await readFile(path.join(artifactDir, entry.file))
+    const bytes = readFileSync(path.join(artifactDir, entry.file))
     validatePackageManifest({
       packageJson: parsePackage(bytes),
       expectedName: entry.name,
@@ -330,8 +339,8 @@ export const createManifest = async ({
     repository,
     prNumber: parsedPrNumber,
     headSha,
-    runId: positiveInteger(runId, 'run ID'),
-    runAttempt: positiveInteger(runAttempt, 'run attempt'),
+    runId: positiveInteger({ value: runId, label: 'run ID' }),
+    runAttempt: positiveInteger({ value: runAttempt, label: 'run attempt' }),
     version,
     topologySha256: topologyDigest,
     packages,
@@ -357,9 +366,9 @@ export const validateManifest = async ({
     fail('Manifest is not a bounded regular file')
   const manifestBytes = await readFile(manifestPath)
   const manifest = JSON.parse(manifestBytes.toString('utf8'))
-  assertExactKeys(
-    manifest,
-    [
+  assertExactKeys({
+    value: manifest,
+    expected: [
       'schemaVersion',
       'repository',
       'prNumber',
@@ -370,18 +379,18 @@ export const validateManifest = async ({
       'topologySha256',
       'packages',
     ],
-    'Manifest',
-  )
+    label: 'Manifest',
+  })
 
-  const parsedPrNumber = positiveInteger(prNumber, 'PR number')
+  const parsedPrNumber = positiveInteger({ value: prNumber, label: 'PR number' })
   const expectedVersion = snapshotVersion({ prNumber: parsedPrNumber, headSha })
   const expectedIdentity = {
     schemaVersion: 1,
     repository,
     prNumber: parsedPrNumber,
     headSha,
-    runId: positiveInteger(runId, 'run ID'),
-    runAttempt: positiveInteger(runAttempt, 'run attempt'),
+    runId: positiveInteger({ value: runId, label: 'run ID' }),
+    runAttempt: positiveInteger({ value: runAttempt, label: 'run attempt' }),
     version: expectedVersion,
   }
   for (const [key, value] of Object.entries(expectedIdentity)) {
@@ -412,7 +421,11 @@ export const validateManifest = async ({
   const seenFiles = new Set()
   let artifactBytes = 0
   for (const entry of manifest.packages) {
-    assertExactKeys(entry, ['name', 'file', 'sha256'], 'Package entry')
+    assertExactKeys({
+      value: entry,
+      expected: ['name', 'file', 'sha256'],
+      label: 'Package entry',
+    })
     if (packageNames.includes(entry.name) === false || seenNames.has(entry.name) === true)
       fail(`Unexpected or duplicate package: ${entry.name}`)
     if (
@@ -427,7 +440,7 @@ export const validateManifest = async ({
     seenFiles.add(entry.file)
 
     const tarballPath = path.join(artifactDir, entry.file)
-    const fileStat = await lstat(tarballPath)
+    const fileStat = lstatSync(tarballPath)
     artifactBytes += fileStat.size
     if (
       fileStat.isFile() === false ||
@@ -436,7 +449,7 @@ export const validateManifest = async ({
     ) {
       fail(`Tarball is not a bounded regular file: ${entry.file}`)
     }
-    const bytes = await readFile(tarballPath)
+    const bytes = readFileSync(tarballPath)
     if (sha256(bytes) !== entry.sha256) fail(`Digest mismatch for ${entry.name}`)
     validatePackageManifest({
       packageJson: parsePackage(bytes),
@@ -500,6 +513,43 @@ if (
               packageStates: JSON.parse(await readFile(args['state-file'], 'utf8')),
               hasVerifiedReceipt: args['verified-receipt'] === 'true',
             })
-          : fail(`Unknown mode: ${mode}`)
+          : mode === 'snapshot-identity'
+            ? {
+                version: snapshotVersion({
+                  prNumber: args['pr-number'],
+                  headSha: args['head-sha'],
+                }),
+                npmTag: snapshotTag({ prNumber: args['pr-number'], headSha: args['head-sha'] }),
+              }
+            : mode === 'producer-attempt'
+              ? {
+                  runAttempt: successfulProducerAttempt({
+                    jobs: JSON.parse(await readFile(args['jobs-file'], 'utf8')),
+                    jobName: args['job-name'],
+                  }),
+                }
+              : mode === 'select-producer-run'
+                ? {
+                    run: selectEligibleProducerRun({
+                      runs: JSON.parse(await readFile(args['runs-file'], 'utf8')),
+                      headRepository: args['head-repository'],
+                      headBranch: args['head-branch'],
+                      headSha: args['head-sha'],
+                    }),
+                  }
+                : mode === 'authorize'
+                  ? {
+                      authorized: isAuthorizedSnapshotState({
+                        repository: args.repository,
+                        headRepository: args['head-repository'],
+                        headSha: args['head-sha'],
+                        currentHeadSha: args['current-head-sha'],
+                        labelNames: JSON.parse(args['label-names']),
+                        reviewDecision: args['review-decision'],
+                        reviews: JSON.parse(await readFile(args['reviews-file'], 'utf8')),
+                        trustLabel: args['trust-label'],
+                      }),
+                    }
+                  : fail(`Unknown mode: ${mode}`)
   process.stdout.write(`${JSON.stringify(result)}\n`)
 }

@@ -71,8 +71,13 @@ packageExtensions:
     dependencies:
       typedoc-plugin-markdown: ^4.8.1
 
+peerDependencyRules:
+  allowedVersions:
+    typescript: '>=6.0.0'
+    eslint: '>=10.0.0'
+    vitest: '>=4.0.0'
+
 allowBuilds:
-  '@parcel/watcher': true
   '@myobie/pty': false
   esbuild: false
   fsevents: false
@@ -80,6 +85,7 @@ allowBuilds:
   node-pty: false
   sharp: false
   unix-dgram: false
+  '@parcel/watcher': true
   '@mixedbread/cli': true
   cbor-extract: true
   dtrace-provider: true
@@ -88,9 +94,12 @@ allowBuilds:
   workerd: true
 
 minimumReleaseAgeExclude:
-  - '@effect/platform'
   - '@types/node'
   - effect
+  - '@effect/platform-node'
+  - '@effect/vitest'
+  - '@effect/opentelemetry'
+  - '@effect/atom-react'
   - '@effect/opentelemetry@4.0.0-rc.111'
   - '@effect/platform-browser@4.0.0-rc.111'
   - '@effect/platform-bun@4.0.0-rc.111'

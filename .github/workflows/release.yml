@@ -774,6 +774,16 @@ jobs:
       run:
         shell: bash
     steps:
+      - name: Checkout trusted validator only
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts/pr-snapshot-artifact.mjs
+      - name: Use pinned Node validator runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
       - id: approval
         name: Require current-head review or fork trust label
         env:
@@ -785,20 +795,20 @@ jobs:
           pr_json=$(gh api "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
           authorized=false
           authorized_by='none'
-          if [ "$(jq -r '.state' <<<"$pr_json")" = open ] &&    [ "$(jq -r '.draft' <<<"$pr_json")" = false ] &&    [ "$(jq -r '.base.ref' <<<"$pr_json")" = main ] &&    [ "$(jq -r '.head.sha' <<<"$pr_json")" = "$EXPECTED_HEAD_SHA" ]; then
+          if [ "$(jq -r '.state' <<<"$pr_json")" = open ] &&    [ "$(jq -r '.draft' <<<"$pr_json")" = false ] &&    [ "$(jq -r '.base.ref' <<<"$pr_json")" = main ]; then
             head_repository=$(jq -r '.head.repo.full_name' <<<"$pr_json")
-            if [ "$head_repository" = "$GITHUB_REPOSITORY" ]; then
-              reviews_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews?per_page=100" --slurp | jq -s 'flatten')
-              owner="${GITHUB_REPOSITORY%%/*}"
-              name="${GITHUB_REPOSITORY#*/}"
-              review_decision=$(gh api graphql       -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewDecision}}}'       -f owner="$owner" -f name="$name" -F number="$PR_NUMBER"       --jq '.data.repository.pullRequest.reviewDecision')
-              if [ "$review_decision" = APPROVED ] &&        jq -e --arg sha "$EXPECTED_HEAD_SHA" 'any(.[]; .state == "APPROVED" and .commit_id == $sha)' <<<"$reviews_json" >/dev/null; then
-                authorized=true
+            reviews_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews?per_page=100" --slurp | jq -s 'flatten')
+            owner="${GITHUB_REPOSITORY%%/*}"
+            name="${GITHUB_REPOSITORY#*/}"
+            review_decision=$(gh api graphql     -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewDecision}}}'     -f owner="$owner" -f name="$name" -F number="$PR_NUMBER"     --jq '.data.repository.pullRequest.reviewDecision' || echo '')
+            printf '%s' "$reviews_json" > "$RUNNER_TEMP/reviews.json"
+            authorized=$(node .github/scripts/pr-snapshot-artifact.mjs authorize     --repository="$GITHUB_REPOSITORY"     --head-repository="$head_repository"     --head-sha="$EXPECTED_HEAD_SHA"     --current-head-sha="$(jq -r '.head.sha' <<<"$pr_json")"     --label-names="$(jq -c '[.labels[]?.name]' <<<"$pr_json")"     --review-decision="$review_decision"     --reviews-file="$RUNNER_TEMP/reviews.json"     --trust-label='ci:publish-snapshot' | jq -r '.authorized')
+            if [ "$authorized" = true ]; then
+              if [ "$head_repository" = "$GITHUB_REPOSITORY" ]; then
                 authorized_by='current-head review'
+              else
+                authorized_by='ci:publish-snapshot fork trust label'
               fi
-            elif jq -e 'any(.labels[]?; .name == "ci:publish-snapshot")' <<<"$pr_json" >/dev/null; then
-              authorized=true
-              authorized_by='ci:publish-snapshot fork trust label'
             fi
           fi
           echo "authorized=$authorized" >> "$GITHUB_OUTPUT"
@@ -828,6 +838,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24.15.0
+      - name: Checkout trusted validator only
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts/pr-snapshot-artifact.mjs
       - name: Download validated promotion artifact
         uses: actions/download-artifact@v4
         with:
@@ -843,18 +859,15 @@ jobs:
           test "$(jq -r '.state' <<<"$pr_json")" = open
           test "$(jq -r '.draft' <<<"$pr_json")" = false
           test "$(jq -r '.base.ref' <<<"$pr_json")" = main
-          test "$(jq -r '.head.sha' <<<"$pr_json")" = "$EXPECTED_HEAD_SHA"
           head_repository=$(jq -r '.head.repo.full_name' <<<"$pr_json")
-          if [ "$head_repository" = "$GITHUB_REPOSITORY" ]; then
-            reviews_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews?per_page=100" --slurp | jq -s 'flatten')
-            owner="${GITHUB_REPOSITORY%%/*}"
-            name="${GITHUB_REPOSITORY#*/}"
-            review_decision=$(gh api graphql     -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewDecision}}}'     -f owner="$owner" -f name="$name" -F number="$PR_NUMBER"     --jq '.data.repository.pullRequest.reviewDecision')
-            test "$review_decision" = APPROVED
-            jq -e --arg sha "$EXPECTED_HEAD_SHA" 'any(.[]; .state == "APPROVED" and .commit_id == $sha)' <<<"$reviews_json" >/dev/null
-          else
-            jq -e 'any(.labels[]?; .name == "ci:publish-snapshot")' <<<"$pr_json" >/dev/null
-          fi
+          reviews_json=$(gh api --paginate "/repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/reviews?per_page=100" --slurp | jq -s 'flatten')
+          owner="${GITHUB_REPOSITORY%%/*}"
+          name="${GITHUB_REPOSITORY#*/}"
+          review_decision=$(gh api graphql   -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewDecision}}}'   -f owner="$owner" -f name="$name" -F number="$PR_NUMBER"   --jq '.data.repository.pullRequest.reviewDecision' || echo '')
+          printf '%s' "$reviews_json" > "$RUNNER_TEMP/recheck-reviews.json"
+          # The same predicate the authorize job used, invoked again rather than restated. This is the
+          # time-of-use check, so it must re-read live state — but it must not re-decide differently.
+          test "$(node .github/scripts/pr-snapshot-artifact.mjs authorize   --repository="$GITHUB_REPOSITORY"   --head-repository="$head_repository"   --head-sha="$EXPECTED_HEAD_SHA"   --current-head-sha="$(jq -r '.head.sha' <<<"$pr_json")"   --label-names="$(jq -c '[.labels[]?.name]' <<<"$pr_json")"   --review-decision="$review_decision"   --reviews-file="$RUNNER_TEMP/recheck-reviews.json"   --trust-label='ci:publish-snapshot' | jq -r '.authorized')" = true
       - name: Verify promotion handoff
         env:
           EXPECTED_MANIFEST_DIGEST: ${{ needs.validate-pr-snapshot.outputs.manifest-digest }}
@@ -994,20 +1007,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
-      - name: Prepare CI helper scripts
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts_src='genie/ci-scripts'
-          scripts_dst='${{ runner.temp }}/genie-ci-scripts'
-          if [ ! -d "$scripts_src" ]; then
-            echo "::error::CI helper script directory is missing: $scripts_src"
-            exit 1
-          fi
-          rm -rf "$scripts_dst"
-          mkdir -p "$scripts_dst"
-          cp -R "$scripts_src/." "$scripts_dst/"
-          chmod +x "$scripts_dst"/*.sh
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -1021,6 +1020,21 @@ jobs:
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
           source-tag: v3.21.9
+      - name: Prepare CI helper scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts_src='genie/ci-scripts'
+          scripts_dst='${{ github.workspace }}/.genie-ci-runtime'
+          if [ ! -d "$scripts_src" ]; then
+            echo "::error::CI helper script directory is missing: $scripts_src"
+            exit 1
+          fi
+          rm -rf "$scripts_dst"
+          mkdir -p "$scripts_dst"
+          cp -R "$scripts_src/." "$scripts_dst/"
+          rm -f "$scripts_dst"/*.genie.ts
+          chmod +x "$scripts_dst"/*.sh
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -1043,7 +1057,7 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
           if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
             echo '\''::error::megarepo.lock missing members["effect-utils"].commit'\''
@@ -1089,14 +1103,14 @@ jobs:
           key: "livestore-pnpm-state-v1-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Resolve devenv' 'DEVENV_REV=$(jq -r .nodes.devenv.locked.rev '\''devenv.lock'\'')
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             printf '\''::error::%s missing .nodes.devenv.locked.rev\n'\'' '\''devenv.lock'\''
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ github.workspace }}/.genie-ci-runtime/resolve-devenv.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
@@ -1148,13 +1162,13 @@ jobs:
         shell: bash
       - name: Generate release plan from Changesets
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run release:changeset:version' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:changeset:version'
         env:
           LIVESTORE_NPM_TAG: ${{ inputs.npm_tag }}
       - name: Extract release notes
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run release:notes:extract' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:notes:extract'
       - name: Open release plan PR
         env:
@@ -1238,20 +1252,6 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - name: Prepare CI helper scripts
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts_src='genie/ci-scripts'
-          scripts_dst='${{ runner.temp }}/genie-ci-scripts'
-          if [ ! -d "$scripts_src" ]; then
-            echo "::error::CI helper script directory is missing: $scripts_src"
-            exit 1
-          fi
-          rm -rf "$scripts_dst"
-          mkdir -p "$scripts_dst"
-          cp -R "$scripts_src/." "$scripts_dst/"
-          chmod +x "$scripts_dst"/*.sh
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -1265,6 +1265,21 @@ jobs:
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
           source-tag: v3.21.9
+      - name: Prepare CI helper scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts_src='genie/ci-scripts'
+          scripts_dst='${{ github.workspace }}/.genie-ci-runtime'
+          if [ ! -d "$scripts_src" ]; then
+            echo "::error::CI helper script directory is missing: $scripts_src"
+            exit 1
+          fi
+          rm -rf "$scripts_dst"
+          mkdir -p "$scripts_dst"
+          cp -R "$scripts_src/." "$scripts_dst/"
+          rm -f "$scripts_dst"/*.genie.ts
+          chmod +x "$scripts_dst"/*.sh
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -1287,7 +1302,7 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
           if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
             echo '\''::error::megarepo.lock missing members["effect-utils"].commit'\''
@@ -1333,14 +1348,14 @@ jobs:
           key: "livestore-pnpm-state-v1-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Resolve devenv' 'DEVENV_REV=$(jq -r .nodes.devenv.locked.rev '\''devenv.lock'\'')
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             printf '\''::error::%s missing .nodes.devenv.locked.rev\n'\'' '\''devenv.lock'\''
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ github.workspace }}/.genie-ci-runtime/resolve-devenv.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
@@ -1427,7 +1442,7 @@ jobs:
             }' > release/release-plan.json
       - name: Dry-run stable package publish
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run release:stable:dryrun' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:stable:dryrun'
       - name: Read release plan
         run: |
@@ -1445,7 +1460,7 @@ jobs:
           fi
       - name: Certify DevTools artifact liveness
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run release:devtools-artifact:certify-liveness:no-install' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:certify-liveness:no-install'
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -1458,7 +1473,7 @@ jobs:
           if-no-files-found: ignore
       - name: Dry-run DevTools artifact repack
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run release:devtools-artifact:repack-dryrun:no-install' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:repack-dryrun:no-install'
       - name: Save pnpm state
         if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
@@ -1489,20 +1504,6 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v6
-      - name: Prepare CI helper scripts
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts_src='genie/ci-scripts'
-          scripts_dst='${{ runner.temp }}/genie-ci-scripts'
-          if [ ! -d "$scripts_src" ]; then
-            echo "::error::CI helper script directory is missing: $scripts_src"
-            exit 1
-          fi
-          rm -rf "$scripts_dst"
-          mkdir -p "$scripts_dst"
-          cp -R "$scripts_src/." "$scripts_dst/"
-          chmod +x "$scripts_dst"/*.sh
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -1516,6 +1517,21 @@ jobs:
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
           source-tag: v3.21.9
+      - name: Prepare CI helper scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts_src='genie/ci-scripts'
+          scripts_dst='${{ github.workspace }}/.genie-ci-runtime'
+          if [ ! -d "$scripts_src" ]; then
+            echo "::error::CI helper script directory is missing: $scripts_src"
+            exit 1
+          fi
+          rm -rf "$scripts_dst"
+          mkdir -p "$scripts_dst"
+          cp -R "$scripts_src/." "$scripts_dst/"
+          rm -f "$scripts_dst"/*.genie.ts
+          chmod +x "$scripts_dst"/*.sh
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -1538,7 +1554,7 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
           if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
             echo '\''::error::megarepo.lock missing members["effect-utils"].commit'\''
@@ -1584,14 +1600,14 @@ jobs:
           key: "livestore-pnpm-state-v1-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Resolve devenv' 'DEVENV_REV=$(jq -r .nodes.devenv.locked.rev '\''devenv.lock'\'')
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             printf '\''::error::%s missing .nodes.devenv.locked.rev\n'\'' '\''devenv.lock'\''
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ github.workspace }}/.genie-ci-runtime/resolve-devenv.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
@@ -1677,11 +1693,11 @@ jobs:
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Publish stable package release
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run release:stable:publish' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:stable:publish'
       - name: Certify DevTools artifact liveness
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run release:devtools-artifact:certify-liveness:no-install' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:certify-liveness:no-install'
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -1694,13 +1710,13 @@ jobs:
           if-no-files-found: ignore
       - name: Publish DevTools artifact release
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run release:devtools-artifact:publish:no-install' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:publish:no-install'
       - name: Deploy production docs — build + deploy
         if: env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'
         timeout-minutes: 30
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run docs:deploy:prod:phase:build-deploy' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy:prod:phase:build-deploy'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
@@ -1708,7 +1724,7 @@ jobs:
         if: env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'
         timeout-minutes: 15
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run docs:deploy:prod:phase:verify' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy:prod:phase:verify'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
@@ -1716,14 +1732,14 @@ jobs:
         if: env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'
         timeout-minutes: 15
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run docs:deploy:prod:phase:purge' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy:prod:phase:purge'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       - name: Collect docs deploy diagnostics on failure
         if: ${{ failure() && env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod' }}
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run docs:deploy:prod:diagnostics' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy:prod:diagnostics'
       - name: Upload docs prod deploy logs
         if: ${{ always() && env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod' }}
@@ -1737,7 +1753,7 @@ jobs:
         if: env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'
         timeout-minutes: 30
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run examples:deploy:prod' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:deploy:prod'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -1746,7 +1762,7 @@ jobs:
         if: env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'
         timeout-minutes: 15
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run docs:search:sync:prod' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:search:sync:prod'
         env:
           MXBAI_API_KEY: ${{ secrets.MXBAI_API_KEY }}
@@ -1783,20 +1799,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-      - name: Prepare CI helper scripts
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts_src='genie/ci-scripts'
-          scripts_dst='${{ runner.temp }}/genie-ci-scripts'
-          if [ ! -d "$scripts_src" ]; then
-            echo "::error::CI helper script directory is missing: $scripts_src"
-            exit 1
-          fi
-          rm -rf "$scripts_dst"
-          mkdir -p "$scripts_dst"
-          cp -R "$scripts_src/." "$scripts_dst/"
-          chmod +x "$scripts_dst"/*.sh
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -1810,6 +1812,21 @@ jobs:
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
           summarize: true
           source-tag: v3.21.9
+      - name: Prepare CI helper scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          scripts_src='genie/ci-scripts'
+          scripts_dst='${{ github.workspace }}/.genie-ci-runtime'
+          if [ ! -d "$scripts_src" ]; then
+            echo "::error::CI helper script directory is missing: $scripts_src"
+            exit 1
+          fi
+          rm -rf "$scripts_dst"
+          mkdir -p "$scripts_dst"
+          cp -R "$scripts_src/." "$scripts_dst/"
+          rm -f "$scripts_dst"/*.genie.ts
+          chmod +x "$scripts_dst"/*.sh
       - name: Provide cachix CLI from nixpkgs
         shell: bash
         run: |
@@ -1832,7 +1849,7 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Sync megarepo dependencies' 'EU_REV=$(jq -r '\''.members["effect-utils"].commit'\'' megarepo.lock)
           if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
             echo '\''::error::megarepo.lock missing members["effect-utils"].commit'\''
@@ -1878,14 +1895,14 @@ jobs:
           key: "livestore-pnpm-state-v1-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Resolve devenv' 'DEVENV_REV=$(jq -r .nodes.devenv.locked.rev '\''devenv.lock'\'')
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             printf '\''::error::%s missing .nodes.devenv.locked.rev\n'\'' '\''devenv.lock'\''
             exit 1
           fi
 
-          . '\''${{ runner.temp }}/genie-ci-scripts/resolve-devenv.sh'\''
+          . '\''${{ github.workspace }}/.genie-ci-runtime/resolve-devenv.sh'\''
 
           # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
@@ -1944,13 +1961,13 @@ jobs:
           fi
       - name: Publish snapshot version
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run release:snapshot:git-sha' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:snapshot:git-sha'
         env:
           GIT_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
       - name: Publish DevTools artifact snapshot
         run: |
-          __genie_ci_retry_script='${{ runner.temp }}/genie-ci-scripts/run-with-nix-gc-race-retry.sh'
+          __genie_ci_retry_script='${{ github.workspace }}/.genie-ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'devenv tasks run release:devtools-artifact:publish' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" PNPM_CONFIG_STORE_DIR="${PNPM_CONFIG_STORE_DIR:-${{ github.workspace }}/.pnpm-store}" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:publish'
         env:
           LIVESTORE_DEVTOOLS_OUT_DIR: '${{ runner.temp }}/livestore-devtools-snapshot'

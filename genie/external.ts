@@ -22,25 +22,6 @@ export const effectV4Catalog = {
   '@effect/vitest': effectVersion,
 } as const
 
-/**
- * effect-utils is still pinned to an Effect v3 catalog. Filter these packages
- * out before catalog composition so generated metadata cannot accidentally
- * reintroduce v3-era peers that v4 moved into `effect` or unstable modules.
- */
-export const obsoleteEffectV3Packages = [
-  '@effect/ai',
-  '@effect/cli',
-  '@effect/cluster',
-  '@effect/experimental',
-  '@effect/platform',
-  '@effect/printer',
-  '@effect/printer-ansi',
-  '@effect/rpc',
-  '@effect/sql',
-  '@effect/typeclass',
-  '@effect/workflow',
-] as const
-
 export {
   livestoreCorePackageNames,
   livestoreCurrentPackageNames,

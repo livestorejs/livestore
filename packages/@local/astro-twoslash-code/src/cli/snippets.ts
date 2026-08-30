@@ -114,7 +114,7 @@ import {
   Schema,
   Stream,
 } from '@livestore/utils/effect'
-import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
+import { Cli, NodeFileSystem } from '@livestore/utils/node'
 
 import type { LineOwnerMarker, LineOwnerMetadata, TwoslashRuntimeOptions } from '../expressive-code.ts'
 import { createExpressiveCodeConfig, normalizeRuntimeOptions } from '../expressive-code.ts'
@@ -1751,11 +1751,7 @@ export const watchSnippets = (options: WatchSnippetsOptions = {}) => {
   })
   return watchSnippetsInternal(resolved, normalizedWatch).pipe(
     Effect.withSpan('astro-twoslash-code/watch-snippets'),
-    /**
-     * Must use NodeFileSystemWithWatch to ensure recursive file watching works correctly.
-     * @see https://github.com/Effect-TS/effect/issues/5913
-     */
-    Effect.provide(NodeFileSystemWithWatch),
+    Effect.provide(NodeFileSystem.layer),
   )
 }
 
@@ -1781,11 +1777,7 @@ export const createSnippetsCommand = ({
 
   const watchHandler = watchSnippetsInternal(resolved, normalizeWatchOptions({})).pipe(
     Effect.withSpan('astro-twoslash-code/cli/snippets-watch'),
-    /**
-     * Must use NodeFileSystemWithWatch to ensure recursive file watching works correctly.
-     * @see https://github.com/Effect-TS/effect/issues/5913
-     */
-    Effect.provide(NodeFileSystemWithWatch),
+    Effect.provide(NodeFileSystem.layer),
     Effect.asVoid,
   )
 

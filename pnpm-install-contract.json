@@ -89,9 +89,12 @@
     "dedupePeerDependents": true,
     "ignoreScripts": true,
     "minimumReleaseAgeExclude": [
-      "@effect/platform",
       "@types/node",
       "effect",
+      "@effect/platform-node",
+      "@effect/vitest",
+      "@effect/opentelemetry",
+      "@effect/atom-react",
       "@effect/opentelemetry@4.0.0-rc.111",
       "@effect/platform-browser@4.0.0-rc.111",
       "@effect/platform-bun@4.0.0-rc.111",
@@ -108,6 +111,13 @@
       },
       "nixPreparedDependencies": {
         "scope": "independent-builder-policy"
+      }
+    },
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "eslint": ">=10.0.0",
+        "typescript": ">=6.0.0",
+        "vitest": ">=4.0.0"
       }
     },
     "pmOnFail": "ignore",
