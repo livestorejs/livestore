@@ -325,6 +325,9 @@ in
     # gh:apply-labels / gh:check-labels — reconcile .github/labels.json with live labels.
     (taskModules.gh-labels { repo = "livestorejs/livestore"; })
     (taskModules.megarepo { syncAll = !ci; })
+    (taskModules.flake-lock-duplicates {
+      lockfiles = [ "packages/@livestore/wa-sqlite/flake.lock" ];
+    })
     (taskModules.ts {
       tsconfigFile = "tsconfig.dev.json";
       tsBinPkg = effectTsgo;
@@ -336,6 +339,7 @@ in
       hasNixCheck = false;
       extraChecks = [
         "lint:nix"
+        "nix:flake-lock:check-duplicates"
         "quarantine:check"
       ];
     })
