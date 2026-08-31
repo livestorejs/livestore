@@ -4,9 +4,9 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "main",
-      "commit": "5f90869ee54539cf71fbd2a093993891ba8a0c97",
+      "commit": "9e2bef365baa28e1a8b0e097f84c4ecded45a66f",
       "pinned": false,
-      "lockedAt": "2026-08-30T16:32:34.541Z"
+      "lockedAt": "2026-08-31T12:10:02.382Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
