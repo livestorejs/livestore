@@ -2,10 +2,14 @@
 
 import { type Brand, Schema } from '@livestore/utils/effect'
 
-export type ParamsObject = Record<string, SqlValue>
 export type SqlValue = string | number | Uint8Array<ArrayBuffer> | null
+export type SqlBindValue = SqlValue | boolean
 
-export type Bindable = ReadonlyArray<SqlValue> | ParamsObject
+export type ParamsObject = Record<string, SqlBindValue>
+
+export type Bindable = ReadonlyArray<SqlBindValue> | ParamsObject
+type PreparedParamsObject = Record<string, SqlValue>
+type PreparedBindable = ReadonlyArray<SqlValue> | PreparedParamsObject
 
 /**
  * Numeric schema for the SQLite `REAL` domain. Unlike `Schema.Finite` it accepts
@@ -24,12 +28,14 @@ export const SqlValueSchema = Schema.Union([
   Schema.Null,
 ])
 
+export const SqlBindValueSchema = Schema.Union([SqlValueSchema, Schema.Boolean])
+
 export const PreparedBindValues = Schema.Union([
   Schema.Array(SqlValueSchema),
   Schema.Record(Schema.String, SqlValueSchema),
 ]).pipe(Schema.brand('PreparedBindValues'))
 
-export type PreparedBindValues = Brand.Branded<Bindable, 'PreparedBindValues'>
+export type PreparedBindValues = Brand.Branded<PreparedBindable, 'PreparedBindValues'>
 
 /**
  * This is a tag function for tagged literals.
@@ -47,6 +53,11 @@ export const sql = (template: TemplateStringsArray, ...args: unknown[]): string 
   return str + template[template.length - 1]
 }
 
+const normalizeBindValue = (value: SqlBindValue): SqlValue => {
+  if (typeof value !== 'boolean') return value
+  return value ? 1 : 0
+}
+
 /**
  * Prepare bind values to send to SQLite
  * Add $ to the beginning of keys; which we use as our interpolation syntax
@@ -56,12 +67,14 @@ export const sql = (template: TemplateStringsArray, ...args: unknown[]): string 
  * TODO: Also make sure that the SQLite binding limit of 1000 is respected
  */
 export const prepareBindValues = (values: Bindable, statement: string): PreparedBindValues => {
-  if (Array.isArray(values) === true) return values as any as PreparedBindValues
+  if (Array.isArray(values) === true) {
+    return values.map(normalizeBindValue) as unknown as PreparedBindValues
+  }
 
-  const result: ParamsObject = {}
+  const result: PreparedParamsObject = {}
   for (const [key, value] of Object.entries(values)) {
     if (statement.includes(key) === true) {
-      result[`$${key}`] = value
+      result[`$${key}`] = normalizeBindValue(value)
     }
   }
 
