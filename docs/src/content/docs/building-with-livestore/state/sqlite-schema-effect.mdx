@@ -92,11 +92,15 @@ Effect Schema types are automatically mapped to SQLite column types:
 | `Schema.Number` | `real` | `number` |
 | `Schema.Int` | `integer` | `number` |
 | `Schema.Boolean` | `integer` | `boolean` |
-| `Schema.Date` | `text` | `Date` |
+| `Schema.Date` | `text` (ISO 8601) | `Date` |
+| `Schema.DateFromString` | `text` (ISO 8601) | `Date` |
+| `Schema.DateFromMillis` | `integer` (epoch milliseconds) | `Date` |
 | `Schema.BigInt` | `text` | `bigint` |
 | Complex types (Struct, Array, etc.) | `text` (JSON encoded) | Decoded type |
 | `Schema.optional(T)` | Nullable column | `T \| undefined` |
 | `Schema.NullOr(T)` | Nullable column | `T \| null` |
+
+A field that transforms between an encoded and a decoded type (a codec such as `Schema.FiniteFromString`) is stored in its encoded form and decoded back to its type when read.
 
 ## Advanced examples
 

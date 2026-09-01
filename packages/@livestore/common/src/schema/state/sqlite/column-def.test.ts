@@ -26,6 +26,9 @@ describe('getColumnDefForSchema', () => {
     it('should map Schema.Date to text column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.Date)
       expect(columnDef.columnType).toBe('text')
+      const date = new Date('2026-01-02T03:04:05.678Z')
+      expect(Schema.encodeUnknownSync(columnDef.schema)(date)).toBe(date.toISOString())
+      expect(Schema.decodeUnknownSync(columnDef.schema)(date.toISOString())).toEqual(date)
       expect(Schema.toEncoded(columnDef.schema).ast._tag).toBe('String')
       expect(
         SchemaAST.resolveAt<{ readonly id: string }>('representation')(Schema.toType(columnDef.schema).ast)?.id,

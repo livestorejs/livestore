@@ -32,7 +32,10 @@ uses the schema's encoded shape: Date codecs encoded as milliseconds map to
 `INTEGER`, including when refined with additional checks, while `Uint8Array`
 codecs map to `BLOB`, also when refined. The inferred column retains the
 original schema so those refinements continue to validate values decoded from
-SQLite.
+SQLite. A field of a schema-based table (`table({ schema })`) keeps its own
+codec the same way, so `Schema.DateFromString` stores ISO text and
+`Schema.DateFromMillis` an integer; a bare `Schema.Date`, which has no
+encoding, is stored as ISO text.
 
 ## Query Builder
 
