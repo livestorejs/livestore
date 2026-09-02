@@ -13,6 +13,21 @@ export interface DoRpcHandlerOptions {
   input: Omit<DoCtx.DoCtxInput, 'from'>
 }
 
+/**
+ * Drops a live-pull subscription row only if it still belongs to the pull that asked. A replacement store booted on
+ * the same client DO while a slow shutdown is still draining overwrites the row with its own request id, and the
+ * earlier pull's late unsubscribe must not take that subscription down.
+ */
+export const dropRpcSubscription = (
+  kv: { get: (key: string) => RpcSubscription | undefined; delete: (key: string) => unknown },
+  { durableObjectId, requestId }: { durableObjectId: string; requestId: string },
+): void => {
+  const key = `${rpcSubscriptionKeyPrefix}${durableObjectId}`
+  if (kv.get(key)?.requestId === requestId) {
+    kv.delete(key)
+  }
+}
+
 export const createDoRpcHandler = (
   options: DoRpcHandlerOptions,
 ): Effect.Effect<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream> =>
@@ -22,6 +37,7 @@ export const createDoRpcHandler = (
     // TODO add admin RPCs
     const RpcLive = SyncDoRpc.toLayer({
       'SyncDoRpc.Ping': () => Effect.void,
+      'SyncDoRpc.Unsubscribe': (req) => Effect.sync(() => dropRpcSubscription(input.doSelf.ctx.storage.kv, req)),
       'SyncDoRpc.Pull': (req, { headers }) =>
         Effect.gen({ self: this }, function* () {
           const { ctx } = yield* DoCtx.DoCtx

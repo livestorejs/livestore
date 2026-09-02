@@ -100,6 +100,15 @@ export const makeDoRpcSync =
 
                   routing.set(requestId, queue)
 
+                  // Graceful shutdown only (eviction runs no finalizers); matched on requestId so a late send can't drop a newer pull's row
+                  yield* Effect.addFinalizer(() =>
+                    rpcClient['SyncDoRpc.Unsubscribe']({
+                      storeId,
+                      durableObjectId: durableObjectContext.durableObjectId,
+                      requestId,
+                    }).pipe(Effect.timeout('5 seconds'), Effect.tapCauseLogPretty, Effect.ignore),
+                  )
+
                   return Stream.fromQueue(queue)
                 }).pipe(Stream.unwrap),
               )
