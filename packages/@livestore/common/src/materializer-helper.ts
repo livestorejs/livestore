@@ -120,12 +120,15 @@ export const hashMaterializerResults = (
 ) => Hash.string(JSON.stringify(materializerResults))
 
 const fromMaterializerResult = (
-  materializerResult: MaterializerResult | ReadonlyArray<MaterializerResult>,
+  materializerResult: MaterializerResult | ReadonlyArray<MaterializerResult> | null | undefined,
 ): ReadonlyArray<{
   sql: string
   bindValues: BindValues
   writeTables: ReadonlySet<string> | undefined
 }> => {
+  if (materializerResult == null) {
+    return []
+  }
   if (ReadonlyArray.isArray<MaterializerResult | ReadonlyArray<MaterializerResult>>(materializerResult) === true) {
     return materializerResult.flatMap(fromMaterializerResult)
   }
