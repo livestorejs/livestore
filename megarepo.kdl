@@ -1,5 +1,5 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils#schickling-assistant/2026-09-03-fix-megarepo-ci-root-cause"
+    effect-utils "overengineeringstudio/effect-utils#main"
     effect "effect-ts/effect"
     livestore-contrib "livestorejs/livestore-contrib"
 }
