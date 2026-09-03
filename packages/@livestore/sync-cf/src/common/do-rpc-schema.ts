@@ -3,7 +3,14 @@ import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
 
 import * as SyncMessage from './sync-message-types.ts'
 
-const commonPayloadFields = {
+export const SyncDoRpcPullPayload = Schema.Struct({
+  /** Omitting the cursor will start from the beginning */
+  cursor: SyncMessage.PullRequest.fields.cursor,
+  /**
+   * Present for a live pull. The backend keeps delivering later events through the callback stub passed
+   * alongside the native RPC call and files the subscription under this client-minted id.
+   */
+  live: Schema.optional(Schema.Struct({ subscriptionId: Schema.String })),
   /**
    * While the storeId is already implied by the Durable Object, we still need the explicit storeId
    * since a DO doesn't know its own id.name value. 🫠
@@ -12,25 +19,11 @@ const commonPayloadFields = {
   storeId: Schema.String,
   /** Needed for various reasons (e.g. auth) */
   payload: Schema.optional(Schema.Json),
-}
+})
 
 export class SyncDoRpc extends RpcGroup.make(
   Rpc.make('SyncDoRpc.Pull', {
-    payload: {
-      /** Omitting the cursor will start from the beginning */
-      cursor: SyncMessage.PullRequest.fields.cursor,
-      // TODO rename
-      /** Whether to keep the pull stream alive and wait for more events */
-      rpcContext: Schema.optional(
-        Schema.Struct({
-          callerContext: Schema.Struct({
-            bindingName: Schema.String,
-            durableObjectId: Schema.String,
-          }),
-        }),
-      ),
-      ...commonPayloadFields,
-    },
+    payload: SyncDoRpcPullPayload,
     success: Schema.Struct({
       rpcRequestId: Schema.String,
       ...SyncMessage.PullResponse.fields,
@@ -39,27 +32,28 @@ export class SyncDoRpc extends RpcGroup.make(
     stream: true,
   }),
   Rpc.make('SyncDoRpc.Push', {
-    payload: {
+    payload: Schema.Struct({
       ...SyncMessage.PushRequest.fields,
-      ...commonPayloadFields,
-    },
+      storeId: Schema.String,
+      payload: Schema.optional(Schema.Json),
+    }),
     success: SyncMessage.PushAck,
     error: Schema.Union([UnknownError, ServerAheadError, BackendIdMismatchError]),
   }),
   Rpc.make('SyncDoRpc.Ping', {
-    payload: {
-      ...commonPayloadFields,
-    },
+    payload: Schema.Struct({
+      storeId: Schema.String,
+      payload: Schema.optional(Schema.Json),
+    }),
     success: Schema.Void,
   }),
   Rpc.make('SyncDoRpc.Unsubscribe', {
-    payload: {
-      /** Client DO id whose live-pull subscription row to drop. */
-      durableObjectId: Schema.String,
-      /** Request id of the live pull that registered the row; the row is only dropped if it still matches. */
-      requestId: Schema.String,
-      ...commonPayloadFields,
-    },
+    payload: Schema.Struct({
+      /** Id the live pull was filed under; only its minter knows it. */
+      subscriptionId: Schema.String,
+      storeId: Schema.String,
+      payload: Schema.optional(Schema.Json),
+    }),
     success: Schema.Void,
   }),
 ) {}

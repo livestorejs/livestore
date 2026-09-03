@@ -1,16 +1,15 @@
-import { DurableObject } from 'cloudflare:workers'
+import { DurableObject, restore } from 'cloudflare:workers'
 
-import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
+import { createStoreDoPromise, restoreStoreDoSyncTarget } from '@livestore/adapter-cloudflare'
 import { nanoid, type Store } from '@livestore/livestore'
 import type * as SyncBackend from '@livestore/sync-cf/cf-worker'
-import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 
 import { schema as threadSchema, threadTables } from '../stores/thread/schema.ts'
 import { seedThread } from '../stores/thread/seed.ts'
 import type { Env } from './shared.ts'
 
 // Scoped by storeId
-export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
+export class ThreadClientDO extends DurableObject<Env> {
   private store!: Store<typeof threadSchema>
   private hasStore = false
   private threadLabelsSubscription: (() => void) | undefined
@@ -32,11 +31,7 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
       storeId,
       clientId: 'thread-client-do',
       sessionId: nanoid(),
-      durableObject: {
-        ctx: this.ctx as SyncBackend.CfTypes.DurableObjectState,
-        env: this.env,
-        bindingName: 'THREAD_CLIENT_DO',
-      },
+      durableObject: { ctx: this.ctx as SyncBackend.CfTypes.DurableObjectState },
       syncBackendStub: this.env.SYNC_BACKEND_DO.getByName(storeId),
       livePull: true,
     })
@@ -146,9 +141,10 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
     return this.subscribeToStore()
   }
 
-  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
-    // Make sure to wake up the store before processing the sync update
-    await this.subscribeToStore()
-    await handleSyncUpdateRpc(this.ctx as SyncBackend.CfTypes.DurableObjectState, payload)
+  /** The sync backend delivers live updates through here; re-subscribe first after a possible hibernation. */
+  [restore](params: unknown) {
+    return restoreStoreDoSyncTarget(this.ctx as SyncBackend.CfTypes.DurableObjectState, params, {
+      onUpdate: () => this.subscribeToStore(),
+    })
   }
 }

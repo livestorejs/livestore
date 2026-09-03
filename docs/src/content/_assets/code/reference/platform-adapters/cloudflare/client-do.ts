@@ -1,10 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import { DurableObject } from 'cloudflare:workers'
+import { DurableObject, restore } from 'cloudflare:workers'
 
-import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
+import { createStoreDoPromise, restoreStoreDoSyncTarget } from '@livestore/adapter-cloudflare'
 import { nanoid, type Store, type Unsubscribe } from '@livestore/livestore'
-import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 
 import type { Env } from './env.ts'
 import { schema, tables } from './schema.ts'
@@ -15,9 +14,7 @@ type AlarmInfo = {
   retryCount: number
 }
 
-export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
-  override __DURABLE_OBJECT_BRAND: never = undefined as never
-
+export class LiveStoreClientDO extends DurableObject<Env> {
   private storeId: string | undefined
   private cachedStore: Store<typeof schema> | undefined
   private storeSubscription: Unsubscribe | undefined
@@ -51,8 +48,6 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
       durableObject: {
         // @ts-expect-error TODO remove once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
         ctx: this.ctx,
-        env: this.env,
-        bindingName: 'CLIENT_DO',
       },
       syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
       livePull: true,
@@ -78,10 +73,14 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
     return this.subscribeToStore()
   }
 
-  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>, storeId: string) {
-    this.storeId = storeId
-    await this.getStore()
+  /** The sync backend delivers live updates through here; a rebuilt DO reloads its store first. */
+  [restore](params: unknown) {
     // @ts-expect-error TODO remove once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
-    await handleSyncUpdateRpc(this.ctx, payload)
+    return restoreStoreDoSyncTarget(this.ctx, params, {
+      onUpdate: async (storeId) => {
+        this.storeId = storeId
+        await this.getStore()
+      },
+    })
   }
 }

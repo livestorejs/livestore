@@ -64,11 +64,11 @@ const processReadableStream = (
   })
 
 interface MakeDoRpcProtocolArgs {
-  callRpc: (payload: Uint8Array) => Promise<Uint8Array | CfTypes.ReadableStream>
-  callerContext: {
-    bindingName: string
-    durableObjectId: string
-  }
+  /**
+   * One native DO RPC call per Effect RPC request. The decoded request lets the caller attach arguments that
+   * cannot travel inside the msgpack payload, such as a live pull's callback stub.
+   */
+  callRpc: (payload: Uint8Array, request: RpcMessage.RequestEncoded) => Promise<Uint8Array | CfTypes.ReadableStream>
 }
 
 /**
@@ -122,7 +122,9 @@ const makeProtocolDurableObject = ({
         }
 
         return Effect.gen(function* () {
-          const serializedResponse = yield* Effect.tryPromise(() => callRpc(serializedPayload)).pipe(Effect.orDie) // Convert errors to defects to match never error type
+          const serializedResponse = yield* Effect.tryPromise(() => callRpc(serializedPayload, message)).pipe(
+            Effect.orDie,
+          ) // Convert errors to defects to match never error type
 
           if (serializedResponse instanceof Uint8Array) {
             for (const response of parser.decode(serializedResponse)) {
