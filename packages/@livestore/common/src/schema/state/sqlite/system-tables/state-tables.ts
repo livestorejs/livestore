@@ -6,7 +6,7 @@ import { table } from '../table-def.ts'
  * STATE DATABASE SYSTEM TABLES
  *
  * ⚠️  SAFE TO CHANGE: State tables are automatically rebuilt from eventlog when schema changes.
- * No need to bump `liveStoreStorageFormatVersion` (uses hash-based migration via SqliteAst.hash()).
+ * No need to bump `liveStoreStorageFormatVersion` because state tables use fingerprint-based migration.
  */
 
 export const SCHEMA_META_TABLE = '__livestore_schema'
@@ -18,7 +18,7 @@ export const schemaMetaTable = table({
   name: SCHEMA_META_TABLE,
   columns: {
     tableName: SqliteDsl.text({ primaryKey: true }),
-    schemaHash: SqliteDsl.integer({ nullable: false }),
+    schemaHash: SqliteDsl.text({ nullable: false }),
     /** ISO date format */
     updatedAt: SqliteDsl.text({ nullable: false }),
   },

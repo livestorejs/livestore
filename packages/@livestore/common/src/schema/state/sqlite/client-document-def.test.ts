@@ -10,9 +10,25 @@ import {
   createOptimisticEventSchema,
   mergeDefaultValues,
 } from './client-document-def.ts'
+import { fingerprint } from './db-schema/ast/fingerprint.ts'
 import { getResultSchema } from './query-builder/impl.ts'
 
 describe('client document table', () => {
+  test('tracks application value-schema changes in the storage fingerprint', () => {
+    const first = clientDocument({
+      name: 'documents',
+      schema: Schema.Struct({ title: Schema.String.check(Schema.isMinLength(1)) }),
+      default: { id: 'default', value: { title: 'valid' } },
+    })
+    const second = clientDocument({
+      name: 'documents',
+      schema: Schema.Struct({ title: Schema.String.check(Schema.isMinLength(2)) }),
+      default: { id: 'default', value: { title: 'valid' } },
+    })
+
+    expect(fingerprint(first.sqliteDef.ast)).not.toBe(fingerprint(second.sqliteDef.ast))
+  })
+
   test('set event', () => {
     expect(patchId(tables.UiState.set({ showSidebar: false }, 'session-1'))).toMatchInlineSnapshot(`
       {

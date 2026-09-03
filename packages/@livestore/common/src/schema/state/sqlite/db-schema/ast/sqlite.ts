@@ -1,7 +1,5 @@
 import { omitUndefineds } from '@livestore/utils'
-import { type Option, Schema, SchemaAST } from '@livestore/utils/effect'
-
-import { hashCode } from '../hash.ts'
+import { type Option, Schema } from '@livestore/utils/effect'
 
 export namespace ColumnType {
   export type ColumnType = Text | Null | Real | Integer | Blob
@@ -82,93 +80,6 @@ export type DbSchema = {
 }
 
 export const dbSchema = (tables: Table[]): DbSchema => ({ _tag: 'dbSchema', tables })
-
-/**
- * Helper to detect if a column is a JSON column (encoded as a JSON string)
- */
-const isJsonColumn = (column: Column): boolean => {
-  if (column.type._tag !== 'text') return false
-
-  return hasJsonStringEncoding(column.schema.ast)
-}
-
-/**
- * `SchemaTransformation.fromJsonString` is a factory since Effect rc.109, so encoding links can no
- * longer be matched by identity. `Schema.fromJsonString` annotates its encoded side as
- * `application/json`, which identifies the link regardless of the reviver/replacer/space options.
- */
-const hasJsonStringEncoding = (ast: SchemaAST.AST): boolean => {
-  if (ast.encoding?.some((link) => link.to.annotations?.contentMediaType === 'application/json') === true) {
-    return true
-  }
-  return SchemaAST.isUnion(ast) === true && ast.types.some(hasJsonStringEncoding)
-}
-
-/**
- * NOTE we're now including JSON schema information for JSON columns
- * to detect client document schema changes
- */
-export const hash = (obj: Table | Column | Index | ForeignKey | DbSchema): number =>
-  hashCode(JSON.stringify(trimInfoForHasing(obj)))
-
-const trimInfoForHasing = (obj: Table | Column | Index | ForeignKey | DbSchema): Record<string, any> => {
-  switch (obj._tag) {
-    case 'table': {
-      return {
-        _tag: 'table',
-        name: obj.name,
-        columns: obj.columns.map((column) => trimInfoForHasing(column)),
-        indexes: obj.indexes.map((index) => trimInfoForHasing(index)),
-      }
-    }
-    case 'column': {
-      const baseInfo: Record<string, any> = {
-        _tag: 'column',
-        name: obj.name,
-        type: obj.type._tag,
-        primaryKey: obj.primaryKey,
-        nullable: obj.nullable,
-        autoIncrement: obj.autoIncrement,
-        default: obj.default,
-      }
-
-      // NEW: Include schema hash for JSON columns
-      // This ensures that changes to the JSON schema are detected
-      if (isJsonColumn(obj) === true && obj.schema !== undefined) {
-        // Use Effect's Schema.hash for consistent hashing
-        baseInfo.jsonSchemaHash = Schema.hash(obj.schema)
-      }
-
-      return baseInfo
-    }
-    case 'index': {
-      return {
-        _tag: 'index',
-        columns: obj.columns,
-        name: obj.name,
-        unique: obj.unique,
-        primaryKey: obj.primaryKey,
-      }
-    }
-    case 'foreignKey': {
-      return {
-        _tag: 'foreignKey',
-        references: obj.references,
-        key: obj.key,
-        columns: obj.columns,
-      }
-    }
-    case 'dbSchema': {
-      return {
-        _tag: 'dbSchema',
-        tables: obj.tables.map(trimInfoForHasing),
-      }
-    }
-    default: {
-      throw new Error(`Unreachable: ${String(obj)}`)
-    }
-  }
-}
 
 export const structSchemaForTable = (tableDef: Table) =>
   Schema.Struct(Object.fromEntries(tableDef.columns.map((column) => [column.name, column.schema])))

@@ -49,6 +49,7 @@ export {
   Data,
   Deferred,
   Duration,
+  Encoding,
   Result,
   Equal,
   Exit,
