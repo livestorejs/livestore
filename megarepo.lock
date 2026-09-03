@@ -4,23 +4,23 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "main",
-      "commit": "9e2bef365baa28e1a8b0e097f84c4ecded45a66f",
+      "commit": "2c6047b50dfdc9f7a84b09a66326138ce9c69913",
       "pinned": false,
-      "lockedAt": "2026-08-31T12:10:02.382Z"
+      "lockedAt": "2026-09-03T20:58:39.160Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
       "ref": "main",
-      "commit": "4f6ae041a2886c27e941c5d9e4916aa2a32e0a1c",
+      "commit": "a9d1ee3d4d51e97ea33440fe6100935d5fd5aada",
       "pinned": false,
-      "lockedAt": "2026-08-19T15:42:36.539Z"
+      "lockedAt": "2026-09-03T20:58:44.128Z"
     },
     "livestore-contrib": {
       "url": "https://github.com/livestorejs/livestore-contrib",
       "ref": "main",
-      "commit": "1398c6463d7aae5abd2db3036a20d2ddc89370ef",
+      "commit": "374886f4a23a7fd9dfeb03fc1ea3bcb209014862",
       "pinned": false,
-      "lockedAt": "2026-08-19T09:18:36.534Z"
+      "lockedAt": "2026-09-03T16:23:54.470Z"
     }
   }
 }

@@ -37,6 +37,10 @@
 
 For maintainers and contributors:
 
+- **CI composition:** Aligned the megarepo setup with the automatic CI worktree
+  policy and consolidated devenv resolver from
+  [effect-utils#1207](https://github.com/overengineeringstudio/effect-utils/pull/1207).
+
 - **Release tooling:** Pull-request CI now packs exact-head snapshot candidates
   for forks without secrets. Maintainers can allow npm publication for a fork's
   current and later PR heads with the revocable `ci:publish-snapshot` label
