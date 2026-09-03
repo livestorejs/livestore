@@ -3,24 +3,24 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "9e2bef365baa28e1a8b0e097f84c4ecded45a66f",
-      "pinned": false,
-      "lockedAt": "2026-08-31T12:10:02.382Z"
+      "ref": "schickling-assistant/2026-09-03-fix-megarepo-ci-root-cause",
+      "commit": "837523bcbeaaa4682bf4374ab7c08a1fb717a860",
+      "pinned": true,
+      "lockedAt": "2026-09-03T16:33:39.357Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
       "ref": "main",
-      "commit": "4f6ae041a2886c27e941c5d9e4916aa2a32e0a1c",
+      "commit": "42fd969b45025eed6d60cb87b97c5ff88d187671",
       "pinned": false,
-      "lockedAt": "2026-08-19T15:42:36.539Z"
+      "lockedAt": "2026-09-03T16:23:54.470Z"
     },
     "livestore-contrib": {
       "url": "https://github.com/livestorejs/livestore-contrib",
       "ref": "main",
-      "commit": "1398c6463d7aae5abd2db3036a20d2ddc89370ef",
+      "commit": "374886f4a23a7fd9dfeb03fc1ea3bcb209014862",
       "pinned": false,
-      "lockedAt": "2026-08-19T09:18:36.534Z"
+      "lockedAt": "2026-09-03T16:23:54.470Z"
     }
   }
 }

@@ -52,6 +52,8 @@ scripts/.completions
 
 .devenv*
 .pre-commit-config.yaml
+# Generated Oxlint plugin configuration
+/.oxlint-with-plugins.json
 
 # Generated markdown bundle embedded into @livestore/livestore
 packages/@livestore/livestore/docs
