@@ -44,15 +44,19 @@ arbitrates pushes and fans out live pull streams to subscribers
   There is no explicit idempotency/dedup beyond the head check (see
   [.decisions/0002-atomic-push-publication.md](./.decisions/0002-atomic-push-publication.md)).
 - **Fan-out** (`push.ts`): accepted batches are re-chunked and emitted in
-  admission order to two subscriber sets — hibernatable WebSockets (per-socket `pullRequestIds`
-  attachments; hand-crafted RPC chunk frames) and DO-RPC subscriptions (a
-  durable KV registry fed by live pulls). Each DO-RPC callback carries the
-  subscription's `storeId` (`push.ts` → `emitStreamResponse` →
-  `syncUpdateRpc(payload, storeId)`), so a client DO that was evicted and
-  reconstructed can re-boot its store — whose boot catches up — before
-  delivering, instead of dropping the update; the client-side re-boot is
-  `04-runtime`'s adapter concern
-  ([.decisions/0003-reverse-rpc-storeid-recovery.md](./.decisions/0003-reverse-rpc-storeid-recovery.md)).
+  admission order to two subscriber sets — hibernatable WebSockets (per-socket
+  `pullRequestIds` attachments; hand-crafted RPC chunk frames) and DO-RPC
+  subscriptions (a durable KV registry fed by live pulls).
+
+  **Maturity: experimental.** A DO-RPC live pull passes a persistent callback
+  stub minted with `ctx.restore({ storeId, subscriptionId })`. The backend
+  stores it under `rpc-sub:<subscriptionId>`, re-derives its target on each
+  publish, and disposes the loaded stub after delivery so neither DO stays
+  pinned awake. The restored client target reloads an evicted store before
+  routing the update. It returns `{ refused: true }` when the subscription is
+  no longer current, which removes the backend row; graceful shutdown clears
+  the client marker and also sends `Unsubscribe`. See
+  [.decisions/0006-persistent-stub-subscriptions.md](./.decisions/0006-persistent-stub-subscriptions.md).
 - **BackendId** (`layer.ts:98-114`): `nanoid()` on first context build,
   persisted in `contextTable`; pull/push carrying a different backendId
   fail with `BackendIdMismatchError` (client records it lazily from pull
@@ -70,7 +74,7 @@ arbitrates pushes and fans out live pull streams to subscribers
 | --- | --- | --- | --- |
 | WebSocket | `ws-rpc-schema.ts` | server-held stream (`live` flag + `Stream.never`), pushed chunks | default; DO auto ping/pong; hibernation-aware |
 | HTTP | `http-rpc-schema.ts` | client-side polling (~5 s default) | 10 s hard request timeout; explicit `Ping` RPC |
-| DO-RPC | `do-rpc-schema.ts` | RPC callback queue (`rpcContext` presence = live) | for same-Cloudflare-app callers (`adapter-cloudflare`); explicit `Ping` |
+| DO-RPC | `do-rpc-schema.ts` | persistent-stub callback queue (`live.subscriptionId` presence = live) | experimental; for same-Cloudflare-app callers (`adapter-cloudflare`); explicit `Ping` |
 
 All three transports thread the client `payload` (per-connection auth/multi-tenancy
 context) into the DO `onPush`/`onPull` callbacks.
@@ -121,15 +125,12 @@ IDs to external traces or change the sync protocol. See
 
 Current reality a consumer must not read as guaranteed behavior:
 
-- **Cross-store subscription bleed risk.** The DO-RPC client's
-  `requestIdQueueMap` is module-global with a scoping TODO
-  (`do-rpc-client.ts:30`; issue #1416).
-- **Live-subscriber teardown is graceful-only.** A DO-RPC client drops its
-  subscription on graceful `store.shutdown()`
-  ([.decisions/0004](./.decisions/0004-do-rpc-graceful-unsubscribe.md)), but a
-  client evicted and never returning keeps its row by design (never reaped on
-  silence — 0003), and WS `Interrupt` still emits no Exit
-  (`cf-worker/durable-object.ts:136`; issue #1418).
+- **Persistent-stub API stability.** DO-RPC live pull depends on Cloudflare's
+  undocumented `ctx.restore` persistent-stub surface and the
+  `allow_irrevocable_stub_storage` compatibility flag on both Workers. Its
+  stable support and cross-redeploy guarantees are not yet documented upstream.
+- **WebSocket interrupt completion.** WS `Interrupt` still emits no Exit
+  (`cf-worker/durable-object.ts`; issue #1418).
 - **Admin RPCs are defined but unwired** in all three transports
   (`AdminResetRoom`/`AdminInfo`).
 - **No head↔eventlog consistency check at load** (`layer.ts:96`), and

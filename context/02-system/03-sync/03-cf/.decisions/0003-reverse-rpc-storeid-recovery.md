@@ -1,6 +1,6 @@
 # 0003 — Reverse-RPC carries storeId so reconstructed client DOs recover live updates
 
-Status: accepted (recorded 2026-08-08).
+Status: superseded by [0006](./0006-persistent-stub-subscriptions.md) (2026-09-03).
 
 ## Context
 

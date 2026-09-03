@@ -1,6 +1,6 @@
 # 0004 — DO-RPC clients unsubscribe on graceful shutdown; subscriptions are never reaped on silence
 
-Status: accepted (recorded 2026-08-09).
+Status: superseded by [0006](./0006-persistent-stub-subscriptions.md) (2026-09-03).
 
 ## Context
 
