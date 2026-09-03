@@ -31,13 +31,24 @@ const erasedJsonCodec = (schema: Schema.Top) =>
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- erased RPC data schemas require no codec services
   Schema.toCodecJson(schema as Schema.Codec<unknown, unknown, never, never>)
 
-export interface ClientDoWithRpcCallback {
-  __DURABLE_OBJECT_BRAND: never
-  /**
-   * The sync backend calls this to deliver a live update; `storeId` lets a rebuilt DO reload its
-   * store before delivering. See the Cloudflare Durable Object adapter docs for the recovery options.
-   */
-  syncUpdateRpc: (payload: Uint8Array<ArrayBuffer>, storeId: string) => Promise<void>
+// `Symbol.dispose` is missing from the repo's `ES2024` lib; declared here until the lib includes `esnext.disposable`.
+declare global {
+  interface SymbolConstructor {
+    readonly dispose: unique symbol
+  }
+}
+
+/** Answer to one live-update delivery. `refused` tells the sync backend to drop that subscription row. */
+export type SyncUpdateAck = { refused: boolean }
+
+/**
+ * Persistent stub (`ctx.restore`) a client DO mints for one live pull. The sync backend stores it in its KV and
+ * calls it on every publish; the client's `[restore]` re-derives the target on demand, so neither side stays pinned.
+ * Dispose it after use, or the session it opened keeps both DOs awake.
+ */
+export interface SyncUpdateCallback {
+  deliver(payload: Uint8Array<ArrayBuffer>): Promise<SyncUpdateAck>
+  [Symbol.dispose](): void
 }
 
 /**
@@ -208,31 +219,16 @@ export const toDurableObjectHandler =
       Uint8Array<ArrayBuffer> | CfTypes.ReadableStream
     >
 
-/** Out-of-band RPC stream response emission back to the caller DO */
+/** Out-of-band RPC stream chunk delivered to the subscriber's callback stub. Returns the subscriber's answer. */
 export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(function* ({
-  callerContext,
-  env,
+  callback,
   requestId,
-  storeId,
   values,
 }: {
-  env: Record<string, any>
-  callerContext: { bindingName: string; durableObjectId: string }
+  callback: SyncUpdateCallback
   requestId: string
-  storeId: string
   values: ReadonlyArray.NonEmptyReadonlyArray<any>
 }) {
-  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- CF worker env bindings are typed as Record<string, any>; narrowing to known DO namespace
-  const clientDoNamespace = env[callerContext.bindingName] as
-    | CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
-    | undefined
-
-  if (clientDoNamespace === undefined) {
-    throw new Error(`Client DO namespace not found: ${callerContext.bindingName}`)
-  }
-
-  const clientDo = clientDoNamespace.get(clientDoNamespace.idFromString(callerContext.durableObjectId))
-
   const res: RpcMessage.ResponseChunkEncoded = { _tag: 'Chunk', requestId, values }
   const parser = RpcSerialization.msgPack.makeUnsafe()
   // Native Cloudflare RPC rejects schema values with custom prototypes. Keep the callback
@@ -240,7 +236,7 @@ export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(functio
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- msgPack parser.encode returns unknown; the encoded result is a byte payload
   const serializedRes = parser.encode(res) as Uint8Array<ArrayBuffer>
 
-  yield* Effect.tryPromise(() => clientDo.syncUpdateRpc(serializedRes, storeId))
+  return yield* Effect.tryPromise(() => callback.deliver(serializedRes))
 })
 
 /**

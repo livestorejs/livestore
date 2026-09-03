@@ -167,21 +167,32 @@ export const makePush =
           }
 
           // Subscribers live in the DO's KV storage (single source of truth), so fan-out survives reconstruction.
-          // emitStreamResponse reconstructs each client stub from its callerContext.
+          // Each row holds a persistent stub; the client re-derives its target per publish and answers `refused`
+          // once that subscription is gone, which drops the row. Real errors keep the row (they may be transient).
           const rpcSubscriptions = Array.from(
             ctx.storage.kv.list<RpcSubscription>({ prefix: rpcSubscriptionKeyPrefix }),
           )
           if (rpcSubscriptions.length > 0) {
-            for (const [, subscription] of rpcSubscriptions) {
-              for (const { encoded } of responses) {
-                yield* emitStreamResponse({
-                  callerContext: subscription.callerContext,
-                  env,
-                  requestId: subscription.requestId,
-                  storeId: subscription.storeId,
-                  values: [encoded],
-                }).pipe(Effect.tapCauseLogPretty, Effect.exit)
-              }
+            for (const [key, subscription] of rpcSubscriptions) {
+              yield* Effect.gen(function* () {
+                for (const { encoded } of responses) {
+                  const ack = yield* emitStreamResponse({
+                    callback: subscription.callback,
+                    requestId: subscription.requestId,
+                    values: [encoded],
+                  })
+                  if (ack.refused === true) {
+                    ctx.storage.kv.delete(key)
+                    yield* Effect.logDebug(`Dropped refused RPC subscription ${key}`)
+                    break
+                  }
+                }
+              }).pipe(
+                // A stub loaded from storage holds a live session once used; disposing lets both DOs hibernate.
+                Effect.ensuring(Effect.sync(() => subscription.callback[Symbol.dispose]())),
+                Effect.tapCauseLogPretty,
+                Effect.exit,
+              )
             }
 
             yield* Effect.logDebug(`Broadcasted to ${rpcSubscriptions.length} RPC clients`)

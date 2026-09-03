@@ -68,7 +68,6 @@ Vitest.live('keeps a straddling stream frame isolated from a concurrent unary re
 
     const ProtocolLive = layerProtocolDurableObject({
       callRpc: makeGatedCallRpc(streamWithGatedTail),
-      callerContext: { bindingName: 'TEST', durableObjectId: 'id' },
     })
 
     const result = yield* Effect.gen(function* () {

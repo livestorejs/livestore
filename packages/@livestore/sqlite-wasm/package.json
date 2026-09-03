@@ -72,7 +72,7 @@
     "@types/node": "25.3.3",
     "@types/wicg-file-system-access": "2023.10.6",
     "vitest": "4.1.9",
-    "wrangler": "4.42.2"
+    "wrangler": "4.128.0"
   },
   "peerDependencies": {
     "@effect/opentelemetry": "^4.0.0-rc.111",

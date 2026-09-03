@@ -1,15 +1,14 @@
-import { DurableObject } from 'cloudflare:workers'
+import { DurableObject, restore } from 'cloudflare:workers'
 import type { AlarmInvocationInfo } from '@cloudflare/workers-types'
 
-import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
+import { createStoreDoPromise, restoreStoreDoSyncTarget } from '@livestore/adapter-cloudflare'
 import { nanoid, type Store } from '@livestore/livestore'
-import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 
 import { schema, tables } from './livestore/schema.ts'
 import type { Env } from './shared.ts'
 import { storeIdFromRequest } from './shared.ts'
 
-export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
+export class LiveStoreClientDO extends DurableObject<Env> {
   private storeId: string | undefined
   private cachedStore!: Store<typeof schema>
   private hasCachedStore = false
@@ -40,11 +39,7 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
       storeId,
       clientId: 'client-do',
       sessionId: nanoid(),
-      durableObject: {
-        ctx: this.ctx,
-        env: this.env,
-        bindingName: 'CLIENT_DO',
-      },
+      durableObject: { ctx: this.ctx },
       syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
       livePull: true,
     })
@@ -71,9 +66,13 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
     this.subscribeToStore()
   }
 
-  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>, storeId: string) {
-    this.storeId = storeId
-    await this.getStore()
-    await handleSyncUpdateRpc(this.ctx, payload)
+  /** The sync backend delivers live updates through here; a rebuilt DO reloads its store first. */
+  [restore](params: unknown) {
+    return restoreStoreDoSyncTarget(this.ctx, params, {
+      onUpdate: async (storeId) => {
+        this.storeId = storeId
+        await this.getStore()
+      },
+    })
   }
 }

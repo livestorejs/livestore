@@ -1,5 +1,5 @@
 import { UnknownError } from '@livestore/common'
-import { type CfTypes, toDurableObjectHandler } from '@livestore/common-cf'
+import { type CfTypes, type SyncUpdateCallback, toDurableObjectHandler } from '@livestore/common-cf'
 import { Effect, Headers, Option, Stream } from '@livestore/utils/effect'
 
 import { SyncDoRpc } from '../../../common/do-rpc-schema.ts'
@@ -10,50 +10,44 @@ import { makePush } from '../push.ts'
 
 export interface DoRpcHandlerOptions {
   payload: Uint8Array<ArrayBuffer>
+  /** Persistent stub the client passed alongside a live pull; stored with the subscription row. */
+  callback?: SyncUpdateCallback | undefined
   input: Omit<DoCtx.DoCtxInput, 'from'>
-}
-
-/**
- * Drops a live-pull subscription row only if it still belongs to the pull that asked. A replacement store booted on
- * the same client DO while a slow shutdown is still draining overwrites the row with its own request id, and the
- * earlier pull's late unsubscribe must not take that subscription down.
- */
-export const dropRpcSubscription = (
-  kv: { get: (key: string) => RpcSubscription | undefined; delete: (key: string) => unknown },
-  { durableObjectId, requestId }: { durableObjectId: string; requestId: string },
-): void => {
-  const key = `${rpcSubscriptionKeyPrefix}${durableObjectId}`
-  if (kv.get(key)?.requestId === requestId) {
-    kv.delete(key)
-  }
 }
 
 export const createDoRpcHandler = (
   options: DoRpcHandlerOptions,
 ): Effect.Effect<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream> =>
   Effect.gen({ self: this }, function* () {
-    const { payload, input } = options
+    const { payload, callback, input } = options
 
     // TODO add admin RPCs
     const RpcLive = SyncDoRpc.toLayer({
       'SyncDoRpc.Ping': () => Effect.void,
-      'SyncDoRpc.Unsubscribe': (req) => Effect.sync(() => dropRpcSubscription(input.doSelf.ctx.storage.kv, req)),
+      'SyncDoRpc.Unsubscribe': (req) =>
+        Effect.sync(() => {
+          input.doSelf.ctx.storage.kv.delete(`${rpcSubscriptionKeyPrefix}${req.subscriptionId}`)
+        }),
       'SyncDoRpc.Pull': (req, { headers }) =>
         Effect.gen({ self: this }, function* () {
           const { ctx } = yield* DoCtx.DoCtx
 
-          // TODO rename `req.rpcContext` to something more appropriate
-          if (req.rpcContext !== undefined) {
+          if (req.live !== undefined) {
+            if (callback === undefined) {
+              return yield* new UnknownError({
+                cause: 'A live DO-RPC pull needs a callback stub alongside the payload',
+              })
+            }
             const subscription: RpcSubscription = {
               storeId: req.storeId,
               subscribedAt: Date.now(),
               requestId: Headers.get(headers, 'x-rpc-request-id').pipe(Option.getOrThrow),
-              callerContext: req.rpcContext.callerContext,
+              callback,
               ...(req.payload !== undefined ? { payload: req.payload } : {}),
             }
-            // Keyed by client DO id (not storeId — one backend serves many client DOs). The DO's synchronous KV
-            // storage is the single source of truth, so the entry outlives backend reconstruction.
-            ctx.storage.kv.put(`${rpcSubscriptionKeyPrefix}${subscription.callerContext.durableObjectId}`, subscription)
+            // The DO's synchronous KV storage is the single source of truth, so the row (stub included) outlives
+            // backend reconstruction. The client's `[restore]` refuses deliveries for a superseded id.
+            ctx.storage.kv.put(`${rpcSubscriptionKeyPrefix}${req.live.subscriptionId}`, subscription)
           }
 
           // DO-RPC doesn't have HTTP headers context - headers are undefined

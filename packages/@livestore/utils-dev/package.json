@@ -43,7 +43,7 @@
     "@opentelemetry/sdk-metrics": "2.2.0",
     "@opentelemetry/sdk-trace-base": "2.2.0",
     "@opentelemetry/sdk-trace-node": "2.2.0",
-    "wrangler": "4.42.2"
+    "wrangler": "4.128.0"
   },
   "devDependencies": {
     "@effect/opentelemetry": "4.0.0-rc.111",

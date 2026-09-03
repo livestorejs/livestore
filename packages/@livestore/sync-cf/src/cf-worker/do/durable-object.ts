@@ -2,7 +2,7 @@
 
 import { DurableObject } from 'cloudflare:workers'
 
-import { type CfTypes, setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
+import { type CfTypes, setupDurableObjectWebSocketRpc, type SyncUpdateCallback } from '@livestore/common-cf'
 import { CfDeclare } from '@livestore/common-cf/declare'
 import {
   Effect,
@@ -214,12 +214,15 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     /**
      * Handles DO <-> DO RPC calls
      */
-    async rpc(payload: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream> {
+    async rpc(
+      payload: Uint8Array<ArrayBuffer>,
+      callback?: SyncUpdateCallback,
+    ): Promise<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream> {
       if (enabledTransports.has('do-rpc') === false) {
         throw new Error('Do RPC transport is not enabled (based on `options.enabledTransports`)')
       }
 
-      return createDoRpcHandler({ payload, input: { doSelf: this, doOptions: options } }).pipe(
+      return createDoRpcHandler({ payload, callback, input: { doSelf: this, doOptions: options } }).pipe(
         Effect.withSpan('@livestore/sync-cf:durable-object:rpc'),
         this.runEffectAsPromise,
       )
