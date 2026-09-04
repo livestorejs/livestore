@@ -90,8 +90,6 @@ export const migrateDb = ({
   onProgress?: (opts: { done: number; total: number }) => Effect.Effect<void>
 }): Effect.Effect<MigrationsReport, UnknownError> =>
   Effect.gen(function* () {
-    migrateLegacySchemaMetaTable(db)
-
     for (const tableDef of stateSystemTables) {
       yield* migrateTable({
         db,
@@ -150,18 +148,6 @@ export const migrateDb = ({
 
     return { migrations: migrationsReportEntries }
   })
-
-const migrateLegacySchemaMetaTable = (db: SqliteDb) => {
-  const schemaHashColumn = dbSelect<{ name: string; type: string }>(
-    db,
-    sql`PRAGMA table_info("${SCHEMA_META_TABLE}")`,
-  ).find(({ name }) => name === 'schemaHash')
-
-  // The metadata is derived and safe to recreate; old STRICT tables cannot store textual fingerprints.
-  if (schemaHashColumn?.type.toLowerCase() === 'integer') {
-    dbExecute(db, sql`DROP TABLE "${SCHEMA_META_TABLE}"`)
-  }
-}
 
 export const migrateTable = ({
   db,

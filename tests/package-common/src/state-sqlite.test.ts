@@ -1,14 +1,12 @@
 import { expect } from 'vitest'
 
-import { type MakeSqliteDb, migrateDb, migrateTable, sql } from '@livestore/common'
+import { type MakeSqliteDb, migrateTable, sql } from '@livestore/common'
 import { State } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-
-import { schema } from './leader-thread/fixture.ts'
 
 /** Verifies: LS.SYS.STATE.SQLITE-R01 */
 Vitest.describe('SQLite State', () => {
@@ -32,33 +30,6 @@ Vitest.describe('SQLite State', () => {
 
         return db
       })
-
-    Vitest.live(
-      'migrates legacy integer schema fingerprints before writing textual fingerprints',
-      Effect.fn(function* () {
-        const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
-        const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 })) as MakeSqliteDb
-        const db = yield* makeSqliteDb({ _tag: 'in-memory' })
-
-        db.execute(
-          'CREATE TABLE __livestore_schema (tableName TEXT PRIMARY KEY, schemaHash INTEGER NOT NULL, updatedAt TEXT NOT NULL) STRICT',
-        )
-        db.execute(
-          "INSERT INTO __livestore_schema (tableName, schemaHash, updatedAt) VALUES ('todos', 123, '2026-01-01T00:00:00.000Z')",
-        )
-
-        yield* migrateDb({ db, schema })
-
-        const schemaHashColumn = db
-          .select<{ name: string; type: string }>('PRAGMA table_info("__livestore_schema")')
-          .find(({ name }) => name === 'schemaHash')
-        const fingerprints = db.select<{ schemaHash: string }>('SELECT schemaHash FROM __livestore_schema')
-
-        expect(schemaHashColumn?.type.toLowerCase()).toBe('text')
-        expect(fingerprints.length).toBeGreaterThan(0)
-        expect(fingerprints.every(({ schemaHash }) => typeof schemaHash === 'string')).toBe(true)
-      }, Effect.provide(PlatformNode.NodeFileSystem.layer)),
-    )
 
     Vitest.live(
       'should work for nullable json fields with default null',
