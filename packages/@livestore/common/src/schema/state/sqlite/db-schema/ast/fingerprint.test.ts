@@ -11,9 +11,9 @@ import { fingerprint } from './fingerprint.ts'
 describe('SQLite storage fingerprints', () => {
   test('pins the final fingerprint output', () => {
     expect(fingerprint(makePhysicalTable().ast)).toBe('UnLwYzVBhwzPCK5q7TrPU3q2N0dTe8m_98bud8HsAs8')
-    expect(
-      fingerprint(makeJsonTable('documents', Schema.Struct({ value: Schema.String.check(Schema.isMinLength(2)) })).ast),
-    ).toBe('YWZk7eMl7p-6pR9FhhySTxJn_bMdvGklU3ZEUPFKVy0')
+    expect(fingerprint(makeJsonTable('documents', representativeJsonSchema).ast)).toBe(
+      'kUzaurzV2rcXYLljHOZ64TDR9c_RebqD7y5ZUM_nPBE',
+    )
     expect(makeState({ tables: [], materializers: {} }).sqlite.hash).toBe('H5Uktp6Ffp84WDj_RWPnfDnaQEu_E61AMl7ieZ9Zn8k')
   })
 
@@ -50,14 +50,17 @@ describe('SQLite storage fingerprints', () => {
     expect(fingerprint({ ...table, indexes: table.indexes.toReversed() })).toBe(fingerprint(table))
   })
 
-  test('ignores annotations that do not affect accepted encoded JSON', () => {
+  test('ignores Effect metadata that does not affect accepted encoded JSON', () => {
     const plain = makeJsonTable('documents', Schema.Struct({ value: Schema.String }))
     const annotated = makeJsonTable(
       'documents',
       Schema.Struct({ value: Schema.String }).annotate({ description: 'documentation only', title: 'Document' }),
     )
+    const readonlyArray = makeJsonTable('documents', Schema.Array(Schema.String))
+    const mutableArray = makeJsonTable('documents', Schema.mutable(Schema.Array(Schema.String)))
 
     expect(fingerprint(plain.ast)).toBe(fingerprint(annotated.ast))
+    expect(fingerprint(readonlyArray.ast)).toBe(fingerprint(mutableArray.ast))
   })
 
   test('changes when represented JSON checks change', () => {
@@ -156,6 +159,14 @@ const makeJsonTable = (name: string, schema: Schema.Codec<unknown, unknown>) =>
     id: SqliteDsl.text({ primaryKey: true }),
     value: SqliteDsl.json({ schema }),
   })
+
+const representativeJsonSchema = Schema.Struct({
+  title: Schema.String.check(Schema.isMinLength(1)),
+  tags: Schema.Array(Schema.String),
+  status: Schema.Union([Schema.Literal('draft'), Schema.Literal('published')]),
+  publishedAt: Schema.NullOr(Schema.DateFromString),
+  metadata: Schema.Record(Schema.String, Schema.Json),
+})
 
 interface TreeNode {
   readonly value: string

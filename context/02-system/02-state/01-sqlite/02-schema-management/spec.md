@@ -60,6 +60,11 @@ the value represented inside the JSON string. Consequently,
 `SqliteDsl.text({ schema: Schema.fromJsonString(schema) })` produce the same
 fingerprint without separate schema-provenance metadata.
 
+If `State.SQLite.json()` is used without a schema, its value schema is
+`Schema.Any`. Stored row values are never fingerprint input, so changing an
+informal JSON shape without changing the declared schema does not trigger a
+rebuild.
+
 LiveStore allowlists its own semantic AST fields instead of serializing entire
 runtime objects. Compile-time rest-key assertions and exhaustive tag switches
 require new LiveStore AST fields to be classified. Within Effect's public
@@ -75,9 +80,12 @@ application-configurable schema version, algorithm, override, or opt-out. The
 base64url encoding retains all 256 digest bits while keeping Cloudflare state
 filenames within its SQLite VFS limit.
 
-Opaque Effect schemas remain usable. If two `Schema.declare` schemas differ
-only in their callback and provide no public `representation`, however,
-LiveStore cannot distinguish them and may produce the same fingerprint.
+This contract avoids Effect's private runtime AST shape, but it is not a
+complete identity for arbitrary Effect behavior. Effect's public representation
+does not identify transformation callbacks, so codecs with the same encoded and
+type sides can produce the same fingerprint despite behaving differently. The
+same limitation applies to `Schema.declare` callbacks without a public
+`representation`.
 
 ## Rebuild Sequence
 
@@ -91,6 +99,8 @@ database:
 5. Run the `post` migration hook.
 
 The rebuild produces a `migrationsReport` surfaced through adapter boot info.
+On the Cloudflare Durable Object adapter, replay writes the newly materialized
+rows to Durable Object storage and can therefore incur billed row writes.
 
 ## Schema-Meta Tables
 
