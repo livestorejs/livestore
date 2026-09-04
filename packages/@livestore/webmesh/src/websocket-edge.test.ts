@@ -10,21 +10,21 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Result, Schema, WebChannel } from '@livestore/utils/effect'
 
 import * as MeshSchema from './mesh-schema.ts'
-import { MessageMsgpack, WSEdgeInit, WSEdgePayload } from './websocket-edge.ts'
+import { MessageBinary, WSEdgeInit, WSEdgePayload } from './websocket-edge.ts'
 
 Vitest.describe('websocket-edge', () => {
   /**
-   * Test that WSEdgeInit messages can be encoded/decoded via MessageMsgpack.
+   * Test that WSEdgeInit messages can be encoded/decoded via MessageBinary.
    */
   Vitest.live('should encode/decode WSEdgeInit', (test) =>
     Effect.gen(function* () {
       const initMessage = WSEdgeInit.make({ from: 'test-node' })
 
-      // Encode to msgpack
-      const encoded = yield* Schema.encodeEffect(MessageMsgpack)(initMessage)
+      // Encode to binary
+      const encoded = yield* Schema.encodeEffect(MessageBinary)(initMessage)
 
       // Decode back
-      const decoded = yield* Schema.decodeEffect(MessageMsgpack)(encoded)
+      const decoded = yield* Schema.decodeEffect(MessageBinary)(encoded)
 
       expect(decoded._tag).toBe('WSEdgeInit')
       if (decoded._tag === 'WSEdgeInit') {
@@ -46,11 +46,11 @@ Vitest.describe('websocket-edge', () => {
       }
       const wsMessage = WSEdgePayload.make({ from: 'test-node', payload: packet })
 
-      // Encode to msgpack
-      const encoded = yield* Schema.encodeEffect(MessageMsgpack)(wsMessage)
+      // Encode to binary
+      const encoded = yield* Schema.encodeEffect(MessageBinary)(wsMessage)
 
       // Decode back
-      const decoded = yield* Schema.decodeEffect(MessageMsgpack)(encoded)
+      const decoded = yield* Schema.decodeEffect(MessageBinary)(encoded)
 
       expect(decoded._tag).toBe('WSEdgePayload')
       if (decoded._tag === 'WSEdgePayload') {

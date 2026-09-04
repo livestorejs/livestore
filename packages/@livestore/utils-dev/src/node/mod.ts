@@ -42,15 +42,15 @@ export const OtelLiveHttp = ({
 } = {}): Layer.Layer<OtelTracer.OtelTracer | Tracer.Tracer | Tracer.ParentSpan> =>
   Effect.gen(function* () {
     const configRes = yield* Config.all({
-      exporterUrl: Config.nonEmptyString('OTEL_EXPORTER_OTLP_ENDPOINT'),
+      exporterUrl: Config.NonEmptyString('OTEL_EXPORTER_OTLP_ENDPOINT'),
       serviceName:
         serviceName !== undefined
           ? Config.succeed(serviceName)
-          : Config.string('OTEL_SERVICE_NAME').pipe(Config.withDefault('livestore-utils-dev')),
+          : Config.String('OTEL_SERVICE_NAME').pipe(Config.withDefault('livestore-utils-dev')),
       rootSpanName:
         rootSpanName !== undefined
           ? Config.succeed(rootSpanName)
-          : Config.string('OTEL_ROOT_SPAN_NAME').pipe(Config.withDefault('RootSpan')),
+          : Config.String('OTEL_ROOT_SPAN_NAME').pipe(Config.withDefault('RootSpan')),
     }).pipe(Effect.option)
 
     if (configRes._tag === 'None') {
@@ -142,7 +142,7 @@ const logTraceUiUrlForTraceId = (printMsg?: (url: string) => string) => (traceId
 
 export const getTracingBackendUrl = (traceIdOrSpan: string | otel.Span) =>
   Effect.gen(function* () {
-    const endpoint = yield* Config.string('GRAFANA_ENDPOINT').pipe(Config.option)
+    const endpoint = yield* Config.String('GRAFANA_ENDPOINT').pipe(Config.option)
     if (endpoint._tag === 'None') return
 
     const traceId = typeof traceIdOrSpan === 'string' ? traceIdOrSpan : traceIdOrSpan.spanContext().traceId
