@@ -62,7 +62,7 @@ export const makeDoRpcSync =
       const ProtocolLive = layerProtocolDurableObject({
         callRpc: (payload) => syncBackendStub.rpc(payload),
         callerContext: durableObjectContext,
-      }).pipe(Layer.provide(RpcSerialization.layerJson))
+      })
 
       const context = yield* Layer.build(ProtocolLive)
 
@@ -200,13 +200,13 @@ export const makeDoRpcSync =
  */
 export const handleSyncUpdateRpc = (ctx: CfTypes.DurableObjectState, payload: Uint8Array<ArrayBuffer>) =>
   Effect.gen(function* () {
-    const parser = RpcSerialization.msgPack.makeUnsafe()
-    const decodedMessage = parser.decode(payload)
-    const [response] = Array.isArray(decodedMessage) === true ? decodedMessage.flat(1) : [decodedMessage]
+    const serialization = yield* RpcSerialization.RpcSerialization
+    const parser = serialization.makeUnsafe()
+    const [response] = parser.decode(payload)
     const decodedPayload = yield* Schema.decodeUnknownEffect(ResponseChunkEncoded)(response)
-    const decoded = yield* Schema.decodeUnknownEffect(Schema.toCodecJson(SyncMessage.PullResponse))(
-      decodedPayload.values[0],
-    )
+    const decoded = yield* Schema.decodeUnknownEffect(
+      serialization.codecFor(Schema.NonEmptyArray(SyncMessage.PullResponse)),
+    )(decodedPayload.values)
 
     const pullStreamQueue = pullRoutingFor(ctx).get(decodedPayload.requestId)
 
@@ -215,13 +215,18 @@ export const handleSyncUpdateRpc = (ctx: CfTypes.DurableObjectState, payload: Ui
       yield* Effect.log(`No pull stream queue found for ${decodedPayload.requestId}`)
     } else {
       // Case: DO was still alive, so the existing `pull` will pick up the new events
-      yield* Queue.offer(pullStreamQueue, decoded)
+      yield* Queue.offerAll(pullStreamQueue, decoded)
     }
-  }).pipe(Effect.withSpan('rpc-sync-client:rpcCallback'), Effect.tapCauseLogPretty, Effect.runPromise)
+  }).pipe(
+    Effect.provide(RpcSerialization.layerSchemaBinary()),
+    Effect.withSpan('rpc-sync-client:rpcCallback'),
+    Effect.tapCauseLogPretty,
+    Effect.runPromise,
+  )
 
 const ResponseChunkEncoded = Schema.Struct({
   requestId: Schema.String,
-  values: Schema.Array(Schema.Any),
+  values: Schema.Uint8Array,
 })
 
 type EffectRpcRequestId = string // 0, 1, 2, ...
