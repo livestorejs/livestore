@@ -194,24 +194,12 @@ const ensureTracerPatched = (tracer: Tracer.Tracer) => {
   }
 }
 
-interface ScopeImpl extends Scope.Scope {
-  readonly state:
-    | {
-        readonly _tag: 'Open'
-        readonly finalizers: Map<{}, (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<unknown>>
-      }
-    | {
-        readonly _tag: 'Closed'
-        readonly exit: Exit.Exit<unknown, unknown>
-      }
-}
-
 const knownScopes = new Map<
-  ScopeImpl,
+  Scope.Scope,
   { id: number; allocationFiber: Fiber.Fiber<any, any> | undefined; allocationSpan: Tracer.AnySpan | undefined }
 >()
 let lastScopeId = 0
-const ensureScopePatched = (scope: ScopeImpl, allocationFiber: Fiber.Fiber<any, any> | undefined) => {
+const ensureScopePatched = (scope: Scope.Scope, allocationFiber: Fiber.Fiber<any, any> | undefined) => {
   if (scope.state._tag === 'Closed') return
   if (knownScopes.has(scope) === true) return
   const id = lastScopeId++
@@ -247,8 +235,7 @@ const ensureFiberPatched = (fiber: Fiber.Fiber<any, any>) => {
   ensureTracerPatched(fiber.getRef(Tracer.Tracer))
   // patch scope
   const currentScope = Context.getOrElse(fiber.context, Scope.Scope, () => undefined)
-  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- casting Scope to ScopeImpl; internal Effect type not publicly exported
-  if (currentScope !== undefined) ensureScopePatched(currentScope as any as ScopeImpl, undefined)
+  if (currentScope !== undefined) ensureScopePatched(currentScope, undefined)
   // patch fiber
   if (knownFibers.has(fiber) === true) return
   knownFibers.add(fiber)
@@ -296,8 +283,7 @@ export const attachSlowDebugInstrumentation = (options: {
       console.log('onEvent', event)
       switch (event._tag) {
         case 'ScopeAllocated':
-          // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- casting Scope to ScopeImpl; internal Effect type not publicly exported
-          ensureScopePatched(event.scope as any as ScopeImpl, _globalThis['~effect/Fiber/currentFiber'])
+          ensureScopePatched(event.scope, _globalThis['~effect/Fiber/currentFiber'])
           break
         case 'FiberAllocated':
           ensureFiberPatched(event.fiber)

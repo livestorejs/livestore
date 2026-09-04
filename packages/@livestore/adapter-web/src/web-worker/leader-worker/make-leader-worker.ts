@@ -24,6 +24,7 @@ import {
   OtelTracer,
   Queue,
   References,
+  RpcSerialization,
   RpcServer,
   RpcWorker,
   Schema,
@@ -138,6 +139,7 @@ const makeMessagePortRpcServerProtocol = (port: MessagePort): Layer.Layer<RpcSer
         supportsTransferables: true,
         supportsSpanPropagation: true,
         supportsNotifications: true,
+        codecFor: RpcSerialization.json.codecFor,
         run: (writeRequest) =>
           Effect.gen(function* () {
             const context = yield* Effect.context<never>()

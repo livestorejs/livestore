@@ -137,6 +137,7 @@ const makeProtocolDurableObject = ({
         send,
         supportsAck: false, // DO RPC doesn't support ack mechanism like WebSockets
         supportsTransferables: false, // DO RPC doesn't support transferables yet
+        codecFor: RpcSerialization.msgPack.codecFor,
       }
     }),
   )
