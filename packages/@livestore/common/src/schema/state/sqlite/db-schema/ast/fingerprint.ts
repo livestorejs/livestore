@@ -175,7 +175,7 @@ const canonicalValue = (value: unknown): CanonicalValue => {
   if (typeof value === 'function') throw new Error('Functions cannot be represented in a persistent fingerprint')
   if (value instanceof Uint8Array) return specialValue('bytes', bytesToHex(value))
 
-  throw new Error(`Unsupported canonical value: ${String(value)}`)
+  throw new Error('Unsupported canonical value')
 }
 
 const specialValue = (type: string, value?: string): CanonicalValue => ({
