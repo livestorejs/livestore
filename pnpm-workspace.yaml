@@ -33,13 +33,6 @@ packages:
   - tests/wa-sqlite
 
 overrides:
-  effect: 4.0.0-rc.111
-  '@effect/platform-browser': 4.0.0-rc.111
-  '@effect/platform-bun': 4.0.0-rc.111
-  '@effect/platform-node': 4.0.0-rc.111
-  '@effect/platform-node-shared': 4.0.0-rc.111
-  '@effect/opentelemetry': 4.0.0-rc.111
-  '@effect/vitest': 4.0.0-rc.111
   react: 19.2.3
   react-dom: 19.2.3
   '@tanstack/router-core': 1.145.7
@@ -53,6 +46,15 @@ overrides:
   '@tanstack/start-plugin-core': 1.145.7
   '@tanstack/start-server-core': 1.145.7
   '@tanstack/start-client-core': 1.145.7
+  effect: 'https://pkg.pr.new/Effect-TS/effect/effect@b4d5398598c04a84054a55873c943d587880058d'
+  '@effect/ai-openai': 'https://pkg.pr.new/Effect-TS/effect/@effect/ai-openai@b4d5398598c04a84054a55873c943d587880058d'
+  '@effect/opentelemetry': 'https://pkg.pr.new/Effect-TS/effect/@effect/opentelemetry@b4d5398598c04a84054a55873c943d587880058d'
+  '@effect/platform-browser': 'https://pkg.pr.new/Effect-TS/effect/@effect/platform-browser@b4d5398598c04a84054a55873c943d587880058d'
+  '@effect/platform-bun': 'https://pkg.pr.new/Effect-TS/effect/@effect/platform-bun@b4d5398598c04a84054a55873c943d587880058d'
+  '@effect/platform-node': 'https://pkg.pr.new/Effect-TS/effect/@effect/platform-node@b4d5398598c04a84054a55873c943d587880058d'
+  '@effect/platform-node-shared': 'https://pkg.pr.new/Effect-TS/effect/@effect/platform-node-shared@b4d5398598c04a84054a55873c943d587880058d'
+  '@effect/sql-sqlite-node': 'https://pkg.pr.new/Effect-TS/effect/@effect/sql-sqlite-node@b4d5398598c04a84054a55873c943d587880058d'
+  '@effect/vitest': 'https://pkg.pr.new/Effect-TS/effect/@effect/vitest@b4d5398598c04a84054a55873c943d587880058d'
 
 packageExtensions:
   '@livestore/devtools-vite':
@@ -94,6 +96,8 @@ allowBuilds:
   puppeteer: true
   workerd: true
 
+blockExoticSubdeps: false
+
 minimumReleaseAgeExclude:
   - '@types/node'
   - effect
@@ -101,12 +105,12 @@ minimumReleaseAgeExclude:
   - '@effect/vitest'
   - '@effect/opentelemetry'
   - '@effect/atom-react'
-  - '@effect/opentelemetry@4.0.0-rc.111'
-  - '@effect/platform-browser@4.0.0-rc.111'
-  - '@effect/platform-bun@4.0.0-rc.111'
-  - '@effect/platform-node@4.0.0-rc.111'
-  - '@effect/platform-node-shared@4.0.0-rc.111'
-  - '@effect/vitest@4.0.0-rc.111'
+  - '@effect/opentelemetry@4.0.0-rc.112'
+  - '@effect/platform-browser@4.0.0-rc.112'
+  - '@effect/platform-bun@4.0.0-rc.112'
+  - '@effect/platform-node@4.0.0-rc.112'
+  - '@effect/platform-node-shared@4.0.0-rc.112'
+  - '@effect/vitest@4.0.0-rc.112'
 
 supportedArchitectures:
   os: [linux, darwin]

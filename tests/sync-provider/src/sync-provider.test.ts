@@ -426,7 +426,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
           })(test),
         )
       },
-      { timeout: vitestTimeoutMs, fastCheck: { numRuns: 1 } },
+      { timeout: vitestTimeoutMs, arbitrary: { runs: 1 } },
     )
   })
 

@@ -12,31 +12,42 @@ const effectV4MinimumReleaseAgeExclude = Object.entries(
   ),
 ).map(([name, version]) => `${name}@${version}`)
 
+const effectCommit = 'b4d5398598c04a84054a55873c943d587880058d'
+const effectSnapshot = (packageName: string) =>
+  `https://pkg.pr.new/Effect-TS/effect/${packageName}@${effectCommit}`
+const effectSnapshotOverrides = {
+  effect: effectSnapshot('effect'),
+  '@effect/ai-openai': effectSnapshot('@effect/ai-openai'),
+  '@effect/opentelemetry': effectSnapshot('@effect/opentelemetry'),
+  '@effect/platform-browser': effectSnapshot('@effect/platform-browser'),
+  '@effect/platform-bun': effectSnapshot('@effect/platform-bun'),
+  '@effect/platform-node': effectSnapshot('@effect/platform-node'),
+  '@effect/platform-node-shared': effectSnapshot('@effect/platform-node-shared'),
+  '@effect/sql-sqlite-node': effectSnapshot('@effect/sql-sqlite-node'),
+  '@effect/vitest': effectSnapshot('@effect/vitest'),
+}
+
 const examplesWorkspaceSettings = {
   linkWorkspacePackages: true,
   /** Dedupe package identities pulled in transitively by older example and peer-deps packages. */
-  overrides: catalog.pick(
-    'effect',
-    '@effect/platform-browser',
-    '@effect/platform-bun',
-    '@effect/platform-node',
-    '@effect/platform-node-shared',
-    '@effect/opentelemetry',
-    '@effect/vitest',
-    'react',
-    'react-dom',
-    '@tanstack/router-core',
-    '@tanstack/history',
-    '@tanstack/react-router',
-    '@tanstack/react-start',
-    '@tanstack/router-devtools',
-    '@tanstack/router-devtools-core',
-    '@tanstack/react-router-devtools',
-    '@tanstack/router-plugin',
-    '@tanstack/start-plugin-core',
-    '@tanstack/start-server-core',
-    '@tanstack/start-client-core',
-  ),
+  overrides: {
+    ...catalog.pick(
+      'react',
+      'react-dom',
+      '@tanstack/router-core',
+      '@tanstack/history',
+      '@tanstack/react-router',
+      '@tanstack/react-start',
+      '@tanstack/router-devtools',
+      '@tanstack/router-devtools-core',
+      '@tanstack/react-router-devtools',
+      '@tanstack/router-plugin',
+      '@tanstack/start-plugin-core',
+      '@tanstack/start-server-core',
+      '@tanstack/start-client-core',
+    ),
+    ...effectSnapshotOverrides,
+  },
 }
 
 export const repoPackageExtensions = {
@@ -88,5 +99,6 @@ export default pnpmWorkspaceYaml.root({
   ],
   /** Relaxed until @livestore/devtools-vite publishes with updated Effect peer ranges */
   strictPeerDependencies: false,
+  blockExoticSubdeps: false,
   ...examplesWorkspaceSettings,
 })

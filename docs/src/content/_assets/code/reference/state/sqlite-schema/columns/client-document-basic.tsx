@@ -1,6 +1,7 @@
 import React from 'react'
 
 import type { Store } from '@livestore/livestore'
+import type { UseClientDocumentResult } from '@livestore/react'
 
 import { tables } from '../../../framework-integrations/react/schema.ts'
 import { useAppStore } from '../../../framework-integrations/react/store.ts'
@@ -14,7 +15,7 @@ export const setNewTodoText = (store: Store, newTodoText: string): void => {
 
 export const UiStateFilter: React.FC = () => {
   const store = useAppStore()
-  const [state, setState] = store.useClientDocument(tables.uiState)
+  const [state, setState]: UseClientDocumentResult<typeof tables.uiState> = store.useClientDocument(tables.uiState)
 
   const showActive = React.useCallback(() => {
     setState({ filter: 'active' })

@@ -32,14 +32,17 @@ const BoundArraySchemaFromSelf = <A, I, RD, RE>(
     expected: 'BoundArray',
     description: 'Bounded array',
     toFormatter: () => (_) => `BoundArray(${_.length})`,
-    toArbitrary: () => (fc) => {
-      const itemArbitrary = Schema.toArbitrary(item)(fc)
-      return fc
-        .integer({ min: 0, max: 100 })
-        .chain((sizeLimit) =>
-          fc.array(itemArbitrary, { maxLength: sizeLimit }).map((items) => BoundArray.make(sizeLimit, items)),
-        )
-    },
+    toCodecArbitrary: () =>
+      Schema.link<BoundArray<A>>()(
+        Schema.Struct({
+          size: Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 })),
+          items: Schema.Array(item).check(Schema.isMaxLength(100)),
+        }),
+        {
+          decode: SchemaGetter.transform(({ size, items }) => BoundArray.make(size, items)),
+          encode: SchemaGetter.forbiddenEncoding,
+        },
+      ),
     toEquivalence: () => {
       const elementEquivalence = Schema.toEquivalence(item)
       return (a, b) => {
