@@ -43,6 +43,7 @@ import type { EventDefFacts } from './facts.ts'
  * - A QueryBuilder operation (recommended for type safety)
  * - A raw SQL string
  * - An object with SQL, bind values, and optional write table tracking
+ * - `void` / `undefined` (no-op, same as an empty array)
  */
 export type MaterializerResult =
   | {
@@ -100,7 +101,7 @@ export type Materializer<TEventDef extends EventDef.AnyWithoutFn = EventDef.AnyW
     /** Full event metadata including clientId, sessionId, sequence numbers. */
     event: LiveStoreEvent.Client.Decoded
   },
-) => SingleOrReadonlyArray<MaterializerResult>
+) => SingleOrReadonlyArray<MaterializerResult> | void
 
 /**
  * Type-safe wrapper for defining a single materializer.
