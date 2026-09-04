@@ -167,6 +167,16 @@ const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.Col
   // Get the encoded AST - what actually gets stored in SQLite
   const encodedAst = Schema.toEncoded(coreSchema).ast
 
+  // A bare `Schema.Date` has no encoding, so nothing below could store it natively and it would
+  // fall through to a JSON column that can't decode what it wrote. Store it as ISO text instead.
+  if (
+    hasDateRepresentation(coreAst) === true &&
+    SchemaAST.isString(encodedAst) === false &&
+    SchemaAST.isNumber(encodedAst) === false
+  ) {
+    return SqliteDsl.datetime({ nullable })
+  }
+
   // Check if the encoded type matches SQLite native types
   if (SchemaAST.isString(encodedAst) === true) {
     return SqliteDsl.text({ schema: coreSchema, nullable })
