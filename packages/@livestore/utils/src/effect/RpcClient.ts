@@ -177,6 +177,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
         },
         supportsAck: true,
         supportsTransferables: false,
+        codecFor: serialization.codecFor,
         pinger,
       }
     }),
