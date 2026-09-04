@@ -75,6 +75,7 @@ export default githubWorkflow({
     ARTIFACT_CHROME_ZIP_SHA256: '${{ github.event.client_payload.chromeZipSha256 || inputs.chrome_zip_sha256 }}',
     DEVTOOLS_BUILD_ID: '${{ github.event.client_payload.devtoolsBuildId || inputs.devtools_build_id }}',
     BASE_BRANCH: '${{ github.event.repository.default_branch }}',
+    PR_BASE_SHA: '${{ github.event.pull_request.base.sha }}',
   },
 
   jobs: {
@@ -87,6 +88,20 @@ export default githubWorkflow({
         {
           name: 'Write artifact manifest',
           run: `set -euo pipefail
+previous_manifest="$RUNNER_TEMP/devtools-artifact.previous.json"
+if [ "\${GITHUB_EVENT_NAME:-}" = "pull_request" ]; then
+  # actions/checkout uses a shallow PR merge checkout, so the declared base
+  # commit is not guaranteed to exist locally.
+  git fetch --no-tags --depth=1 origin "$PR_BASE_SHA"
+  git show "$PR_BASE_SHA:release/devtools-artifact.json" > "$previous_manifest"
+  if ! cmp -s "$previous_manifest" release/devtools-artifact.json; then
+    echo "LIVESTORE_DEVTOOLS_PREVIOUS_MANIFEST=$previous_manifest" >> "$GITHUB_ENV"
+  fi
+else
+  cp release/devtools-artifact.json "$previous_manifest"
+  echo "LIVESTORE_DEVTOOLS_PREVIOUS_MANIFEST=$previous_manifest" >> "$GITHUB_ENV"
+fi
+
 if [ -z "\${ARTIFACT_METADATA_URL:-}" ] && [ "\${GITHUB_EVENT_NAME:-}" = "pull_request" ]; then
   ARTIFACT_METADATA_URL="$(jq -r '.artifact.metadataUrl' release/devtools-artifact.json)"
   ARTIFACT_TARBALL_URL="$(jq -r '.artifact.tarballUrl' release/devtools-artifact.json)"
@@ -168,7 +183,11 @@ if gh pr view "$branch" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
   gh pr edit "$branch" --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body" --base "$BASE_BRANCH"
 else
   gh pr create --repo "$GITHUB_REPOSITORY" --base "$BASE_BRANCH" --head "$branch" --title "$title" --body "$body"
-fi`,
+fi
+
+# Auto-merge still waits for every branch-rule check. This workflow has no
+# ruleset bypass and cannot merge changes outside the manifest-only boundary.
+gh pr merge "$branch" --repo "$GITHUB_REPOSITORY" --auto --merge`,
         },
       ],
     },
