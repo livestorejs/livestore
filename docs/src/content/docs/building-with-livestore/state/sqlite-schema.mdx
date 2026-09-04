@@ -59,8 +59,9 @@ You can also provide a custom schema for a column which is used to automatically
 
 ### Schema migrations
 
-LiveStore automatically migrates the database to the newest schema and
-rematerializes state from the eventlog.
+LiveStore automatically migrates the database to the newest schema and rematerializes state from the eventlog. A schema change opens a fresh state database and replays the full eventlog, even when only one table changed.
+
+By default, `State.SQLite.json()` does not declare a fixed shape. Changing only the shape of values written to that column therefore does not count as a schema change. Pass a schema when such changes should trigger a rebuild.
 
 ## Client documents
 

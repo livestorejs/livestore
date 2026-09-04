@@ -33,6 +33,16 @@
   duplicate materialization and ghost fences during multi-writer rebases
   ([#1530](https://github.com/livestorejs/livestore/pull/1530)).
 
+### Breaking Changes
+
+- **State schema fingerprints:** Replaced Effect-internal AST hashing with a
+  LiveStore-owned canonical descriptor and a synchronous full-width SHA-256
+  fingerprint. No application schema or configuration changes are required.
+  The first open after upgrading intentionally creates a new state database and
+  rematerializes it once from the event log, so Cloudflare deployments should
+  plan for the corresponding row-write usage
+  ([#1555](https://github.com/livestorejs/livestore/issues/1555)).
+
 ### Internal Changes
 
 For maintainers and contributors:

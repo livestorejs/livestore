@@ -128,6 +128,10 @@ With `livePull: true`, booting a store registers a live-pull subscription on the
 
 Eviction is deliberately different: Cloudflare discards the isolate without running any cleanup, so an evicted Durable Object keeps its subscription. That retention is what lets the next update wake it and drive recovery (see the options above); the subscription is never dropped on silence, so a hibernating client never loses its place.
 
+### Schema changes and billing
+
+Changing the state schema causes each affected store to open a fresh state database and replay its full eventlog, even if only one table changed. On Durable Objects, rebuilding the state can incur billable storage writes. Plan deployments according to the eventlog size and number of store instances.
+
 ## Resetting LiveStore persistence (development only)
 
 When iterating locally, you can instruct the adapter to wipe the Durable Object’s LiveStore databases before booting by enabling `resetPersistence`. Guard this behind a protected route or admin token.
