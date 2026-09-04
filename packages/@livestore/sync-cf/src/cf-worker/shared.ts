@@ -1,5 +1,5 @@
 import type { UnknownError } from '@livestore/common'
-import type { CfTypes } from '@livestore/common-cf'
+import type { CfTypes, SyncUpdateCallback } from '@livestore/common-cf'
 import type { Effect } from '@livestore/utils/effect'
 import { Result, Schema } from '@livestore/utils/effect'
 
@@ -162,10 +162,8 @@ export type RpcSubscription = {
   subscribedAt: number
   /** Effect RPC request ID */
   requestId: string
-  callerContext: {
-    bindingName: string
-    durableObjectId: string
-  }
+  /** Persistent stub to the client DO; loaded from KV on every publish, disposed after use. */
+  callback: SyncUpdateCallback
 }
 
 /** Key prefix for DO-RPC subscriptions persisted in the DO's synchronous KV storage. */
@@ -176,7 +174,7 @@ export const rpcSubscriptionKeyPrefix = 'rpc-sub:'
  */
 export interface SyncBackendRpcInterface {
   __DURABLE_OBJECT_BRAND: never
-  rpc(payload: Uint8Array): Promise<Uint8Array | CfTypes.ReadableStream>
+  rpc(payload: Uint8Array, callback?: SyncUpdateCallback): Promise<Uint8Array | CfTypes.ReadableStream>
 }
 
 export const WebSocketAttachmentSchema = Schema.fromJsonString(

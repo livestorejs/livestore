@@ -82,7 +82,6 @@ export default {
         const serverDO = env.TEST_RPC_DO.get(doId)
         const DoRpcProtocolLive = layerProtocolDurableObject({
           callRpc: (payload) => serverDO.rpc(payload),
-          callerContext: { bindingName: 'TEST_RPC_DO', durableObjectId: doId.toString() },
         })
 
         return Effect.gen(function* () {

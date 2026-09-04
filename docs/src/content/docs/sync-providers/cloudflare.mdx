@@ -162,19 +162,16 @@ Creates a Durable Object RPC-based sync backend (for internal use).
 
 **Options:**
 - `syncBackendStub` - Durable Object stub implementing `SyncBackendRpcInterface`
-- `durableObjectState` - The client Durable Object's `ctx` (`DurableObjectState`); scopes live-pull routing to this instance so it resets on reconstruction
-- `durableObjectContext` - Context for RPC callbacks:
-  - `bindingName` - Wrangler binding name for the client DO
-  - `durableObjectId` - Client Durable Object ID
+- `durableObjectState` - The client Durable Object's `ctx` (`DurableObjectState`); mints the live-pull persistent stub via `ctx.restore` and scopes live-pull routing to this instance so it resets on reconstruction
 
 **Features:**
 - Direct RPC communication
-- Real-time live pull via callbacks
+- Real-time live pull via Cloudflare persistent stubs (requires the `allow_irrevocable_stub_storage` compatibility flag on both Workers)
 - Hibernation support
 
-### `handleSyncUpdateRpc(ctx, payload)`
+### `restoreStoreDoSyncTarget(ctx, params, options?)`
 
-Handles the RPC callback for live-pull updates in Durable Objects. Pass the client DO's `ctx` (`DurableObjectState`) so the update is routed to that instance's live pull. The `syncUpdateRpc` method also receives the subscription's `storeId` as a required trailing argument: a reconstructed (store-less) DO can re-boot its store from it and catch up rather than drop the update — see [the Durable Object adapter's recovery options](/platform-adapters/cloudflare-durable-object-adapter).
+From `@livestore/adapter-cloudflare`. Return it from the client DO's `[restore]` method: the sync backend re-derives its live-update target through `[restore]` on every publish. Pass the client DO's `ctx` (`DurableObjectState`) so the update is routed to that instance's live pull. `options.onUpdate(storeId)` runs before routing: a reconstructed (store-less) DO can re-boot its store from it and catch up rather than drop the update — see [the Durable Object adapter's recovery options](/platform-adapters/cloudflare-durable-object-adapter).
 
 <SNIPPETS.clientDo />
 

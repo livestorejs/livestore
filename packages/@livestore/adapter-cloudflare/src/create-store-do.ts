@@ -1,5 +1,5 @@
 import type { LogConfig, SyncOptions } from '@livestore/common'
-import type { CfTypes, HelperTypes } from '@livestore/common-cf'
+import type { CfTypes } from '@livestore/common-cf'
 import { createStore, type LiveStoreSchema, provideOtel } from '@livestore/livestore'
 import type * as CfSyncBackend from '@livestore/sync-cf/cf-worker'
 import { makeDoRpcSync } from '@livestore/sync-cf/client'
@@ -12,7 +12,7 @@ export type Env = {
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<CfSyncBackend.SyncBackendRpcInterface>
 }
 
-export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> = {
+export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TState> = {
   /** LiveStore schema that defines state, migrations, and validators. */
   schema: TSchema
   /** Logical identifier for the store instance persisted inside the Durable Object. */
@@ -21,14 +21,10 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> 
   clientId: string
   /** Identifier for the LiveStore session running inside the Durable Object. */
   sessionId: string
-  /** Runtime details about the Durable Object this store runs inside. Needed for sync backend to call back to this instance. */
+  /** The Durable Object this store runs inside. Its state mints the callback stub the sync backend uses for live updates. */
   durableObject: {
     /** Durable Object state handle (e.g. `this.ctx`). */
     ctx: TState
-    /** Environment bindings associated with the Durable Object. */
-    env: TEnv
-    /** Binding name Cloudflare uses to reach this Durable Object from other workers. */
-    bindingName: HelperTypes.ExtractDurableObjectKeys<NoInfer<TEnv>>
   }
   /** RPC stub pointing at the sync backend Durable Object used for replication. */
   syncBackendStub: CfTypes.DurableObjectStub<CfSyncBackend.SyncBackendRpcInterface>
@@ -77,11 +73,7 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> 
  *         storeId: 'my-store',
  *         clientId: this.ctx.id.toString(),
  *         sessionId: 'do-session',
- *         durableObject: {
- *           ctx: this.ctx,
- *           env: this.env,
- *           bindingName: 'MY_DO',
- *         },
+ *         durableObject: { ctx: this.ctx },
  *         syncBackendStub: this.env.SYNC_BACKEND_DO.get(syncBackendId),
  *       }).pipe(Effect.runPromise)
  *     }
@@ -95,7 +87,6 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> 
 // TODO Also support in Cloudflare workers outside of a durable object context.
 export const createStoreDo = <
   TSchema extends LiveStoreSchema,
-  TEnv,
   TState extends CfTypes.DurableObjectState = CfTypes.DurableObjectState,
 >({
   schema,
@@ -107,11 +98,10 @@ export const createStoreDo = <
   livePull = false,
   resetPersistence = false,
   initialSyncOptions = { _tag: 'Blocking', timeout: 500 },
-}: CreateStoreDoOptions<TSchema, TEnv, TState>) =>
+}: CreateStoreDoOptions<TSchema, TState>) =>
   Effect.gen(function* () {
-    const { ctx, bindingName } = durableObject
+    const { ctx } = durableObject
     const storage = ctx.storage
-    const durableObjectId = ctx.id.toString()
     const scope = yield* Scope.make()
 
     const adapter = makeAdapter({
@@ -120,11 +110,7 @@ export const createStoreDo = <
       storage,
       resetPersistence,
       syncOptions: {
-        backend: makeDoRpcSync({
-          syncBackendStub,
-          durableObjectState: ctx,
-          durableObjectContext: { bindingName, durableObjectId },
-        }),
+        backend: makeDoRpcSync({ syncBackendStub, durableObjectState: ctx }),
         livePull, // Uses DO RPC callbacks for reactive pull
         initialSyncOptions,
       },
@@ -150,7 +136,7 @@ export const createStoreDo = <
  *       storeId: 'my-store',
  *       clientId: this.ctx.id.toString(),
  *       sessionId: 'do-session',
- *       durableObject: { ctx: this.ctx, env: this.env, bindingName: 'MY_DO' },
+ *       durableObject: { ctx: this.ctx },
  *       syncBackendStub: this.env.SYNC_BACKEND_DO.get(syncBackendId),
  *     })
  *     // Use store...
@@ -160,10 +146,9 @@ export const createStoreDo = <
  */
 export const createStoreDoPromise = <
   TSchema extends LiveStoreSchema,
-  TEnv,
   TState extends CfTypes.DurableObjectState = CfTypes.DurableObjectState,
 >(
-  options: CreateStoreDoOptions<TSchema, TEnv, TState>,
+  options: CreateStoreDoOptions<TSchema, TState>,
 ) =>
   createStoreDo(options).pipe(
     Effect.provide(

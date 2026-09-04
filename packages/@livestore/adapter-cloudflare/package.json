@@ -40,7 +40,7 @@
     "@livestore/utils": "workspace:^"
   },
   "devDependencies": {
-    "wrangler": "4.42.2"
+    "wrangler": "4.128.0"
   },
   "peerDependencies": {
     "@effect/opentelemetry": "^4.0.0-rc.111",

@@ -1,5 +1,10 @@
 import { SyncBackend, UnknownError } from '@livestore/common'
-import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
+import {
+  type CfTypes,
+  layerProtocolDurableObject,
+  type SyncUpdateAck,
+  type SyncUpdateCallback,
+} from '@livestore/common-cf'
 import { splitArrayBySize } from '@livestore/common/sync'
 import { shouldNeverHappen } from '@livestore/utils'
 import {
@@ -10,6 +15,7 @@ import {
   Queue,
   ReadonlyArray as EffectArray,
   RpcClient,
+  type RpcMessage,
   RpcSerialization,
   Schema,
   Stream,
@@ -31,18 +37,16 @@ export interface DoRpcSyncOptions {
   /** Durable Object stub that implements the SyncDoRpc interface */
   syncBackendStub: SyncBackendRpcStub
   /**
-   * State handle of the client DurableObject running this sync backend. Scopes live-pull routing to
-   * this instance so it resets when the DO is reconstructed (see {@link handleSyncUpdateRpc}).
+   * State handle of the client DurableObject running this sync backend. Mints the live-pull callback stub via
+   * `ctx.restore` (needs the `allow_irrevocable_stub_storage` compatibility flag on both Workers) and scopes
+   * live-pull routing to this instance so it resets when the DO is reconstructed (see {@link handleSyncUpdateRpc}).
    */
   durableObjectState: CfTypes.DurableObjectState
-  /** Information about this DurableObject instance so the Sync DO instance can call back to this instance */
-  durableObjectContext: {
-    /** See `wrangler.toml` for the binding name */
-    bindingName: string
-    /** `state.id.toString()` in the DO */
-    durableObjectId: string
-  }
 }
+
+/** What a client DO's `[restore]` receives for a live-pull callback. */
+export const SyncUpdateRestoreParams = Schema.Struct({ storeId: Schema.String, subscriptionId: Schema.String })
+export type SyncUpdateRestoreParams = typeof SyncUpdateRestoreParams.Type
 
 /**
  * Creates a sync backend that uses Durable Object RPC to communicate with the sync backend.
@@ -52,16 +56,30 @@ export interface DoRpcSyncOptions {
 export const makeDoRpcSync =
   ({
     syncBackendStub,
-    durableObjectState,
-    durableObjectContext,
+    durableObjectState: state,
   }: DoRpcSyncOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
     Effect.gen(function* () {
       const isConnected = yield* SubscriptionRef.make(true)
+      const durableObjectState = yield* restorableState(state)
+
+      const callLivePull = async (payload: Uint8Array, params: SyncUpdateRestoreParams) => {
+        // The marker makes `[restore]` accept only this store's newest live pull; superseded ones are refused.
+        durableObjectState.storage.kv.put(activeSubscriptionKey(params.storeId), params.subscriptionId)
+        const callback = await durableObjectState.restore(params)
+        try {
+          return await syncBackendStub.rpc(payload, callback)
+        } finally {
+          // The backend stored its own copy; ours would otherwise keep the session (and both DOs) alive.
+          callback[Symbol.dispose]()
+        }
+      }
 
       const ProtocolLive = layerProtocolDurableObject({
-        callRpc: (payload) => syncBackendStub.rpc(payload),
-        callerContext: durableObjectContext,
+        callRpc: (payload, request) => {
+          const live = livePullParamsOf(request)
+          return live === undefined ? syncBackendStub.rpc(payload) : callLivePull(payload, live)
+        },
       }).pipe(Layer.provide(RpcSerialization.layerJson))
 
       const context = yield* Layer.build(ProtocolLive)
@@ -73,8 +91,9 @@ export const makeDoRpcSync =
 
       const backendIdHelper = yield* SyncBackend.makeBackendIdHelper
 
-      const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (cursor, options) =>
-        rpcClient['SyncDoRpc.Pull']({
+      const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (cursor, options) => {
+        const subscriptionId = options?.live === true ? crypto.randomUUID() : undefined
+        return rpcClient['SyncDoRpc.Pull']({
           cursor: cursor.pipe(
             Option.map((a) => ({
               eventSequenceNumber: a.eventSequenceNumber,
@@ -82,7 +101,7 @@ export const makeDoRpcSync =
             })),
           ),
           storeId,
-          rpcContext: options?.live === true ? { callerContext: durableObjectContext } : undefined,
+          live: subscriptionId === undefined ? undefined : { subscriptionId },
         }).pipe(
           options?.live === true
             ? Stream.concatWithLastElement((res) =>
@@ -100,13 +119,20 @@ export const makeDoRpcSync =
 
                   routing.set(requestId, queue)
 
-                  // Graceful shutdown only (eviction runs no finalizers); matched on requestId so a late send can't drop a newer pull's row
+                  // Graceful shutdown only (eviction runs no finalizers). Clearing the marker first makes a late
+                  // delivery refuse, so the row is dropped even if the unsubscribe itself is lost.
                   yield* Effect.addFinalizer(() =>
-                    rpcClient['SyncDoRpc.Unsubscribe']({
-                      storeId,
-                      durableObjectId: durableObjectContext.durableObjectId,
-                      requestId,
-                    }).pipe(Effect.timeout('5 seconds'), Effect.tapCauseLogPretty, Effect.ignore),
+                    Effect.gen(function* () {
+                      const key = activeSubscriptionKey(storeId)
+                      if (durableObjectState.storage.kv.get(key) === subscriptionId) {
+                        durableObjectState.storage.kv.delete(key)
+                      }
+                      yield* rpcClient['SyncDoRpc.Unsubscribe']({ storeId, subscriptionId: subscriptionId! }).pipe(
+                        Effect.timeout('5 seconds'),
+                        Effect.tapCauseLogPretty,
+                        Effect.ignore,
+                      )
+                    }),
                   )
 
                   return Stream.fromQueue(queue)
@@ -122,6 +148,7 @@ export const makeDoRpcSync =
           ),
           Stream.withSpan('rpc-sync-client:pull'),
         )
+      }
 
       const push: SyncBackend.SyncBackend<{ createdAt: string }>['push'] = Effect.fn('rpc-sync-client:push')(
         function* (batch) {
@@ -180,24 +207,30 @@ export const makeDoRpcSync =
     }).pipe(Effect.withSpan('rpc-sync-client:makeDoRpcSync'))
 
 /**
- * Routes an update from the sync backend into this client's live pull.
+ * Builds the `deliver` function behind a client DO's `[restore]` for the given restore params. It refuses (so
+ * the backend drops the row) when the subscription is no longer the store's active live pull. `onUpdate` runs
+ * before routing and lets a rebuilt DO reload its store; booting a store starts a new live pull, which also
+ * supersedes the row that woke the DO.
  *
- * Only `ctx` and `payload` go here; `storeId` is for reloading your store on a rebuilt DO (see example).
- *
- * ```ts
- * import { DurableObject } from 'cloudflare:workers'
- * import { ClientDoWithRpcCallback } from '@livestore/common-cf'
- *
- * export class MyDurableObject extends DurableObject implements ClientDoWithRpcCallback {
- *   // ...
- *
- *   async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>, storeId: string) {
- *     await this.getStore(storeId)
- *     return handleSyncUpdateRpc(this.ctx, payload)
- *   }
- * }
- * ```
+ * `@livestore/adapter-cloudflare` wraps this in an `RpcTarget`; use `restoreStoreDoSyncTarget` from there.
  */
+export const makeSyncUpdateDeliver = (
+  ctx: CfTypes.DurableObjectState,
+  params: unknown,
+  options?: { onUpdate?: (storeId: string) => Promise<unknown> },
+): ((payload: Uint8Array<ArrayBuffer>) => Promise<SyncUpdateAck>) => {
+  const { storeId, subscriptionId } = Schema.decodeUnknownSync(SyncUpdateRestoreParams)(params)
+  const isActive = () => ctx.storage.kv.get(activeSubscriptionKey(storeId)) === subscriptionId
+  return async (payload) => {
+    if (isActive() === false) return { refused: true }
+    await options?.onUpdate?.(storeId)
+    if (isActive() === false) return { refused: true }
+    await handleSyncUpdateRpc(ctx, payload)
+    return { refused: false }
+  }
+}
+
+/** Routes an update from the sync backend into this client's live pull (see {@link makeSyncUpdateDeliver}). */
 export const handleSyncUpdateRpc = (ctx: CfTypes.DurableObjectState, payload: Uint8Array<ArrayBuffer>) =>
   Effect.gen(function* () {
     const parser = RpcSerialization.msgPack.makeUnsafe()
@@ -218,6 +251,38 @@ export const handleSyncUpdateRpc = (ctx: CfTypes.DurableObjectState, payload: Ui
       yield* Queue.offer(pullStreamQueue, decoded)
     }
   }).pipe(Effect.withSpan('rpc-sync-client:rpcCallback'), Effect.tapCauseLogPretty, Effect.runPromise)
+
+/**
+ * `DurableObjectState.restore` (persistent stubs) exists in workerd since 2026-05 but is only typed in the
+ * `experimental` entry of `@cloudflare/workers-types`, so the capability is checked at runtime here.
+ */
+interface RestorableDurableObjectState extends CfTypes.DurableObjectState {
+  restore(params: SyncUpdateRestoreParams): Promise<SyncUpdateCallback>
+}
+
+const restorableState = (state: CfTypes.DurableObjectState) =>
+  'restore' in state && typeof state.restore === 'function'
+    ? // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- narrowed by the runtime check above
+      Effect.succeed(state as RestorableDurableObjectState)
+    : Effect.die(
+        'DO-RPC live pull needs Cloudflare persistent stubs: enable the `allow_irrevocable_stub_storage` compatibility flag on this Worker and on the sync backend Worker',
+      )
+
+/** KV key holding the subscription id of the store's current live pull on this client DO. */
+const activeSubscriptionKey = (storeId: string) => `livestore-rpc-sub:${storeId}`
+
+const LivePullRequestPayload = Schema.Struct({
+  storeId: Schema.String,
+  live: Schema.Struct({ subscriptionId: Schema.String }),
+})
+
+const livePullParamsOf = (request: RpcMessage.RequestEncoded): SyncUpdateRestoreParams | undefined => {
+  if (request.tag !== 'SyncDoRpc.Pull') return undefined
+  const decoded = Schema.decodeUnknownOption(LivePullRequestPayload)(request.payload)
+  return Option.isSome(decoded) === true
+    ? { storeId: decoded.value.storeId, subscriptionId: decoded.value.live.subscriptionId }
+    : undefined
+}
 
 const ResponseChunkEncoded = Schema.Struct({
   requestId: Schema.String,

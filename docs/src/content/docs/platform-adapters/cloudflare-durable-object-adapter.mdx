@@ -101,32 +101,28 @@ Creates a LiveStore instance inside a Durable Object.
 - `storeId` – Unique identifier for the store
 - `clientId` – Client identifier
 - `sessionId` – Session identifier (use `nanoid()`)
-- `durableObject` – Context about the Durable Object hosting the store:
-  - `state` – Durable Object state handle (for example `this.ctx`)
-  - `env` – Environment bindings for the Durable Object
-  - `bindingName` – Name other workers use to reach this Durable Object
+- `durableObject` – The Durable Object hosting the store:
+  - `ctx` – Durable Object state handle (for example `this.ctx`)
 - `syncBackendStub` – Durable Object stub used to reach the sync backend
 - `livePull` – Enable real-time updates (default: `false`)
 - `resetPersistence` – Drop LiveStore state/eventlog persistence before booting (development only, default: `false`)
 - `logger?` – Optional Effect logger layer to customize formatting/output
 - `logLevel?` – Optional minimum log level (use `"None"` to disable logs)
 
-### `syncUpdateRpc(payload, storeId)`
+### `[restore](params)`
 
-Client Durable Objects must implement this method so the sync backend can deliver live updates to them. Forward the DO's `ctx` and the `payload` to `handleSyncUpdateRpc(ctx, payload)` (see the client Durable Object example above).
+Client Durable Objects implement Cloudflare's `[restore]` method (the `restore` symbol exported from `cloudflare:workers`) and return `restoreStoreDoSyncTarget(this.ctx, params, { onUpdate })` from it (see the client Durable Object example above). For every live pull the sync backend stores a *persistent stub* to this target and re-derives it through `[restore]` on each publish, so a hibernated Durable Object is woken only when there is something to deliver. Both the client and the sync backend Worker need the `allow_irrevocable_stub_storage` compatibility flag.
 
-Cloudflare can evict a Durable Object at any time and start a fresh instance on the next request. Because this call is what wakes the DO, it can arrive at an instance that no longer has your store in memory — and a fresh instance can't tell which `storeId` it belongs to on its own. That's why the sync backend also passes the `storeId`. You choose how to use it:
+Cloudflare can evict a Durable Object at any time and start a fresh instance on the next request. Because a delivery is what wakes the DO, it can arrive at an instance that no longer has your store in memory — and a fresh instance can't tell which `storeId` it belongs to on its own. That's why `onUpdate(storeId)` runs before the update is routed. You choose how to use it:
 
-- **Eager (stay in sync):** load the store before delivering — set `this.storeId = storeId`, then `await this.getStore()` (idempotent, and it catches up on any updates the DO missed while it was gone). The DO stays in sync whenever it is awake and costs nothing while idle.
-- **Reactive (recover lazily):** ignore `storeId` (you can omit the parameter). The DO drops that one live update and picks up the changes the next time your code loads the store (e.g. the next `fetch`). Simpler, but live updates are not applied while the DO is idle.
-
-Pass `storeId` to your store load (`getStore`), not to `handleSyncUpdateRpc` — that function only needs `ctx` and `payload`.
+- **Eager (stay in sync):** load the store in `onUpdate` — set `this.storeId = storeId`, then `await this.getStore()` (idempotent, and it catches up on any updates the DO missed while it was gone). The DO stays in sync whenever it is awake and costs nothing while idle.
+- **Reactive (recover lazily):** omit `onUpdate`. The DO drops that one live update and picks up the changes the next time your code loads the store (e.g. the next `fetch`). Simpler, but live updates are not applied while the DO is idle.
 
 ### Live-pull subscription lifecycle
 
-With `livePull: true`, booting a store registers a live-pull subscription on the sync backend so updates can arrive via `syncUpdateRpc`. Shutting the store down (`store.shutdown()`) releases it, and the sync backend stops delivering to — and waking — the Durable Object.
+With `livePull: true`, booting a store registers a live-pull subscription on the sync backend so updates can arrive via `[restore]`. Shutting the store down (`store.shutdown()`) releases it, and the sync backend stops delivering to — and waking — the Durable Object.
 
-Eviction is deliberately different: Cloudflare discards the isolate without running any cleanup, so an evicted Durable Object keeps its subscription. That retention is what lets the next update wake it and drive recovery (see the options above); the subscription is never dropped on silence, so a hibernating client never loses its place.
+Eviction is deliberately different: Cloudflare discards the isolate without running any cleanup, so an evicted Durable Object keeps its subscription. That retention is what lets the next update wake it and drive recovery (see the options above); the subscription is never dropped on silence, so a hibernating client never loses its place. A subscription that has been superseded (for example because the DO booted a new store) is refused on its next delivery, and the sync backend drops it.
 
 ### Schema changes and billing
 

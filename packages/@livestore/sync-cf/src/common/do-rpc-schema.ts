@@ -19,16 +19,11 @@ export class SyncDoRpc extends RpcGroup.make(
     payload: {
       /** Omitting the cursor will start from the beginning */
       cursor: SyncMessage.PullRequest.fields.cursor,
-      // TODO rename
-      /** Whether to keep the pull stream alive and wait for more events */
-      rpcContext: Schema.optional(
-        Schema.Struct({
-          callerContext: Schema.Struct({
-            bindingName: Schema.String,
-            durableObjectId: Schema.String,
-          }),
-        }),
-      ),
+      /**
+       * Present for a live pull. The backend keeps delivering later events through the callback stub passed
+       * alongside the native RPC call and files the subscription under this client-minted id.
+       */
+      live: Schema.optional(Schema.Struct({ subscriptionId: Schema.String })),
       ...commonPayloadFields,
     },
     success: Schema.Struct({
@@ -54,10 +49,8 @@ export class SyncDoRpc extends RpcGroup.make(
   }),
   Rpc.make('SyncDoRpc.Unsubscribe', {
     payload: {
-      /** Client DO id whose live-pull subscription row to drop. */
-      durableObjectId: Schema.String,
-      /** Request id of the live pull that registered the row; the row is only dropped if it still matches. */
-      requestId: Schema.String,
+      /** Id the live pull was filed under; only its minter knows it. */
+      subscriptionId: Schema.String,
       ...commonPayloadFields,
     },
     success: Schema.Void,

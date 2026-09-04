@@ -2,7 +2,7 @@
 
 import { DurableObject } from 'cloudflare:workers'
 
-import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
+import { createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { CfDeclare } from '@livestore/common-cf/declare'
 import type { Store } from '@livestore/livestore'
 import {
@@ -12,7 +12,6 @@ import {
   matchSyncRequest,
   type SyncBackendRpcInterface,
 } from '@livestore/sync-cf/cf-worker'
-import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 import { shouldNeverHappen } from '@livestore/utils'
 
 import { events, schema, tables } from '../schema.ts'
@@ -39,7 +38,7 @@ type ResetPersistenceSnapshot = {
 
 type Env = {
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface>
-  TEST_STORE_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
+  TEST_STORE_DO: CfTypes.DurableObjectNamespace<TestStoreDo>
 }
 
 const DurableObjectBase = DurableObject as any as new (
@@ -92,7 +91,7 @@ const wrapSqlForTracking = (sql: CfTypes.SqlStorage) => {
   return trackedSql
 }
 
-export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCallback {
+export class TestStoreDo extends DurableObjectBase {
   __DURABLE_OBJECT_BRAND = 'TestStoreDo' as never
   private cachedStore: Store<typeof schema> | undefined
   private cachedStoreId: string | undefined
@@ -203,10 +202,6 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
     return makeCfResponse('Not found', { status: 404 })
   }
 
-  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
-    await handleSyncUpdateRpc(this.ctx, payload)
-  }
-
   private ensureSqlTracking() {
     if (this.trackedSql !== undefined) return
 
@@ -245,7 +240,7 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
           storeId,
           clientId: 'integration-client',
           sessionId: crypto.randomUUID(),
-          durableObject: { ctx: this.ctx, env: this.env, bindingName: 'TEST_STORE_DO' },
+          durableObject: { ctx: this.ctx },
           syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
           resetPersistence,
         })
