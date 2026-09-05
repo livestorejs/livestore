@@ -78,6 +78,39 @@ export type MakeDurableObjectClassOptions = {
   storage?: { _tag: 'do-sqlite' } | { _tag: 'd1'; binding: string }
 
   /**
+   * Ephemeral presence hosted by this Durable Object (same isolate as the
+   * eventlog). Isolation is by `roomId`; channels are typed topics inside a room.
+   */
+  presence?: {
+    /**
+     * Named presence channel schemas, declared once here and mirrored by
+     * clients. Every update is schema-decoded before fan-out.
+     *
+     * @example
+     * ```ts
+     * presence: {
+     *   schemas: {
+     *     cursor: Schema.Struct({ x: Schema.Finite, y: Schema.Finite }),
+     *     typing: Schema.Struct({ isTyping: Schema.Boolean }),
+     *   },
+     * }
+     * ```
+     */
+    schemas?: Record<string, Schema.Codec<any, any>>
+    room?: import('../presence/room.ts').PresenceRoomOptions
+    /**
+     * Per-mutation hooks. Same shape as `onPush` / `onPull`: throw or fail
+     * to reject. Use `onJoin` to authorize a room (e.g. only conversation
+     * members see each other's typing). Use any hook to log or persist.
+     */
+    onJoin?: import('../presence/server.ts').PresenceHook
+    onUpdate?: import('../presence/server.ts').PresenceHook
+    onLeave?: import('../presence/server.ts').PresenceHook
+    /** Per-client minimum interval for `PresenceUpdate`. */
+    rateLimit?: import('../presence/rate-limit.ts').PresenceRateLimitOptions
+  }
+
+  /**
    * Enabled transports for sync backend
    * - `http`: HTTP JSON-RPC
    * - `ws`: WebSocket
@@ -188,6 +221,8 @@ export const WebSocketAttachmentSchema = Schema.fromJsonString(
     pullRequestIds: Schema.Array(Schema.Union([Schema.String, Schema.Finite])),
     // Headers forwarded from the initial request (via forwardHeaders option)
     headers: Schema.optional(Schema.Record(Schema.String, Schema.String)),
+    // Bound on first PresenceJoin so later RPCs cannot spoof another clientId.
+    presenceClientId: Schema.optional(Schema.String),
   }),
 )
 

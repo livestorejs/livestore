@@ -48,6 +48,11 @@ export interface DurableObjectWebSocketRpcConfig {
   /** The Durable Object instance to configure */
   doSelf: CfTypes.DurableObject
   /**
+   * Called when a WebSocket connection closes (before scope teardown). Use to
+   * evict per-connection state (e.g. presence members) tied to that socket.
+   */
+  onDisconnect?: (ws: CfTypes.WebSocket) => void | Promise<void>
+  /**
    * WebSocket handling mode:
    * - 'hibernate': Use hibernation-compatible WebSocket handling (recommended for cost optimization)
    * - 'accept': Use traditional WebSocket handling (not yet implemented)
@@ -139,6 +144,7 @@ export const setupDurableObjectWebSocketRpc = ({
   rpcLayer,
   webSocketMode,
   onMessage,
+  onDisconnect,
   mainLayer,
 }: DurableObjectWebSocketRpcConfig) => {
   if (webSocketMode === 'accept') {
@@ -215,6 +221,13 @@ export const setupDurableObjectWebSocketRpc = ({
   }
 
   const webSocketClose: CfTypes.DurableObject['webSocketClose'] = async (ws, _code, _reason, _wasClean) => {
+    if (onDisconnect !== undefined) {
+      try {
+        await onDisconnect(ws)
+      } catch (cause) {
+        console.error('onDisconnect callback failed', cause)
+      }
+    }
     const ctx = serverCtxMap.get(ws)
     // console.log('webSocketClose', ctx, ws)
     if (ctx !== undefined) {

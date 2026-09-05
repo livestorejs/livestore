@@ -34,6 +34,8 @@ export default packageJson(
       './client': './src/client/mod.ts',
       './common': './src/common/mod.ts',
       './cf-worker': './src/cf-worker/mod.ts',
+      './presence': './src/presence/mod.ts',
+      './presence/client': './src/presence/client.ts',
     },
     files: [...livestorePackageDefaults.files, 'README.md'],
     publishConfig: {
@@ -42,6 +44,8 @@ export default packageJson(
         './client': './dist/client/mod.js',
         './common': './dist/common/mod.js',
         './cf-worker': './dist/cf-worker/mod.js',
+        './presence': './dist/presence/mod.js',
+        './presence/client': './dist/presence/client.js',
       },
     },
     scripts: {
