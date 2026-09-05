@@ -25,6 +25,10 @@
   [Effect-TS/effect#6620](https://github.com/Effect-TS/effect/pull/6620)).
   Thanks [@JamieMason](https://github.com/JamieMason) for the migration work.
 - Removed redundant devenv package entries now owned by the task guard modules.
+- **Sync status API:** Added `backendHead`, `backendPendingCount`, and
+  `isBackendSynced` to `SyncStatus`, allowing sessions to distinguish leader
+  acceptance from sync-backend confirmation while preserving the existing
+  session-to-leader fields ([#1553](https://github.com/livestorejs/livestore/issues/1553)).
 - **Sync correctness:** Prevented later client-session events from crossing an
   older rejected pending prefix, and made leader admission retain explicit
   reservation ownership through queue drain until apply, rejection, or stale
