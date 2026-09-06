@@ -115,12 +115,14 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
       if (request.method === 'POST') {
         this.ctx.storage.sql.exec(
           'INSERT INTO vfs_pages (file_path, page_no, page_data) VALUES (?, 0, ?)',
-          '/state-obsolete@0.db',
+          '/previous-state.db',
           new Uint8Array([1, 2, 3]),
         )
+        this.ctx.storage.sql.exec('INSERT INTO __livestore_state_files (file_path) VALUES (?)', '/previous-state.db')
+        const table = url.searchParams.get('stage') === 'registry' ? '__livestore_state_files' : 'vfs_pages'
         this.ctx.storage.sql.exec(`
-          CREATE TRIGGER reject_cleanup BEFORE DELETE ON vfs_pages
-          WHEN OLD.file_path = '/state-obsolete@0.db'
+          CREATE TRIGGER reject_cleanup BEFORE DELETE ON ${table}
+          WHEN OLD.file_path = '/previous-state.db'
           BEGIN SELECT RAISE(ABORT, 'Injected cleanup failure'); END
         `)
       } else if (request.method === 'DELETE') {
@@ -129,13 +131,39 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
       return makeCfResponse('ok')
     }
 
+    if (url.pathname === '/store/rebuild/block-registration') {
+      this.ctx.storage.sql.exec(`
+        CREATE TRIGGER reject_registration BEFORE INSERT ON __livestore_state_files
+        BEGIN SELECT RAISE(ABORT, 'Injected registration failure'); END
+      `)
+      return makeCfResponse('ok')
+    }
+
+    if (url.pathname === '/store/rebuild/ownership') {
+      if (request.method === 'DELETE') {
+        this.ctx.storage.sql.exec('DROP TABLE __livestore_state_files')
+        return makeCfResponse('ok')
+      }
+      return makeCfResponse(
+        JSON.stringify(
+          this.ctx.storage.sql
+            .exec<{ file_path: string }>('SELECT file_path FROM __livestore_state_files ORDER BY file_path')
+            .toArray()
+            .map(({ file_path }) => file_path),
+        ),
+        { headers: { 'content-type': 'application/json' } },
+      )
+    }
+
     if (url.pathname === '/store/rebuild/files') {
       if (request.method === 'POST') {
-        this.ctx.storage.sql.exec(
-          'INSERT INTO vfs_pages (file_path, page_no, page_data) VALUES (?, 0, ?)',
-          '/unrelated.db',
-          new Uint8Array([1, 2, 3]),
-        )
+        for (const path of await request.json<string[]>()) {
+          this.ctx.storage.sql.exec(
+            'INSERT INTO vfs_pages (file_path, page_no, page_data) VALUES (?, 0, ?)',
+            path,
+            new Uint8Array([1, 2, 3]),
+          )
+        }
       }
       return makeCfResponse(
         JSON.stringify(

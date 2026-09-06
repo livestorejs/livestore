@@ -2,4 +2,4 @@
 '@livestore/adapter-cloudflare': patch
 ---
 
-Remove obsolete derived state database pages after successful Cloudflare adapter boot. Preserve current state and the eventlog, and retry failed cleanup on a later boot without blocking the completed store.
+Track Cloudflare state database ownership and remove obsolete tracked files after successful boot. Preserve current state, the eventlog and untracked files, including historical orphans. Retry failed cleanup on a later boot without blocking the completed store.

@@ -31,8 +31,9 @@ rebuild by itself. The adapter-level database name is the rebuild trigger.
 
 When the web adapter opens the selected state database, it deletes other state
 database files. In development it archives up to three old files instead.
-The Cloudflare adapter removes obsolete state-file pages after successful boot,
-including completed-state reuse. Cleanup failure does not prevent serving the
+The Cloudflare adapter tracks state files it opens and removes other tracked
+state-file pages after successful boot, including completed-state reuse.
+Untracked historical files are preserved. Cleanup failure does not prevent serving the
 completed store and is retried on the next successful boot.
 
 ## State Fingerprint Contract

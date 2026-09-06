@@ -18,9 +18,10 @@
   Telemetry cleanup runs in the background, and finite WebSocket operations and
   DO-RPC pull streams now emit their sync spans
   ([#1618](https://github.com/livestorejs/livestore/issues/1618)).
-- **Cloudflare adapter:** Remove obsolete derived state database pages after
-  successful boot, preserving the current state and eventlog. Failed cleanup is
-  retried on a later boot without blocking the completed store
+- **Cloudflare adapter:** Track state database ownership and remove obsolete
+  tracked state after successful boot, preserving the current state, eventlog
+  and untracked files. Failed cleanup is retried on a later boot without
+  blocking the completed store
   ([#1555](https://github.com/livestorejs/livestore/issues/1555)).
 - **Schema rebuilds:** Batched eventlog replay to reduce repeated SQLite page
   writes, including billed row writes on Cloudflare Durable Objects. Replay order

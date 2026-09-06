@@ -61,24 +61,36 @@ behaviors versus the portable contract:
 - **`export()`/`import()` are no-ops** — `SqlStorage` has no
   serialize/deserialize; the session's initial snapshot import is therefore
   also a no-op (leader and session share the isolate anyway).
-- **`resetPersistence` spans three tables** — `vfs_pages` (state VFS),
-  `eventlog`, and `__livestore_sync_status` (direct), inside
+- **`resetPersistence` spans four tables** — `vfs_pages` (state VFS),
+  `__livestore_state_files` (adapter ownership), `eventlog`, and
+  `__livestore_sync_status` (direct), inside
   `storage.transactionSync`.
 
 ## Obsolete State Cleanup
 
-After adapter boot succeeds, delete `vfs_pages` rows for other paths in the
-adapter's `/state{fingerprint}@{storageFormatVersion}.db` namespace. Keep the
-current state file, unrelated VFS files, eventlog and sync metadata. A failed
-rebuild or migration hook must not trigger this cleanup.
+Before opening a state database, register its exact VFS path in the adapter-owned
+`__livestore_state_files` table. Registration failure stops boot before opening the
+file. Existing registrations are reused without writing rows. This registry is
+adapter metadata, separate from the eventlog and the materialized state schema.
 
-Run cleanup on completed-state reuse too, so old files from earlier releases or
-failed cleanup attempts do not require another schema change to be removed.
-Cleanup failure logs a warning and leaves the completed store available; the
-next successful boot retries. Once clean, later boots delete no rows. Deleting
-obsolete derived state means returning to an older schema rebuilds it from the
-eventlog rather than reusing its old cache. The cleanup does not compact the
-underlying Durable Object SQLite database.
+After adapter boot succeeds, remove pages belonging to other registered paths
+and their ownership records together in `storage.transactionSync`. Keep the
+current state, unregistered VFS files, eventlog and sync metadata. Failed replay
+or migration hooks retain every registered file. Cleanup failure logs a warning
+and leaves completed state available, with ownership intact for retry on the
+next successful boot. Run cleanup on completed-state reuse too.
+
+Filename shape is not proof of ownership. Old files that predate registration
+remain untouched unless the adapter subsequently opens and registers that exact
+file. Consequently this prevents new orphan accumulation without automatically
+reclaiming all historical orphans. See
+[the ownership decision](./.decisions/0002-state-file-ownership.md).
+
+Once clean, later boots write no rows for registration or cleanup. Deleting a
+previous state means returning to that schema rebuilds from the eventlog. Cleanup
+consumes billed row writes and does not explicitly compact the underlying DO
+database. Because it follows successful boot, it cannot recover a database that
+is already too full to rebuild.
 
 ## Eviction and Resume
 
