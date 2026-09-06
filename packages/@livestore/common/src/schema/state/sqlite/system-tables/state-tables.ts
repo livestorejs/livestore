@@ -64,6 +64,16 @@ export const stateHeadMetaTable = table({
 
 export type StateHeadMetaRow = typeof stateHeadMetaTable.Type
 
+export const REBUILD_META_TABLE = '__livestore_rebuild'
+
+/** Only a completed replay and successful migration hooks may insert the marker row. */
+export const rebuildMetaTable = table({
+  name: REBUILD_META_TABLE,
+  columns: {
+    id: SqliteDsl.integer({ primaryKey: true }),
+  },
+})
+
 /**
  * Table which stores SQLite changeset blobs which is used for rolling back
  * read-model state during rebasing.
@@ -104,6 +114,7 @@ export const stateSystemTables = [
   schemaEventDefsMetaTable,
   stateHeadMetaTable,
   sessionChangesetMetaTable,
+  rebuildMetaTable,
 ] as const
 
 export const isStateSystemTable = (tableName: string) => stateSystemTables.some((_) => _.sqliteDef.name === tableName)

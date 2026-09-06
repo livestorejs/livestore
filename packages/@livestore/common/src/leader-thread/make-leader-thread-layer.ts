@@ -31,11 +31,12 @@ import type * as StateHead from '../StateHead.ts'
 import type { SyncBackend, SyncOptions } from '../sync/sync.ts'
 import { SyncState } from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
+import { configureConnection } from './connection.ts'
 import * as Eventlog from './eventlog.ts'
 import { bootDevtools } from './leader-worker-devtools.ts'
 import * as LeaderSyncProcessor from './LeaderSyncProcessor.ts'
 import { makeMaterializeEvent } from './materialize-event.ts'
-import { recreateDb } from './recreate-db.ts'
+import { hasCompletedState, recreateDb } from './recreate-db.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 import type {
   DevtoolsContext,
@@ -112,8 +113,20 @@ export const makeLeaderThreadLayer = ({
 
     const dbEventlogMissing = !hasEventlogTables(dbEventlog)
 
-    // Either happens on initial boot or if schema changes
-    const dbStateMissing = !hasStateTables(dbState)
+    const dbStateMissing = !hasCompletedState(dbState)
+
+    if (dbStateMissing === true) {
+      // Import also clears hook-created objects while preserving the open connection.
+      yield* Effect.acquireUseRelease(
+        makeSqliteDb({ _tag: 'in-memory' }),
+        (emptyDb) =>
+          configureConnection(emptyDb, { foreignKeys: false }).pipe(
+            Effect.andThen(Effect.sync(() => dbState.import(emptyDb))),
+            UnknownError.mapToUnknownError,
+          ),
+        (emptyDb) => Effect.sync(() => emptyDb.close()),
+      )
+    }
 
     yield* Eventlog.initEventlogDb(dbEventlog)
 
@@ -264,11 +277,6 @@ export const makeLeaderThreadLayer = ({
 const hasEventlogTables = (db: SqliteDb) => {
   const tableNames = new Set(db.select<{ name: string }>(sql`select name from sqlite_master`).map((_) => _.name))
   return ReadonlyArray.every(SystemTables.eventlogSystemTables, (_) => tableNames.has(_.sqliteDef.name))
-}
-
-const hasStateTables = (db: SqliteDb) => {
-  const tableNames = new Set(db.select<{ name: string }>(sql`select name from sqlite_master`).map((_) => _.name))
-  return ReadonlyArray.every(SystemTables.stateSystemTables, (_) => tableNames.has(_.sqliteDef.name))
 }
 
 const getInitialSyncState = ({

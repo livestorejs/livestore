@@ -46,10 +46,19 @@ Unless disabled or OPFS is unavailable, a booting session reads the
 persisted state DB directly from OPFS
 (`readPersistedStateDbFromClientSession`) instead of requesting a
 `GetRecreateSnapshot` from the leader, and derives its initial leader head
-from `SESSION_CHANGESET_META_TABLE` rather than the eventlog
-(`persisted-adapter.ts:238-249,464-483`). Any read error falls back to the
-slow path. The snapshot is currently trusted without validation — see
-`LS.SYS.RT-R15` and
+from `__livestore_state_head` rather than the eventlog. Both shared-worker and
+single-tab sessions import the snapshot into their in-memory database and require
+all state system tables plus the rebuild-completion row before using it. A read,
+import or completeness failure falls back to `GetRecreateSnapshot`, so partial
+rebuild state cannot become queryable through the fast path. The successful import
+is reused rather than copied into another database. See the
+[rebuild contract](../../../02-state/01-sqlite/02-schema-management/spec.md).
+
+Rejected snapshot databases close before waiting for leader recovery. Accepted
+snapshot databases and leader fallback databases belong to the session scope.
+
+The completion check does not compare the snapshot's head or identity with the
+leader. That broader validation remains open under `LS.SYS.RT-R15` and
 [../../.delta/DELTA-001-fast-path-unvalidated.md](../../.delta/DELTA-001-fast-path-unvalidated.md).
 
 ## Identity Keys

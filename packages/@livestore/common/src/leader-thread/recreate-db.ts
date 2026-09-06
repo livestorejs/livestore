@@ -11,8 +11,17 @@ import {
   UnknownError,
 } from '../index.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
-import { configureConnection } from './connection.ts'
+import { SystemTables } from '../schema/mod.ts'
+import { configureConnection, execSql } from './connection.ts'
 import type { MaterializeEvent } from './types.ts'
+
+export const hasCompletedState = (db: SqliteDb): boolean => {
+  const tableNames = new Set(db.select<{ name: string }>('SELECT name FROM sqlite_master').map((_) => _.name))
+  return (
+    SystemTables.stateSystemTables.every((table) => tableNames.has(table.sqliteDef.name)) &&
+    db.select(`SELECT id FROM ${SystemTables.REBUILD_META_TABLE} WHERE id = 1`).length === 1
+  )
+}
 
 export const recreateDb = ({
   dbState,
@@ -36,27 +45,21 @@ export const recreateDb = ({
       }),
     )
 
-    // NOTE to speed up the operations below, we're creating a temporary in-memory database
-    // and later we'll overwrite the persisted database with the new data
-    // TODO bring back this optimization
-    // const tmpDb = yield* makeSqliteDb({ _tag: 'in-memory' })
-    const tmpDb = dbState
-    yield* configureConnection(tmpDb, { foreignKeys: true })
+    yield* configureConnection(dbState, { foreignKeys: true })
 
     // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- user hook errors are immediately normalized to LiveStore UnknownError
-    yield* Effect.trySyncOrPromiseOrEffect(() => hooks?.init?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
+    yield* Effect.trySyncOrPromiseOrEffect(() => hooks?.init?.(dbState)).pipe(UnknownError.mapToUnknownError)
 
     const migrationsReport = yield* migrateDb({
-      db: tmpDb,
+      db: dbState,
       schema,
       onProgress: ({ done, total }) => Queue.offer(bootStatusQueue, { stage: 'migrating', progress: { done, total } }),
     })
 
     // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- user hook errors are immediately normalized to LiveStore UnknownError
-    yield* Effect.trySyncOrPromiseOrEffect(() => hooks?.pre?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
+    yield* Effect.trySyncOrPromiseOrEffect(() => hooks?.pre?.(dbState)).pipe(UnknownError.mapToUnknownError)
 
     yield* rematerializeFromEventlog({
-      // db: tmpDb,
       dbEventlog,
       schema,
       materializeEvent,
@@ -65,21 +68,10 @@ export const recreateDb = ({
     })
 
     // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- user hook errors are immediately normalized to LiveStore UnknownError
-    yield* Effect.trySyncOrPromiseOrEffect(() => hooks?.post?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
+    yield* Effect.trySyncOrPromiseOrEffect(() => hooks?.post?.(dbState)).pipe(UnknownError.mapToUnknownError)
 
-    // TODO bring back
-    // Import the temporary in-memory database into the persistent database
-    // yield* Effect.sync(() => db.import(tmpDb)).pipe(
-    //   Effect.withSpan('@livestore/common:leader-thread:recreateDb:import'),
-    // )
-
-    // TODO maybe bring back re-using this initial snapshot to avoid calling `.export()` again
-    // We've disabled this for now as it made the code too complex, as we often run syncing right after
-    // so the snapshot is no longer up to date
-    // const snapshotFromTmpDb = tmpDb.export()
-
-    // TODO bring back
-    // tmpDb.close()
+    // Keep this out of finalizers, which also run on failure and interruption.
+    yield* execSql(dbState, `INSERT INTO ${SystemTables.REBUILD_META_TABLE} (id) VALUES (1)`, {})
 
     return { migrationsReport }
   }).pipe(

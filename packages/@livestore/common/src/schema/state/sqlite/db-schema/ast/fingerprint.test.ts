@@ -4,6 +4,7 @@ import { Schema } from '@livestore/utils/effect'
 
 import { liveStoreStorageFormatVersion } from '../../../../../version.ts'
 import { makeState } from '../../mod.ts'
+import { REBUILD_META_TABLE } from '../../system-tables/state-tables.ts'
 import { SqliteDsl } from '../mod.ts'
 import { digestToFingerprint } from './fingerprint-digest.ts'
 import { fingerprint } from './fingerprint.ts'
@@ -14,7 +15,17 @@ describe('SQLite storage fingerprints', () => {
     expect(fingerprint(makeJsonTable('documents', representativeJsonSchema).ast)).toBe(
       'kUzaurzV2rcXYLljHOZ64TDR9c_RebqD7y5ZUM_nPBE',
     )
-    expect(makeState({ tables: [], materializers: {} }).sqlite.hash).toBe('H5Uktp6Ffp84WDj_RWPnfDnaQEu_E61AMl7ieZ9Zn8k')
+    expect(makeState({ tables: [], materializers: {} }).sqlite.hash).toBe('o8mmnRDnhXhkgDpBybM3FK7S-PkaLEj_pKcnbzgg3TU')
+  })
+
+  test('isolates pre-completion-marker state databases without changing the hash algorithm', () => {
+    const state = makeState({ tables: [], materializers: {} })
+    const legacyTables = [...state.sqlite.tables.values()]
+      .filter((table) => table.sqliteDef.name !== REBUILD_META_TABLE)
+      .map((table) => table.sqliteDef.ast)
+    const legacyHash = fingerprint({ _tag: 'dbSchema', tables: legacyTables })
+    expect(legacyHash).toBe('H5Uktp6Ffp84WDj_RWPnfDnaQEu_E61AMl7ieZ9Zn8k')
+    expect(state.sqlite.hash).not.toBe(legacyHash)
   })
 
   test('matches the standard SHA-256 vector', () => {

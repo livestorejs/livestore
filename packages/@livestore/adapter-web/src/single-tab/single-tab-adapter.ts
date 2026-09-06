@@ -157,6 +157,7 @@ export const makeSingleTabAdapter =
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
       const sqlite3 = yield* Effect.promise(() => loadSqlite3())
+      const makeSqliteDb = sqliteDbFactory({ sqlite3 })
 
       const storageOptions = yield* Schema.decodeEffect(WorkerSchema.StorageType)(options.storage)
 
@@ -182,7 +183,7 @@ export const makeSingleTabAdapter =
       const dataFromFile =
         options.experimental?.disableFastPath === true || opfsWarning !== undefined
           ? undefined
-          : yield* readPersistedStateDbFromClientSession({ storageOptions, storeId, schema }).pipe(
+          : yield* readPersistedStateDbFromClientSession({ storageOptions, storeId, schema, makeSqliteDb }).pipe(
               Effect.tapError((error) =>
                 Effect.logDebug('[@livestore/adapter-web:single-tab] Could not read persisted state db', error, {
                   storeId,
@@ -306,31 +307,27 @@ export const makeSingleTabAdapter =
       )
 
       // Get initial snapshot (either from fast-path or from worker)
-      const initialResult =
+      const { sqliteDb, snapshotByteLength, migrationsReport } =
         dataFromFile === undefined
-          ? yield* runInWorker('GetRecreateSnapshot', innerWorker.GetRecreateSnapshot({})).pipe(
-              Effect.map(({ snapshot, migrationsReport }) => ({
-                _tag: 'from-leader-worker' as const,
-                snapshot,
-                migrationsReport,
-              })),
-            )
-          : { _tag: 'fast-path' as const, snapshot: dataFromFile }
-
-      const migrationsReport =
-        initialResult._tag === 'from-leader-worker' ? initialResult.migrationsReport : { migrations: [] }
-
-      const makeSqliteDb = sqliteDbFactory({ sqlite3 })
-      const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
-
-      sqliteDb.import(initialResult.snapshot)
+          ? yield* Effect.gen(function* () {
+              const { snapshot, migrationsReport } = yield* runInWorker(
+                'GetRecreateSnapshot',
+                innerWorker.GetRecreateSnapshot({}),
+              )
+              const sqliteDb = yield* Effect.acquireRelease(makeSqliteDb({ _tag: 'in-memory' }), (db) =>
+                Effect.sync(() => db.close()),
+              )
+              sqliteDb.import(snapshot)
+              return { sqliteDb, snapshotByteLength: snapshot.byteLength, migrationsReport }
+            })
+          : { ...dataFromFile, migrationsReport: { migrations: [] } }
 
       const numberOfTables =
         sqliteDb.select<{ count: number }>(`select count(*) as count from sqlite_master`)[0]?.count ?? 0
       if (numberOfTables === 0) {
         return yield* UnknownError.make({
           cause: `Encountered empty or corrupted database`,
-          payload: { snapshotByteLength: initialResult.snapshot.byteLength, storageOptions: options.storage },
+          payload: { snapshotByteLength, storageOptions: options.storage },
         })
       }
 

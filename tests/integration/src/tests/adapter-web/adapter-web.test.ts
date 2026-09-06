@@ -31,6 +31,51 @@ const withTestCtx = Vitest.makeWithTestCtx({
 })
 
 Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
+  Vitest.live('rejects incomplete OPFS snapshots before fast-path boot (#1605)', (test) =>
+    Effect.gen(function* () {
+      const port = yield* getFreePort.pipe(Effect.map(String))
+      yield* cmd(`./node_modules/.bin/vite --config ${viteConfigRel} dev --port ${port}`, {
+        env: { TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined, LSD_DEVTOOLS_LOCAL_PREVIEW: undefined },
+      }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)), Effect.forkScoped)
+      const url = `http://localhost:${port}`
+      const httpClient = HttpClient.filterStatusOk(yield* HttpClient.HttpClient)
+      yield* httpClient.head(url).pipe(
+        Effect.retry(Schedule.exponentialBackoff10Sec),
+        Effect.mapError((error) => new DevServerNotReadyError({ cause: error })),
+      )
+      const { browserContext } = yield* BrowserContext
+      const page = yield* Effect.promise(() => browserContext.newPage())
+      yield* Effect.promise(() => page.goto(url))
+      const response = yield* Effect.promise(() =>
+        page.evaluate(
+          (workerUrl) =>
+            new Promise((resolve, reject) => {
+              const worker = new Worker(workerUrl, { type: 'module' })
+              worker.onmessage = (event) => {
+                worker.terminate()
+                resolve(event.data)
+              }
+              worker.onerror = (event) => {
+                worker.terminate()
+                reject(new Error(event.message))
+              }
+            }),
+          `/@fs/${path.resolve(integrationRoot, '../../packages/@livestore/adapter-web/src/web-worker/common/persisted-sqlite.test-fixture.ts')}`,
+        ),
+      )
+      expect(response).toEqual({
+        result: {
+          incomplete: 'PersistedSqliteError',
+          missingMarkerTable: 'PersistedSqliteError',
+          complete: 'accepted',
+          rows: [{ id: 'complete' }, { id: 'partial' }],
+          closedBeforeScopeExit: [true, true, false],
+          closedAfterScopeExit: [true, true, true],
+        },
+      })
+    }).pipe(withTestCtx(test)),
+  )
+
   /**
    * SharedWorker boot/leader race can stall startup when two tabs boot concurrently.
    * Issue: https://github.com/livestorejs/livestore/issues/763

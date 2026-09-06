@@ -2,9 +2,9 @@
 
 import { DurableObject } from 'cloudflare:workers'
 
-import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
+import { type ClientDoWithRpcCallback, createStoreDoPromise, makeAdapter } from '@livestore/adapter-cloudflare'
 import { CfDeclare } from '@livestore/common-cf/declare'
-import type { Store } from '@livestore/livestore'
+import { createStorePromise, type Store } from '@livestore/livestore'
 import {
   type CfTypes,
   handleSyncRequest,
@@ -15,6 +15,7 @@ import {
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 import { shouldNeverHappen } from '@livestore/utils'
 
+import { makeRebuildSchema } from '../rebuild-schema.ts'
 import { events, schema, tables } from '../schema.ts'
 
 /**
@@ -99,6 +100,7 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
   /** Captures the VFS counts immediately before/after a reset so tests can assert the deletion actually happened. */
   private lastResetSnapshot: ResetPersistenceSnapshot | undefined
   private trackedSql: ReturnType<typeof wrapSqlForTracking> | undefined
+  private readonly rebuildInstanceId = crypto.randomUUID()
 
   override async fetch(request: CfTypes.Request): Promise<CfTypes.Response> {
     const url = new URL(request.url)
@@ -106,6 +108,83 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
 
     if (storeId === null) {
       return makeCfResponse('storeId is required', { status: 400 })
+    }
+
+    if (url.pathname === '/store/rebuild/eventlog') {
+      return makeCfResponse(
+        JSON.stringify({
+          events: this.ctx.storage.sql.exec('SELECT * FROM eventlog ORDER BY seqNumGlobal, seqNumClient').toArray(),
+          sync: this.ctx.storage.sql.exec('SELECT * FROM __livestore_sync_status').toArray(),
+        }),
+        { headers: { 'content-type': 'application/json' } },
+      )
+    }
+
+    if (url.pathname === '/store/rebuild' && request.method === 'POST') {
+      const seed = url.searchParams.get('seed') === 'true'
+      const fixture = makeRebuildSchema({
+        upgraded: seed === false,
+        ...(url.searchParams.has('failAt') === true ? { failAt: url.searchParams.get('failAt')! } : {}),
+        ...(url.searchParams.has('post') === true
+          ? {
+              post: async () => {
+                if (url.searchParams.get('post') === 'fail') throw new Error('Rebuild fixture post hook failed')
+                if (url.searchParams.get('post') === 'abort') {
+                  // Persist before aborting without running LiveStore finalizers.
+                  await this.ctx.storage.sync()
+                  this.ctx.abort('Rebuild fixture aborted during post hook')
+                }
+              },
+            }
+          : {}),
+      })
+      try {
+        // A sync backend could refill missing rows and hide a recovery failure.
+        const store = await createStorePromise({
+          schema: fixture.schema,
+          storeId,
+          disableDevtools: true,
+          adapter: makeAdapter({
+            storage: this.ctx.storage,
+            clientId: 'rebuild-client',
+            sessionId: crypto.randomUUID(),
+            syncOptions: {},
+          }),
+        })
+        try {
+          if (seed === true) {
+            for (let i = 1; i <= 5; i++) {
+              store.commit(fixture.events.created({ id: `todo-${i}`, title: `item ${i}` }))
+            }
+          }
+          const todos = store.query(fixture.todos.orderBy('id', 'asc'))
+          return makeCfResponse(
+            JSON.stringify({
+              todos,
+              attemptedEvents: fixture.attemptedEvents,
+              attemptedHooks: fixture.attemptedHooks,
+              instanceId: this.rebuildInstanceId,
+            }),
+            { headers: { 'content-type': 'application/json' } },
+          )
+        } finally {
+          // Orderly shutdown drains admitted events to the persisted leader eventlog.
+          await store.shutdownPromise()
+        }
+      } catch (error) {
+        return makeCfResponse(
+          JSON.stringify({
+            error: String(error),
+            cause: error,
+            attemptedEvents: fixture.attemptedEvents,
+            attemptedHooks: fixture.attemptedHooks,
+          }),
+          {
+            status: 500,
+            headers: { 'content-type': 'application/json' },
+          },
+        )
+      }
     }
 
     if (url.pathname === '/store/todos') {

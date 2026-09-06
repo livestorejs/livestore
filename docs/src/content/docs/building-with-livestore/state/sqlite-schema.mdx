@@ -61,6 +61,10 @@ You can also provide a custom schema for a column which is used to automatically
 
 LiveStore automatically migrates the database to the newest schema and rematerializes state from the eventlog. A schema change opens a fresh state database and replays the full eventlog, even when only one table changed.
 
+A rebuild is complete only after replay and all migration hooks finish. If a rebuild fails or is interrupted, the next boot discards incomplete derived state and retries from the eventlog. Browser fast-path startup also waits for recovery instead of exposing an incomplete snapshot. Migration hooks may run again, so any external side effects must tolerate retries. The eventlog and pending events are preserved.
+
+Upgrading from a version without rebuild-completion tracking causes a one-time rebuild, even when your application schema is unchanged. On Cloudflare Durable Objects, plan for the corresponding replay time and row writes.
+
 By default, `State.SQLite.json()` does not declare a fixed shape. Changing only the shape of values written to that column therefore does not count as a schema change. Pass a schema when such changes should trigger a rebuild.
 
 ## Client documents

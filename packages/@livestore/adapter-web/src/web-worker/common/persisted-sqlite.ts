@@ -1,4 +1,5 @@
-import { liveStoreStorageFormatVersion } from '@livestore/common'
+import { liveStoreStorageFormatVersion, type MakeSqliteDb } from '@livestore/common'
+import { hasCompletedState } from '@livestore/common/leader-thread'
 import { getStateDbBaseName, type LiveStoreSchema } from '@livestore/common/schema'
 import {
   decodeAccessHandlePoolFilename,
@@ -34,10 +35,12 @@ export const readPersistedStateDbFromClientSession = Effect.fn(
     storageOptions,
     storeId,
     schema,
+    makeSqliteDb,
   }: {
     storageOptions: WorkerSchema.StorageType
     storeId: string
     schema: LiveStoreSchema
+    makeSqliteDb: (input: { _tag: 'in-memory' }) => ReturnType<MakeSqliteDb>
   }) {
     const accessHandlePoolDirString = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
 
@@ -81,7 +84,27 @@ export const readPersistedStateDbFromClientSession = Effect.fn(
       })
     }
 
-    return new Uint8Array(stateDbBuffer)
+    const snapshot = new Uint8Array(stateDbBuffer)
+    const sqliteDb = yield* Effect.acquireRelease(makeSqliteDb({ _tag: 'in-memory' }), (db) =>
+      Effect.sync(() => db.close()),
+    )
+    yield* Effect.try({
+      try: () => {
+        sqliteDb.import(snapshot)
+        return hasCompletedState(sqliteDb)
+      },
+      catch: (cause) => new PersistedSqliteError({ message: 'Could not load persisted state snapshot', cause }),
+    }).pipe(
+      Effect.filterOrFail(
+        (completed) => completed,
+        () =>
+          new PersistedSqliteError({ message: 'Persisted state rebuild is incomplete; waiting for leader recovery' }),
+      ),
+      // Release rejected snapshots before waiting for recovery, not only when the session scope closes.
+      Effect.onError(() => Effect.sync(() => sqliteDb.close())),
+    )
+
+    return { sqliteDb, snapshotByteLength: snapshot.byteLength }
   },
   Effect.logWarnIfTakesLongerThan({
     duration: 1000,
