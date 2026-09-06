@@ -18,6 +18,10 @@
   Telemetry cleanup runs in the background, and finite WebSocket operations and
   DO-RPC pull streams now emit their sync spans
   ([#1618](https://github.com/livestorejs/livestore/issues/1618)).
+- **Schema rebuilds:** Batched eventlog replay to reduce repeated SQLite page
+  writes, including billed row writes on Cloudflare Durable Objects. Replay order
+  and recovery from incomplete rebuilds are preserved
+  ([#1555](https://github.com/livestorejs/livestore/issues/1555)).
 - **State recovery:** Interrupted rematerialization is retried from clean derived
   state instead of reopening partial results. Completion is recorded after all
   migration hooks finish. Browser fast-path startup waits for recovery when its

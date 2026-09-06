@@ -29,7 +29,7 @@ import {
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
-for (const failure of ['init', 'pre', 'replay', 'post', 'interrupt'] as const) {
+for (const failure of ['init', 'pre', 'replay', 'replay-after-batch', 'post', 'interrupt'] as const) {
   Vitest.live(`rebuilds surviving partial state after ${failure} failure on common leader boot (#1605)`, (test) =>
     Effect.gen(function* () {
       const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
@@ -55,10 +55,11 @@ for (const failure of ['init', 'pre', 'replay', 'post', 'interrupt'] as const) {
       })
       const events = { created: Events.synced({ name: 'created', schema: Schema.Struct({ id: Schema.String }) }) }
       const factory = EventFactory.makeFactory(events)({ client: EventFactory.clientIdentity('test') })
+      const eventIds = Array.from({ length: failure === 'replay-after-batch' ? 205 : 5 }, (_, i) => `todo-${i + 1}`)
       yield* Eventlog.initEventlogDb(dbEventlog)
-      for (let i = 1; i <= 5; i++) {
+      for (const id of eventIds) {
         const event = new LiveStoreEvent.Client.EncodedWithMeta({
-          ...LiveStoreEvent.Global.toClientEncoded(factory.created.next({ id: `todo-${i}` })),
+          ...LiveStoreEvent.Global.toClientEncoded(factory.created.next({ id })),
         })
         yield* Eventlog.insertIntoEventlog(
           event,
@@ -88,7 +89,10 @@ for (const failure of ['init', 'pre', 'replay', 'post', 'interrupt'] as const) {
           materializers: State.SQLite.materializers(events, {
             created: ({ id }) => {
               attemptedEvents.push(id)
-              if (shouldFail === true && failure === 'replay' && id === 'todo-3') {
+              if (
+                shouldFail === true &&
+                ((failure === 'replay' && id === 'todo-3') || (failure === 'replay-after-batch' && id === 'todo-103'))
+              ) {
                 throw new Error('Injected replay failure')
               }
               return todos.insert({ id })
@@ -162,7 +166,12 @@ for (const failure of ['init', 'pre', 'replay', 'post', 'interrupt'] as const) {
         const partial = yield* openState
         expect(partial.select('SELECT * FROM scratch')).not.toEqual([])
         if (failure !== 'init') expect(partial.select(SystemTables.rebuildMetaTable)).toEqual([])
-        if (failure === 'replay') expect(partial.select(todos)).toHaveLength(2)
+        if (failure === 'replay' || failure === 'replay-after-batch') {
+          const committedEvents = failure === 'replay' ? 0 : 100
+          expect(partial.select(todos)).toHaveLength(committedEvents)
+          expect(partial.select(SystemTables.sessionChangesetMetaTable)).toHaveLength(committedEvents)
+          expect((yield* StateHead.make({ dbState: partial }).get).global).toBe(committedEvents)
+        }
         if (failure === 'post' || failure === 'interrupt') expect(partial.select(todos)).toHaveLength(5)
       }).pipe(Effect.scoped)
       expect(readEventlog()).toEqual(before)
@@ -172,11 +181,11 @@ for (const failure of ['init', 'pre', 'replay', 'post', 'interrupt'] as const) {
       attemptedHooks.length = 0
       const recovered = yield* boot
       expect(recovered).toEqual({
-        todos: [{ id: 'post-hook' }, ...Array.from({ length: 5 }, (_, i) => ({ id: `todo-${i + 1}` }))],
-        pending: 5,
+        todos: [{ id: 'post-hook' }, ...eventIds.toSorted().map((id) => ({ id }))],
+        pending: eventIds.length,
         marker: [{ id: 1 }],
       })
-      expect(attemptedEvents).toEqual(['todo-1', 'todo-2', 'todo-3', 'todo-4', 'todo-5'])
+      expect(attemptedEvents).toEqual(eventIds)
       expect(attemptedHooks).toEqual(['init', 'pre', 'post'])
       expect(readEventlog()).toEqual(before)
 

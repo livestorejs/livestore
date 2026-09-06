@@ -152,6 +152,49 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
   })
 
 Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
+  for (const eventCount of [250, 1000]) {
+    Vitest.live(`schema rebuild stays within the write budget for ${eventCount} events (#1555)`, (test) =>
+      Effect.gen(function* () {
+        const server = yield* WranglerDevServer.WranglerDevServer
+        const { rebuild, rebuildEventlog, getMetrics, resetMetrics } = yield* makeStoreHelpers(
+          server.url,
+          `cf-replay-writes-${nanoid(6)}`,
+        )
+        const seeded = yield* rebuild({ seed: 'true', seedCount: String(eventCount) })
+        expect(seeded.status).toBe(200)
+        const seedBody = yield* readRebuildResponse(seeded)
+        expect(seedBody.todos).toHaveLength(eventCount)
+        expect((yield* getMetrics()).totalRowsWritten).toBeGreaterThan(0)
+        const eventlogBefore = yield* rebuildEventlog()
+        expect(eventlogBefore.events).toHaveLength(eventCount)
+
+        yield* resetMetrics()
+        const rebuilt = yield* rebuild({ post: 'complete' })
+        expect(rebuilt.status).toBe(200)
+        const rebuiltBody = yield* readRebuildResponse(rebuilt)
+        const { totalRowsWritten } = yield* getMetrics()
+        expect(rebuiltBody.todos).toEqual([{ id: 'post-hook', title: 'completed' }, ...seedBody.todos])
+        expect(rebuiltBody.attemptedEvents).toEqual(Array.from({ length: eventCount }, (_, i) => `todo-${i + 1}`))
+        expect(rebuiltBody.attemptedHooks).toEqual(['init', 'pre', 'post'])
+        expect(yield* rebuildEventlog()).toEqual(eventlogBefore)
+
+        yield* resetMetrics()
+        const reopened = yield* rebuild({ post: 'fail' })
+        expect(reopened.status).toBe(200)
+        expect(yield* readRebuildResponse(reopened)).toMatchObject({
+          todos: rebuiltBody.todos,
+          attemptedEvents: [],
+          attemptedHooks: [],
+        })
+        expect((yield* getMetrics()).totalRowsWritten).toBe(0)
+
+        yield* Effect.promise(() => test.annotate(`${totalRowsWritten} rebuild writes for ${eventCount} events`))
+        expect(totalRowsWritten).toBeGreaterThan(0)
+        expect(totalRowsWritten).toBeLessThanOrEqual(eventCount * 5)
+      }).pipe(withTestCtx(test)),
+    )
+  }
+
   Vitest.live('retries an interrupted schema rebuild instead of serving partial state (#1605)', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServer.WranglerDevServer

@@ -14,6 +14,7 @@ import {
 } from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 import { shouldNeverHappen } from '@livestore/utils'
+import { Effect, Stream } from '@livestore/utils/effect'
 
 import { makeRebuildSchema } from '../rebuild-schema.ts'
 import { events, schema, tables } from '../schema.ts'
@@ -121,6 +122,7 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
     }
 
     if (url.pathname === '/store/rebuild' && request.method === 'POST') {
+      this.ensureSqlTracking()
       const seed = url.searchParams.get('seed') === 'true'
       const fixture = makeRebuildSchema({
         upgraded: seed === false,
@@ -153,9 +155,17 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
         })
         try {
           if (seed === true) {
-            for (let i = 1; i <= 5; i++) {
+            const seedCount = Number(url.searchParams.get('seedCount') ?? 5)
+            for (let i = 1; i <= seedCount; i++) {
               store.commit(fixture.events.created({ id: `todo-${i}`, title: `item ${i}` }))
             }
+            await store.syncStatusStream().pipe(
+              Stream.filter((status) => status.isSynced),
+              Stream.take(1),
+              Stream.runDrain,
+              Effect.timeout('10 seconds'),
+              Effect.runPromise,
+            )
           }
           const todos = store.query(fixture.todos.orderBy('id', 'asc'))
           return makeCfResponse(
@@ -168,7 +178,6 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
             { headers: { 'content-type': 'application/json' } },
           )
         } finally {
-          // Orderly shutdown drains admitted events to the persisted leader eventlog.
           await store.shutdownPromise()
         }
       } catch (error) {
@@ -245,8 +254,6 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
 
     if (url.pathname === '/store/metrics') {
       if (request.method === 'GET') {
-        await this.ensureStore({ storeId, resetPersistence: false })
-
         return makeCfResponse(
           JSON.stringify({
             totalRowsWritten: this.trackedSql?.totalRowsWritten ?? 0,

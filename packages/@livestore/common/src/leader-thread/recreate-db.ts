@@ -65,6 +65,7 @@ export const recreateDb = ({
 
     yield* rematerializeFromEventlog({
       dbEventlog,
+      dbState,
       schema,
       materializeEvent,
       onProgress: ({ done, total }) =>

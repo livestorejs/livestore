@@ -99,6 +99,15 @@ database:
 5. Run the `post` migration hook.
 6. Insert the singleton completion row (`id = 1`) in `__livestore_rebuild`.
 
+Replay consumes the existing eventlog pages in order, with up to 100 events per
+state-database savepoint. This batch size is internal and cannot be configured by
+applications. Application rows, the state head and undo metadata commit
+together for each batch. Failure or interruption rolls back the current batch.
+Earlier batches can remain in the incomplete database, which boot discards before
+retrying. Progress still reports each processed event, not a durability boundary.
+Batching reduces repeated SQLite page writes without holding the whole replay in
+one transaction. Memory used by a batch depends on its events and materializers.
+
 Table existence and the state head alone do not prove completion: a materializer
 can fail partway through replay, or a hook can fail after replay reaches the tip.
 Boot reuses state only when all state system tables and the completion row exist.
@@ -114,7 +123,7 @@ snapshot before the session becomes available to application queries.
 
 Completion is recorded only on the successful path, never by a finalizer. Hooks
 can run again after a failed/interrupted rebuild. External hook side effects must
-tolerate retries; the marker does not make them exactly-once. Existing event
+tolerate retries; the marker does not make them exactly-once. Normal live-event
 transaction boundaries and asynchronous persistence/sync are unchanged.
 
 The marker table participates in the compound state fingerprint. Upgrading from
@@ -123,7 +132,8 @@ rebuild, including for previously complete databases. No eventlog schema or
 storage-format version changes. This protocol detects incomplete **readable**
 SQLite databases, not arbitrary file corruption or loss of the eventlog.
 
-See [the completion/recovery decision](./.decisions/0001-rebuild-completion.md).
+See [the completion/recovery decision](./.decisions/0001-rebuild-completion.md)
+and [the replay batching decision](./.decisions/0002-batch-replay-writes.md).
 
 The rebuild produces a `migrationsReport` surfaced through adapter boot info.
 On the Cloudflare Durable Object adapter, replay writes the newly materialized

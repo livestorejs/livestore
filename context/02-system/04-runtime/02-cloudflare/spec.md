@@ -86,6 +86,16 @@ access. The provider side that threads `storeId` is `03-sync/03-cf`'s concern
 
 ## Open Design Questions
 
+- **LS.SYS.RT.CF-DQ2 Free-plan capacity and memory headroom.** The adapter should
+  support representative workloads on Workers Free with substantial memory
+  headroom for application state and concurrent work. The supported workload
+  envelope and regression budget are not yet established: local full-boot
+  profiles for several replay fixtures exceed the documented isolate ceiling,
+  even with 100-event replay batches. Track production-equivalent profiling,
+  allocation reduction and deployed validation in
+  [#1612](https://github.com/livestorejs/livestore/issues/1612). Account-wide
+  read/write quotas must also leave room for normal operation; batch size alone
+  cannot guarantee Free-plan compatibility.
 - **LS.SYS.RT.CF-DQ1 Flush durability scope.** The commit-loss window is
   decided (accepted; LS.SYS.RT.CF-R06). What remains platform-trust: whether
   Cloudflare's "confirmed flushed to disk" implies geo/replicated durability

@@ -5,6 +5,7 @@ import { type SqliteDb, UnknownError } from './adapter-types.ts'
 import type { MaterializeEvent } from './leader-thread/mod.ts'
 import type { EventDef, LiveStoreSchema } from './schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from './schema/mod.ts'
+import { withSavepoint } from './sqlite-db-helper.ts'
 import type { PreparedBindValues } from './util.ts'
 import { sql } from './util.ts'
 
@@ -14,13 +15,13 @@ const jsonParse = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown)
 export const rematerializeFromEventlog = Effect.fn('@livestore/common:rematerializeFromEventlog')(function* ({
   dbEventlog,
   // TODO re-use this db when bringing back the boot in-memory db implementation
-  // db,
+  dbState,
   schema,
   onProgress,
   materializeEvent,
 }: {
   dbEventlog: SqliteDb
-  // db: SqliteDb
+  dbState: SqliteDb
   schema: LiveStoreSchema
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>
   materializeEvent: MaterializeEvent
@@ -125,14 +126,19 @@ LIMIT ${CHUNK_SIZE}
     }),
   ).pipe(
     Stream.bufferArray({ capacity: 2 }),
-    Stream.tap((row) =>
-      Effect.gen(function* () {
-        yield* processEvent(row)
+    Stream.runForEachArray((rows) =>
+      Effect.forEach(
+        rows,
+        (row) =>
+          Effect.gen(function* () {
+            yield* processEvent(row)
 
-        processedEvents++
-        yield* onProgress({ done: processedEvents, total: eventsCount })
-      }),
+            processedEvents++
+            yield* onProgress({ done: processedEvents, total: eventsCount })
+          }),
+        { discard: true },
+      ).pipe(withSavepoint(dbState)),
     ),
-    Stream.runDrain,
+    Effect.ensuring(Effect.sync(() => stmt.finalize())),
   )
 }, Effect.withPerformanceMeasure('@livestore/common:rematerializeFromEventlog'))
