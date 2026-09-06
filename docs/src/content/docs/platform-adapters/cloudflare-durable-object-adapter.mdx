@@ -135,6 +135,8 @@ Changing the state schema causes each affected store to open a fresh state datab
 
 Rebuilds use 100 events per batch by default. A Durable Object can set `params: { stateRebuildBatchSize }` on `createStoreDo` or `createStoreDoPromise`; the value must be a positive integer. Lower values can reduce per-batch resource use, but require more queries, savepoints, and storage writes. This limit counts events rather than bytes and does not guarantee that the whole isolate stays within its memory limit, so profile representative data and materializers. Other clients of the same store can use different values.
 
+After successful boot, the adapter removes obsolete state database pages while preserving the current database and eventlog. Failed rebuilds retain the previous state file. Cleanup failures log a warning and retry on the next successful boot, including when reusing completed state. Returning to an older schema rebuilds its state from the eventlog.
+
 ## Resetting LiveStore persistence (development only)
 
 When iterating locally, you can instruct the adapter to wipe the Durable Object’s LiveStore databases before booting by enabling `resetPersistence`. Guard this behind a protected route or admin token.

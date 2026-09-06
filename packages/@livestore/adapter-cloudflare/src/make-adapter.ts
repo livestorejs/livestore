@@ -167,6 +167,14 @@ export const makeAdapter =
         origin: undefined,
       })
 
+      // Retain previous state until boot succeeds; retry optional cleanup on the next boot if storage rejects it.
+      yield* Effect.try(() => {
+        storage.sql.exec(
+          "DELETE FROM vfs_pages WHERE file_path GLOB '/state*@*.db' AND file_path != ?",
+          `/${dbState.metadata.persistenceInfo.fileName}`,
+        )
+      }).pipe(Effect.catch((cause) => Effect.logWarning('Failed to clean up obsolete state databases', cause)))
+
       return clientSession
     }).pipe(
       Effect.withSpan('@livestore/adapter-cloudflare:makeAdapter', { attributes: { clientId, sessionId } }),

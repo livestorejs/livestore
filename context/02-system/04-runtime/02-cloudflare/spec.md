@@ -65,6 +65,21 @@ behaviors versus the portable contract:
   `eventlog`, and `__livestore_sync_status` (direct), inside
   `storage.transactionSync`.
 
+## Obsolete State Cleanup
+
+After adapter boot succeeds, delete `vfs_pages` rows for other paths in the
+adapter's `/state{fingerprint}@{storageFormatVersion}.db` namespace. Keep the
+current state file, unrelated VFS files, eventlog and sync metadata. A failed
+rebuild or migration hook must not trigger this cleanup.
+
+Run cleanup on completed-state reuse too, so old files from earlier releases or
+failed cleanup attempts do not require another schema change to be removed.
+Cleanup failure logs a warning and leaves the completed store available; the
+next successful boot retries. Once clean, later boots delete no rows. Deleting
+obsolete derived state means returning to an older schema rebuilds it from the
+eventlog rather than reusing its old cache. The cleanup does not compact the
+underlying Durable Object SQLite database.
+
 ## Eviction and Resume
 
 The DO adapter has no eviction-specific handling (no alarms, no hibernation

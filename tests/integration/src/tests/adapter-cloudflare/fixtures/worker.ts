@@ -111,6 +111,42 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
       return makeCfResponse('storeId is required', { status: 400 })
     }
 
+    if (url.pathname === '/store/rebuild/block-cleanup') {
+      if (request.method === 'POST') {
+        this.ctx.storage.sql.exec(
+          'INSERT INTO vfs_pages (file_path, page_no, page_data) VALUES (?, 0, ?)',
+          '/state-obsolete@0.db',
+          new Uint8Array([1, 2, 3]),
+        )
+        this.ctx.storage.sql.exec(`
+          CREATE TRIGGER reject_cleanup BEFORE DELETE ON vfs_pages
+          WHEN OLD.file_path = '/state-obsolete@0.db'
+          BEGIN SELECT RAISE(ABORT, 'Injected cleanup failure'); END
+        `)
+      } else if (request.method === 'DELETE') {
+        this.ctx.storage.sql.exec('DROP TRIGGER reject_cleanup')
+      }
+      return makeCfResponse('ok')
+    }
+
+    if (url.pathname === '/store/rebuild/files') {
+      if (request.method === 'POST') {
+        this.ctx.storage.sql.exec(
+          'INSERT INTO vfs_pages (file_path, page_no, page_data) VALUES (?, 0, ?)',
+          '/unrelated.db',
+          new Uint8Array([1, 2, 3]),
+        )
+      }
+      return makeCfResponse(
+        JSON.stringify(
+          this.ctx.storage.sql
+            .exec('SELECT file_path AS path, COUNT(*) AS pages FROM vfs_pages GROUP BY file_path ORDER BY file_path')
+            .toArray(),
+        ),
+        { headers: { 'content-type': 'application/json' } },
+      )
+    }
+
     if (url.pathname === '/store/rebuild/eventlog') {
       return makeCfResponse(
         JSON.stringify({
