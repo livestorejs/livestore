@@ -50,6 +50,14 @@ simulation}`, `debug.instanceId`, `shutdownDeferred`, `signal`
 
 ## Commit Path
 
+`store.commit` accepts events directly or a synchronous callback receiving an
+event emitter, optionally preceded by commit options. Each emitter call accepts
+one or more schema events. Events are collected in order and enter the pipeline
+only after the callback returns successfully. An empty callback is a no-op. A
+callback that throws propagates its error before entering the pipeline, discards
+the collected events, and leaves the store usable. Callback return values are
+ignored. Events must be passed to the emitter or directly to `store.commit`.
+
 The pipeline is fully synchronous, run via `Effect.runSyncWith`
 (`store.ts:945`). **This synchronicity is an invariant** (Q1, see
 [`.decisions/0001-client-session-shutdown-drain.md`](./.decisions/0001-client-session-shutdown-drain.md)):

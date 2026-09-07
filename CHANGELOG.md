@@ -10,6 +10,10 @@
 
 ### Changed
 
+- **Store commits:** Fixed the documented callback form of `store.commit` and
+  its TypeScript overloads, including calls with commit options. Callback events
+  are collected before materialization, and throwing callbacks apply no events
+  ([#1611](https://github.com/livestorejs/livestore/issues/1611)).
 - **Cloudflare sync:** Serialize push admission through pull publication so an
   accepted event cannot advance the backend head without notifying subscribers
   ([#1537](https://github.com/livestorejs/livestore/pull/1537)).
@@ -35,6 +39,10 @@
 
 ### Breaking Changes
 
+- **Store commit callbacks:** Callback return values are now ignored. Replace
+  the undocumented `store.commit(() => [event])` form with `store.commit(event)`
+  or `store.commit((commit) => { commit(event) })`
+  ([#1611](https://github.com/livestorejs/livestore/issues/1611)).
 - **State schema fingerprints:** Replaced Effect-internal AST hashing with a
   LiveStore-owned canonical descriptor and a synchronous full-width SHA-256
   fingerprint. No application schema or configuration changes are required.

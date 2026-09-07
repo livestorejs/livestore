@@ -824,6 +824,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * For more advanced transaction scenarios, you can pass a synchronous function to `commit` which will receive a callback
    * to which you can pass multiple events to be committed in the same database transaction.
    * Under the hood this will simply collect all events and apply them in a single database transaction.
+   * The callback's return value is ignored.
    *
    * @example
    * ```ts
@@ -855,21 +856,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    */
   commit: {
     <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(...list: TCommitArg): void
-    (
-      txn: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(
-        ...list: TCommitArg
-      ) => void,
-    ): void
+    (txn: CommitCallback<TSchema>): void
     <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(
       options: StoreCommitOptions,
       ...list: TCommitArg
     ): void
-    (
-      options: StoreCommitOptions,
-      txn: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(
-        ...list: TCommitArg
-      ) => void,
-    ): void
+    (options: StoreCommitOptions, txn: CommitCallback<TSchema>): void
   } = (firstEventOrTxnFnOrOptions: any, ...restEvents: any[]) => {
     this.checkShutdown('commit')
 
@@ -1277,27 +1269,38 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     events: LiveStoreEvent.Input.ForSchema<TSchema>[]
     options: StoreCommitOptions | undefined
   } => {
-    let events: LiveStoreEvent.Input.ForSchema<TSchema>[]
+    let events: LiveStoreEvent.Input.ForSchema<TSchema>[] = []
     let options: StoreCommitOptions | undefined
+    let commitArgs = [firstEventOrTxnFnOrOptions, ...restEvents]
 
-    if (typeof firstEventOrTxnFnOrOptions === 'function') {
-      // TODO ensure that function is synchronous and isn't called in a async way (also write tests for this)
-      events = firstEventOrTxnFnOrOptions((arg: any) => events.push(arg))
-    } else if (
+    if (
       firstEventOrTxnFnOrOptions?.label !== undefined ||
       firstEventOrTxnFnOrOptions?.skipRefresh !== undefined ||
       firstEventOrTxnFnOrOptions?.otelContext !== undefined ||
-      firstEventOrTxnFnOrOptions?.spanLinks !== undefined
+      firstEventOrTxnFnOrOptions?.spanLinks !== undefined ||
+      typeof restEvents[0] === 'function'
     ) {
       options = firstEventOrTxnFnOrOptions
-      events = restEvents
-    } else if (firstEventOrTxnFnOrOptions === undefined) {
-      // When `commit` is called with no arguments (which sometimes happens when dynamically filtering events)
-      events = []
-    } else {
-      events = [firstEventOrTxnFnOrOptions, ...restEvents]
+      commitArgs = restEvents
+    }
+
+    const firstEventOrTxnFn = commitArgs[0]
+    if (typeof firstEventOrTxnFn === 'function') {
+      // TODO ensure that function is synchronous and isn't called in an async way (also write tests for this).
+      // Collect before materializing so a throwing callback cannot commit a partial batch.
+      firstEventOrTxnFn((...args: LiveStoreEvent.Input.ForSchema<TSchema>[]) => {
+        events.push(...args)
+      })
+    } else if (firstEventOrTxnFn !== undefined) {
+      events = commitArgs
     }
 
     return { events, options }
   }
 }
+
+type CommitCallback<TSchema extends LiveStoreSchema> = (
+  commit: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(
+    ...events: TCommitArg
+  ) => void,
+) => void
