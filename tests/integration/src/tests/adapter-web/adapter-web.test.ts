@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 
 import { expect } from 'vitest'
 
+import { UnknownError } from '@livestore/common'
 import { BrowserContext, browserContextLayer } from '@livestore/effect-playwright'
 import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -174,8 +175,8 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
   )
 
   /**
-   * Verifies that two tabs in single-tab mode operate independently
-   * (no cross-tab synchronization when SharedWorker is unavailable).
+   * Independent single-tab stores must use separate OPFS files. Sharing a storeId
+   * opens the same file from two leaders, which is unsupported without SharedWorker (#1609).
    */
   Vitest.live('single-tab mode: tabs operate independently', (test) =>
     Effect.gen(function* () {
@@ -201,7 +202,15 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       const page1 = yield* Effect.promise(() => browserContext.newPage())
       const page2 = yield* Effect.promise(() => browserContext.newPage())
 
-      // Disable SharedWorker on both pages
+      const browserErrors: string[] = []
+      for (const [index, page] of [page1, page2].entries()) {
+        page.on('pageerror', (error) => browserErrors.push(`Tab ${index + 1}: ${error.message}`))
+        page.on('console', (message) => {
+          if (message.type() === 'error') browserErrors.push(`Tab ${index + 1}: ${message.text()}`)
+        })
+      }
+
+      // Disable SharedWorker on both pages.
       yield* Effect.promise(() =>
         Promise.all([
           page1.addInitScript(() => {
@@ -216,30 +225,43 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       )
 
       const url = appUrl('/adapter-web/concurrent-boot')
+      const storeId1 = 'independent-store-1'
+      const storeId2 = 'independent-store-2'
 
       // Boot both tabs
       yield* Effect.promise(() =>
         Promise.all([
-          page1.goto(`${url}?sessionId=tab1&clientId=client1`),
-          page2.goto(`${url}?sessionId=tab2&clientId=client2`),
+          page1.goto(`${url}?storeId=${storeId1}&sessionId=tab1&clientId=client1`),
+          page2.goto(`${url}?storeId=${storeId2}&sessionId=tab2&clientId=client2`),
         ]),
       )
 
-      // Verify both tabs boot successfully
-      const didBoot = (page: typeof page1) =>
-        Effect.tryPromise({
-          try: () => page.waitForSelector('text=Adapter Web Test App', { state: 'visible', timeout: 15000 }),
-          catch: () => false,
-        }).pipe(
-          Effect.map(() => true),
-          Effect.orElseSucceed(() => false),
-        )
+      // Preserve browser errors and the original timeout instead of reducing failures to false.
+      yield* Effect.tryPromise({
+        try: () =>
+          Promise.all(
+            [page1, page2].map((page) =>
+              page.waitForSelector('text=Adapter Web Test App', { state: 'visible', timeout: 15000 }),
+            ),
+          ),
+        catch: (cause) =>
+          new UnknownError({ cause, note: `Independent tabs failed to boot:\n${browserErrors.join('\n')}` }),
+      })
 
-      const [boot1, boot2] = yield* Effect.all([didBoot(page1), didBoot(page2)])
-      expect(boot1 && boot2).toBe(true)
+      yield* Effect.promise(async () => {
+        const todos1 = page1.getByRole('listitem')
+        const todos2 = page2.getByRole('listitem')
+        expect(await todos1.allTextContents()).toEqual([])
+        expect(await todos2.allTextContents()).toEqual([])
 
-      // Both tabs should operate independently (this is expected behavior in single-tab mode)
-      // We're just verifying they both boot; cross-tab sync is intentionally disabled
+        await page1.getByRole('button', { name: 'Add todo' }).click()
+        await expect.poll(() => todos1.allTextContents()).toEqual([storeId1])
+        expect(await todos2.allTextContents()).toEqual([])
+
+        await page2.getByRole('button', { name: 'Add todo' }).click()
+        await expect.poll(() => todos2.allTextContents()).toEqual([storeId2])
+        expect(await todos1.allTextContents()).toEqual([storeId1])
+      })
     }).pipe(withTestCtx(test)),
   )
 })
