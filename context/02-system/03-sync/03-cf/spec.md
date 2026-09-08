@@ -87,6 +87,34 @@ Server-side embedding of a LiveStore client inside Cloudflare (Durable
 Object hosting a store) is `04-runtime/`'s adapter concern
 (`adapter-cloudflare`), not part of this provider node.
 
+## Optional telemetry
+
+`makeDurableObject` leaves telemetry export disabled unless `otel` is supplied.
+Applications can pass an OpenTelemetry provider directly as `otel: provider`, or
+retain the `baseUrl`/`serviceName` convenience exporter. Neither requires Cloudflare
+native tracing, managed telemetry destinations, or a Workers Paid subscription.
+
+The injected provider remains application-owned: LiveStore does not register it
+globally or shut it down. After finite sync work, LiveStore calls `forceFlush()`
+when the provider supports it. Export runs in the background and failures do not
+change sync results. There is one outstanding flush per DO instance; concurrent
+completions request a trailing flush. LiveStore stops waiting after 3000 ms but
+cannot cancel app-owned SDK promises; a queued flush still runs if a slow promise
+eventually settles. Owned endpoint exporters close in the background with a
+3000 ms shutdown timeout.
+
+WebSocket pushes and finite pull history receive exported RPC boundary spans
+attached directly to the caller, bypassing Effect RPC's unexported subscription
+envelope. DO-RPC pull streams receive tracing inside their separate execution
+runtime. Finite history closes before waiting for live updates, so the endpoint
+exporter does not retain timers for the lifetime of an idle subscription.
+
+Export remains best-effort. A DO has no shutdown callback on hibernation or
+eviction, and an injected provider's own timers/I/O remain the app's
+responsibility. This integration does not join Cloudflare-native trace IDs to
+LiveStore traces or change the sync protocol. See
+[decision 0005](.decisions/0005-optional-telemetry-ownership.md).
+
 ## Known Gaps (Non-Obligations)
 
 Current reality a consumer must not read as guaranteed behavior:

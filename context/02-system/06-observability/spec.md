@@ -16,6 +16,15 @@ Draft.
 - `common/src/otel.ts` centralizes tracer/span-context plumbing into the
   Store (`StoreOtel`); `createStore`/`provideOtel` inject the app tracer
   (LS.SYS.OBS-R03).
+- The Cloudflare sync backend accepts an app-owned provider through
+  `makeDurableObject({ otel: provider })`. LiveStore installs the Effect bridge
+  locally and never registers or shuts down the injected provider. The app
+  controls exporters, sampling, credentials, and destinations. Provider
+  `forceFlush()`, when available, runs in the background after finite sync work;
+  failures do not change sync outcomes. The existing `otel.baseUrl` convenience
+  configuration creates operation-scoped exporters instead. See the
+  [Cloudflare provider spec](../03-sync/03-cf/spec.md) for transport boundaries,
+  coalescing, and best-effort shutdown limits.
 - `utils/src/NoopTracer.ts` is the default when no tracer is provided
   (LS.SYS.OBS-R02). It is cheap but not free: each span allocates a span
   object and returns OpenTelemetry's shared invalid span context. A zero-allocation no-op path on

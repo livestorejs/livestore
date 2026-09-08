@@ -1,3 +1,5 @@
+import type { TracerProvider } from '@opentelemetry/api'
+
 import type { UnknownError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
 import type { Effect } from '@livestore/utils/effect'
@@ -107,11 +109,21 @@ export type MakeDurableObjectClassOptions = {
     responseHeaders?: Record<string, string>
   }
 
-  otel?: {
-    baseUrl?: string
-    serviceName?: string
-  }
+  /** Optional telemetry. Omit to avoid creating an exporter or sending telemetry. */
+  otel?: SyncBackendOtelOptions
 }
+
+export type SyncBackendOtelOptions =
+  /** Pass your existing OTel provider directly. LiveStore never registers or shuts it down. */
+  | (TracerProvider & {
+      /** Standard SDK providers expose this. LiveStore invokes it in the background after sync work. */
+      forceFlush?: () => Promise<void>
+    })
+  | {
+      /** Convenience OTLP/HTTP JSON exporter owned by LiveStore for each operation. */
+      baseUrl?: string
+      serviceName?: string
+    }
 
 export type StoreId = string
 export type DurableObjectId = string
