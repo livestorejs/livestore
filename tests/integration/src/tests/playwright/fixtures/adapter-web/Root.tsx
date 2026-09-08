@@ -8,7 +8,7 @@ import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider, useStore } from '@livestore/react'
 
 import LiveStoreWorker from '../devtools/todomvc/livestore/livestore.worker.ts?worker'
-import { schema } from '../devtools/todomvc/livestore/schema.ts'
+import { events, schema, tables } from '../devtools/todomvc/livestore/schema.ts'
 
 const ErrorFallback = <div data-webtest="error">Error</div>
 const SuspenseFallback = <div>Loading...</div>
@@ -44,6 +44,7 @@ export const Root: React.FC = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
 
   const sp = new URLSearchParams(window.location.search)
+  const storeId = sp.get('storeId') ?? 'adapter-web-test'
   const reset = sp.get('reset') !== null
   const sessionId = sp.get('sessionId') ?? undefined
   const clientId = sp.get('clientId') ?? undefined
@@ -88,19 +89,34 @@ export const Root: React.FC = () => {
     <ErrorBoundary fallback={ErrorFallback}>
       <Suspense fallback={SuspenseFallback}>
         <StoreRegistryProvider storeRegistry={storeRegistry}>
-          <AppWithStore adapter={adapter} />
+          <AppWithStore adapter={adapter} storeId={storeId} />
         </StoreRegistryProvider>
       </Suspense>
     </ErrorBoundary>
   )
 }
 
-const AppWithStore: React.FC<{ adapter: ReturnType<typeof makePersistedAdapter> }> = memo(({ adapter }) => {
-  useStore({
-    storeId: 'adapter-web-test',
-    schema,
-    adapter,
-    batchUpdates,
-  })
-  return <div>Adapter Web Test App</div>
-})
+const AppWithStore: React.FC<{ adapter: ReturnType<typeof makePersistedAdapter>; storeId: string }> = memo(
+  ({ adapter, storeId }) => {
+    const store = useStore({ storeId, schema, adapter, batchUpdates })
+    const todos = store.useQuery(tables.todos.orderBy('id', 'asc'))
+    const addTodo = React.useCallback(
+      () => store.commit(events.todoCreated({ id: 'todo-1', text: storeId })),
+      [store, storeId],
+    )
+
+    return (
+      <div>
+        <div>Adapter Web Test App</div>
+        <button type="button" disabled={todos.length > 0} onClick={addTodo}>
+          Add todo
+        </button>
+        <ul>
+          {todos.map((todo) => (
+            <li key={todo.id}>{todo.text}</li>
+          ))}
+        </ul>
+      </div>
+    )
+  },
+)
