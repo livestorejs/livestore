@@ -94,11 +94,19 @@ Applications can pass an OpenTelemetry provider directly as `otel: provider`, or
 retain the `baseUrl`/`serviceName` convenience exporter. Neither requires Cloudflare
 native tracing, managed telemetry destinations, or a Workers Paid subscription.
 
+Applications can also supply an Effect tracer layer as `otel: layer`. LiveStore
+builds it with a fresh scope per sync operation and finalizes its acquired
+resources afterwards. Layer construction runs on the operation path; only
+finalization runs in the background. A layer must not attach a shutdown finalizer to a shared
+application-owned provider. Platform-specific tracer dependencies stay in the
+application; the library does not select a platform tracer.
+
 The injected provider remains application-owned: LiveStore does not register it
 globally or shut it down. After finite sync work, LiveStore calls `forceFlush()`
 when the provider supports it. Export runs in the background and failures do not
 change sync results. There is one outstanding flush per DO instance; concurrent
-completions request a trailing flush. LiveStore stops waiting after 3000 ms but
+completions request a trailing flush, including when the current flush fails.
+A failure alone does not schedule a retry. LiveStore stops waiting after 3000 ms but
 cannot cancel app-owned SDK promises; a queued flush still runs if a slow promise
 eventually settles. Owned endpoint exporters close in the background with a
 3000 ms shutdown timeout.

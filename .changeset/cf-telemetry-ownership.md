@@ -9,3 +9,6 @@ Existing OTLP endpoint configuration remains supported. Export finite WebSocket
 RPC spans and DO-RPC pull spans, closing finite history before live subscription
 waits. Telemetry remains opt-in and requires no Cloudflare managed export or
 Workers Paid subscription.
+
+Also accept application-supplied Effect tracer layers with per-operation resource
+scopes, and preserve queued provider flushes when an earlier export fails.

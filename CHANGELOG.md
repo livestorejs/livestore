@@ -15,7 +15,8 @@
   are collected before materialization, and throwing callbacks apply no events
   ([#1611](https://github.com/livestorejs/livestore/issues/1611)).
 - **Cloudflare sync telemetry:** Added optional application-owned OpenTelemetry
-  providers via `otel: provider`. Export runs in the background, and finite
+  providers via `otel: provider` or Effect tracer layers via `otel: layer`.
+  Export runs in the background and preserves queued flushes after failures. Finite
   WebSocket operations and DO-RPC pull streams now emit their sync spans
   ([#1618](https://github.com/livestorejs/livestore/issues/1618)).
 - **Cloudflare sync:** Serialize push admission through pull publication so an

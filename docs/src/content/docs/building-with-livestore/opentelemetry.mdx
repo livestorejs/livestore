@@ -21,7 +21,8 @@ Configure a tracer separately in each runtime that should report telemetry,
 including browser workers. The [Cloudflare sync backend](/sync-providers/cloudflare/#server-api-reference)
 accepts your provider directly as `otel: provider` and flushes in the background
 when it supports `forceFlush()`. This does not
-require Cloudflare's native tracing beta or a paid telemetry feature.
+require Cloudflare's native tracing beta or a paid telemetry feature. You can also
+supply an Effect tracer layer as `otel: layer`, built and finalized per sync operation.
 
 ## Usage with React
 

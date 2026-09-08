@@ -2,7 +2,7 @@ import { ROOT_CONTEXT, trace } from '@opentelemetry/api'
 
 import { makeNoopSpan, makeNoopTracer } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Deferred, Effect, Fiber, Stream, TestClock, Tracer } from '@livestore/utils/effect'
+import { Deferred, Effect, Fiber, Layer, Stream, TestClock, Tracer } from '@livestore/utils/effect'
 
 import { makeObservability, rpcSpanOptions } from './observability.ts'
 
@@ -20,6 +20,59 @@ Vitest.describe('sync-cf telemetry ownership', () => {
       Vitest.expect(result).toBe('ack')
       Vitest.expect(history).toEqual(['event'])
       Vitest.expect(fetch).not.toHaveBeenCalled()
+    }),
+  )
+
+  Vitest.effect('builds and finalizes a supplied layer independently for overlapping operations', () =>
+    Effect.gen(function* () {
+      const firstStarted = yield* Deferred.make<void>()
+      const secondStarted = yield* Deferred.make<void>()
+      const firstGate = yield* Deferred.make<void>()
+      const secondGate = yield* Deferred.make<void>()
+      const firstReleased = yield* Deferred.make<void>()
+      const secondReleased = yield* Deferred.make<void>()
+      const builds: string[] = []
+      const releases: string[] = []
+      const layer = Layer.effectDiscard(
+        Effect.acquireRelease(
+          Effect.currentSpan.pipe(
+            Effect.orDie,
+            Effect.tap((span) => Effect.sync(() => builds.push(span.name))),
+          ),
+          (span) =>
+            Effect.sync(() => releases.push(span.name)).pipe(
+              Effect.andThen(Deferred.succeed(span.name === 'first' ? firstReleased : secondReleased, undefined)),
+            ),
+        ),
+      )
+      const observability = makeObservability(layer)
+      const first = yield* Deferred.succeed(firstStarted, undefined).pipe(
+        Effect.andThen(Deferred.await(firstGate)),
+        observability.effect,
+        Effect.withSpan('first'),
+        Effect.forkChild,
+      )
+      yield* Deferred.await(firstStarted)
+      const second = yield* Deferred.succeed(secondStarted, undefined).pipe(
+        Effect.andThen(Deferred.await(secondGate)),
+        observability.effect,
+        Effect.withSpan('second'),
+        Effect.forkChild,
+      )
+      yield* Deferred.await(secondStarted)
+      Vitest.expect(builds).toEqual(['first', 'second'])
+      Vitest.expect(releases).toEqual([])
+
+      yield* Deferred.succeed(firstGate, undefined)
+      yield* Fiber.join(first)
+      yield* Deferred.await(firstReleased)
+      Vitest.expect(releases).toEqual(['first'])
+      Vitest.expect(second.pollUnsafe()).toBeUndefined()
+
+      yield* Deferred.succeed(secondGate, undefined)
+      yield* Fiber.join(second)
+      yield* Deferred.await(secondReleased)
+      Vitest.expect(releases).toEqual(['first', 'second'])
     }),
   )
 
@@ -46,45 +99,50 @@ Vitest.describe('sync-cf telemetry ownership', () => {
     }),
   )
 
-  Vitest.effect('acknowledges during a blocked export and drains later spans even after the wait times out', () =>
-    Effect.gen(function* () {
-      const { tracer, ended } = makeRecordingTracer()
-      // These promises model the SDK boundary. Test coordination and time remain under Effect.
-      const gate = Promise.withResolvers<void>()
-      const started = Promise.withResolvers<void>()
-      const trailingFlush = Promise.withResolvers<ReadonlyArray<string>>()
-      const acknowledged = yield* Deferred.make<void>()
-      let calls = 0
-      const forceFlush = () => {
-        calls++
-        if (calls === 1) {
-          started.resolve()
-          return gate.promise
+  Vitest.effect.each(['resolve', 'reject'] as const)(
+    'drains queued spans when a timed-out flush later settles: %s',
+    (mode) =>
+      Effect.gen(function* () {
+        const { tracer, ended } = makeRecordingTracer()
+        // These promises model the SDK boundary. Test coordination and time remain under Effect.
+        const gate = Promise.withResolvers<void>()
+        const started = Promise.withResolvers<void>()
+        const trailingFlush = Promise.withResolvers<ReadonlyArray<string>>()
+        const acknowledged = yield* Deferred.make<void>()
+        let calls = 0
+        const forceFlush = () => {
+          calls++
+          if (calls === 1) {
+            started.resolve()
+            return gate.promise
+          }
+          trailingFlush.resolve([...ended])
+          return Promise.resolve()
         }
-        trailingFlush.resolve([...ended])
-        return Promise.resolve()
-      }
-      yield* Effect.addFinalizer(() => Effect.sync(() => gate.resolve()))
-      const observability = makeObservability({ getTracer: () => tracer, forceFlush })
-      yield* Effect.void.pipe(
-        Effect.withSpan('first push'),
-        observability.effect,
-        Effect.andThen(Deferred.succeed(acknowledged, undefined)),
-        Effect.forkChild,
-      )
-      yield* Effect.promise(() => started.promise)
-      yield* Effect.yieldNow
-      Vitest.expect(yield* Deferred.isDone(acknowledged)).toBe(true)
+        yield* Effect.addFinalizer(() => Effect.sync(() => gate.resolve()))
+        const observability = makeObservability({ getTracer: () => tracer, forceFlush })
+        yield* Effect.void.pipe(
+          Effect.withSpan('first push'),
+          observability.effect,
+          Effect.andThen(Deferred.succeed(acknowledged, undefined)),
+          Effect.forkChild,
+        )
+        yield* Effect.promise(() => started.promise)
+        yield* Effect.yieldNow
+        Vitest.expect(yield* Deferred.isDone(acknowledged)).toBe(true)
 
-      // Advance the actual Effect timeout, not Date.now or wall-clock sleeps.
-      yield* TestClock.adjust('4 seconds')
-      yield* Effect.void.pipe(Effect.withSpan('second push'), observability.effect)
-      yield* TestClock.adjust(1)
-      Vitest.expect(calls).toBe(1)
+        // Advance the actual Effect timeout, not Date.now or wall-clock sleeps.
+        yield* TestClock.adjust('4 seconds')
+        yield* Effect.void.pipe(Effect.withSpan('second push'), observability.effect)
+        yield* TestClock.adjust(1)
+        Vitest.expect(calls).toBe(1)
 
-      gate.resolve()
-      Vitest.expect(yield* Effect.promise(() => trailingFlush.promise)).toEqual(['first push', 'second push'])
-    }),
+        if (mode === 'reject') gate.reject(new Error('collector unavailable'))
+        else gate.resolve()
+        Vitest.expect(yield* Effect.promise(() => trailingFlush.promise)).toEqual(['first push', 'second push'])
+        yield* TestClock.adjust('4 seconds')
+        Vitest.expect(calls).toBe(2)
+      }),
   )
 
   Vitest.live.each(['reject', 'throw'] as const)('preserves sync results and recovers after a flush %s', (mode) =>

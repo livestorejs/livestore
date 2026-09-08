@@ -22,7 +22,9 @@ Draft.
   controls exporters, sampling, credentials, and destinations. Provider
   `forceFlush()`, when available, runs in the background after finite sync work;
   failures do not change sync outcomes. The existing `otel.baseUrl` convenience
-  configuration creates operation-scoped exporters instead. See the
+  configuration creates operation-scoped exporters instead. An application can
+  alternatively supply an Effect tracer layer, built and finalized per sync
+  operation, without adding a platform-specific library dependency. See the
   [Cloudflare provider spec](../03-sync/03-cf/spec.md) for transport boundaries,
   coalescing, and best-effort shutdown limits.
 - `utils/src/NoopTracer.ts` is the default when no tracer is provided

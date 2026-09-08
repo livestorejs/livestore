@@ -192,9 +192,10 @@ Creates a sync backend Durable Object class.
 - `storage?` - Storage engine: `{ _tag: 'do-sqlite' } | { _tag: 'd1', binding: string }` (default: `do-sqlite`)
 - `enabledTransports?` - Set of enabled transports: `Set<'http' | 'ws' | 'do-rpc'>`
 - `otel?` - Pass your OpenTelemetry provider directly: `otel: provider`.
+  Alternatively, supply an Effect tracer layer as `otel: layer`.
   The existing `{ baseUrl, serviceName? }` OTLP/HTTP JSON exporter is also supported.
 
-Without `otel`, LiveStore creates no telemetry exporter. Both modes work without
+Without `otel`, LiveStore creates no telemetry exporter. The provider and endpoint modes work without
 Cloudflare native tracing or managed telemetry export and do not require Workers
 Paid. Your exporter destination and normal Cloudflare resource limits still apply.
 
@@ -205,6 +206,11 @@ finite sync work. Export does not delay sync acknowledgments, and flush failures
 do not fail synchronization. Concurrent requests are coalesced per Durable Object.
 LiveStore stops waiting after three seconds; it cannot cancel the provider's own
 I/O. If a slow flush eventually settles, queued work gets a trailing flush.
+
+For `otel: layer`, LiveStore builds the layer per sync operation and finalizes its
+resources in the background. Construction runs on the operation path. A layer
+must not attach a shutdown finalizer to a shared application-owned provider.
+Platform-specific tracer packages belong in the application.
 
 Choose an exporter suitable for Durable Objects: persistent timers can prevent
 hibernation, and eviction provides no shutdown hook. Delivery is best-effort.

@@ -43,6 +43,7 @@ export const rpcSpanOptions = Effect.currentSpan.pipe(
 )
 
 const makeLayer = (options: SyncBackendOtelOptions | undefined): Layer.Layer<never> => {
+  if (isTracerLayer(options) === true) return options
   if (options !== undefined && 'getTracer' in options) {
     return OtelTracer.layerWithoutOtelTracer.pipe(
       Layer.provide(Layer.succeed(OtelTracer.OtelTracer, options.getTracer('@livestore/sync-cf'))),
@@ -70,16 +71,14 @@ const makeProviderFlush = (provider: { forceFlush?: () => Promise<void> } | unde
     requested = false
     return Effect.tryPromise(forceFlush)
   }).pipe(
+    // A failed attempt must still drain work queued while its promise was pending.
+    Effect.catchCause(() => Effect.void),
     Effect.repeat({
       while: () => {
         // Release the guard with the final check, so a new completion cannot be lost.
         running = requested
         return requested
       },
-    }),
-    Effect.catchCause(() => {
-      running = false
-      return Effect.void
     }),
   )
 
@@ -106,3 +105,7 @@ const runInBackground = (effect: Effect.Effect<void>) =>
     Effect.forkDetach,
     Effect.asVoid,
   )
+
+/** Preserve the known Layer requirements when narrowing the configuration union. */
+const isTracerLayer = (options: SyncBackendOtelOptions | undefined): options is Layer.Layer<never> =>
+  Layer.isLayer(options)
