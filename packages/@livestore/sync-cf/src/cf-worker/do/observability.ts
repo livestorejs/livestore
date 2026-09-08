@@ -1,28 +1,15 @@
-import {
-  Effect,
-  Exit,
-  FetchHttpClient,
-  Fiber,
-  Layer,
-  Option,
-  OtelTracer,
-  Otlp,
-  Scope,
-  Stream,
-} from '@livestore/utils/effect'
+import { Effect, Exit, FetchHttpClient, Layer, Option, Otlp, Scope, Stream } from '@livestore/utils/effect'
 
 import type { SyncBackendOtelOptions } from '../shared.ts'
 
 /** Keep exporter ownership separate from sync scopes: their finalizers must not delay acknowledgments. */
 export const makeObservability = (options: SyncBackendOtelOptions | undefined) => {
-  const provider = options !== undefined && 'getTracer' in options ? options : undefined
   const layer = makeLayer(options)
-  const flush = makeProviderFlush(provider)
 
   const backgroundLayer = Layer.effectContext(
-    Effect.acquireRelease(Scope.make(), (scope) =>
-      Scope.close(scope, Exit.void).pipe(Effect.andThen(flush), runInBackground),
-    ).pipe(Effect.flatMap((scope) => Layer.buildWithScope(layer, scope))),
+    Effect.acquireRelease(Scope.make(), (scope) => Scope.close(scope, Exit.void).pipe(runInBackground)).pipe(
+      Effect.flatMap((scope) => Layer.buildWithScope(layer, scope)),
+    ),
   )
 
   return {
@@ -44,11 +31,6 @@ export const rpcSpanOptions = Effect.currentSpan.pipe(
 
 const makeLayer = (options: SyncBackendOtelOptions | undefined): Layer.Layer<never> => {
   if (isTracerLayer(options) === true) return options
-  if (options !== undefined && 'getTracer' in options) {
-    return OtelTracer.layerWithoutOtelTracer.pipe(
-      Layer.provide(Layer.succeed(OtelTracer.OtelTracer, options.getTracer('@livestore/sync-cf'))),
-    )
-  }
   if (options?.baseUrl !== undefined) {
     return Otlp.layerJson({
       baseUrl: options.baseUrl,
@@ -58,43 +40,6 @@ const makeLayer = (options: SyncBackendOtelOptions | undefined): Layer.Layer<nev
     }).pipe(Layer.provide(FetchHttpClient.layer))
   }
   return Layer.empty
-}
-
-/** Only one provider flush runs at a time; a hung app promise cannot accumulate more flush attempts. */
-const makeProviderFlush = (provider: { forceFlush?: () => Promise<void> } | undefined) => {
-  const forceFlush = provider?.forceFlush?.bind(provider)
-  if (forceFlush === undefined) return Effect.void
-
-  let running = false
-  let requested = false
-  const drain = Effect.suspend(() => {
-    requested = false
-    return Effect.tryPromise(forceFlush)
-  }).pipe(
-    // A failed attempt must still drain work queued while its promise was pending.
-    Effect.catchCause(() => Effect.void),
-    Effect.repeat({
-      while: () => {
-        // Release the guard with the final check, so a new completion cannot be lost.
-        running = requested
-        return requested
-      },
-    }),
-  )
-
-  return Effect.suspend(() => {
-    requested = true
-    if (running === true) return Effect.void
-    running = true
-
-    // Timing out this await must not interrupt the drain: SDK promises cannot be
-    // cancelled, so its guard must survive until the actual promise settles.
-    return drain.pipe(
-      Effect.forkDetach,
-      Effect.flatMap((fiber) => Fiber.await(fiber).pipe(Effect.timeoutOption(3000))),
-      Effect.asVoid,
-    )
-  })
 }
 
 /** DOs stay active for pending work; no shutdown hook or connection-wide timer is required. */

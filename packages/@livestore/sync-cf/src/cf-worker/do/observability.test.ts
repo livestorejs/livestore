@@ -2,7 +2,7 @@ import { ROOT_CONTEXT, trace } from '@opentelemetry/api'
 
 import { makeNoopSpan, makeNoopTracer } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Deferred, Effect, Fiber, Layer, Stream, TestClock, Tracer } from '@livestore/utils/effect'
+import { Deferred, Effect, Fiber, Layer, OtelTracer, Stream, TestClock, Tracer } from '@livestore/utils/effect'
 
 import { makeObservability, rpcSpanOptions } from './observability.ts'
 
@@ -76,112 +76,14 @@ Vitest.describe('sync-cf telemetry ownership', () => {
     }),
   )
 
-  Vitest.live('exports through the supplied provider after spans end without taking provider ownership', () =>
+  Vitest.effect('finalizes finite history while the live subscription is still open', () =>
     Effect.gen(function* () {
-      const { tracer, spans, ended } = makeRecordingTracer()
-      const register = Vitest.vi.spyOn(trace, 'setGlobalTracerProvider')
-      const flushed = Promise.withResolvers<ReadonlyArray<string>>()
-      const provider = {
-        getTracer: () => tracer,
-        forceFlush: () => {
-          flushed.resolve([...ended])
-          return Promise.resolve()
-        },
-        shutdown: Vitest.vi.fn(),
-      }
-      const observability = makeObservability(provider)
-      yield* Effect.void.pipe(Effect.withSpan('child'), Effect.withSpan('parent'), observability.effect)
-
-      Vitest.expect(yield* Effect.promise(() => flushed.promise)).toEqual(['child', 'parent'])
-      Vitest.expect(spans.get('child')?.parentId).toBe(spans.get('parent')?.spanId)
-      Vitest.expect(register).not.toHaveBeenCalled()
-      Vitest.expect(provider.shutdown).not.toHaveBeenCalled()
-    }),
-  )
-
-  Vitest.effect.each(['resolve', 'reject'] as const)(
-    'drains queued spans when a timed-out flush later settles: %s',
-    (mode) =>
-      Effect.gen(function* () {
-        const { tracer, ended } = makeRecordingTracer()
-        // These promises model the SDK boundary. Test coordination and time remain under Effect.
-        const gate = Promise.withResolvers<void>()
-        const started = Promise.withResolvers<void>()
-        const trailingFlush = Promise.withResolvers<ReadonlyArray<string>>()
-        const acknowledged = yield* Deferred.make<void>()
-        let calls = 0
-        const forceFlush = () => {
-          calls++
-          if (calls === 1) {
-            started.resolve()
-            return gate.promise
-          }
-          trailingFlush.resolve([...ended])
-          return Promise.resolve()
-        }
-        yield* Effect.addFinalizer(() => Effect.sync(() => gate.resolve()))
-        const observability = makeObservability({ getTracer: () => tracer, forceFlush })
-        yield* Effect.void.pipe(
-          Effect.withSpan('first push'),
-          observability.effect,
-          Effect.andThen(Deferred.succeed(acknowledged, undefined)),
-          Effect.forkChild,
-        )
-        yield* Effect.promise(() => started.promise)
-        yield* Effect.yieldNow
-        Vitest.expect(yield* Deferred.isDone(acknowledged)).toBe(true)
-
-        // Advance the actual Effect timeout, not Date.now or wall-clock sleeps.
-        yield* TestClock.adjust('4 seconds')
-        yield* Effect.void.pipe(Effect.withSpan('second push'), observability.effect)
-        yield* TestClock.adjust(1)
-        Vitest.expect(calls).toBe(1)
-
-        if (mode === 'reject') gate.reject(new Error('collector unavailable'))
-        else gate.resolve()
-        Vitest.expect(yield* Effect.promise(() => trailingFlush.promise)).toEqual(['first push', 'second push'])
-        yield* TestClock.adjust('4 seconds')
-        Vitest.expect(calls).toBe(2)
-      }),
-  )
-
-  Vitest.live.each(['reject', 'throw'] as const)('preserves sync results and recovers after a flush %s', (mode) =>
-    Effect.gen(function* () {
-      const failed = Promise.withResolvers<void>()
-      const recovered = Promise.withResolvers<void>()
-      let calls = 0
-      const forceFlush = () => {
-        calls++
-        if (calls === 1) {
-          failed.resolve()
-          if (mode === 'throw') throw new Error('collector unavailable')
-          return Promise.reject(new Error('collector unavailable'))
-        }
-        recovered.resolve()
-        return Promise.resolve()
-      }
-      const observability = makeObservability({ getTracer: () => makeNoopTracer(), forceFlush })
-      Vitest.expect(yield* Effect.succeed('ack').pipe(observability.effect)).toBe('ack')
-      yield* Effect.promise(() => failed.promise)
-      yield* Effect.yieldNow
-      Vitest.expect(yield* Effect.fail('sync failed').pipe(observability.effect, Effect.flip)).toBe('sync failed')
-      yield* Effect.promise(() => recovered.promise)
-      Vitest.expect(calls).toBe(2)
-    }),
-  )
-
-  Vitest.live('exports finite history while the live subscription is still open', () =>
-    Effect.gen(function* () {
-      const { tracer, ended } = makeRecordingTracer()
-      const flushed = Promise.withResolvers<ReadonlyArray<string>>()
+      const { layer, ended } = makeRecordingTracer()
+      const finalized = yield* Deferred.make<ReadonlyArray<string>>()
       const live = yield* Deferred.make<void>()
-      const observability = makeObservability({
-        getTracer: () => tracer,
-        forceFlush: () => {
-          flushed.resolve([...ended])
-          return Promise.resolve()
-        },
-      })
+      const observability = makeObservability(
+        Layer.mergeAll(layer, Layer.effectDiscard(Effect.addFinalizer(() => Deferred.succeed(finalized, [...ended])))),
+      )
       const fiber = yield* Stream.make('history').pipe(
         Stream.withSpan('pull-history'),
         observability.stream,
@@ -191,15 +93,15 @@ Vitest.describe('sync-cf telemetry ownership', () => {
       )
       yield* Effect.addFinalizer(() => Fiber.interrupt(fiber))
       yield* Deferred.await(live)
-      Vitest.expect(yield* Effect.promise(() => flushed.promise)).toContain('pull-history')
+      Vitest.expect(yield* Deferred.await(finalized)).toContain('pull-history')
       Vitest.expect(fiber.pollUnsafe()).toBeUndefined()
     }),
   )
 
   Vitest.live('attaches a finite span to the caller across an unexported RPC envelope', () =>
     Effect.gen(function* () {
-      const { tracer, spans, ended } = makeRecordingTracer()
-      const observability = makeObservability({ getTracer: () => tracer })
+      const { layer, spans, ended } = makeRecordingTracer()
+      const observability = makeObservability(layer)
       const caller = Tracer.externalSpan({ traceId: '1'.repeat(32), spanId: '2222222222222222', sampled: true })
       yield* Effect.flatMap(rpcSpanOptions, (options) =>
         Effect.void.pipe(Effect.withSpan('push'), Effect.withSpan('finite-rpc', options)),
@@ -252,5 +154,6 @@ const makeRecordingTracer = () => {
       },
     }
   })
-  return { tracer, ended, spans }
+  const layer = OtelTracer.layerWithoutOtelTracer.pipe(Layer.provide(Layer.succeed(OtelTracer.OtelTracer, tracer)))
+  return { layer, ended, spans }
 }

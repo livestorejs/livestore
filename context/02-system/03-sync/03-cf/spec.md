@@ -89,27 +89,18 @@ Object hosting a store) is `04-runtime/`'s adapter concern
 
 ## Optional telemetry
 
-`makeDurableObject` leaves telemetry export disabled unless `otel` is supplied.
-Applications can pass an OpenTelemetry provider directly as `otel: provider`, or
-retain the `baseUrl`/`serviceName` convenience exporter. Neither requires Cloudflare
-native tracing, managed telemetry destinations, or a Workers Paid subscription.
+`makeDurableObject` accepts an optional Effect tracer layer as `otel: layer`.
+The existing `{ baseUrl, serviceName? }` endpoint configuration creates an Effect
+OTLP exporter layer. Omit `otel` to avoid creating an exporter or sending telemetry.
+Applications choose the integration and destination; no Cloudflare-specific
+tracer package or paid feature is required by the library.
 
-Applications can also supply an Effect tracer layer as `otel: layer`. LiveStore
-builds it with a fresh scope per sync operation and finalizes its acquired
-resources afterwards. Layer construction runs on the operation path; only
-finalization runs in the background. A layer must not attach a shutdown finalizer to a shared
-application-owned provider. Platform-specific tracer dependencies stay in the
-application; the library does not select a platform tracer.
-
-The injected provider remains application-owned: LiveStore does not register it
-globally or shut it down. After finite sync work, LiveStore calls `forceFlush()`
-when the provider supports it. Export runs in the background and failures do not
-change sync results. There is one outstanding flush per DO instance; concurrent
-completions request a trailing flush, including when the current flush fails.
-A failure alone does not schedule a retry. LiveStore stops waiting after 3000 ms but
-cannot cancel app-owned SDK promises; a queued flush still runs if a slow promise
-eventually settles. Owned endpoint exporters close in the background with a
-3000 ms shutdown timeout.
+LiveStore builds the layer in a fresh scope per sync operation. Construction runs
+on the operation path; resource finalization runs in the background so export
+cleanup cannot delay acknowledgments or change sync outcomes. The layer defines
+its exporter lifecycle. LiveStore does not manage SDK providers or schedule their
+`forceFlush()` calls. A supplied layer must not shut down a shared provider.
+The built-in endpoint exporter uses Effect's three-second shutdown timeout.
 
 WebSocket pushes and finite pull history receive exported RPC boundary spans
 attached directly to the caller, bypassing Effect RPC's unexported subscription
@@ -117,10 +108,9 @@ envelope. DO-RPC pull streams receive tracing inside their separate execution
 runtime. Finite history closes before waiting for live updates, so the endpoint
 exporter does not retain timers for the lifetime of an idle subscription.
 
-Export remains best-effort. A DO has no shutdown callback on hibernation or
-eviction, and an injected provider's own timers/I/O remain the app's
-responsibility. This integration does not join Cloudflare-native trace IDs to
-LiveStore traces or change the sync protocol. See
+Delivery remains best-effort: Durable Objects have no shutdown callback on
+hibernation or eviction. This integration does not join Cloudflare-native trace
+IDs to external traces or change the sync protocol. See
 [decision 0005](.decisions/0005-optional-telemetry-ownership.md).
 
 ## Known Gaps (Non-Obligations)

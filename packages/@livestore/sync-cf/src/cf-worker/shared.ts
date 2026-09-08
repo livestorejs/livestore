@@ -1,5 +1,3 @@
-import type { TracerProvider } from '@opentelemetry/api'
-
 import type { UnknownError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
 import type { Effect, Layer } from '@livestore/utils/effect'
@@ -116,11 +114,6 @@ export type MakeDurableObjectClassOptions = {
 export type SyncBackendOtelOptions =
   /** Application-supplied tracer layer; LiveStore builds and finalizes its resources per sync operation. */
   | Layer.Layer<never>
-  /** Pass your existing OTel provider directly. LiveStore never registers or shuts it down. */
-  | (TracerProvider & {
-      /** Standard SDK providers expose this. LiveStore invokes it in the background after sync work. */
-      forceFlush?: () => Promise<void>
-    })
   | {
       /** Convenience OTLP/HTTP JSON exporter owned by LiveStore for each operation. */
       baseUrl?: string

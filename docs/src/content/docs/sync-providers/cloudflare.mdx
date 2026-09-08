@@ -191,31 +191,22 @@ Creates a sync backend Durable Object class.
 - `onPullRes?` - Callback for pull responses: `(message) => void | Promise<void>`
 - `storage?` - Storage engine: `{ _tag: 'do-sqlite' } | { _tag: 'd1', binding: string }` (default: `do-sqlite`)
 - `enabledTransports?` - Set of enabled transports: `Set<'http' | 'ws' | 'do-rpc'>`
-- `otel?` - Pass your OpenTelemetry provider directly: `otel: provider`.
-  Alternatively, supply an Effect tracer layer as `otel: layer`.
+- `otel?` - Supply an Effect tracer layer: `otel: layer`.
   The existing `{ baseUrl, serviceName? }` OTLP/HTTP JSON exporter is also supported.
 
-Without `otel`, LiveStore creates no telemetry exporter. The provider and endpoint modes work without
-Cloudflare native tracing or managed telemetry export and do not require Workers
-Paid. Your exporter destination and normal Cloudflare resource limits still apply.
+Omit `otel` to avoid creating an exporter or sending telemetry. Your application
+chooses the integration and destination. Cloudflare-native tracing and managed
+export are optional; LiveStore does not require Workers Paid.
 
-Your application owns the provider, exporter, sampling, and authentication.
-LiveStore neither registers a global provider nor shuts yours down. If the
-provider supports `forceFlush()`, LiveStore calls it in the background after
-finite sync work. Export does not delay sync acknowledgments, and flush failures
-do not fail synchronization. Concurrent requests are coalesced per Durable Object.
-LiveStore stops waiting after three seconds; it cannot cancel the provider's own
-I/O. If a slow flush eventually settles, queued work gets a trailing flush.
+LiveStore builds the layer per sync operation and finalizes its resources in the
+background, so exporter cleanup cannot delay sync acknowledgments. Construction
+runs on the operation path. The layer defines exporter setup and cleanup; do not
+attach a shutdown finalizer to a shared provider.
 
-For `otel: layer`, LiveStore builds the layer per sync operation and finalizes its
-resources in the background. Construction runs on the operation path. A layer
-must not attach a shutdown finalizer to a shared application-owned provider.
-Platform-specific tracer packages belong in the application.
-
-Choose an exporter suitable for Durable Objects: persistent timers can prevent
-hibernation, and eviction provides no shutdown hook. Delivery is best-effort.
-The endpoint-based exporter is scoped to completed work so it does not keep an
-idle WebSocket subscription alive just to run export timers.
+Finite pull history closes before the live subscription waits for updates.
+Delivery is best-effort: Durable Objects have no eviction shutdown hook, and
+exporter timers can prevent hibernation. The built-in endpoint exporter uses
+Effect's three-second shutdown timeout.
 
 <SNIPPETS.doSyncBackend />
 
