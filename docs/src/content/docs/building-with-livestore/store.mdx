@@ -37,6 +37,15 @@ For how to create a store in React, see the [React integration docs](/framework-
 
 <CommitEventSnippet />
 
+For conditional batches, pass a synchronous callback to `store.commit`. The
+callback receives a `commit` function that accepts one or more events per call.
+LiveStore collects those events and applies the batch after the callback finishes.
+Queries inside the callback do not see the collected changes yet. If the callback
+throws, none of its collected events are applied and the error reaches the caller.
+An empty callback does nothing. You can pass commit options before the callback.
+Callback return values are ignored. Pass events to the supplied `commit` function
+instead of returning an array.
+
 ### Streaming events
 
 Currently only events confirmed by the sync backend are supported.
