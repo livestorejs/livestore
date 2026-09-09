@@ -33,3 +33,10 @@ Builds on [../requirements.md](../requirements.md) (LS.SYS.SYNC-R02). Code:
   HTTP; all three converge on the same pull results, differing only in
   latency and mechanism (spec: [Transports](./spec.md#transports)). Adopted
   2026-07-16 (interview). `refines: LS.SYS.SYNC.CF-R02`
+- **LS.SYS.SYNC.CF-R06 Ephemeral presence:** The same Durable Object may
+  host in-memory presence rooms on the WebSocket transport. Presence is
+  never written to the eventlog or SQLite. Isolation is by `roomId` inside
+  the store; channels are typed, schema-decoded topics inside a room.
+  Connection auth is `validatePayload`; per-mutation authz and side
+  effects are `onJoin` / `onUpdate` / `onLeave` (same shape as `onPush`).
+  `PresenceUpdate` may be rate-limited per client. `refines: LS.SYS.SYNC.CF-R01`

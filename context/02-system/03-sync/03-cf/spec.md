@@ -87,6 +87,34 @@ Server-side embedding of a LiveStore client inside Cloudflare (Durable
 Object hosting a store) is `04-runtime/`'s adapter concern
 (`adapter-cloudflare`), not part of this provider node.
 
+## Presence
+
+**Maturity: experimental**
+
+Ephemeral presence lives in the same Durable Object as the eventlog
+(`packages/@livestore/sync-cf/src/presence/`). It is not a second DO
+class and not a second URL: clients open the existing `/sync`
+WebSocket and call `SyncWsRpc.Presence*` RPCs.
+
+- **Rooms.** Isolation unit inside the store. A typing indicator in
+  `chat:alice-bob` is never visible in `chat:carol-dave`. Default room
+  id is `default`. Empty rooms are garbage-collected.
+- **Channels.** Typed topics inside a room (`cursor`, `typing`, …),
+  declared once on `makeDurableObject({ presence: { schemas } })` and
+  schema-decoded on every update before fan-out.
+- **Auth.** Connection: existing worker `validatePayload`. Mutation:
+  `presence.onJoin` / `onUpdate` / `onLeave` (same `SyncOrPromiseOrEffect`
+  shape as `onPush`). The socket is bound to the first `clientId` it
+  joins as. Same two-gate pattern as sync auth (`validatePayload` then
+  per-mutation hook).
+- **Rate limit.** Optional `presence.rateLimit.minIntervalMs` on
+  `PresenceUpdate` only; `onExceed` is `ignore` (drop) or `close`.
+- **Lifecycle.** In-memory only. Idle TTL (default 15s) plus
+  socket-close eviction via `onDisconnect`. After hibernation the next
+  update recreates the member. Never persisted.
+
+Decision: [.decisions/0003-ephemeral-presence-rooms.md](./.decisions/0003-ephemeral-presence-rooms.md).
+
 ## Known Gaps (Non-Obligations)
 
 Current reality a consumer must not read as guaranteed behavior:

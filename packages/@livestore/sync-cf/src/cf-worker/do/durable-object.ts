@@ -105,7 +105,10 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     constructor(ctx: CfTypes.DurableObjectState, env: Env) {
       super(ctx, env)
 
-      const WebSocketRpcServerLive = makeRpcServer({ doSelf: this, doOptions: options })
+      const { layer: WebSocketRpcServerLive, onDisconnect } = makeRpcServer({
+        doSelf: this,
+        doOptions: options,
+      })
 
       // This registers the `webSocketMessage` and `webSocketClose` handlers
       if (enabledTransports.has('ws') === true) {
@@ -113,6 +116,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           doSelf: this,
           rpcLayer: WebSocketRpcServerLive,
           webSocketMode: 'hibernate',
+          onDisconnect,
           // See `pull.ts` for more details how `pull` Effect RPC requests streams are handled
           // in combination with DO hibernation
           onMessage: (request, ws) => {
