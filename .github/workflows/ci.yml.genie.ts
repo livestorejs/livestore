@@ -429,35 +429,30 @@ export default githubWorkflow({
       defaults: bashShellDefaults,
       steps: withNixDiagnosticsOnFailure([
         ...livestoreSetupSteps,
-        // TODO(oep-bbd): Restore once root cause is fixed and diagnostics are removed.
+        // Restore the monolithic docs build once the hang's root cause is fixed and diagnostics are removed.
         // { name: 'Build docs', run: runDevenvTasksBefore('docs:build:api') },
-        // TODO(oep-bbd): Temporary phase split + hard timeouts for docs CI hang triage.
-        // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
+        // Temporary phase split and hard timeouts for docs CI hang triage; remove once the root cause is fixed.
         {
           name: 'Build docs snippets',
           run: runDevenvTasksBefore('docs:build:phase:snippets'),
         },
-        // TODO(oep-bbd): Temporary diagnostics step for docs CI hang triage.
-        // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
+        // Temporary diagnostics step for docs CI hang triage; remove once the root cause is fixed.
         {
           name: 'Build docs diagrams',
           run: runDevenvTasksBefore('docs:build:phase:diagrams'),
         },
-        // TODO(oep-bbd): Temporary heartbeat/process logging for Astro build visibility.
-        // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
+        // Temporary heartbeat/process logging for Astro build visibility; remove once the root cause is fixed.
         {
           name: 'Build Astro docs bundle',
           run: runDevenvTasksBefore('docs:build:phase:astro'),
         },
-        // TODO(oep-bbd): Temporary failure-time process dump for docs CI hang triage.
-        // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
+        // Temporary failure-time process dump for docs CI hang triage; remove once the root cause is fixed.
         {
           name: 'Collect docs build diagnostics on failure',
           if: '${{ failure() }}',
           run: runDevenvTasksBefore('docs:build:diagnostics'),
         },
-        // TODO(oep-bbd): Temporary artifact upload for docs CI diagnostics.
-        // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
+        // Temporary artifact upload for docs CI diagnostics; remove once the root cause is fixed.
         {
           name: 'Upload docs build logs',
           if: '${{ always() }}',
