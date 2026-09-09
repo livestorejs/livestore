@@ -1,7 +1,9 @@
 # Release-sensitive repository policy and release automation.
 /.github/ @schickling
 /release/ @schickling
+# This generated pointer is guarded by official-release provenance, monotonic
+# transition checks, and the normal required status checks.
+/release/devtools-artifact.json
 /scripts/src/commands/changesets.ts @schickling
 /scripts/src/commands/devtools-artifact.ts @schickling
 /scripts/src/commands/release.ts @schickling
-
