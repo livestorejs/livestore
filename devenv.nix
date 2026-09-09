@@ -377,7 +377,7 @@ in
         "docs"
         "scripts"
       ];
-      # TODO(oep-1n3.10): Keep wa-sqlite unmanaged by Genie for now.
+      # Keep wa-sqlite unmanaged by Genie for now.
       # Effect-utils now supports exclusions for the coverage check.
       genieCoverageExcludes = [ "packages/@livestore/wa-sqlite/" ];
       tsconfig = "tsconfig.dev.json";

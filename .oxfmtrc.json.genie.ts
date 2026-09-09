@@ -23,7 +23,7 @@ export default oxfmtConfig({
     // Exclude Astro-generated type definitions — Astro regenerates these in its own style
     'docs/.astro/**',
     // Exclude Netlify build artifacts — bundled .mjs files trigger oxfmt sort_imports panic (oxc#17788)
-    // TODO(oep-c28): Remove once oxfmt ≥0.24.0 lands in nixpkgs (also add **/.netlify/** to effect-utils base)
+    // Remove once oxfmt ≥0.24.0 lands in nixpkgs (also add **/.netlify/** to effect-utils base)
     'docs/.netlify/**',
     '**/playwright-report/**',
     '**/test-results/**',
