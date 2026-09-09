@@ -191,22 +191,16 @@ Creates a sync backend Durable Object class.
 - `onPullRes?` - Callback for pull responses: `(message) => void | Promise<void>`
 - `storage?` - Storage engine: `{ _tag: 'do-sqlite' } | { _tag: 'd1', binding: string }` (default: `do-sqlite`)
 - `enabledTransports?` - Set of enabled transports: `Set<'http' | 'ws' | 'do-rpc'>`
-- `otel?` - Supply an Effect tracer layer: `otel: layer`.
-  The existing `{ baseUrl, serviceName? }` OTLP/HTTP JSON exporter is also supported.
+- `otel?` - Pass your Effect tracer layer with `otel: tracingLayer`, or use
+  `otel: { baseUrl: 'https://collector.example.com', serviceName: 'sync-cf' }`
+  for the built-in OTLP/HTTP JSON exporter (`serviceName` is optional).
 
-Omit `otel` to avoid creating an exporter or sending telemetry. Your application
-chooses the integration and destination. Cloudflare-native tracing and managed
-export are optional; LiveStore does not require Workers Paid.
+Omit `otel` to disable telemetry export. Your application chooses the tracing
+integration and destination; LiveStore does not require Workers Paid.
 
-LiveStore builds the layer per sync operation and finalizes its resources in the
-background, so exporter cleanup cannot delay sync acknowledgments. Construction
-runs on the operation path. The layer defines exporter setup and cleanup; do not
-attach a shutdown finalizer to a shared provider.
-
-Finite pull history closes before the live subscription waits for updates.
-Delivery is best-effort: Durable Objects have no eviction shutdown hook, and
-exporter timers can prevent hibernation. The built-in endpoint exporter uses
-Effect's three-second shutdown timeout.
+Layers are built per sync operation and cleaned up in the background. Keep setup
+lightweight, and do not shut down a shared tracer provider during cleanup.
+Telemetry delivery is best-effort.
 
 <SNIPPETS.doSyncBackend />
 

@@ -19,9 +19,8 @@ and LiveStore's direct OpenTelemetry spans use the supplied tracer.
 
 Configure a tracer separately in each runtime that should report telemetry,
 including browser workers. The [Cloudflare sync backend](/sync-providers/cloudflare/#server-api-reference)
-accepts an optional Effect tracer layer as `otel: layer`. LiveStore builds it per
-sync operation and finalizes its resources in the background. Your application
-chooses the integration and destination; Cloudflare-native tracing is optional.
+uses the optional `otel` setting for either an Effect tracer layer (`otel: tracingLayer`)
+or an OTLP endpoint (`otel: { baseUrl: 'https://collector.example.com' }`).
 
 ## Usage with React
 

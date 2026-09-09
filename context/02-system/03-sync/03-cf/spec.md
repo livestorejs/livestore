@@ -89,9 +89,9 @@ Object hosting a store) is `04-runtime/`'s adapter concern
 
 ## Optional telemetry
 
-`makeDurableObject` accepts an optional Effect tracer layer as `otel: layer`.
-The existing `{ baseUrl, serviceName? }` endpoint configuration creates an Effect
-OTLP exporter layer. Omit `otel` to avoid creating an exporter or sending telemetry.
+The existing `makeDurableObject` option `otel` accepts either an Effect tracer
+layer or a `{ baseUrl, serviceName? }` endpoint configuration. The latter creates
+an Effect OTLP exporter layer. Omit `otel` to avoid creating an exporter or sending telemetry.
 Applications choose the integration and destination; no Cloudflare-specific
 tracer package or paid feature is required by the library.
 
