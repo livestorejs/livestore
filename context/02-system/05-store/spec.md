@@ -37,6 +37,45 @@ The Effect-native binding (`Store.Tag`) is a realization of the integration
 contract — see
 [../08-integrations/02-effect/](../08-integrations/02-effect/spec.md).
 
+### Sync status
+
+`SyncStatus` is one flat status value spanning both propagation boundaries:
+
+```ts
+type SyncStatus = {
+  localHead: string
+  upstreamHead: string
+  pendingCount: number
+  isSynced: boolean
+  backendHead: string
+  backendPendingCount: number
+  isBackendSynced: boolean
+}
+```
+
+The existing fields retain their session→leader meaning: `upstreamHead` is
+the latest leader head observed by the session, `pendingCount` counts session
+events not yet accepted by the leader, and `isSynced` is true when that count
+is zero. `backendHead` is the latest backend-confirmed head observed through
+the leader; `backendPendingCount` counts synced events accepted by the leader
+but not yet confirmed by the backend.
+
+`isBackendSynced` is true only when the latest observed states show no pending
+events at either boundary and the observed leader state covers the leader head
+already known by the session. `syncStatus()` remains synchronous: it returns a
+conservative snapshot from locally observed session and leader state and does
+not perform an on-demand remote read. The snapshot may therefore briefly
+report `false` after confirmation, but stale leader state must not produce a
+`true` result for a session head it does not yet cover. `syncStatusStream` and
+`subscribeSyncStatus` react to status changes at either boundary.
+
+This aggregate status describes latest-observed delivery convergence, not the
+health or lifecycle state of a sync worker. `isBackendSynced` may remain true
+when the observed heads are converged even if a terminal backend worker is
+parked; it makes no claim that future delivery attempts can currently make
+progress. The status does not provide a per-event confirmation receipt or
+classify why backend delivery remains pending.
+
 ### Creation options
 
 `createStore` / `RegistryStoreOptions` (`src/store/create-store.ts`):
