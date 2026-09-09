@@ -5,14 +5,16 @@ import type { Store, SyncStatus } from '@livestore/livestore'
 /**
  * React hook that subscribes to sync status changes.
  *
- * Returns the current synchronization status between the client session and
- * the leader thread. The component re-renders whenever the sync status changes.
+ * Returns the current synchronization status across the session-to-leader and
+ * leader-to-backend boundaries. The component re-renders whenever either
+ * boundary changes. The status describes latest-observed delivery convergence,
+ * not sync-worker health or future progress.
  *
  * @example
  * ```tsx
  * function SyncIndicator() {
  *   const status = store.useSyncStatus()
- *   return <span>{status.isSynced ? '✓ Synced' : `Syncing (${status.pendingCount} pending)...`}</span>
+ *   return <span>{status.isBackendSynced ? '✓ Backend confirmed' : 'Awaiting confirmation...'}</span>
  * }
  * ```
  *
@@ -28,7 +30,7 @@ export const useSyncStatus = (options: { store: Store<any> }): SyncStatus => {
     return store.subscribeSyncStatus(setStatus)
   }, [store])
 
-  React.useDebugValue(`LiveStore:useSyncStatus:${status.isSynced === true ? 'synced' : 'pending'}`)
+  React.useDebugValue(`LiveStore:useSyncStatus:${status.isBackendSynced === true ? 'backend-synced' : 'pending'}`)
 
   return status
 }
