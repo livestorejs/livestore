@@ -58,7 +58,9 @@ arbitrates pushes and fans out live pull streams to subscribers
   fail with `BackendIdMismatchError` (client records it lazily from pull
   responses).
 - **Limits** (`common/constants.ts`): `MAX_TRANSPORT_PAYLOAD_BYTES =
-  900_000` (below the ~1 MB hibernated-WS frame cap),
+  28 MiB`. Cloudflare's received-WebSocket-message limit is 32 MiB; the
+  4 MiB (12.5%) reserve covers Effect RPC envelopes, LiveStore framing,
+  and serialization differences across WS, HTTP, and DO-RPC.
   `MAX_PULL_EVENTS_PER_MESSAGE = MAX_PUSH_EVENTS_PER_REQUEST = 100`. D1
   paths additionally paginate adaptively (~1 MB response target, page size
   shrinking from 256) and chunk inserts to 14 events per statement
