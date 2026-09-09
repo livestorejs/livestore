@@ -16,8 +16,10 @@ conventions (`CLAUDE.md`/`AGENTS.md`) and
   `<username>/<kind>/<short-desc>` in kebab-case (e.g.
   `jane/fix/memory-leak`).
 - **LS.CONTRIB.COLLAB-R02 Green gates before commit:** Changes pass lint and
-  type checks before commit (`dt lint:full:fix`, `dt ts:check`); the full
-  test suite passes before push (`dt test:run`).
+  type checks before commit (`dt lint:full:fix`, `dt ts:check`); the test
+  suites pass before push (`dt test:unit` plus the relevant
+  `dt test:integration:*` / `dt test:perf` tasks; there is no single
+  `dt test:run` task).
 - **LS.CONTRIB.COLLAB-R03 Changelog discipline:** Every user-facing change
   lands in the upcoming section of `CHANGELOG.md`; each user-facing bullet
   links at least one GitHub issue or PR; no placeholder links.

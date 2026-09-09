@@ -16,8 +16,9 @@ branch ──► changes + changeset ──► lint/type gates ──► PR (pro
 
 - Branch per LS.CONTRIB.COLLAB-R01; changeset per LS.CONTRIB-R05
   (`pnpm exec changeset`, `--empty` when no release-note impact).
-- Gates: `dt lint:full:fix` then `dt ts:check` before commit; `dt test:run`
-  before push (LS.CONTRIB.COLLAB-R02).
+- Gates: `dt lint:full:fix` then `dt ts:check` before commit; the relevant
+  `dt test:*` suites (`test:unit`, `test:integration:*`, `test:perf`) before
+  push (LS.CONTRIB.COLLAB-R02).
 - PR body follows the repo template: problem, solution, validation,
   trade-offs, linked issues; evidence (logs, screenshots, diagrams)
   encouraged.
