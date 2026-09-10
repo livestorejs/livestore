@@ -294,7 +294,7 @@ describe('table function overloads', () => {
     // a SQL default is evaluated by SQLite and cannot be constructed client-side
     const sqlDefaultFailure = Effect.runSync(Effect.result(settings.rowSchema.makeEffect({ id: '1', note: null })))
     expect(Result.isFailure(sqlDefaultFailure)).toBe(true)
-    if (Result.isFailure(sqlDefaultFailure)) {
+    if (Result.isFailure(sqlDefaultFailure) === true) {
       expect(SchemaIssue.makeFormatterDefault()(sqlDefaultFailure.failure)).toMatch(/CURRENT_TIMESTAMP/)
     }
   })
