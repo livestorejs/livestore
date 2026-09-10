@@ -717,6 +717,59 @@ describe('table function overloads', () => {
     )
   })
 
+  it('keeps nullable fields of non-struct schemas omittable on insert', () => {
+    const Shape = Schema.Union([
+      Schema.Struct({
+        kind: Schema.Literal('circle'),
+        n: Schema.NullOr(Schema.Int),
+        note: Schema.optional(Schema.String),
+      }),
+      Schema.Struct({
+        kind: Schema.Literal('square'),
+        n: Schema.NullOr(Schema.Int),
+        note: Schema.optional(Schema.String),
+      }),
+    ])
+    const shapes = State.SQLite.table({ name: 'shapes', schema: Shape })
+    expect(shapes.sqliteDef.columns.n.nullable).toBe(true)
+    expect(shapes.sqliteDef.columns.note.nullable).toBe(true)
+    expectTypeOf(shapes.insert).toBeCallableWith({ kind: 'circle' })
+    expectTypeOf<(typeof shapes.Type)['n']>().toEqualTypeOf<number | null>()
+    expectTypeOf<(typeof shapes.Type)['note']>().toEqualTypeOf<string | null>()
+    expectTypeOf<(typeof shapes.Encoded)['kind']>().toEqualTypeOf<'circle' | 'square'>()
+    expect(shapes.insert({ kind: 'circle' }).asSql().bindValues).toEqual(['circle'])
+  })
+
+  it('fills thunk defaults on insert and leaves value and SQL defaults to SQLite', () => {
+    let counter = 0
+    const rows = State.SQLite.table({
+      name: 'rows',
+      columns: {
+        id: State.SQLite.text({ primaryKey: true }),
+        theme: State.SQLite.text({ default: 'light' }),
+        seq: State.SQLite.integer({ default: () => ++counter }),
+        createdAt: State.SQLite.text({ default: { sql: 'CURRENT_TIMESTAMP' } }),
+        note: State.SQLite.text({ nullable: true }),
+      },
+    })
+    const first = rows.insert({ id: '1' }).asSql()
+    expect(first.query).toBe(`INSERT INTO 'rows' ("id", "seq") VALUES (?, ?)`)
+    expect(first.bindValues).toEqual(['1', 1])
+    // an explicit `undefined` counts as omitted
+    const second = rows.insert({ id: '2', theme: undefined, note: undefined }).asSql()
+    expect(second.query).toBe(`INSERT INTO 'rows' ("id", "seq") VALUES (?, ?)`)
+    expect(second.bindValues).toEqual(['2', 2])
+    // the same for a schema-based table with `withDefault`
+    const posts = State.SQLite.table({
+      name: 'posts',
+      schema: Schema.Struct({
+        id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+        views: Schema.Int.pipe(State.SQLite.withDefault(() => 7)),
+      }),
+    })
+    expect(posts.insert({ id: 'p' }).asSql().bindValues).toEqual(['p', 7])
+  })
+
   it('should handle Schema.Int as integer column', () => {
     const CounterSchema = Schema.Struct({
       id: Schema.String,

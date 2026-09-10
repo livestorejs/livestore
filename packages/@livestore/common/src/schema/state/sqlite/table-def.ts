@@ -289,15 +289,32 @@ export type FieldsOf<TSchema extends Schema.Top> = TSchema extends { readonly fi
     : never
   : FieldsFromTypes<TSchema['Type'], TSchema['Encoded']>
 
+/**
+ * One codec per key of a schema's encoded side, typed by the decoded side where the key exists there.
+ * A key whose encoded value admits `null`/`undefined`, or that is optional on the encoded side, is
+ * wrapped in `Schema.NullOr` so the structural nullability classification sees it the way the runtime
+ * (which marks such property signatures nullable) does.
+ */
 export type FieldsFromTypes<TType, TEncoded> =
   TEncoded extends Record<string, any>
     ? {
-        readonly [K in keyof TEncoded]-?: Schema.Codec<
+        readonly [K in keyof TEncoded]-?: LooseField<
           TType extends Record<string, any> ? (K extends keyof TType ? TType[K] : TEncoded[K]) : TEncoded[K],
-          TEncoded[K]
+          TEncoded[K],
+          K extends OptionalKeys<TEncoded> ? true : false
         >
       }
     : Schema.Struct.Fields
+
+type OptionalKeys<T> = { [K in keyof T]-?: {} extends Pick<T, K> ? K : never }[keyof T]
+
+type LooseField<T, E, TOptional extends boolean> = TOptional extends true
+  ? Schema.NullOr<Schema.Codec<NonNullable<T>, NonNullable<E>>>
+  : null extends E
+    ? Schema.NullOr<Schema.Codec<NonNullable<T>, NonNullable<E>>>
+    : undefined extends E
+      ? Schema.NullOr<Schema.Codec<NonNullable<T>, NonNullable<E>>>
+      : Schema.Codec<T, E>
 
 export declare namespace FromFields {
   export type SqliteValue = string | number | Uint8Array | null
@@ -392,23 +409,34 @@ export declare namespace FromFields {
    * How a (non-nullish) core schema is stored: as its own codec, as `0 | 1`, as ISO text, or as
    * JSON text. Same order of checks as `getColumnForSchema`.
    */
-  type Kind<C extends Schema.Constraint> = C['ast'] extends SchemaAST.Boolean
-    ? 'boolean'
-    : [C['Type']] extends [Uint8Array]
-      ? 'asIs'
-      : EncodedAstOf<C> extends SchemaAST.String | SchemaAST.Number
+  type Kind<C extends Schema.Constraint> = SchemaAST.AST extends C['ast']
+    ? LooseKind<C>
+    : C['ast'] extends SchemaAST.Boolean
+      ? 'boolean'
+      : [C['Type']] extends [Uint8Array]
         ? 'asIs'
-        : C['ast'] extends SchemaAST.Declaration
-          ? [C['Type']] extends [Date]
-            ? 'date'
-            : 'json'
-          : EncodedAstOf<C> extends LiteralAst
-            ? [C['Encoded']] extends [string] | [number] | [bigint]
-              ? 'asIs'
-              : [C['Encoded']] extends [boolean]
-                ? 'boolean'
-                : 'json'
-            : 'json'
+        : EncodedAstOf<C> extends SchemaAST.String | SchemaAST.Number
+          ? 'asIs'
+          : C['ast'] extends SchemaAST.Declaration
+            ? [C['Type']] extends [Date]
+              ? 'date'
+              : 'json'
+            : EncodedAstOf<C> extends LiteralAst
+              ? [C['Encoded']] extends [string] | [number] | [bigint]
+                ? 'asIs'
+                : [C['Encoded']] extends [boolean]
+                  ? 'boolean'
+                  : 'json'
+              : 'json'
+
+  /** A codec without a concrete AST class (a field of a non-struct schema) is classified by its encoded type */
+  type LooseKind<C extends Schema.Constraint> = [C['Encoded']] extends [SqliteValue]
+    ? 'asIs'
+    : [C['Type']] extends [boolean]
+      ? 'boolean'
+      : [C['Type']] extends [Date]
+        ? 'date'
+        : 'json'
 
   /**
    * A field is its own column codec when it is stored as-is and its nullability needs no rewrapping,
