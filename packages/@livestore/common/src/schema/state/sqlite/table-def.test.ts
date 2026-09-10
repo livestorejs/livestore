@@ -495,7 +495,7 @@ describe('table function overloads', () => {
       nullOrDate: Schema.NullOr(Schema.Date),
       literals: Schema.Literals(['a', 'b']),
       numberLiterals: Schema.Literals([1, 2]),
-      stringOrNumber: Schema.Union([Schema.String, Schema.Number]),
+      stringOrNumber: Schema.Union([Schema.String, Schema.Finite]),
       struct: Point,
       nullOrStruct: Schema.NullOr(Point),
       json: State.SQLite.json(),
