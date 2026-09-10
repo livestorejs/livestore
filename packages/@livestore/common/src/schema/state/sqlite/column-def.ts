@@ -210,7 +210,7 @@ const stripNullable = (ast: SchemaAST.AST): SchemaAST.AST => {
     return coreTypes[0]!
   }
 
-  return new SchemaAST.Union(coreTypes, ast.mode, ast.annotations)
+  return new SchemaAST.Union(coreTypes, ast.options, ast.annotations)
 }
 
 const getLiteralColumnDefinition = (
