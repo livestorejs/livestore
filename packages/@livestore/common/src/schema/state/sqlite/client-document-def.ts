@@ -5,6 +5,7 @@ import { SessionIdSymbol } from '../../../session-id-symbol.ts'
 import { sql } from '../../../util.ts'
 import type { EventDef, Materializer } from '../../EventDef/mod.ts'
 import { defineEvent, defineMaterializer } from '../../EventDef/mod.ts'
+import type { ColumnDefault } from './column-annotations.ts'
 import { SqliteDsl } from './db-schema/mod.ts'
 import type { QueryBuilder, QueryBuilderAst } from './query-builder/mod.ts'
 import { QueryBuilderAstSymbol, QueryBuilderTypeId } from './query-builder/mod.ts'
@@ -462,8 +463,8 @@ export namespace ClientDocumentTableDef {
    * `value` from its default value, so neither has to be given on insert.
    */
   export type Fields<TType> = {
-    id: Schema.withConstructorDefault<Schema.String>
-    value: Schema.withConstructorDefault<Schema.Codec<TType, string> & Schema.WithoutConstructorDefault>
+    id: ColumnDefault<Schema.String>
+    value: ColumnDefault<Schema.Codec<TType, string> & Schema.WithoutConstructorDefault>
   }
 
   export type TableDefBase_<TName extends string, TType> = TableDefBase<

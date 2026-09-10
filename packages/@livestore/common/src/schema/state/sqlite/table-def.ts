@@ -1,7 +1,14 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, SchemaAST, type Types } from '@livestore/utils/effect'
 
-import { AutoIncrement, ColumnType, Default, PrimaryKeyId, Unique } from './column-annotations.ts'
+import {
+  AutoIncrement,
+  type ColumnDefaultMarker,
+  ColumnType,
+  Default,
+  PrimaryKeyId,
+  Unique,
+} from './column-annotations.ts'
 import { getColumnDefForSchema, schemaFieldsToColumns } from './column-def.ts'
 import { SqliteDsl } from './db-schema/mod.ts'
 import type { QueryBuilder } from './query-builder/mod.ts'
@@ -305,69 +312,139 @@ export declare namespace FromFields {
   /** `true` for `AnyFields`, `any` and other index-signature field maps, `false` for concrete field maps. */
   export type IsLoose<TFields extends Schema.Struct.Fields> = string extends keyof TFields ? true : false
 
-  type IsUnknown<T> = unknown extends T ? true : false
+  // --- Classification -------------------------------------------------------------------------
+  //
+  // Everything below mirrors `getColumnDefForSchema` on the type level by walking the same schema
+  // structure the runtime inspects: nullability comes from `null`/`undefined` union members and the
+  // optional-key marker, the storage form from the AST class of the field's encoded side, and the
+  // default from the LiveStore column-default marker (the runtime reads the matching annotation).
 
-  /**
-   * Whether the field becomes a nullable column, matching the runtime detection: a `null` or
-   * `undefined` member, or an optional key (`Schema.optionalKey`, whose `Type` carries neither).
-   * `unknown` admits `null` structurally but is not a nullable column, so it is excluded.
-   */
-  export type IsNullable<F extends Schema.Constraint> = F extends {
-    readonly '~type.optionality': 'optional'
-  }
-    ? true
-    : IsUnknown<F['Type']> extends true
-      ? false
-      : null extends F['Type']
-        ? true
-        : undefined extends F['Type']
-          ? true
-          : false
+  type Nullish = SchemaAST.Null | SchemaAST.Undefined
 
-  export type HasDefault<F extends Schema.Constraint> = F extends {
-    readonly '~type.constructor.default': 'with-default'
-  }
-    ? true
+  /** Unwraps the wrappers that keep a field's own AST (`optionalKey`, `withConstructorDefault`, `brand`, `mutable`) */
+  type Own<F> = F extends { readonly schema: infer S extends Schema.Constraint } ? Own<S> : F
+
+  /** The members of a union field (`Schema.Union`, `NullOr`, `Literals`), also through a transformation's target */
+  type MembersOf<F> =
+    Own<F> extends { readonly members: infer M extends ReadonlyArray<Schema.Constraint> }
+      ? M
+      : Own<F> extends { readonly to: infer To extends Schema.Constraint }
+        ? MembersOf<To>
+        : never
+
+  type IsMemberOf<X, TAst extends SchemaAST.AST> = X extends Schema.Constraint
+    ? X['ast'] extends TAst
+      ? true
+      : HasMember<X, TAst>
     : false
 
-  type Core<T> = Exclude<T, null | undefined>
-  type MaybeNull<T, TNullable extends boolean> = TNullable extends true ? T | null : T
-
-  /**
-   * A field is its own column codec when its shape already matches the column: it encodes to a
-   * SQLite value and its nullability needs no rewrapping (`Schema.NullOr` or not nullable at all).
-   */
-  type IsOwnColumnCodec<F extends Schema.Constraint> = F extends { readonly '~type.optionality': 'optional' }
-    ? false
-    : IsUnknown<F['Type']> extends true
-      ? [F['Encoded']] extends [SqliteValue]
-        ? true
-        : false
-      : undefined extends F['Type']
+  /** Whether the field's own AST, or any union member of it, is of the given AST class */
+  type HasMember<F, TAst extends SchemaAST.AST> =
+    Own<F> extends { readonly ast: TAst }
+      ? true
+      : [MembersOf<F>] extends [never]
         ? false
-        : [F['Encoded']] extends [SqliteValue]
+        : true extends IsMemberOf<MembersOf<F>[number], TAst>
           ? true
           : false
 
-  /** The rewrapped codec for a field SQLite cannot store as-is (see `getColumnDefForSchema`). */
-  type RewrappedField<F extends Schema.Constraint, TNullable extends boolean> = [Core<F['Encoded']>] extends [
-    SqliteValue,
+  type IsOptionalKey<F> = F extends { readonly '~type.optionality': 'optional' } ? true : false
+
+  /** Whether the field becomes a nullable column: an optional key or a `null`/`undefined` member. */
+  export type IsNullable<F extends Schema.Constraint> = IsOptionalKey<F> extends true ? true : HasMember<F, Nullish>
+
+  export type HasDefault<F extends Schema.Constraint> = F extends { readonly [ColumnDefaultMarker]: true }
+    ? true
+    : F extends { readonly schema: infer S extends Schema.Constraint }
+      ? HasDefault<S>
+      : false
+
+  type NonNullish<M extends ReadonlyArray<Schema.Constraint>> = M extends readonly [
+    infer H extends Schema.Constraint,
+    ...infer R extends ReadonlyArray<Schema.Constraint>,
   ]
-    ? Schema.Codec<MaybeNull<Core<F['Type']>, TNullable>, MaybeNull<Core<F['Encoded']>, TNullable>>
-    : [Core<F['Type']>] extends [boolean]
-      ? Schema.Codec<MaybeNull<Core<F['Type']>, TNullable>, MaybeNull<0 | 1, TNullable>>
-      : Schema.Codec<MaybeNull<Core<F['Type']>, TNullable>, MaybeNull<string, TNullable>>
+    ? H['ast'] extends Nullish
+      ? NonNullish<R>
+      : readonly [H, ...NonNullish<R>]
+    : readonly []
+
+  /** The field without its nullish members: a single remaining member, or a union of the rest */
+  type CoreOf<F> = [MembersOf<F>] extends [never]
+    ? Own<F>
+    : NonNullish<MembersOf<F>> extends readonly [infer Only extends Schema.Constraint]
+      ? CoreOf<Only>
+      : NonNullish<MembersOf<F>> extends readonly []
+        ? Own<F>
+        : Schema.Union<NonNullish<MembersOf<F>>>
+
+  /** The AST class of what is stored: a transformation's source, through wrappers */
+  type EncodedAstOf<S> = S extends { readonly from: infer From extends Schema.Constraint }
+    ? EncodedAstOf<From>
+    : S extends { readonly schema: infer Inner extends Schema.Constraint }
+      ? EncodedAstOf<Inner>
+      : S extends Schema.Constraint
+        ? S['ast']
+        : never
+
+  type LiteralAst = SchemaAST.Literal | SchemaAST.Union<SchemaAST.Literal>
 
   /**
-   * The codec a field is stored through, mirroring `getColumnDefForSchema`: a field that already
-   * encodes to a SQLite value is its own column codec (so its exact schema type is preserved), an
-   * optional field becomes nullable, and booleans, bare dates and everything else are rewrapped.
+   * How a (non-nullish) core schema is stored: as its own codec, as `0 | 1`, as ISO text, or as
+   * JSON text. Same order of checks as `getColumnForSchema`.
+   */
+  type Kind<C extends Schema.Constraint> = C['ast'] extends SchemaAST.Boolean
+    ? 'boolean'
+    : [C['Type']] extends [Uint8Array]
+      ? 'asIs'
+      : EncodedAstOf<C> extends SchemaAST.String | SchemaAST.Number
+        ? 'asIs'
+        : C['ast'] extends SchemaAST.Declaration
+          ? [C['Type']] extends [Date]
+            ? 'date'
+            : 'json'
+          : EncodedAstOf<C> extends LiteralAst
+            ? [C['Encoded']] extends [string] | [number] | [bigint]
+              ? 'asIs'
+              : [C['Encoded']] extends [boolean]
+                ? 'boolean'
+                : 'json'
+            : 'json'
+
+  /**
+   * A field is its own column codec when it is stored as-is and its nullability needs no rewrapping,
+   * i.e. it is not an optional key and has no `undefined` member (`Schema.NullOr` is kept as-is).
+   */
+  type IsOwnColumnCodec<F extends Schema.Constraint> =
+    IsOptionalKey<F> extends true
+      ? false
+      : HasMember<F, SchemaAST.Undefined> extends true
+        ? false
+        : Kind<CoreOf<F>> extends 'asIs'
+          ? true
+          : false
+
+  type MaybeNull<T, TNullable extends boolean> = TNullable extends true ? T | null : T
+
+  type Rewrapped<C extends Schema.Constraint, TNullable extends boolean> =
+    Kind<C> extends 'asIs'
+      ? Schema.Codec<MaybeNull<C['Type'], TNullable>, MaybeNull<C['Encoded'], TNullable>>
+      : Kind<C> extends 'boolean'
+        ? Schema.Codec<MaybeNull<C['Type'], TNullable>, MaybeNull<0 | 1, TNullable>>
+        : Kind<C> extends 'date'
+          ? Schema.Codec<MaybeNull<Date, TNullable>, MaybeNull<string, TNullable>>
+          : Schema.Codec<MaybeNull<C['Type'], TNullable>, MaybeNull<string, TNullable>>
+
+  /**
+   * The codec a field is stored through: the field itself when it can be stored as-is (so its exact
+   * schema type is preserved), otherwise the rewrapped codec `getColumnDefForSchema` builds.
    */
   export type SqliteField<F extends Schema.Constraint> = Schema.Top extends F
     ? F
     : IsOwnColumnCodec<F> extends true
       ? F
-      : RewrappedField<F, IsNullable<F>>
+      : Rewrapped<CoreOf<F>, IsNullable<F>>
+
+  // --- Derived views ---------------------------------------------------------------------------
 
   export type SqliteFields<TFields extends Schema.Struct.Fields> =
     IsLoose<TFields> extends true ? AnyFields : { readonly [K in keyof TFields]: SqliteField<TFields[K]> }
