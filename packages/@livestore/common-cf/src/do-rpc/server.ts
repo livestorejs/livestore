@@ -21,17 +21,8 @@ import type * as CfTypes from '../cf-types.ts'
 
 const isEncodedRpcMessage = Schema.is(RpcMessage.EncodedSchema)
 
-const isFromClientEncoded = (message: unknown): message is RpcMessage.FromClientEncoded => {
-  if (isEncodedRpcMessage(message) === false) return false
-
-  return (
-    message._tag === 'Request' ||
-    message._tag === 'Ack' ||
-    message._tag === 'Interrupt' ||
-    message._tag === 'Ping' ||
-    message._tag === 'Eof'
-  )
-}
+const isRequestEncoded = (message: unknown): message is RpcMessage.RequestEncoded =>
+  isEncodedRpcMessage(message) === true && message._tag === 'Request'
 
 const erasedCodec = (codecFor: RpcSerialization.CodecFor, schema: Schema.Top) =>
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- erased RPC data schemas require no codec services
@@ -82,7 +73,7 @@ export const toDurableObjectHandler =
       const serialization = yield* schemaBinarySerialization
       const parser = serialization.makeUnsafe()
 
-      const requests = parser.decode(serializedPayload).filter(isFromClientEncoded)
+      const requests = parser.decode(serializedPayload).filter(isRequestEncoded)
 
       // Get the context with handlers
       const context = yield* Effect.context<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>>()
@@ -91,9 +82,6 @@ export const toDurableObjectHandler =
       const responses: any[] = []
 
       for (const request of requests) {
-        if (request._tag !== 'Request') {
-          continue
-        }
         const requestId = RpcMessage.RequestId(request.id)
 
         // Find the RPC handler
