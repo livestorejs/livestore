@@ -5,6 +5,7 @@ import { SessionIdSymbol } from '../../../../session-id-symbol.ts'
 import type { SqlValue } from '../../../../util.ts'
 import type { State } from '../../../mod.ts'
 import { hasJsonStringEncoding } from '../db-schema/has-json-string-encoding.ts'
+import { SqliteDsl } from '../db-schema/mod.ts'
 import type { QueryBuilderAst } from './api.ts'
 
 /**
@@ -153,10 +154,11 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
 
   // INSERT query
   if (ast._tag === 'InsertQuery') {
-    const columns = Object.keys(ast.values)
+    const values = withColumnDefaults(ast.tableDef, ast.values)
+    const columns = Object.keys(values)
     const quotedColumns = columns.map(quoteIdentifier)
     const placeholders = columns.map(() => '?').join(', ')
-    const encodedValues = Schema.encodeSync(ast.tableDef.insertSchema)(ast.values)
+    const encodedValues = Schema.encodeSync(ast.tableDef.insertSchema)(values)
 
     // Ensure bind values are added in the same order as columns
     columns.forEach((col) => {
@@ -318,4 +320,22 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
     .join(' ')
 
   return { query, bindValues, usedTables }
+}
+
+/**
+ * An omitted column (or one passed as `undefined`) with a thunk default takes its value here: a thunk
+ * cannot be expressed as a DDL `DEFAULT`, but the insert type treats it like any other default. Value
+ * and SQL-expression defaults stay omitted so SQLite applies them.
+ */
+const withColumnDefaults = (
+  tableDef: State.SQLite.TableDefBase,
+  values: Record<string, unknown>,
+): Record<string, unknown> => {
+  const filled: Record<string, unknown> = {}
+  for (const [name, value] of Object.entries(values)) if (value !== undefined) filled[name] = value
+  for (const [name, column] of Object.entries(tableDef.sqliteDef.columns)) {
+    if (filled[name] !== undefined || column.default._tag === 'None') continue
+    if (SqliteDsl.isDefaultThunk(column.default.value) === true) filled[name] = column.default.value()
+  }
+  return filled
 }

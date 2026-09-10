@@ -16,7 +16,10 @@
   parameterised by the field map (much shorter hovers), column defaults are
   tracked at the type level so `insert()` can omit them for schema-based
   tables, and `Schema.Date`, `Schema.DateFromString` and `Schema.DateFromMillis`
-  fields of `table({ schema })` round-trip through their encoded form
+  fields of `table({ schema })` round-trip through their encoded form. An
+  insert that omits a column with a thunk default (`integer({ default: () => 0 })`,
+  `withDefault(() => 0)`) now binds the thunk's value instead of failing the
+  `NOT NULL` constraint, since a thunk has no DDL representation
   ([#382](https://github.com/livestorejs/livestore/issues/382),
   [#1597](https://github.com/livestorejs/livestore/pull/1597)).
 - **Store commits:** Fixed the documented callback form of `store.commit` and
