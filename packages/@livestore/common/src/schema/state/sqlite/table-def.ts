@@ -305,12 +305,24 @@ export declare namespace FromFields {
   /** `true` for `AnyFields`, `any` and other index-signature field maps, `false` for concrete field maps. */
   export type IsLoose<TFields extends Schema.Struct.Fields> = string extends keyof TFields ? true : false
 
-  /** Checks if `null` or `undefined` is assignable to the field's type, matching the runtime nullable detection. */
-  export type IsNullable<F extends Schema.Constraint> = null extends F['Type']
+  type IsUnknown<T> = unknown extends T ? true : false
+
+  /**
+   * Whether the field becomes a nullable column, matching the runtime detection: a `null` or
+   * `undefined` member, or an optional key (`Schema.optionalKey`, whose `Type` carries neither).
+   * `unknown` admits `null` structurally but is not a nullable column, so it is excluded.
+   */
+  export type IsNullable<F extends Schema.Constraint> = F extends {
+    readonly '~type.optionality': 'optional'
+  }
     ? true
-    : undefined extends F['Type']
-      ? true
-      : false
+    : IsUnknown<F['Type']> extends true
+      ? false
+      : null extends F['Type']
+        ? true
+        : undefined extends F['Type']
+          ? true
+          : false
 
   export type HasDefault<F extends Schema.Constraint> = F extends {
     readonly '~type.constructor.default': 'with-default'
@@ -319,7 +331,32 @@ export declare namespace FromFields {
     : false
 
   type Core<T> = Exclude<T, null | undefined>
-  type MaybeNull<T, F extends Schema.Constraint> = IsNullable<F> extends true ? T | null : T
+  type MaybeNull<T, TNullable extends boolean> = TNullable extends true ? T | null : T
+
+  /**
+   * A field is its own column codec when its shape already matches the column: it encodes to a
+   * SQLite value and its nullability needs no rewrapping (`Schema.NullOr` or not nullable at all).
+   */
+  type IsOwnColumnCodec<F extends Schema.Constraint> = F extends { readonly '~type.optionality': 'optional' }
+    ? false
+    : IsUnknown<F['Type']> extends true
+      ? [F['Encoded']] extends [SqliteValue]
+        ? true
+        : false
+      : undefined extends F['Type']
+        ? false
+        : [F['Encoded']] extends [SqliteValue]
+          ? true
+          : false
+
+  /** The rewrapped codec for a field SQLite cannot store as-is (see `getColumnDefForSchema`). */
+  type RewrappedField<F extends Schema.Constraint, TNullable extends boolean> = [Core<F['Encoded']>] extends [
+    SqliteValue,
+  ]
+    ? Schema.Codec<MaybeNull<Core<F['Type']>, TNullable>, MaybeNull<Core<F['Encoded']>, TNullable>>
+    : [Core<F['Type']>] extends [boolean]
+      ? Schema.Codec<MaybeNull<Core<F['Type']>, TNullable>, MaybeNull<0 | 1, TNullable>>
+      : Schema.Codec<MaybeNull<Core<F['Type']>, TNullable>, MaybeNull<string, TNullable>>
 
   /**
    * The codec a field is stored through, mirroring `getColumnDefForSchema`: a field that already
@@ -328,13 +365,9 @@ export declare namespace FromFields {
    */
   export type SqliteField<F extends Schema.Constraint> = Schema.Top extends F
     ? F
-    : [F['Encoded']] extends [SqliteValue]
+    : IsOwnColumnCodec<F> extends true
       ? F
-      : [Core<F['Encoded']>] extends [SqliteValue]
-        ? Schema.Codec<Core<F['Type']> | null, Core<F['Encoded']> | null>
-        : [Core<F['Type']>] extends [boolean]
-          ? Schema.Codec<MaybeNull<Core<F['Type']>, F>, MaybeNull<0 | 1, F>>
-          : Schema.Codec<MaybeNull<Core<F['Type']>, F>, MaybeNull<string, F>>
+      : RewrappedField<F, IsNullable<F>>
 
   export type SqliteFields<TFields extends Schema.Struct.Fields> =
     IsLoose<TFields> extends true ? AnyFields : { readonly [K in keyof TFields]: SqliteField<TFields[K]> }
@@ -368,10 +401,14 @@ export declare namespace FromFields {
     [K in keyof TFields]: IsNullable<TFields[K]> extends true ? K : never
   }[keyof TFields]
 
-  /** Follows SQL semantics: nullable columns and columns with defaults are omittable on insert. */
-  export type OmittableInsertColumnNames<TFields extends Schema.Struct.Fields> = {
-    [K in keyof TFields]: IsNullable<TFields[K]> extends true ? K : HasDefault<TFields[K]> extends true ? K : never
+  export type DefaultedColumnNames<TFields extends Schema.Struct.Fields> = {
+    [K in keyof TFields]: HasDefault<TFields[K]> extends true ? K : never
   }[keyof TFields]
+
+  /** Follows SQL semantics: nullable columns and columns with defaults are omittable on insert. */
+  export type OmittableInsertColumnNames<TFields extends Schema.Struct.Fields> =
+    | NullableColumnNames<TFields>
+    | DefaultedColumnNames<TFields>
 
   export type RequiredInsertColumnNames<TFields extends Schema.Struct.Fields> = Exclude<
     keyof TFields,
