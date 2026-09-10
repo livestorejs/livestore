@@ -140,11 +140,11 @@ describe('SQLite storage fingerprints', () => {
     const firstThunk = SqliteDsl.text({ default: () => 'first' })
     const secondThunk = SqliteDsl.text({ default: () => 'second' })
     const literal = SqliteDsl.text({ default: 'first' })
-    const toTable = (definition: Schema.Top) => makeTable('defaults', { value: definition }).ast
+    const fingerprintOf = (definition: Schema.Top) => fingerprint(makeTable('defaults', { value: definition }).ast)
 
-    expect(fingerprint(toTable(firstThunk))).toBe(fingerprint(toTable(secondThunk)))
-    expect(fingerprint(toTable(firstThunk))).not.toBe(fingerprint(toTable(none)))
-    expect(fingerprint(toTable(literal))).not.toBe(fingerprint(toTable(firstThunk)))
+    expect(fingerprintOf(firstThunk)).toBe(fingerprintOf(secondThunk))
+    expect(fingerprintOf(firstThunk)).not.toBe(fingerprintOf(none))
+    expect(fingerprintOf(literal)).not.toBe(fingerprintOf(firstThunk))
   })
 })
 

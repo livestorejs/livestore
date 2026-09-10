@@ -66,7 +66,7 @@ type ColumnDefaultArg<T, TNullable extends boolean> =
 
 export type ColumnDefinitionInput = {
   readonly schema?: Schema.Top | undefined
-  readonly default?: ColumnDefaultArg<unknown, boolean> | undefined
+  readonly default?: ColumnDefaultArg<unknown, boolean>
   readonly nullable?: boolean | undefined
   readonly primaryKey?: boolean | undefined
   readonly autoIncrement?: boolean | undefined
