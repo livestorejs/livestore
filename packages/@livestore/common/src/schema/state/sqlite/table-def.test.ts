@@ -391,6 +391,56 @@ describe('table function overloads', () => {
     State.SQLite.withDefault(Schema.String, null)
   })
 
+  it('keeps json() and unknown fields required on insert', () => {
+    const documents = State.SQLite.table({
+      name: 'documents',
+      columns: {
+        id: State.SQLite.text({ primaryKey: true }),
+        meta: State.SQLite.json(),
+        payload: Schema.Unknown,
+      },
+    })
+    expect(documents.sqliteDef.columns.meta.nullable).toBe(false)
+    expect(documents.sqliteDef.columns.payload.nullable).toBe(false)
+    expectTypeOf<{ id: string }>().not.toExtend<Parameters<typeof documents.insert>[0]>()
+    expectTypeOf(documents.insert).toBeCallableWith({ id: '1', meta: { a: 1 }, payload: null })
+    expectTypeOf(documents.rowSchema.fields.meta).toEqualTypeOf<Schema.fromJsonString<Schema.Unknown>>()
+  })
+
+  it('reads an optional-key field back as nullable', async () => {
+    const notes = State.SQLite.table({
+      name: 'notes',
+      schema: Schema.Struct({
+        id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+        title: Schema.optionalKey(Schema.String),
+        done: Schema.optionalKey(Schema.Boolean),
+      }),
+    })
+    expect(notes.sqliteDef.columns.title.nullable).toBe(true)
+    expect(notes.sqliteDef.columns.done.nullable).toBe(true)
+    expectTypeOf<(typeof notes.Type)['title']>().toEqualTypeOf<string | null>()
+    expectTypeOf<(typeof notes.Type)['done']>().toEqualTypeOf<boolean | null>()
+    expectTypeOf(notes.insert).toBeCallableWith({ id: '1' })
+    const asserts = new TestSchema.Asserts(notes.rowSchema)
+    await asserts.decoding().succeed({ id: '1', title: null, done: null })
+  })
+
+  it('accepts array and object defaults through the curried withDefault', () => {
+    const Tags = Schema.Array(Schema.String)
+    const MutableTags = Schema.mutable(Schema.Array(Schema.String))
+    const Settings = Schema.Struct({ theme: Schema.String, sizes: Schema.mutable(Schema.Array(Schema.Int)) })
+    expectTypeOf(Tags.pipe(State.SQLite.withDefault([]))).toEqualTypeOf<Schema.withConstructorDefault<typeof Tags>>()
+    expectTypeOf(MutableTags.pipe(State.SQLite.withDefault([]))).toEqualTypeOf<
+      Schema.withConstructorDefault<typeof MutableTags>
+    >()
+    expectTypeOf(Settings.pipe(State.SQLite.withDefault({ theme: 'light', sizes: [1] }))).toEqualTypeOf<
+      Schema.withConstructorDefault<typeof Settings>
+    >()
+    expectTypeOf(Schema.Literals(['draft', 'published']).pipe(State.SQLite.withDefault('draft'))).toEqualTypeOf<
+      Schema.withConstructorDefault<Schema.Literals<readonly ['draft', 'published']>>
+    >()
+  })
+
   it('should handle Schema.Int as integer column', () => {
     const CounterSchema = Schema.Struct({
       id: Schema.String,

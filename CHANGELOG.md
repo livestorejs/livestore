@@ -56,7 +56,13 @@
   `null` only on a nullable field), an optional field is typed `T | null` in
   the row type instead of `T | undefined`, and a column helper with both
   `primaryKey: true` and `nullable: true` now throws at definition time, as
-  `withPrimaryKey` on a nullable schema already did
+  `withPrimaryKey` on a nullable schema already did. The column-map types
+  that described the old foundation are removed from `State.SQLite`:
+  `SchemaToColumns`, `TableDefInput`, `SqliteTableDefForInput`,
+  `SqliteTableDefForSchemaInput`, `ToColumns`, `PrettifyFlat`,
+  `DefaultSqliteTableDefConstrained`, `FromTable`, `FromColumns` and
+  `isColumnDefinition`; `WithDefaults` no longer takes a type parameter. Use
+  `TableDef<Name, Fields>` and `FromFields` instead
   ([#382](https://github.com/livestorejs/livestore/issues/382)).
 - **Store commit callbacks:** Callback return values are now ignored. Replace
   the undocumented `store.commit(() => [event])` form with `store.commit(event)`

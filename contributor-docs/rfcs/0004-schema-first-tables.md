@@ -1,9 +1,11 @@
 # Effect Schema as the foundation of SQLite table definitions
 
-> Status: proposed, with the implementation in
-> [livestore#1621](https://github.com/livestorejs/livestore/pull/1621). The
-> owning spec node (`context/02-system/02-state/01-sqlite/spec.md`) is updated
-> in that PR; this document records the reasoning and the alternatives.
+> Status: proposed; implemented in
+> [livestore#1621](https://github.com/livestorejs/livestore/pull/1621), which
+> also updates the owning spec node
+> (`context/02-system/02-state/01-sqlite/spec.md`) and records the choice as
+> [decision 0002](../../context/02-system/02-state/01-sqlite/.decisions/0002-effect-schema-as-table-foundation.md)
+> of that node. Merging the PR accepts both.
 
 ## Context
 
