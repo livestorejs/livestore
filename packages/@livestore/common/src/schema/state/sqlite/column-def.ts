@@ -179,12 +179,13 @@ const columnDefinition = (
 
 /**
  * The field itself is the column codec when its nullability already matches the column (`Schema.NullOr`
- * or no null at all). An optional field (`| undefined`) is rewrapped as `NullOr` of its core type
- * because SQLite stores the absent value as NULL.
+ * or no null at all). An optional field (`| undefined` or an optional key) is rewrapped as `NullOr`
+ * of its core type because SQLite stores the absent value as NULL, and the row's key is required.
  */
 const nullableColumnSchema = (schema: Schema.Top, nullable: boolean): Schema.Top => {
   const ast = schema.ast
-  if (nullable === false || (hasNull(ast) === true && hasUndefined(ast) === false)) return schema
+  if (nullable === false) return schema
+  if (hasNull(ast) === true && hasUndefined(ast) === false && SchemaAST.isOptional(ast) === false) return schema
   const coreAst = stripNullable(ast)
   return wrapNullable(coreAst === ast ? schema : Schema.make(coreAst), true)
 }

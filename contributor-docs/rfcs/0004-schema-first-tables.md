@@ -96,14 +96,18 @@ export type TableDef<TName, TFields extends Schema.Struct.Fields, TOptions> = {
 } & QueryBuilder<...>
 ```
 
-`FromFields.SqliteField<F>` mirrors `getColumnDefForSchema` on the type
-level: a field that already encodes to `string | number | Uint8Array | null`
-is its own column codec (so `rowSchema.fields.createdAt` is exactly
-`Schema.DateFromString`), an optional field becomes nullable, and booleans,
-bare dates and everything else are rewrapped. Omittable insert keys are
-nullable fields plus fields whose `~type.constructor.default` is
-`'with-default'`, which covers both column helpers and
-`Schema.String.pipe(State.SQLite.withDefault('draft'))`.
+`FromFields` mirrors `getColumnDefForSchema` on the type level by walking the
+same schema structure the runtime inspects: nullability comes from `null` /
+`undefined` union members and the optional-key marker, the storage form from
+the AST class of the field's encoded side (a field stored as-is keeps its
+exact schema type, so `rowSchema.fields.createdAt` is exactly
+`Schema.DateFromString`; booleans, bare dates and everything else are
+rewrapped), and a column default from a LiveStore-owned marker that
+`State.SQLite.text({ default })` and `withDefault` set alongside the
+`Default` annotation the runtime reads. A plain Effect constructor default
+(the `_tag` of a `Schema.TaggedStruct`) is therefore not a column default on
+either level. A conformance test asserts the two classifications agree for
+every supported field shape.
 
 The query builder reads `rowSchema.fields[K]['Type']` instead of
 `sqliteDef.columns[K]['schema']['Type']`.
