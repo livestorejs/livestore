@@ -1,13 +1,12 @@
 import { type Nullable, shouldNeverHappen } from '@livestore/utils'
-import type { Schema } from '@livestore/utils/effect'
-import { SchemaAST, type Types } from '@livestore/utils/effect'
+import { Schema, SchemaAST, type Types } from '@livestore/utils/effect'
 
 import { getColumnDefForSchema, schemaFieldsToColumns } from './column-def.ts'
 import { SqliteDsl } from './db-schema/mod.ts'
 import type { QueryBuilder } from './query-builder/mod.ts'
 import { makeQueryBuilder, QueryBuilderAstSymbol, QueryBuilderTypeId } from './query-builder/mod.ts'
 
-export const { blob, boolean, column, datetime, integer, isColumnDefinition, json, real, text } = SqliteDsl
+export const { blob, boolean, column, datetime, datetimeInteger, integer, json, real, text } = SqliteDsl
 
 // Re-export the column definition function
 export { getColumnDefForSchema }
@@ -15,48 +14,43 @@ export { getColumnDefForSchema }
 export type StateType = 'singleton' | 'dynamic'
 
 export type DefaultSqliteTableDef = SqliteDsl.TableDefinition<string, SqliteDsl.Columns>
-export type DefaultSqliteTableDefConstrained = SqliteDsl.TableDefinition<string, SqliteDsl.ConstraintColumns>
 
 // TODO use to hide table def internals
 export const TableDefInternalsSymbol = Symbol('TableDefInternals')
 export type TableDefInternalsSymbol = typeof TableDefInternalsSymbol
 
+/**
+ * A table is an Effect `Schema.Struct` whose fields encode to SQLite values. `rowSchema` is that
+ * struct (its `Type` is the decoded row, its `Encoded` the SQLite row) and everything else is derived
+ * from it: `sqliteDef` (the DDL view consumed by migrations and the query builder) and `insertSchema`
+ * (the row struct with nullable and defaulted fields made optional).
+ */
 export type TableDefBase<
-  // TODO replace SqliteDef type param with Effect Schema (see below)
-  TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDefConstrained,
+  TName extends string = string,
+  TFields extends Schema.Struct.Fields = FromFields.AnyFields,
   TOptions extends TableOptions = TableOptions,
 > = {
-  sqliteDef: TSqliteDef
+  sqliteDef: SqliteDsl.TableDefinition<TName, FromFields.Columns<TFields>>
   options: TOptions
-  // Derived from `sqliteDef`, so only exposed for convenience
-  rowSchema: SqliteDsl.StructSchemaForColumns<TSqliteDef['columns']>
-  insertSchema: SqliteDsl.InsertStructSchemaForColumns<TSqliteDef['columns']>
+  rowSchema: Schema.Struct<FromFields.SqliteFields<TFields>>
+  insertSchema: Schema.Codec<FromFields.InsertRowDecoded<TFields>, FromFields.InsertRowEncoded<TFields>>
 }
 
 export type TableDef<
-  // TODO replace SqliteDef type param with Effect Schema
-  // We can only do this with Effect Schema v4 once the default values are tracked on the type level
-  // https://github.com/livestorejs/livestore/issues/382
-  TSqliteDef extends DefaultSqliteTableDef = DefaultSqliteTableDefConstrained,
+  TName extends string = string,
+  TFields extends Schema.Struct.Fields = FromFields.AnyFields,
   TOptions extends TableOptions = TableOptions,
-  TSchema extends Schema.Top = Schema.Struct<SqliteDsl.StructFieldsForColumns<TSqliteDef['columns']>>,
-> = {
-  sqliteDef: TSqliteDef
-  options: TOptions
-  // Derived from `sqliteDef`, so only exposed for convenience
-  rowSchema: TSchema
-  insertSchema: SqliteDsl.InsertStructSchemaForColumns<TSqliteDef['columns']>
-  // query: QueryBuilder<ReadonlyArray<TSchema['Type']>>, TableDefBase<TSqliteDef & {}, TOptions>>
-  readonly Type: TSchema['Type']
-  readonly Encoded: TSchema['Encoded']
-} & QueryBuilder<ReadonlyArray<TSchema['Type']>, TableDefBase<TSqliteDef & {}, TOptions>>
+> = TableDefBase<TName, TFields, TOptions> & {
+  readonly Type: FromFields.RowDecoded<TFields>
+  readonly Encoded: FromFields.RowEncoded<TFields>
+} & QueryBuilder<ReadonlyArray<FromFields.RowDecoded<TFields>>, TableDefBase<TName, TFields, TOptions>>
 
 export type TableOptionsInput = Partial<{
   indexes: SqliteDsl.Index[]
 }>
 
 export namespace TableDef {
-  export type Any = TableDef<any, any>
+  export type Any = TableDef<any, any, any>
 }
 
 export type TableOptions = {
@@ -65,14 +59,24 @@ export type TableOptions = {
 }
 
 /**
- * Creates a SQLite table definition from columns or an Effect Schema.
+ * Creates a SQLite table definition from an Effect Schema.
  *
- * This function supports two main ways to define a table:
- * 1. Using explicit column definitions
- * 2. Using an Effect Schema (either the `name` property needs to be provided or the schema needs to have a title/identifier)
+ * The table's row schema is a `Schema.Struct` whose fields encode to SQLite values. There are two
+ * ways to provide it:
+ *
+ * 1. `columns`: a map of field schemas, typically built with the `State.SQLite.text()` & co. column
+ *    helpers, which return field schemas carrying the SQLite facets (column type, primary key,
+ *    default, nullability) as annotations. This is `Schema.Struct(columns)` with a table name.
+ * 2. `schema`: any Effect schema. A `Schema.Struct` or `Schema.Class` contributes its `fields`
+ *    directly; other schemas (unions of structs, transformations) contribute the property
+ *    signatures of their encoded side. Either the `name` property needs to be provided or the
+ *    schema needs to have a title/identifier annotation.
+ *
+ * Fields that do not encode to a SQLite value are stored through a derived codec: booleans as
+ * `0 | 1`, a bare `Schema.Date` as ISO text, other values as JSON text (see `getColumnDefForSchema`).
  *
  * ```ts
- * // Using explicit columns
+ * // Using column helpers
  * const usersTable = State.SQLite.table({
  *   name: 'users',
  *   columns: {
@@ -135,17 +139,16 @@ export type TableOptions = {
  * - When using Effect Schema without explicit name, the schema must have a title or identifier annotation
  */
 // Overload 1: With columns
-// TODO drop support for `column` when Effect Schema v4 is released
 export function table<
   TName extends string,
-  TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition.Any,
+  const TColumns extends Schema.Struct.Fields | Schema.Top,
   const TOptionsInput extends TableOptionsInput = TableOptionsInput,
 >(
   args: {
     name: TName
     columns: TColumns
   } & Partial<TOptionsInput>,
-): TableDef<SqliteTableDefForInput<TName, TColumns>, WithDefaults<TColumns>>
+): TableDef<TName, ToFields<TColumns>, WithDefaults>
 
 // Overload 2: With schema and explicit name
 export function table<
@@ -157,85 +160,75 @@ export function table<
     name: TName
     schema: TSchema
   } & Partial<TOptionsInput>,
-): TableDef<SqliteTableDefForSchemaInput<TName, TSchema['Type'], TSchema['Encoded'], TSchema>>
+): TableDef<TName, FieldsOf<TSchema>, WithDefaults>
 
 // Overload 3: With schema and no name (uses schema annotations)
 export function table<TSchema extends Schema.Top, const TOptionsInput extends TableOptionsInput = TableOptionsInput>(
   args: {
     schema: TSchema
   } & Partial<TOptionsInput>,
-): TableDef<SqliteTableDefForSchemaInput<string, TSchema['Type'], TSchema['Encoded'], TSchema>>
+): TableDef<string, FieldsOf<TSchema>, WithDefaults>
 
 // Implementation
-export function table<
-  TName extends string,
-  TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition.Any,
-  const TOptionsInput extends TableOptionsInput = TableOptionsInput,
->(
+export function table(
   args: (
     | {
-        name: TName
-        columns: TColumns
+        name: string
+        columns: Schema.Struct.Fields | Schema.Top
       }
     | {
-        name: TName
+        name: string
         schema: Schema.Top
       }
     | {
         schema: Schema.Top
       }
   ) &
-    Partial<TOptionsInput>,
-): TableDef<any, any> {
+    Partial<TableOptionsInput>,
+): TableDef<any, any, any> {
   const { ...options } = args
 
   let tableName: string
-  let columns: SqliteDsl.Columns
-  let additionalIndexes: SqliteDsl.Index[] = []
+  let propertySignatures: ReadonlyArray<SchemaAST.PropertySignature>
 
   if ('columns' in args) {
     tableName = args.name
-    const columnOrColumns = args.columns
-    columns = SqliteDsl.isColumnDefinition(columnOrColumns) === true ? { value: columnOrColumns } : columnOrColumns
-    additionalIndexes = []
+    const fields = Schema.isSchema(args.columns) === true ? { value: args.columns } : args.columns
+    propertySignatures = fieldsToPropertySignatures(fields)
   } else if ('schema' in args) {
-    const result = args.schema.pipe(getSqlitePropertySignatures, schemaFieldsToColumns)
-    columns = result.columns
-
-    // We'll set tableName first, then use it for index names
-    let tempTableName: string
+    propertySignatures = getSqlitePropertySignatures(args.schema)
 
     // If name is provided, use it; otherwise extract from schema annotations
     if ('name' in args) {
-      tempTableName = args.name
+      tableName = args.name
     } else {
       // Use title or identifier, with preference for title
-      tempTableName =
+      tableName =
         SchemaAST.resolveTitle(args.schema.ast) ??
         SchemaAST.resolveIdentifier(args.schema.ast) ??
         shouldNeverHappen(
           'When using schema without explicit name, the schema must have a title or identifier annotation',
         )
     }
-
-    tableName = tempTableName
-
-    // Create unique indexes for columns with unique annotation
-    additionalIndexes = (result.uniqueColumns || []).map((columnName) => ({
-      name: `idx_${tableName}_${columnName}_unique`,
-      columns: [columnName],
-      isUnique: true,
-    }))
   } else {
     return shouldNeverHappen('Either `columns` or `schema` must be provided when calling `table()`')
   }
+
+  const { columns, uniqueColumns } = schemaFieldsToColumns(propertySignatures)
+
+  // Create unique indexes for columns with unique annotation
+  const uniqueIndexes = uniqueColumns.map((columnName) => ({
+    name: `idx_${tableName}_${columnName}_unique`,
+    columns: [columnName],
+    isUnique: true,
+  }))
 
   const options_: TableOptions = {
     isClientDocumentTable: false,
   }
 
   // Combine user-provided indexes with unique column indexes
-  const allIndexes = [...(options?.indexes ?? []), ...additionalIndexes]
+  const allIndexes = [...(options?.indexes ?? []), ...uniqueIndexes]
   const sqliteDef = SqliteDsl.table(tableName, columns, allIndexes)
 
   const rowSchema = SqliteDsl.structSchemaForTable(sqliteDef)
@@ -265,20 +258,236 @@ export function table<
   return tableDef as any
 }
 
+export type WithDefaults = {
+  isClientDocumentTable: false
+}
+
+/** A single column schema is shorthand for `{ value: schema }`. */
+export type ToFields<TColumns extends Schema.Struct.Fields | Schema.Top> = TColumns extends Schema.Top
+  ? { value: TColumns }
+  : TColumns extends Schema.Struct.Fields
+    ? TColumns
+    : never
+
+/**
+ * The fields a schema contributes to a table. A `Schema.Struct` or `Schema.Class` contributes its
+ * `fields` as-is. Any other schema contributes one codec per key of its encoded side, typed by the
+ * decoded side where the key exists there (a union of structs, a struct transformed into a nested
+ * type).
+ */
+export type FieldsOf<TSchema extends Schema.Top> = TSchema extends { readonly fields: infer TFields }
+  ? TFields extends Schema.Struct.Fields
+    ? TFields
+    : never
+  : FieldsFromTypes<TSchema['Type'], TSchema['Encoded']>
+
+export type FieldsFromTypes<TType, TEncoded> =
+  TEncoded extends Record<string, any>
+    ? {
+        readonly [K in keyof TEncoded]-?: Schema.Codec<
+          TType extends Record<string, any> ? (K extends keyof TType ? TType[K] : TEncoded[K]) : TEncoded[K],
+          TEncoded[K]
+        >
+      }
+    : Schema.Struct.Fields
+
+export declare namespace FromFields {
+  export type SqliteValue = string | number | Uint8Array | null
+
+  /**
+   * The field map of a table whose fields are not statically known (`TableDef.Any`, the default
+   * `TableDefBase`). Every derived view below collapses to a loose shape for it, so any concrete
+   * table definition is assignable to the base.
+   */
+  export type AnyFields = { readonly [x: string]: Schema.Codec<any, any> }
+
+  /** `true` for `AnyFields`, `any` and other index-signature field maps, `false` for concrete field maps. */
+  export type IsLoose<TFields extends Schema.Struct.Fields> = string extends keyof TFields ? true : false
+
+  /** Checks if `null` or `undefined` is assignable to the field's type, matching the runtime nullable detection. */
+  export type IsNullable<F extends Schema.Constraint> = null extends F['Type']
+    ? true
+    : undefined extends F['Type']
+      ? true
+      : false
+
+  export type HasDefault<F extends Schema.Constraint> = F extends {
+    readonly '~type.constructor.default': 'with-default'
+  }
+    ? true
+    : false
+
+  type Core<T> = Exclude<T, null | undefined>
+  type MaybeNull<T, F extends Schema.Constraint> = IsNullable<F> extends true ? T | null : T
+
+  /**
+   * The codec a field is stored through, mirroring `getColumnDefForSchema`: a field that already
+   * encodes to a SQLite value is its own column codec (so its exact schema type is preserved), an
+   * optional field becomes nullable, and booleans, bare dates and everything else are rewrapped.
+   */
+  export type SqliteField<F extends Schema.Constraint> = Schema.Top extends F
+    ? F
+    : [F['Encoded']] extends [SqliteValue]
+      ? F
+      : [Core<F['Encoded']>] extends [SqliteValue]
+        ? Schema.Codec<Core<F['Type']> | null, Core<F['Encoded']> | null>
+        : [Core<F['Type']>] extends [boolean]
+          ? Schema.Codec<MaybeNull<Core<F['Type']>, F>, MaybeNull<0 | 1, F>>
+          : Schema.Codec<MaybeNull<Core<F['Type']>, F>, MaybeNull<string, F>>
+
+  export type SqliteFields<TFields extends Schema.Struct.Fields> =
+    IsLoose<TFields> extends true ? AnyFields : { readonly [K in keyof TFields]: SqliteField<TFields[K]> }
+
+  export type Columns<TFields extends Schema.Struct.Fields> =
+    IsLoose<TFields> extends true
+      ? SqliteDsl.Columns
+      : {
+          readonly [K in keyof TFields]: SqliteDsl.ColumnDefinition<
+            SqliteField<TFields[K]>['Encoded'],
+            SqliteField<TFields[K]>['Type'],
+            IsNullable<TFields[K]>
+          >
+        }
+
+  export type RowDecodedAll<TFields extends Schema.Struct.Fields> = {
+    readonly [K in keyof TFields]: SqliteField<TFields[K]>['Type']
+  }
+
+  export type RowEncodedAll<TFields extends Schema.Struct.Fields> = {
+    readonly [K in keyof TFields]: SqliteField<TFields[K]>['Encoded']
+  }
+
+  export type RowDecoded<TFields extends Schema.Struct.Fields> =
+    IsLoose<TFields> extends true ? any : Types.Simplify<RowDecodedAll<TFields>>
+
+  export type RowEncoded<TFields extends Schema.Struct.Fields> =
+    IsLoose<TFields> extends true ? any : Types.Simplify<RowEncodedAll<TFields>>
+
+  export type NullableColumnNames<TFields extends Schema.Struct.Fields> = {
+    [K in keyof TFields]: IsNullable<TFields[K]> extends true ? K : never
+  }[keyof TFields]
+
+  /** Follows SQL semantics: nullable columns and columns with defaults are omittable on insert. */
+  export type OmittableInsertColumnNames<TFields extends Schema.Struct.Fields> = {
+    [K in keyof TFields]: IsNullable<TFields[K]> extends true ? K : HasDefault<TFields[K]> extends true ? K : never
+  }[keyof TFields]
+
+  export type RequiredInsertColumnNames<TFields extends Schema.Struct.Fields> = Exclude<
+    keyof TFields,
+    OmittableInsertColumnNames<TFields>
+  >
+
+  /** The columns that must be given on insert, typed by their decoded values */
+  export type RequiredInsertRow<TFields extends Schema.Struct.Fields> = {
+    readonly [K in RequiredInsertColumnNames<TFields>]: SqliteField<TFields[K]>['Type']
+  }
+
+  /** An omittable column may also be passed as `undefined`, which the insert treats as omitted. */
+  type Omittable<TRow, TKeys extends keyof TRow> = { readonly [K in TKeys]?: TRow[K] | undefined }
+
+  export type InsertRowDecoded<TFields extends Schema.Struct.Fields> =
+    IsLoose<TFields> extends true
+      ? any
+      : Types.Simplify<
+          Pick<RowDecodedAll<TFields>, RequiredInsertColumnNames<TFields>> &
+            Omittable<RowDecodedAll<TFields>, OmittableInsertColumnNames<TFields>>
+        >
+
+  export type InsertRowEncoded<TFields extends Schema.Struct.Fields> =
+    IsLoose<TFields> extends true
+      ? any
+      : Types.Simplify<
+          Pick<RowEncodedAll<TFields>, RequiredInsertColumnNames<TFields>> &
+            Omittable<RowEncodedAll<TFields>, OmittableInsertColumnNames<TFields>>
+        >
+}
+
+export namespace FromTable {
+  export type Fields<TTableDef extends TableDefBase> = TTableDef['rowSchema']['fields']
+
+  // TODO this sometimes doesn't preserve the order of columns
+  export type RowDecoded<TTableDef extends TableDefBase> = Types.Simplify<
+    Nullable<Pick<RowDecodedAll<TTableDef>, NullableColumnNames<TTableDef>>> &
+      Omit<RowDecodedAll<TTableDef>, NullableColumnNames<TTableDef>>
+  >
+
+  export type NullableColumnNames<TTableDef extends TableDefBase> = FromColumns.NullableColumnNames<
+    TTableDef['sqliteDef']['columns']
+  >
+
+  export type Columns<TTableDef extends TableDefBase> = {
+    [K in keyof TTableDef['sqliteDef']['columns']]: TTableDef['sqliteDef']['columns'][K]['columnType']
+  }
+
+  export type RowEncodeNonNullable<TTableDef extends TableDefBase> = {
+    [K in keyof Fields<TTableDef>]: Fields<TTableDef>[K]['Encoded']
+  }
+
+  export type RowEncoded<TTableDef extends TableDefBase> = Types.Simplify<
+    Nullable<Pick<RowEncodeNonNullable<TTableDef>, NullableColumnNames<TTableDef>>> &
+      Omit<RowEncodeNonNullable<TTableDef>, NullableColumnNames<TTableDef>>
+  >
+
+  export type RowDecodedAll<TTableDef extends TableDefBase> = {
+    [K in keyof Fields<TTableDef>]: Fields<TTableDef>[K]['Type']
+  }
+}
+
+export namespace FromColumns {
+  // TODO this sometimes doesn't preserve the order of columns
+  export type RowDecoded<TColumns extends SqliteDsl.Columns> = Types.Simplify<
+    Nullable<Pick<RowDecodedAll<TColumns>, NullableColumnNames<TColumns>>> &
+      Omit<RowDecodedAll<TColumns>, NullableColumnNames<TColumns>>
+  >
+
+  export type RowDecodedAll<TColumns extends SqliteDsl.Columns> = {
+    [K in keyof TColumns]: TColumns[K]['schema']['Type']
+  }
+
+  export type RowEncoded<TColumns extends SqliteDsl.Columns> = Types.Simplify<
+    Nullable<Pick<RowEncodeNonNullable<TColumns>, NullableColumnNames<TColumns>>> &
+      Omit<RowEncodeNonNullable<TColumns>, NullableColumnNames<TColumns>>
+  >
+
+  export type RowEncodeNonNullable<TColumns extends SqliteDsl.Columns> = {
+    [K in keyof TColumns]: TColumns[K]['schema']['Encoded']
+  }
+
+  export type NullableColumnNames<TColumns extends SqliteDsl.Columns> = keyof {
+    [K in keyof TColumns as TColumns[K]['nullable'] extends true ? K : never]: {}
+  }
+}
+
+/** A struct's fields as property signatures, each carrying the field's own AST (context annotations included). */
+const fieldsToPropertySignatures = (fields: Schema.Struct.Fields): ReadonlyArray<SchemaAST.PropertySignature> =>
+  Object.entries(fields).map(([name, field]) => new SchemaAST.PropertySignature(name, field.ast))
+
+/**
+ * A `Schema.Struct` or `Schema.Class` contributes its fields directly. Any other schema (a union of
+ * structs, a transformation that reshapes a flat row into a nested type) contributes one property per
+ * key of its encoded side, since the encoded side decides which columns exist. Where the schema itself
+ * declares a property of the same name, that property's own AST becomes the column schema: it still
+ * carries the field's codec, so e.g. `Schema.DateFromMillis` stores its encoded form and decodes back
+ * to its type.
+ */
 const getSqlitePropertySignatures = (schema: Schema.Top): ReadonlyArray<SchemaAST.PropertySignature> => {
+  if ('fields' in schema && typeof schema.fields === 'object' && schema.fields !== null) {
+    return fieldsToPropertySignatures(schema.fields as Schema.Struct.Fields)
+  }
+
   const encodedPropertySignatures = getPropertySignatures(SchemaAST.toEncoded(schema.ast))
-  const typePropertySignatures = getPropertySignatures(SchemaAST.toType(schema.ast))
+  const ownPropertySignatures = getPropertySignatures(schema.ast)
 
   return encodedPropertySignatures.map((encodedPropertySignature) => {
-    const typePropertySignature = typePropertySignatures.find(
+    const ownPropertySignature = ownPropertySignatures.find(
       (propertySignature) => propertySignature.name === encodedPropertySignature.name,
     )
 
-    if (typePropertySignature === undefined || hasLiveStoreSqliteAnnotation(encodedPropertySignature.type) === true) {
+    if (ownPropertySignature === undefined || hasLiveStoreSqliteAnnotation(encodedPropertySignature.type) === true) {
       return encodedPropertySignature
     }
 
-    return new SchemaAST.PropertySignature(encodedPropertySignature.name, typePropertySignature.type)
+    return ownPropertySignature
   })
 }
 
@@ -331,119 +540,4 @@ const getPropertySignatures = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.Prop
 const hasLiveStoreSqliteAnnotation = (ast: SchemaAST.AST): boolean => {
   const annotationKeys = [...Object.keys(ast.annotations ?? {}), ...Object.keys(ast.context?.annotations ?? {})]
   return annotationKeys.some((key) => key.startsWith('livestore/state/sqlite/annotations/'))
-}
-
-export namespace FromTable {
-  // TODO this sometimes doesn't preserve the order of columns
-  export type RowDecoded<TTableDef extends TableDefBase> = Types.Simplify<
-    Nullable<Pick<RowDecodedAll<TTableDef>, NullableColumnNames<TTableDef>>> &
-      Omit<RowDecodedAll<TTableDef>, NullableColumnNames<TTableDef>>
-  >
-
-  export type NullableColumnNames<TTableDef extends TableDefBase> = FromColumns.NullableColumnNames<
-    TTableDef['sqliteDef']['columns']
-  >
-
-  export type Columns<TTableDef extends TableDefBase> = {
-    [K in keyof TTableDef['sqliteDef']['columns']]: TTableDef['sqliteDef']['columns'][K]['columnType']
-  }
-
-  export type RowEncodeNonNullable<TTableDef extends TableDefBase> = {
-    [K in keyof TTableDef['sqliteDef']['columns']]: TTableDef['sqliteDef']['columns'][K]['schema']['Encoded']
-  }
-
-  export type RowEncoded<TTableDef extends TableDefBase> = Types.Simplify<
-    Nullable<Pick<RowEncodeNonNullable<TTableDef>, NullableColumnNames<TTableDef>>> &
-      Omit<RowEncodeNonNullable<TTableDef>, NullableColumnNames<TTableDef>>
-  >
-
-  export type RowDecodedAll<TTableDef extends TableDefBase> = {
-    [K in keyof TTableDef['sqliteDef']['columns']]: TTableDef['sqliteDef']['columns'][K]['schema']['Type']
-  }
-}
-
-export namespace FromColumns {
-  // TODO this sometimes doesn't preserve the order of columns
-  export type RowDecoded<TColumns extends SqliteDsl.Columns> = Types.Simplify<
-    Nullable<Pick<RowDecodedAll<TColumns>, NullableColumnNames<TColumns>>> &
-      Omit<RowDecodedAll<TColumns>, NullableColumnNames<TColumns>>
-  >
-
-  export type RowDecodedAll<TColumns extends SqliteDsl.Columns> = {
-    [K in keyof TColumns]: TColumns[K]['schema']['Type']
-  }
-
-  export type RowEncoded<TColumns extends SqliteDsl.Columns> = Types.Simplify<
-    Nullable<Pick<RowEncodeNonNullable<TColumns>, NullableColumnNames<TColumns>>> &
-      Omit<RowEncodeNonNullable<TColumns>, NullableColumnNames<TColumns>>
-  >
-
-  export type RowEncodeNonNullable<TColumns extends SqliteDsl.Columns> = {
-    [K in keyof TColumns]: TColumns[K]['schema']['Encoded']
-  }
-
-  export type NullableColumnNames<TColumns extends SqliteDsl.Columns> = keyof {
-    [K in keyof TColumns as TColumns[K]['default'] extends true ? K : never]: {}
-  }
-
-  export type RequiredInsertColumnNames<TColumns extends SqliteDsl.Columns> =
-    SqliteDsl.FromColumns.RequiredInsertColumnNames<TColumns>
-
-  export type InsertRowDecoded<TColumns extends SqliteDsl.Columns> = SqliteDsl.FromColumns.InsertRowDecoded<TColumns>
-}
-
-export type SqliteTableDefForInput<
-  TName extends string,
-  TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition.Any,
-> = SqliteDsl.TableDefinition<TName, PrettifyFlat<ToColumns<TColumns>>>
-
-export type SqliteTableDefForSchemaInput<
-  TName extends string,
-  TType,
-  TEncoded,
-  _TSchema = any,
-> = TableDefInput.ForSchema<TName, TType, TEncoded, _TSchema>
-
-export type WithDefaults<TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition.Any> = {
-  isClientDocumentTable: false
-  requiredInsertColumnNames: SqliteDsl.FromColumns.RequiredInsertColumnNames<ToColumns<TColumns>>
-}
-
-export type PrettifyFlat<T> = T extends infer U ? { [K in keyof U]: U[K] } : never
-
-export type ToColumns<TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition.Any> =
-  TColumns extends SqliteDsl.Columns
-    ? TColumns
-    : TColumns extends SqliteDsl.ColumnDefinition.Any
-      ? { value: TColumns }
-      : never
-
-export declare namespace SchemaToColumns {
-  /** Checks if `null` or `undefined` is assignable to `T`, matching the runtime nullable detection. */
-  type IsNullable<T> = null extends T ? true : undefined extends T ? true : false
-
-  // Type helper to create column definition with proper schema
-  export type ColumnDefForType<TEncoded, TType> = SqliteDsl.ColumnDefinition<TEncoded, TType, IsNullable<TEncoded>>
-
-  export type FromTypes<TType, TEncoded> =
-    TEncoded extends Record<string, any>
-      ? {
-          [K in keyof TEncoded]-?: ColumnDefForType<
-            TEncoded[K],
-            TType extends Record<string, any> ? (K extends keyof TType ? TType[K] : TEncoded[K]) : TEncoded[K]
-          >
-        }
-      : SqliteDsl.Columns
-}
-
-export declare namespace TableDefInput {
-  export type ForColumns<
-    TName extends string,
-    TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition.Any,
-  > = SqliteDsl.TableDefinition<TName, PrettifyFlat<ToColumns<TColumns>>>
-
-  export type ForSchema<TName extends string, TType, TEncoded, _TSchema = any> = SqliteDsl.TableDefinition<
-    TName,
-    SchemaToColumns.FromTypes<TType, TEncoded>
-  >
 }

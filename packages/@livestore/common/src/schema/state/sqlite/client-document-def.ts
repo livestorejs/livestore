@@ -1,5 +1,5 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { type Option, type Types, Schema, SchemaGetter, Struct } from '@livestore/utils/effect'
+import { type Types, Schema, SchemaGetter, Struct } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../session-id-symbol.ts'
 import { sql } from '../../../util.ts'
@@ -446,7 +446,8 @@ export type ClientDocumentTableDef<
   TEncoded,
   TOptions extends ClientDocumentTableOptions<TType>,
 > = TableDef<
-  ClientDocumentTableDef.SqliteDef<TName, TType>,
+  TName,
+  ClientDocumentTableDef.Fields<TType>,
   {
     isClientDocumentTable: true
   }
@@ -456,16 +457,18 @@ export type ClientDocumentTableDef<
 export namespace ClientDocumentTableDef {
   export type Any = ClientDocumentTableDef<any, any, any, any>
 
-  export type SqliteDef<TName extends string, TType> = SqliteDsl.TableDefinition<
-    TName,
-    {
-      id: SqliteDsl.ColumnDefinition<string, string> & { default: Option.Some<string> }
-      value: SqliteDsl.ColumnDefinition<string, TType> & { default: Option.Some<TType> }
-    }
-  >
+  /**
+   * Both columns are typed as having a default: `id` is filled from the document's default id and
+   * `value` from its default value, so neither has to be given on insert.
+   */
+  export type Fields<TType> = {
+    id: Schema.withConstructorDefault<Schema.String>
+    value: Schema.withConstructorDefault<Schema.Codec<TType, string> & Schema.WithoutConstructorDefault>
+  }
 
   export type TableDefBase_<TName extends string, TType> = TableDefBase<
-    SqliteDef<TName, TType>,
+    TName,
+    Fields<TType>,
     {
       isClientDocumentTable: true
     }

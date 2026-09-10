@@ -4,9 +4,14 @@ import { Schema } from '@livestore/utils/effect'
 
 import { liveStoreStorageFormatVersion } from '../../../../../version.ts'
 import { makeState } from '../../mod.ts'
+import { table } from '../../table-def.ts'
 import { SqliteDsl } from '../mod.ts'
 import { digestToFingerprint } from './fingerprint-digest.ts'
 import { fingerprint } from './fingerprint.ts'
+
+/** the DSL AST is derived from a table's field schemas, so build it through `table()` */
+const makeTable = (name: string, columns: Schema.Struct.Fields, indexes?: SqliteDsl.Index[]) =>
+  table({ name, columns, ...(indexes === undefined ? {} : { indexes }) }).sqliteDef
 
 describe('SQLite storage fingerprints', () => {
   test('pins the final fingerprint output', () => {
@@ -36,7 +41,7 @@ describe('SQLite storage fingerprints', () => {
       fingerprint({ _tag: 'dbSchema', tables: [second.ast, first.ast] }),
     )
 
-    const table = SqliteDsl.table(
+    const table = makeTable(
       'indexed',
       {
         id: SqliteDsl.text({ primaryKey: true }),
@@ -108,10 +113,10 @@ describe('SQLite storage fingerprints', () => {
   })
 
   test('tracks JSON codecs passed through the generic text column API', () => {
-    const first = SqliteDsl.table('documents', {
+    const first = makeTable('documents', {
       value: SqliteDsl.text({ schema: Schema.fromJsonString(Schema.Struct({ value: Schema.String })) }),
     })
-    const second = SqliteDsl.table('documents', {
+    const second = makeTable('documents', {
       value: SqliteDsl.text({ schema: Schema.fromJsonString(Schema.Struct({ value: Schema.Finite })) }),
     })
 
@@ -120,10 +125,10 @@ describe('SQLite storage fingerprints', () => {
 
   test('gives equivalent JSON DSL forms the same fingerprint', () => {
     const valueSchema = Schema.Struct({ value: Schema.String })
-    const specialized = SqliteDsl.table('documents', {
+    const specialized = makeTable('documents', {
       value: SqliteDsl.json({ schema: valueSchema }),
     })
-    const generic = SqliteDsl.table('documents', {
+    const generic = makeTable('documents', {
       value: SqliteDsl.text({ schema: Schema.fromJsonString(valueSchema) }),
     })
 
@@ -135,8 +140,7 @@ describe('SQLite storage fingerprints', () => {
     const firstThunk = SqliteDsl.text({ default: () => 'first' })
     const secondThunk = SqliteDsl.text({ default: () => 'second' })
     const literal = SqliteDsl.text({ default: 'first' })
-    const toTable = (definition: SqliteDsl.ColumnDefinition.Any) =>
-      SqliteDsl.table('defaults', { value: definition }).ast
+    const toTable = (definition: Schema.Top) => makeTable('defaults', { value: definition }).ast
 
     expect(fingerprint(toTable(firstThunk))).toBe(fingerprint(toTable(secondThunk)))
     expect(fingerprint(toTable(firstThunk))).not.toBe(fingerprint(toTable(none)))
@@ -145,7 +149,7 @@ describe('SQLite storage fingerprints', () => {
 })
 
 const makePhysicalTable = () =>
-  SqliteDsl.table(
+  makeTable(
     'users',
     {
       id: SqliteDsl.text({ primaryKey: true }),
@@ -155,7 +159,7 @@ const makePhysicalTable = () =>
   )
 
 const makeJsonTable = (name: string, schema: Schema.Codec<unknown, unknown>) =>
-  SqliteDsl.table(name, {
+  makeTable(name, {
     id: SqliteDsl.text({ primaryKey: true }),
     value: SqliteDsl.json({ schema }),
   })

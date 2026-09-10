@@ -1,7 +1,7 @@
 import { TestSchema } from 'effect/testing'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
-import { Schema, SchemaAST, SchemaTransformation } from '@livestore/utils/effect'
+import { Effect, Option, Result, Schema, SchemaAST, SchemaIssue, SchemaTransformation } from '@livestore/utils/effect'
 
 import { State } from '../../mod.ts'
 
@@ -180,6 +180,184 @@ describe('table function overloads', () => {
     expect(userTable.sqliteDef.columns.id.nullable).toBe(false)
     expect(userTable.sqliteDef.columns.name.nullable).toBe(false)
     expect(userTable.sqliteDef.columns.email.nullable).toBe(true)
+  })
+
+  it('keeps a date codec so the column round-trips through its encoded form', () => {
+    const StampSchema = Schema.Struct({
+      id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+      createdAt: Schema.DateFromString,
+      seenAt: Schema.DateFromMillis,
+      bornAt: Schema.Date,
+      deletedAt: Schema.NullOr(Schema.DateFromString),
+      archivedAt: Schema.optional(Schema.DateFromString),
+    })
+
+    const stamps = State.SQLite.table({ name: 'stamps', schema: StampSchema })
+    const { columns } = stamps.sqliteDef
+    const date = new Date('2026-01-02T03:04:05.678Z')
+    const roundTrip = (column: { schema: Schema.Codec<any, any> }, value: unknown) =>
+      Schema.decodeUnknownSync(column.schema)(Schema.encodeUnknownSync(column.schema)(value))
+
+    expect(columns.createdAt.columnType).toBe('text')
+    expect(Schema.encodeUnknownSync(columns.createdAt.schema)(date)).toBe(date.toISOString())
+    expect(roundTrip(columns.createdAt, date)).toEqual(date)
+
+    expect(columns.seenAt.columnType).toBe('integer')
+    expect(Schema.encodeUnknownSync(columns.seenAt.schema)(date)).toBe(date.getTime())
+    expect(roundTrip(columns.seenAt, date)).toEqual(date)
+
+    expect(columns.bornAt.columnType).toBe('text')
+    expect(Schema.encodeUnknownSync(columns.bornAt.schema)(date)).toBe(date.toISOString())
+    expect(roundTrip(columns.bornAt, date)).toEqual(date)
+
+    expect(columns.deletedAt.nullable).toBe(true)
+    expect(roundTrip(columns.deletedAt, date)).toEqual(date)
+    expect(roundTrip(columns.deletedAt, null)).toBeNull()
+
+    expect(columns.archivedAt.nullable).toBe(true)
+    expect(roundTrip(columns.archivedAt, date)).toEqual(date)
+
+    // The row schema is the struct of those field codecs, so a SQLite row decodes in one step
+    expectTypeOf(stamps.rowSchema.fields.createdAt).toEqualTypeOf<Schema.DateFromString>()
+    expectTypeOf(stamps.rowSchema.fields.seenAt).toEqualTypeOf<Schema.DateFromMillis>()
+    expectTypeOf<(typeof stamps.Type)['bornAt']>().toEqualTypeOf<Date>()
+    expectTypeOf<(typeof stamps.Encoded)['bornAt']>().toEqualTypeOf<string>()
+    expectTypeOf<(typeof stamps.Type)['archivedAt']>().toEqualTypeOf<Date | null>()
+    expect(
+      Schema.decodeUnknownSync(stamps.rowSchema)({
+        id: '1',
+        createdAt: date.toISOString(),
+        seenAt: date.getTime(),
+        bornAt: date.toISOString(),
+        deletedAt: null,
+        archivedAt: null,
+      }),
+    ).toEqual({ id: '1', createdAt: date, seenAt: date, bornAt: date, deletedAt: null, archivedAt: null })
+  })
+
+  it('stores a codec field in its encoded form, like getColumnDefForSchema does', () => {
+    const CounterSchema = Schema.Struct({
+      id: Schema.String,
+      count: Schema.FiniteFromString,
+    })
+
+    const { columns } = State.SQLite.table({ name: 'counters', schema: CounterSchema }).sqliteDef
+
+    expect(columns.count.columnType).toBe('text')
+    expect(Schema.encodeUnknownSync(columns.count.schema)(42)).toBe('42')
+    expect(Schema.decodeUnknownSync(columns.count.schema)('42')).toBe(42)
+  })
+
+  it('tracks column defaults at the type level so insert() can omit them', () => {
+    const settings = State.SQLite.table({
+      name: 'settings',
+      columns: {
+        id: State.SQLite.text({ primaryKey: true }),
+        theme: State.SQLite.text({ default: 'light' }),
+        createdAt: State.SQLite.datetime({ default: { sql: 'CURRENT_TIMESTAMP' } }),
+        count: State.SQLite.integer({ default: () => 0 }),
+        note: State.SQLite.text({ nullable: true }),
+      },
+    })
+
+    expectTypeOf(settings.insert).toBeCallableWith({ id: '1' })
+    expectTypeOf<{ theme: string }>().not.toExtend<Parameters<typeof settings.insert>[0]>()
+    expectTypeOf<typeof settings.Type>().toEqualTypeOf<{
+      readonly id: string
+      readonly theme: string
+      readonly createdAt: Date
+      readonly count: number
+      readonly note: string | null
+    }>()
+
+    // the same holds for schema-based tables using `withDefault`
+    const posts = State.SQLite.table({
+      name: 'posts',
+      schema: Schema.Struct({
+        id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+        status: Schema.String.pipe(State.SQLite.withDefault('draft')),
+        views: Schema.Int.pipe(State.SQLite.withDefault(0)),
+      }),
+    })
+    expectTypeOf(posts.insert).toBeCallableWith({ id: '1' })
+    expectTypeOf<{ id: string }>().toExtend<Parameters<typeof posts.insert>[0]>()
+    expect(posts.sqliteDef.columns.status.default).toEqual(Option.some('draft'))
+
+    // value and thunk defaults are constructor defaults of the row schema
+    expect(settings.rowSchema.make({ id: '1', createdAt: new Date(0), note: null })).toEqual({
+      id: '1',
+      theme: 'light',
+      createdAt: new Date(0),
+      count: 0,
+      note: null,
+    })
+    // a SQL default is evaluated by SQLite and cannot be constructed client-side
+    const sqlDefaultFailure = Effect.runSync(Effect.result(settings.rowSchema.makeEffect({ id: '1', note: null })))
+    expect(Result.isFailure(sqlDefaultFailure)).toBe(true)
+    if (Result.isFailure(sqlDefaultFailure)) {
+      expect(SchemaIssue.makeFormatterDefault()(sqlDefaultFailure.failure)).toMatch(/CURRENT_TIMESTAMP/)
+    }
+  })
+
+  it('derives a table and its events from one canonical entity schema', async () => {
+    // The pattern of an app that keeps one Effect struct per entity and derives table + event
+    // schemas from its fields (`Schema.Date` fields, nullable JSON payloads, literal unions).
+    const PageSchema = Schema.Struct({
+      createdAt: Schema.Date,
+      deletedAt: Schema.NullOr(Schema.Date),
+      id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+      name: Schema.String,
+      settings: Schema.NullOr(Schema.Struct({ layout: Schema.Literals(['grid', 'list']) })),
+      type: Schema.Literals(['auto', 'custom']),
+      updatedAt: Schema.Date,
+    }).annotate({ title: 'pages' })
+
+    const pages = State.SQLite.table({ schema: PageSchema })
+    const PageCreated = Schema.Struct({ ...PageSchema.fields, updatedAt: Schema.optional(PageSchema.fields.updatedAt) })
+
+    expect(pages.sqliteDef.name).toBe('pages')
+    expect(pages.sqliteDef.columns.createdAt.columnType).toBe('text')
+    expect(pages.sqliteDef.columns.settings.columnType).toBe('text')
+    expect(pages.sqliteDef.columns.type.columnType).toBe('text')
+
+    const date = new Date('2026-01-02T03:04:05.678Z')
+    const asserts = new TestSchema.Asserts(pages.rowSchema)
+    await asserts.decoding().succeed(
+      {
+        createdAt: date.toISOString(),
+        deletedAt: null,
+        id: 'p1',
+        name: 'Home',
+        settings: JSON.stringify({ layout: 'grid' }),
+        type: 'auto',
+        updatedAt: date.toISOString(),
+      },
+      {
+        createdAt: date,
+        deletedAt: null,
+        id: 'p1',
+        name: 'Home',
+        settings: { layout: 'grid' },
+        type: 'auto',
+        updatedAt: date,
+      },
+    )
+
+    const { bindValues } = pages
+      .insert({ createdAt: date, id: 'p1', name: 'Home', settings: null, type: 'auto', updatedAt: date })
+      .asSql()
+    expect(bindValues).toEqual([date.toISOString(), 'p1', 'Home', null, 'auto', date.toISOString()])
+
+    expectTypeOf<typeof pages.Type>().toEqualTypeOf<{
+      readonly createdAt: Date
+      readonly deletedAt: Date | null
+      readonly id: string
+      readonly name: string
+      readonly settings: { readonly layout: 'grid' | 'list' } | null
+      readonly type: 'auto' | 'custom'
+      readonly updatedAt: Date
+    }>()
+    expectTypeOf<(typeof PageCreated)['Type']['updatedAt']>().toEqualTypeOf<Date | undefined>()
   })
 
   it('should handle Schema.Int as integer column', () => {
