@@ -86,7 +86,9 @@ For maintainers and contributors:
 - **Effect rc.113 API burndown:** Replaced the removed MessagePack RPC layer
   with `SchemaBinary`, migrated sockets to the pull reader and scoped writer
   APIs, and updated CLI constructors and schema transformations to their rc.113
-  names ([#1606](https://github.com/livestorejs/livestore/pull/1606)).
+  names. The FastCheck-based `Vitest.asProp` helper was removed; use
+  `Vitest.live.prop` with `arbitrary` options
+  ([#1606](https://github.com/livestorejs/livestore/pull/1606)).
 - **Tooling:** Shell entry no longer runs the full TypeScript build after
   dependency and generated-source setup. The shared Effect-utils
   `otel:profile:setup` task captures the strict setup graph through native

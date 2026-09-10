@@ -14,4 +14,4 @@
 '@livestore/webmesh': minor
 ---
 
-Breaking: upgrade the LiveStore package group to Effect `4.0.0-rc.113` and replace the removed MessagePack integration with Effect's `SchemaBinary` serialization.
+Breaking: upgrade the LiveStore package group to Effect `4.0.0-rc.113` and replace the removed MessagePack integration with Effect's `SchemaBinary` serialization. The FastCheck-based `Vitest.asProp` helper is removed; use `Vitest.live.prop` with `arbitrary` options.

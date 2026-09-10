@@ -19,6 +19,20 @@ import {
 
 import type * as CfTypes from '../cf-types.ts'
 
+const isEncodedRpcMessage = Schema.is(RpcMessage.EncodedSchema)
+
+const isFromClientEncoded = (message: unknown): message is RpcMessage.FromClientEncoded => {
+  if (isEncodedRpcMessage(message) === false) return false
+
+  return (
+    message._tag === 'Request' ||
+    message._tag === 'Ack' ||
+    message._tag === 'Interrupt' ||
+    message._tag === 'Ping' ||
+    message._tag === 'Eof'
+  )
+}
+
 const erasedCodec = (codecFor: RpcSerialization.CodecFor, schema: Schema.Top) =>
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- erased RPC data schemas require no codec services
   codecFor(schema as Schema.Codec<unknown, unknown, never, never>)
@@ -32,7 +46,10 @@ const encodeBytes = (parser: RpcSerialization.Parser, value: unknown): Uint8Arra
   if (encoded instanceof Uint8Array === false) {
     throw new TypeError('SchemaBinary RPC serialization did not produce bytes')
   }
-  return encoded as Uint8Array<ArrayBuffer>
+  if (encoded.buffer instanceof ArrayBuffer === false) {
+    throw new TypeError('SchemaBinary RPC serialization produced shared bytes')
+  }
+  return new Uint8Array(encoded.buffer, encoded.byteOffset, encoded.byteLength)
 }
 
 export interface ClientDoWithRpcCallback {
@@ -65,9 +82,7 @@ export const toDurableObjectHandler =
       const serialization = yield* schemaBinarySerialization
       const parser = serialization.makeUnsafe()
 
-      // Decode incoming requests - client sends array of requests
-      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- the parser validates Effect's encoded RPC envelope schema
-      const requests = parser.decode(serializedPayload) as RpcMessage.FromClientEncoded[]
+      const requests = parser.decode(serializedPayload).filter(isFromClientEncoded)
 
       // Get the context with handlers
       const context = yield* Effect.context<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>>()
@@ -101,8 +116,6 @@ export const toDurableObjectHandler =
         ).pipe(Effect.provideContext(entry.context), Effect.result)
 
         if (Result.isFailure(payloadResult) === true) {
-          // Request payloads are encoded with the JSON codec by Effect's RPC client. Decode them
-          // before dispatch so JSON-only representations such as `null` become their schema values.
           // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
           const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Top
           const rawExit = Exit.die(SchemaIssue.makeFormatterDefault()(payloadResult.failure.issue))

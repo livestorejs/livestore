@@ -38,9 +38,11 @@ export const makeProtocolSocketWithIsConnected = (options: {
       const writer = yield* socket.writer
       let parser = serialization.makeUnsafe()
 
-      // The parser is connection-scoped, so encode each ping against the active connection state.
       const pinger = yield* makePinger(
-        Effect.suspend(() => writer.write(parser.encode(constPing)!)),
+        Effect.suspend(() => {
+          const encoded = parser.encode(constPing)
+          return encoded === undefined ? Effect.void : writer.write(encoded)
+        }),
         options?.pingSchedule,
       )
       let currentError: RpcClientError.RpcClientError | undefined
@@ -49,9 +51,9 @@ export const makeProtocolSocketWithIsConnected = (options: {
       const broadcast = (response: FromServerEncoded) =>
         Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response))
 
-      const processData = (data: Uint8Array | string): Effect.Effect<void> => {
+      const processData = (message: Uint8Array | string): Effect.Effect<void> => {
         try {
-          const responses = parser.decode(data) as Array<FromServerEncoded>
+          const responses = parser.decode(message) as Array<FromServerEncoded>
           if (responses.length === 0) return Effect.void
           let i = 0
           return Effect.whileLoop({
@@ -63,12 +65,11 @@ export const makeProtocolSocketWithIsConnected = (options: {
                 pinger.onPong()
                 return markConnected
               }
-              if (Object.hasOwn(response, 'requestId') === true) {
-                const requestId = (response as FromServerEncoded & { readonly requestId: string | number }).requestId
-                const clientId = requestClientMap.get(requestId)
+              if ('requestId' in response) {
+                const clientId = requestClientMap.get(response.requestId)
                 if (clientId !== undefined) {
                   if (response._tag === 'Exit') {
-                    requestClientMap.delete(requestId)
+                    requestClientMap.delete(response.requestId)
                   }
                   return markConnected.pipe(Effect.andThen(writeResponse(clientId, response)))
                 }
@@ -95,7 +96,6 @@ export const makeProtocolSocketWithIsConnected = (options: {
         // Reset the timer as soon as _any_ frame arrives so that large batches which
         // don't contain explicit `Pong` messages don't trigger the open-timeout defect.
         // (The actual pong handler still calls `onPong()` to resolve manual pings.)
-        // CHANGED: reset once for each connection, not once for each frame.
         parser = serialization.makeUnsafe()
         pinger.reset()
         return Effect.gen(function* () {

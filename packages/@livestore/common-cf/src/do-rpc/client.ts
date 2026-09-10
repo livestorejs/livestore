@@ -5,18 +5,33 @@ import {
   Layer,
   Option,
   RpcClient,
-  type RpcMessage,
+  RpcMessage,
   RpcSerialization,
+  Schema,
   type Scope,
 } from '@livestore/utils/effect'
 
 import type * as CfTypes from '../cf-types.ts'
 
+const isEncodedRpcMessage = Schema.is(RpcMessage.EncodedSchema)
+
+const isFromServerEncoded = (message: unknown): message is RpcMessage.FromServerEncoded => {
+  if (isEncodedRpcMessage(message) === false) return false
+
+  return (
+    message._tag === 'Chunk' ||
+    message._tag === 'Exit' ||
+    message._tag === 'Defect' ||
+    message._tag === 'Pong' ||
+    message._tag === 'Request'
+  )
+}
+
 /** Decodes a streaming-RPC `ReadableStream`'s binary frames, writing each out as it arrives. */
 const processReadableStream = (
   stream: CfTypes.ReadableStream,
   parser: RpcSerialization.Parser,
-  writeResponse: (response: any) => Effect.Effect<void>,
+  writeResponse: (response: RpcMessage.FromServerEncoded) => Effect.Effect<void>,
 ): Effect.Effect<void> =>
   Effect.gen(function* () {
     const reader = stream.getReader()
@@ -29,7 +44,14 @@ const processReadableStream = (
           break
         }
 
-        for (const message of parser.decode(value as Uint8Array)) {
+        if (value instanceof Uint8Array === false) {
+          return yield* Effect.die('Received a non-binary RPC response')
+        }
+
+        for (const message of parser.decode(value)) {
+          if (isFromServerEncoded(message) === false) {
+            return yield* Effect.die('Received an invalid RPC response')
+          }
           yield* writeResponse(message)
         }
       }
@@ -102,30 +124,22 @@ const makeProtocolDurableObject = ({
         return Effect.gen(function* () {
           const serializedResponse = yield* Effect.tryPromise(() => callRpc(serializedPayload)).pipe(Effect.orDie) // Convert errors to defects to match never error type
 
-          // Handle ReadableStream for streaming responses
-          if (serializedResponse instanceof ReadableStream) {
-            const fiber = yield* processReadableStream(
-              serializedResponse as CfTypes.ReadableStream,
-              parser,
-              (response) => writeResponse(clientId, response),
-            ).pipe(
-              // Effect.tapCauseLogPretty,
-              Effect.forkChild,
-            )
-
-            // fiberMap.set(message.id, fiber)
-            yield* FiberMap.set(fiberMap, message.id, fiber)
-
-            yield* Fiber.join(fiber)
-
+          if (serializedResponse instanceof Uint8Array) {
+            for (const response of parser.decode(serializedResponse)) {
+              if (isFromServerEncoded(response) === false) {
+                return yield* Effect.die('Received an invalid RPC response')
+              }
+              yield* writeResponse(clientId, response)
+            }
             return
           }
 
-          // Handle regular Uint8Array responses
-          for (const response of parser.decode(serializedResponse as Uint8Array)) {
-            // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- the parser validates Effect's encoded RPC envelope schema
-            yield* writeResponse(clientId, response as RpcMessage.FromServerEncoded)
-          }
+          const fiber = yield* processReadableStream(serializedResponse, parser, (response) =>
+            writeResponse(clientId, response),
+          ).pipe(Effect.forkChild)
+
+          yield* FiberMap.set(fiberMap, message.id, fiber)
+          yield* Fiber.join(fiber)
         }).pipe(Effect.withSpan('do-rpc-client:send'), Effect.orDie) // Ensure never error type
       }
 

@@ -57,8 +57,8 @@ requests.
 
 Edges exist over message ports, workers, and websockets
 (`websocket-edge.ts`); websocket edges declare
-`supportsTransferables: false` and msgpack-frame their payloads. On a new
-edge the node broadcasts `NetworkEdgeAdded` for auto-reconnect.
+`supportsTransferables: false` and encode their payloads as Effect SchemaBinary
+frames. On a new edge the node broadcasts `NetworkEdgeAdded` for auto-reconnect.
 
 Routing per packet (`sendPacket`): (1) a direct edge to `packet.target`
 wins; (2) else a set `remainingHops` reverse route is followed; (3) else
