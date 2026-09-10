@@ -1,9 +1,9 @@
 # Effect Schema as the foundation of SQLite table definitions
 
-> Status: spike. The branch this RFC lives on carries a working prototype in
-> `@livestore/common` (all `packages/@livestore/common` and
-> `packages/@livestore/livestore` tests pass, the monorepo typechecks). It is
-> written up to decide whether to land it, not as a finished migration.
+> Status: proposed, with the implementation in
+> [livestore#1621](https://github.com/livestorejs/livestore/pull/1621). The
+> owning spec node (`context/02-system/02-state/01-sqlite/spec.md`) is updated
+> in that PR; this document records the reasoning and the alternatives.
 
 ## Context
 

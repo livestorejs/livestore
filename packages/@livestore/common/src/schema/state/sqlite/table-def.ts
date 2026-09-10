@@ -1,6 +1,7 @@
-import { type Nullable, shouldNeverHappen } from '@livestore/utils'
+import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, SchemaAST, type Types } from '@livestore/utils/effect'
 
+import { AutoIncrement, ColumnType, Default, PrimaryKeyId, Unique } from './column-annotations.ts'
 import { getColumnDefForSchema, schemaFieldsToColumns } from './column-def.ts'
 import { SqliteDsl } from './db-schema/mod.ts'
 import type { QueryBuilder } from './query-builder/mod.ts'
@@ -402,62 +403,6 @@ export declare namespace FromFields {
         >
 }
 
-export namespace FromTable {
-  export type Fields<TTableDef extends TableDefBase> = TTableDef['rowSchema']['fields']
-
-  // TODO this sometimes doesn't preserve the order of columns
-  export type RowDecoded<TTableDef extends TableDefBase> = Types.Simplify<
-    Nullable<Pick<RowDecodedAll<TTableDef>, NullableColumnNames<TTableDef>>> &
-      Omit<RowDecodedAll<TTableDef>, NullableColumnNames<TTableDef>>
-  >
-
-  export type NullableColumnNames<TTableDef extends TableDefBase> = FromColumns.NullableColumnNames<
-    TTableDef['sqliteDef']['columns']
-  >
-
-  export type Columns<TTableDef extends TableDefBase> = {
-    [K in keyof TTableDef['sqliteDef']['columns']]: TTableDef['sqliteDef']['columns'][K]['columnType']
-  }
-
-  export type RowEncodeNonNullable<TTableDef extends TableDefBase> = {
-    [K in keyof Fields<TTableDef>]: Fields<TTableDef>[K]['Encoded']
-  }
-
-  export type RowEncoded<TTableDef extends TableDefBase> = Types.Simplify<
-    Nullable<Pick<RowEncodeNonNullable<TTableDef>, NullableColumnNames<TTableDef>>> &
-      Omit<RowEncodeNonNullable<TTableDef>, NullableColumnNames<TTableDef>>
-  >
-
-  export type RowDecodedAll<TTableDef extends TableDefBase> = {
-    [K in keyof Fields<TTableDef>]: Fields<TTableDef>[K]['Type']
-  }
-}
-
-export namespace FromColumns {
-  // TODO this sometimes doesn't preserve the order of columns
-  export type RowDecoded<TColumns extends SqliteDsl.Columns> = Types.Simplify<
-    Nullable<Pick<RowDecodedAll<TColumns>, NullableColumnNames<TColumns>>> &
-      Omit<RowDecodedAll<TColumns>, NullableColumnNames<TColumns>>
-  >
-
-  export type RowDecodedAll<TColumns extends SqliteDsl.Columns> = {
-    [K in keyof TColumns]: TColumns[K]['schema']['Type']
-  }
-
-  export type RowEncoded<TColumns extends SqliteDsl.Columns> = Types.Simplify<
-    Nullable<Pick<RowEncodeNonNullable<TColumns>, NullableColumnNames<TColumns>>> &
-      Omit<RowEncodeNonNullable<TColumns>, NullableColumnNames<TColumns>>
-  >
-
-  export type RowEncodeNonNullable<TColumns extends SqliteDsl.Columns> = {
-    [K in keyof TColumns]: TColumns[K]['schema']['Encoded']
-  }
-
-  export type NullableColumnNames<TColumns extends SqliteDsl.Columns> = keyof {
-    [K in keyof TColumns as TColumns[K]['nullable'] extends true ? K : never]: {}
-  }
-}
-
 /** A struct's fields as property signatures, each carrying the field's own AST (context annotations included). */
 const fieldsToPropertySignatures = (fields: Schema.Struct.Fields): ReadonlyArray<SchemaAST.PropertySignature> =>
   Object.entries(fields).map(([name, field]) => new SchemaAST.PropertySignature(name, field.ast))
@@ -537,7 +482,13 @@ const getPropertySignatures = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.Prop
   return []
 }
 
-const hasLiveStoreSqliteAnnotation = (ast: SchemaAST.AST): boolean => {
-  const annotationKeys = [...Object.keys(ast.annotations ?? {}), ...Object.keys(ast.context?.annotations ?? {})]
-  return annotationKeys.some((key) => key.startsWith('livestore/state/sqlite/annotations/'))
-}
+/**
+ * `annotate` writes onto the last check when a schema has checks, so the annotations are read the way
+ * `SchemaAST.resolveAt` does rather than from `ast.annotations` directly.
+ */
+const hasLiveStoreSqliteAnnotation = (ast: SchemaAST.AST): boolean =>
+  columnAnnotationIds.some(
+    (id) => SchemaAST.resolveAt(id)(ast) !== undefined || ast.context?.annotations?.[id] !== undefined,
+  )
+
+const columnAnnotationIds = [PrimaryKeyId, ColumnType, Default, AutoIncrement, Unique]
