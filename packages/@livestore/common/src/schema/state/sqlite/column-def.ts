@@ -184,10 +184,13 @@ const columnDefinition = (
  */
 const nullableColumnSchema = (schema: Schema.Top, nullable: boolean): Schema.Top => {
   const ast = schema.ast
-  const coreAst = stripNullable(ast)
   if (nullable === false || (hasNull(ast) === true && hasUndefined(ast) === false)) return schema
-  return Schema.NullOr(coreAst === ast ? schema : Schema.make(coreAst))
+  const coreAst = stripNullable(ast)
+  return wrapNullable(coreAst === ast ? schema : Schema.make(coreAst), true)
 }
+
+const wrapNullable = (schema: Schema.Top, nullable: boolean): Schema.Top =>
+  nullable === true ? Schema.NullOr(schema) : schema
 
 const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.ColumnDefinition.Any => {
   const ast = schema.ast
@@ -195,11 +198,10 @@ const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.Col
   const coreAst = stripNullable(ast)
   const coreSchema = (coreAst === ast ? schema : Schema.make(coreAst)) as Schema.Codec<any, any>
   const asIs = nullableColumnSchema(schema, nullable)
-  const wrap = (columnSchema: Schema.Top) => (nullable === true ? Schema.NullOr(columnSchema) : columnSchema)
 
   // Special case: Boolean is transformed to integer in SQLite
   if (SchemaAST.isBoolean(coreAst) === true) {
-    return columnDefinition('integer', wrap(Schema.BooleanFromBit), nullable)
+    return columnDefinition('integer', wrapNullable(Schema.BooleanFromBit, nullable), nullable)
   }
 
   // Get the encoded AST - what actually gets stored in SQLite
@@ -212,7 +214,7 @@ const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.Col
     SchemaAST.isString(encodedAst) === false &&
     SchemaAST.isNumber(encodedAst) === false
   ) {
-    return columnDefinition('text', wrap(Schema.DateFromString), nullable)
+    return columnDefinition('text', wrapNullable(Schema.DateFromString, nullable), nullable)
   }
 
   // Check if the encoded type matches SQLite native types
@@ -239,7 +241,7 @@ const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.Col
   if (coreLiteralColumn !== null) return coreLiteralColumn
 
   // Everything else needs JSON encoding
-  return columnDefinition('text', wrap(Schema.fromJsonString(coreSchema)), nullable)
+  return columnDefinition('text', wrapNullable(Schema.fromJsonString(coreSchema), nullable), nullable)
 }
 
 const stripNullable = (ast: SchemaAST.AST): SchemaAST.AST => {
@@ -284,10 +286,8 @@ const getLiteralColumnDefinition = (
 
       return columnDefinition(useIntegerColumn === true ? 'integer' : 'real', schema, nullable)
     }
-    case 'boolean': {
-      const wrap = (columnSchema: Schema.Top) => (nullable === true ? Schema.NullOr(columnSchema) : columnSchema)
-      return columnDefinition('integer', wrap(Schema.BooleanFromBit), nullable)
-    }
+    case 'boolean':
+      return columnDefinition('integer', wrapNullable(Schema.BooleanFromBit, nullable), nullable)
     case 'bigint':
       return columnDefinition('integer', schema, nullable)
     default:

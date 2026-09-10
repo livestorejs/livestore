@@ -45,17 +45,6 @@ export declare namespace ColumnDefinition {
   export type Any = ColumnDefinition<any, any>
 }
 
-export const isColumnDefinition = (value: unknown): value is ColumnDefinition.Any => {
-  const validColumnTypes = ['text', 'integer', 'real', 'blob'] as const
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'columnType' in value &&
-    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- type guard narrowing; columnType checked to be in valid set
-    validColumnTypes.includes(value.columnType as any)
-  )
-}
-
 type MaybeNull<T, TNullable extends boolean> = T | (TNullable extends true ? null : never)
 
 type ColumnDefaultArg<T, TNullable extends boolean> =
@@ -210,9 +199,10 @@ const makeSpecializedColDef: MakeSpecializedColDefFn = (columnType, opts) => (de
   return makeColumnSchema(columnType, base, def) as any
 }
 
-export const json: SpecializedColDefFn<'text', true, Schema.fromJsonString<Schema.Any>> = makeSpecializedColDef<
+/** Without a custom schema the decoded value is `unknown`; a JSON column never declares a shape it does not validate. */
+export const json: SpecializedColDefFn<'text', true, Schema.fromJsonString<Schema.Unknown>> = makeSpecializedColDef<
   'text',
-  Schema.fromJsonString<Schema.Any>
+  Schema.fromJsonString<Schema.Unknown>
 >('text', {
   _tag: 'baseSchemaFn',
   baseSchemaFn: (customSchema) => Schema.fromJsonString(customSchema ?? Schema.Any),
