@@ -94,7 +94,7 @@ export const withDefault: {
     value: T | ColumnDefaultThunk<T>,
   ): <S extends Schema.Top & Schema.WithoutConstructorDefault>(
     schema: S,
-  ) => [T] extends [S['Type']] ? Schema.withConstructorDefault<S> : DefaultValueMismatch<T, S['Type']>
+  ) => [T] extends [DeepReadonly<S['Type']>] ? Schema.withConstructorDefault<S> : DefaultValueMismatch<T, S['Type']>
 } = Function.dual(2, <T extends Schema.Top & Schema.WithoutConstructorDefault>(schema: T, value: unknown) =>
   applyAnnotations(schema, { [Default]: value }).pipe(Schema.withConstructorDefault(constructorDefaultFor(value))),
 )
@@ -103,6 +103,20 @@ export const withDefault: {
 export type DefaultValueMismatch<TValue, TFieldType> = {
   readonly 'Error: the default value is not assignable to the field type': { value: TValue; fieldType: TFieldType }
 }
+
+/**
+ * The curried `withDefault` infers its value with `const`, which makes array and object literals
+ * deeply readonly. Comparing against the deeply readonly field type keeps literal narrowing (a
+ * `'draft'` default on a literal-union field) without rejecting `[]` on a mutable array field.
+ */
+type DeepReadonly<T> =
+  T extends ReadonlyArray<infer E>
+    ? ReadonlyArray<DeepReadonly<E>>
+    : T extends (...args: any) => any
+      ? T
+      : T extends object
+        ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+        : T
 
 /**
  * The Effect constructor default for a column default. A SQL-expression default (`{ sql }`) can only
