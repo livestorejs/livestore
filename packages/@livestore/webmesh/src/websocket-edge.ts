@@ -6,7 +6,6 @@ import {
   Result,
   Exit,
   Latch,
-  Layer,
   Queue,
   Schedule,
   Schema,
@@ -66,13 +65,7 @@ export const connectViaWebSocket = ({
     )
 
     yield* Deferred.await(edgeChannel.webChannel.closedDeferred)
-  }).pipe(Effect.scoped, Effect.forever, Effect.interruptible, Effect.provide(binaryWebSocketConstructorLayer))
-
-const binaryWebSocketConstructorLayer = Layer.succeed(Socket.WebSocketConstructor, (url, protocols) => {
-  const socket = new globalThis.WebSocket(url, protocols)
-  socket.binaryType = 'arraybuffer'
-  return socket
-})
+  }).pipe(Effect.scoped, Effect.forever, Effect.interruptible, Effect.provide(Socket.layerWebSocketConstructorGlobal))
 
 export const makeWebSocketEdge = ({
   socket,
@@ -155,7 +148,7 @@ export const makeWebSocketEdge = ({
       )
 
       const initHandshake = (from: string) =>
-        sendToSocket(Schema.encodeSync(MessageBinary)({ _tag: 'WSEdgeInit', from }))
+        sendToSocket.write(Schema.encodeSync(MessageBinary)({ _tag: 'WSEdgeInit', from }))
 
       if (socketType._tag === 'leaf') {
         yield* initHandshake(socketType.from)
@@ -172,7 +165,7 @@ export const makeWebSocketEdge = ({
         Effect.gen(function* () {
           yield* isConnectedLatch.await
           const payload = yield* Schema.encodeEffect(schema.send)(message)
-          yield* sendToSocket(yield* Schema.encodeEffect(MessageBinary)({ _tag: 'WSEdgePayload', payload, from }))
+          yield* sendToSocket.write(yield* Schema.encodeEffect(MessageBinary)({ _tag: 'WSEdgePayload', payload, from }))
         }).pipe(Effect.orDie)
 
       const listen = Stream.fromQueue(listenQueue).pipe(

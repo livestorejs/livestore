@@ -14,12 +14,12 @@ import { updateDepsCommand } from './commands/update-deps.ts'
 const tsCommand = Cli.Command.make(
   'ts',
   {
-    watch: Cli.Flag.boolean('watch').pipe(Cli.Flag.withDefault(false)),
-    clean: Cli.Flag.boolean('clean').pipe(
+    watch: Cli.Flag.Boolean('watch').pipe(Cli.Flag.withDefault(false)),
+    clean: Cli.Flag.Boolean('clean').pipe(
       Cli.Flag.withDefault(false),
       Cli.Flag.withDescription('Clean build artifacts before compilation'),
     ),
-    noCheck: Cli.Flag.boolean('no-check').pipe(
+    noCheck: Cli.Flag.Boolean('no-check').pipe(
       Cli.Flag.withDefault(false),
       Cli.Flag.withDescription('Disable full type checking (only critical parse and emit errors will be reported)'),
     ),

@@ -14,4 +14,4 @@
 '@livestore/webmesh': minor
 ---
 
-Breaking: move the LiveStore package group past Effect `4.0.0-rc.112` and replace the removed MessagePack integration with Effect's `SchemaBinary` serialization.
+Breaking: upgrade the LiveStore package group to Effect `4.0.0-rc.113` and replace the removed MessagePack integration with Effect's `SchemaBinary` serialization.

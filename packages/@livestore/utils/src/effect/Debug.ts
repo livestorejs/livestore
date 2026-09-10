@@ -220,7 +220,7 @@ const ensureScopePatched = (scope: Scope.Scope, allocationFiber: Fiber.Fiber<any
   } else {
     cleanupScopes()
   }
-  const allocationSpan = allocationFiber?.currentSpan
+  const allocationSpan = allocationFiber?.cache.span
   knownScopes.set(scope, { id, allocationFiber, allocationSpan })
 }
 const cleanupScopes = () => {
@@ -363,9 +363,7 @@ const renderSpanNode = (graph: Graph.Graph<GraphNodeInfo, void, 'directed'>, nod
   const durationStr = duration !== undefined ? ` ${duration}` : ''
 
   const fiberIds = Array.from(knownFibers)
-    .filter(
-      (fiber) => fiber.currentSpan?.spanId === info.span.spanId && fiber.currentSpan?.traceId === info.span.traceId,
-    )
+    .filter((fiber) => fiber.cache.span?.spanId === info.span.spanId && fiber.cache.span?.traceId === info.span.traceId)
     .map((fiber) => `#${fiber.id}`)
     .join(', ')
   const runningOnFibers = fiberIds.length > 0 ? ` [fibers ${fiberIds}]` : ''

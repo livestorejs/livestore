@@ -35,81 +35,94 @@ export const makeProtocolSocketWithIsConnected = (options: {
       const serialization = yield* RpcSerialization.RpcSerialization
       const requestClientMap = new Map<string | number, number>()
 
-      const write = yield* socket.writer
+      const writer = yield* socket.writer
       let parser = serialization.makeUnsafe()
 
-      const pinger = yield* makePinger(write(parser.encode(constPing)!), options?.pingSchedule)
+      // The parser is connection-scoped, so encode each ping against the active connection state.
+      const pinger = yield* makePinger(
+        Effect.suspend(() => writer.write(parser.encode(constPing)!)),
+        options?.pingSchedule,
+      )
       let currentError: RpcClientError.RpcClientError | undefined
 
       const markConnected = SubscriptionRef.set(options.isConnected, true)
       const broadcast = (response: FromServerEncoded) =>
         Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response))
 
+      const processData = (data: Uint8Array | string): Effect.Effect<void> => {
+        try {
+          const responses = parser.decode(data) as Array<FromServerEncoded>
+          if (responses.length === 0) return Effect.void
+          let i = 0
+          return Effect.whileLoop({
+            while: () => i < responses.length,
+            body: () => {
+              const response = responses[i++]!
+              pinger.reset()
+              if (response._tag === 'Pong') {
+                pinger.onPong()
+                return markConnected
+              }
+              if (Object.hasOwn(response, 'requestId') === true) {
+                const requestId = (response as FromServerEncoded & { readonly requestId: string | number }).requestId
+                const clientId = requestClientMap.get(requestId)
+                if (clientId !== undefined) {
+                  if (response._tag === 'Exit') {
+                    requestClientMap.delete(requestId)
+                  }
+                  return markConnected.pipe(Effect.andThen(writeResponse(clientId, response)))
+                }
+              }
+              return markConnected.pipe(Effect.andThen(broadcast(response)))
+            },
+            step: Function.constVoid,
+          })
+        } catch (defect) {
+          return broadcast({
+            _tag: 'ClientProtocolError',
+            error: new RpcClientError.RpcClientError({
+              reason: new RpcClientError.RpcClientDefect({
+                message: 'Error decoding message',
+                cause: defect,
+              }),
+            }),
+          })
+        }
+      }
+
       yield* Effect.suspend(() => {
         // We rely on the heartbeat watchdog while streaming arbitrarily long payloads.
         // Reset the timer as soon as _any_ frame arrives so that large batches which
         // don't contain explicit `Pong` messages don't trigger the open-timeout defect.
         // (The actual pong handler still calls `onPong()` to resolve manual pings.)
-        // CHANGED: don't reset parser on every message
-        // parser = serialization.makeUnsafe()
-        currentError = undefined
+        // CHANGED: reset once for each connection, not once for each frame.
+        parser = serialization.makeUnsafe()
         pinger.reset()
-        return socket
-          .runRaw((message) => {
-            try {
-              const responses = parser.decode(message) as Array<FromServerEncoded>
-              if (responses.length === 0) return
-              let i = 0
-              return Effect.whileLoop({
-                while: () => i < responses.length,
-                body: () => {
-                  const response = responses[i++]!
-                  // Keep extending the watchdog for each data frame to avoid
-                  // disconnecting mid-stream when the server is busy sending batches.
-                  pinger.reset()
-                  if (response._tag === 'Pong') {
-                    pinger.onPong()
-                    return markConnected
-                  }
-                  if ('requestId' in response) {
-                    const clientId = requestClientMap.get(response.requestId)
-                    if (clientId !== undefined) {
-                      if (response._tag === 'Exit') {
-                        requestClientMap.delete(response.requestId)
-                      }
-                      return markConnected.pipe(Effect.andThen(writeResponse(clientId, response)))
-                    }
-                  }
-                  return markConnected.pipe(Effect.andThen(broadcast(response)))
-                },
-                step: Function.constVoid,
-              })
-            } catch (defect) {
-              return broadcast({
-                _tag: 'ClientProtocolError',
-                error: new RpcClientError.RpcClientError({
-                  reason: new RpcClientError.RpcClientDefect({
-                    message: 'Error decoding message',
-                    cause: defect,
+        return Effect.gen(function* () {
+          const { pull } = yield* socket.reader
+          currentError = undefined
+          while (true) {
+            const frames = yield* pull
+            for (const frame of frames) {
+              // Keep extending the watchdog for each data frame to avoid disconnecting mid-stream.
+              yield* processData(frame)
+            }
+          }
+        }).pipe(
+          Effect.scoped,
+          Effect.raceFirst(
+            Effect.flatMap(pinger.timeout, () =>
+              Effect.fail(
+                new Socket.SocketError({
+                  reason: new Socket.SocketOpenError({
+                    kind: 'Timeout',
+                    cause: new Error('ping timeout'),
                   }),
                 }),
-              })
-            }
-          })
-          .pipe(
-            Effect.raceFirst(
-              Effect.flatMap(pinger.timeout, () =>
-                Effect.fail(
-                  new Socket.SocketError({
-                    reason: new Socket.SocketOpenError({
-                      kind: 'Timeout',
-                      cause: new Error('ping timeout'),
-                    }),
-                  }),
-                ),
               ),
             ),
-          )
+          ),
+        )
       }).pipe(
         Effect.flatMap(() =>
           Effect.fail(
@@ -173,7 +186,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
           const encoded = parser.encode(request)
           if (encoded === undefined) return Effect.void
 
-          return Effect.orDie(write(encoded))
+          return Effect.orDie(writer.write(encoded))
         },
         supportsAck: true,
         supportsTransferables: false,

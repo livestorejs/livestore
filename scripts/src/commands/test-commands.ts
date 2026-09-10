@@ -270,7 +270,7 @@ const runUnitTests = Effect.fn(function* ({ filter }: { filter: Option.Option<st
 export const testUnitCommand = Cli.Command.make(
   'unit',
   {
-    filter: Cli.Flag.string('filter').pipe(
+    filter: Cli.Flag.String('filter').pipe(
       Cli.Flag.optional,
       Cli.Flag.withDescription('Run only test suites whose path includes this substring'),
     ),
@@ -383,7 +383,7 @@ const runSyncProviderTests = Effect.fn(function* ({ provider }: { provider: Opti
 export const syncProviderTest = Cli.Command.make(
   'sync-provider',
   {
-    provider: Cli.Flag.choice('provider', [...providerKeys]).pipe(
+    provider: Cli.Flag.Literals('provider', [...providerKeys]).pipe(
       Cli.Flag.optional,
       Cli.Flag.withDescription('Run only a specific sync provider test suite'),
     ),
@@ -413,7 +413,7 @@ const runIntegrationAllTests = Effect.fn('integration-tests:run-all')(function* 
 const testIntegrationAllCommand = Cli.Command.make(
   'all',
   {
-    concurrency: Cli.Flag.choice('concurrency', ['sequential', 'parallel']).pipe(Cli.Flag.withDefault('parallel')),
+    concurrency: Cli.Flag.Literals('concurrency', ['sequential', 'parallel']).pipe(Cli.Flag.withDefault('parallel')),
     localDevtoolsPreview: integrationTests.localDevtoolsPreviewOption,
   },
   runIntegrationAllTests,
