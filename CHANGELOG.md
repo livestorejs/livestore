@@ -52,8 +52,11 @@
   `ColumnDefinition` records (use `State.SQLite.getColumnDefForSchema(field)`
   to derive one), `TableDef`'s generic parameters are now
   `<Name, Fields, Options>`, `State.SQLite.withDefault` is typed against the
-  field's type (pass `{ sql: 'CURRENT_TIMESTAMP' }` for SQL expressions), and an
-  optional field is typed `T | null` in the row type instead of `T | undefined`
+  field's type (pass `{ sql: 'CURRENT_TIMESTAMP' }` for SQL expressions, and
+  `null` only on a nullable field), an optional field is typed `T | null` in
+  the row type instead of `T | undefined`, and a column helper with both
+  `primaryKey: true` and `nullable: true` now throws at definition time, as
+  `withPrimaryKey` on a nullable schema already did
   ([#382](https://github.com/livestorejs/livestore/issues/382)).
 - **Store commit callbacks:** Callback return values are now ignored. Replace
   the undocumented `store.commit(() => [event])` form with `store.commit(event)`

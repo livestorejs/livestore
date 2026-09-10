@@ -360,6 +360,37 @@ describe('table function overloads', () => {
     expectTypeOf<(typeof PageCreated)['Type']['updatedAt']>().toEqualTypeOf<Date | undefined>()
   })
 
+  it('types a schema-less json column as unknown and a default against the field type', () => {
+    const documents = State.SQLite.table({
+      name: 'documents',
+      columns: {
+        id: State.SQLite.text({ primaryKey: true }),
+        meta: State.SQLite.json(),
+        note: State.SQLite.text({ nullable: true, default: null }),
+      },
+    })
+    expectTypeOf<(typeof documents.Type)['meta']>().toEqualTypeOf<unknown>()
+    expectTypeOf<(typeof documents.Type)['note']>().toEqualTypeOf<string | null>()
+    // @ts-expect-error a non-nullable column cannot default to null
+    State.SQLite.text({ default: null })
+
+    // `withDefault` accepts a value of the field's type, and `null` only on a nullable field
+    expectTypeOf(Schema.String.pipe(State.SQLite.withDefault('draft'))).toEqualTypeOf<
+      Schema.withConstructorDefault<Schema.String>
+    >()
+    expectTypeOf(Schema.NullOr(Schema.String).pipe(State.SQLite.withDefault(null))).toEqualTypeOf<
+      Schema.withConstructorDefault<Schema.NullOr<Schema.String>>
+    >()
+    expectTypeOf(Schema.String.pipe(State.SQLite.withDefault(null))).toEqualTypeOf<
+      State.SQLite.DefaultValueMismatch<null, string>
+    >()
+    expectTypeOf(Schema.Int.pipe(State.SQLite.withDefault('0'))).toEqualTypeOf<
+      State.SQLite.DefaultValueMismatch<'0', number>
+    >()
+    // @ts-expect-error the data-first form rejects the mismatch outright
+    State.SQLite.withDefault(Schema.String, null)
+  })
+
   it('should handle Schema.Int as integer column', () => {
     const CounterSchema = Schema.Struct({
       id: Schema.String,

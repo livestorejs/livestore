@@ -78,21 +78,31 @@ export const withUnique = <T extends Schema.Top>(schema: T) => applyAnnotations(
  * Adds a column default to a schema. The value is stored as an annotation for DDL generation and as
  * an Effect constructor default, so `rowSchema.make` fills it in and `insert()` treats the column as
  * omittable at the type level.
+ *
+ * The value must fit the field's own `Type`, so `null` is only accepted on a nullable field. In the
+ * curried form the field is not known yet, so a mismatch surfaces as the pipe's result type.
  */
 export const withDefault: {
   <T extends Schema.Top & Schema.WithoutConstructorDefault>(
     schema: T,
-    value: ColumnDefaultValue<T['Type']>,
+    value: T['Type'] | ColumnDefaultThunk<T['Type']> | SqlDefaultValue,
   ): Schema.withConstructorDefault<T>
   (
     value: SqlDefaultValue,
   ): <S extends Schema.Top & Schema.WithoutConstructorDefault>(schema: S) => Schema.withConstructorDefault<S>
-  <T>(
-    value: T | null | ColumnDefaultThunk<T | null>,
-  ): <S extends Schema.Codec<T, any> & Schema.WithoutConstructorDefault>(schema: S) => Schema.withConstructorDefault<S>
+  <const T>(
+    value: T | ColumnDefaultThunk<T>,
+  ): <S extends Schema.Top & Schema.WithoutConstructorDefault>(
+    schema: S,
+  ) => [T] extends [S['Type']] ? Schema.withConstructorDefault<S> : DefaultValueMismatch<T, S['Type']>
 } = Function.dual(2, <T extends Schema.Top & Schema.WithoutConstructorDefault>(schema: T, value: unknown) =>
   applyAnnotations(schema, { [Default]: value }).pipe(Schema.withConstructorDefault(constructorDefaultFor(value))),
 )
+
+/** The result of `withDefault(value)` piped into a field whose `Type` does not admit `value` */
+export type DefaultValueMismatch<TValue, TFieldType> = {
+  readonly 'Error: the default value is not assignable to the field type': { value: TValue; fieldType: TFieldType }
+}
 
 /**
  * The Effect constructor default for a column default. A SQL-expression default (`{ sql }`) can only
