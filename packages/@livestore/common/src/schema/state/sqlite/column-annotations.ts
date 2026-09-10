@@ -1,4 +1,4 @@
-import { type Schema, Function, SchemaAST } from '@livestore/utils/effect'
+import { Effect, Function, Schema, SchemaAST, SchemaIssue } from '@livestore/utils/effect'
 
 import type { SqliteDsl } from './db-schema/mod.ts'
 
@@ -27,6 +27,24 @@ Here are the knobs you can turn per-column when you CREATE TABLE (or ALTER TABLE
 •	GENERATED ALWAYS AS (<expr>) [VIRTUAL | STORED] – computed columns (since 3.31).  ￼
 •	CONSTRAINT name … – optional label in front of any of the above so you can refer to it in error messages or when dropping/recreating schemas.
 */
+
+export type SqlDefaultValue = {
+  readonly sql: string
+}
+
+export const isSqlDefaultValue = (value: unknown): value is SqlDefaultValue => {
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- type guard property access after structural check
+  return typeof value === 'object' && value !== null && 'sql' in value && typeof (value as any).sql === 'string'
+}
+
+export type ColumnDefaultThunk<T> = () => T
+
+export const isDefaultThunk = (value: unknown): value is ColumnDefaultThunk<unknown> => typeof value === 'function'
+
+export type ColumnDefaultValue<T> = T | null | ColumnDefaultThunk<T | null> | SqlDefaultValue
+
+export const resolveColumnDefault = <T>(value: ColumnDefaultValue<T>): T | null | SqlDefaultValue =>
+  isDefaultThunk(value) === true ? value() : value
 
 /**
  * Adds a primary key annotation to a schema.
@@ -57,15 +75,41 @@ export const withAutoIncrement = <T extends Schema.Top>(schema: T) =>
 export const withUnique = <T extends Schema.Top>(schema: T) => applyAnnotations(schema, { [Unique]: true })
 
 /**
- * Adds a default value annotation to a schema.
+ * Adds a column default to a schema. The value is stored as an annotation for DDL generation and as
+ * an Effect constructor default, so `rowSchema.make` fills it in and `insert()` treats the column as
+ * omittable at the type level.
  */
 export const withDefault: {
-  // TODO make type safe
-  <T extends Schema.Top>(schema: T, value: unknown): T
-  (value: unknown): <T extends Schema.Top>(schema: T) => T
-} = Function.dual(2, <T extends Schema.Top>(schema: T, value: unknown) =>
-  applyAnnotations(schema, { [Default]: value }),
+  <T extends Schema.Top & Schema.WithoutConstructorDefault>(
+    schema: T,
+    value: ColumnDefaultValue<T['Type']>,
+  ): Schema.withConstructorDefault<T>
+  (
+    value: SqlDefaultValue,
+  ): <S extends Schema.Top & Schema.WithoutConstructorDefault>(schema: S) => Schema.withConstructorDefault<S>
+  <T>(
+    value: T | null | ColumnDefaultThunk<T | null>,
+  ): <S extends Schema.Codec<T, any> & Schema.WithoutConstructorDefault>(schema: S) => Schema.withConstructorDefault<S>
+} = Function.dual(2, <T extends Schema.Top & Schema.WithoutConstructorDefault>(schema: T, value: unknown) =>
+  applyAnnotations(schema, { [Default]: value }).pipe(Schema.withConstructorDefault(constructorDefaultFor(value))),
 )
+
+/**
+ * The Effect constructor default for a column default. A SQL-expression default (`{ sql }`) can only
+ * be evaluated by SQLite, so constructing a row client-side without that column fails with an
+ * explanatory issue.
+ */
+export const constructorDefaultFor = (defaultValue: unknown): Effect.Effect<unknown, SchemaIssue.Issue> => {
+  if (isSqlDefaultValue(defaultValue) === true) {
+    return Effect.fail(
+      new SchemaIssue.Forbidden({
+        message: `Column default \`${defaultValue.sql}\` is a SQL expression evaluated by SQLite and cannot be constructed client-side`,
+      }),
+    )
+  }
+  if (isDefaultThunk(defaultValue) === true) return Effect.sync(defaultValue)
+  return Effect.succeed(defaultValue)
+}
 
 /**
  * Validates that a schema is compatible with the specified SQLite column type
