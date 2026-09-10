@@ -10,6 +10,15 @@
 
 ### Changed
 
+- **SQLite state schema:** Effect Schema is now the foundation of table
+  definitions. `State.SQLite.text()` & co. return field schemas,
+  `table({ columns })` is `Schema.Struct(columns)` with a name, `TableDef` is
+  parameterised by the field map (much shorter hovers), column defaults are
+  tracked at the type level so `insert()` can omit them for schema-based
+  tables, and `Schema.Date`, `Schema.DateFromString` and `Schema.DateFromMillis`
+  fields of `table({ schema })` round-trip through their encoded form
+  ([#382](https://github.com/livestorejs/livestore/issues/382),
+  [#1597](https://github.com/livestorejs/livestore/pull/1597)).
 - **Contributor meetings:** Added the canonical docs schedule for the next two
   fortnightly meetings at 19:00 Berlin, automatic Google Calendar publishing,
   and a stable Riverside room link
@@ -70,6 +79,13 @@
 
 ### Breaking Changes
 
+- **SQLite state schema:** `State.SQLite.text()` & co. no longer return
+  `ColumnDefinition` records (use `State.SQLite.getColumnDefForSchema(field)`
+  to derive one), `TableDef`'s generic parameters are now
+  `<Name, Fields, Options>`, `State.SQLite.withDefault` is typed against the
+  field's type (pass `{ sql: 'CURRENT_TIMESTAMP' }` for SQL expressions), and an
+  optional field is typed `T | null` in the row type instead of `T | undefined`
+  ([#382](https://github.com/livestorejs/livestore/issues/382)).
 - **Store commit callbacks:** Callbacks now synchronously return an event array.
   Replace `store.commit((commit) => { commit(event) })` with
   `store.commit(() => [event])` or `store.commit(event)`
