@@ -4,6 +4,7 @@ import { type Option, Schema, type SchemaAST } from '@livestore/utils/effect'
 import { SqliteReal } from '../../../../../util.ts'
 import {
   AutoIncrement,
+  type ColumnDefault,
   type ColumnDefaultThunk,
   type ColumnDefaultValue,
   ColumnType,
@@ -82,7 +83,7 @@ export type ColumnSchema<S extends Schema.Top, TNullable extends boolean, TDefau
 
 export type WithColumnDefault<S extends Schema.Top, TDefault> = [TDefault] extends [NoDefault]
   ? S
-  : Schema.withConstructorDefault<S & Schema.WithoutConstructorDefault>
+  : ColumnDefault<S & Schema.WithoutConstructorDefault>
 
 /**
  * The call signatures are split by whether a custom `schema` is given: TypeScript would otherwise
@@ -143,13 +144,6 @@ export const blob: ColDefFn<'blob'> = makeColDef('blob')
  * Big thanks to @andarist for their help with this!
  */
 type NoInfer<T> = [T][T extends any ? 0 : never]
-
-type ColumnFacetsArgs<TDecoded, TNullable extends boolean, TDefault, TPrimaryKey, TAutoIncrement> = {
-  default?: TDefault & ColumnDefaultArg<NoInfer<TDecoded>, TNullable>
-  nullable?: TNullable
-  primaryKey?: TPrimaryKey
-  autoIncrement?: TAutoIncrement
-}
 
 export type SpecializedColDefFn<
   TColumnType extends FieldColumnType,
@@ -313,4 +307,11 @@ const makeColumnSchema = (
     ...(def?.autoIncrement === true ? { [AutoIncrement]: true } : {}),
     ...(hasDefault === true ? { [Default]: def.default } : {}),
   })
+}
+
+type ColumnFacetsArgs<TDecoded, TNullable extends boolean, TDefault, TPrimaryKey, TAutoIncrement> = {
+  default?: TDefault & ColumnDefaultArg<NoInfer<TDecoded>, TNullable>
+  nullable?: TNullable
+  primaryKey?: TPrimaryKey
+  autoIncrement?: TAutoIncrement
 }
