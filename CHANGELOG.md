@@ -14,6 +14,10 @@
   its TypeScript overloads, including calls with commit options. Callback events
   are collected before materialization, and throwing callbacks apply no events
   ([#1611](https://github.com/livestorejs/livestore/issues/1611)).
+- **Cloudflare sync telemetry:** Added optional Effect tracer layers via `otel: layer`.
+  Telemetry cleanup runs in the background, and finite WebSocket operations and
+  DO-RPC pull streams now emit their sync spans
+  ([#1618](https://github.com/livestorejs/livestore/issues/1618)).
 - **Cloudflare sync:** Serialize push admission through pull publication so an
   accepted event cannot advance the backend head without notifying subscribers
   ([#1537](https://github.com/livestorejs/livestore/pull/1537)).

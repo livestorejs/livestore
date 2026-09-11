@@ -87,6 +87,36 @@ Server-side embedding of a LiveStore client inside Cloudflare (Durable
 Object hosting a store) is `04-runtime/`'s adapter concern
 (`adapter-cloudflare`), not part of this provider node.
 
+## Optional telemetry
+
+The existing `makeDurableObject` option `otel` accepts either an Effect tracer
+layer or a `{ baseUrl, serviceName? }` endpoint configuration. The latter creates
+an Effect OTLP exporter layer. Omit `otel` to avoid creating an exporter or sending telemetry.
+Applications choose the integration and destination; no Cloudflare-specific
+tracer package or paid feature is required by the library.
+
+LiveStore builds the layer in a fresh scope per sync operation. Construction runs
+on the operation path; resource finalization runs in the background so export
+cleanup cannot delay acknowledgments or change sync outcomes. The layer defines
+its exporter lifecycle. LiveStore does not manage SDK providers or schedule their
+`forceFlush()` calls. A supplied layer must not shut down a shared provider.
+The built-in endpoint exporter uses Effect's three-second shutdown timeout.
+
+WebSocket pushes and finite pull history receive exported RPC boundary spans
+attached directly to a sampled caller, bypassing Effect RPC's unexported
+subscription envelope. When the caller has no sampled context, the boundary
+starts a backend root so server-side telemetry remains independently observable.
+Expected `ServerAheadError` and `BackendIdMismatchError` recovery results remain
+typed failures without marking these RPC boundaries as OpenTelemetry errors.
+DO-RPC pull streams receive tracing inside their separate execution runtime.
+Finite history closes before waiting for live updates, so the endpoint exporter
+does not retain timers for the lifetime of an idle subscription.
+
+Delivery remains best-effort: Durable Objects have no shutdown callback on
+hibernation or eviction. This integration does not join Cloudflare-native trace
+IDs to external traces or change the sync protocol. See
+[decision 0005](.decisions/0005-optional-telemetry-ownership.md).
+
 ## Known Gaps (Non-Obligations)
 
 Current reality a consumer must not read as guaranteed behavior:

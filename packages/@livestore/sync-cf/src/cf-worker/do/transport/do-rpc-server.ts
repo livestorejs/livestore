@@ -5,12 +5,14 @@ import { Effect, Headers, Option, Stream } from '@livestore/utils/effect'
 import { SyncDoRpc } from '../../../common/do-rpc-schema.ts'
 import { rpcSubscriptionKeyPrefix, type RpcSubscription } from '../../shared.ts'
 import * as DoCtx from '../layer.ts'
+import { makeRpcSpanOptions, type makeObservability, withRpcStreamSpan } from '../observability.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
 
 export interface DoRpcHandlerOptions {
   payload: Uint8Array<ArrayBuffer>
   input: Omit<DoCtx.DoCtxInput, 'from'>
+  observability: ReturnType<typeof makeObservability>
 }
 
 /**
@@ -32,7 +34,8 @@ export const createDoRpcHandler = (
   options: DoRpcHandlerOptions,
 ): Effect.Effect<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream> =>
   Effect.gen({ self: this }, function* () {
-    const { payload, input } = options
+    const { payload, input, observability } = options
+    const parent = yield* Effect.currentParentSpan.pipe(Effect.option)
 
     // TODO add admin RPCs
     const RpcLive = SyncDoRpc.toLayer({
@@ -71,6 +74,9 @@ export const createDoRpcHandler = (
               : new UnknownError({ cause }),
           ),
           Stream.tapCause(Effect.log),
+          // The bridge runs this stream in a separate runtime. Install telemetry there too.
+          (_) => withRpcStreamSpan(_, 'RpcServer.SyncDoRpc.Pull', makeRpcSpanOptions(parent)),
+          observability.stream,
         ),
       'SyncDoRpc.Push': (req) =>
         Effect.gen({ self: this }, function* () {

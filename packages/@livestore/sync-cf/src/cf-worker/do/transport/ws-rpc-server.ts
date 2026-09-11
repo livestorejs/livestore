@@ -5,46 +5,70 @@ import { Effect, identity, Layer, Result, RpcServer, Schema, Stream } from '@liv
 import { SyncWsRpc } from '../../../common/ws-rpc-schema.ts'
 import { headersRecordToMap, WebSocketAttachmentSchema } from '../../shared.ts'
 import * as DoCtx from '../layer.ts'
+import { type makeObservability, rpcSpanOptions, withRpcSpan, withRpcStreamSpan } from '../observability.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
 
-export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtx.DoCtxInput, 'from'>) => {
-  const handlersLayer = SyncWsRpc.toLayer({
+export const makeRpcServer = ({
+  doSelf,
+  doOptions,
+  observability,
+}: Omit<DoCtx.DoCtxInput, 'from'> & { observability: ReturnType<typeof makeObservability> }) => {
+  const handlersLayer = makeRpcHandlers({ doSelf, doOptions, observability })
+
+  return RpcServer.layer(SyncWsRpc).pipe(Layer.provide(handlersLayer))
+}
+
+/** Production handler layer, exported so transport tests can exercise the exact RPC composition in memory. */
+export const makeRpcHandlers = ({
+  doSelf,
+  doOptions,
+  observability,
+}: Omit<DoCtx.DoCtxInput, 'from'> & { observability: ReturnType<typeof makeObservability> }) =>
+  SyncWsRpc.toLayer({
     'SyncWsRpc.Pull': (req) =>
       Effect.gen(function* () {
+        const spanOptions = yield* rpcSpanOptions
         const headers = yield* getForwardedHeaders
         return makeEndingPullStream({ req, payload: req.payload, headers }).pipe(
-          // Needed to keep the stream alive on the client side for phase 2 (i.e. not send the `Exit` stream RPC message)
-          req.live === true ? Stream.concat(Stream.never) : identity,
           Stream.provide(DoCtx.layer({ doSelf, doOptions, from: { storeId: req.storeId } })),
           Stream.mapError((cause) =>
             cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
               ? cause
               : new UnknownError({ cause }),
           ),
+          (_) => withRpcStreamSpan(_, 'RpcServer.SyncWsRpc.Pull', spanOptions),
         )
-      }).pipe(Stream.unwrap),
-    'SyncWsRpc.Push': (req) =>
-      Effect.gen(function* () {
-        const { doOptions, storeId, ctx, env } = yield* DoCtx.DoCtx
-        const headers = yield* getForwardedHeaders
-
-        const push = makePush({ options: doOptions, storeId, payload: req.payload, headers, ctx, env })
-
-        return yield* push(req)
       }).pipe(
-        Effect.provide(DoCtx.layer({ doSelf, doOptions, from: { storeId: req.storeId } })),
-        Effect.mapError((cause) =>
-          cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
-            ? cause
-            : new UnknownError({ cause }),
-        ),
-        Effect.tapCauseLogPretty,
+        Stream.unwrap,
+        // Drain finite history before entering the live phase, which survives DO hibernation.
+        observability.stream,
+        // Keep the client subscription open without retaining an exporter scope or timer.
+        req.live === true ? Stream.concat(Stream.never) : identity,
       ),
-  })
+    'SyncWsRpc.Push': (req) =>
+      Effect.flatMap(rpcSpanOptions, (spanOptions) =>
+        Effect.gen(function* () {
+          const { doOptions, storeId, ctx, env } = yield* DoCtx.DoCtx
+          const headers = yield* getForwardedHeaders
 
-  return RpcServer.layer(SyncWsRpc).pipe(Layer.provide(handlersLayer))
-}
+          const push = makePush({ options: doOptions, storeId, payload: req.payload, headers, ctx, env })
+
+          return yield* push(req)
+        }).pipe(
+          Effect.provide(DoCtx.layer({ doSelf, doOptions, from: { storeId: req.storeId } })),
+          Effect.mapError((cause) =>
+            cause._tag === 'UnknownError' ||
+            cause._tag === 'ServerAheadError' ||
+            cause._tag === 'BackendIdMismatchError'
+              ? cause
+              : new UnknownError({ cause }),
+          ),
+          Effect.tapCauseLogPretty,
+          (_) => withRpcSpan(_, 'RpcServer.SyncWsRpc.Push', spanOptions),
+        ),
+      ).pipe(observability.effect),
+  })
 
 /** Extracts forwarded headers from the WebSocket attachment */
 const getForwardedHeaders = Effect.gen(function* () {

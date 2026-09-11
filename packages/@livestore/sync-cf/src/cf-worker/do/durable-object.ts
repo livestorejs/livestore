@@ -4,17 +4,7 @@ import { DurableObject } from 'cloudflare:workers'
 
 import { type CfTypes, setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
 import { CfDeclare } from '@livestore/common-cf/declare'
-import {
-  Effect,
-  FetchHttpClient,
-  Layer,
-  Logger,
-  Otlp,
-  References,
-  RpcMessage,
-  Schema,
-  type Scope,
-} from '@livestore/utils/effect'
+import { Effect, Layer, Logger, References, RpcMessage, Schema, type Scope } from '@livestore/utils/effect'
 
 import {
   type Env,
@@ -25,6 +15,7 @@ import {
   WebSocketAttachmentSchema,
 } from '../shared.ts'
 import * as DoCtx from './layer.ts'
+import { makeObservability } from './observability.ts'
 import { createDoRpcHandler } from './transport/do-rpc-server.ts'
 import { createHttpRpcHandler } from './transport/http-rpc-server.ts'
 import { makeRpcServer } from './transport/ws-rpc-server.ts'
@@ -88,24 +79,18 @@ export type MakeDurableObjectClass = (options?: MakeDurableObjectClassOptions) =
 export const makeDurableObject: MakeDurableObjectClass = (options) => {
   const enabledTransports = options?.enabledTransports ?? new Set(['http', 'ws', 'do-rpc'])
 
-  const Observability: Layer.Layer<never> =
-    options?.otel?.baseUrl !== undefined
-      ? Otlp.layerJson({
-          baseUrl: options.otel.baseUrl,
-          tracerExportInterval: 50,
-          resource: {
-            serviceName: options.otel.serviceName ?? 'sync-cf-do',
-          },
-        }).pipe(Layer.provide(FetchHttpClient.layer))
-      : Layer.empty
-
   return class SyncBackendDOBase extends DurableObjectBase implements SyncBackendRpcInterface {
     __DURABLE_OBJECT_BRAND = 'SyncBackendDOBase' as never
+    private readonly observability = makeObservability(options?.otel)
 
     constructor(ctx: CfTypes.DurableObjectState, env: Env) {
       super(ctx, env)
 
-      const WebSocketRpcServerLive = makeRpcServer({ doSelf: this, doOptions: options })
+      const WebSocketRpcServerLive = makeRpcServer({
+        doSelf: this,
+        doOptions: options,
+        observability: this.observability,
+      })
 
       // This registers the `webSocketMessage` and `webSocketClose` handlers
       if (enabledTransports.has('ws') === true) {
@@ -139,7 +124,6 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
               // TODO also emit `Exit` stream RPC message
             }
           },
-          mainLayer: Observability,
         })
       }
     }
@@ -219,10 +203,11 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         throw new Error('Do RPC transport is not enabled (based on `options.enabledTransports`)')
       }
 
-      return createDoRpcHandler({ payload, input: { doSelf: this, doOptions: options } }).pipe(
-        Effect.withSpan('@livestore/sync-cf:durable-object:rpc'),
-        this.runEffectAsPromise,
-      )
+      return createDoRpcHandler({
+        payload,
+        input: { doSelf: this, doOptions: options },
+        observability: this.observability,
+      }).pipe(Effect.withSpan('@livestore/sync-cf:durable-object:rpc'), this.runEffectAsPromise)
     }
 
     /**
@@ -242,13 +227,10 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         Effect.tapCauseLogPretty,
         Effect.annotateLogs({ thread: 'SyncDo' }),
         Effect.provide(
-          Layer.mergeAll(
-            Observability,
-            Logger.layer([Logger.consoleStructured]),
-            Layer.succeed(References.MinimumLogLevel, 'Debug'),
-          ),
+          Layer.mergeAll(Logger.layer([Logger.consoleStructured]), Layer.succeed(References.MinimumLogLevel, 'Debug')),
         ),
         Effect.scoped,
+        this.observability.effect,
         Effect.runPromise,
       )
   }

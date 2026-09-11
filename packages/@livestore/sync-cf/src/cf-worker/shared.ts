@@ -1,6 +1,6 @@
 import type { UnknownError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
-import type { Effect } from '@livestore/utils/effect'
+import type { Effect, Layer } from '@livestore/utils/effect'
 import { Result, Schema } from '@livestore/utils/effect'
 
 import type { SearchParams } from '../common/mod.ts'
@@ -107,11 +107,18 @@ export type MakeDurableObjectClassOptions = {
     responseHeaders?: Record<string, string>
   }
 
-  otel?: {
-    baseUrl?: string
-    serviceName?: string
-  }
+  /** Optional telemetry. Omit to avoid creating an exporter or sending telemetry. */
+  otel?: SyncBackendOtelOptions
 }
+
+export type SyncBackendOtelOptions =
+  /** Application-supplied tracer layer; LiveStore builds and finalizes its resources per sync operation. */
+  | Layer.Layer<never>
+  | {
+      /** Convenience OTLP/HTTP JSON exporter owned by LiveStore for each operation. */
+      baseUrl?: string
+      serviceName?: string
+    }
 
 export type StoreId = string
 export type DurableObjectId = string

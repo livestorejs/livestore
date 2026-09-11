@@ -16,6 +16,16 @@ Draft.
 - `common/src/otel.ts` centralizes tracer/span-context plumbing into the
   Store (`StoreOtel`); `createStore`/`provideOtel` inject the app tracer
   (LS.SYS.OBS-R03).
+- The Cloudflare sync backend accepts an optional Effect tracer layer through
+  `makeDurableObject({ otel: layer })`. LiveStore builds it per sync operation and
+  finalizes its resources in the background. The application selects the tracer
+  integration and destination. The existing endpoint configuration supplies an
+  Effect OTLP layer instead. Sampled caller context is preserved at RPC
+  boundaries; otherwise the backend starts an independently observable trace.
+  Expected sync-recovery failures retain their typed error channel without an
+  error status on the boundary span. See the
+  [Cloudflare provider spec](../03-sync/03-cf/spec.md) for transport boundaries
+  and best-effort cleanup.
 - `utils/src/NoopTracer.ts` is the default when no tracer is provided
   (LS.SYS.OBS-R02). It is cheap but not free: each span allocates a span
   object and returns OpenTelemetry's shared invalid span context. A zero-allocation no-op path on
