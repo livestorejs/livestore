@@ -31,6 +31,11 @@ Inputs: `schema`, `storeId`, `clientId`, `sessionId`, the DO's own
 and `syncBackendStub` (`@livestore/sync-cf/cf-worker` RPC interface).
 `livePull: false` is the default (LS.SYS.RT.CF-R03).
 
+`createStoreDo.params.stateRebuildBatchSize` forwards the per-client rebuild
+setting. A Durable Object can choose a smaller batch than clients with more
+memory, trading lower per-batch resource use for more queries, savepoints and
+storage writes. The event-count limit is not a whole-isolate memory guarantee.
+
 Persistence keys are versioned with `liveStoreStorageFormatVersion` and the
 schema hash, so schema changes recreate state rather than migrate it in
 place.

@@ -3,6 +3,7 @@ import { Effect, Option, ReadonlyArray as EffectArray, Schema, Stream } from '@l
 
 import { type SqliteDb, UnknownError } from './adapter-types.ts'
 import type { MaterializeEvent } from './leader-thread/mod.ts'
+import { STATE_REBUILD_BATCH_SIZE_DEFAULT, StateRebuildBatchSizeSchema } from './leader-thread/types.ts'
 import type { EventDef, LiveStoreSchema } from './schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from './schema/mod.ts'
 import { withSavepoint } from './sqlite-db-helper.ts'
@@ -19,13 +20,22 @@ export const rematerializeFromEventlog = Effect.fn('@livestore/common:rematerial
   schema,
   onProgress,
   materializeEvent,
+  batchSize = STATE_REBUILD_BATCH_SIZE_DEFAULT,
 }: {
   dbEventlog: SqliteDb
   dbState: SqliteDb
   schema: LiveStoreSchema
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>
   materializeEvent: MaterializeEvent
+  batchSize?: number
 }) {
+  if (Schema.is(StateRebuildBatchSizeSchema)(batchSize) === false) {
+    return yield* UnknownError.make({
+      cause: `Invalid stateRebuildBatchSize: ${batchSize}. Expected a positive integer.`,
+      payload: { batchSize },
+    })
+  }
+
   const eventsCount = dbEventlog.select<{ count: number }>(
     `SELECT COUNT(*) AS count FROM ${SystemTables.EVENTLOG_META_TABLE}`,
   )[0]!.count
@@ -86,13 +96,11 @@ This likely means the schema has changed in an incompatible way.
     yield* materializeEvent(eventEncoded, { skipEventlog: true })
   })
 
-  const CHUNK_SIZE = 100
-
   const stmt = dbEventlog.prepare(sql`\
 SELECT * FROM ${SystemTables.EVENTLOG_META_TABLE} 
 WHERE seqNumGlobal > $seqNumGlobal OR (seqNumGlobal = $seqNumGlobal AND seqNumClient > $seqNumClient)
 ORDER BY seqNumGlobal ASC, seqNumClient ASC
-LIMIT ${CHUNK_SIZE}
+LIMIT $batchSize
 `)
 
   let processedEvents = 0
@@ -102,6 +110,7 @@ LIMIT ${CHUNK_SIZE}
       const rows = stmt.select<SystemTables.EventlogMetaRow>({
         $seqNumGlobal: lastId.global,
         $seqNumClient: lastId.client,
+        $batchSize: batchSize,
       } as any as PreparedBindValues)
 
       if (EffectArray.isReadonlyArrayNonEmpty(rows) === false) {

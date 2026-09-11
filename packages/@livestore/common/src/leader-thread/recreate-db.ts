@@ -14,6 +14,7 @@ import type { LiveStoreSchema } from '../schema/mod.ts'
 import { SystemTables } from '../schema/mod.ts'
 import { configureConnection, execSql } from './connection.ts'
 import type { MaterializeEvent } from './types.ts'
+import { STATE_REBUILD_BATCH_SIZE_DEFAULT } from './types.ts'
 
 export const hasCompletedState = (db: SqliteDb): boolean => {
   const tableNames = new Set(db.select<{ name: string }>('SELECT name FROM sqlite_master').map((_) => _.name))
@@ -33,12 +34,14 @@ export const recreateDb = ({
   schema,
   bootStatusQueue,
   materializeEvent,
+  stateRebuildBatchSize = STATE_REBUILD_BATCH_SIZE_DEFAULT,
 }: {
   dbState: SqliteDb
   dbEventlog: SqliteDb
   schema: LiveStoreSchema
   bootStatusQueue: Queue.Queue<BootStatus>
   materializeEvent: MaterializeEvent
+  stateRebuildBatchSize?: number
 }): Effect.Effect<{ migrationsReport: MigrationsReport }, UnknownError | MaterializeError | SqliteError> =>
   Effect.gen(function* () {
     const hooks = schema.state.sqlite.migrations.hooks
@@ -68,6 +71,7 @@ export const recreateDb = ({
       dbState,
       schema,
       materializeEvent,
+      batchSize: stateRebuildBatchSize,
       onProgress: ({ done, total }) =>
         Queue.offer(bootStatusQueue, { stage: 'rehydrating', progress: { done, total } }),
     })

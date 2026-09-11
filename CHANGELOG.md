@@ -20,7 +20,9 @@
   ([#1618](https://github.com/livestorejs/livestore/issues/1618)).
 - **Schema rebuilds:** Batched eventlog replay to reduce repeated SQLite page
   writes, including billed row writes on Cloudflare Durable Objects. Replay order
-  and recovery from incomplete rebuilds are preserved
+  and recovery from incomplete rebuilds are preserved. Clients can tune the
+  event-count batch per runtime with `params.stateRebuildBatchSize` (a positive
+  integer, default 100); lower values trade more queries and writes for smaller batches
   ([#1555](https://github.com/livestorejs/livestore/issues/1555)).
 - **State recovery:** Interrupted rematerialization is retried from clean derived
   state instead of reopening partial results. Completion is recorded after all

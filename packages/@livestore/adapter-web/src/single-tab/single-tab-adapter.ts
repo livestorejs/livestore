@@ -149,7 +149,7 @@ export const makeSingleTabAdapter =
   (options: SingleTabAdapterOptions): Adapter =>
   (adapterArgs) =>
     Effect.gen(function* () {
-      const { schema, storeId, bootStatusQueue, shutdown, syncPayloadEncoded } = adapterArgs
+      const { schema, storeId, bootStatusQueue, shutdown, syncPayloadEncoded, params } = adapterArgs
       // Note: devtoolsEnabled is ignored in single-tab mode (devtools require SharedWorker)
 
       yield* ensureBrowserRequirements
@@ -251,6 +251,7 @@ export const makeSingleTabAdapter =
                 devtoolsEnabled: false,
                 debugInstanceId: adapterArgs.debugInstanceId,
                 syncPayloadEncoded,
+                params,
               }),
             ),
           ),

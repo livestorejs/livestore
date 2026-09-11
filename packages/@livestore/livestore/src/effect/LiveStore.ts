@@ -34,6 +34,7 @@ export const makeLiveStoreContext = <
   batchUpdates,
   syncPayload,
   syncPayloadSchema,
+  params,
 }: LiveStoreContextProps<TSchema, TContext, TSyncPayloadSchema>): Effect.Effect<
   LiveStoreContextRunning['Service'],
   UnknownError | Cause.TimeoutError,
@@ -46,7 +47,7 @@ export const makeLiveStoreContext = <
         storeId,
         adapter,
         batchUpdates,
-        ...omitUndefineds({ context, boot, disableDevtools, onBootStatus, syncPayload, syncPayloadSchema }),
+        ...omitUndefineds({ context, boot, disableDevtools, onBootStatus, syncPayload, syncPayloadSchema, params }),
       })
 
       return LiveStoreContextRunning.of({ stage: 'running', store } as any as LiveStoreContextRunning['Service'])
@@ -272,6 +273,7 @@ const makeStoreTag = <TSchema extends LiveStoreSchema, TStoreId extends string>(
               onBootStatus: props.onBootStatus,
               syncPayload: props.syncPayload,
               syncPayloadSchema: props.syncPayloadSchema,
+              params: props.params,
             }),
           })
 
@@ -422,6 +424,7 @@ export const makeStoreContext =
               onBootStatus: props.onBootStatus,
               syncPayload: props.syncPayload,
               syncPayloadSchema: props.syncPayloadSchema,
+              params: props.params,
             }),
           })
 

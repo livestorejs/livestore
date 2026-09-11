@@ -189,6 +189,7 @@ export const makePersistedAdapter =
         shutdown,
         syncPayloadSchema: _syncPayloadSchema,
         syncPayloadEncoded,
+        params,
       } = adapterArgs
 
       // NOTE: The schema travels with the worker bundle (developers call
@@ -350,6 +351,7 @@ export const makePersistedAdapter =
               devtoolsEnabled,
               debugInstanceId,
               syncPayloadEncoded,
+              params,
             },
           })
           .pipe(

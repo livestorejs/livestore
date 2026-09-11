@@ -1,6 +1,7 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import type { BootStatus } from '@livestore/common'
+import { STATE_REBUILD_BATCH_SIZE_DEFAULT } from '@livestore/common/leader-thread'
 import { Effect, Queue, Schedule, Schema } from '@livestore/utils/effect'
 
 import { ResultBootStatus } from './bridge.ts'
@@ -18,6 +19,7 @@ export const test = () =>
     })({
       schema,
       storeId: 'default',
+      params: { stateRebuildBatchSize: STATE_REBUILD_BATCH_SIZE_DEFAULT },
       devtoolsEnabled: false,
       bootStatusQueue,
       shutdown: () => Effect.void,

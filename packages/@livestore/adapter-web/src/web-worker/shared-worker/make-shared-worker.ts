@@ -138,6 +138,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     syncPayloadEncoded: Schema.UndefinedOr(Schema.Json),
     liveStoreVersion: Schema.Literal(liveStoreVersion),
     devtoolsEnabled: Schema.Boolean,
+    params: WorkerSchema.LeaderWorkerParams,
   })
   type Invariants = typeof InvariantsSchema.Type
   const invariantsRef = yield* Ref.make<Invariants | undefined>(undefined)
@@ -148,13 +149,14 @@ const makeWorkerRunner = Effect.gen(function* () {
     // sends a new MessagePort to the shared worker which proxies messages to the new leader thread.
     UpdateMessagePort: ({ port, initial, liveStoreVersion: clientLiveStoreVersion }) =>
       Effect.gen(function* () {
-        // Enforce invariants: storeId, storageOptions, syncPayloadEncoded, liveStoreVersion must remain stable
+        // Enforce configuration stability across leader transitions.
         const invariants: Invariants = {
           storeId: initial.storeId,
           storageOptions: initial.storageOptions,
           syncPayloadEncoded: initial.syncPayloadEncoded,
           liveStoreVersion: clientLiveStoreVersion,
           devtoolsEnabled: initial.devtoolsEnabled,
+          params: initial.params,
         }
         const prev = yield* Ref.get(invariantsRef)
         // Early return on mismatch to keep happy path linear

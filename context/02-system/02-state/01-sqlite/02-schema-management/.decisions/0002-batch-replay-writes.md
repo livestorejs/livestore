@@ -12,13 +12,18 @@ for 250 events and 10,140 writes for 1,000 events before batching.
 
 ## Decision
 
-Consume each existing 100-event stream chunk inside the shared `withSavepoint`
-helper. Keep materialization sequential and retain per-event progress. Commit
-application rows, the state head and undo metadata together. Keep hooks and the
-completion marker outside replay batches, in their existing order.
+Consume each eventlog page inside the shared `withSavepoint` helper. Default to
+100 events per page and allow each client runtime to select any positive integer with
+`createStore.params.stateRebuildBatchSize`. Keep materialization sequential and
+retain per-event progress. Commit application rows, the state head and undo
+metadata together. Keep hooks and the completion marker outside replay batches,
+in their existing order.
 
-Prioritize memory headroom over further write savings. Retaining 100 limits the
-batch's contribution; it is not evidence that full boot fits a Cloudflare isolate.
+Treat this as runtime tuning rather than schema identity: different clients of
+the same store can have different resource limits, and changing the value does
+not trigger a rebuild. Prioritize memory headroom over further write savings in
+the default. Retaining 100 limits the batch's contribution; it is not evidence
+that full boot fits a Cloudflare isolate.
 
 ## Alternatives
 
@@ -32,8 +37,11 @@ batch's contribution; it is not evidence that full boot fits a Cloudflare isolat
 
 The current batch rolls back on failure or interruption. Earlier batches may
 survive, but the completion protocol still requires a clean rebuild before reuse.
-Batch size bounds event count, not bytes or materializer work. No application
-configuration, live-event transaction changes or new transaction helper is needed.
+Batch size bounds event count, not bytes, materializer work, WASM capacity or
+whole-isolate memory. Lower values use smaller read/savepoint batches but perform
+more queries, savepoints and persistence writes. Higher values do the reverse.
+The setting applies to future rebuilds only. No live-event transaction changes
+or new transaction helper is needed.
 
 ## Evidence
 

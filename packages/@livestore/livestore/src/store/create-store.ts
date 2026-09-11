@@ -14,6 +14,7 @@ import {
   UnknownError,
   type LogConfig,
 } from '@livestore/common'
+import { STATE_REBUILD_BATCH_SIZE_DEFAULT, StateRebuildBatchSizeSchema } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { isDevEnv, LS_DEV, omitUndefineds } from '@livestore/utils'
 import {
@@ -137,6 +138,11 @@ export type LiveStoreContextProps<
    *   useStore({ ..., syncPayloadSchema: SyncPayload, syncPayload: { authToken: '...' } })
    */
   syncPayload?: TSyncPayloadSchema['Type']
+  /** Advanced runtime tuning parameters. */
+  params?: {
+    /** Number of events read and committed per SQLite state-rebuild batch. Defaults to 100. */
+    stateRebuildBatchSize?: number
+  }
 }
 
 export interface CreateStoreOptions<
@@ -214,12 +220,21 @@ export interface CreateStoreOptions<
    * @default undefined
    */
   syncPayload?: TSyncPayloadSchema['Type']
-  /** Options provided to the Store constructor. */
+  /** Advanced runtime tuning parameters. */
   params?: {
     /** Max events pushed to the leader per write batch. */
     leaderPushBatchSize?: number
     /** Chunk size used when the stream replays confirmed events. */
     eventQueryBatchSize?: number
+    /**
+     * Number of events read and committed per batch when rebuilding SQLite state from the event log.
+     * Lower values reduce per-batch resource usage but perform more queries and savepoints.
+     * This is a per-client runtime setting and changing it does not trigger a rebuild.
+     *
+     * @default 100
+     * @minimum 1
+     */
+    stateRebuildBatchSize?: number
   }
   debug?: {
     instanceId?: string
@@ -297,6 +312,10 @@ export const createStore = <
   Scope.Scope | OtelTracer.OtelTracer
 > =>
   Effect.gen(function* () {
+    const stateRebuildBatchSize = yield* Schema.decodeUnknownEffect(StateRebuildBatchSizeSchema)(
+      params?.stateRebuildBatchSize ?? STATE_REBUILD_BATCH_SIZE_DEFAULT,
+    ).pipe(UnknownError.mapToUnknownError)
+
     const lifetimeScope = yield* Scope.make()
 
     yield* validateStoreId(storeId)
@@ -388,6 +407,7 @@ export const createStore = <
       const clientSession: ClientSession = yield* adapter({
         schema,
         storeId,
+        params: { stateRebuildBatchSize },
         devtoolsEnabled: getDevtoolsEnabled(disableDevtools),
         bootStatusQueue,
         shutdown,

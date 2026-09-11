@@ -65,6 +65,7 @@ export interface MakeLeaderThreadLayerParams {
   params?: {
     localPushBatchSize?: number
     backendPushBatchSize?: number
+    stateRebuildBatchSize?: number
   }
   testing?: {
     syncProcessor?: {
@@ -185,7 +186,14 @@ export const makeLeaderThreadLayer = ({
     // This ensures all system tables exist before any queries are made
     const { migrationsReport } =
       stateNeedsRebuild === true
-        ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
+        ? yield* recreateDb({
+            dbState,
+            dbEventlog,
+            schema,
+            bootStatusQueue,
+            materializeEvent,
+            ...omitUndefineds({ stateRebuildBatchSize: params?.stateRebuildBatchSize }),
+          })
         : { migrationsReport: { migrations: [] } }
 
     const devtoolsContext =

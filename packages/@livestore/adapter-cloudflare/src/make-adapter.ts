@@ -46,6 +46,7 @@ export const makeAdapter =
         syncPayloadEncoded,
         syncPayloadSchema,
         schema,
+        params,
       } = adapterArgs
 
       const devtoolsOptions = { enabled: false } as DevtoolsOptions
@@ -94,6 +95,7 @@ export const makeAdapter =
           shutdownChannel,
           syncPayloadEncoded,
           syncPayloadSchema,
+          params,
         }).pipe(Layer.provide(StateHead.layer({ dbState }))),
       )
 

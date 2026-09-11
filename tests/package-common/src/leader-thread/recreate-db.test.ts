@@ -55,7 +55,7 @@ for (const failure of ['init', 'pre', 'replay', 'replay-after-batch', 'post', 'i
       })
       const events = { created: Events.synced({ name: 'created', schema: Schema.Struct({ id: Schema.String }) }) }
       const factory = EventFactory.makeFactory(events)({ client: EventFactory.clientIdentity('test') })
-      const eventIds = Array.from({ length: failure === 'replay-after-batch' ? 205 : 5 }, (_, i) => `todo-${i + 1}`)
+      const eventIds = Array.from({ length: 5 }, (_, i) => `todo-${i + 1}`)
       yield* Eventlog.initEventlogDb(dbEventlog)
       for (const id of eventIds) {
         const event = new LiveStoreEvent.Client.EncodedWithMeta({
@@ -91,7 +91,8 @@ for (const failure of ['init', 'pre', 'replay', 'replay-after-batch', 'post', 'i
               attemptedEvents.push(id)
               if (
                 shouldFail === true &&
-                ((failure === 'replay' && id === 'todo-3') || (failure === 'replay-after-batch' && id === 'todo-103'))
+                (failure === 'replay' || failure === 'replay-after-batch') &&
+                id === 'todo-3'
               ) {
                 throw new Error('Injected replay failure')
               }
@@ -150,6 +151,7 @@ for (const failure of ['init', 'pre', 'replay', 'replay-after-batch', 'post', 'i
               dbEventlog,
               devtoolsOptions: { enabled: false },
               shutdownChannel: shutdown.webChannel,
+              ...(failure === 'replay-after-batch' ? { params: { stateRebuildBatchSize: 2 } } : {}),
             }).pipe(Layer.provide(StateHead.layer({ dbState })), Layer.provide(FetchHttpClient.layer)),
           ),
         )
@@ -167,7 +169,7 @@ for (const failure of ['init', 'pre', 'replay', 'replay-after-batch', 'post', 'i
         expect(partial.select('SELECT * FROM scratch')).not.toEqual([])
         if (failure !== 'init') expect(partial.select(SystemTables.rebuildMetaTable)).toEqual([])
         if (failure === 'replay' || failure === 'replay-after-batch') {
-          const committedEvents = failure === 'replay' ? 0 : 100
+          const committedEvents = failure === 'replay' ? 0 : 2
           expect(partial.select(todos)).toHaveLength(committedEvents)
           expect(partial.select(SystemTables.sessionChangesetMetaTable)).toHaveLength(committedEvents)
           expect((yield* StateHead.make({ dbState: partial }).get).global).toBe(committedEvents)

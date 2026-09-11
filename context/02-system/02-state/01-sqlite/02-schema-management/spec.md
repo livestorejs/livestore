@@ -99,14 +99,18 @@ database:
 5. Run the `post` migration hook.
 6. Insert the singleton completion row (`id = 1`) in `__livestore_rebuild`.
 
-Replay consumes the existing eventlog pages in order, with up to 100 events per
-state-database savepoint. This batch size is internal and cannot be configured by
-applications. Application rows, the state head and undo metadata commit
-together for each batch. Failure or interruption rolls back the current batch.
-Earlier batches can remain in the incomplete database, which boot discards before
-retrying. Progress still reports each processed event, not a durability boundary.
-Batching reduces repeated SQLite page writes without holding the whole replay in
-one transaction. Memory used by a batch depends on its events and materializers.
+Replay consumes eventlog pages in order, with each page committed in one
+state-database savepoint. The per-client runtime parameter
+`createStore.params.stateRebuildBatchSize` accepts positive integers and defaults
+to 100. It controls both the eventlog page and savepoint batch; it is
+not part of the state fingerprint, so changing it does not trigger a rebuild.
+Application rows, the state head and undo metadata commit together for each
+batch. Failure or interruption rolls back the current batch. Earlier batches can
+remain in the incomplete database, which boot discards before retrying. Progress
+still reports each processed event, not a durability boundary. Lower values can
+reduce per-batch resource usage at the cost of more queries, savepoints and
+persistence writes. The event count does not bound payload bytes, materializer
+work, WASM capacity or total client memory.
 
 Table existence and the state head alone do not prove completion: a materializer
 can fail partway through replay, or a hook can fail after replay reaches the tip.
