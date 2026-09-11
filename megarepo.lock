@@ -4,9 +4,9 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "schickling/2026-09-11-buck2-rust-authority",
-      "commit": "0422c7619b095a612f12793a4fceb291b3431c60",
+      "commit": "da926918d04f9b6d32a1fa4a4709bed0cfd57869",
       "pinned": true,
-      "lockedAt": "2026-09-11T10:30:00.000Z"
+      "lockedAt": "2026-09-11T10:55:00.000Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
