@@ -1,5 +1,14 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils#main"
+    effect-utils "overengineeringstudio/effect-utils#schickling/2026-09-11-buck2-rust-authority"
     effect "effect-ts/effect"
     livestore-contrib "livestorejs/livestore-contrib"
+}
+generators {
+    composition {
+        enabled #true
+        platformHub effect-utils
+        ignoredMembers effect
+        ignoredMembers livestore-contrib
+        isolationDir megarepo
+    }
 }
