@@ -113,9 +113,9 @@ export const makeLeaderThreadLayer = ({
 
     const dbEventlogMissing = !hasEventlogTables(dbEventlog)
 
-    const dbStateMissing = !hasCompletedState(dbState)
+    const stateNeedsRebuild = !hasCompletedState(dbState)
 
-    if (dbStateMissing === true) {
+    if (stateNeedsRebuild === true) {
       // Import also clears hook-created objects while preserving the open connection.
       yield* Effect.acquireUseRelease(
         makeSqliteDb({ _tag: 'in-memory' }),
@@ -184,7 +184,7 @@ export const makeLeaderThreadLayer = ({
     // Recreate state database if needed BEFORE creating sync processor
     // This ensures all system tables exist before any queries are made
     const { migrationsReport } =
-      dbStateMissing === true
+      stateNeedsRebuild === true
         ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
         : { migrationsReport: { migrations: [] } }
 

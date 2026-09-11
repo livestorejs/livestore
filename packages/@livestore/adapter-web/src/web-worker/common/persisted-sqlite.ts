@@ -85,23 +85,29 @@ export const readPersistedStateDbFromClientSession = Effect.fn(
     }
 
     const snapshot = new Uint8Array(stateDbBuffer)
-    const sqliteDb = yield* Effect.acquireRelease(makeSqliteDb({ _tag: 'in-memory' }), (db) =>
-      Effect.sync(() => db.close()),
-    )
-    yield* Effect.try({
-      try: () => {
-        sqliteDb.import(snapshot)
-        return hasCompletedState(sqliteDb)
-      },
-      catch: (cause) => new PersistedSqliteError({ message: 'Could not load persisted state snapshot', cause }),
-    }).pipe(
-      Effect.filterOrFail(
-        (completed) => completed,
-        () =>
-          new PersistedSqliteError({ message: 'Persisted state rebuild is incomplete; waiting for leader recovery' }),
+    const sqliteDb = yield* Effect.acquireRelease(
+      makeSqliteDb({ _tag: 'in-memory' }).pipe(
+        Effect.tap((db) =>
+          Effect.try({
+            try: () => {
+              db.import(snapshot)
+              return hasCompletedState(db)
+            },
+            catch: (cause) => new PersistedSqliteError({ message: 'Could not load persisted state snapshot', cause }),
+          }).pipe(
+            Effect.filterOrFail(
+              (completed) => completed,
+              () =>
+                new PersistedSqliteError({
+                  message: 'Persisted state rebuild is incomplete; waiting for leader recovery',
+                }),
+            ),
+            // A failed acquisition has no scope finalizer yet, so release it here.
+            Effect.onError(() => Effect.sync(() => db.close())),
+          ),
+        ),
       ),
-      // Release rejected snapshots before waiting for recovery, not only when the session scope closes.
-      Effect.onError(() => Effect.sync(() => sqliteDb.close())),
+      (db) => Effect.sync(() => db.close()),
     )
 
     return { sqliteDb, snapshotByteLength: snapshot.byteLength }

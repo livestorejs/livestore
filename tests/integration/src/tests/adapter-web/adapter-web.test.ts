@@ -69,8 +69,8 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
           missingMarkerTable: 'PersistedSqliteError',
           complete: 'accepted',
           rows: [{ id: 'complete' }, { id: 'partial' }],
-          closedBeforeScopeExit: [true, true, false],
-          closedAfterScopeExit: [true, true, true],
+          closeCountsBeforeScopeExit: [1, 1, 0],
+          closeCountsAfterScopeExit: [1, 1, 1],
         },
       })
     }).pipe(withTestCtx(test)),

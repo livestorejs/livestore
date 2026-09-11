@@ -26,15 +26,15 @@ const run = Effect.gen(function* () {
     }),
     (db) => Effect.sync(() => db.close()),
   )
-  const closed: boolean[] = []
+  const closeCounts: number[] = []
   const makeSnapshotDb = (input: { _tag: 'in-memory' }) =>
     makeSqliteDb(input).pipe(
       Effect.map((db) => {
-        const index = closed.push(false) - 1
+        const index = closeCounts.push(0) - 1
         return {
           ...db,
           close: () => {
-            closed[index] = true
+            closeCounts[index] = (closeCounts[index] ?? 0) + 1
             db.close()
           },
         }
@@ -57,8 +57,8 @@ const run = Effect.gen(function* () {
     complete: 'accepted',
     rows: sqliteDb.select(todos.orderBy('id', 'asc')),
     // Check before the outer scope closes: rejection must release memory immediately.
-    closedBeforeScopeExit: [...closed],
-    closedAfterScopeExit: closed,
+    closeCountsBeforeScopeExit: [...closeCounts],
+    closeCountsAfterScopeExit: closeCounts,
   }
 }).pipe(Effect.scoped, Effect.provide(Opfs.layer))
 
