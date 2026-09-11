@@ -1,29 +1,31 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/webmesh"
+    ]
+  },
   "name": "@livestore/webmesh",
   "version": "0.4.0",
+  "type": "module",
+  "sideEffects": false,
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/livestorejs/livestore.git"
+  },
+  "exports": {
+    ".": "./src/mod.ts",
+    "./worker": "./src/worker/mod.ts"
   },
   "files": [
     "dist",
     "package.json",
     "src"
   ],
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    ".": "./src/mod.ts",
-    "./worker": "./src/worker/mod.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/mod.js",
-      "./worker": "./dist/worker/mod.js"
-    }
-  },
   "scripts": {
     "test": "vitest"
   },
@@ -56,13 +58,11 @@
     "@standard-schema/spec": "^1.1.0",
     "effect": "^4.0.0-beta.99"
   },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/webmesh"
-    ]
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./worker": "./dist/worker/mod.js"
+    }
   }
 }

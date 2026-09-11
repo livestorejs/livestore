@@ -46,7 +46,7 @@
     },
     "packageManager": {
       "name": "pnpm",
-      "version": "11.8.0"
+      "version": "12.3.4"
     }
   },
   "dependencyMaterializationProfile": {
@@ -89,9 +89,12 @@
     "dedupePeerDependents": true,
     "ignoreScripts": true,
     "minimumReleaseAgeExclude": [
-      "@effect/platform",
       "@types/node",
       "effect",
+      "@effect/platform-node",
+      "@effect/vitest",
+      "@effect/opentelemetry",
+      "@effect/atom-react",
       "@effect/opentelemetry@4.0.0-beta.99",
       "@effect/platform-browser@4.0.0-beta.99",
       "@effect/platform-bun@4.0.0-beta.99",
@@ -139,7 +142,7 @@
   },
   "packageManager": {
     "name": "pnpm",
-    "version": "11.8.0"
+    "version": "12.3.4"
   },
   "schemaVersion": 2,
   "storeContract": {

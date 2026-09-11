@@ -1,16 +1,4 @@
 {
-  "name": "@local/tests-wa-sqlite",
-  "version": "0.0.54-dev.23",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "test": "vitest"
-  },
-  "devDependencies": {
-    "@livestore/wa-sqlite": "workspace:^",
-    "@types/node": "25.3.3",
-    "vitest": "4.1.9"
-  },
   "$genie": {
     "source": "package.json.genie.ts",
     "warning": "DO NOT EDIT - changes will be overwritten",
@@ -18,5 +6,17 @@
       "packages/@livestore/wa-sqlite",
       "tests/wa-sqlite"
     ]
+  },
+  "name": "@local/tests-wa-sqlite",
+  "version": "0.0.54-dev.23",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "@livestore/wa-sqlite": "workspace:^",
+    "@types/node": "25.3.3",
+    "vitest": "4.1.9"
   }
 }

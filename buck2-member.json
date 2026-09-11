@@ -2,7 +2,19 @@
   "schemaVersion": 1,
   "cell": "livestore",
   "mount": "repos/livestore",
-  "projectIgnore": ["**/dist", "**/node_modules", "**/node_modules/**", "**/target", "**/target/**", ".devenv", ".git", "buck-out", "node_modules", "target", "tmp"],
+  "projectIgnore": [
+    "**/dist",
+    "**/node_modules",
+    "**/node_modules/**",
+    "**/target",
+    "**/target/**",
+    ".devenv",
+    ".git",
+    "buck-out",
+    "node_modules",
+    "target",
+    "tmp"
+  ],
   "distOverlays": [],
   "capabilities": []
 }

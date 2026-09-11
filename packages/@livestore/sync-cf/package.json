@@ -1,10 +1,29 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/common",
+      "packages/@livestore/common-cf",
+      "packages/@livestore/sync-cf",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/webmesh"
+    ]
+  },
   "name": "@livestore/sync-cf",
   "version": "0.4.0",
+  "type": "module",
+  "sideEffects": false,
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/livestorejs/livestore.git"
+  },
+  "exports": {
+    "./cf-worker": "./src/cf-worker/mod.ts",
+    "./client": "./src/client/mod.ts",
+    "./common": "./src/common/mod.ts"
   },
   "files": [
     "dist",
@@ -12,21 +31,6 @@
     "src",
     "README.md"
   ],
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    "./cf-worker": "./src/cf-worker/mod.ts",
-    "./client": "./src/client/mod.ts",
-    "./common": "./src/common/mod.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      "./client": "./dist/client/mod.js",
-      "./common": "./dist/common/mod.js",
-      "./cf-worker": "./dist/cf-worker/mod.js"
-    }
-  },
   "scripts": {
     "test": "echo 'No tests yet'"
   },
@@ -60,16 +64,12 @@
     "@standard-schema/spec": "^1.1.0",
     "effect": "^4.0.0-beta.99"
   },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/common",
-      "packages/@livestore/common-cf",
-      "packages/@livestore/sync-cf",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/webmesh"
-    ]
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      "./client": "./dist/client/mod.js",
+      "./common": "./dist/common/mod.js",
+      "./cf-worker": "./dist/cf-worker/mod.js"
+    }
   }
 }

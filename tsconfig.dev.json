@@ -16,7 +16,10 @@
           "anyUnknownInErrorContext": "warning",
           "preferSchemaOverJson": "warning"
         },
-        "allowedDuplicatedPackages": ["@livestore/utils", "@effect/platform"]
+        "allowedDuplicatedPackages": [
+          "@livestore/utils",
+          "@effect/platform"
+        ]
       }
     ]
   },

@@ -13,6 +13,8 @@
   },
   "experimentalSortPackageJson": true,
   "ignorePatterns": [
+    "**/.github/scripts/pr-snapshot-artifact.mjs",
+    "**/.github/scripts/pr-snapshot-artifact.test.mjs",
     "**/node_modules/**",
     "**/.pnpm/**",
     "**/.pnpm-store/**",

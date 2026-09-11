@@ -1,10 +1,33 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/adapter-web",
+      "packages/@livestore/common",
+      "packages/@livestore/common-cf",
+      "packages/@livestore/livestore",
+      "packages/@livestore/sqlite-wasm",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/wa-sqlite",
+      "packages/@livestore/webmesh"
+    ]
+  },
   "name": "@livestore/livestore",
   "version": "0.4.0",
+  "type": "module",
+  "sideEffects": false,
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/livestorejs/livestore.git"
+  },
+  "exports": {
+    ".": "./src/mod.ts",
+    "./effect": "./src/effect/mod.ts",
+    "./internal": "./src/internal/mod.ts",
+    "./internal/testing-utils": "./src/utils/tests/mod.ts"
   },
   "files": [
     "dist",
@@ -12,23 +35,6 @@
     "src",
     "docs"
   ],
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    ".": "./src/mod.ts",
-    "./effect": "./src/effect/mod.ts",
-    "./internal": "./src/internal/mod.ts",
-    "./internal/testing-utils": "./src/utils/tests/mod.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/mod.js",
-      "./internal": "./dist/internal/mod.js",
-      "./internal/testing-utils": "./dist/utils/tests/mod.js",
-      "./effect": "./dist/effect/mod.js"
-    }
-  },
   "scripts": {
     "build": "tsc",
     "test": "vitest"
@@ -59,19 +65,13 @@
     "@standard-schema/spec": "^1.1.0",
     "effect": "^4.0.0-beta.99"
   },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/adapter-web",
-      "packages/@livestore/common",
-      "packages/@livestore/common-cf",
-      "packages/@livestore/livestore",
-      "packages/@livestore/sqlite-wasm",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/wa-sqlite",
-      "packages/@livestore/webmesh"
-    ]
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./internal": "./dist/internal/mod.js",
+      "./internal/testing-utils": "./dist/utils/tests/mod.js",
+      "./effect": "./dist/effect/mod.js"
+    }
   }
 }

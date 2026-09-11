@@ -1,8 +1,16 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/effect-playwright",
+      "packages/@livestore/utils"
+    ]
+  },
   "name": "@livestore/effect-playwright",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
+  "private": true,
   "exports": {
     ".": "./src/index.ts"
   },
@@ -28,13 +36,5 @@
   },
   "peerDependencies": {
     "@playwright/test": "^1.56.0"
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/effect-playwright",
-      "packages/@livestore/utils"
-    ]
   }
 }
