@@ -10,6 +10,18 @@
 
 ### Changed
 
+- **SQLite state schema:** Effect Schema is now the foundation of table
+  definitions. `State.SQLite.text()` & co. return field schemas,
+  `table({ columns })` is `Schema.Struct(columns)` with a name, `TableDef` is
+  parameterised by the field map (much shorter hovers), column defaults are
+  tracked at the type level so `insert()` can omit them for schema-based
+  tables, and `Schema.Date`, `Schema.DateFromString` and `Schema.DateFromMillis`
+  fields of `table({ schema })` round-trip through their encoded form. An
+  insert that omits a column with a thunk default (`integer({ default: () => 0 })`,
+  `withDefault(() => 0)`) now binds the thunk's value instead of failing the
+  `NOT NULL` constraint, since a thunk has no DDL representation
+  ([#382](https://github.com/livestorejs/livestore/issues/382),
+  [#1597](https://github.com/livestorejs/livestore/pull/1597)).
 - **Store commits:** Fixed the documented callback form of `store.commit` and
   its TypeScript overloads, including calls with commit options. Callback events
   are collected before materialization, and throwing callbacks apply no events
@@ -40,6 +52,22 @@
 
 ### Breaking Changes
 
+- **SQLite state schema:** `State.SQLite.text()` & co. no longer return
+  `ColumnDefinition` records (use `State.SQLite.getColumnDefForSchema(field)`
+  to derive one), `TableDef`'s generic parameters are now
+  `<Name, Fields, Options>`, `State.SQLite.withDefault` is typed against the
+  field's type (pass `{ sql: 'CURRENT_TIMESTAMP' }` for SQL expressions, and
+  `null` only on a nullable field), an optional field is typed `T | null` in
+  the row type instead of `T | undefined`, and a column helper with both
+  `primaryKey: true` and `nullable: true` now throws at definition time, as
+  `withPrimaryKey` on a nullable schema already did. The column-map types
+  that described the old foundation are removed from `State.SQLite`:
+  `SchemaToColumns`, `TableDefInput`, `SqliteTableDefForInput`,
+  `SqliteTableDefForSchemaInput`, `ToColumns`, `PrettifyFlat`,
+  `DefaultSqliteTableDefConstrained`, `FromTable`, `FromColumns` and
+  `isColumnDefinition`; `WithDefaults` no longer takes a type parameter. Use
+  `TableDef<Name, Fields>` and `FromFields` instead
+  ([#382](https://github.com/livestorejs/livestore/issues/382)).
 - **Store commit callbacks:** Callback return values are now ignored. Replace
   the undocumented `store.commit(() => [event])` form with `store.commit(event)`
   or `store.commit((commit) => { commit(event) })`

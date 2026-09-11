@@ -3,10 +3,26 @@ import { describe, expect, test } from 'vitest'
 import { Schema } from '@livestore/utils/effect'
 
 import { liveStoreStorageFormatVersion } from '../../../../../version.ts'
-import { makeState } from '../../mod.ts'
+import {
+  blob,
+  boolean,
+  datetime,
+  integer,
+  json,
+  makeState,
+  real,
+  text,
+  withDefault,
+  withPrimaryKey,
+} from '../../mod.ts'
+import { table } from '../../table-def.ts'
 import { SqliteDsl } from '../mod.ts'
 import { digestToFingerprint } from './fingerprint-digest.ts'
 import { fingerprint } from './fingerprint.ts'
+
+/** the DSL AST is derived from a table's field schemas, so build it through `table()` */
+const makeTable = (name: string, columns: Schema.Struct.Fields, indexes?: SqliteDsl.Index[]) =>
+  table({ name, columns, ...(indexes === undefined ? {} : { indexes }) }).sqliteDef
 
 describe('SQLite storage fingerprints', () => {
   test('pins the final fingerprint output', () => {
@@ -28,6 +44,143 @@ describe('SQLite storage fingerprints', () => {
     expect(`state${value}@${liveStoreStorageFormatVersion}.db`.length).toBeLessThanOrEqual(56)
   })
 
+  test('keeps the fingerprint of every table definition shape stable', () => {
+    // Storage identity must survive changes to how table definitions are built. Each pair is a table
+    // shape and the fingerprint it had before column helpers returned field schemas; a changed value
+    // here means every database defining that shape rematerializes on upgrade. The date-codec row
+    // is pinned to its post-#1597 value: before, such a column was JSON text that could not be read.
+    const Point = Schema.Struct({ x: Schema.Finite, tags: Schema.Array(Schema.String) })
+    const shapes: ReadonlyArray<readonly [{ sqliteDef: { ast: Parameters<typeof fingerprint>[0] } }, string]> = [
+      [
+        table({
+          name: 't',
+          columns: {
+            id: text({ primaryKey: true }),
+            n: integer({ default: 1 }),
+            b: boolean({ default: true }),
+            d: datetime({ nullable: true }),
+            r: real(),
+            bl: blob({ nullable: true }),
+          },
+        }),
+        'AEL44RzxvJn373Br0g4hPvVHgv_viSsW2EnoBjpXbq0',
+      ],
+      [
+        table({ name: 't', columns: { id: text({ primaryKey: true }), v: json() } }),
+        'CVeE9zGdjEbAxgGQhJ-P5R5W7zcaY9g8qOcyLv8G64o',
+      ],
+      [
+        table({ name: 't', columns: { id: text({ primaryKey: true }), v: json({ nullable: true }) } }),
+        '5544IFy-wMvx9r0RXaoYYcFeONX6ix2yW1hECWxp1Nc',
+      ],
+      [
+        table({ name: 't', columns: { id: text({ primaryKey: true }), v: json({ schema: Point }) } }),
+        'fB5QLwHe4I-sI1JG5lMhYo48HQA8aXoQDSGUW3W4Y2E',
+      ],
+      [
+        table({ name: 't', columns: { id: text({ primaryKey: true }), v: json({ schema: Point, nullable: true }) } }),
+        'QbM-mmQ0RyNRbjWm1suiG7TgMLm11yVOI1Y91Nfybko',
+      ],
+      [
+        table({
+          name: 't',
+          columns: { id: text({ primaryKey: true }), v: json({ schema: Point, default: { x: 1, tags: [] } }) },
+        }),
+        'VZKGurvAE8YF1m7oCbTCPZhHWtLmA8JouRcvNG_l0VU',
+      ],
+      [
+        table({
+          name: 't',
+          columns: { id: text({ primaryKey: true }), v: json({ schema: Point, nullable: true, default: null }) },
+        }),
+        '1RYAccWxhEGNDjc9VHw-3L36vq8HYabzdrywZZc08qo',
+      ],
+      [
+        table({
+          name: 't',
+          columns: { id: text({ primaryKey: true }), v: json({ schema: Point, default: () => ({ x: 1, tags: [] }) }) },
+        }),
+        '_vzWalqhAfvsPySbAlCwGrJ2kmmqY3O8Kc1CnuYAJjw',
+      ],
+      [
+        table({
+          name: 't',
+          columns: { id: text({ primaryKey: true }), v: text({ schema: Schema.fromJsonString(Point) }) },
+        }),
+        'fB5QLwHe4I-sI1JG5lMhYo48HQA8aXoQDSGUW3W4Y2E',
+      ],
+      [
+        table({ name: 't', schema: Schema.Struct({ id: Schema.String.pipe(withPrimaryKey), v: Point }) }),
+        'fB5QLwHe4I-sI1JG5lMhYo48HQA8aXoQDSGUW3W4Y2E',
+      ],
+      [
+        table({
+          name: 't',
+          schema: Schema.Struct({ id: Schema.String.pipe(withPrimaryKey), v: Schema.NullOr(Point) }),
+        }),
+        'QbM-mmQ0RyNRbjWm1suiG7TgMLm11yVOI1Y91Nfybko',
+      ],
+      [
+        table({
+          name: 't',
+          schema: Schema.Struct({ id: Schema.String.pipe(withPrimaryKey), v: Schema.optional(Point) }),
+        }),
+        'QbM-mmQ0RyNRbjWm1suiG7TgMLm11yVOI1Y91Nfybko',
+      ],
+      [
+        table({
+          name: 't',
+          schema: Schema.Struct({
+            id: Schema.String.pipe(withPrimaryKey),
+            v: Point.pipe(withDefault({ x: 1, tags: [] })),
+          }),
+        }),
+        'VZKGurvAE8YF1m7oCbTCPZhHWtLmA8JouRcvNG_l0VU',
+      ],
+      [
+        table({
+          name: 't',
+          schema: Schema.Struct({ id: Schema.String.pipe(withPrimaryKey), v: Schema.Array(Schema.String) }),
+        }),
+        'Oq6RY68071fpjiYuI-fHfEU87UZAB_AZ7prbzVpMcXI',
+      ],
+      [
+        table({
+          name: 't',
+          schema: Schema.Struct({
+            id: Schema.String.pipe(withPrimaryKey),
+            v: Schema.Literals(['a', 'b']),
+            w: Schema.optional(Schema.Boolean),
+          }),
+        }),
+        'C8kBw5B-VjQaj_57Bh1aF6QVkofjxf79K9ZRAiGz9Sg',
+      ],
+      [
+        table({
+          name: 't',
+          schema: Schema.Struct({
+            id: Schema.String.pipe(withPrimaryKey),
+            v: Schema.String.pipe(withDefault('x')),
+            w: Schema.Int.pipe(withDefault(0)),
+          }),
+        }),
+        'vn6JLhkCU_1_np3ap5wy-QlNNaX4nDjbbM-o2d9vwYM',
+      ],
+      [
+        table({
+          name: 't',
+          schema: Schema.Struct({
+            id: Schema.String.pipe(withPrimaryKey),
+            v: Schema.DateFromString,
+            w: Schema.NullOr(Schema.DateFromMillis),
+          }),
+        }),
+        'C8kBw5B-VjQaj_57Bh1aF6QVkofjxf79K9ZRAiGz9Sg',
+      ],
+    ]
+    for (const [tableDef, expected] of shapes) expect(fingerprint(tableDef.sqliteDef.ast)).toBe(expected)
+  })
+
   test('is independent of table and index declaration order', () => {
     const first = makeJsonTable('first', Schema.Struct({ value: Schema.String }))
     const second = makeJsonTable('second', Schema.Struct({ value: Schema.Finite }))
@@ -36,7 +189,7 @@ describe('SQLite storage fingerprints', () => {
       fingerprint({ _tag: 'dbSchema', tables: [second.ast, first.ast] }),
     )
 
-    const table = SqliteDsl.table(
+    const table = makeTable(
       'indexed',
       {
         id: SqliteDsl.text({ primaryKey: true }),
@@ -108,10 +261,10 @@ describe('SQLite storage fingerprints', () => {
   })
 
   test('tracks JSON codecs passed through the generic text column API', () => {
-    const first = SqliteDsl.table('documents', {
+    const first = makeTable('documents', {
       value: SqliteDsl.text({ schema: Schema.fromJsonString(Schema.Struct({ value: Schema.String })) }),
     })
-    const second = SqliteDsl.table('documents', {
+    const second = makeTable('documents', {
       value: SqliteDsl.text({ schema: Schema.fromJsonString(Schema.Struct({ value: Schema.Finite })) }),
     })
 
@@ -120,10 +273,10 @@ describe('SQLite storage fingerprints', () => {
 
   test('gives equivalent JSON DSL forms the same fingerprint', () => {
     const valueSchema = Schema.Struct({ value: Schema.String })
-    const specialized = SqliteDsl.table('documents', {
+    const specialized = makeTable('documents', {
       value: SqliteDsl.json({ schema: valueSchema }),
     })
-    const generic = SqliteDsl.table('documents', {
+    const generic = makeTable('documents', {
       value: SqliteDsl.text({ schema: Schema.fromJsonString(valueSchema) }),
     })
 
@@ -135,17 +288,16 @@ describe('SQLite storage fingerprints', () => {
     const firstThunk = SqliteDsl.text({ default: () => 'first' })
     const secondThunk = SqliteDsl.text({ default: () => 'second' })
     const literal = SqliteDsl.text({ default: 'first' })
-    const toTable = (definition: SqliteDsl.ColumnDefinition.Any) =>
-      SqliteDsl.table('defaults', { value: definition }).ast
+    const fingerprintOf = (definition: Schema.Top) => fingerprint(makeTable('defaults', { value: definition }).ast)
 
-    expect(fingerprint(toTable(firstThunk))).toBe(fingerprint(toTable(secondThunk)))
-    expect(fingerprint(toTable(firstThunk))).not.toBe(fingerprint(toTable(none)))
-    expect(fingerprint(toTable(literal))).not.toBe(fingerprint(toTable(firstThunk)))
+    expect(fingerprintOf(firstThunk)).toBe(fingerprintOf(secondThunk))
+    expect(fingerprintOf(firstThunk)).not.toBe(fingerprintOf(none))
+    expect(fingerprintOf(literal)).not.toBe(fingerprintOf(firstThunk))
   })
 })
 
 const makePhysicalTable = () =>
-  SqliteDsl.table(
+  makeTable(
     'users',
     {
       id: SqliteDsl.text({ primaryKey: true }),
@@ -155,7 +307,7 @@ const makePhysicalTable = () =>
   )
 
 const makeJsonTable = (name: string, schema: Schema.Codec<unknown, unknown>) =>
-  SqliteDsl.table(name, {
+  makeTable(name, {
     id: SqliteDsl.text({ primaryKey: true }),
     value: SqliteDsl.json({ schema }),
   })

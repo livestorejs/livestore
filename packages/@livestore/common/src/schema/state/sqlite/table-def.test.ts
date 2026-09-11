@@ -1,7 +1,16 @@
 import { TestSchema } from 'effect/testing'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
-import { Schema, SchemaAST, SchemaTransformation } from '@livestore/utils/effect'
+import {
+  type Brand,
+  Effect,
+  Option,
+  Result,
+  Schema,
+  SchemaAST,
+  SchemaIssue,
+  SchemaTransformation,
+} from '@livestore/utils/effect'
 
 import { State } from '../../mod.ts'
 
@@ -180,6 +189,585 @@ describe('table function overloads', () => {
     expect(userTable.sqliteDef.columns.id.nullable).toBe(false)
     expect(userTable.sqliteDef.columns.name.nullable).toBe(false)
     expect(userTable.sqliteDef.columns.email.nullable).toBe(true)
+  })
+
+  it('keeps a date codec so the column round-trips through its encoded form', () => {
+    const StampSchema = Schema.Struct({
+      id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+      createdAt: Schema.DateFromString,
+      seenAt: Schema.DateFromMillis,
+      bornAt: Schema.Date,
+      deletedAt: Schema.NullOr(Schema.DateFromString),
+      archivedAt: Schema.optional(Schema.DateFromString),
+    })
+
+    const stamps = State.SQLite.table({ name: 'stamps', schema: StampSchema })
+    const { columns } = stamps.sqliteDef
+    const date = new Date('2026-01-02T03:04:05.678Z')
+    const roundTrip = (column: { schema: Schema.Codec<any, any> }, value: unknown) =>
+      Schema.decodeUnknownSync(column.schema)(Schema.encodeUnknownSync(column.schema)(value))
+
+    expect(columns.createdAt.columnType).toBe('text')
+    expect(Schema.encodeUnknownSync(columns.createdAt.schema)(date)).toBe(date.toISOString())
+    expect(roundTrip(columns.createdAt, date)).toEqual(date)
+
+    expect(columns.seenAt.columnType).toBe('integer')
+    expect(Schema.encodeUnknownSync(columns.seenAt.schema)(date)).toBe(date.getTime())
+    expect(roundTrip(columns.seenAt, date)).toEqual(date)
+
+    expect(columns.bornAt.columnType).toBe('text')
+    expect(Schema.encodeUnknownSync(columns.bornAt.schema)(date)).toBe(date.toISOString())
+    expect(roundTrip(columns.bornAt, date)).toEqual(date)
+
+    expect(columns.deletedAt.nullable).toBe(true)
+    expect(roundTrip(columns.deletedAt, date)).toEqual(date)
+    expect(roundTrip(columns.deletedAt, null)).toBeNull()
+
+    expect(columns.archivedAt.nullable).toBe(true)
+    expect(roundTrip(columns.archivedAt, date)).toEqual(date)
+
+    // The row schema is the struct of those field codecs, so a SQLite row decodes in one step
+    expectTypeOf(stamps.rowSchema.fields.createdAt).toEqualTypeOf<Schema.DateFromString>()
+    expectTypeOf(stamps.rowSchema.fields.seenAt).toEqualTypeOf<Schema.DateFromMillis>()
+    expectTypeOf<(typeof stamps.Type)['bornAt']>().toEqualTypeOf<Date>()
+    expectTypeOf<(typeof stamps.Encoded)['bornAt']>().toEqualTypeOf<string>()
+    expectTypeOf<(typeof stamps.Type)['archivedAt']>().toEqualTypeOf<Date | null>()
+    expect(
+      Schema.decodeUnknownSync(stamps.rowSchema)({
+        id: '1',
+        createdAt: date.toISOString(),
+        seenAt: date.getTime(),
+        bornAt: date.toISOString(),
+        deletedAt: null,
+        archivedAt: null,
+      }),
+    ).toEqual({ id: '1', createdAt: date, seenAt: date, bornAt: date, deletedAt: null, archivedAt: null })
+  })
+
+  it('stores a codec field in its encoded form, like getColumnDefForSchema does', () => {
+    const CounterSchema = Schema.Struct({
+      id: Schema.String,
+      count: Schema.FiniteFromString,
+    })
+
+    const { columns } = State.SQLite.table({ name: 'counters', schema: CounterSchema }).sqliteDef
+
+    expect(columns.count.columnType).toBe('text')
+    expect(Schema.encodeUnknownSync(columns.count.schema)(42)).toBe('42')
+    expect(Schema.decodeUnknownSync(columns.count.schema)('42')).toBe(42)
+  })
+
+  it('tracks column defaults at the type level so insert() can omit them', () => {
+    const settings = State.SQLite.table({
+      name: 'settings',
+      columns: {
+        id: State.SQLite.text({ primaryKey: true }),
+        theme: State.SQLite.text({ default: 'light' }),
+        createdAt: State.SQLite.datetime({ default: { sql: 'CURRENT_TIMESTAMP' } }),
+        count: State.SQLite.integer({ default: () => 0 }),
+        note: State.SQLite.text({ nullable: true }),
+      },
+    })
+
+    expectTypeOf(settings.insert).toBeCallableWith({ id: '1' })
+    expectTypeOf<{ theme: string }>().not.toExtend<Parameters<typeof settings.insert>[0]>()
+    expectTypeOf<typeof settings.Type>().toEqualTypeOf<{
+      readonly id: string
+      readonly theme: string
+      readonly createdAt: Date
+      readonly count: number
+      readonly note: string | null
+    }>()
+
+    // the same holds for schema-based tables using `withDefault`
+    const posts = State.SQLite.table({
+      name: 'posts',
+      schema: Schema.Struct({
+        id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+        status: Schema.String.pipe(State.SQLite.withDefault('draft')),
+        views: Schema.Int.pipe(State.SQLite.withDefault(0)),
+      }),
+    })
+    expectTypeOf(posts.insert).toBeCallableWith({ id: '1' })
+    expectTypeOf<{ id: string }>().toExtend<Parameters<typeof posts.insert>[0]>()
+    expect(posts.sqliteDef.columns.status.default).toEqual(Option.some('draft'))
+
+    // value and thunk defaults are constructor defaults of the row schema
+    expect(settings.rowSchema.make({ id: '1', createdAt: new Date(0), note: null })).toEqual({
+      id: '1',
+      theme: 'light',
+      createdAt: new Date(0),
+      count: 0,
+      note: null,
+    })
+    // a SQL default is evaluated by SQLite and cannot be constructed client-side
+    const sqlDefaultFailure = Effect.runSync(Effect.result(settings.rowSchema.makeEffect({ id: '1', note: null })))
+    expect(Result.isFailure(sqlDefaultFailure)).toBe(true)
+    if (Result.isFailure(sqlDefaultFailure) === true) {
+      expect(SchemaIssue.makeFormatterDefault()(sqlDefaultFailure.failure)).toMatch(/CURRENT_TIMESTAMP/)
+    }
+  })
+
+  it('derives a table and its events from one canonical entity schema', async () => {
+    // The pattern of an app that keeps one Effect struct per entity and derives table + event
+    // schemas from its fields (`Schema.Date` fields, nullable JSON payloads, literal unions).
+    const PageSchema = Schema.Struct({
+      createdAt: Schema.Date,
+      deletedAt: Schema.NullOr(Schema.Date),
+      id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+      name: Schema.String,
+      settings: Schema.NullOr(Schema.Struct({ layout: Schema.Literals(['grid', 'list']) })),
+      type: Schema.Literals(['auto', 'custom']),
+      updatedAt: Schema.Date,
+    }).annotate({ title: 'pages' })
+
+    const pages = State.SQLite.table({ schema: PageSchema })
+    const PageCreated = Schema.Struct({ ...PageSchema.fields, updatedAt: Schema.optional(PageSchema.fields.updatedAt) })
+
+    expect(pages.sqliteDef.name).toBe('pages')
+    expect(pages.sqliteDef.columns.createdAt.columnType).toBe('text')
+    expect(pages.sqliteDef.columns.settings.columnType).toBe('text')
+    expect(pages.sqliteDef.columns.type.columnType).toBe('text')
+
+    const date = new Date('2026-01-02T03:04:05.678Z')
+    const asserts = new TestSchema.Asserts(pages.rowSchema)
+    await asserts.decoding().succeed(
+      {
+        createdAt: date.toISOString(),
+        deletedAt: null,
+        id: 'p1',
+        name: 'Home',
+        settings: JSON.stringify({ layout: 'grid' }),
+        type: 'auto',
+        updatedAt: date.toISOString(),
+      },
+      {
+        createdAt: date,
+        deletedAt: null,
+        id: 'p1',
+        name: 'Home',
+        settings: { layout: 'grid' },
+        type: 'auto',
+        updatedAt: date,
+      },
+    )
+
+    const { bindValues } = pages
+      .insert({ createdAt: date, id: 'p1', name: 'Home', settings: null, type: 'auto', updatedAt: date })
+      .asSql()
+    expect(bindValues).toEqual([date.toISOString(), 'p1', 'Home', null, 'auto', date.toISOString()])
+
+    expectTypeOf<typeof pages.Type>().toEqualTypeOf<{
+      readonly createdAt: Date
+      readonly deletedAt: Date | null
+      readonly id: string
+      readonly name: string
+      readonly settings: { readonly layout: 'grid' | 'list' } | null
+      readonly type: 'auto' | 'custom'
+      readonly updatedAt: Date
+    }>()
+    expectTypeOf<(typeof PageCreated)['Type']['updatedAt']>().toEqualTypeOf<Date | undefined>()
+  })
+
+  it('types a schema-less json column as unknown and a default against the field type', () => {
+    const documents = State.SQLite.table({
+      name: 'documents',
+      columns: {
+        id: State.SQLite.text({ primaryKey: true }),
+        meta: State.SQLite.json(),
+        note: State.SQLite.text({ nullable: true, default: null }),
+      },
+    })
+    expectTypeOf<(typeof documents.Type)['meta']>().toEqualTypeOf<unknown>()
+    expectTypeOf<(typeof documents.Type)['note']>().toEqualTypeOf<string | null>()
+    // @ts-expect-error a non-nullable column cannot default to null
+    State.SQLite.text({ default: null })
+
+    // `withDefault` accepts a value of the field's type, and `null` only on a nullable field
+    expectTypeOf(Schema.String.pipe(State.SQLite.withDefault('draft'))).toEqualTypeOf<
+      State.SQLite.ColumnDefault<Schema.String>
+    >()
+    expectTypeOf(Schema.NullOr(Schema.String).pipe(State.SQLite.withDefault(null))).toEqualTypeOf<
+      State.SQLite.ColumnDefault<Schema.NullOr<Schema.String>>
+    >()
+    expectTypeOf(Schema.String.pipe(State.SQLite.withDefault(null))).toEqualTypeOf<
+      State.SQLite.DefaultValueMismatch<null, string>
+    >()
+    expectTypeOf(Schema.Int.pipe(State.SQLite.withDefault('0'))).toEqualTypeOf<
+      State.SQLite.DefaultValueMismatch<'0', number>
+    >()
+    // @ts-expect-error the data-first form rejects the mismatch outright
+    State.SQLite.withDefault(Schema.String, null)
+  })
+
+  it('keeps json() and unknown fields required on insert', () => {
+    const documents = State.SQLite.table({
+      name: 'documents',
+      columns: {
+        id: State.SQLite.text({ primaryKey: true }),
+        meta: State.SQLite.json(),
+        payload: Schema.Unknown,
+      },
+    })
+    expect(documents.sqliteDef.columns.meta.nullable).toBe(false)
+    expect(documents.sqliteDef.columns.payload.nullable).toBe(false)
+    expectTypeOf<{ id: string }>().not.toExtend<Parameters<typeof documents.insert>[0]>()
+    expectTypeOf(documents.insert).toBeCallableWith({ id: '1', meta: { a: 1 }, payload: null })
+    expectTypeOf(documents.rowSchema.fields.meta).toEqualTypeOf<Schema.fromJsonString<Schema.Unknown>>()
+  })
+
+  it('reads an optional-key field back as nullable', async () => {
+    const notes = State.SQLite.table({
+      name: 'notes',
+      schema: Schema.Struct({
+        id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+        title: Schema.optionalKey(Schema.String),
+        done: Schema.optionalKey(Schema.Boolean),
+      }),
+    })
+    expect(notes.sqliteDef.columns.title.nullable).toBe(true)
+    expect(notes.sqliteDef.columns.done.nullable).toBe(true)
+    expectTypeOf<(typeof notes.Type)['title']>().toEqualTypeOf<string | null>()
+    expectTypeOf<(typeof notes.Type)['done']>().toEqualTypeOf<boolean | null>()
+    expectTypeOf(notes.insert).toBeCallableWith({ id: '1' })
+    const asserts = new TestSchema.Asserts(notes.rowSchema)
+    await asserts.decoding().succeed({ id: '1', title: null, done: null })
+  })
+
+  it('accepts array and object defaults through the curried withDefault', () => {
+    const Tags = Schema.Array(Schema.String)
+    const MutableTags = Schema.mutable(Schema.Array(Schema.String))
+    const Settings = Schema.Struct({ theme: Schema.String, sizes: Schema.mutable(Schema.Array(Schema.Int)) })
+    expectTypeOf(Tags.pipe(State.SQLite.withDefault([]))).toEqualTypeOf<State.SQLite.ColumnDefault<typeof Tags>>()
+    expectTypeOf(MutableTags.pipe(State.SQLite.withDefault([]))).toEqualTypeOf<
+      State.SQLite.ColumnDefault<typeof MutableTags>
+    >()
+    expectTypeOf(Settings.pipe(State.SQLite.withDefault({ theme: 'light', sizes: [1] }))).toEqualTypeOf<
+      State.SQLite.ColumnDefault<typeof Settings>
+    >()
+    expectTypeOf(Schema.Literals(['draft', 'published']).pipe(State.SQLite.withDefault('draft'))).toEqualTypeOf<
+      State.SQLite.ColumnDefault<Schema.Literals<readonly ['draft', 'published']>>
+    >()
+  })
+
+  it('accepts thunk defaults on literal-union fields', () => {
+    const Status = Schema.Literals(['draft', 'published'])
+    expectTypeOf(Status.pipe(State.SQLite.withDefault(() => 'draft'))).toEqualTypeOf<
+      State.SQLite.ColumnDefault<typeof Status>
+    >()
+    expectTypeOf(Status.pipe(State.SQLite.withDefault(() => 5))).toEqualTypeOf<
+      State.SQLite.DefaultValueMismatch<number, 'draft' | 'published'>
+    >()
+    expectTypeOf(State.SQLite.withDefault(Status, () => 'draft')).toEqualTypeOf<
+      State.SQLite.ColumnDefault<typeof Status>
+    >()
+  })
+
+  it('only treats LiveStore column defaults as omittable on insert', () => {
+    // a plain Effect constructor default (the `_tag` of a tagged struct) is not a column default
+    const events = State.SQLite.table({
+      name: 'events',
+      schema: Schema.TaggedStruct('Event', { id: Schema.String.pipe(State.SQLite.withPrimaryKey) }),
+    })
+    expect(events.sqliteDef.columns._tag.default).toEqual(Option.none())
+    expectTypeOf<{ id: string }>().not.toExtend<Parameters<typeof events.insert>[0]>()
+    expectTypeOf(events.insert).toBeCallableWith({ _tag: 'Event', id: '1' })
+    expect(() => events.insert({ _tag: 'Event', id: '1' }).asSql()).not.toThrow()
+  })
+
+  it('classifies every supported field shape the same way at the type level and at runtime', () => {
+    const Point = Schema.Struct({ x: Schema.Finite })
+    const shapeFields = {
+      id: State.SQLite.text({ primaryKey: true }),
+      text: Schema.String,
+      int: Schema.Int,
+      nullOrText: Schema.NullOr(Schema.String),
+      undefinedOrText: Schema.UndefinedOr(Schema.String),
+      optionalText: Schema.optional(Schema.String),
+      optionalKeyText: Schema.optionalKey(Schema.String),
+      optionalKeyNullOrText: Schema.optionalKey(Schema.NullOr(Schema.String)),
+      bool: Schema.Boolean,
+      nullOrBool: Schema.NullOr(Schema.Boolean),
+      boolLiteral: Schema.Literal(true),
+      date: Schema.Date,
+      dateFromString: Schema.DateFromString,
+      dateFromMillis: Schema.DateFromMillis,
+      nullOrDate: Schema.NullOr(Schema.Date),
+      literals: Schema.Literals(['a', 'b']),
+      numberLiterals: Schema.Literals([1, 2]),
+      stringOrNumber: Schema.Union([Schema.String, Schema.Finite]),
+      struct: Point,
+      nullOrStruct: Schema.NullOr(Point),
+      json: State.SQLite.json(),
+      nullableJson: State.SQLite.json({ nullable: true }),
+      typedJson: State.SQLite.json({ schema: Point }),
+      unknown: Schema.Unknown,
+      nullOrUnknown: Schema.NullOr(Schema.Unknown),
+      blob: Schema.Uint8Array,
+      finiteFromString: Schema.FiniteFromString,
+      branded: Schema.String.pipe(Schema.brand('Id')),
+      null: Schema.Null,
+      defaulted: State.SQLite.text({ default: 'x' }),
+      nullableDefaulted: State.SQLite.integer({ nullable: true, default: null }),
+    }
+    const shapes = State.SQLite.table({ name: 'shapes', columns: shapeFields })
+    // the classification types take the input fields; `rowSchema.fields` are the derived column codecs
+    type Fields = typeof shapeFields
+    type Row = typeof shapes.Type
+    type Encoded = typeof shapes.Encoded
+    const { columns } = shapes.sqliteDef
+    const nullable = Object.fromEntries(Object.entries(columns).map(([name, column]) => [name, column.nullable]))
+    const columnTypes = Object.fromEntries(Object.entries(columns).map(([name, column]) => [name, column.columnType]))
+
+    // nullability: the type-level `IsNullable` agrees with `sqliteDef.columns[K].nullable`
+    expect(nullable).toEqual({
+      id: false,
+      text: false,
+      int: false,
+      nullOrText: true,
+      undefinedOrText: true,
+      optionalText: true,
+      optionalKeyText: true,
+      optionalKeyNullOrText: true,
+      bool: false,
+      nullOrBool: true,
+      boolLiteral: false,
+      date: false,
+      dateFromString: false,
+      dateFromMillis: false,
+      nullOrDate: true,
+      literals: false,
+      numberLiterals: false,
+      stringOrNumber: false,
+      struct: false,
+      nullOrStruct: true,
+      json: false,
+      nullableJson: true,
+      typedJson: false,
+      unknown: false,
+      nullOrUnknown: true,
+      blob: false,
+      finiteFromString: false,
+      branded: false,
+      null: true,
+      defaulted: false,
+      nullableDefaulted: true,
+    })
+    type Nullable = { [K in keyof Fields]: State.SQLite.FromFields.IsNullable<Fields[K]> }
+    expectTypeOf<Nullable>().toEqualTypeOf<{
+      id: false
+      text: false
+      int: false
+      nullOrText: true
+      undefinedOrText: true
+      optionalText: true
+      optionalKeyText: true
+      optionalKeyNullOrText: true
+      bool: false
+      nullOrBool: true
+      boolLiteral: false
+      date: false
+      dateFromString: false
+      dateFromMillis: false
+      nullOrDate: true
+      literals: false
+      numberLiterals: false
+      stringOrNumber: false
+      struct: false
+      nullOrStruct: true
+      json: false
+      nullableJson: true
+      typedJson: false
+      unknown: false
+      nullOrUnknown: true
+      blob: false
+      finiteFromString: false
+      branded: false
+      null: true
+      defaulted: false
+      nullableDefaulted: true
+    }>()
+
+    // storage: the type-level `Encoded` agrees with the column type and with what the codec writes
+    expect(columnTypes).toEqual({
+      id: 'text',
+      text: 'text',
+      int: 'integer',
+      nullOrText: 'text',
+      undefinedOrText: 'text',
+      optionalText: 'text',
+      optionalKeyText: 'text',
+      optionalKeyNullOrText: 'text',
+      bool: 'integer',
+      nullOrBool: 'integer',
+      boolLiteral: 'integer',
+      date: 'text',
+      dateFromString: 'text',
+      dateFromMillis: 'integer',
+      nullOrDate: 'text',
+      literals: 'text',
+      numberLiterals: 'integer',
+      stringOrNumber: 'text',
+      struct: 'text',
+      nullOrStruct: 'text',
+      json: 'text',
+      nullableJson: 'text',
+      typedJson: 'text',
+      unknown: 'text',
+      nullOrUnknown: 'text',
+      blob: 'blob',
+      finiteFromString: 'text',
+      branded: 'text',
+      null: 'text',
+      defaulted: 'text',
+      nullableDefaulted: 'integer',
+    })
+    const encode = <K extends keyof typeof columns>(column: K, value: Row[K]): Encoded[K] =>
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- the assertion under test is that the codec's output has the type-level `Encoded` type
+      Schema.encodeUnknownSync(columns[column].schema)(value) as Encoded[K]
+    const date = new Date('2026-01-02T03:04:05.678Z')
+    expect(encode('bool', true)).toBe(1)
+    expect(encode('nullOrBool', null)).toBeNull()
+    expect(encode('boolLiteral', true)).toBe(1)
+    expect(encode('date', date)).toBe(date.toISOString())
+    expect(encode('nullOrDate', null)).toBeNull()
+    expect(encode('dateFromMillis', date)).toBe(date.getTime())
+    expect(encode('stringOrNumber', 'abc')).toBe('"abc"')
+    expect(encode('struct', { x: 1 })).toBe('{"x":1}')
+    expect(encode('nullOrStruct', null)).toBeNull()
+    expect(encode('nullOrUnknown', { a: 1 })).toBe('{"a":1}')
+    expect(encode('optionalKeyText', null)).toBeNull()
+    expect(encode('finiteFromString', 42)).toBe('42')
+    expectTypeOf<Encoded['stringOrNumber']>().toEqualTypeOf<string>()
+    expectTypeOf<Encoded['bool']>().toEqualTypeOf<0 | 1>()
+    expectTypeOf<Encoded['nullOrBool']>().toEqualTypeOf<0 | 1 | null>()
+    expectTypeOf<Encoded['boolLiteral']>().toEqualTypeOf<0 | 1>()
+    expectTypeOf<Encoded['date']>().toEqualTypeOf<string>()
+    expectTypeOf<Encoded['nullOrDate']>().toEqualTypeOf<string | null>()
+    expectTypeOf<Encoded['dateFromMillis']>().toEqualTypeOf<number>()
+    expectTypeOf<Encoded['struct']>().toEqualTypeOf<string>()
+    expectTypeOf<Encoded['nullOrStruct']>().toEqualTypeOf<string | null>()
+    expectTypeOf<Encoded['nullOrUnknown']>().toEqualTypeOf<string | null>()
+    expectTypeOf<Encoded['optionalKeyText']>().toEqualTypeOf<string | null>()
+    expectTypeOf<Encoded['blob']>().toEqualTypeOf<Uint8Array>()
+    expectTypeOf<Row['stringOrNumber']>().toEqualTypeOf<string | number>()
+    expectTypeOf<Row['optionalKeyNullOrText']>().toEqualTypeOf<string | null>()
+    expectTypeOf<Row['nullOrUnknown']>().toEqualTypeOf<unknown>()
+    expectTypeOf<Row['branded']>().toEqualTypeOf<string & Brand.Brand<'Id'>>()
+    expectTypeOf<Row['null']>().toEqualTypeOf<null>()
+
+    // insert: nullable and defaulted columns are omittable, everything else is required
+    expectTypeOf(shapes.insert).toBeCallableWith({
+      id: '1',
+      text: 't',
+      int: 1,
+      bool: true,
+      boolLiteral: true,
+      date,
+      dateFromString: date,
+      dateFromMillis: date,
+      literals: 'a',
+      numberLiterals: 1,
+      stringOrNumber: 1,
+      struct: { x: 1 },
+      json: {},
+      typedJson: { x: 1 },
+      unknown: 1,
+      blob: new Uint8Array(),
+      finiteFromString: 1,
+      branded: 'b' as string & Brand.Brand<'Id'>,
+    })
+    expectTypeOf<{ id: string }>().not.toExtend<Parameters<typeof shapes.insert>[0]>()
+    type Omittable = State.SQLite.FromFields.OmittableInsertColumnNames<Fields>
+    expectTypeOf<Omittable>().toEqualTypeOf<
+      | 'nullOrText'
+      | 'undefinedOrText'
+      | 'optionalText'
+      | 'optionalKeyText'
+      | 'optionalKeyNullOrText'
+      | 'nullOrBool'
+      | 'nullOrDate'
+      | 'nullOrStruct'
+      | 'nullableJson'
+      | 'nullOrUnknown'
+      | 'null'
+      | 'defaulted'
+      | 'nullableDefaulted'
+    >()
+    const runtimeOmittable = Object.entries(columns)
+      .filter(([, column]) => column.nullable === true || column.default._tag === 'Some')
+      .map(([name]) => name)
+      .sort()
+    expect(runtimeOmittable).toEqual(
+      [
+        'nullOrText',
+        'undefinedOrText',
+        'optionalText',
+        'optionalKeyText',
+        'optionalKeyNullOrText',
+        'nullOrBool',
+        'nullOrDate',
+        'nullOrStruct',
+        'nullableJson',
+        'nullOrUnknown',
+        'null',
+        'defaulted',
+        'nullableDefaulted',
+      ].sort(),
+    )
+  })
+
+  it('keeps nullable fields of non-struct schemas omittable on insert', () => {
+    const Shape = Schema.Union([
+      Schema.Struct({
+        kind: Schema.Literal('circle'),
+        n: Schema.NullOr(Schema.Int),
+        note: Schema.optional(Schema.String),
+      }),
+      Schema.Struct({
+        kind: Schema.Literal('square'),
+        n: Schema.NullOr(Schema.Int),
+        note: Schema.optional(Schema.String),
+      }),
+    ])
+    const shapes = State.SQLite.table({ name: 'shapes', schema: Shape })
+    expect(shapes.sqliteDef.columns.n.nullable).toBe(true)
+    expect(shapes.sqliteDef.columns.note.nullable).toBe(true)
+    expectTypeOf(shapes.insert).toBeCallableWith({ kind: 'circle' })
+    expectTypeOf<(typeof shapes.Type)['n']>().toEqualTypeOf<number | null>()
+    expectTypeOf<(typeof shapes.Type)['note']>().toEqualTypeOf<string | null>()
+    expectTypeOf<(typeof shapes.Encoded)['kind']>().toEqualTypeOf<'circle' | 'square'>()
+    expect(shapes.insert({ kind: 'circle' }).asSql().bindValues).toEqual(['circle'])
+  })
+
+  it('fills thunk defaults on insert and leaves value and SQL defaults to SQLite', () => {
+    let counter = 0
+    const rows = State.SQLite.table({
+      name: 'rows',
+      columns: {
+        id: State.SQLite.text({ primaryKey: true }),
+        theme: State.SQLite.text({ default: 'light' }),
+        seq: State.SQLite.integer({ default: () => ++counter }),
+        createdAt: State.SQLite.text({ default: { sql: 'CURRENT_TIMESTAMP' } }),
+        note: State.SQLite.text({ nullable: true }),
+      },
+    })
+    const first = rows.insert({ id: '1' }).asSql()
+    expect(first.query).toBe(`INSERT INTO 'rows' ("id", "seq") VALUES (?, ?)`)
+    expect(first.bindValues).toEqual(['1', 1])
+    // an explicit `undefined` counts as omitted
+    const second = rows.insert({ id: '2', theme: undefined, note: undefined }).asSql()
+    expect(second.query).toBe(`INSERT INTO 'rows' ("id", "seq") VALUES (?, ?)`)
+    expect(second.bindValues).toEqual(['2', 2])
+    // the same for a schema-based table with `withDefault`
+    const posts = State.SQLite.table({
+      name: 'posts',
+      schema: Schema.Struct({
+        id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+        views: Schema.Int.pipe(State.SQLite.withDefault(() => 7)),
+      }),
+    })
+    expect(posts.insert({ id: 'p' }).asSql().bindValues).toEqual(['p', 7])
   })
 
   it('should handle Schema.Int as integer column', () => {
