@@ -103,10 +103,14 @@ its exporter lifecycle. LiveStore does not manage SDK providers or schedule thei
 The built-in endpoint exporter uses Effect's three-second shutdown timeout.
 
 WebSocket pushes and finite pull history receive exported RPC boundary spans
-attached directly to the caller, bypassing Effect RPC's unexported subscription
-envelope. DO-RPC pull streams receive tracing inside their separate execution
-runtime. Finite history closes before waiting for live updates, so the endpoint
-exporter does not retain timers for the lifetime of an idle subscription.
+attached directly to a sampled caller, bypassing Effect RPC's unexported
+subscription envelope. When the caller has no sampled context, the boundary
+starts a backend root so server-side telemetry remains independently observable.
+Expected `ServerAheadError` and `BackendIdMismatchError` recovery results remain
+typed failures without marking these RPC boundaries as OpenTelemetry errors.
+DO-RPC pull streams receive tracing inside their separate execution runtime.
+Finite history closes before waiting for live updates, so the endpoint exporter
+does not retain timers for the lifetime of an idle subscription.
 
 Delivery remains best-effort: Durable Objects have no shutdown callback on
 hibernation or eviction. This integration does not join Cloudflare-native trace

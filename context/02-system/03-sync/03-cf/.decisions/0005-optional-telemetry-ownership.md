@@ -19,8 +19,11 @@ and finalize its resources in the background. The integration layer defines its
 exporter lifecycle; LiveStore does not manage SDK providers or schedule flushes.
 
 Finish WebSocket telemetry scopes before the indefinite live phase. Give finite
-WebSocket work an exported span attached to the caller, and install tracing inside
-DO-RPC pull streams' separate runtime. Platform-specific packages stay in the app.
+WebSocket work an exported span attached to a sampled caller; start a backend root
+when the caller has no sampled context so backend-only telemetry remains visible.
+Install tracing inside DO-RPC pull streams' separate runtime. Expected sync
+recovery results remain typed failures without marking the RPC boundary as an
+OpenTelemetry error. Platform-specific packages stay in the app.
 
 ## Alternatives
 
@@ -39,6 +42,8 @@ because Durable Objects provide no eviction or hibernation shutdown callback.
 ## Evidence
 
 `packages/@livestore/sync-cf/src/cf-worker/do/observability.test.ts` covers opt-out,
-independent operation scopes, span parentage, finite-history finalization, and
-acknowledgment while the OTLP collector is blocked. The disposable Cloudflare
-demo verified existing LiveStore spans through `effect-cf` on the Free plan.
+independent operation scopes, sampled and unsampled span parentage, expected
+recovery status, real WebSocket and DO-RPC transport composition,
+finite-history finalization, and acknowledgment while the OTLP collector is
+blocked. The disposable Cloudflare demo verified existing LiveStore spans
+through `effect-cf` on the Free plan.

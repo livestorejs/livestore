@@ -5,7 +5,7 @@ import { Effect, identity, Layer, Result, RpcServer, Schema, Stream } from '@liv
 import { SyncWsRpc } from '../../../common/ws-rpc-schema.ts'
 import { headersRecordToMap, WebSocketAttachmentSchema } from '../../shared.ts'
 import * as DoCtx from '../layer.ts'
-import { type makeObservability, rpcSpanOptions } from '../observability.ts'
+import { type makeObservability, rpcSpanOptions, withRpcSpan, withRpcStreamSpan } from '../observability.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
 
@@ -14,7 +14,18 @@ export const makeRpcServer = ({
   doOptions,
   observability,
 }: Omit<DoCtx.DoCtxInput, 'from'> & { observability: ReturnType<typeof makeObservability> }) => {
-  const handlersLayer = SyncWsRpc.toLayer({
+  const handlersLayer = makeRpcHandlers({ doSelf, doOptions, observability })
+
+  return RpcServer.layer(SyncWsRpc).pipe(Layer.provide(handlersLayer))
+}
+
+/** Production handler layer, exported so transport tests can exercise the exact RPC composition in memory. */
+export const makeRpcHandlers = ({
+  doSelf,
+  doOptions,
+  observability,
+}: Omit<DoCtx.DoCtxInput, 'from'> & { observability: ReturnType<typeof makeObservability> }) =>
+  SyncWsRpc.toLayer({
     'SyncWsRpc.Pull': (req) =>
       Effect.gen(function* () {
         const spanOptions = yield* rpcSpanOptions
@@ -26,7 +37,7 @@ export const makeRpcServer = ({
               ? cause
               : new UnknownError({ cause }),
           ),
-          Stream.withSpan('RpcServer.SyncWsRpc.Pull', spanOptions),
+          (_) => withRpcStreamSpan(_, 'RpcServer.SyncWsRpc.Pull', spanOptions),
         )
       }).pipe(
         Stream.unwrap,
@@ -54,13 +65,10 @@ export const makeRpcServer = ({
               : new UnknownError({ cause }),
           ),
           Effect.tapCauseLogPretty,
-          Effect.withSpan('RpcServer.SyncWsRpc.Push', spanOptions),
+          (_) => withRpcSpan(_, 'RpcServer.SyncWsRpc.Push', spanOptions),
         ),
       ).pipe(observability.effect),
   })
-
-  return RpcServer.layer(SyncWsRpc).pipe(Layer.provide(handlersLayer))
-}
 
 /** Extracts forwarded headers from the WebSocket attachment */
 const getForwardedHeaders = Effect.gen(function* () {

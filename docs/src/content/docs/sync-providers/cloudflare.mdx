@@ -197,6 +197,8 @@ Omit `otel` to disable telemetry export. Your application chooses the tracing in
 
 Layers are built per sync operation and cleaned up in the background. Keep setup lightweight, and do not shut down a shared tracer provider during cleanup. Telemetry delivery is best-effort.
 
+Sampled client RPC context is preserved. When the client has no sampled context, backend spans start a new trace so server telemetry remains independently observable. Expected sync-recovery responses remain typed errors without marking the RPC boundary as a tracing error.
+
 <SNIPPETS.doSyncBackend />
 
 ### `makeWorker(options)`

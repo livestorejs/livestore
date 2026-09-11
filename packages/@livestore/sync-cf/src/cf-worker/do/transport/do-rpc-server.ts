@@ -5,7 +5,7 @@ import { Effect, Headers, Option, Stream } from '@livestore/utils/effect'
 import { SyncDoRpc } from '../../../common/do-rpc-schema.ts'
 import { rpcSubscriptionKeyPrefix, type RpcSubscription } from '../../shared.ts'
 import * as DoCtx from '../layer.ts'
-import type { makeObservability } from '../observability.ts'
+import { makeRpcSpanOptions, type makeObservability, withRpcStreamSpan } from '../observability.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
 
@@ -75,7 +75,7 @@ export const createDoRpcHandler = (
           ),
           Stream.tapCause(Effect.log),
           // The bridge runs this stream in a separate runtime. Install telemetry there too.
-          Stream.withSpan('RpcServer.SyncDoRpc.Pull', { parent: Option.getOrUndefined(parent), root: true }),
+          (_) => withRpcStreamSpan(_, 'RpcServer.SyncDoRpc.Pull', makeRpcSpanOptions(parent)),
           observability.stream,
         ),
       'SyncDoRpc.Push': (req) =>
