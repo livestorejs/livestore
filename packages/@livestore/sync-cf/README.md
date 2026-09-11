@@ -8,11 +8,11 @@
 
 ## Transports
 
-| Transport          | Connection | Encoding | Runtime Env                                  |
-| ------------------ | ---------- | -------- | -------------------------------------------- |
-| WebSocket          | Stateful   | JSON     | Anywhere                                     |
-| HTTP               | Stateless  | JSON     | Anywhere                                     |
-| Durable Object RPC | Stateful   | MsgPack  | Only available between Durable Objects (DOs) |
+| Transport          | Connection | Encoding     | Runtime Env                                  |
+| ------------------ | ---------- | ------------ | -------------------------------------------- |
+| WebSocket          | Stateful   | JSON         | Anywhere                                     |
+| HTTP               | Stateless  | JSON         | Anywhere                                     |
+| Durable Object RPC | Stateful   | SchemaBinary | Only available between Durable Objects (DOs) |
 
 ### WebSocket
 

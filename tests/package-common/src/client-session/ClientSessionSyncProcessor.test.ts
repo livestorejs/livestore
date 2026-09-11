@@ -33,7 +33,6 @@ import {
   Effect,
   Equal,
   Exit,
-  FastCheck,
   FetchHttpClient,
   Fiber,
   Hash,
@@ -668,12 +667,11 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.asProp(
-    Vitest.live,
+  Vitest.live.prop(
     'preserves event order and batch bounds through graceful shutdown',
     [
-      FastCheck.integer({ min: 1, max: 5 }),
-      FastCheck.array(FastCheck.integer({ min: 1, max: 4 }), { minLength: 0, maxLength: 6 }),
+      Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 5 })),
+      Schema.Array(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 4 }))).check(Schema.isMaxLength(6)),
     ] as const,
     ([leaderPushBatchSize, pushGroupSizes], test) =>
       Effect.gen(function* () {
@@ -699,7 +697,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         expect(persistedBatches.flatMap((batch) => batch.map((event) => event.args.id))).toEqual(expectedIds)
         expect(persistedBatches.every((batch) => batch.length > 0 && batch.length <= leaderPushBatchSize)).toBe(true)
       }).pipe(withTestCtx(test)),
-    { fastCheck: { numRuns: 50 } },
+    { arbitrary: { runs: 50 } },
   )
 
   // Deterministic barrier: the returned `effect` (handed to the processor via `rebaseBarriers`)

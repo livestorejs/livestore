@@ -325,15 +325,15 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
 export const updateDepsCommand = Cli.Command.make(
   'update-deps',
   {
-    dryRun: Cli.Flag.boolean('dry-run').pipe(
+    dryRun: Cli.Flag.Boolean('dry-run').pipe(
       Cli.Flag.withDescription('Preview changes without executing updates'),
       Cli.Flag.withDefault(false),
     ),
-    target: Cli.Flag.string('target').pipe(
+    target: Cli.Flag.String('target').pipe(
       Cli.Flag.withDescription('Update target: latest, minor, patch (default: minor)'),
       Cli.Flag.withDefault('minor'),
     ),
-    validate: Cli.Flag.boolean('validate').pipe(
+    validate: Cli.Flag.Boolean('validate').pipe(
       Cli.Flag.withDescription('Run validation after updates (default: true)'),
       Cli.Flag.withDefault(true),
     ),

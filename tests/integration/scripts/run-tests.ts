@@ -10,11 +10,11 @@ import { downloadChromeExtension } from './download-chrome-extension.ts'
 
 const cwd = path.resolve(import.meta.dirname, '..')
 
-export const modeOption = Cli.Flag.choice('mode', ['headless', 'ui', 'dev-server']).pipe(
+export const modeOption = Cli.Flag.Literals('mode', ['headless', 'ui', 'dev-server']).pipe(
   Cli.Flag.withDefault('headless'),
 )
 
-export const localDevtoolsPreviewOption = Cli.Flag.boolean('local-devtools-preview').pipe(Cli.Flag.withDefault(false))
+export const localDevtoolsPreviewOption = Cli.Flag.Boolean('local-devtools-preview').pipe(Cli.Flag.withDefault(false))
 
 type IntegrationTestOptions = {
   readonly mode: 'headless' | 'ui' | 'dev-server'

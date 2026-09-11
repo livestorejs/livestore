@@ -199,7 +199,7 @@ const collectDiffs = (
 const syncRulesetsCommand = Cli.Command.make(
   'sync',
   {
-    dryRun: Cli.Flag.boolean('dry-run').pipe(Cli.Flag.withDefault(false)),
+    dryRun: Cli.Flag.Boolean('dry-run').pipe(Cli.Flag.withDefault(false)),
   },
   Effect.fn(function* ({ dryRun }) {
     yield* cmdText('gh --version', { stderr: 'pipe' }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))

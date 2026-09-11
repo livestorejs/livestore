@@ -314,7 +314,7 @@ const getPropertySignatures = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.Prop
       const keyContext = hasOptionalMember === true ? new SchemaAST.Context(true, false) : undefined
       const union = new SchemaAST.Union(
         propertySignatures.map((memberPropertySignature) => memberPropertySignature.type),
-        ast.mode,
+        ast.options,
         undefined,
         undefined,
         undefined,

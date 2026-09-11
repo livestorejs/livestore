@@ -300,12 +300,12 @@ const runDocsBuild = Effect.fn('docs.build')(function* ({ apiDocs, clean, skipDe
 const docsBuildCommand = Cli.Command.make(
   'build',
   {
-    apiDocs: Cli.Flag.boolean('api-docs').pipe(Cli.Flag.withDefault(false)),
-    clean: Cli.Flag.boolean('clean').pipe(
+    apiDocs: Cli.Flag.Boolean('api-docs').pipe(Cli.Flag.withDefault(false)),
+    clean: Cli.Flag.Boolean('clean').pipe(
       Cli.Flag.withDefault(false),
       Cli.Flag.withDescription('Remove docs build artifacts and cached snippet/tldraw renders before compilation'),
     ),
-    skipDeps: Cli.Flag.boolean('skip-deps').pipe(
+    skipDeps: Cli.Flag.Boolean('skip-deps').pipe(
       Cli.Flag.withDefault(false),
       Cli.Flag.withDescription('Skip building snippets and diagrams'),
     ),
@@ -450,8 +450,8 @@ export const docsCommand = Cli.Command.make('docs').pipe(
     Cli.Command.make(
       'dev',
       {
-        open: Cli.Flag.boolean('open').pipe(Cli.Flag.withDefault(false)),
-        skipDeps: Cli.Flag.boolean('skip-deps').pipe(
+        open: Cli.Flag.Boolean('open').pipe(Cli.Flag.withDefault(false)),
+        skipDeps: Cli.Flag.Boolean('skip-deps').pipe(
           Cli.Flag.withDefault(false),
           Cli.Flag.withDescription('Skip building snippets and diagrams'),
         ),
@@ -485,8 +485,8 @@ export const docsCommand = Cli.Command.make('docs').pipe(
     Cli.Command.make(
       'preview',
       {
-        port: Cli.Flag.string('port').pipe(Cli.Flag.optional, Cli.Flag.withDescription('Port for the preview server')),
-        build: Cli.Flag.boolean('build').pipe(
+        port: Cli.Flag.String('port').pipe(Cli.Flag.optional, Cli.Flag.withDescription('Port for the preview server')),
+        build: Cli.Flag.Boolean('build').pipe(
           Cli.Flag.withDefault(false),
           Cli.Flag.withDescription('Build the docs before starting the preview server'),
         ),
@@ -538,19 +538,19 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       'deploy',
       {
         // TODO clean up when Effect CLI boolean flag is fixed
-        prod: Cli.Flag.boolean('prod').pipe(Cli.Flag.withDefault(false), Cli.Flag.optional),
-        alias: Cli.Flag.string('alias').pipe(Cli.Flag.optional),
-        site: Cli.Flag.string('site').pipe(Cli.Flag.optional),
-        purgeCdn: Cli.Flag.boolean('purge-cdn').pipe(
+        prod: Cli.Flag.Boolean('prod').pipe(Cli.Flag.withDefault(false), Cli.Flag.optional),
+        alias: Cli.Flag.String('alias').pipe(Cli.Flag.optional),
+        site: Cli.Flag.String('site').pipe(Cli.Flag.optional),
+        purgeCdn: Cli.Flag.Boolean('purge-cdn').pipe(
           Cli.Flag.withDefault(false),
           Cli.Flag.withDescription('Purge the Netlify CDN cache after deploying'),
         ),
-        build: Cli.Flag.boolean('build').pipe(
+        build: Cli.Flag.Boolean('build').pipe(
           Cli.Flag.withDefault(false),
           Cli.Flag.optional,
           Cli.Flag.withDescription('Build the docs before deploying (split flow)'),
         ),
-        plan: Cli.Flag.boolean('plan').pipe(
+        plan: Cli.Flag.Boolean('plan').pipe(
           Cli.Flag.withDefault(false),
           Cli.Flag.optional,
           Cli.Flag.withDescription('Print the resolved deploy plan without building or deploying'),
@@ -569,7 +569,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
          * - `all` (default): runs the legacy single-process pipeline so dev
          *   surfaces and ad-hoc usage are unaffected.
          */
-        step: Cli.Flag.choice('step', ['all', 'upload', 'verify', 'purge'] as const).pipe(
+        step: Cli.Flag.Literals('step', ['all', 'upload', 'verify', 'purge'] as const).pipe(
           Cli.Flag.withDefault('all' as const),
           Cli.Flag.withDescription('Run only one phase of the prod deploy pipeline (used by CI)'),
         ),

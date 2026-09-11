@@ -342,7 +342,7 @@ export const withPerformanceMeasure =
 
 const getSpanTrace = () => {
   const fiber = Fiber.getCurrent()
-  if (fiber === undefined || fiber.currentSpan === undefined) {
+  if (fiber === undefined || fiber.cache.span === undefined) {
     return 'No current fiber'
   }
 

@@ -131,8 +131,15 @@ const schemaRepresentationDescriptor = (value: unknown, parentKey?: string): Can
   if (Array.isArray(value) === true) return value.map((item) => schemaRepresentationDescriptor(item))
 
   if (value !== null && typeof value === 'object' && value instanceof Uint8Array === false) {
+    const sourceEntries = Object.entries(value)
+    const isUnion = sourceEntries.some(([key, entryValue]) => key === '_tag' && entryValue === 'Union')
+    // Effect rc.113 removed this representation field because unions only support `anyOf`.
+    // Restore the old default so dependency upgrades preserve existing state fingerprints.
+    if (isUnion === true && sourceEntries.some(([key]) => key === 'mode') === false) {
+      sourceEntries.push(['mode', 'anyOf'])
+    }
     const entries = sortByCanonicalKey(
-      Object.entries(value).filter(([key]) => effectIgnoredFields.has(key) === false),
+      sourceEntries.filter(([key]) => effectIgnoredFields.has(key) === false),
       ([key]) => key,
     ).map(([key, entryValue]) => [key, schemaRepresentationDescriptor(entryValue, key)] as const)
     return Object.fromEntries(entries)

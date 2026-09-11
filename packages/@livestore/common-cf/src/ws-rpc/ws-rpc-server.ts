@@ -342,6 +342,7 @@ const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServer
         supportsTransferables: false,
         supportsSpanPropagation: true,
         supportsNotifications: true,
+        codecFor: serialization.codecFor,
       }))
     })
 

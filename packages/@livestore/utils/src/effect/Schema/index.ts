@@ -89,7 +89,7 @@ export const headOrElse: {
     array.pipe(
       Schema.decodeTo(
         Schema.toType(array.value),
-        SchemaTransformation.transformOrFail({
+        SchemaTransformation.transformEffect({
           decode: (array) =>
             Array.isReadonlyArrayNonEmpty(array) === true
               ? Effect.succeed(Array.headNonEmpty(array))

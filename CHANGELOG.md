@@ -18,14 +18,15 @@
   accepted event cannot advance the backend head without notifying subscribers
   ([#1537](https://github.com/livestorejs/livestore/pull/1537)).
 - **Effect v4 dependency cohort:** Updated the repository-wide Effect v4
-  dependency family from `4.0.0-beta.99` to `4.0.0-rc.111`. Applications must
-  use rc.111 or a compatible later Effect 4 release. Effect removed
+  dependency family from `4.0.0-beta.99` to `4.0.0-rc.113`. Applications must
+  use rc.113 or a compatible later Effect 4 release. Effect removed
   `Schema.isDateValid` because `Schema.DateFromString` and
   `Schema.DateFromMillis` now reject invalid dates on their own, so
   `Schema.DateFromString.check(Schema.isDateValid())` becomes plain
   `Schema.DateFromString`. SQLite column inference also preserves INTEGER and
   BLOB storage for refined `Schema.DateFromMillis` and `Schema.Uint8Array`
   ([#1557](https://github.com/livestorejs/livestore/issues/1557),
+  [#1606](https://github.com/livestorejs/livestore/pull/1606),
   [Effect-TS/effect#6620](https://github.com/Effect-TS/effect/pull/6620)).
   Thanks [@JamieMason](https://github.com/JamieMason) for the migration work.
 - Removed redundant devenv package entries now owned by the task guard modules.
@@ -82,6 +83,12 @@ For maintainers and contributors:
   The `@effect/vitest` record-arbitrary workaround was dropped because
   [Effect-TS/effect#7148](https://github.com/Effect-TS/effect/pull/7148) fixed it
   upstream ([#1557](https://github.com/livestorejs/livestore/issues/1557)).
+- **Effect rc.113 API burndown:** Replaced the removed MessagePack RPC layer
+  with `SchemaBinary`, migrated sockets to the pull reader and scoped writer
+  APIs, and updated CLI constructors and schema transformations to their rc.113
+  names. The FastCheck-based `Vitest.asProp` helper was removed; use
+  `Vitest.live.prop` with `arbitrary` options
+  ([#1606](https://github.com/livestorejs/livestore/pull/1606)).
 - **Tooling:** Shell entry no longer runs the full TypeScript build after
   dependency and generated-source setup. The shared Effect-utils
   `otel:profile:setup` task captures the strict setup graph through native

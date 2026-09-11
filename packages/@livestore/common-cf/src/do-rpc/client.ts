@@ -5,18 +5,33 @@ import {
   Layer,
   Option,
   RpcClient,
-  type RpcMessage,
+  RpcMessage,
   RpcSerialization,
+  Schema,
   type Scope,
 } from '@livestore/utils/effect'
 
 import type * as CfTypes from '../cf-types.ts'
 
-/** Decodes a streaming-RPC `ReadableStream`'s msgpack frames, writing each out as it arrives. */
+const isEncodedRpcMessage = Schema.is(RpcMessage.EncodedSchema)
+
+const isFromServerEncoded = (message: unknown): message is RpcMessage.FromServerEncoded => {
+  if (isEncodedRpcMessage(message) === false) return false
+
+  return (
+    message._tag === 'Chunk' ||
+    message._tag === 'Exit' ||
+    message._tag === 'Defect' ||
+    message._tag === 'Pong' ||
+    message._tag === 'Request'
+  )
+}
+
+/** Decodes a streaming-RPC `ReadableStream`'s binary frames, writing each out as it arrives. */
 const processReadableStream = (
   stream: CfTypes.ReadableStream,
-  parser: ReturnType<typeof RpcSerialization.msgPack.makeUnsafe>,
-  writeResponse: (response: any) => Effect.Effect<void>,
+  parser: RpcSerialization.Parser,
+  writeResponse: (response: RpcMessage.FromServerEncoded) => Effect.Effect<void>,
 ): Effect.Effect<void> =>
   Effect.gen(function* () {
     const reader = stream.getReader()
@@ -29,11 +44,14 @@ const processReadableStream = (
           break
         }
 
-        // Server encodes `[message]` per enqueue; merged enqueues arrive as
-        // `[[msg1], [msg2], ...]`. `flat(1)` normalizes both to `[msg1, ...]`.
-        const decoded = parser.decode(value as Uint8Array)
-        const messages = Array.isArray(decoded) === true ? decoded.flat(1) : [decoded]
-        for (const message of messages) {
+        if (value instanceof Uint8Array === false) {
+          return yield* Effect.die('Received a non-binary RPC response')
+        }
+
+        for (const message of parser.decode(value)) {
+          if (isFromServerEncoded(message) === false) {
+            return yield* Effect.die('Received an invalid RPC response')
+          }
           yield* writeResponse(message)
         }
       }
@@ -58,7 +76,9 @@ interface MakeDoRpcProtocolArgs {
  * This enables direct RPC communication with Durable Objects using Cloudflare's native RPC.
  */
 export const layerProtocolDurableObject = (args: MakeDoRpcProtocolArgs): Layer.Layer<RpcClient.Protocol> =>
-  Layer.effect(RpcClient.Protocol, makeProtocolDurableObject(args))
+  Layer.effect(RpcClient.Protocol, makeProtocolDurableObject(args)).pipe(
+    Layer.provide(RpcSerialization.layerSchemaBinary()),
+  )
 
 /**
  * Implementation of the RPC Protocol interface using Cloudflare Durable Object RPC calls.
@@ -66,9 +86,14 @@ export const layerProtocolDurableObject = (args: MakeDoRpcProtocolArgs): Layer.L
  */
 const makeProtocolDurableObject = ({
   callRpc,
-}: MakeDoRpcProtocolArgs): Effect.Effect<RpcClient.Protocol['Service'], never, Scope.Scope> =>
+}: MakeDoRpcProtocolArgs): Effect.Effect<
+  RpcClient.Protocol['Service'],
+  never,
+  Scope.Scope | RpcSerialization.RpcSerialization
+> =>
   RpcClient.Protocol.make(
     Effect.fnUntraced(function* (writeResponse) {
+      const serialization = yield* RpcSerialization.RpcSerialization
       // Not using an actual `FiberMap` here because it seems to shutdown to early
       // const fiberMap = new Map<string, Fiber.Fiber<void, never>>()
       const fiberMap = yield* FiberMap.make<string, void, never>()
@@ -87,49 +112,34 @@ const makeProtocolDurableObject = ({
           return Effect.void
         }
 
-        // MessagePack parsers buffer incomplete frames, so scope one parser to one DO RPC call.
-        const parser = RpcSerialization.msgPack.makeUnsafe()
+        // Binary parsers hold stream framing state, so scope one parser to one DO RPC call.
+        const parser = serialization.makeUnsafe()
 
         // Wrap single Request in array to match server expected format
-        const serializedPayload = parser.encode([message]) as Uint8Array
+        const serializedPayload = parser.encode([message])
+        if (serializedPayload instanceof Uint8Array === false) {
+          return Effect.die('SchemaBinary RPC serialization did not produce bytes')
+        }
 
         return Effect.gen(function* () {
           const serializedResponse = yield* Effect.tryPromise(() => callRpc(serializedPayload)).pipe(Effect.orDie) // Convert errors to defects to match never error type
 
-          // Handle ReadableStream for streaming responses
-          if (serializedResponse instanceof ReadableStream) {
-            const fiber = yield* processReadableStream(
-              serializedResponse as CfTypes.ReadableStream,
-              parser,
-              (response) => writeResponse(clientId, response),
-            ).pipe(
-              // Effect.tapCauseLogPretty,
-              Effect.forkChild,
-            )
-
-            // fiberMap.set(message.id, fiber)
-            yield* FiberMap.set(fiberMap, message.id, fiber)
-
-            yield* Fiber.join(fiber)
-
+          if (serializedResponse instanceof Uint8Array) {
+            for (const response of parser.decode(serializedResponse)) {
+              if (isFromServerEncoded(response) === false) {
+                return yield* Effect.die('Received an invalid RPC response')
+              }
+              yield* writeResponse(clientId, response)
+            }
             return
           }
 
-          // Handle regular Uint8Array responses
-          const decoded = parser.decode(serializedResponse as Uint8Array)
+          const fiber = yield* processReadableStream(serializedResponse, parser, (response) =>
+            writeResponse(clientId, response),
+          ).pipe(Effect.forkChild)
 
-          // Normalize nested arrays from server serialization (same as streaming path)
-          let responseArray: any[]
-          if (Array.isArray(decoded) === true) {
-            responseArray = decoded.flat(1)
-          } else {
-            responseArray = [decoded]
-          }
-
-          // Process each response
-          for (const response of responseArray) {
-            yield* writeResponse(clientId, response)
-          }
+          yield* FiberMap.set(fiberMap, message.id, fiber)
+          yield* Fiber.join(fiber)
         }).pipe(Effect.withSpan('do-rpc-client:send'), Effect.orDie) // Ensure never error type
       }
 
@@ -137,6 +147,7 @@ const makeProtocolDurableObject = ({
         send,
         supportsAck: false, // DO RPC doesn't support ack mechanism like WebSockets
         supportsTransferables: false, // DO RPC doesn't support transferables yet
+        codecFor: serialization.codecFor,
       }
     }),
   )

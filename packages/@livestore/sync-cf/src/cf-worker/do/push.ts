@@ -173,13 +173,14 @@ export const makePush =
           )
           if (rpcSubscriptions.length > 0) {
             for (const [, subscription] of rpcSubscriptions) {
-              for (const { encoded } of responses) {
+              for (const { response } of responses) {
                 yield* emitStreamResponse({
                   callerContext: subscription.callerContext,
                   env,
                   requestId: subscription.requestId,
                   storeId: subscription.storeId,
-                  values: [encoded],
+                  schema: SyncMessage.PullResponse,
+                  values: [response],
                 }).pipe(Effect.tapCauseLogPretty, Effect.exit)
               }
             }

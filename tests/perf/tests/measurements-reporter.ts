@@ -42,7 +42,7 @@ const NumberFromDescriptionAnnotation = <T extends string>(typeLiteral: T) =>
         type: Schema.Literal(typeLiteral),
         description: Schema.Finite,
       }),
-      SchemaTransformation.transformOrFail({
+      SchemaTransformation.transformEffect({
         decode: ({ description, ...rest }) =>
           Effect.sync(() => Number.parseFloat(description)).pipe(
             Effect.filterOrFail(

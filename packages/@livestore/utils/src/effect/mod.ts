@@ -1,7 +1,7 @@
 import '../global.ts'
 
 export { Otlp } from 'effect/unstable/observability'
-export { Msgpack } from 'effect/unstable/encoding'
+export { SchemaBinary } from 'effect/unstable/encoding'
 export {
   FetchHttpClient,
   Headers,
@@ -111,7 +111,7 @@ export {
   TxRef,
   Types,
 } from 'effect'
-export * as FastCheck from 'effect/testing/FastCheck'
+export * as Arbitrary from 'effect/unstable/arbitrary/Arbitrary'
 export * as TestClock from 'effect/testing/TestClock'
 export * as TestConsole from 'effect/testing/TestConsole'
 export * as Debug from './Debug.ts'

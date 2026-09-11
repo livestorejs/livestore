@@ -17,7 +17,7 @@ export class CloudflareError extends Schema.TaggedError<CloudflareError>()('Clou
 }) {}
 
 const readEnv = ({ key, message }: { key: string; message: string }): Effect.Effect<string, CloudflareError> =>
-  Config.string(key).pipe(
+  Config.String(key).pipe(
     Effect.map((value) => value.trim()),
     Effect.filterOrFail(
       (value): value is string => value.length > 0,

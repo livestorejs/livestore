@@ -289,8 +289,8 @@ const deployExample = ({
 export const command = Cli.Command.make(
   'deploy',
   {
-    exampleFilter: Cli.Flag.string('example-filter').pipe(Cli.Flag.withAlias('e'), Cli.Flag.optional),
-    prod: Cli.Flag.boolean('prod').pipe(Cli.Flag.withDefault(false)),
+    exampleFilter: Cli.Flag.String('example-filter').pipe(Cli.Flag.withAlias('e'), Cli.Flag.optional),
+    prod: Cli.Flag.Boolean('prod').pipe(Cli.Flag.withDefault(false)),
   },
   Effect.fn(function* ({ exampleFilter, prod }) {
     // Ensure credentials are present before kicking off parallel builds; wrangler fails with
