@@ -12,15 +12,9 @@ import WorkerSnippet from '../../_assets/code/reference/opentelemetry/livestore.
 
 LiveStore has built-in support for OpenTelemetry.
 
-Telemetry export is optional. Without an application-provided tracer, the store
-uses a no-op tracer and sends no telemetry. When enabled, your application owns
-the tracer provider, exporter, sampling, and destination. Effect instrumentation
-and LiveStore's direct OpenTelemetry spans use the supplied tracer.
+Telemetry export is optional. Without an application-provided tracer, the store uses a no-op tracer and sends no telemetry. When enabled, your application owns the tracer provider, exporter, sampling, and destination. Effect instrumentation and LiveStore's direct OpenTelemetry spans use the supplied tracer.
 
-Configure a tracer separately in each runtime that should report telemetry,
-including browser workers. The [Cloudflare sync backend](/sync-providers/cloudflare/#server-api-reference)
-uses the optional `otel` setting for either an Effect tracer layer (`otel: tracingLayer`)
-or an OTLP endpoint (`otel: { baseUrl: 'https://collector.example.com' }`).
+Configure a tracer separately in each runtime that should report telemetry, including browser workers. The [Cloudflare sync backend](/sync-providers/cloudflare/#server-api-reference) uses the optional `otel` setting for either an Effect tracer layer (`otel: tracingLayer`) or an OTLP endpoint (`otel: { baseUrl: 'https://collector.example.com' }`).
 
 ## Usage with React
 
