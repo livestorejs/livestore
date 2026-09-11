@@ -23,6 +23,10 @@ export const hasCompletedState = (db: SqliteDb): boolean => {
   )
 }
 
+/** Marks a successfully prepared state database as safe to use without rebuilding it. */
+export const markStateAsCompleted = (db: SqliteDb): Effect.Effect<void, SqliteError> =>
+  execSql(db, `INSERT OR IGNORE INTO ${SystemTables.REBUILD_META_TABLE} (id) VALUES (1)`, {})
+
 export const recreateDb = ({
   dbState,
   dbEventlog,
@@ -71,7 +75,7 @@ export const recreateDb = ({
     yield* Effect.trySyncOrPromiseOrEffect(() => hooks?.post?.(dbState)).pipe(UnknownError.mapToUnknownError)
 
     // Keep this out of finalizers, which also run on failure and interruption.
-    yield* execSql(dbState, `INSERT INTO ${SystemTables.REBUILD_META_TABLE} (id) VALUES (1)`, {})
+    yield* markStateAsCompleted(dbState)
 
     return { migrationsReport }
   }).pipe(
