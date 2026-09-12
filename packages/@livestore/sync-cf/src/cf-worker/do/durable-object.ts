@@ -102,7 +102,6 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           // in combination with DO hibernation
           onMessage: (request, ws) => {
             if (request._tag === 'Request' && request.tag === 'SyncWsRpc.Pull') {
-              // Is Pull request: add requestId to pullRequestIds
               const attachment = ws.deserializeAttachment()
               const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
               ws.serializeAttachment(
@@ -111,18 +110,10 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
                   pullRequestIds: [...pullRequestIds, request.id],
                 }),
               )
-            } else if (request._tag === 'Interrupt') {
-              // Is Interrupt request: remove requestId from pullRequestIds
-              const attachment = ws.deserializeAttachment()
-              const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
-              ws.serializeAttachment(
-                Schema.encodeSync(WebSocketAttachmentSchema)({
-                  ...rest,
-                  pullRequestIds: pullRequestIds.filter((id) => id !== request.requestId),
-                }),
-              )
             }
           },
+          onRequestExit: (requestId, ws) => removePullRequestId(ws, requestId),
+          onProtocolDefect: clearPullRequestIds,
         })
       }
     }
@@ -233,4 +224,29 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         Effect.runPromise,
       )
   }
+}
+
+const removePullRequestId = (ws: CfTypes.WebSocket, requestId: string | number) =>
+  updatePullRequestIds(ws, (pullRequestIds) =>
+    pullRequestIds.includes(requestId) === true ? pullRequestIds.filter((id) => id !== requestId) : pullRequestIds,
+  )
+
+const clearPullRequestIds = (ws: CfTypes.WebSocket) =>
+  updatePullRequestIds(ws, (pullRequestIds) => (pullRequestIds.length === 0 ? pullRequestIds : []))
+
+const updatePullRequestIds = (
+  ws: CfTypes.WebSocket,
+  update: (pullRequestIds: ReadonlyArray<string | number>) => ReadonlyArray<string | number>,
+) => {
+  const attachment = ws.deserializeAttachment()
+  const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
+  const nextPullRequestIds = update(pullRequestIds)
+  if (nextPullRequestIds === pullRequestIds) return
+
+  ws.serializeAttachment(
+    Schema.encodeSync(WebSocketAttachmentSchema)({
+      ...rest,
+      pullRequestIds: nextPullRequestIds,
+    }),
+  )
 }

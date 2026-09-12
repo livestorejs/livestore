@@ -72,6 +72,10 @@ export interface DurableObjectWebSocketRpcConfig {
   rpcLayer: Layer.Layer<never, never, RpcServer.Protocol | WsContext>
   /** Function to get access to incoming requests */
   onMessage?: (msg: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
+  /** Called after a terminal RPC response has been accepted by the serializer. */
+  onRequestExit?: (requestId: string | number, ws: CfTypes.WebSocket) => void
+  /** Called after a connection-level RPC defect has been accepted by the serializer. */
+  onProtocolDefect?: (ws: CfTypes.WebSocket) => void
   mainLayer?: Layer.Layer<never>
 }
 
@@ -140,6 +144,8 @@ export const setupDurableObjectWebSocketRpc = ({
   rpcLayer,
   webSocketMode,
   onMessage,
+  onRequestExit,
+  onProtocolDefect,
   mainLayer,
 }: DurableObjectWebSocketRpcConfig) => {
   if (webSocketMode === 'accept') {
@@ -172,7 +178,7 @@ export const setupDurableObjectWebSocketRpc = ({
         ws,
         scope,
         incomingQueue,
-        ...omitUndefineds({ onMessage }),
+        ...omitUndefineds({ onMessage, onRequestExit, onProtocolDefect }),
       }).pipe(Layer.provide(RpcSerialization.layerJson))
 
       const ServerLive = rpcLayer.pipe(Layer.provide(ProtocolLive))
@@ -240,6 +246,8 @@ export interface WsRpcServerArgs {
   ws: CfTypes.WebSocket
   scope: Scope.Scope
   onMessage?: (message: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
+  onRequestExit?: (requestId: string | number, ws: CfTypes.WebSocket) => void
+  onProtocolDefect?: (ws: CfTypes.WebSocket) => void
   /** Queue for receiving incoming messages from the WebSocket */
   incomingQueue: Queue.Queue<Uint8Array | string>
 }
@@ -275,7 +283,14 @@ export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
  *
  * @internal Used internally by `layerRpcServerWebsocket`
  */
-const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServerArgs) =>
+const makeSocketProtocol = ({
+  incomingQueue,
+  scope,
+  ws,
+  onMessage,
+  onRequestExit,
+  onProtocolDefect,
+}: WsRpcServerArgs) =>
   Effect.gen(function* () {
     const serialization = yield* RpcSerialization.RpcSerialization
     const disconnects = yield* Queue.unbounded<number>()
@@ -284,28 +299,60 @@ const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServer
       serialization.codecFor(Schema.Exit(Schema.Void, Schema.Never, Schema.Never)),
     )(Exit.interrupt()).pipe(Effect.orDie)
 
-    const writeRaw = (msg: Uint8Array | string) => Effect.succeed(ws.send(msg))
+    const writeRaw = (msg: Uint8Array | string) => Effect.sync(() => ws.send(msg))
 
     let writeRequest!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
 
     const parser = serialization.makeUnsafe()
     const id = 0
 
-    const writeResponse = (response: unknown) => {
+    const runLifecycleHook = (name: string, hook: () => void) =>
+      Effect.sync(hook).pipe(
+        Effect.catchCause((cause) => Effect.logError(`WebSocket RPC ${name} hook failed`, { cause })),
+      )
+
+    const writeDefect = (defect: unknown) => {
       try {
-        const encoded = parser.encode(response)
-        if (encoded === undefined) {
-          return Effect.void
-        }
-        return Effect.orDie(writeRaw(encoded))
+        const encoded = parser.encode(RpcMessage.ResponseDefectEncoded(defect))
+        const responseEffect = encoded === undefined ? Effect.void : Effect.orDie(writeRaw(encoded))
+        const onAccepted = Effect.sync(() => requestIdsWithSchemas.clear()).pipe(
+          Effect.andThen(
+            onProtocolDefect !== undefined
+              ? runLifecycleHook('onProtocolDefect', () => onProtocolDefect(ws))
+              : Effect.void,
+          ),
+        )
+        return Effect.ensuring(responseEffect, onAccepted)
       } catch (cause) {
-        return Effect.orDie(writeRaw(parser.encode(RpcMessage.ResponseDefectEncoded(cause))!))
+        return Effect.die(cause)
       }
     }
 
+    const writeResponse = (response: unknown, onAccepted?: Effect.Effect<void>) => {
+      try {
+        const encoded = parser.encode(response)
+        const responseEffect = encoded === undefined ? Effect.void : Effect.orDie(writeRaw(encoded))
+        return onAccepted === undefined ? responseEffect : Effect.ensuring(responseEffect, onAccepted)
+      } catch (cause) {
+        return writeDefect(cause)
+      }
+    }
+
+    const writeExit = (requestId: string | number, exit: unknown) =>
+      writeResponse(
+        { _tag: 'Exit', requestId, exit },
+        Effect.sync(() => requestIdsWithSchemas.delete(requestId)).pipe(
+          Effect.andThen(
+            onRequestExit !== undefined
+              ? runLifecycleHook('onRequestExit', () => onRequestExit(requestId, ws))
+              : Effect.void,
+          ),
+        ),
+      )
+
     const write = (response: RpcMessage.FromServerEncoded) => {
-      if (response._tag === 'Exit') requestIdsWithSchemas.delete(response.requestId)
-      if (response._tag === 'Defect') requestIdsWithSchemas.clear()
+      if (response._tag === 'Exit') return writeExit(response.requestId, response.exit)
+      if (response._tag === 'Defect') return writeDefect(response.defect)
       return writeResponse(response)
     }
 
@@ -330,11 +377,7 @@ const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServer
                 } else if (request._tag === 'Interrupt' && requestIdsWithSchemas.has(request.requestId) === false) {
                   // Effect creates this Exit for an unknown request, but its encoder drops it when hibernation has
                   // discarded the request schema.
-                  return writeResponse({
-                    _tag: 'Exit',
-                    requestId: request.requestId,
-                    exit: interruptedExitEncoded,
-                  })
+                  return writeExit(request.requestId, interruptedExitEncoded)
                 }
 
                 return writeRequest(id, request)
@@ -342,7 +385,7 @@ const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServer
               step: Function.constVoid,
             })
           } catch (cause) {
-            return Effect.orDie(writeRaw(parser.encode(RpcMessage.ResponseDefectEncoded(cause))!))
+            return writeDefect(cause)
           }
         }),
         Stream.runDrain,
