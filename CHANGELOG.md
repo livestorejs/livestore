@@ -38,6 +38,9 @@
 - **Cloudflare sync:** Serialize push admission through pull publication so an
   accepted event cannot advance the backend head without notifying subscribers
   ([#1537](https://github.com/livestorejs/livestore/pull/1537)).
+- **Cloudflare WebSocket sync:** Live pulls interrupted after the sync Durable
+  Object hibernates now receive their terminal RPC `Exit`, matching interruption
+  behavior before hibernation ([#1418](https://github.com/livestorejs/livestore/issues/1418)).
 - **Effect v4 dependency cohort:** Updated the repository-wide Effect v4
   dependency family from `4.0.0-beta.99` to `4.0.0-rc.113`. Applications must
   use rc.113 or a compatible later Effect 4 release. Effect removed

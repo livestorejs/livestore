@@ -69,8 +69,13 @@ export interface DurableObjectWebSocketRpcConfig {
    * which are both provided by the WebSocket protocol layer.
    */
   rpcLayer: Layer.Layer<never, never, RpcServer.Protocol | WsContext>
-  /** Function to get access to incoming requests */
-  onMessage?: (msg: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
+  /**
+   * Observes incoming requests. A returned response is sent through the configured RPC serialization instead of
+   * forwarding the request to Effect, which lets hibernation-aware integrations complete restored logical requests.
+   */
+  onMessage?: (msg: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => RpcMessage.FromServerEncoded | void
+  /** Observes responses after they have been written to the WebSocket. */
+  onResponse?: (msg: RpcMessage.FromServerEncoded, ws: CfTypes.WebSocket) => void
   mainLayer?: Layer.Layer<never>
 }
 
@@ -139,6 +144,7 @@ export const setupDurableObjectWebSocketRpc = ({
   rpcLayer,
   webSocketMode,
   onMessage,
+  onResponse,
   mainLayer,
 }: DurableObjectWebSocketRpcConfig) => {
   if (webSocketMode === 'accept') {
@@ -171,7 +177,7 @@ export const setupDurableObjectWebSocketRpc = ({
         ws,
         scope,
         incomingQueue,
-        ...omitUndefineds({ onMessage }),
+        ...omitUndefineds({ onMessage, onResponse }),
       }).pipe(Layer.provide(RpcSerialization.layerJson))
 
       const ServerLive = rpcLayer.pipe(Layer.provide(ProtocolLive))
@@ -238,7 +244,8 @@ export const setupDurableObjectWebSocketRpc = ({
 export interface WsRpcServerArgs {
   ws: CfTypes.WebSocket
   scope: Scope.Scope
-  onMessage?: (message: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
+  onMessage?: (message: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => RpcMessage.FromServerEncoded | void
+  onResponse?: (message: RpcMessage.FromServerEncoded, ws: CfTypes.WebSocket) => void
   /** Queue for receiving incoming messages from the WebSocket */
   incomingQueue: Queue.Queue<Uint8Array | string>
 }
@@ -274,7 +281,7 @@ export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
  *
  * @internal Used internally by `layerRpcServerWebsocket`
  */
-const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServerArgs) =>
+const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage, onResponse }: WsRpcServerArgs) =>
   Effect.gen(function* () {
     const serialization = yield* RpcSerialization.RpcSerialization
     const disconnects = yield* Queue.unbounded<number>()
@@ -292,7 +299,10 @@ const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServer
         if (encoded === undefined) {
           return Effect.void
         }
-        return Effect.orDie(writeRaw(encoded))
+        return Effect.andThen(
+          Effect.orDie(writeRaw(encoded)),
+          Effect.sync(() => onResponse?.(response, ws)),
+        )
       } catch (cause) {
         return Effect.orDie(writeRaw(parser.encode(RpcMessage.ResponseDefectEncoded(cause))!))
       }
@@ -312,10 +322,8 @@ const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServer
               while: () => i < decoded.length,
               body: () => {
                 const request = decoded[i++]!
-                if (onMessage !== undefined) {
-                  onMessage(request, ws)
-                }
-                return writeRequest(id, request)
+                const hookResponse = onMessage?.(request, ws)
+                return hookResponse === undefined ? writeRequest(id, request) : write(hookResponse)
               },
               step: Function.constVoid,
             })
