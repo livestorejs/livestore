@@ -191,7 +191,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
 
       const leaderThreadContextOnce = yield* Effect.cached(
         Effect.gen(function* () {
-          const { storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayloadEncoded } =
+          const { storageOptions, storeId, clientId, devtoolsEnabled, debugInstanceId, syncPayloadEncoded, params } =
             yield* RpcWorker.initialMessage(WorkerSchema.LeaderWorkerInnerInitialMessage.payloadSchema)
 
           const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
@@ -282,6 +282,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
               shutdownChannel,
               syncPayloadEncoded,
               syncPayloadSchema: syncPayloadSchema as Schema.Decoder<Schema.Json, never> | undefined,
+              params,
               ...(bootWarning !== undefined ? { bootWarning } : {}),
             }).pipe(Layer.provide(StateHead.layer({ dbState }))),
             leaderThreadScope,

@@ -44,9 +44,13 @@ contract — see
 `syncPayload` + `syncPayloadSchema` (encoded before crossing to the
 adapter), `confirmUnsavedChanges` (web `beforeunload`), `disableDevtools`
 (default `'auto'`), `params.{leaderPushBatchSize, eventQueryBatchSize,
-simulation}`, `debug.instanceId`, `shutdownDeferred`, `signal`
+stateRebuildBatchSize}`, `debug.instanceId`, `shutdownDeferred`, `signal`
 (`AbortSignal`), `logger`/`logLevel`, `unusedCacheTime` (registry, below).
 `storeId` must match `/^[a-zA-Z0-9_-]+$/` (`create-store.ts:456`).
+
+`stateRebuildBatchSize` is a per-client runtime setting rather than schema
+identity. It accepts positive integers, defaults to 100, and controls
+the number of eventlog events read and committed per state-rebuild batch.
 
 ## Commit Path
 

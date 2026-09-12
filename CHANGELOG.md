@@ -18,6 +18,22 @@
   Telemetry cleanup runs in the background, and finite WebSocket operations and
   DO-RPC pull streams now emit their sync spans
   ([#1618](https://github.com/livestorejs/livestore/issues/1618)).
+- **Cloudflare adapter:** Track state database ownership and remove obsolete
+  tracked state after successful boot, preserving the current state, eventlog
+  and untracked files. Failed cleanup is retried on a later boot without
+  blocking the completed store
+  ([#1555](https://github.com/livestorejs/livestore/issues/1555)).
+- **Schema rebuilds:** Batched eventlog replay to reduce repeated SQLite page
+  writes, including billed row writes on Cloudflare Durable Objects. Replay order
+  and recovery from incomplete rebuilds are preserved. Clients can tune the
+  event-count batch per runtime with `params.stateRebuildBatchSize` (a positive
+  integer, default 100); lower values trade more queries and writes for smaller batches
+  ([#1555](https://github.com/livestorejs/livestore/issues/1555)).
+- **State recovery:** Interrupted rematerialization is retried from clean derived
+  state instead of reopening partial results. Completion is recorded after all
+  migration hooks finish. Browser fast-path startup waits for recovery when its
+  snapshot is incomplete. The eventlog and pending events are preserved
+  ([#1605](https://github.com/livestorejs/livestore/issues/1605)).
 - **Cloudflare sync:** Serialize push admission through pull publication so an
   accepted event cannot advance the backend head without notifying subscribers
   ([#1537](https://github.com/livestorejs/livestore/pull/1537)).
@@ -48,6 +64,11 @@
   the undocumented `store.commit(() => [event])` form with `store.commit(event)`
   or `store.commit((commit) => { commit(event) })`
   ([#1611](https://github.com/livestorejs/livestore/issues/1611)).
+- **Rebuild completion tracking:** The first open after upgrading from a version
+  without the completion marker rebuilds derived state once. No application
+  configuration changes are needed. Cloudflare deployments should budget for
+  replay duration and row writes. Migration hooks must tolerate retries after
+  interrupted rebuilds ([#1605](https://github.com/livestorejs/livestore/issues/1605)).
 - **State schema fingerprints:** Replaced Effect-internal AST hashing with a
   LiveStore-owned canonical descriptor and a synchronous full-width SHA-256
   fingerprint. No application schema or configuration changes are required.

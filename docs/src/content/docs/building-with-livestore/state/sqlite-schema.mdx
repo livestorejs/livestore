@@ -10,6 +10,7 @@ import ClientDocumentBasicSnippet from '../../../_assets/code/reference/state/sq
 import ClientDocumentKvSnippet from '../../../_assets/code/reference/state/sqlite-schema/columns/client-document-kv.tsx?snippet'
 import JsonStructSnippet from '../../../_assets/code/reference/state/sqlite-schema/columns/json-struct.ts?snippet'
 import TableBasicSnippet from '../../../_assets/code/reference/state/sqlite-schema/columns/table-basic.ts?snippet'
+import RebuildBatchSizeSnippet from '../../../_assets/code/reference/state/sqlite-schema/rebuild-batch-size.ts?snippet'
 
 LiveStore provides a schema definition language for defining your database tables and mutation definitions using explicit column configurations. LiveStore automatically migrates your database schema when you change your schema definitions.
 
@@ -60,6 +61,18 @@ You can also provide a custom schema for a column which is used to automatically
 ### Schema migrations
 
 LiveStore automatically migrates the database to the newest schema and rematerializes state from the eventlog. A schema change opens a fresh state database and replays the full eventlog, even when only one table changed.
+
+Replay commits batches of events to reduce repeated SQLite page writes, including billed row writes on Cloudflare Durable Objects. Events retain their original order. The default batch size is 100 events.
+
+For clients with tighter resource limits, set `params.stateRebuildBatchSize` when creating the store. It accepts any positive integer:
+
+<RebuildBatchSizeSnippet />
+
+Lower values reduce the amount of replay work held by each read/savepoint batch, but perform more queries, savepoints, and persistence writes. Higher values do the reverse. The limit counts events, not payload bytes or total client memory, so measure representative rebuilds before changing it. The setting is local to each client and changing it does not trigger a rebuild; it applies the next time that client rebuilds state.
+
+A rebuild is complete only after replay and all migration hooks finish. If a rebuild fails or is interrupted, the next boot discards incomplete derived state and retries from the eventlog. Browser fast-path startup also waits for recovery instead of exposing an incomplete snapshot. Migration hooks may run again, so any external side effects must tolerate retries. The eventlog and pending events are preserved.
+
+Upgrading from a version without rebuild-completion tracking causes a one-time rebuild, even when your application schema is unchanged. On Cloudflare Durable Objects, plan for the corresponding replay time and row writes.
 
 By default, `State.SQLite.json()` does not declare a fixed shape. Changing only the shape of values written to that column therefore does not count as a schema change. Pass a schema when such changes should trigger a rebuild.
 

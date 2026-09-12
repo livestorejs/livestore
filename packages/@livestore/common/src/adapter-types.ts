@@ -125,6 +125,10 @@ export type Adapter = (args: AdapterArgs) => Effect.Effect<ClientSession, Unknow
 export interface AdapterArgs {
   schema: LiveStoreSchema
   storeId: string
+  /** Runtime parameters resolved by `createStore` before the adapter is invoked. */
+  params: {
+    stateRebuildBatchSize: number
+  }
   devtoolsEnabled: boolean
   debugInstanceId: string
   bootStatusQueue: Queue.Queue<BootStatus>

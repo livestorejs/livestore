@@ -20,17 +20,21 @@ mismatched tables in place:
    storage-format-versioned directory. The Cloudflare adapter uses
    `state{fingerprint}@{liveStoreStorageFormatVersion}.db`.
 3. A different fingerprint therefore opens a fresh, empty state database.
-   During leader boot, the absence of state system tables causes `recreateDb`
-   to run.
+   During leader boot, missing state system tables or a missing rebuild-complete
+   row causes `recreateDb` to run.
 
 `migrateDb` never drops or clears tables; it uses `create-if-not-exists`.
 Eventlog replay does not clear existing rows either. These operations are safe
-because the fingerprint change has already selected a fresh database. A
-mismatched fingerprint stored inside an existing database does not trigger a
+because boot replaces incomplete derived state with an empty database before
+running them. A mismatched fingerprint stored inside an existing database does not trigger a
 rebuild by itself. The adapter-level database name is the rebuild trigger.
 
 When the web adapter opens the selected state database, it deletes other state
 database files. In development it archives up to three old files instead.
+The Cloudflare adapter tracks state files it opens and removes other tracked
+state-file pages after successful boot, including completed-state reuse.
+Untracked historical files are preserved. Cleanup failure does not prevent serving the
+completed store and is retried on the next successful boot.
 
 ## State Fingerprint Contract
 
@@ -97,6 +101,47 @@ database:
 3. Run the `pre` migration hook.
 4. Replay the full eventlog through the current materializers.
 5. Run the `post` migration hook.
+6. Insert the singleton completion row (`id = 1`) in `__livestore_rebuild`.
+
+Replay consumes eventlog pages in order, with each page committed in one
+state-database savepoint. The per-client runtime parameter
+`createStore.params.stateRebuildBatchSize` accepts positive integers and defaults
+to 100. It controls both the eventlog page and savepoint batch; it is
+not part of the state fingerprint, so changing it does not trigger a rebuild.
+Application rows, the state head and undo metadata commit together for each
+batch. Failure or interruption rolls back the current batch. Earlier batches can
+remain in the incomplete database, which boot discards before retrying. Progress
+still reports each processed event, not a durability boundary. Lower values can
+reduce per-batch resource usage at the cost of more queries, savepoints and
+persistence writes. The event count does not bound payload bytes, materializer
+work, WASM capacity or total client memory.
+
+Table existence and the state head alone do not prove completion: a materializer
+can fail partway through replay, or a hook can fail after replay reaches the tip.
+Boot reuses state only when all state system tables and the completion row exist.
+Otherwise it replaces the derived database using SQLite's backup/import operation
+from an empty in-memory database, before creating materializers or running hooks.
+This discards partial application rows, hook-created objects and undo data without
+altering the eventlog or its pending events and sync metadata. Recovery does not
+depend on failure finalizers deleting the state file.
+
+Both browser session variants apply the same check when loading an OPFS snapshot
+for fast-path boot. An incomplete snapshot falls back to the leader's recovered
+snapshot before the session becomes available to application queries.
+
+Completion is recorded only on the successful path, never by a finalizer. Hooks
+can run again after a failed/interrupted rebuild. External hook side effects must
+tolerate retries; the marker does not make them exactly-once. Normal live-event
+transaction boundaries and asynchronous persistence/sync are unchanged.
+
+The marker table participates in the compound state fingerprint. Upgrading from
+a version without it selects a fresh derived database and causes a one-time
+rebuild, including for previously complete databases. No eventlog schema or
+storage-format version changes. This protocol detects incomplete **readable**
+SQLite databases, not arbitrary file corruption or loss of the eventlog.
+
+See [the completion/recovery decision](./.decisions/0001-rebuild-completion.md)
+and [the replay batching decision](./.decisions/0002-batch-replay-writes.md).
 
 The rebuild produces a `migrationsReport` surfaced through adapter boot info.
 On the Cloudflare Durable Object adapter, replay writes the newly materialized

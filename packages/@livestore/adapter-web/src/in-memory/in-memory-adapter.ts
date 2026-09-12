@@ -1,5 +1,6 @@
 import {
   type Adapter,
+  type AdapterArgs,
   ClientSessionLeaderThreadProxy,
   Devtools,
   type LockStatus,
@@ -15,6 +16,7 @@ import {
   Eventlog,
   LeaderThreadCtx,
   makeLeaderThreadLayer,
+  markStateAsCompleted,
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -157,6 +159,7 @@ export const makeInMemoryAdapter =
         syncOptions: options.sync,
         syncPayloadEncoded,
         syncPayloadSchema,
+        params: adapterArgs.params,
         importSnapshot: options.importSnapshot,
         devtoolsEnabled,
         sharedWorker: sharedWorkerClient === undefined ? undefined : makeWebmeshWorkerProxy(sharedWorkerClient),
@@ -216,6 +219,7 @@ export interface MakeLeaderThreadArgs {
   importSnapshot: Uint8Array<ArrayBuffer> | undefined
   devtoolsEnabled: boolean
   sharedWorker: WebmeshWorkerProxy | undefined
+  params: AdapterArgs['params']
 }
 
 const makeLeaderThread = ({
@@ -229,6 +233,7 @@ const makeLeaderThread = ({
   importSnapshot,
   devtoolsEnabled,
   sharedWorker,
+  params,
 }: MakeLeaderThreadArgs) =>
   Effect.gen(function* () {
     const services = yield* Effect.context()
@@ -249,6 +254,7 @@ const makeLeaderThread = ({
       dbState.import(importSnapshot)
 
       const _migrationsReport = yield* migrateDb({ db: dbState, schema })
+      yield* markStateAsCompleted(dbState)
     }
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
@@ -273,6 +279,7 @@ const makeLeaderThread = ({
         shutdownChannel,
         syncPayloadEncoded,
         syncPayloadSchema: syncPayloadSchema as Schema.Decoder<Schema.Json, never> | undefined,
+        params,
       }).pipe(Layer.provide(StateHead.layer({ dbState }))),
     )
 

@@ -2,9 +2,9 @@
 
 import { DurableObject } from 'cloudflare:workers'
 
-import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
+import { type ClientDoWithRpcCallback, createStoreDoPromise, makeAdapter } from '@livestore/adapter-cloudflare'
 import { CfDeclare } from '@livestore/common-cf/declare'
-import type { Store } from '@livestore/livestore'
+import { createStorePromise, type Store } from '@livestore/livestore'
 import {
   type CfTypes,
   handleSyncRequest,
@@ -14,7 +14,9 @@ import {
 } from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 import { shouldNeverHappen } from '@livestore/utils'
+import { Effect, Stream } from '@livestore/utils/effect'
 
+import { makeRebuildSchema } from '../rebuild-schema.ts'
 import { events, schema, tables } from '../schema.ts'
 
 /**
@@ -99,6 +101,7 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
   /** Captures the VFS counts immediately before/after a reset so tests can assert the deletion actually happened. */
   private lastResetSnapshot: ResetPersistenceSnapshot | undefined
   private trackedSql: ReturnType<typeof wrapSqlForTracking> | undefined
+  private readonly rebuildInstanceId = crypto.randomUUID()
 
   override async fetch(request: CfTypes.Request): Promise<CfTypes.Response> {
     const url = new URL(request.url)
@@ -106,6 +109,155 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
 
     if (storeId === null) {
       return makeCfResponse('storeId is required', { status: 400 })
+    }
+
+    if (url.pathname === '/store/rebuild/block-cleanup') {
+      if (request.method === 'POST') {
+        this.ctx.storage.sql.exec(
+          'INSERT INTO vfs_pages (file_path, page_no, page_data) VALUES (?, 0, ?)',
+          '/previous-state.db',
+          new Uint8Array([1, 2, 3]),
+        )
+        this.ctx.storage.sql.exec('INSERT INTO __livestore_state_files (file_path) VALUES (?)', '/previous-state.db')
+        const table = url.searchParams.get('stage') === 'registry' ? '__livestore_state_files' : 'vfs_pages'
+        this.ctx.storage.sql.exec(`
+          CREATE TRIGGER reject_cleanup BEFORE DELETE ON ${table}
+          WHEN OLD.file_path = '/previous-state.db'
+          BEGIN SELECT RAISE(ABORT, 'Injected cleanup failure'); END
+        `)
+      } else if (request.method === 'DELETE') {
+        this.ctx.storage.sql.exec('DROP TRIGGER reject_cleanup')
+      }
+      return makeCfResponse('ok')
+    }
+
+    if (url.pathname === '/store/rebuild/block-registration') {
+      this.ctx.storage.sql.exec(`
+        CREATE TRIGGER reject_registration BEFORE INSERT ON __livestore_state_files
+        BEGIN SELECT RAISE(ABORT, 'Injected registration failure'); END
+      `)
+      return makeCfResponse('ok')
+    }
+
+    if (url.pathname === '/store/rebuild/ownership') {
+      if (request.method === 'DELETE') {
+        this.ctx.storage.sql.exec('DROP TABLE __livestore_state_files')
+        return makeCfResponse('ok')
+      }
+      return makeCfResponse(
+        JSON.stringify(
+          this.ctx.storage.sql
+            .exec<{ file_path: string }>('SELECT file_path FROM __livestore_state_files ORDER BY file_path')
+            .toArray()
+            .map(({ file_path }) => file_path),
+        ),
+        { headers: { 'content-type': 'application/json' } },
+      )
+    }
+
+    if (url.pathname === '/store/rebuild/files') {
+      if (request.method === 'POST') {
+        for (const path of await request.json<string[]>()) {
+          this.ctx.storage.sql.exec(
+            'INSERT INTO vfs_pages (file_path, page_no, page_data) VALUES (?, 0, ?)',
+            path,
+            new Uint8Array([1, 2, 3]),
+          )
+        }
+      }
+      return makeCfResponse(
+        JSON.stringify(
+          this.ctx.storage.sql
+            .exec('SELECT file_path AS path, COUNT(*) AS pages FROM vfs_pages GROUP BY file_path ORDER BY file_path')
+            .toArray(),
+        ),
+        { headers: { 'content-type': 'application/json' } },
+      )
+    }
+
+    if (url.pathname === '/store/rebuild/eventlog') {
+      return makeCfResponse(
+        JSON.stringify({
+          events: this.ctx.storage.sql.exec('SELECT * FROM eventlog ORDER BY seqNumGlobal, seqNumClient').toArray(),
+          sync: this.ctx.storage.sql.exec('SELECT * FROM __livestore_sync_status').toArray(),
+        }),
+        { headers: { 'content-type': 'application/json' } },
+      )
+    }
+
+    if (url.pathname === '/store/rebuild' && request.method === 'POST') {
+      this.ensureSqlTracking()
+      const seed = url.searchParams.get('seed') === 'true'
+      const fixture = makeRebuildSchema({
+        upgraded: seed === false,
+        ...(url.searchParams.has('failAt') === true ? { failAt: url.searchParams.get('failAt')! } : {}),
+        ...(url.searchParams.has('post') === true
+          ? {
+              post: async () => {
+                if (url.searchParams.get('post') === 'fail') throw new Error('Rebuild fixture post hook failed')
+                if (url.searchParams.get('post') === 'abort') {
+                  // Persist before aborting without running LiveStore finalizers.
+                  await this.ctx.storage.sync()
+                  this.ctx.abort('Rebuild fixture aborted during post hook')
+                }
+              },
+            }
+          : {}),
+      })
+      try {
+        // A sync backend could refill missing rows and hide a recovery failure.
+        const store = await createStorePromise({
+          schema: fixture.schema,
+          storeId,
+          disableDevtools: true,
+          adapter: makeAdapter({
+            storage: this.ctx.storage,
+            clientId: 'rebuild-client',
+            sessionId: crypto.randomUUID(),
+            syncOptions: {},
+          }),
+        })
+        try {
+          if (seed === true) {
+            const seedCount = Number(url.searchParams.get('seedCount') ?? 5)
+            for (let i = 1; i <= seedCount; i++) {
+              store.commit(fixture.events.created({ id: `todo-${i}`, title: `item ${i}` }))
+            }
+            await store.syncStatusStream().pipe(
+              Stream.filter((status) => status.isSynced),
+              Stream.take(1),
+              Stream.runDrain,
+              Effect.timeout('10 seconds'),
+              Effect.runPromise,
+            )
+          }
+          const todos = store.query(fixture.todos.orderBy('id', 'asc'))
+          return makeCfResponse(
+            JSON.stringify({
+              todos,
+              attemptedEvents: fixture.attemptedEvents,
+              attemptedHooks: fixture.attemptedHooks,
+              instanceId: this.rebuildInstanceId,
+            }),
+            { headers: { 'content-type': 'application/json' } },
+          )
+        } finally {
+          await store.shutdownPromise()
+        }
+      } catch (error) {
+        return makeCfResponse(
+          JSON.stringify({
+            error: String(error),
+            cause: error,
+            attemptedEvents: fixture.attemptedEvents,
+            attemptedHooks: fixture.attemptedHooks,
+          }),
+          {
+            status: 500,
+            headers: { 'content-type': 'application/json' },
+          },
+        )
+      }
     }
 
     if (url.pathname === '/store/todos') {
@@ -166,8 +318,6 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
 
     if (url.pathname === '/store/metrics') {
       if (request.method === 'GET') {
-        await this.ensureStore({ storeId, resetPersistence: false })
-
         return makeCfResponse(
           JSON.stringify({
             totalRowsWritten: this.trackedSql?.totalRowsWritten ?? 0,

@@ -107,6 +107,7 @@ Creates a LiveStore instance inside a Durable Object.
   - `bindingName` – Name other workers use to reach this Durable Object
 - `syncBackendStub` – Durable Object stub used to reach the sync backend
 - `livePull` – Enable real-time updates (default: `false`)
+- `params?` – Advanced per-client runtime tuning, including `stateRebuildBatchSize`
 - `resetPersistence` – Drop LiveStore state/eventlog persistence before booting (development only, default: `false`)
 - `logger?` – Optional Effect logger layer to customize formatting/output
 - `logLevel?` – Optional minimum log level (use `"None"` to disable logs)
@@ -131,6 +132,12 @@ Eviction is deliberately different: Cloudflare discards the isolate without runn
 ### Schema changes and billing
 
 Changing the state schema causes each affected store to open a fresh state database and replay its full eventlog, even if only one table changed. On Durable Objects, rebuilding the state can incur billable storage writes. Plan deployments according to the eventlog size and number of store instances.
+
+Rebuilds use 100 events per batch by default. A Durable Object can set `params: { stateRebuildBatchSize }` on `createStoreDo` or `createStoreDoPromise`; the value must be a positive integer. Lower values can reduce per-batch resource use, but require more queries, savepoints, and storage writes. This limit counts events rather than bytes and does not guarantee that the whole isolate stays within its memory limit, so profile representative data and materializers. Other clients of the same store can use different values.
+
+The adapter tracks state files it opens. After successful boot, it removes older tracked files while preserving the current database, eventlog and untracked files. Failed rebuilds retain previous state. Cleanup failures log a warning and retry on the next successful boot, including when reusing completed state. Files from older releases remain untouched unless subsequently opened and tracked. Returning to a schema whose state was removed rebuilds it from the eventlog.
+
+Cleanup itself consumes row-write quota. It prevents new orphan accumulation, but cannot recover storage that is already too full to complete a rebuild.
 
 ## Resetting LiveStore persistence (development only)
 

@@ -139,6 +139,11 @@ export type InitialBlockingSyncContext = {
 export const STREAM_EVENTS_BATCH_SIZE_DEFAULT = 100
 export const STREAM_EVENTS_BATCH_SIZE_MAX = 1_000
 
+export const STATE_REBUILD_BATCH_SIZE_DEFAULT = 100
+export const StateRebuildBatchSizeSchema = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)).annotate({
+  title: 'stateRebuildBatchSize',
+})
+
 export const StreamEventsOptionsFields = {
   since: Schema.optional(EventSequenceNumber.Client.Composite),
   until: Schema.optional(EventSequenceNumber.Client.Composite),

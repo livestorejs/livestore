@@ -23,6 +23,7 @@ import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { Effect, FetchHttpClient, Layer, Queue, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 
 import { makeSqliteDb as makeDoSqliteDb } from './make-sqlite-db.ts'
+import * as StateFiles from './state-files.ts'
 
 export const makeAdapter =
   ({
@@ -46,6 +47,7 @@ export const makeAdapter =
         syncPayloadEncoded,
         syncPayloadSchema,
         schema,
+        params,
       } = adapterArgs
 
       const devtoolsOptions = { enabled: false } as DevtoolsOptions
@@ -62,10 +64,13 @@ export const makeAdapter =
         yield* resetDurableObjectPersistence({ storage, storeId })
       }
 
+      const stateFileName = `${getStateDbBaseName(schema)}@${liveStoreStorageFormatVersion}.db`
+      yield* StateFiles.register(storage, stateFileName).pipe(UnknownError.mapToUnknownError)
+
       const dbState = yield* makeSqliteDb({
         _tag: 'storage',
         storage,
-        fileName: `${getStateDbBaseName(schema)}@${liveStoreStorageFormatVersion}.db`,
+        fileName: stateFileName,
         configureDb: (db) =>
           db.execute([...CF_SQL_VFS_REQUIRED_PRAGMAS, 'cache_size=-8000'].map((p) => `PRAGMA ${p}`).join(';\n')),
       }).pipe(UnknownError.mapToUnknownError)
@@ -94,6 +99,7 @@ export const makeAdapter =
           shutdownChannel,
           syncPayloadEncoded,
           syncPayloadSchema,
+          params,
         }).pipe(Layer.provide(StateHead.layer({ dbState }))),
       )
 
@@ -165,6 +171,10 @@ export const makeAdapter =
         origin: undefined,
       })
 
+      yield* StateFiles.cleanup(storage, stateFileName).pipe(
+        Effect.catch((cause) => Effect.logWarning('Failed to clean up obsolete state databases', cause)),
+      )
+
       return clientSession
     }).pipe(
       Effect.withSpan('@livestore/adapter-cloudflare:makeAdapter', { attributes: { clientId, sessionId } }),
@@ -180,12 +190,14 @@ const resetDurableObjectPersistence = ({
 }) =>
   Effect.try({
     try: () =>
-      // All three tables live in the DO's single storage.sql database but are
+      // All four tables live in the DO's single storage.sql database but are
       // owned by different layers during normal operation:
       // - vfs_pages: written by the wa-sqlite VFS layer (backs dbState)
       // - eventlog, __livestore_sync_status: written directly by dbEventlog via storage.sql
+      // - __livestore_state_files: adapter-owned state file registry
       storage.transactionSync(() => {
         safeSqlExec(storage, 'DELETE FROM vfs_pages')
+        safeSqlExec(storage, 'DELETE FROM __livestore_state_files')
         safeSqlExec(storage, 'DELETE FROM eventlog')
         safeSqlExec(storage, 'DELETE FROM __livestore_sync_status')
       }),

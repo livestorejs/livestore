@@ -31,11 +31,12 @@ import type * as StateHead from '../StateHead.ts'
 import type { SyncBackend, SyncOptions } from '../sync/sync.ts'
 import { SyncState } from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
+import { configureConnection } from './connection.ts'
 import * as Eventlog from './eventlog.ts'
 import { bootDevtools } from './leader-worker-devtools.ts'
 import * as LeaderSyncProcessor from './LeaderSyncProcessor.ts'
 import { makeMaterializeEvent } from './materialize-event.ts'
-import { recreateDb } from './recreate-db.ts'
+import { hasCompletedState, recreateDb } from './recreate-db.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 import type {
   DevtoolsContext,
@@ -64,6 +65,7 @@ export interface MakeLeaderThreadLayerParams {
   params?: {
     localPushBatchSize?: number
     backendPushBatchSize?: number
+    stateRebuildBatchSize?: number
   }
   testing?: {
     syncProcessor?: {
@@ -112,8 +114,20 @@ export const makeLeaderThreadLayer = ({
 
     const dbEventlogMissing = !hasEventlogTables(dbEventlog)
 
-    // Either happens on initial boot or if schema changes
-    const dbStateMissing = !hasStateTables(dbState)
+    const stateNeedsRebuild = !hasCompletedState(dbState)
+
+    if (stateNeedsRebuild === true) {
+      // Import also clears hook-created objects while preserving the open connection.
+      yield* Effect.acquireUseRelease(
+        makeSqliteDb({ _tag: 'in-memory' }),
+        (emptyDb) =>
+          configureConnection(emptyDb, { foreignKeys: false }).pipe(
+            Effect.andThen(Effect.sync(() => dbState.import(emptyDb))),
+            UnknownError.mapToUnknownError,
+          ),
+        (emptyDb) => Effect.sync(() => emptyDb.close()),
+      )
+    }
 
     yield* Eventlog.initEventlogDb(dbEventlog)
 
@@ -171,8 +185,15 @@ export const makeLeaderThreadLayer = ({
     // Recreate state database if needed BEFORE creating sync processor
     // This ensures all system tables exist before any queries are made
     const { migrationsReport } =
-      dbStateMissing === true
-        ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
+      stateNeedsRebuild === true
+        ? yield* recreateDb({
+            dbState,
+            dbEventlog,
+            schema,
+            bootStatusQueue,
+            materializeEvent,
+            ...omitUndefineds({ stateRebuildBatchSize: params?.stateRebuildBatchSize }),
+          })
         : { migrationsReport: { migrations: [] } }
 
     const devtoolsContext =
@@ -264,11 +285,6 @@ export const makeLeaderThreadLayer = ({
 const hasEventlogTables = (db: SqliteDb) => {
   const tableNames = new Set(db.select<{ name: string }>(sql`select name from sqlite_master`).map((_) => _.name))
   return ReadonlyArray.every(SystemTables.eventlogSystemTables, (_) => tableNames.has(_.sqliteDef.name))
-}
-
-const hasStateTables = (db: SqliteDb) => {
-  const tableNames = new Set(db.select<{ name: string }>(sql`select name from sqlite_master`).map((_) => _.name))
-  return ReadonlyArray.every(SystemTables.stateSystemTables, (_) => tableNames.has(_.sqliteDef.name))
 }
 
 const getInitialSyncState = ({

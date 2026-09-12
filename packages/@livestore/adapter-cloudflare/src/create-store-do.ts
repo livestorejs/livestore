@@ -3,7 +3,7 @@ import type { CfTypes, HelperTypes } from '@livestore/common-cf'
 import { createStore, type LiveStoreSchema, provideOtel } from '@livestore/livestore'
 import type * as CfSyncBackend from '@livestore/sync-cf/cf-worker'
 import { makeDoRpcSync } from '@livestore/sync-cf/client'
-import { isDevEnv } from '@livestore/utils'
+import { isDevEnv, omitUndefineds } from '@livestore/utils'
 import { Effect, Layer, References, Scope } from '@livestore/utils/effect'
 
 import { makeAdapter } from './make-adapter.ts'
@@ -21,6 +21,18 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> 
   clientId: string
   /** Identifier for the LiveStore session running inside the Durable Object. */
   sessionId: string
+  /** Advanced per-client runtime tuning parameters. */
+  params?: {
+    /**
+     * Number of events read and committed per batch when rebuilding SQLite state from the event log.
+     * Lower values reduce per-batch resource usage but perform more queries and savepoints.
+     * This setting applies to future rebuilds and does not change schema identity.
+     *
+     * @default 100
+     * @minimum 1
+     */
+    stateRebuildBatchSize?: number
+  }
   /** Runtime details about the Durable Object this store runs inside. Needed for sync backend to call back to this instance. */
   durableObject: {
     /** Durable Object state handle (e.g. `this.ctx`). */
@@ -107,6 +119,7 @@ export const createStoreDo = <
   livePull = false,
   resetPersistence = false,
   initialSyncOptions = { _tag: 'Blocking', timeout: 500 },
+  params,
 }: CreateStoreDoOptions<TSchema, TEnv, TState>) =>
   Effect.gen(function* () {
     const { ctx, bindingName } = durableObject
@@ -130,7 +143,12 @@ export const createStoreDo = <
       },
     })
 
-    return yield* createStore({ schema, adapter, storeId }).pipe(Scope.provide(scope), provideOtel({}))
+    return yield* createStore({
+      schema,
+      adapter,
+      storeId,
+      ...omitUndefineds({ params }),
+    }).pipe(Scope.provide(scope), provideOtel({}))
   })
 
 /**
