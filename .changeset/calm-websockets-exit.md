@@ -3,4 +3,4 @@
 '@livestore/sync-cf': patch
 ---
 
-Complete an interrupted WebSocket live pull with its terminal RPC `Exit` after the sync Durable Object hibernates and reconstructs. The Cloudflare WebSocket protocol now preserves Effect interruption semantics when its per-request schema state was lost to hibernation (#1418).
+Complete WebSocket pull lifecycles across sync Durable Object hibernation. Interrupted live pulls now receive their terminal RPC `Exit` after reconstruction, and terminal pulls are removed from persisted fan-out state (#1418).

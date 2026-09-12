@@ -102,7 +102,6 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           // in combination with DO hibernation
           onMessage: (request, ws) => {
             if (request._tag === 'Request' && request.tag === 'SyncWsRpc.Pull') {
-              // Is Pull request: add requestId to pullRequestIds
               const attachment = ws.deserializeAttachment()
               const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
               ws.serializeAttachment(
@@ -112,17 +111,10 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
                 }),
               )
             } else if (request._tag === 'Interrupt') {
-              // Is Interrupt request: remove requestId from pullRequestIds
-              const attachment = ws.deserializeAttachment()
-              const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
-              ws.serializeAttachment(
-                Schema.encodeSync(WebSocketAttachmentSchema)({
-                  ...rest,
-                  pullRequestIds: pullRequestIds.filter((id) => id !== request.requestId),
-                }),
-              )
+              removePullRequestId(ws, request.requestId)
             }
           },
+          onRequestExit: (requestId, ws) => removePullRequestId(ws, requestId),
         })
       }
     }
@@ -233,4 +225,17 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         Effect.runPromise,
       )
   }
+}
+
+const removePullRequestId = (ws: CfTypes.WebSocket, requestId: string | number) => {
+  const attachment = ws.deserializeAttachment()
+  const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
+  if (pullRequestIds.includes(requestId) === false) return
+
+  ws.serializeAttachment(
+    Schema.encodeSync(WebSocketAttachmentSchema)({
+      ...rest,
+      pullRequestIds: pullRequestIds.filter((id) => id !== requestId),
+    }),
+  )
 }

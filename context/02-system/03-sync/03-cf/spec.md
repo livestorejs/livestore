@@ -46,7 +46,9 @@ arbitrates pushes and fans out live pull streams to subscribers
 - **Fan-out** (`push.ts`): accepted batches are re-chunked and emitted in
   admission order to two subscriber sets — hibernatable WebSockets (per-socket `pullRequestIds`
   attachments; hand-crafted RPC chunk frames) and DO-RPC subscriptions (a
-  durable KV registry fed by live pulls). Each DO-RPC callback carries the
+  durable KV registry fed by live pulls). A terminal WebSocket RPC `Exit`
+  removes its request ID from the attachment so later pushes target only active
+  pulls. Each DO-RPC callback carries the
   subscription's `storeId` (`push.ts` → `emitStreamResponse` →
   `syncUpdateRpc(payload, storeId)`), so a client DO that was evicted and
   reconstructed can re-boot its store — whose boot catches up — before

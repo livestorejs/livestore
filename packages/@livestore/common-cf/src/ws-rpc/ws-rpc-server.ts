@@ -72,6 +72,8 @@ export interface DurableObjectWebSocketRpcConfig {
   rpcLayer: Layer.Layer<never, never, RpcServer.Protocol | WsContext>
   /** Function to get access to incoming requests */
   onMessage?: (msg: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
+  /** Called after a terminal RPC response has been written for a request. */
+  onRequestExit?: (requestId: string | number, ws: CfTypes.WebSocket) => void
   mainLayer?: Layer.Layer<never>
 }
 
@@ -140,6 +142,7 @@ export const setupDurableObjectWebSocketRpc = ({
   rpcLayer,
   webSocketMode,
   onMessage,
+  onRequestExit,
   mainLayer,
 }: DurableObjectWebSocketRpcConfig) => {
   if (webSocketMode === 'accept') {
@@ -172,7 +175,7 @@ export const setupDurableObjectWebSocketRpc = ({
         ws,
         scope,
         incomingQueue,
-        ...omitUndefineds({ onMessage }),
+        ...omitUndefineds({ onMessage, onRequestExit }),
       }).pipe(Layer.provide(RpcSerialization.layerJson))
 
       const ServerLive = rpcLayer.pipe(Layer.provide(ProtocolLive))
@@ -240,6 +243,7 @@ export interface WsRpcServerArgs {
   ws: CfTypes.WebSocket
   scope: Scope.Scope
   onMessage?: (message: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
+  onRequestExit?: (requestId: string | number, ws: CfTypes.WebSocket) => void
   /** Queue for receiving incoming messages from the WebSocket */
   incomingQueue: Queue.Queue<Uint8Array | string>
 }
@@ -275,7 +279,7 @@ export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
  *
  * @internal Used internally by `layerRpcServerWebsocket`
  */
-const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServerArgs) =>
+const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage, onRequestExit }: WsRpcServerArgs) =>
   Effect.gen(function* () {
     const serialization = yield* RpcSerialization.RpcSerialization
     const disconnects = yield* Queue.unbounded<number>()
@@ -306,7 +310,10 @@ const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServer
     const write = (response: RpcMessage.FromServerEncoded) => {
       if (response._tag === 'Exit') requestIdsWithSchemas.delete(response.requestId)
       if (response._tag === 'Defect') requestIdsWithSchemas.clear()
-      return writeResponse(response)
+      const responseEffect = writeResponse(response)
+      return response._tag === 'Exit' && onRequestExit !== undefined
+        ? Effect.tap(responseEffect, () => Effect.sync(() => onRequestExit(response.requestId, ws)))
+        : responseEffect
     }
 
     const protocol = yield* RpcServer.Protocol.make((writeRequest_) => {
