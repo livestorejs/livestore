@@ -90,13 +90,6 @@ describeWsDo(`${CloudflareWsProvider.doSqlite.name} sync provider — DO hiberna
       const after = yield* probeWithOpenSocket({ port, storeId })
       expect(after).not.toBe(before)
 
-      const staleExits = yield* sendAndCollectRpcMessages(
-        ws,
-        { _tag: 'Interrupt', requestId: warmRequestId },
-        (message) => message._tag === 'Exit' && message.requestId === warmRequestId,
-      )
-      expect(staleExits).toEqual([])
-
       const currentRequestId = 'current-pull'
       yield* startLivePull({ ws, storeId, requestId: currentRequestId })
       const currentExits = yield* sendAndCollectRpcMessages(

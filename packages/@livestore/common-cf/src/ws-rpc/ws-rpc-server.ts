@@ -28,6 +28,7 @@ import {
   RpcMessage,
   RpcSerialization,
   RpcServer,
+  Schema,
   Scope,
   Stream,
 } from '@livestore/utils/effect'
@@ -69,13 +70,8 @@ export interface DurableObjectWebSocketRpcConfig {
    * which are both provided by the WebSocket protocol layer.
    */
   rpcLayer: Layer.Layer<never, never, RpcServer.Protocol | WsContext>
-  /**
-   * Observes incoming requests. A returned response is sent through the configured RPC serialization instead of
-   * forwarding the request to Effect, which lets hibernation-aware integrations complete restored logical requests.
-   */
-  onMessage?: (msg: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => RpcMessage.FromServerEncoded | void
-  /** Observes responses after they have been written to the WebSocket. */
-  onResponse?: (msg: RpcMessage.FromServerEncoded, ws: CfTypes.WebSocket) => void
+  /** Function to get access to incoming requests */
+  onMessage?: (msg: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
   mainLayer?: Layer.Layer<never>
 }
 
@@ -144,7 +140,6 @@ export const setupDurableObjectWebSocketRpc = ({
   rpcLayer,
   webSocketMode,
   onMessage,
-  onResponse,
   mainLayer,
 }: DurableObjectWebSocketRpcConfig) => {
   if (webSocketMode === 'accept') {
@@ -177,7 +172,7 @@ export const setupDurableObjectWebSocketRpc = ({
         ws,
         scope,
         incomingQueue,
-        ...omitUndefineds({ onMessage, onResponse }),
+        ...omitUndefineds({ onMessage }),
       }).pipe(Layer.provide(RpcSerialization.layerJson))
 
       const ServerLive = rpcLayer.pipe(Layer.provide(ProtocolLive))
@@ -244,8 +239,7 @@ export const setupDurableObjectWebSocketRpc = ({
 export interface WsRpcServerArgs {
   ws: CfTypes.WebSocket
   scope: Scope.Scope
-  onMessage?: (message: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => RpcMessage.FromServerEncoded | void
-  onResponse?: (message: RpcMessage.FromServerEncoded, ws: CfTypes.WebSocket) => void
+  onMessage?: (message: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
   /** Queue for receiving incoming messages from the WebSocket */
   incomingQueue: Queue.Queue<Uint8Array | string>
 }
@@ -281,10 +275,14 @@ export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
  *
  * @internal Used internally by `layerRpcServerWebsocket`
  */
-const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage, onResponse }: WsRpcServerArgs) =>
+const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServerArgs) =>
   Effect.gen(function* () {
     const serialization = yield* RpcSerialization.RpcSerialization
     const disconnects = yield* Queue.unbounded<number>()
+    const requestIdsWithSchemas = new Set<string | number>()
+    const interruptedExitEncoded = yield* Schema.encodeUnknownEffect(
+      serialization.codecFor(Schema.Exit(Schema.Void, Schema.Never, Schema.Never)),
+    )(Exit.interrupt()).pipe(Effect.orDie)
 
     const writeRaw = (msg: Uint8Array | string) => Effect.succeed(ws.send(msg))
 
@@ -293,19 +291,22 @@ const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage, onResponse }:
     const parser = serialization.makeUnsafe()
     const id = 0
 
-    const write = (response: RpcMessage.FromServerEncoded) => {
+    const writeResponse = (response: unknown) => {
       try {
         const encoded = parser.encode(response)
         if (encoded === undefined) {
           return Effect.void
         }
-        return Effect.andThen(
-          Effect.orDie(writeRaw(encoded)),
-          Effect.sync(() => onResponse?.(response, ws)),
-        )
+        return Effect.orDie(writeRaw(encoded))
       } catch (cause) {
         return Effect.orDie(writeRaw(parser.encode(RpcMessage.ResponseDefectEncoded(cause))!))
       }
+    }
+
+    const write = (response: RpcMessage.FromServerEncoded) => {
+      if (response._tag === 'Exit') requestIdsWithSchemas.delete(response.requestId)
+      if (response._tag === 'Defect') requestIdsWithSchemas.clear()
+      return writeResponse(response)
     }
 
     const protocol = yield* RpcServer.Protocol.make((writeRequest_) => {
@@ -322,8 +323,21 @@ const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage, onResponse }:
               while: () => i < decoded.length,
               body: () => {
                 const request = decoded[i++]!
-                const hookResponse = onMessage?.(request, ws)
-                return hookResponse === undefined ? writeRequest(id, request) : write(hookResponse)
+                if (onMessage !== undefined) onMessage(request, ws)
+
+                if (request._tag === 'Request') {
+                  requestIdsWithSchemas.add(request.id)
+                } else if (request._tag === 'Interrupt' && requestIdsWithSchemas.has(request.requestId) === false) {
+                  // Effect creates this Exit for an unknown request, but its encoder drops it when hibernation has
+                  // discarded the request schema.
+                  return writeResponse({
+                    _tag: 'Exit',
+                    requestId: request.requestId,
+                    exit: interruptedExitEncoded,
+                  })
+                }
+
+                return writeRequest(id, request)
               },
               step: Function.constVoid,
             })

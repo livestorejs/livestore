@@ -4,9 +4,8 @@ import { DurableObject } from 'cloudflare:workers'
 
 import { type CfTypes, setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
 import { CfDeclare } from '@livestore/common-cf/declare'
-import { Effect, Exit, Layer, Logger, References, Rpc, RpcMessage, Schema, type Scope } from '@livestore/utils/effect'
+import { Effect, Layer, Logger, References, RpcMessage, Schema, type Scope } from '@livestore/utils/effect'
 
-import { SyncWsRpc } from '../../common/ws-rpc-schema.ts'
 import {
   type Env,
   extractForwardedHeaders,
@@ -27,11 +26,6 @@ const WebSocketRequestResponsePair = CfDeclare.WebSocketRequestResponsePair
 
 /** Module-scoped JSON encoder; keeping the sync codec out of Effect generators avoids `schemaSyncInEffect`. */
 const jsonStringify = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown))
-const pullRpc = SyncWsRpc.requests.get('SyncWsRpc.Pull')
-if (pullRpc === undefined) throw new Error('SyncWsRpc.Pull schema is missing')
-const encodePullExit = Schema.encodeSync(Schema.toCodecJson(Rpc.exitSchema(pullRpc)))
-// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- toCodecJson intentionally erases its encoded type to Json
-const interruptedPullExit = encodePullExit(Exit.interrupt()) as RpcMessage.ResponseExitEncoded['exit']
 
 const DurableObjectBase = DurableObject as any as new (
   state: CfTypes.DurableObjectState,
@@ -92,9 +86,6 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     constructor(ctx: CfTypes.DurableObjectState, env: Env) {
       super(ctx, env)
 
-      // The map is intentionally instance-local: an attachment id absent here belongs to a pull from before hibernation.
-      const currentInstancePullRequestIds = new WeakMap<CfTypes.WebSocket, Set<string | number>>()
-
       const WebSocketRpcServerLive = makeRpcServer({
         doSelf: this,
         doOptions: options,
@@ -112,10 +103,6 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           onMessage: (request, ws) => {
             if (request._tag === 'Request' && request.tag === 'SyncWsRpc.Pull') {
               // Is Pull request: add requestId to pullRequestIds
-              const instancePullRequestIds = currentInstancePullRequestIds.get(ws) ?? new Set<string | number>()
-              instancePullRequestIds.add(request.id)
-              currentInstancePullRequestIds.set(ws, instancePullRequestIds)
-
               const attachment = ws.deserializeAttachment()
               const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
               ws.serializeAttachment(
@@ -125,41 +112,16 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
                 }),
               )
             } else if (request._tag === 'Interrupt') {
+              // Is Interrupt request: remove requestId from pullRequestIds
               const attachment = ws.deserializeAttachment()
-              const { pullRequestIds } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
-              const wasPersistedPull = pullRequestIds.includes(request.requestId)
-              const belongsToCurrentInstance = currentInstancePullRequestIds.get(ws)?.has(request.requestId) === true
-
-              // Effect emits Exit while the original request fiber exists. After hibernation that fiber and its
-              // schema registry are gone, so complete the persisted logical pull explicitly instead.
-              if (wasPersistedPull === true && belongsToCurrentInstance === false) {
-                return {
-                  _tag: 'Exit',
-                  requestId: request.requestId,
-                  exit: interruptedPullExit,
-                } satisfies RpcMessage.ResponseExitEncoded
-              }
+              const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
+              ws.serializeAttachment(
+                Schema.encodeSync(WebSocketAttachmentSchema)({
+                  ...rest,
+                  pullRequestIds: pullRequestIds.filter((id) => id !== request.requestId),
+                }),
+              )
             }
-
-            return undefined
-          },
-          onResponse: (response, ws) => {
-            if (response._tag !== 'Exit') return
-
-            currentInstancePullRequestIds.get(ws)?.delete(response.requestId)
-
-            const attachment = ws.deserializeAttachment()
-            const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
-            if (pullRequestIds.includes(response.requestId) === false) return
-
-            // Persist only logical live pulls. Terminal responses must remove their ids so reconstruction does not
-            // mistake an already-completed request for a stream that was interrupted by hibernation.
-            ws.serializeAttachment(
-              Schema.encodeSync(WebSocketAttachmentSchema)({
-                ...rest,
-                pullRequestIds: pullRequestIds.filter((id) => id !== response.requestId),
-              }),
-            )
           },
         })
       }
