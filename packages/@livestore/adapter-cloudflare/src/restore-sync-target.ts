@@ -3,8 +3,8 @@ import { RpcTarget } from 'cloudflare:workers'
 import type { CfTypes, SyncUpdateAck } from '@livestore/common-cf'
 import { makeSyncUpdateDeliver } from '@livestore/sync-cf/client'
 
-// `restore` (the `[restore]` method key for persistent stubs) ships in workerd since 2026-05 but is only typed in the
-// `experimental` entry of `@cloudflare/workers-types`. Drop this augmentation once the stable types carry it.
+// `restore` (the `[restore]` method key for persistent stubs) ships in workerd since 2026-05, but current stable and
+// experimental `@cloudflare/workers-types` entries omit this exported symbol. Drop the augmentation once they carry it.
 declare module 'cloudflare:workers' {
   export const restore: unique symbol
 }

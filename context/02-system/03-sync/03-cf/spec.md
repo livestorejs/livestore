@@ -127,8 +127,17 @@ Current reality a consumer must not read as guaranteed behavior:
 
 - **Persistent-stub API stability.** DO-RPC live pull depends on Cloudflare's
   undocumented `ctx.restore` persistent-stub surface and the
-  `allow_irrevocable_stub_storage` compatibility flag on both Workers. Its
-  stable support and cross-redeploy guarantees are not yet documented upstream.
+  `allow_irrevocable_stub_storage` compatibility flag on the storing Worker,
+  target Worker, and every restore-chain member. Cloudflare calls the flag
+  temporary and inherently insecure across trust boundaries because stored
+  capabilities cannot be audited or revoked. Disabling it breaks existing
+  stored stubs, so `rpc-sub:*` rows must be removed while the flag is still
+  enabled before migrating away. Its stable replacement and cross-redeploy
+  guarantees are not yet documented upstream.
+- **DO-RPC retry semantics.** Workerd is preparing automatic JS-RPC retries.
+  The live-update leg has no transport-level delivery id or focused duplicate-
+  delivery regression test, so a runtime that enables retries must be qualified
+  against ambiguous disconnects before adoption.
 - **WebSocket interrupt completion.** WS `Interrupt` still emits no Exit
   (`cf-worker/durable-object.ts`; issue #1418).
 - **Admin RPCs are defined but unwired** in all three transports

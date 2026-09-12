@@ -447,8 +447,8 @@ importers:
         version: link:../../packages/@livestore/sync-cf
     devDependencies:
       wrangler:
-        specifier: 4.42.2
-        version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
+        specifier: 4.128.0
+        version: 4.128.0(@cloudflare/workers-types@4.20251118.0)
 
   examples/tutorial-starter:
     dependencies:
@@ -488,7 +488,7 @@ importers:
     dependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.13.12
-        version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
+        version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))(workerd@1.20260831.1)(wrangler@4.128.0(@cloudflare/workers-types@4.20251118.0))
       '@cloudflare/workers-types':
         specifier: 4.20251118.0
         version: 4.20251118.0
@@ -548,8 +548,8 @@ importers:
         specifier: 7.3.1
         version: 7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
       wrangler:
-        specifier: 4.42.2
-        version: 4.42.2(@cloudflare/workers-types@4.20251118.0)
+        specifier: 4.128.0
+        version: 4.128.0(@cloudflare/workers-types@4.20251118.0)
 
   examples/web-linearlite:
     dependencies:
@@ -15886,6 +15886,23 @@ snapshots:
       unenv: 2.0.0-rc.21
       vite: 7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
       wrangler: 4.42.2(@cloudflare/workers-types@4.20251118.0)
+      ws: 8.18.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+      - workerd
+
+  '@cloudflare/vite-plugin@1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))(workerd@1.20260831.1)(wrangler@4.128.0(@cloudflare/workers-types@4.20251118.0))':
+    dependencies:
+      '@cloudflare/unenv-preset': 2.7.7(unenv@2.0.0-rc.21)(workerd@1.20260831.1)
+      '@remix-run/node-fetch-server': 0.8.1
+      get-port: 7.2.0
+      miniflare: 4.20251008.0
+      picocolors: 1.1.1
+      tinyglobby: 0.2.16
+      unenv: 2.0.0-rc.21
+      vite: 7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
+      wrangler: 4.128.0(@cloudflare/workers-types@4.20251118.0)
       ws: 8.18.0
     transitivePeerDependencies:
       - bufferutil

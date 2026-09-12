@@ -166,7 +166,7 @@ Creates a Durable Object RPC-based sync backend (for internal use).
 
 **Features:**
 - Direct RPC communication
-- Real-time live pull via Cloudflare persistent stubs (requires the `allow_irrevocable_stub_storage` compatibility flag on both Workers)
+- Real-time live pull via Cloudflare persistent stubs (requires the `allow_irrevocable_stub_storage` compatibility flag throughout the restore chain)
 - Hibernation support
 
 ### `restoreStoreDoSyncTarget(ctx, params, options?)`
@@ -248,6 +248,8 @@ main = "./src/worker.ts"
 compatibility_date = "2025-05-07"
 compatibility_flags = [
   "enable_request_signal", # Required for HTTP streaming
+  "allow_irrevocable_stub_storage", # Experimental; required only for DO-RPC live pull
+  "rpc_params_dup_stubs", # Required with compatibility dates before 2026-01-20
 ]
 
 [[durable_objects.bindings]]
@@ -258,6 +260,12 @@ class_name = "SyncBackendDO"
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO"]
 ```
+
+The two persistent-stub flags are needed only when this Worker serves DO-RPC live pull. `rpc_params_dup_stubs` is already implied by compatibility dates on or after `2026-01-20`.
+
+:::caution
+Cloudflare marks persistent-stub storage as experimental, temporary, and inherently insecure across trust boundaries because the target cannot audit or revoke stored capabilities. Every Worker that stores, targets, or participates in restoring the stub must opt in. Before disabling `allow_irrevocable_stub_storage` or adopting Cloudflare's future replacement, delete `rpc-sub:*` subscription rows while the flag is still enabled; existing stored stubs stop working when any Worker in the restore chain disables it.
+:::
 
 To use D1 instead of DO SQLite, add a D1 binding and reference it from `makeDurableObject({ storage: { _tag: 'd1', binding: '...' } })`:
 

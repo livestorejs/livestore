@@ -115,6 +115,12 @@ delivery so the backend removes its row. This preserves eviction recovery
 without a forgeable DO id or an idle stub that pins either DO awake
 (LS.SYS.RT.CF-R03; [provider decision
 0006](../../03-sync/03-cf/.decisions/0006-persistent-stub-subscriptions.md)).
+Every Worker in the restore chain opts into
+`allow_irrevocable_stub_storage`; compatibility dates before 2026-01-20 also
+enable `rpc_params_dup_stubs` to retain and explicitly dispose the caller's
+copy. The persistent capability must not cross a trust boundary. Before
+removing the storage flag, delete backend `rpc-sub:*` rows while it remains
+enabled because disabling it breaks already-stored stubs.
 
 ## Open Design Questions
 

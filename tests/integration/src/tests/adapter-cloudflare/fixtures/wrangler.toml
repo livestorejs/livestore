@@ -1,6 +1,10 @@
 name = "adapter-cloudflare-test"
 main = "./worker.ts"
 compatibility_date = "2025-08-24"
+compatibility_flags = [
+  "allow_irrevocable_stub_storage", # Persistent stubs (`ctx.restore`) for DO-RPC live updates
+  "rpc_params_dup_stubs", # Match current RPC parameter ownership semantics
+]
 
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"
