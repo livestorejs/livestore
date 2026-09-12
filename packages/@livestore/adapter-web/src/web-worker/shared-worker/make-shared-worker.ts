@@ -132,13 +132,13 @@ const makeWorkerRunner = Effect.gen(function* () {
   })
 
   // Cache first-applied invariants to enforce stability across leader transitions
+  // Per-client runtime params are intentionally excluded so a new leader can apply its own tuning.
   const InvariantsSchema = Schema.Struct({
     storeId: Schema.String,
     storageOptions: WorkerSchema.StorageType,
     syncPayloadEncoded: Schema.UndefinedOr(Schema.Json),
     liveStoreVersion: Schema.Literal(liveStoreVersion),
     devtoolsEnabled: Schema.Boolean,
-    params: WorkerSchema.LeaderWorkerParams,
   })
   type Invariants = typeof InvariantsSchema.Type
   const invariantsRef = yield* Ref.make<Invariants | undefined>(undefined)
@@ -156,7 +156,6 @@ const makeWorkerRunner = Effect.gen(function* () {
           syncPayloadEncoded: initial.syncPayloadEncoded,
           liveStoreVersion: clientLiveStoreVersion,
           devtoolsEnabled: initial.devtoolsEnabled,
-          params: initial.params,
         }
         const prev = yield* Ref.get(invariantsRef)
         // Early return on mismatch to keep happy path linear

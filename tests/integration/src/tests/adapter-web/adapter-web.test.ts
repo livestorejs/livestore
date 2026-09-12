@@ -10,6 +10,12 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Duration, Effect, FetchHttpClient, HttpClient, Layer, Schedule, Schema } from '@livestore/utils/effect'
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
 
+declare global {
+  interface Window {
+    __adapterWebLeaderAvailable?: () => Promise<boolean>
+  }
+}
+
 /** The dev server did not become reachable within the readiness retry budget. */
 class DevServerNotReadyError extends Schema.TaggedError<DevServerNotReadyError>()('DevServerNotReadyError', {
   cause: Schema.Defect(),
@@ -147,6 +153,70 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
 
       const [boot1, boot2] = yield* Effect.all([didBoot(page1), didBoot(page2)])
       expect(boot1 && boot2).toBe(true)
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.live('leader handoff accepts different per-client rebuild batch sizes', (test) =>
+    Effect.gen(function* () {
+      const port = yield* getFreePort.pipe(Effect.map(String))
+      yield* cmd(`./node_modules/.bin/vite --config ${viteConfigRel} dev --port ${port}`, {
+        env: { TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined, LSD_DEVTOOLS_LOCAL_PREVIEW: undefined },
+      }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)), Effect.forkScoped)
+      const url = `http://localhost:${port}`
+      const httpClient = HttpClient.filterStatusOk(yield* HttpClient.HttpClient)
+      yield* httpClient.head(url).pipe(
+        Effect.retry(Schedule.exponentialBackoff10Sec),
+        Effect.mapError((error) => new DevServerNotReadyError({ cause: error })),
+      )
+
+      const { browserContext } = yield* BrowserContext
+      const page1 = yield* Effect.promise(() => browserContext.newPage())
+      const page2 = yield* Effect.promise(() => browserContext.newPage())
+      const appUrl = `${url}/adapter-web/concurrent-boot`
+      const storeId = 'adapter-web-batch-size-handoff'
+
+      yield* Effect.promise(() =>
+        page1.goto(`${appUrl}?storeId=${storeId}&sessionId=a&clientId=A&stateRebuildBatchSize=1`),
+      )
+      yield* Effect.promise(() =>
+        page1.waitForSelector('text=Adapter Web Test App', { state: 'visible', timeout: 15000 }),
+      )
+      yield* Effect.promise(() =>
+        page2.goto(`${appUrl}?storeId=${storeId}&sessionId=b&clientId=B&stateRebuildBatchSize=2`),
+      )
+      yield* Effect.promise(() =>
+        page2.waitForSelector('text=Adapter Web Test App', { state: 'visible', timeout: 15000 }),
+      )
+
+      yield* Effect.promise(() => page1.close())
+      const leaderLockName = `livestore-tab-lock-${storeId}`
+      yield* Effect.promise(() =>
+        expect
+          .poll(
+            () =>
+              page2.evaluate(async (lockName) => {
+                const snapshot = await navigator.locks.query()
+                return snapshot.held?.some((lock) => lock.name === lockName) ?? false
+              }, leaderLockName),
+            { timeout: 15000 },
+          )
+          .toBe(true),
+      )
+      yield* Effect.sleep(Duration.millis(250))
+      yield* Effect.promise(() =>
+        expect
+          .poll(
+            () =>
+              page2.evaluate(() =>
+                Promise.race([
+                  window.__adapterWebLeaderAvailable?.() ?? Promise.resolve(false),
+                  new Promise<false>((resolve) => setTimeout(() => resolve(false), 1000)),
+                ]),
+              ),
+            { timeout: 15000 },
+          )
+          .toBe(true),
+      )
     }).pipe(withTestCtx(test)),
   )
 
