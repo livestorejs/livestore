@@ -307,13 +307,18 @@ const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage, onRequestExit
       }
     }
 
-    const write = (response: RpcMessage.FromServerEncoded) => {
-      if (response._tag === 'Exit') requestIdsWithSchemas.delete(response.requestId)
-      if (response._tag === 'Defect') requestIdsWithSchemas.clear()
-      const responseEffect = writeResponse(response)
-      return response._tag === 'Exit' && onRequestExit !== undefined
-        ? Effect.tap(responseEffect, () => Effect.sync(() => onRequestExit(response.requestId, ws)))
+    const writeExit = (requestId: string | number, exit: unknown) => {
+      requestIdsWithSchemas.delete(requestId)
+      const responseEffect = writeResponse({ _tag: 'Exit', requestId, exit })
+      return onRequestExit !== undefined
+        ? Effect.tap(responseEffect, () => Effect.sync(() => onRequestExit(requestId, ws)))
         : responseEffect
+    }
+
+    const write = (response: RpcMessage.FromServerEncoded) => {
+      if (response._tag === 'Exit') return writeExit(response.requestId, response.exit)
+      if (response._tag === 'Defect') requestIdsWithSchemas.clear()
+      return writeResponse(response)
     }
 
     const protocol = yield* RpcServer.Protocol.make((writeRequest_) => {
@@ -337,11 +342,7 @@ const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage, onRequestExit
                 } else if (request._tag === 'Interrupt' && requestIdsWithSchemas.has(request.requestId) === false) {
                   // Effect creates this Exit for an unknown request, but its encoder drops it when hibernation has
                   // discarded the request schema.
-                  return writeResponse({
-                    _tag: 'Exit',
-                    requestId: request.requestId,
-                    exit: interruptedExitEncoded,
-                  })
+                  return writeExit(request.requestId, interruptedExitEncoded)
                 }
 
                 return writeRequest(id, request)

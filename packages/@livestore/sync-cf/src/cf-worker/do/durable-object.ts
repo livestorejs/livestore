@@ -110,8 +110,6 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
                   pullRequestIds: [...pullRequestIds, request.id],
                 }),
               )
-            } else if (request._tag === 'Interrupt') {
-              removePullRequestId(ws, request.requestId)
             }
           },
           onRequestExit: (requestId, ws) => removePullRequestId(ws, requestId),

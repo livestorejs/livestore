@@ -106,6 +106,9 @@ describeWsDo(`${CloudflareWsProvider.doSqlite.name} sync provider — DO hiberna
         (message) => message._tag === 'Exit' && message.requestId === restoredRequestId,
       )
       assertSingleInterruptedExit(restoredExits, restoredRequestId)
+
+      const probe = yield* probeSyncDo({ port, storeId })
+      expect(probe.pullRequestIds).toEqual([])
     }).pipe(Effect.scoped, Effect.provide(getContext())),
   )
 
