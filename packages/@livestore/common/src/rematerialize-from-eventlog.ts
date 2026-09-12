@@ -31,7 +31,7 @@ export const rematerializeFromEventlog = Effect.fn('@livestore/common:rematerial
 }) {
   if (Schema.is(StateRebuildBatchSizeSchema)(batchSize) === false) {
     return yield* UnknownError.make({
-      cause: `Invalid stateRebuildBatchSize: ${batchSize}. Expected a positive integer.`,
+      cause: `Invalid stateRebuildBatchSize: ${String(batchSize)}. Expected a positive integer.`,
       payload: { batchSize },
     })
   }
