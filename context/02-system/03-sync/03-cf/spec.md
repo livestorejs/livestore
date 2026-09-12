@@ -48,8 +48,9 @@ arbitrates pushes and fans out live pull streams to subscribers
   attachments; hand-crafted RPC chunk frames) and DO-RPC subscriptions (a
   durable KV registry fed by live pulls). A terminal WebSocket RPC `Exit`
   removes its request ID from the attachment so later pushes target only active
-  pulls. Each DO-RPC callback carries the
-  subscription's `storeId` (`push.ts` → `emitStreamResponse` →
+  pulls; a connection-level RPC `Defect` clears all of the socket's request IDs
+  because the client terminates every outstanding request. Each DO-RPC callback
+  carries the subscription's `storeId` (`push.ts` → `emitStreamResponse` →
   `syncUpdateRpc(payload, storeId)`), so a client DO that was evicted and
   reconstructed can re-boot its store — whose boot catches up — before
   delivering, instead of dropping the update; the client-side re-boot is

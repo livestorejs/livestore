@@ -113,6 +113,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
             }
           },
           onRequestExit: (requestId, ws) => removePullRequestId(ws, requestId),
+          onProtocolDefect: clearPullRequestIds,
         })
       }
     }
@@ -225,15 +226,27 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
   }
 }
 
-const removePullRequestId = (ws: CfTypes.WebSocket, requestId: string | number) => {
+const removePullRequestId = (ws: CfTypes.WebSocket, requestId: string | number) =>
+  updatePullRequestIds(ws, (pullRequestIds) =>
+    pullRequestIds.includes(requestId) === true ? pullRequestIds.filter((id) => id !== requestId) : pullRequestIds,
+  )
+
+const clearPullRequestIds = (ws: CfTypes.WebSocket) =>
+  updatePullRequestIds(ws, (pullRequestIds) => (pullRequestIds.length === 0 ? pullRequestIds : []))
+
+const updatePullRequestIds = (
+  ws: CfTypes.WebSocket,
+  update: (pullRequestIds: ReadonlyArray<string | number>) => ReadonlyArray<string | number>,
+) => {
   const attachment = ws.deserializeAttachment()
   const { pullRequestIds, ...rest } = Schema.decodeUnknownSync(WebSocketAttachmentSchema)(attachment)
-  if (pullRequestIds.includes(requestId) === false) return
+  const nextPullRequestIds = update(pullRequestIds)
+  if (nextPullRequestIds === pullRequestIds) return
 
   ws.serializeAttachment(
     Schema.encodeSync(WebSocketAttachmentSchema)({
       ...rest,
-      pullRequestIds: pullRequestIds.filter((id) => id !== requestId),
+      pullRequestIds: nextPullRequestIds,
     }),
   )
 }

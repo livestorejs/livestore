@@ -100,6 +100,9 @@ describeWsDo(`${CloudflareWsProvider.doSqlite.name} sync provider — DO hiberna
       )
       assertSingleInterruptedExit(currentExits, currentRequestId)
 
+      const restoredProbe = yield* probeSyncDo({ port, storeId })
+      expect(restoredProbe.pullRequestIds).toEqual([restoredRequestId])
+
       const restoredExits = yield* sendAndCollectRpcMessages(
         ws,
         { _tag: 'Interrupt', requestId: restoredRequestId },
@@ -128,6 +131,30 @@ describeWsDo(`${CloudflareWsProvider.doSqlite.name} sync provider — DO hiberna
         live: true,
         cursor: Option.some({ backendId: 'stale-backend', eventSequenceNumber: EventSequenceNumber.Global.make(0) }),
       })
+
+      const probe = yield* probeSyncDo({ port, storeId })
+      expect(probe.pullRequestIds).toEqual([])
+    }).pipe(Effect.scoped, Effect.provide(getContext())),
+  )
+
+  Vitest.live('protocol defects clear restored fan-out request ids', () =>
+    Effect.gen(function* () {
+      const { port } = yield* syncProvider
+      const storeId = `pull-defect-cleanup-${nanoid()}`
+      const ws = yield* openWebSocket({ port, storeId })
+
+      yield* Effect.addFinalizer(() => Effect.sync(() => ws.close()))
+      yield* startLivePull({ ws, storeId, requestId: 'restored-pull' })
+
+      const before = yield* probeWithOpenSocket({ port, storeId })
+      yield* Effect.sleep(idleWindow)
+      const after = yield* probeWithOpenSocket({ port, storeId })
+      expect(after).not.toBe(before)
+
+      const restoredProbe = yield* probeSyncDo({ port, storeId })
+      expect(restoredProbe.pullRequestIds).toEqual(['restored-pull'])
+
+      yield* sendAndWaitForRpcMessage(ws, '{', (message) => message._tag === 'Defect')
 
       const probe = yield* probeSyncDo({ port, storeId })
       expect(probe.pullRequestIds).toEqual([])
@@ -183,13 +210,13 @@ type RpcWireMessage = ReturnType<typeof decodeRpcWireMessage>
 const startLivePull = ({ ws, storeId, requestId }: { ws: globalThis.WebSocket; storeId: string; requestId: string }) =>
   sendAndWaitForRpcMessage(
     ws,
-    {
+    encodeJson({
       _tag: 'Request',
       id: requestId,
       tag: 'SyncWsRpc.Pull',
       payload: encodePullPayload({ storeId, live: true, cursor: Option.none() }),
       headers: [],
-    },
+    }),
     (message) => message._tag === 'Chunk' && message.requestId === requestId,
   ).pipe(Effect.andThen(Effect.sync(() => ws.send(encodeJson({ _tag: 'Ack', requestId })))))
 
@@ -208,13 +235,13 @@ const runPullToExit = ({
 }) =>
   sendAndWaitForRpcMessage(
     ws,
-    {
+    encodeJson({
       _tag: 'Request',
       id: requestId,
       tag: 'SyncWsRpc.Pull',
       payload: encodePullPayload({ storeId, live, cursor }),
       headers: [],
-    },
+    }),
     (message) => message._tag === 'Exit' && message.requestId === requestId,
     {
       onMessage: (message) => {
@@ -262,7 +289,7 @@ const openWebSocket = ({ port, storeId }: { port: number; storeId: string }) =>
 
 const sendAndWaitForRpcMessage = (
   ws: globalThis.WebSocket,
-  outgoing: object,
+  outgoing: string,
   matches: (message: RpcWireMessage) => boolean,
   options?: {
     timeout?: Duration.Input
@@ -298,7 +325,7 @@ const sendAndWaitForRpcMessage = (
     ws.addEventListener('message', onMessage)
     ws.addEventListener('close', onError, { once: true })
     ws.addEventListener('error', onError, { once: true })
-    ws.send(encodeJson(outgoing))
+    ws.send(outgoing)
     signal.addEventListener('abort', cleanup, { once: true })
   }).pipe(Effect.timeout(options?.timeout ?? '5 seconds'))
 
