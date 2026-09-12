@@ -15,7 +15,10 @@ RPC stub would avoid the forged address but pin both objects awake.
 
 Cloudflare's persistent-stub API can store a stub as a capability and re-derive
 its target on each call without keeping either Durable Object resident. The API
-is live but undocumented and guarded by `allow_irrevocable_stub_storage`.
+is live but undocumented and guarded by `allow_irrevocable_stub_storage` on the
+storing Worker, target Worker, and every restore-chain member. Cloudflare calls
+this flag temporary and inherently insecure across trust boundaries because the
+target cannot audit or revoke the stored capability.
 
 ## Options
 
@@ -51,5 +54,13 @@ is live but undocumented and guarded by `allow_irrevocable_stub_storage`.
   the stale row.
 - Every minted or storage-loaded stub must be disposed after use. Failing to do
   so prevents hibernation.
+- Workers with compatibility dates before 2026-01-20 enable
+  `rpc_params_dup_stubs`, matching current RPC semantics so passing the callback
+  duplicates it and the client retains the copy that it explicitly disposes.
+- Removing `allow_irrevocable_stub_storage` is a data migration: delete every
+  backend `rpc-sub:*` row while the flag remains enabled before any Worker in
+  the restore chain disables it. Client `livestore-rpc-sub:*` markers are plain
+  strings and may be cleared in the same migration.
 - The implementation remains experimental until Cloudflare documents the API
-  and its persistence behavior across Worker redeploys.
+  and its persistence behavior across Worker redeploys. It must not be used
+  across an untrusted Worker boundary.

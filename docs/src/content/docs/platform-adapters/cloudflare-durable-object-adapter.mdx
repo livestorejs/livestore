@@ -40,6 +40,8 @@ main = "./src/worker.ts"
 compatibility_date = "2025-05-07"
 compatibility_flags = [
   "enable_request_signal", # Required for HTTP RPC streams
+  "allow_irrevocable_stub_storage", # Experimental persistent stubs for DO-RPC live updates
+  "rpc_params_dup_stubs", # Required with compatibility dates before 2026-01-20
 ]
 
 [[durable_objects.bindings]]
@@ -112,7 +114,11 @@ Creates a LiveStore instance inside a Durable Object.
 
 ### `[restore](params)`
 
-Client Durable Objects implement Cloudflare's `[restore]` method (the `restore` symbol exported from `cloudflare:workers`) and return `restoreStoreDoSyncTarget(this.ctx, params, { onUpdate })` from it (see the client Durable Object example above). For every live pull the sync backend stores a *persistent stub* to this target and re-derives it through `[restore]` on each publish, so a hibernated Durable Object is woken only when there is something to deliver. Both the client and the sync backend Worker need the `allow_irrevocable_stub_storage` compatibility flag.
+Client Durable Objects implement Cloudflare's `[restore]` method (the `restore` symbol exported from `cloudflare:workers`) and return `restoreStoreDoSyncTarget(this.ctx, params, { onUpdate })` from it (see the client Durable Object example above). For every live pull the sync backend stores a *persistent stub* to this target and re-derives it through `[restore]` on each publish, so a hibernated Durable Object is woken only when there is something to deliver. The client, sync backend, and every Worker in between need the `allow_irrevocable_stub_storage` compatibility flag. Workers with a compatibility date before `2026-01-20` should also enable `rpc_params_dup_stubs` so passing the stub duplicates it instead of transferring ownership.
+
+:::caution
+Cloudflare marks persistent-stub storage as experimental, temporary, and inherently insecure across trust boundaries because the target cannot audit or revoke stored capabilities. Do not accept restore parameters or persistent stubs from an untrusted Worker. Before removing `allow_irrevocable_stub_storage` or migrating to Cloudflare's future replacement, delete the sync backend's `rpc-sub:*` rows while the flag is still enabled; stored stubs stop working when any Worker in their restore chain disables the flag. Client-side `livestore-rpc-sub:*` markers can be cleared in the same migration.
+:::
 
 Cloudflare can evict a Durable Object at any time and start a fresh instance on the next request. Because a delivery is what wakes the DO, it can arrive at an instance that no longer has your store in memory — and a fresh instance can't tell which `storeId` it belongs to on its own. That's why `onUpdate(storeId)` runs before the update is routed. You choose how to use it:
 

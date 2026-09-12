@@ -42,8 +42,9 @@
   backend no longer trusts a self-reported DO id. **Breaking:** `createStoreDo`
   drops `durableObject.env` and `durableObject.bindingName`; client DOs
   implement `[restore]` with `restoreStoreDoSyncTarget` instead of
-  `syncUpdateRpc`; both Workers need the `allow_irrevocable_stub_storage`
-  compatibility flag
+  `syncUpdateRpc`; every Worker in the restore chain needs the experimental
+  `allow_irrevocable_stub_storage` compatibility flag, and compatibility dates
+  before 2026-01-20 also need `rpc_params_dup_stubs`
   ([#1601](https://github.com/livestorejs/livestore/issues/1601)).
 
 - **Cloudflare sync:** Serialize push admission through pull publication so an

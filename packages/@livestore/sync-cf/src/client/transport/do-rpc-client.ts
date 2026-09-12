@@ -261,8 +261,8 @@ export const handleSyncUpdateRpc = (ctx: CfTypes.DurableObjectState, payload: Ui
   )
 
 /**
- * `DurableObjectState.restore` (persistent stubs) exists in workerd since 2026-05 but is only typed in the
- * `experimental` entry of `@cloudflare/workers-types`, so the capability is checked at runtime here.
+ * `DurableObjectState.restore` (persistent stubs) exists in workerd since 2026-05 but is absent from stable Workers
+ * types. The current experimental entry types it with `any`, so this precise interface follows a runtime capability check.
  */
 interface RestorableDurableObjectState extends CfTypes.DurableObjectState {
   restore(params: SyncUpdateRestoreParams): Promise<SyncUpdateCallback>

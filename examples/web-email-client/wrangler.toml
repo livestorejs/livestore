@@ -1,7 +1,12 @@
 name = "livestore-example-web-email-client"
 main = "src/cf-worker/index.ts"
 compatibility_date = "2025-08-24"
-compatibility_flags = ["enable_request_signal", "nodejs_compat"]
+compatibility_flags = [
+  "enable_request_signal",
+  "nodejs_compat",
+  "allow_irrevocable_stub_storage", # Experimental persistent stubs for DO-RPC live updates
+  "rpc_params_dup_stubs", # Keep caller ownership when passing the persistent stub to the backend
+]
 
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"
