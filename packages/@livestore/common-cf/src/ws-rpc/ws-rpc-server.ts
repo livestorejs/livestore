@@ -28,6 +28,7 @@ import {
   RpcMessage,
   RpcSerialization,
   RpcServer,
+  Schema,
   Scope,
   Stream,
 } from '@livestore/utils/effect'
@@ -278,6 +279,10 @@ const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServer
   Effect.gen(function* () {
     const serialization = yield* RpcSerialization.RpcSerialization
     const disconnects = yield* Queue.unbounded<number>()
+    const requestIdsWithSchemas = new Set<string | number>()
+    const interruptedExitEncoded = yield* Schema.encodeUnknownEffect(
+      serialization.codecFor(Schema.Exit(Schema.Void, Schema.Never, Schema.Never)),
+    )(Exit.interrupt()).pipe(Effect.orDie)
 
     const writeRaw = (msg: Uint8Array | string) => Effect.succeed(ws.send(msg))
 
@@ -286,7 +291,7 @@ const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServer
     const parser = serialization.makeUnsafe()
     const id = 0
 
-    const write = (response: RpcMessage.FromServerEncoded) => {
+    const writeResponse = (response: unknown) => {
       try {
         const encoded = parser.encode(response)
         if (encoded === undefined) {
@@ -296,6 +301,12 @@ const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServer
       } catch (cause) {
         return Effect.orDie(writeRaw(parser.encode(RpcMessage.ResponseDefectEncoded(cause))!))
       }
+    }
+
+    const write = (response: RpcMessage.FromServerEncoded) => {
+      if (response._tag === 'Exit') requestIdsWithSchemas.delete(response.requestId)
+      if (response._tag === 'Defect') requestIdsWithSchemas.clear()
+      return writeResponse(response)
     }
 
     const protocol = yield* RpcServer.Protocol.make((writeRequest_) => {
@@ -312,9 +323,20 @@ const makeSocketProtocol = ({ incomingQueue, scope, ws, onMessage }: WsRpcServer
               while: () => i < decoded.length,
               body: () => {
                 const request = decoded[i++]!
-                if (onMessage !== undefined) {
-                  onMessage(request, ws)
+                if (onMessage !== undefined) onMessage(request, ws)
+
+                if (request._tag === 'Request') {
+                  requestIdsWithSchemas.add(request.id)
+                } else if (request._tag === 'Interrupt' && requestIdsWithSchemas.has(request.requestId) === false) {
+                  // Effect creates this Exit for an unknown request, but its encoder drops it when hibernation has
+                  // discarded the request schema.
+                  return writeResponse({
+                    _tag: 'Exit',
+                    requestId: request.requestId,
+                    exit: interruptedExitEncoded,
+                  })
                 }
+
                 return writeRequest(id, request)
               },
               step: Function.constVoid,

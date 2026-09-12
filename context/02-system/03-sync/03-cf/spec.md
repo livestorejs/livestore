@@ -128,8 +128,7 @@ Current reality a consumer must not read as guaranteed behavior:
   subscription on graceful `store.shutdown()`
   ([.decisions/0004](./.decisions/0004-do-rpc-graceful-unsubscribe.md)), but a
   client evicted and never returning keeps its row by design (never reaped on
-  silence — 0003), and WS `Interrupt` still emits no Exit
-  (`cf-worker/durable-object.ts:136`; issue #1418).
+  silence — 0003; issue #1601).
 - **Admin RPCs are defined but unwired** in all three transports
   (`AdminResetRoom`/`AdminInfo`).
 - **No head↔eventlog consistency check at load** (`layer.ts:96`), and

@@ -121,7 +121,6 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
                   pullRequestIds: pullRequestIds.filter((id) => id !== request.requestId),
                 }),
               )
-              // TODO also emit `Exit` stream RPC message
             }
           },
         })
