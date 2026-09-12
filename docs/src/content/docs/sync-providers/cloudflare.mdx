@@ -162,19 +162,16 @@ Creates a Durable Object RPC-based sync backend (for internal use).
 
 **Options:**
 - `syncBackendStub` - Durable Object stub implementing `SyncBackendRpcInterface`
-- `durableObjectState` - The client Durable Object's `ctx` (`DurableObjectState`); scopes live-pull routing to this instance so it resets on reconstruction
-- `durableObjectContext` - Context for RPC callbacks:
-  - `bindingName` - Wrangler binding name for the client DO
-  - `durableObjectId` - Client Durable Object ID
+- `durableObjectState` - The client Durable Object's `ctx` (`DurableObjectState`); mints the live-pull persistent stub via `ctx.restore` and scopes live-pull routing to this instance so it resets on reconstruction
 
 **Features:**
 - Direct RPC communication
-- Real-time live pull via callbacks
+- Real-time live pull via Cloudflare persistent stubs (requires the `allow_irrevocable_stub_storage` compatibility flag throughout the restore chain)
 - Hibernation support
 
-### `handleSyncUpdateRpc(ctx, payload)`
+### `restoreStoreDoSyncTarget(ctx, params, options?)`
 
-Handles the RPC callback for live-pull updates in Durable Objects. Pass the client DO's `ctx` (`DurableObjectState`) so the update is routed to that instance's live pull. The `syncUpdateRpc` method also receives the subscription's `storeId` as a required trailing argument: a reconstructed (store-less) DO can re-boot its store from it and catch up rather than drop the update — see [the Durable Object adapter's recovery options](/platform-adapters/cloudflare-durable-object-adapter).
+From `@livestore/adapter-cloudflare`. Return it from the client DO's `[restore]` method: the sync backend re-derives its live-update target through `[restore]` on every publish. Pass the client DO's `ctx` (`DurableObjectState`) so the update is routed to that instance's live pull. `options.onUpdate(storeId)` runs before routing: a reconstructed (store-less) DO can re-boot its store from it and catch up rather than drop the update — see [the Durable Object adapter's recovery options](/platform-adapters/cloudflare-durable-object-adapter).
 
 <SNIPPETS.clientDo />
 
@@ -251,6 +248,8 @@ main = "./src/worker.ts"
 compatibility_date = "2025-05-07"
 compatibility_flags = [
   "enable_request_signal", # Required for HTTP streaming
+  "allow_irrevocable_stub_storage", # Experimental; required only for DO-RPC live pull
+  "rpc_params_dup_stubs", # Required with compatibility dates before 2026-01-20
 ]
 
 [[durable_objects.bindings]]
@@ -261,6 +260,12 @@ class_name = "SyncBackendDO"
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO"]
 ```
+
+The two persistent-stub flags are needed only when this Worker serves DO-RPC live pull. `rpc_params_dup_stubs` is already implied by compatibility dates on or after `2026-01-20`.
+
+:::caution
+Cloudflare marks persistent-stub storage as experimental, temporary, and inherently insecure across trust boundaries because the target cannot audit or revoke stored capabilities. Every Worker that stores, targets, or participates in restoring the stub must opt in. Before disabling `allow_irrevocable_stub_storage` or adopting Cloudflare's future replacement, delete `rpc-sub:*` subscription rows while the flag is still enabled; existing stored stubs stop working when any Worker in the restore chain disables it.
+:::
 
 To use D1 instead of DO SQLite, add a D1 binding and reference it from `makeDurableObject({ storage: { _tag: 'd1', binding: '...' } })`:
 

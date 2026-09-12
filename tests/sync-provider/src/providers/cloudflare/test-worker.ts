@@ -1,9 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import { DurableObject } from 'cloudflare:workers'
+import { DurableObject, restore } from 'cloudflare:workers'
 
-import { createStoreDoPromise } from '@livestore/adapter-cloudflare'
-import { type ClientDoWithRpcCallback, setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
+import { createStoreDoPromise, restoreStoreDoSyncTarget } from '@livestore/adapter-cloudflare'
+import { setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
 import type { CfDeclare } from '@livestore/common-cf/declare'
 import { type Store } from '@livestore/livestore'
 import { schema, tables } from '@livestore/livestore/internal/testing-utils'
@@ -15,7 +15,7 @@ import {
   rpcSubscriptionKeyPrefix,
   type SyncBackendRpcInterface,
 } from '@livestore/sync-cf/cf-worker'
-import { handleSyncUpdateRpc, makeDoRpcSync } from '@livestore/sync-cf/client'
+import { makeDoRpcSync } from '@livestore/sync-cf/client'
 import {
   Cache,
   Effect,
@@ -63,8 +63,8 @@ interface StoreClientDoProbe {
 
 export interface Env {
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface & SyncDoProbe>
-  TEST_CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback & TestClientDoProbe>
-  STORE_CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback & StoreClientDoProbe>
+  TEST_CLIENT_DO: CfTypes.DurableObjectNamespace<TestClientDo>
+  STORE_CLIENT_DO: CfTypes.DurableObjectNamespace<StoreClientDo>
   /** Eventlog database */
   DB: CfTypes.D1Database
 }
@@ -111,7 +111,7 @@ const DurableObjectBase = DurableObject as any as new (
   env: Env,
 ) => CfTypes.DurableObject
 
-export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCallback {
+export class TestClientDo extends DurableObjectBase implements TestClientDoProbe {
   __DURABLE_OBJECT_BRAND = 'ClientDO' as never
   env: Env
   ctx: CfTypes.DurableObjectState
@@ -138,7 +138,6 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
               return yield* makeDoRpcSync({
                 syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
                 durableObjectState: this.ctx,
-                durableObjectContext: { bindingName: 'TEST_CLIENT_DO', durableObjectId: this.ctx.id.toString() },
               })({ storeId, clientId, payload }).pipe(Scope.provide(syncBackendScope), Effect.orDie)
             }),
         })
@@ -227,8 +226,9 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
     return { instanceId: this.instanceId }
   }
 
-  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
-    await handleSyncUpdateRpc(this.ctx, payload)
+  /** The sync backend re-derives its live-update target through here on every publish. */
+  [restore](params: unknown) {
+    return restoreStoreDoSyncTarget(this.ctx, params)
   }
 }
 
@@ -237,7 +237,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
  * so a reverse-RPC update is applied to (and materialized in) its own store. On reconstruction the
  * store-less wake re-boots from the storeId carried in the reverse-RPC and catches up.
  */
-export class StoreClientDo extends DurableObjectBase implements ClientDoWithRpcCallback {
+export class StoreClientDo extends DurableObjectBase implements StoreClientDoProbe {
   __DURABLE_OBJECT_BRAND = 'ClientDO' as never
   env: Env
   ctx: CfTypes.DurableObjectState
@@ -269,9 +269,9 @@ export class StoreClientDo extends DurableObjectBase implements ClientDoWithRpcC
     return { instanceId: this.instanceId, todoIds }
   }
 
-  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>, storeId: string) {
-    await this.#boot(storeId)
-    await handleSyncUpdateRpc(this.ctx, payload)
+  /** A store-less wake re-boots from the storeId carried in the restore params before the update is routed. */
+  [restore](params: unknown) {
+    return restoreStoreDoSyncTarget(this.ctx, params, { onUpdate: (storeId) => this.#boot(storeId) })
   }
 
   async #boot(storeId: string): Promise<void> {
@@ -281,7 +281,7 @@ export class StoreClientDo extends DurableObjectBase implements ClientDoWithRpcC
       storeId,
       clientId: 'store-client-do',
       sessionId: 'store-client-do-session',
-      durableObject: { ctx: this.ctx, env: this.env, bindingName: 'STORE_CLIENT_DO' },
+      durableObject: { ctx: this.ctx },
       syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
       livePull: true,
     })

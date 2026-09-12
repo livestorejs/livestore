@@ -160,7 +160,6 @@ Vitest.describe('sync-cf telemetry ownership', () => {
       const observability = makeObservability(layer)
       const input = makeDoInput()
       const protocol = layerProtocolDurableObject({
-        callerContext: { bindingName: 'TEST', durableObjectId: 'client' },
         callRpc: (payload) =>
           createDoRpcHandler({
             // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Effect RPC owns this ArrayBuffer-backed payload.
