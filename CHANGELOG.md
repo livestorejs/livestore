@@ -10,10 +10,11 @@
 
 ### Changed
 
-- **Store commits:** Fixed the documented callback form of `store.commit` and
-  its TypeScript overloads, including calls with commit options. Callback events
-  are collected before materialization, and throwing callbacks apply no events
-  ([#1611](https://github.com/livestorejs/livestore/issues/1611)).
+- **Store commits:** Fixed the callback form of `store.commit` and its TypeScript
+  overloads, including calls with commit options. Synchronous callbacks return
+  an event array that is collected before materialization, and throwing callbacks
+  apply no events ([#1611](https://github.com/livestorejs/livestore/issues/1611),
+  [#1616](https://github.com/livestorejs/livestore/pull/1616)).
 - **Cloudflare sync telemetry:** Added optional Effect tracer layers via `otel: layer`.
   Telemetry cleanup runs in the background, and finite WebSocket operations and
   DO-RPC pull streams now emit their sync spans
@@ -60,10 +61,11 @@
 
 ### Breaking Changes
 
-- **Store commit callbacks:** Callback return values are now ignored. Replace
-  the undocumented `store.commit(() => [event])` form with `store.commit(event)`
-  or `store.commit((commit) => { commit(event) })`
-  ([#1611](https://github.com/livestorejs/livestore/issues/1611)).
+- **Store commit callbacks:** Callbacks now synchronously return an event array.
+  Replace `store.commit((commit) => { commit(event) })` with
+  `store.commit(() => [event])` or `store.commit(event)`
+  ([#1611](https://github.com/livestorejs/livestore/issues/1611),
+  [#1616](https://github.com/livestorejs/livestore/pull/1616)).
 - **Rebuild completion tracking:** The first open after upgrading from a version
   without the completion marker rebuilds derived state once. No application
   configuration changes are needed. Cloudflare deployments should budget for

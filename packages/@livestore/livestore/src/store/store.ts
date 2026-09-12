@@ -821,20 +821,16 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *   events.todoCompleted({ id: todoId }))
    * ```
    *
-   * For more advanced transaction scenarios, you can pass a synchronous function to `commit` which will receive a callback
-   * to which you can pass multiple events to be committed in the same database transaction.
-   * Under the hood this will simply collect all events and apply them in a single database transaction.
-   * The callback's return value is ignored.
+   * For conditional batches, you can pass a synchronous function to `commit` which returns an array of events.
+   * LiveStore evaluates the function before applying the returned events in a single database transaction.
    *
    * @example
    * ```ts
-   * store.commit((commit) => {
+   * store.commit(() => {
    *   const todoId = nanoid()
-   *   if (Math.random() > 0.5) {
-   *     commit(events.todoCreated({ id: todoId, text: 'Make coffee' }))
-   *   } else {
-   *     commit(events.todoCompleted({ id: todoId }))
-   *   }
+   *   return Math.random() > 0.5
+   *     ? [events.todoCreated({ id: todoId, text: 'Make coffee' })]
+   *     : [events.todoCompleted({ id: todoId })]
    * })
    * ```
    *
@@ -856,16 +852,16 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    */
   commit: {
     <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(...list: TCommitArg): void
-    (txn: CommitCallback<TSchema>): void
+    (buildEvents: CommitBatchBuilder<TSchema>): void
     <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(
       options: StoreCommitOptions,
       ...list: TCommitArg
     ): void
-    (options: StoreCommitOptions, txn: CommitCallback<TSchema>): void
-  } = (firstEventOrTxnFnOrOptions: any, ...restEvents: any[]) => {
+    (options: StoreCommitOptions, buildEvents: CommitBatchBuilder<TSchema>): void
+  } = (firstEventOrBatchBuilderOrOptions: any, ...restEvents: any[]) => {
     this.checkShutdown('commit')
 
-    const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
+    const { events, options } = this.getCommitArgs(firstEventOrBatchBuilderOrOptions, restEvents)
 
     Effect.gen({ self: this }, function* () {
       const commitsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.commitsSpanContext)
@@ -1263,7 +1259,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     effect.pipe(Effect.tapCauseLogPretty, Effect.runPromiseWith(this[StoreInternalsSymbol].effectContext.services))
 
   private getCommitArgs = (
-    firstEventOrTxnFnOrOptions: any,
+    firstEventOrBatchBuilderOrOptions: any,
     restEvents: any[],
   ): {
     events: LiveStoreEvent.Input.ForSchema<TSchema>[]
@@ -1271,27 +1267,29 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   } => {
     let events: LiveStoreEvent.Input.ForSchema<TSchema>[] = []
     let options: StoreCommitOptions | undefined
-    let commitArgs = [firstEventOrTxnFnOrOptions, ...restEvents]
+    let commitArgs = [firstEventOrBatchBuilderOrOptions, ...restEvents]
 
     if (
-      firstEventOrTxnFnOrOptions?.label !== undefined ||
-      firstEventOrTxnFnOrOptions?.skipRefresh !== undefined ||
-      firstEventOrTxnFnOrOptions?.otelContext !== undefined ||
-      firstEventOrTxnFnOrOptions?.spanLinks !== undefined ||
+      firstEventOrBatchBuilderOrOptions?.label !== undefined ||
+      firstEventOrBatchBuilderOrOptions?.skipRefresh !== undefined ||
+      firstEventOrBatchBuilderOrOptions?.otelContext !== undefined ||
+      firstEventOrBatchBuilderOrOptions?.spanLinks !== undefined ||
       typeof restEvents[0] === 'function'
     ) {
-      options = firstEventOrTxnFnOrOptions
+      options = firstEventOrBatchBuilderOrOptions
       commitArgs = restEvents
     }
 
-    const firstEventOrTxnFn = commitArgs[0]
-    if (typeof firstEventOrTxnFn === 'function') {
-      // TODO ensure that function is synchronous and isn't called in an async way (also write tests for this).
-      // Collect before materializing so a throwing callback cannot commit a partial batch.
-      firstEventOrTxnFn((...args: LiveStoreEvent.Input.ForSchema<TSchema>[]) => {
-        events.push(...args)
-      })
-    } else if (firstEventOrTxnFn !== undefined) {
+    const firstEventOrBatchBuilder = commitArgs[0]
+    if (typeof firstEventOrBatchBuilder === 'function') {
+      const builtEvents: unknown = firstEventOrBatchBuilder()
+      if (Array.isArray(builtEvents) === false) {
+        throw new TypeError('store.commit callback must synchronously return an array of events')
+      }
+
+      // Copy the completed batch so callers cannot mutate the array while it enters the commit pipeline.
+      events = [...builtEvents]
+    } else if (firstEventOrBatchBuilder !== undefined) {
       events = commitArgs
     }
 
@@ -1299,8 +1297,4 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   }
 }
 
-type CommitCallback<TSchema extends LiveStoreSchema> = (
-  commit: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(
-    ...events: TCommitArg
-  ) => void,
-) => void
+type CommitBatchBuilder<TSchema extends LiveStoreSchema> = () => ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>
