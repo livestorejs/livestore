@@ -59,7 +59,11 @@ export const syncProvider = Effect.gen(function* () {
 export const probeSyncDo = ({ port, storeId }: { port: number; storeId: string }) =>
   Effect.promise(() =>
     fetch(`http://localhost:${port}/instance/sync?storeId=${storeId}`).then((res) => res.json()),
-  ).pipe(Effect.map((json) => json as { instanceId: string; webSocketCount: number }))
+  ).pipe(
+    Effect.map(
+      (json) => json as { instanceId: string; webSocketCount: number; pullRequestIds: ReadonlyArray<string | number> },
+    ),
+  )
 
 /** Forks a scoped live pull that records every delivered event id into the returned array. */
 export const collectReceivedIds = (backend: SyncBackend.SyncBackend) =>

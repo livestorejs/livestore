@@ -14,6 +14,7 @@ import {
   matchSyncRequest,
   rpcSubscriptionKeyPrefix,
   type SyncBackendRpcInterface,
+  WebSocketAttachmentSchema,
 } from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc, makeDoRpcSync } from '@livestore/sync-cf/client'
 import {
@@ -46,7 +47,11 @@ const jsonParse = Schema.decodeUnknownSync(Schema.fromJsonString(Schema.Unknown)
 const observedPushPayloads = new Map<string, Schema.Json | undefined>()
 
 interface SyncDoProbe {
-  getHibernationProbe(): { instanceId: string; webSocketCount: number }
+  getHibernationProbe(): {
+    instanceId: string
+    webSocketCount: number
+    pullRequestIds: ReadonlyArray<string | number>
+  }
   getPushProbe(storeId: string): { observed: boolean; payload: Schema.Json | null }
   getRpcSubscriptionCount(storeId: string): number
 }
@@ -89,8 +94,16 @@ export class SyncBackendDO extends makeDurableObject({
     this.#state = state
   }
 
-  getHibernationProbe(): { instanceId: string; webSocketCount: number } {
-    return { instanceId: this.instanceId, webSocketCount: this.#state.getWebSockets().length }
+  getHibernationProbe(): {
+    instanceId: string
+    webSocketCount: number
+    pullRequestIds: ReadonlyArray<string | number>
+  } {
+    const webSockets = this.#state.getWebSockets()
+    const pullRequestIds = webSockets.flatMap(
+      (ws) => Schema.decodeUnknownSync(WebSocketAttachmentSchema)(ws.deserializeAttachment()).pullRequestIds,
+    )
+    return { instanceId: this.instanceId, webSocketCount: webSockets.length, pullRequestIds }
   }
 
   getPushProbe(storeId: string): { observed: boolean; payload: Schema.Json | null } {
