@@ -30,11 +30,6 @@ jobs:
     defaults:
       run:
         shell: bash
-    env:
-      FORCE_SETUP: '1'
-      CI: 'true'
-      BUCK2_NO_REMOTE_CACHE: '1'
-      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -532,7 +527,8 @@ jobs:
       - name: Resolve devenv
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'Resolve devenv' 'cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && '\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\'' '\''devenv.lock'\'''
+          bash "$__genie_ci_retry_script" 'Resolve devenv' '__genie_ci_retry_script='\''${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'\''
+          bash "$__genie_ci_retry_script" '\''resolve devenv (devenv.lock)'\'' '\''cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && '\''"'\''"'\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\''"'\''"'\'' '\''"'\''"'\''devenv.lock'\''"'\''"'\'''\'''
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -713,7 +709,8 @@ jobs:
       - name: Resolve devenv
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'Resolve devenv' 'cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && '\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\'' '\''devenv.lock'\'''
+          bash "$__genie_ci_retry_script" 'Resolve devenv' '__genie_ci_retry_script='\''${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'\''
+          bash "$__genie_ci_retry_script" '\''resolve devenv (devenv.lock)'\'' '\''cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && '\''"'\''"'\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\''"'\''"'\'' '\''"'\''"'\''devenv.lock'\''"'\''"'\'''\'''
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -870,7 +867,8 @@ jobs:
       - name: Resolve devenv
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'Resolve devenv' 'cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && '\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\'' '\''devenv.lock'\'''
+          bash "$__genie_ci_retry_script" 'Resolve devenv' '__genie_ci_retry_script='\''${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'\''
+          bash "$__genie_ci_retry_script" '\''resolve devenv (devenv.lock)'\'' '\''cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && '\''"'\''"'\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\''"'\''"'\'' '\''"'\''"'\''devenv.lock'\''"'\''"'\'''\'''
         shell: bash
       - name: Sync production docs search
         run: |
