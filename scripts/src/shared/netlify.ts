@@ -12,12 +12,13 @@ import {
   HttpClientRequest,
   Predicate,
   Result,
+  Schedule,
   Schema,
   Stream,
 } from '@livestore/utils/effect'
 
 export class NetlifyError extends Schema.TaggedError<NetlifyError>()('NetlifyError', {
-  reason: Schema.Literals(['auth', 'unknown']),
+  reason: Schema.Literals(['auth', 'timeout', 'unknown']),
   message: Schema.String,
   cause: Schema.optional(Schema.Unknown),
 }) {}
@@ -149,8 +150,12 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
       '--build',
       '--filter',
       '@local/docs',
-      // In debug mode, omit --json so we get full build logs in stdout/stderr
-      debugEnabled === true ? undefined : '--json',
+      // `--json` keeps stdout machine-parseable; `--verbose` routes the build log
+      // to stderr without breaking that. `--debug` additionally surfaces the CLI's
+      // swallowed resolveConfig errors — the real cause behind masked
+      // "Project not found" site-resolution failures — on stderr.
+      '--json',
+      '--verbose',
       debugEnabled === true ? '--debug' : undefined,
       `--site=${resolvedSiteArg}`,
       message !== undefined ? `--message=${message}` : undefined,
@@ -214,7 +219,9 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
 
     yield* Effect.logDebug(`[deploy-to-netlify] Deploy raw stdout for ${site}: ${rawOutput}`)
     if (rawStderr.trim().length > 0) {
-      yield* Effect.logWarning(`[deploy-to-netlify] Deploy stderr for ${site}: ${rawStderr}`)
+      // With `--verbose` the build log lands on stderr; keep success output at
+      // debug level and reserve warnings/errors for actual failures.
+      yield* Effect.logDebug(`[deploy-to-netlify] Deploy stderr for ${site}: ${rawStderr}`)
     }
 
     const result = yield* Schema.decodeEffect(Schema.fromJsonString(NetlifyDeployResultSchema))(rawOutput).pipe(
@@ -238,6 +245,18 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
 
     return result
   },
+  // netlify-cli masks any non-401 sites-API failure (5xx, 429, network blip) as
+  // `Project not found. Please rerun "netlify link"` with empty stdout, which
+  // surfaces above as a JSON-decode failure. Such transients clear within
+  // seconds-to-minutes, so retry the whole CLI invocation twice before failing.
+  // This aspect sits inside the 20-minute budget below, so retries share that
+  // budget and cannot push past the shell backstop. Auth failures fail fast and
+  // are not retried; neither are timeouts.
+  Effect.retry({
+    times: 2,
+    schedule: Schedule.spaced(Duration.seconds(30)),
+    while: (error) => Schema.is(NetlifyError)(error) === true && error.reason === 'unknown',
+  }),
   // With Option A (`--build`), the timeout must cover the full pipeline: Astro
   // build (including typedoc API docs) + Netlify upload. 20 minutes is a generous
   // inner backstop while staying clearly below the shell-level `timeout(1) 25m`
@@ -248,7 +267,7 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
     orElse: () =>
       new NetlifyError({
         message: 'Netlify deploy timed out after 20 minutes',
-        reason: 'unknown',
+        reason: 'timeout',
       }),
   }),
 )
