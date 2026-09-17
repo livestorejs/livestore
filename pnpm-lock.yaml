@@ -1763,7 +1763,7 @@ importers:
         version: 0.43.1
       expressive-code-twoslash:
         specifier: 0.5.3
-        version: 0.5.3(@expressive-code/core@0.43.1)(expressive-code@0.43.1)(supports-color@10.2.2)(typescript@7.0.2)
+        version: 0.5.3(@expressive-code/core@0.43.1)(expressive-code@0.43.1)(supports-color@10.2.2)(typescript@6.0.3)
       hast:
         specifier: 1.0.0
         version: 1.0.0
@@ -1771,12 +1771,12 @@ importers:
         specifier: 9.0.4
         version: 9.0.4
       typescript:
-        specifier: 7.0.2
-        version: 7.0.2
+        specifier: 6.0.3
+        version: 6.0.3
     devDependencies:
       '@astrojs/starlight':
         specifier: 0.40.0
-        version: 0.40.0(astro@6.4.6(@netlify/blobs@10.7.8(supports-color@10.2.2))(@types/node@25.3.3)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.49.0)(supports-color@10.2.2)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))(supports-color@10.2.2)(typescript@7.0.2)
+        version: 0.40.0(astro@6.4.6(@netlify/blobs@10.7.8(supports-color@10.2.2))(@types/node@25.3.3)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.49.0)(supports-color@10.2.2)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))(supports-color@10.2.2)(typescript@6.0.3)
       '@effect/opentelemetry':
         specifier: 4.0.0-rc.113
         version: 4.0.0-rc.113(@opentelemetry/api-logs@0.217.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.7.1(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.41.1)(effect@4.0.0-rc.113)
@@ -14646,6 +14646,41 @@ snapshots:
       '@astrojs/starlight': 0.40.0(astro@6.4.6(@netlify/blobs@10.7.8(supports-color@10.2.2))(@types/node@25.3.3)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.49.0)(supports-color@10.2.2)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))(supports-color@10.2.2)(typescript@7.0.2)
       tailwindcss: 4.1.18
 
+  '@astrojs/starlight@0.40.0(astro@6.4.6(@netlify/blobs@10.7.8(supports-color@10.2.2))(@types/node@25.3.3)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.49.0)(supports-color@10.2.2)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))(supports-color@10.2.2)(typescript@6.0.3)':
+    dependencies:
+      '@astrojs/markdown-remark': 7.2.0(supports-color@10.2.2)
+      '@astrojs/mdx': 6.0.3(astro@6.4.6(@netlify/blobs@10.7.8(supports-color@10.2.2))(@types/node@25.3.3)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.49.0)(supports-color@10.2.2)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))(supports-color@10.2.2)
+      '@astrojs/sitemap': 3.7.2
+      '@pagefind/default-ui': 1.5.2
+      '@types/hast': 3.0.4
+      '@types/js-yaml': 4.0.9
+      '@types/mdast': 4.0.4
+      astro: 6.4.6(@netlify/blobs@10.7.8(supports-color@10.2.2))(@types/node@25.3.3)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.49.0)(supports-color@10.2.2)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
+      astro-expressive-code: 0.43.1(astro@6.4.6(@netlify/blobs@10.7.8(supports-color@10.2.2))(@types/node@25.3.3)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.49.0)(supports-color@10.2.2)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))
+      bcp-47: 2.1.0
+      hast-util-from-html: 2.0.3
+      hast-util-select: 6.0.4
+      hast-util-to-string: 3.0.1
+      hastscript: 9.0.1
+      i18next: 26.3.3(typescript@6.0.3)
+      js-yaml: 4.1.1
+      klona: 2.0.6
+      magic-string: 0.30.21
+      mdast-util-directive: 3.1.0(supports-color@10.2.2)
+      mdast-util-to-markdown: 2.1.2
+      mdast-util-to-string: 4.0.0
+      pagefind: 1.5.2
+      rehype: 13.0.2
+      rehype-format: 5.0.1
+      remark-directive: 4.0.0(supports-color@10.2.2)
+      ultrahtml: 1.6.0
+      unified: 11.0.5
+      unist-util-visit: 5.1.0
+      vfile: 6.0.3
+    transitivePeerDependencies:
+      - supports-color
+      - typescript
+
   '@astrojs/starlight@0.40.0(astro@6.4.6(@netlify/blobs@10.7.8(supports-color@10.2.2))(@types/node@25.3.3)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.49.0)(supports-color@10.2.2)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))(supports-color@10.2.2)(typescript@7.0.2)':
     dependencies:
       '@astrojs/markdown-remark': 7.2.0(supports-color@10.2.2)
@@ -17285,11 +17320,11 @@ snapshots:
       '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
       '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
       '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
-      '@livestore/common': 0.4.0(ebb7e56dd316ebb5b9ca8544ffd64595)
-      '@livestore/devtools-web-common': 0.4.0(ebb7e56dd316ebb5b9ca8544ffd64595)
-      '@livestore/sqlite-wasm': 0.4.0(ebb7e56dd316ebb5b9ca8544ffd64595)
-      '@livestore/utils': 0.4.0(ebb7e56dd316ebb5b9ca8544ffd64595)
-      '@livestore/webmesh': 0.4.0(ebb7e56dd316ebb5b9ca8544ffd64595)
+      '@livestore/common': 0.4.0(0ba617fc505c6819ad552c85e25710b7)
+      '@livestore/devtools-web-common': 0.4.0(0ba617fc505c6819ad552c85e25710b7)
+      '@livestore/sqlite-wasm': 0.4.0(0ba617fc505c6819ad552c85e25710b7)
+      '@livestore/utils': 0.4.0(0ba617fc505c6819ad552c85e25710b7)
+      '@livestore/webmesh': 0.4.0(0ba617fc505c6819ad552c85e25710b7)
       '@opentelemetry/api': 1.9.0
       effect: 4.0.0-rc.113
 
@@ -17469,6 +17504,23 @@ snapshots:
       - utf-8-validate
       - vitest
 
+  '@livestore/common-cf@0.4.0(0ba617fc505c6819ad552c85e25710b7)':
+    dependencies:
+      '@cloudflare/workers-types': 4.20251118.0
+      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2))
+      '@effect/platform': 0.96.1(effect@4.0.0-rc.113)
+      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
+      '@livestore/utils': 0.4.0(0ba617fc505c6819ad552c85e25710b7)
+      '@opentelemetry/api': 1.9.0
+      effect: 4.0.0-rc.113
+
   '@livestore/common-cf@0.4.0(83eb09838c28e8f24ee109b472706d90)':
     dependencies:
       '@cloudflare/workers-types': 4.20251118.0
@@ -17576,6 +17628,23 @@ snapshots:
       - '@effect/typeclass'
       - '@opentelemetry/resources'
       - effect
+
+  '@livestore/common@0.4.0(0ba617fc505c6819ad552c85e25710b7)':
+    dependencies:
+      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2))
+      '@effect/platform': 0.96.1(effect@4.0.0-rc.113)
+      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
+      '@livestore/utils': 0.4.0(0ba617fc505c6819ad552c85e25710b7)
+      '@livestore/webmesh': 0.4.0(0ba617fc505c6819ad552c85e25710b7)
+      '@opentelemetry/api': 1.9.0
+      effect: 4.0.0-rc.113
 
   '@livestore/common@0.4.0(83eb09838c28e8f24ee109b472706d90)':
     dependencies:
@@ -17761,7 +17830,7 @@ snapshots:
   '@livestore/devtools-vite@0.4.0-dev.25(24ac749e78d155c64ab85fac155a5b8d)':
     dependencies:
       '@livestore/adapter-web': 0.4.0-dev.25(0ba617fc505c6819ad552c85e25710b7)
-      '@livestore/utils': 0.4.0-dev.25(ebb7e56dd316ebb5b9ca8544ffd64595)
+      '@livestore/utils': 0.4.0-dev.25(0ba617fc505c6819ad552c85e25710b7)
       '@parcel/watcher': 2.5.6
       vite: 7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
     transitivePeerDependencies:
@@ -17888,6 +17957,24 @@ snapshots:
       - '@opentelemetry/api'
       - '@opentelemetry/resources'
       - effect
+
+  '@livestore/devtools-web-common@0.4.0(0ba617fc505c6819ad552c85e25710b7)':
+    dependencies:
+      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2))
+      '@effect/platform': 0.96.1(effect@4.0.0-rc.113)
+      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
+      '@livestore/common': 0.4.0(0ba617fc505c6819ad552c85e25710b7)
+      '@livestore/utils': 0.4.0(0ba617fc505c6819ad552c85e25710b7)
+      '@livestore/webmesh': 0.4.0(0ba617fc505c6819ad552c85e25710b7)
+      '@opentelemetry/api': 1.9.0
+      effect: 4.0.0-rc.113
 
   '@livestore/devtools-web-common@0.4.0(83eb09838c28e8f24ee109b472706d90)':
     dependencies:
@@ -18312,6 +18399,26 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
+  '@livestore/sqlite-wasm@0.4.0(0ba617fc505c6819ad552c85e25710b7)':
+    dependencies:
+      '@cloudflare/workers-types': 4.20251118.0
+      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2))
+      '@effect/platform': 0.96.1(effect@4.0.0-rc.113)
+      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
+      '@livestore/common': 0.4.0(0ba617fc505c6819ad552c85e25710b7)
+      '@livestore/common-cf': 0.4.0(0ba617fc505c6819ad552c85e25710b7)
+      '@livestore/utils': 0.4.0(0ba617fc505c6819ad552c85e25710b7)
+      '@livestore/wa-sqlite': 0.4.0
+      '@opentelemetry/api': 1.9.0
+      effect: 4.0.0-rc.113
+
   '@livestore/sqlite-wasm@0.4.0(83eb09838c28e8f24ee109b472706d90)':
     dependencies:
       '@cloudflare/workers-types': 4.20251118.0
@@ -18582,6 +18689,24 @@ snapshots:
       nanoid: 5.1.3
       pretty-bytes: 6.1.1
 
+  '@livestore/utils@0.4.0(0ba617fc505c6819ad552c85e25710b7)':
+    dependencies:
+      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2))
+      '@effect/platform': 0.96.1(effect@4.0.0-rc.113)
+      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
+      '@opentelemetry/api': 1.9.0
+      effect: 4.0.0-rc.113
+      nanoid: 5.0.9
+      pretty-bytes: 7.0.1
+      qrcode-generator: 2.0.4
+
   '@livestore/utils@0.4.0(83eb09838c28e8f24ee109b472706d90)':
     dependencies:
       '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
@@ -18664,6 +18789,24 @@ snapshots:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@standard-schema/spec': 1.1.0
+      effect: 4.0.0-rc.113
+      nanoid: 5.0.9
+      pretty-bytes: 7.0.1
+      qrcode-generator: 2.0.4
+
+  '@livestore/utils@0.4.0-dev.25(0ba617fc505c6819ad552c85e25710b7)':
+    dependencies:
+      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2))
+      '@effect/platform': 0.96.1(effect@4.0.0-rc.113)
+      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
+      '@opentelemetry/api': 1.9.0
       effect: 4.0.0-rc.113
       nanoid: 5.0.9
       pretty-bytes: 7.0.1
@@ -18780,6 +18923,22 @@ snapshots:
       - '@opentelemetry/api'
       - '@opentelemetry/resources'
       - effect
+
+  '@livestore/webmesh@0.4.0(0ba617fc505c6819ad552c85e25710b7)':
+    dependencies:
+      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/workflow@0.18.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2))
+      '@effect/platform': 0.96.1(effect@4.0.0-rc.113)
+      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
+      '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
+      '@livestore/utils': 0.4.0(0ba617fc505c6819ad552c85e25710b7)
+      '@opentelemetry/api': 1.9.0
+      effect: 4.0.0-rc.113
 
   '@livestore/webmesh@0.4.0(83eb09838c28e8f24ee109b472706d90)':
     dependencies:
@@ -21625,6 +21784,13 @@ snapshots:
   '@typescript/typescript-win32-x64@7.0.2':
     optional: true
 
+  '@typescript/vfs@1.6.4(supports-color@10.2.2)(typescript@6.0.3)':
+    dependencies:
+      debug: 4.4.3(supports-color@10.2.2)
+      typescript: 6.0.3
+    transitivePeerDependencies:
+      - supports-color
+
   '@typescript/vfs@1.6.4(supports-color@10.2.2)(typescript@7.0.2)':
     dependencies:
       debug: 4.4.3(supports-color@10.2.2)
@@ -24400,6 +24566,18 @@ snapshots:
 
   exponential-backoff@3.1.3: {}
 
+  expressive-code-twoslash@0.5.3(@expressive-code/core@0.43.1)(expressive-code@0.43.1)(supports-color@10.2.2)(typescript@6.0.3):
+    dependencies:
+      '@expressive-code/core': 0.43.1
+      expressive-code: 0.43.1
+      mdast-util-from-markdown: 2.0.3(supports-color@10.2.2)
+      mdast-util-gfm: 3.1.0(supports-color@10.2.2)
+      mdast-util-to-hast: 13.2.1
+      twoslash: 0.2.12(supports-color@10.2.2)(typescript@6.0.3)
+      typescript: 6.0.3
+    transitivePeerDependencies:
+      - supports-color
+
   expressive-code-twoslash@0.5.3(@expressive-code/core@0.43.1)(expressive-code@0.43.1)(supports-color@10.2.2)(typescript@7.0.2):
     dependencies:
       '@expressive-code/core': 0.43.1
@@ -25130,6 +25308,10 @@ snapshots:
   human-signals@5.0.0: {}
 
   human-signals@8.0.1: {}
+
+  i18next@26.3.3(typescript@6.0.3):
+    optionalDependencies:
+      typescript: 6.0.3
 
   i18next@26.3.3(typescript@7.0.2):
     optionalDependencies:
@@ -29547,6 +29729,14 @@ snapshots:
       fsevents: 2.3.3
 
   twoslash-protocol@0.2.12: {}
+
+  twoslash@0.2.12(supports-color@10.2.2)(typescript@6.0.3):
+    dependencies:
+      '@typescript/vfs': 1.6.4(supports-color@10.2.2)(typescript@6.0.3)
+      twoslash-protocol: 0.2.12
+      typescript: 6.0.3
+    transitivePeerDependencies:
+      - supports-color
 
   twoslash@0.2.12(supports-color@10.2.2)(typescript@7.0.2):
     dependencies:
