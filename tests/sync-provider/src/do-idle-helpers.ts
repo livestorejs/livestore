@@ -18,7 +18,7 @@ import {
   Stream,
 } from '@livestore/utils/effect'
 
-import { SyncProviderImpl, type SyncProviderLayer } from './types.ts'
+import { HOOK_TIMEOUT_MS, SyncProviderImpl, type SyncProviderLayer } from './types.ts'
 
 export type RuntimeServices = SyncProviderImpl | HttpClient.HttpClient | KeyValueStore.KeyValueStore
 
@@ -34,14 +34,15 @@ export const setupProviderRuntime = (layer: SyncProviderLayer) => {
   let runtime: ManagedRuntime.ManagedRuntime<RuntimeServices, never>
   let context: Context.Context<RuntimeServices>
 
+  // See HOOK_TIMEOUT_MS: hooks default to vitest's 10s, below the wrangler boot budget.
   Vitest.beforeAll(async () => {
     runtime = ManagedRuntime.make(
       layer.pipe(Layer.provideMerge(FetchHttpClient.layer), Layer.provideMerge(KeyValueStore.layerMemory), Layer.orDie),
     )
     context = await runtime.context()
-  })
+  }, HOOK_TIMEOUT_MS)
 
-  Vitest.afterAll(async () => await runtime.dispose())
+  Vitest.afterAll(async () => await runtime.dispose(), HOOK_TIMEOUT_MS)
 
   return () => context
 }
