@@ -214,16 +214,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1788579876,
-        "narHash": "sha256-DWlQ7cVba7Ii/ICpoecqciak1n17647pcS7qGEC31Pk=",
+        "lastModified": 1781832096,
+        "narHash": "sha256-yLvEWfnLLXMhZwAQmcEjPVmAOvdBzSVqFmAX5P0K17w=",
         "owner": "pietdevries94",
         "repo": "playwright-web-flake",
-        "rev": "56d390a3798f09b0cd538e452e9300e252e44f9e",
+        "rev": "f4d253d83c1d4bdd54920730e569964949294308",
         "type": "github"
       },
       "original": {
         "owner": "pietdevries94",
         "repo": "playwright-web-flake",
+        "rev": "f4d253d83c1d4bdd54920730e569964949294308",
         "type": "github"
       }
     },
