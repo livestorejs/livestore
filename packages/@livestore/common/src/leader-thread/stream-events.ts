@@ -151,9 +151,7 @@ export const streamEventsWithSyncState = ({
            */
           const waitForHead = EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, head)
           const maybeHead =
-            waitForHead === true
-              ? yield* Queue.take(headQueue).pipe(Effect.asSome)
-              : yield* Queue.poll(headQueue)
+            waitForHead === true ? yield* Queue.take(headQueue).pipe(Effect.asSome) : yield* Queue.poll(headQueue)
           const nextHead = Option.getOrElse(maybeHead, () => head)
           const hardStop = options.until?.global ?? Number.POSITIVE_INFINITY
           const target = EventSequenceNumber.Client.Composite.make({

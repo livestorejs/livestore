@@ -180,9 +180,7 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
           }),
           (p) =>
             p.isRunning.pipe(
-              Effect.flatMap((running) =>
-                running === true ? p.kill().pipe(Effect.ignore) : Effect.void,
-              ),
+              Effect.flatMap((running) => (running === true ? p.kill().pipe(Effect.ignore) : Effect.void)),
               Effect.ignore,
             ),
         )

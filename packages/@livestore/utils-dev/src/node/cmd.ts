@@ -242,9 +242,7 @@ const runWithLogging = ({
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
       const runningProcess = yield* Effect.acquireRelease(spawner.spawn(command), (proc) =>
         proc.isRunning.pipe(
-          Effect.flatMap((running) =>
-            running === true ? proc.kill().pipe(Effect.ignore) : Effect.void,
-          ),
+          Effect.flatMap((running) => (running === true ? proc.kill().pipe(Effect.ignore) : Effect.void)),
           Effect.ignore,
         ),
       )

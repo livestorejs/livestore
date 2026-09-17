@@ -112,9 +112,9 @@ const readPatchedDependencies = () =>
         catch: () => new UpdateDepsError({ message: 'Failed to read root package.json' }),
       })
 
-      const packageJson = yield* Schema.decodeEffect(Schema.fromJsonString(RootPackageJson))(
-        packageJsonContent,
-      ).pipe(Effect.mapError(() => new UpdateDepsError({ message: 'Failed to parse root package.json' })))
+      const packageJson = yield* Schema.decodeEffect(Schema.fromJsonString(RootPackageJson))(packageJsonContent).pipe(
+        Effect.mapError(() => new UpdateDepsError({ message: 'Failed to parse root package.json' })),
+      )
 
       const validated = packageJson.pnpm?.patchedDependencies ?? {}
 
@@ -273,9 +273,9 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
               catch: () => new UpdateDepsError({ message: `Failed to read ${packageJsonPath}` }),
             })
 
-            const packageJson = yield* Schema.decodeEffect(Schema.fromJsonString(WorkspacePackageJson))(
-              content,
-            ).pipe(Effect.mapError(() => new UpdateDepsError({ message: `Failed to parse ${packageJsonPath}` })))
+            const packageJson = yield* Schema.decodeEffect(Schema.fromJsonString(WorkspacePackageJson))(content).pipe(
+              Effect.mapError(() => new UpdateDepsError({ message: `Failed to parse ${packageJsonPath}` })),
+            )
 
             const updatedPackageJson = {
               ...packageJson,
