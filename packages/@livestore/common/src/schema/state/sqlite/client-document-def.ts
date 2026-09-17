@@ -241,7 +241,7 @@ export const createOptimisticEventSchema = ({
 
               if (hasValidFields === true) {
                 try {
-                  const decoded = Schema.decodeUnknownSync(targetSchema)(partialResult)
+                  const decoded = Schema.decodeSync(targetSchema)(partialResult)
                   return encodeTarget(decoded)
                 } catch {
                   // Even filtered fields don't match schema
@@ -264,7 +264,7 @@ export const createOptimisticEventSchema = ({
 
               // Try to decode the merged value
               try {
-                const decoded = Schema.decodeUnknownSync(valueSchema)(merged)
+                const decoded = Schema.decodeSync(valueSchema)(merged)
                 return encodeTarget(decoded)
               } catch {
                 // Merged value still doesn't match (e.g., type changes)

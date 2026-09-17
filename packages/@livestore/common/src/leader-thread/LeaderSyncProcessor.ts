@@ -736,7 +736,7 @@ export const make = Effect.fnUntraced(function* ({
         }).pipe(Effect.uninterruptible),
       )
 
-      yield* Effect.all(deferreds.map(Deferred.await))
+      yield* Effect.forEach(deferreds, Deferred.await)
     }).pipe(
       Effect.withSpan('@livestore/common:LeaderSyncProcessor:push', {
         attributes: {

@@ -103,7 +103,7 @@ export const makeLeaderThreadLayer = ({
     const syncPayloadDecoded =
       syncPayloadEncoded === undefined
         ? undefined
-        : yield* Schema.decodeUnknownEffect(syncPayloadSchema)(syncPayloadEncoded)
+        : yield* Schema.decodeEffect(syncPayloadSchema)(syncPayloadEncoded)
 
     const bootStatusQueue = yield* Effect.acquireRelease(Queue.unbounded<BootStatus>(), Queue.shutdown)
 

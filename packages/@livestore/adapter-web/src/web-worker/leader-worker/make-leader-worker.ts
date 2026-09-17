@@ -133,7 +133,7 @@ const makeMessagePortRpcServerProtocol = (port: MessagePort): Layer.Layer<RpcSer
         send: (_clientId, response, transferables) =>
           Effect.sync(() => port.postMessage([1, response], { transfer: (transferables ?? []) as Transferable[] })),
         end: () => Effect.void,
-        clientIds: Effect.sync(() => clientIds),
+        clientIds: Effect.succeed(clientIds),
         initialMessage: Effect.asSome(Deferred.await(initialMessage)),
         supportsAck: true,
         supportsTransferables: true,

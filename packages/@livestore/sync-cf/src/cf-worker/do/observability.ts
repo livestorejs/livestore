@@ -109,7 +109,7 @@ const makeLayer = (options: SyncBackendOtelOptions | undefined): Layer.Layer<nev
 /** DOs stay active for pending work; no shutdown hook or connection-wide timer is required. */
 const runInBackground = (effect: Effect.Effect<void>) =>
   effect.pipe(
-    Effect.catchCause(() => Effect.void),
+    Effect.ignoreCause,
     Effect.withTracerEnabled(false),
     Effect.forkDetach,
     Effect.asVoid,

@@ -91,7 +91,7 @@ Vitest.describe('websocket-edge', () => {
         target: 'node-b',
       }
 
-      const result = yield* Schema.decodeUnknownEffect(schema.listen)(packet)
+      const result = yield* Schema.decodeEffect(schema.listen)(packet)
       expect(result._tag).toBe('NetworkEdgeAdded')
     }).pipe(Vitest.withTestCtx(test)),
   )

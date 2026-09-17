@@ -181,7 +181,7 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
           (p) =>
             p.isRunning.pipe(
               Effect.flatMap((running) =>
-                running === true ? p.kill().pipe(Effect.catch(() => Effect.void)) : Effect.void,
+                running === true ? p.kill().pipe(Effect.ignore) : Effect.void,
               ),
               Effect.ignore,
             ),
@@ -245,15 +245,14 @@ export const deployToNetlify = Effect.fn('netlify.deploy')(
   // inner backstop while staying clearly below the shell-level `timeout(1) 25m`
   // wrapper in `docs:deploy:prod:phase:build-deploy` (mono-wrappers.nix), which
   // provides the hard PID-tree kill backstop.
-  Effect.timeout(Duration.minutes(20)),
-  Effect.catchTag(
-    'TimeoutError',
-    () =>
+  Effect.timeoutOrElse({
+    duration: Duration.minutes(20),
+    orElse: () =>
       new NetlifyError({
         message: 'Netlify deploy timed out after 20 minutes',
         reason: 'unknown',
       }),
-  ),
+  }),
 )
 
 const resolveNetlifyAuthToken = Effect.gen(function* () {

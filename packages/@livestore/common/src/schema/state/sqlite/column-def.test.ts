@@ -322,8 +322,8 @@ describe('getColumnDefForSchema', () => {
 
       expect(columnDef.columnType).toBe('blob')
       expect(columnDef.schema).toBe(schema)
-      expect(Schema.decodeUnknownSync(columnDef.schema)(new Uint8Array([1]))).toEqual(new Uint8Array([1]))
-      expect(() => Schema.decodeUnknownSync(columnDef.schema)(new Uint8Array())).toThrow()
+      expect(Schema.decodeSync(columnDef.schema)(new Uint8Array([1]))).toEqual(new Uint8Array([1]))
+      expect(() => Schema.decodeSync(columnDef.schema)(new Uint8Array())).toThrow()
     })
   })
 

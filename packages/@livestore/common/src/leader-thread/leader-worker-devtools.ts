@@ -42,7 +42,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
   }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
   const bootResult = yield* options.boot.pipe(
-    Effect.map(Option.some),
+    Effect.asSome,
     Effect.catchIf(isDevtoolsViteNotInstalledError, (error) =>
       Effect.logWarning(`[@livestore/devtools] ${error.message} Devtools will be disabled.`).pipe(
         Effect.as(Option.none()),

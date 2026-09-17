@@ -720,7 +720,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
       // Simulate what happens during RPC: encode to JSON and decode back
       const str = yield* Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown))(originalError)
-      const encoded = (yield* Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Unknown))(str)) as {
+      const encoded = (yield* Schema.decodeEffect(Schema.fromJsonString(Schema.Unknown))(str)) as {
         _tag: string
         expected: string
         received: string

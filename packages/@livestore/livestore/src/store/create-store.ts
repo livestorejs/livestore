@@ -312,7 +312,7 @@ export const createStore = <
   Scope.Scope | OtelTracer.OtelTracer
 > =>
   Effect.gen(function* () {
-    const stateRebuildBatchSize = yield* Schema.decodeUnknownEffect(StateRebuildBatchSizeSchema)(
+    const stateRebuildBatchSize = yield* Schema.decodeEffect(StateRebuildBatchSizeSchema)(
       params?.stateRebuildBatchSize ?? STATE_REBUILD_BATCH_SIZE_DEFAULT,
     ).pipe(UnknownError.mapToUnknownError)
 
@@ -365,12 +365,13 @@ export const createStore = <
           // Drain up to the bound, then force-close the scope regardless. The bound exceeds the
           // caller-side wait below so an in-flight (but progressing) push is not cut short.
           const closeFiber = yield* (shutdownSyncProcessor?.(exit) ?? Effect.void).pipe(
-            Effect.timeout(SHUTDOWN_DRAIN_HARD_TIMEOUT_MS),
-            Effect.catchTag('TimeoutError', () =>
-              Effect.logError(
-                `@livestore/livestore:shutdown: drain exceeded hard bound of ${SHUTDOWN_DRAIN_HARD_TIMEOUT_MS}ms; forcing scope close`,
-              ),
-            ),
+            Effect.timeoutOrElse({
+              duration: SHUTDOWN_DRAIN_HARD_TIMEOUT_MS,
+              orElse: () =>
+                Effect.logError(
+                  `@livestore/livestore:shutdown: drain exceeded hard bound of ${SHUTDOWN_DRAIN_HARD_TIMEOUT_MS}ms; forcing scope close`,
+                ),
+            }),
             Effect.ensuring(Scope.close(lifetimeScope, exit)),
             Effect.forkDetach,
           )
@@ -378,10 +379,10 @@ export const createStore = <
           // the detached teardown above (which remains bounded by SHUTDOWN_DRAIN_HARD_TIMEOUT_MS).
           yield* Fiber.join(closeFiber).pipe(
             Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
-            Effect.timeout(1000),
-            Effect.catchTag('TimeoutError', () =>
-              Effect.logError('@livestore/livestore:shutdown: Timed out after 1 second'),
-            ),
+            Effect.timeoutOrElse({
+              duration: 1000,
+              orElse: () => Effect.logError('@livestore/livestore:shutdown: Timed out after 1 second'),
+            }),
           )
 
           if (shutdownDeferred !== undefined) {

@@ -348,15 +348,16 @@ const verifyMarkdownNegotiation = (deployUrl: string) =>
       HttpClientRequest.get(`${deployUrl}/`).pipe(HttpClientRequest.setHeaders({ Accept: 'text/markdown' })),
     ).pipe(
       Effect.map((res) => res.headers['content-type']),
-      Effect.timeout(Duration.seconds(60)),
-      Effect.catchTag('TimeoutError', () =>
-        Effect.gen(function* () {
-          yield* Effect.logWarning(
-            `::warning::Markdown negotiation request at ${deployUrl}/ timed out after 60s (treated as non-fatal; the Netlify deploy itself succeeded).`,
-          )
-          return undefined
-        }),
-      ),
+      Effect.timeoutOrElse({
+        duration: Duration.seconds(60),
+        orElse: () =>
+          Effect.gen(function* () {
+            yield* Effect.logWarning(
+              `::warning::Markdown negotiation request at ${deployUrl}/ timed out after 60s (treated as non-fatal; the Netlify deploy itself succeeded).`,
+            )
+            return undefined
+          }),
+      }),
       // Transport errors (5xx from edge, network blip, etc.) are still non-fatal —
       // the deploy is live and the markdown probe is a sanity check, not a release gate.
       Effect.catch((error) =>
@@ -439,10 +440,9 @@ const runDocsDeployProbe = Effect.fn('docs.deploy.verify.probe')(function* (depl
 
 const verifyDocsDeploy = Effect.fn('docs.deploy.verify.routes')(function* (deployUrl: string) {
   yield* verifyMarkdownNegotiation(deployUrl)
-  yield* Effect.all(
-    docsDeployProbes.map((probe) => runDocsDeployProbe(deployUrl, probe)),
-    { concurrency: 1 },
-  )
+  yield* Effect.forEach(docsDeployProbes, (probe) => runDocsDeployProbe(deployUrl, probe), {
+    concurrency: 1,
+  })
 })
 
 export const docsCommand = Cli.Command.make('docs').pipe(
@@ -789,12 +789,13 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           if (purgeCdn === true) {
             const purgeSiteId = commitDeploy.site_id
             yield* purgeNetlifyCdn({ siteId: purgeSiteId, siteSlug: site }).pipe(
-              Effect.timeout(Duration.seconds(60)),
-              Effect.catchTag('TimeoutError', () =>
-                Effect.logWarning(
-                  `::warning::Netlify CDN purge for site ${site} timed out after 60s; deploy is live regardless (see livestorejs/livestore#1279).`,
-                ),
-              ),
+              Effect.timeoutOrElse({
+                duration: Duration.seconds(60),
+                orElse: () =>
+                  Effect.logWarning(
+                    `::warning::Netlify CDN purge for site ${site} timed out after 60s; deploy is live regardless (see livestorejs/livestore#1279).`,
+                  ),
+              }),
               // Any other failure (auth, network) is also non-fatal — the deploy is live
               // regardless of CDN purge state, the purge just shortens the stale-content window.
               Effect.catch((error) =>
@@ -942,10 +943,11 @@ const runPurgePhase = Effect.fn('docs.deploy.purge')(function* () {
   yield* Effect.log(`Purging Netlify CDN for prod docs: site=${state.site} siteId=${state.siteId}`)
 
   yield* purgeNetlifyCdn({ siteId: state.siteId, siteSlug: state.site }).pipe(
-    Effect.timeout(Duration.seconds(60)),
-    Effect.catchTag('TimeoutError', () =>
-      Effect.logWarning(`::warning::Netlify CDN purge timed out for ${state.site} (treated as non-fatal)`),
-    ),
+    Effect.timeoutOrElse({
+      duration: Duration.seconds(60),
+      orElse: () =>
+        Effect.logWarning(`::warning::Netlify CDN purge timed out for ${state.site} (treated as non-fatal)`),
+    }),
     Effect.catch((error) =>
       Effect.logWarning(`::warning::Netlify CDN purge failed for ${state.site}: ${String(error)} (non-fatal)`),
     ),

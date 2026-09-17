@@ -92,12 +92,10 @@ const makeGatedCallRpc =
   (gateStream: (bytes: Uint8Array) => CfTypes.ReadableStream) =>
   (payload: Uint8Array): Promise<Uint8Array | CfTypes.ReadableStream> =>
     toDurableObjectHandler(Rpcs, { layer: ServerLive })(new Uint8Array(payload)).pipe(
-      Effect.flatMap(
+      Effect.filterOrElse(
         // Narrow on `Uint8Array`; the `ReadableStream` global differs from `CfTypes` across envs.
-        (result): Effect.Effect<Uint8Array | CfTypes.ReadableStream> =>
-          result instanceof Uint8Array
-            ? Effect.succeed(result)
-            : Effect.promise(() => collectBytes(result)).pipe(Effect.map(gateStream)),
+        (result): result is Uint8Array<ArrayBuffer> => result instanceof Uint8Array,
+        (result) => Effect.promise(() => collectBytes(result)).pipe(Effect.map(gateStream)),
       ),
       Effect.runPromise,
     )
