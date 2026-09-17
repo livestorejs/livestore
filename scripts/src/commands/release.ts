@@ -196,7 +196,7 @@ const readReleasePlan = (cwd: string, planPath: string) =>
     const fsEffect = yield* FileSystem.FileSystem
     const absolutePlanPath = planPath.startsWith('/') === true ? planPath : `${cwd}/${planPath}`
     const content = yield* fsEffect.readFileString(absolutePlanPath)
-    const plan = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(ReleasePlan))(content)
+    const plan = yield* Schema.decodeEffect(Schema.fromJsonString(ReleasePlan))(content)
     yield* validateReleasePlan(plan)
     return plan
   })
@@ -422,7 +422,7 @@ const packPackageForPublish = ({ cwd, pkg, version }: { cwd: string; pkg: string
     const safePackageName = pkg.replaceAll('/', '__').replaceAll('@', '')
     const packDir = `${cwd}/tmp/release-pack/${version}/${safePackageName}`
 
-    yield* fsEffect.remove(packDir, { recursive: true }).pipe(Effect.catch(() => Effect.void))
+    yield* fsEffect.remove(packDir, { recursive: true }).pipe(Effect.ignore)
     yield* fsEffect.makeDirectory(packDir, { recursive: true })
 
     /**

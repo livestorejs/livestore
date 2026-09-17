@@ -308,7 +308,7 @@ export const layer = Layer.succeed(
           Effect.tryPromise({
             try: () => stream.close(),
             catch: (u) => WebError.classifyWebError(u, [WebError.TypeError]),
-          }).pipe(Effect.catchCause(() => Effect.void)),
+          }).pipe(Effect.ignoreCause),
       ),
     appendToFile: (handle: FileSystemFileHandle, data: FileSystemWriteChunkType) =>
       Effect.acquireUseRelease(
@@ -346,7 +346,7 @@ export const layer = Layer.succeed(
           Effect.tryPromise({
             try: () => stream.close(),
             catch: (u) => WebError.classifyWebError(u, [WebError.TypeError]),
-          }).pipe(Effect.catchCause(() => Effect.void)),
+          }).pipe(Effect.ignoreCause),
       ),
     truncateFile: (handle: FileSystemFileHandle, size: number) =>
       Effect.acquireUseRelease(
@@ -370,7 +370,7 @@ export const layer = Layer.succeed(
           Effect.tryPromise({
             try: () => stream.close(),
             catch: (u) => WebError.classifyWebError(u, [WebError.TypeError]),
-          }).pipe(Effect.catchCause(() => Effect.void)),
+          }).pipe(Effect.ignoreCause),
       ),
     createSyncAccessHandle: (handle: FileSystemFileHandle) =>
       Effect.acquireRelease(
@@ -440,7 +440,7 @@ export const layerNoop = Layer.succeed(
     getDirectoryHandle: () => Effect.fail(notFoundError),
     removeEntry: () => Effect.fail(notFoundError),
     values: () => Stream.fail(notFoundError),
-    resolve: () => Effect.succeed(Option.none()),
+    resolve: () => Effect.succeedNone,
     getFile: () => Effect.fail(notFoundError),
     writeFile: () => Effect.fail(notFoundError),
     appendToFile: () => Effect.fail(notFoundError),

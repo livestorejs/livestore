@@ -189,7 +189,7 @@ export const buildDiagrams = (
         }
       } finally {
         /* Clean up temp directory */
-        yield* fs.remove(tempDir, { recursive: true, force: true }).pipe(Effect.catch(() => Effect.void))
+        yield* fs.remove(tempDir, { recursive: true, force: true }).pipe(Effect.ignore)
       }
     }),
   )

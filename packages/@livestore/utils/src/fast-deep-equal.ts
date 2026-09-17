@@ -14,7 +14,7 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
       length = a.length
       // @ts-expect-error ...
       if (length !== b.length) return false
-      for (i = length; i-- !== 0; )
+      for (i = length; i-- !== 0;)
         // @ts-expect-error ...
         if (deepEqual(a[i], b[i]) === false) return false
       return true
@@ -38,7 +38,7 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
       length = a.length
       // @ts-expect-error ...
       if (length !== b.length) return false
-      for (i = length; i-- !== 0; )
+      for (i = length; i-- !== 0;)
         // @ts-expect-error ...
         if (a[i] !== b[i]) return false
       return true
@@ -53,9 +53,9 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
     length = keys.length
     if (length !== Object.keys(b).length) return false
 
-    for (i = length; i-- !== 0; ) if (Object.hasOwn(b, keys[i]) === false) return false
+    for (i = length; i-- !== 0;) if (Object.hasOwn(b, keys[i]) === false) return false
 
-    for (i = length; i-- !== 0; ) {
+    for (i = length; i-- !== 0;) {
       const key = keys[i]
 
       // @ts-expect-error ...

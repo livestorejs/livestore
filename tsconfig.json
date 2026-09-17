@@ -3,7 +3,9 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": ["ES2024"],
+    "lib": [
+      "ES2024"
+    ],
     "module": "ESNext",
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
@@ -25,7 +27,9 @@
     "moduleResolution": "Bundler",
     "noEmit": true,
     "rootDir": ".",
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
   "include": [
     "./vitest.config.ts",
@@ -35,5 +39,9 @@
     "./tests/*/vitest.config.ts",
     "./tests/integration/src/tests/devtools/fixtures/*/vite.config.ts"
   ],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm"]
+  "exclude": [
+    "node_modules",
+    "**/dist",
+    "**/node_modules/.pnpm"
+  ]
 }

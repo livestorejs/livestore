@@ -157,7 +157,7 @@ const hashString = (value: string): string => crypto.createHash('sha256').update
  * Returns the Twoslash language id inferred from a filename.
  * Falls back to the provided value or TypeScript when no extension can be resolved.
  */
-const guessLanguage = (filename: string, fallback: string | undefined = undefined): string => {
+const guessLanguage = (filename: string, fallback?: string): string => {
   const extension = filename.split('.').pop()?.toLowerCase()
   if (extension === undefined || extension.length === 0) return fallback ?? 'ts'
   if (extension === 'ts' || extension === 'cts' || extension === 'mts') return 'ts'

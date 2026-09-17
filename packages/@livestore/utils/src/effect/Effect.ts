@@ -129,7 +129,7 @@ export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.
 export const dieDebugger = (msg: string, ...args: ReadonlyArray<unknown>): Effect.Effect<never> =>
   Effect.suspend(() => {
     if (isDevEnv() === true) {
-      // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint during development
+      // oxlint-disable-next-line no-debugger -- intentional breakpoint during development
       debugger
       void args // Keeps the variable in scope so it's inspectable when the debugger pauses
     }
@@ -150,7 +150,7 @@ export const orDieDebugger = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Eff
       // Keep the debugger hook so that `debugger` runs only when the wrapped effect actually fails, not while building the wrapper.
       Effect.suspend(() => {
         if (isDevEnv() === true) {
-          // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for impossible states during development
+          // oxlint-disable-next-line no-debugger -- intentional breakpoint for impossible states during development
           debugger
         }
         return Effect.die(error)

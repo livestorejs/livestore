@@ -318,7 +318,7 @@ describe('client document table', () => {
       })
       const rowSchema = Schema.fromJsonString(optimisticSchema)
 
-      expect(Schema.decodeUnknownSync(rowSchema)(JSON.stringify(value))).toEqual(defaultValue)
+      expect(Schema.decodeSync(rowSchema)(JSON.stringify(value))).toEqual(defaultValue)
     })
 
     test('decodes valid persisted JSON (encoded shape)', () => {
@@ -329,7 +329,7 @@ describe('client document table', () => {
       })
       const rowSchema = Schema.fromJsonString(optimisticSchema)
 
-      expect(Schema.decodeUnknownSync(rowSchema)(JSON.stringify(validPayload))).toEqual({
+      expect(Schema.decodeSync(rowSchema)(JSON.stringify(validPayload))).toEqual({
         createdAt: new Date(42),
         avatar: new Uint8Array([1, 2]),
       })
@@ -343,7 +343,7 @@ describe('client document table', () => {
       })
       const rowSchema = Schema.fromJsonString(optimisticSchema)
 
-      expect(Schema.decodeUnknownSync(rowSchema)(JSON.stringify(extraFieldsPayload))).toEqual({
+      expect(Schema.decodeSync(rowSchema)(JSON.stringify(extraFieldsPayload))).toEqual({
         createdAt: new Date(42),
         avatar: new Uint8Array([1, 2]),
       })
@@ -361,7 +361,7 @@ describe('client document table', () => {
         value: JSON.stringify(value),
       }
 
-      expect(Schema.decodeUnknownSync(Doc.rowSchema)(row)).toEqual({ id: 'row-1', value: defaultValue })
+      expect(Schema.decodeSync(Doc.rowSchema)(row)).toEqual({ id: 'row-1', value: defaultValue })
     })
 
     test('decodes clientDocument rowSchema with valid encoded JSON', () => {
@@ -376,7 +376,7 @@ describe('client document table', () => {
         value: JSON.stringify(validPayload),
       }
 
-      expect(Schema.decodeUnknownSync(Doc.rowSchema)(row)).toEqual({
+      expect(Schema.decodeSync(Doc.rowSchema)(row)).toEqual({
         id: 'row-1',
         value: { createdAt: new Date(42), avatar: new Uint8Array([1, 2]) },
       })
@@ -398,7 +398,7 @@ describe('client document table', () => {
         },
       ]
 
-      expect(Schema.decodeUnknownSync(resultSchema)(rawDbResults)).toEqual(defaultValue)
+      expect(Schema.decodeSync(resultSchema)(rawDbResults)).toEqual(defaultValue)
     })
 
     test('decodes RowQuery result schema with valid encoded JSON', () => {
@@ -417,7 +417,7 @@ describe('client document table', () => {
         },
       ]
 
-      expect(Schema.decodeUnknownSync(resultSchema)(rawDbResults)).toEqual({
+      expect(Schema.decodeSync(resultSchema)(rawDbResults)).toEqual({
         createdAt: new Date(42),
         avatar: new Uint8Array([1, 2]),
       })

@@ -67,7 +67,7 @@ describe('trySyncOrPromiseOrEffect', () => {
     Effect.gen(function* () {
       const thrown = new Error('throwing then getter')
       const thenable = {
-        // oxlint-disable-next-line eslint-plugin-unicorn(no-thenable) -- intentionally exercises Promise-like classification
+        // oxlint-disable-next-line unicorn/no-thenable -- intentionally exercises Promise-like classification
         get then(): PromiseLike<never>['then'] {
           throw thrown
         },

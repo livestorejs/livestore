@@ -341,7 +341,7 @@ export const assertTestsExecuted = Effect.fn(function* ({
   readonly suiteFile: string
 }) {
   const raw = fs.readFileSync(reportPath, 'utf8')
-  const report = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(VitestRunReport))(raw)
+  const report = yield* Schema.decodeEffect(Schema.fromJsonString(VitestRunReport))(raw)
 
   const executed = report.testResults
     .filter((file) => path.basename(file.name) === suiteFile)

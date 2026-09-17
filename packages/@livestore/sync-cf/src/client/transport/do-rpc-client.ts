@@ -204,9 +204,9 @@ export const handleSyncUpdateRpc = (ctx: CfTypes.DurableObjectState, payload: Ui
     const parser = serialization.makeUnsafe()
     const [response] = parser.decode(payload)
     const decodedPayload = yield* Schema.decodeUnknownEffect(ResponseChunkEncoded)(response)
-    const decoded = yield* Schema.decodeUnknownEffect(
-      serialization.codecFor(Schema.NonEmptyArray(SyncMessage.PullResponse)),
-    )(decodedPayload.values)
+    const decoded = yield* Schema.decodeEffect(serialization.codecFor(Schema.NonEmptyArray(SyncMessage.PullResponse)))(
+      decodedPayload.values,
+    )
 
     const pullStreamQueue = pullRoutingFor(ctx).get(decodedPayload.requestId)
 

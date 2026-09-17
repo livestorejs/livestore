@@ -154,7 +154,7 @@ const runTest =
     )
 
     return Effect.gen(function* () {
-      const parentSpanContext = (yield* Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Unknown))(
+      const parentSpanContext = (yield* Schema.decodeEffect(Schema.fromJsonString(Schema.Unknown))(
         process.env.SPAN_CONTEXT_JSON ?? '{}',
       )) as otel.SpanContext
       const parentSpan = OtelTracer.makeExternalSpan({

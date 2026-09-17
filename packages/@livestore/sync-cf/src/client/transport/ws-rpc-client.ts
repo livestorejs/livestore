@@ -121,8 +121,10 @@ export const makeWsSync =
         yield* pinger.ping
         yield* SubscriptionRef.set(isConnected, true)
       }).pipe(
-        Effect.timeout(pingTimeout),
-        Effect.catchTag('TimeoutError', () => SubscriptionRef.set(isConnected, false)),
+        Effect.timeoutOrElse({
+          duration: pingTimeout,
+          orElse: () => SubscriptionRef.set(isConnected, false),
+        }),
         UnknownError.mapToUnknownError,
         Effect.withSpan('ping'),
       )

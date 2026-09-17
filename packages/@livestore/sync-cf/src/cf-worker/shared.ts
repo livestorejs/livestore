@@ -153,7 +153,7 @@ const SearchParamsFromUrlSearchParams = Schema.fromURLSearchParams(SearchParamsS
  */
 export const matchSyncRequest = (request: CfTypes.Request): SearchParams | undefined => {
   const url = new URL(request.url)
-  const paramsResult = Schema.decodeUnknownResult(SearchParamsFromUrlSearchParams)(url.searchParams)
+  const paramsResult = Schema.decodeResult(SearchParamsFromUrlSearchParams)(url.searchParams)
 
   if (Result.isFailure(paramsResult) === true) {
     return undefined

@@ -25,7 +25,7 @@ import {
 } from '@livestore/utils/effect'
 
 import { isProviderSelected, providerRegistry } from './providers/registry.ts'
-import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'
+import { HOOK_TIMEOUT_MS, SyncProviderImpl, type SyncProviderOptions } from './types.ts'
 
 /** Cloudflare HTTP-specific tests for response headers and HTTP transport features */
 
@@ -52,6 +52,7 @@ describeHttpProviders('$name HTTP transport', { timeout: 30000 }, ({ layer, name
   let runtimeContext: Context.Context<RuntimeServices>
   let testId: string
 
+  // See HOOK_TIMEOUT_MS: hooks default to vitest's 10s, below the wrangler boot budget.
   Vitest.beforeAll(async () => {
     testId = nanoid()
     runtime = ManagedRuntime.make(
@@ -64,9 +65,9 @@ describeHttpProviders('$name HTTP transport', { timeout: 30000 }, ({ layer, name
       ),
     )
     runtimeContext = await runtime.context()
-  })
+  }, HOOK_TIMEOUT_MS)
 
-  Vitest.afterAll(async () => await runtime.dispose())
+  Vitest.afterAll(async () => await runtime.dispose(), HOOK_TIMEOUT_MS)
 
   const makeProvider = (testName?: string, options?: SyncProviderOptions, payload?: Schema.Json) =>
     Effect.suspend(() =>

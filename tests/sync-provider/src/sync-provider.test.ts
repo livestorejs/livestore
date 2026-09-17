@@ -30,7 +30,7 @@ import {
 } from '@livestore/utils/effect'
 
 import { providerRegistry, selectedProviderKeys } from './providers/registry.ts'
-import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'
+import { HOOK_TIMEOUT_MS, SyncProviderImpl, type SyncProviderOptions } from './types.ts'
 
 // NOTE: These specs should mirror LeaderSyncProcessor semantics: pushes never bypass the
 // queueing/rebase rules, and live pulls represent the long-lived stream the leader relies on.
@@ -65,6 +65,8 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
   let runtimeContext: Context.Context<RuntimeServices>
   let testId: string
 
+  // Vitest's default hookTimeout (10s) is shorter than the wrangler boot budget inside the layer
+  // (30s per attempt + 1 retry in CI), so a slow workerd cold start would kill the whole suite here.
   Vitest.beforeAll(async () => {
     testId = nanoid()
     runtime = ManagedRuntime.make(
@@ -78,9 +80,9 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
     )
     // Eagerly start the runtime
     runtimeContext = await runtime.context()
-  })
+  }, HOOK_TIMEOUT_MS)
 
-  Vitest.afterAll(async () => await runtime.dispose())
+  Vitest.afterAll(async () => await runtime.dispose(), HOOK_TIMEOUT_MS)
 
   const makeProvider = (testName?: string, options?: SyncProviderOptions) =>
     Effect.suspend(() =>
@@ -720,7 +722,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
       // Simulate what happens during RPC: encode to JSON and decode back
       const str = yield* Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown))(originalError)
-      const encoded = (yield* Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Unknown))(str)) as {
+      const encoded = (yield* Schema.decodeEffect(Schema.fromJsonString(Schema.Unknown))(str)) as {
         _tag: string
         expected: string
         received: string

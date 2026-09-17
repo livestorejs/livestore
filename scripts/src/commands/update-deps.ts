@@ -112,9 +112,9 @@ const readPatchedDependencies = () =>
         catch: () => new UpdateDepsError({ message: 'Failed to read root package.json' }),
       })
 
-      const packageJson = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(RootPackageJson))(
-        packageJsonContent,
-      ).pipe(Effect.mapError(() => new UpdateDepsError({ message: 'Failed to parse root package.json' })))
+      const packageJson = yield* Schema.decodeEffect(Schema.fromJsonString(RootPackageJson))(packageJsonContent).pipe(
+        Effect.mapError(() => new UpdateDepsError({ message: 'Failed to parse root package.json' })),
+      )
 
       const validated = packageJson.pnpm?.patchedDependencies ?? {}
 
@@ -136,7 +136,7 @@ const discoverUpdates = (target: string) =>
         ),
       )
 
-      const validated = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(NCUOutput))(ncuOutput).pipe(
+      const validated = yield* Schema.decodeEffect(Schema.fromJsonString(NCUOutput))(ncuOutput).pipe(
         Effect.mapError(
           (error) => new UpdateDepsError({ message: `Failed to parse NCU output: ${objectToString(error)}` }),
         ),
@@ -186,7 +186,7 @@ const fetchExpoConstraints = () =>
         {} as Record<string, string>,
       )
 
-      const validated = yield* Schema.decodeUnknownEffect(ExpoConstraints)(constraints)
+      const validated = yield* Schema.decodeEffect(ExpoConstraints)(constraints)
 
       yield* Console.log(`Retrieved constraints for ${Object.keys(validated).length} Expo-managed packages`)
 
@@ -273,9 +273,9 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
               catch: () => new UpdateDepsError({ message: `Failed to read ${packageJsonPath}` }),
             })
 
-            const packageJson = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(WorkspacePackageJson))(
-              content,
-            ).pipe(Effect.mapError(() => new UpdateDepsError({ message: `Failed to parse ${packageJsonPath}` })))
+            const packageJson = yield* Schema.decodeEffect(Schema.fromJsonString(WorkspacePackageJson))(content).pipe(
+              Effect.mapError(() => new UpdateDepsError({ message: `Failed to parse ${packageJsonPath}` })),
+            )
 
             const updatedPackageJson = {
               ...packageJson,

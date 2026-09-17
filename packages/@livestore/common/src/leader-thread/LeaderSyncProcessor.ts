@@ -386,7 +386,7 @@ export const make = Effect.fnUntraced(function* ({
             const remainingLocalPushes = yield* snapshotTxQueue(localPushesQueue)
             if (LS_DEV === true && remainingLocalPushes.length > 0) {
               console.log('localPushesQueue is not empty', remainingLocalPushes.length)
-              // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for unexpected queue state
+              // oxlint-disable-next-line no-debugger -- intentional breakpoint for unexpected queue state
               debugger
             }
 
@@ -736,7 +736,7 @@ export const make = Effect.fnUntraced(function* ({
         }).pipe(Effect.uninterruptible),
       )
 
-      yield* Effect.all(deferreds.map(Deferred.await))
+      yield* Effect.forEach(deferreds, Deferred.await)
     }).pipe(
       Effect.withSpan('@livestore/common:LeaderSyncProcessor:push', {
         attributes: {

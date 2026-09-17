@@ -89,10 +89,9 @@ const awaitSubscriptionCount = (
   timeout: Duration.Input = '15 seconds',
 ) =>
   readSubscriptionCount({ port, storeId }).pipe(
-    Effect.flatMap((count) =>
-      count === expected
-        ? Effect.succeed(count)
-        : Effect.fail(new SyncDoProbeError({ message: `subscription count is ${count}, expected ${expected}` })),
+    Effect.filterOrFail(
+      (count) => count === expected,
+      (count) => new SyncDoProbeError({ message: `subscription count is ${count}, expected ${expected}` }),
     ),
     Effect.retry(Schedule.spaced('300 millis')),
     Effect.timeoutOrElse({ duration: timeout, orElse: () => readSubscriptionCount({ port, storeId }) }),
