@@ -42,7 +42,8 @@ const runtimeDeps = catalog.compose({
       ),
       ...livestoreContribPackageVersions,
       ...catalog.pick('@livestore/devtools-vite'),
-      ...catalog.pick('typescript'),
+      // TypeDoc requires TypeScript's legacy runtime API, which is absent from TypeScript 7.
+      typescript: '6.0.3',
       '@astrojs/check': '0.9.9',
       '@astrojs/netlify': '7.0.13',
       '@astrojs/react': '5.0.7',

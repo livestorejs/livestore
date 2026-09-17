@@ -104,7 +104,7 @@
     "terrastruct-d2-bin": "0.7.1",
     "typedoc": "0.28.19",
     "typedoc-plugin-markdown": "4.8.1",
-    "typescript": "7.0.2",
+    "typescript": "6.0.3",
     "unist-util-visit": "5.0.0"
   },
   "devDependencies": {
