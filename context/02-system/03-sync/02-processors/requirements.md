@@ -17,10 +17,23 @@ Builds on [../requirements.md](../requirements.md) and
 
 - **LS.SYS.SYNC.PROC-R01 Bounded transient-only retry:** Backend pushes are
   batch-bounded and retried with capped exponential backoff only on
-  transient errors (offline/unknown); `ServerAheadError` is never retried in
-  place — the push fiber parks and yields to the pull-driven rebase restart
-  (spec: [Leader Sync Processor](./spec.md#leader-sync-processor)). Adopted
-  2026-07-16 (interview). `refines: LS.SYS.SYNC-R03`
+  positively identified connectivity errors. `UnknownError` surfaces as a
+  terminal failure, and `ServerAheadError` is never retried in place. The
+  unresolved backend prefix remains fenced while the processor actively
+  replaces its backend pull from the persisted cursor. Replacement retires the
+  current generation only between canonical pull applications; an in-flight
+  application finishes or fails first, and its terminal failure takes
+  precedence over restart. The single pull owner remains available after a
+  finite pull so a later catch-up request can start another generation. Only
+  pull confirmation or rebase may reseed backend pushing from current pending
+  and resume it. At most one backend-pull generation may be active during this
+  recovery. Adopted 2026-07-16 (interview); active catch-up clarified
+  2026-08-21 from [#1462](https://github.com/livestorejs/livestore/issues/1462)
+  reduction evidence and maintainer direction; retirement precedence and
+  terminal-error classification clarified 2026-08-22 from convergence review
+  (see
+  [decision 0003](./.decisions/0003-active-server-ahead-catchup.md)).
+  `refines: LS.SYS.SYNC-R03`
 - **LS.SYS.SYNC.PROC-R02 Pull precedence:** Backend-pull application and
   local-push application are mutually exclusive, and the pull side takes
   precedence when both contend (spec: [Leader Sync
