@@ -21,6 +21,7 @@ export const requiredCIJobs = [
   'lint',
   'changeset-check',
   'minimal-dev',
+  'pr-reviews-resolved',
   'type-check',
   'test-unit',
   ...syncProviderMatrix.map((provider) => `test-integration-sync-provider (${provider})`),

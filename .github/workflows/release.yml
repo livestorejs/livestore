@@ -81,6 +81,8 @@ jobs:
           persist-credentials: false
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           extra-conf: |
             experimental-features = nix-command flakes
@@ -91,6 +93,7 @@ jobs:
           summarize: true
       - name: Check first-party default refs
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           FIRST_PARTY_OWNERS_JSON: '["overengineeringstudio"]'
           DEFAULT_REF: main
           DEFAULT_REFS_JSON: '{}'
@@ -1007,6 +1010,8 @@ jobs:
           ref: main
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           extra-conf: |
             experimental-features = nix-command flakes
@@ -1035,6 +1040,8 @@ jobs:
           chmod +x "$scripts_dst"/*.sh
       - name: Provide cachix CLI from nixpkgs
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
@@ -1053,6 +1060,7 @@ jobs:
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Sync megarepo dependencies
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
@@ -1114,6 +1122,8 @@ jobs:
             ${{ runner.temp }}/composition-state/pnpm-store-pure-v1
           key: "livestore-pnpm-state-v1-v3-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Resolve devenv' '__genie_ci_retry_script='\''${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'\''
@@ -1215,6 +1225,8 @@ jobs:
           persist-credentials: false
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           extra-conf: |
             experimental-features = nix-command flakes
@@ -1243,6 +1255,8 @@ jobs:
           chmod +x "$scripts_dst"/*.sh
       - name: Provide cachix CLI from nixpkgs
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
@@ -1261,6 +1275,7 @@ jobs:
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Sync megarepo dependencies
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
@@ -1322,6 +1337,8 @@ jobs:
             ${{ runner.temp }}/composition-state/pnpm-store-pure-v1
           key: "livestore-pnpm-state-v1-v3-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Resolve devenv' '__genie_ci_retry_script='\''${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'\''
@@ -1430,6 +1447,8 @@ jobs:
           persist-credentials: false
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           extra-conf: |
             experimental-features = nix-command flakes
@@ -1458,6 +1477,8 @@ jobs:
           chmod +x "$scripts_dst"/*.sh
       - name: Provide cachix CLI from nixpkgs
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
@@ -1476,6 +1497,7 @@ jobs:
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Sync megarepo dependencies
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
@@ -1537,6 +1559,8 @@ jobs:
             ${{ runner.temp }}/composition-state/pnpm-store-pure-v1
           key: "livestore-pnpm-state-v1-v3-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Resolve devenv' '__genie_ci_retry_script='\''${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'\''
@@ -1686,6 +1710,8 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           extra-conf: |
             experimental-features = nix-command flakes
@@ -1714,6 +1740,8 @@ jobs:
           chmod +x "$scripts_dst"/*.sh
       - name: Provide cachix CLI from nixpkgs
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           out=$(nix build --no-link --print-out-paths nixpkgs#cachix)
@@ -1732,6 +1760,7 @@ jobs:
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Sync megarepo dependencies
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store'
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
@@ -1793,6 +1822,8 @@ jobs:
             ${{ runner.temp }}/composition-state/pnpm-store-pure-v1
           key: "livestore-pnpm-state-v1-v3-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Resolve devenv
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Resolve devenv' '__genie_ci_retry_script='\''${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'\''
