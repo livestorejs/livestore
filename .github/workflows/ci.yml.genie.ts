@@ -1,4 +1,4 @@
-import { prSnapshotPackJob } from '#mr/effect-utils/genie/ci-workflow.ts'
+import { prReviewsResolvedJob, prReviewsResolvedJobId, prSnapshotPackJob } from '#mr/effect-utils/genie/ci-workflow.ts'
 
 import { playwrightSuites, syncProviderMatrix } from '../../genie/ci.ts'
 import { releaseTopologyPath } from '../../genie/pr-snapshot-paths.ts'
@@ -135,6 +135,7 @@ export default githubWorkflow({
 
   jobs: {
     'source-policy': livestoreDefaultRefPolicyJob,
+    [prReviewsResolvedJobId]: prReviewsResolvedJob(),
     'minimal-dev': {
       if: "github.event_name == 'pull_request'",
       'runs-on': 'ubuntu-latest',
