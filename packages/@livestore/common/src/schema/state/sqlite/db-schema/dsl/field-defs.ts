@@ -237,7 +237,8 @@ export type DefaultSchemaForColumnType<TColumnType extends FieldColumnType> = TC
   : TColumnType extends 'integer'
     ? Schema.Finite
     : TColumnType extends 'real'
-      ? typeof SqliteReal
+      ? // @effect-diagnostics-next-line schemaNumber:off -- SQLite REAL permits Infinity/NaN; SqliteReal is the documented domain carve-out
+        typeof SqliteReal
       : TColumnType extends 'blob'
         ? SqliteBlob
         : never

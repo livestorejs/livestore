@@ -233,7 +233,7 @@ describe('table function overloads', () => {
     expectTypeOf<(typeof stamps.Encoded)['bornAt']>().toEqualTypeOf<string>()
     expectTypeOf<(typeof stamps.Type)['archivedAt']>().toEqualTypeOf<Date | null>()
     expect(
-      Schema.decodeUnknownSync(stamps.rowSchema)({
+      Schema.decodeSync(stamps.rowSchema)({
         id: '1',
         createdAt: date.toISOString(),
         seenAt: date.getTime(),
@@ -254,7 +254,7 @@ describe('table function overloads', () => {
 
     expect(columns.count.columnType).toBe('text')
     expect(Schema.encodeUnknownSync(columns.count.schema)(42)).toBe('42')
-    expect(Schema.decodeUnknownSync(columns.count.schema)('42')).toBe(42)
+    expect(Schema.decodeSync(columns.count.schema)('42')).toBe(42)
   })
 
   it('tracks column defaults at the type level so insert() can omit them', () => {
