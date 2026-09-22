@@ -325,7 +325,6 @@ const setupMegarepoRun = (run: string) =>
       'nix run --no-write-lock-file',
       '--override-input flake-utils "https://codeload.github.com/numtide/flake-utils/tar.gz/11707dc2f618dd54ca8739b309ec4fc024de578b"',
       '--override-input nixpkgs "https://codeload.github.com/NixOS/nixpkgs/tar.gz/5b63481602d9b0a714d5791c53bebe829d6b1a3c"',
-      '--override-input tsgo "https://codeload.github.com/Effect-TS/tsgo/tar.gz/8d34c0a2d603a4b963b85ffccd4322c0ef74f472"',
       '"https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all',
     ].join(' '),
   )
@@ -361,17 +360,10 @@ const stableStoreSyncStep = applyMegarepoLockStep({ cacheableStore: true })
 export const livestoreSetupStepsAfterCheckout = [
   // Copy CI helper scripts after checkout and Nix installation so retry-wrapped
   // commands keep a stable helper path. Required by the genie CI workflow validator.
-  (() => {
-    const base = installNixStep({
-      extraConf:
-        'extra-substituters = https://cache.nixos.org\nextra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=',
-    })
-    // Pin the nix-installer (and with it Determinate Nix) to the last Nix 2.34-based
-    // release. Nix 2.35 validates `github:` flake-ref parameters, which rejects
-    // Effect-TS/tsgo's `typescript-go-src = github:...?submodules=1` declaration while
-    // resolving megarepo sync inputs. Unpin once upstream tsgo drops that parameter.
-    return { ...base, with: { ...base.with, 'source-tag': 'v3.21.9' } }
-  })(),
+  installNixStep({
+    extraConf:
+      'extra-substituters = https://cache.nixos.org\nextra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=',
+  }),
   prepareCiScriptsStep,
   cachixCliBuildStep,
   (() => {
