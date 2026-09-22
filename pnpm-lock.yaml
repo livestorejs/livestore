@@ -862,7 +862,7 @@ importers:
         version: 4.20251118.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.25
-        version: 0.4.0-dev.25(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)(vite@7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))
+        version: 0.4.0-dev.25(24ac749e78d155c64ab85fac155a5b8d)
       '@playwright/test':
         specifier: 1.61.0
         version: 1.61.0
@@ -17355,25 +17355,6 @@ snapshots:
       '@standard-schema/spec': 1.1.0
       effect: 4.0.0-rc.113
 
-  '@livestore/adapter-web@0.4.0-dev.25(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)':
-    dependencies:
-      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/workflow@0.18.0(@effect/platform@0.82.4(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2))
-      '@effect/platform': 0.96.1(effect@4.0.0-rc.113)
-      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
-      '@livestore/common': 0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@livestore/devtools-web-common': 0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@livestore/sqlite-wasm': 0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@livestore/utils': 0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@livestore/webmesh': 0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@opentelemetry/api': 1.9.0
-
   '@livestore/adapter-web@0.4.0-dev.25(e378b117b3da40a1c96f3ca818d940c7)':
     dependencies:
       '@effect/ai': 0.35.0(@effect/platform@0.82.4(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
@@ -17545,22 +17526,6 @@ snapshots:
       '@standard-schema/spec': 1.1.0
       effect: 4.0.0-rc.113
 
-  '@livestore/common-cf@0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)':
-    dependencies:
-      '@cloudflare/workers-types': 4.20251118.0
-      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/workflow@0.18.0(@effect/platform@0.82.4(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2))
-      '@effect/platform': 0.96.1(effect@4.0.0-rc.113)
-      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
-      '@livestore/utils': 0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@opentelemetry/api': 1.9.0
-
   '@livestore/common-cf@0.4.0(e378b117b3da40a1c96f3ca818d940c7)':
     dependencies:
       '@cloudflare/workers-types': 4.20251118.0
@@ -17669,22 +17634,6 @@ snapshots:
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@standard-schema/spec': 1.1.0
       effect: 4.0.0-rc.113
-
-  '@livestore/common@0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)':
-    dependencies:
-      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/workflow@0.18.0(@effect/platform@0.82.4(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2))
-      '@effect/platform': 0.96.1(effect@4.0.0-rc.113)
-      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
-      '@livestore/utils': 0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@livestore/webmesh': 0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@opentelemetry/api': 1.9.0
 
   '@livestore/common@0.4.0(e378b117b3da40a1c96f3ca818d940c7)':
     dependencies:
@@ -17881,33 +17830,6 @@ snapshots:
       - '@standard-schema/spec'
       - effect
 
-  '@livestore/devtools-vite@0.4.0-dev.25(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)(vite@7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0))':
-    dependencies:
-      '@livestore/adapter-web': 0.4.0-dev.25(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@livestore/utils': 0.4.0-dev.25(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@parcel/watcher': 2.5.6
-      vite: 7.3.1(@types/node@25.3.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.48.0)(tsx@4.22.3)(yaml@2.9.0)
-    transitivePeerDependencies:
-      - '@effect/ai'
-      - '@effect/cli'
-      - '@effect/cluster'
-      - '@effect/experimental'
-      - '@effect/opentelemetry'
-      - '@effect/platform'
-      - '@effect/platform-browser'
-      - '@effect/platform-bun'
-      - '@effect/platform-node'
-      - '@effect/printer'
-      - '@effect/printer-ansi'
-      - '@effect/rpc'
-      - '@effect/sql'
-      - '@effect/typeclass'
-      - '@effect/vitest'
-      - '@opentelemetry/api'
-      - '@opentelemetry/resources'
-      - '@standard-schema/spec'
-      - effect
-
   '@livestore/devtools-vite@0.4.0-dev.25(d9c16b241fc224251650a656d809b152)':
     dependencies:
       '@livestore/adapter-web': 0.4.0-dev.25(e378b117b3da40a1c96f3ca818d940c7)
@@ -18000,23 +17922,6 @@ snapshots:
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@standard-schema/spec': 1.1.0
       effect: 4.0.0-rc.113
-
-  '@livestore/devtools-web-common@0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)':
-    dependencies:
-      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/workflow@0.18.0(@effect/platform@0.82.4(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2))
-      '@effect/platform': 0.96.1(effect@4.0.0-rc.113)
-      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
-      '@livestore/common': 0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@livestore/utils': 0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@livestore/webmesh': 0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@opentelemetry/api': 1.9.0
 
   '@livestore/devtools-web-common@0.4.0(e378b117b3da40a1c96f3ca818d940c7)':
     dependencies:
@@ -18446,25 +18351,6 @@ snapshots:
       '@standard-schema/spec': 1.1.0
       effect: 4.0.0-rc.113
 
-  '@livestore/sqlite-wasm@0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)':
-    dependencies:
-      '@cloudflare/workers-types': 4.20251118.0
-      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/workflow@0.18.0(@effect/platform@0.82.4(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2))
-      '@effect/platform': 0.96.1(effect@4.0.0-rc.113)
-      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
-      '@livestore/common': 0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@livestore/common-cf': 0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@livestore/utils': 0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@livestore/wa-sqlite': 0.4.0
-      '@opentelemetry/api': 1.9.0
-
   '@livestore/sqlite-wasm@0.4.0(e378b117b3da40a1c96f3ca818d940c7)':
     dependencies:
       '@cloudflare/workers-types': 4.20251118.0
@@ -18732,23 +18618,6 @@ snapshots:
       pretty-bytes: 7.0.1
       qrcode-generator: 2.0.4
 
-  '@livestore/utils@0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)':
-    dependencies:
-      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/workflow@0.18.0(@effect/platform@0.82.4(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2))
-      '@effect/platform': 0.96.1(effect@4.0.0-rc.113)
-      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
-      '@opentelemetry/api': 1.9.0
-      nanoid: 5.0.9
-      pretty-bytes: 7.0.1
-      qrcode-generator: 2.0.4
-
   '@livestore/utils@0.4.0(e378b117b3da40a1c96f3ca818d940c7)':
     dependencies:
       '@effect/ai': 0.35.0(@effect/platform@0.82.4(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
@@ -18833,23 +18702,6 @@ snapshots:
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@standard-schema/spec': 1.1.0
       effect: 4.0.0-rc.113
-      nanoid: 5.0.9
-      pretty-bytes: 7.0.1
-      qrcode-generator: 2.0.4
-
-  '@livestore/utils@0.4.0-dev.25(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)':
-    dependencies:
-      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/workflow@0.18.0(@effect/platform@0.82.4(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2))
-      '@effect/platform': 0.96.1(effect@4.0.0-rc.113)
-      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
-      '@opentelemetry/api': 1.9.0
       nanoid: 5.0.9
       pretty-bytes: 7.0.1
       qrcode-generator: 2.0.4
@@ -18962,21 +18814,6 @@ snapshots:
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@standard-schema/spec': 1.1.0
       effect: 4.0.0-rc.113
-
-  '@livestore/webmesh@0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)':
-    dependencies:
-      '@effect/ai': 0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cli': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/printer@0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/cluster': 0.58.2(@effect/platform@0.96.1(effect@4.0.0-rc.113))(@effect/rpc@0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(@effect/workflow@0.18.0(@effect/platform@0.82.4(effect@4.0.0-rc.113))(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/experimental': 0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2))
-      '@effect/platform': 0.96.1(effect@4.0.0-rc.113)
-      '@effect/printer': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/printer-ansi': 0.49.0(@effect/typeclass@0.40.0(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/rpc': 0.75.1(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/sql': 0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)(ioredis@5.11.1(supports-color@10.2.2)))(@effect/platform@0.96.1(effect@4.0.0-rc.113))(effect@4.0.0-rc.113)
-      '@effect/typeclass': 0.40.0(effect@4.0.0-rc.113)
-      '@livestore/utils': 0.4.0(@effect/ai@0.35.0(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1)))(@effect/cli@0.75.1(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0)))(@effect/cluster@0.58.2(@effect/platform@0.96.1)(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)))(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1)(@effect/printer-ansi@0.49.0(@effect/typeclass@0.40.0))(@effect/printer@0.49.0(@effect/typeclass@0.40.0))(@effect/rpc@0.75.1(@effect/platform@0.96.1))(@effect/sql@0.51.1(@effect/experimental@0.60.0(@effect/platform@0.96.1))(@effect/platform@0.96.1))(@effect/typeclass@0.40.0)(@opentelemetry/api@1.9.0)
-      '@opentelemetry/api': 1.9.0
 
   '@livestore/webmesh@0.4.0(e378b117b3da40a1c96f3ca818d940c7)':
     dependencies:
