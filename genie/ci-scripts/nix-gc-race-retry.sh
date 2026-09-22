@@ -17,7 +17,7 @@ run_nix_gc_race_retry() {
   flake_ref_open=$'\302\253'
   flake_ref_close=$'\302\273'
   nix_cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/nix"
-  local log log_dir stdout_pipe stderr_pipe rc path missing_subpath start now elapsed hb_pid stdout_tee_pid stderr_tee_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature saw_daemon_socket_failure saw_missing_flake_subpath had_errexit
+  local log log_dir stdout_pipe stderr_pipe rc path missing_subpath start now elapsed hb_pid stdout_tee_pid stderr_tee_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature saw_github_archive_503 saw_daemon_socket_failure saw_missing_flake_subpath had_errexit
 
   shift
   start="$(date +%s)"
@@ -104,6 +104,7 @@ run_nix_gc_race_retry() {
     saw_invalid_path=false
     saw_cachix_signature=false
     saw_fetch_signature=false
+    saw_github_archive_503=false
     saw_daemon_socket_failure=false
     saw_missing_flake_subpath=false
     [ -n "$path" ] && saw_invalid_path=true
@@ -126,7 +127,7 @@ run_nix_gc_race_retry() {
       return "$rc"
     fi
 
-    if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ] && [ "$saw_daemon_socket_failure" != true ] && [ "$saw_missing_flake_subpath" != true ]; then
+    if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ] && [ "$saw_fetch_signature" != true ] && [ "$saw_github_archive_503" != true ] && [ "$saw_daemon_socket_failure" != true ] && [ "$saw_missing_flake_subpath" != true ]; then
       echo "::warning::[ci] $task failed after $elapsed s without a detected transient Nix failure"
       write_summary failure "No transient Nix failure signature detected"
       return "$rc"
