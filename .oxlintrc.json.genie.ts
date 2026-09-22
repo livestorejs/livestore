@@ -8,6 +8,9 @@ import { baseOxlintCategories, baseOxlintIgnorePatterns, baseOxlintPlugins, oxli
  * their rationale below for incremental re-enablement.
  */
 
+/** Replaced by the Nix oxlint wrapper with the plugin from the pinned effect-utils input. */
+const OXC_PLUGIN_PATH = './repos/effect-utils/packages/@overeng/oxc-config/src/mod.ts'
+
 // ── Active rules ────────────────────────────────────────────────────────────
 
 const activeRules = {
@@ -241,7 +244,7 @@ export const livestoreOxlintOverrides = [
   },
 ] as const
 
-export const livestoreOxlintPlugins = [...baseOxlintPlugins, 'react', 'react-perf'] as const
+export const livestoreOxlintPlugins = [...baseOxlintPlugins, 'react-perf'] as const
 export const livestoreOxlintCategories = baseOxlintCategories
 export const livestoreOxlintIgnorePatterns = [
   ...baseOxlintIgnorePatterns,
@@ -252,6 +255,7 @@ export const livestoreOxlintIgnorePatterns = [
 
 export default oxlintConfig({
   plugins: livestoreOxlintPlugins,
+  jsPlugins: [OXC_PLUGIN_PATH],
   categories: livestoreOxlintCategories,
   rules: livestoreOxlintRules,
   overrides: livestoreOxlintOverrides,
