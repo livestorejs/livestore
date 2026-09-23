@@ -252,6 +252,7 @@ export const livestoreOxlintIgnorePatterns = [
 
 export default oxlintConfig({
   plugins: livestoreOxlintPlugins,
+  jsPlugins: ['./repos/effect-utils/packages/@overeng/oxc-config/src/mod.ts'],
   categories: livestoreOxlintCategories,
   rules: livestoreOxlintRules,
   overrides: livestoreOxlintOverrides,
