@@ -1,5 +1,5 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils#main"
+    effect-utils "overengineeringstudio/effect-utils#schickling-assistant/2026-09-23-tsgo-upstream-refresh"
     effect "effect-ts/effect"
     livestore-contrib "livestorejs/livestore-contrib"
 }
