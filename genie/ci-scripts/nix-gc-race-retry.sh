@@ -37,12 +37,7 @@ run_nix_gc_race_retry() {
   while [ "$attempt" -le "$max" ]; do
     echo "::notice::[ci] starting $task (attempt $attempt/$max)"
     (
-      heartbeat_sleep_pid=''
-      trap '[ -z "$heartbeat_sleep_pid" ] || kill "$heartbeat_sleep_pid" 2>/dev/null || true; exit 0' TERM INT
-      while true; do
-        sleep "$heartbeat" &
-        heartbeat_sleep_pid=$!
-        wait "$heartbeat_sleep_pid" || exit 0
+      while sleep "$heartbeat"; do
         now=$(date +%s)
         elapsed=$((now - start))
         echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
@@ -118,9 +113,6 @@ run_nix_gc_race_retry() {
     printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
     printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot read file from tarball:[[:space:]]*Truncated tar archive detected while reading data' && saw_fetch_signature=true || true
     printf '%s' "$flattened" | grep -Eq "unable to download 'https://api\\.github\\.com/repos/[^[:space:]']+/tarball/[^[:space:]']+': HTTP error 503|Failed to open archive .*HTTP error 503" && saw_github_archive_503=true || true
-    # fetchurl gives up after its own curl retries with this exact wording; an origin 5xx
-    # (GitHub release assets) is a transient network failure, not a build defect.
-    printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*cannot download [^[:space:]]+ from any mirror' && saw_fetch_signature=true || true
     printf '%s' "$flattened" | grep -Eq "error:[[:space:]]*cannot connect to socket at '/nix/var/nix/daemon-socket/socket'" && saw_daemon_socket_failure=true || true
     rm -f "$log"
 

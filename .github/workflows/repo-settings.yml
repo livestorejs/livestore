@@ -55,7 +55,7 @@ jobs:
       - name: Prepare CI helper scripts
         shell: bash
         run: |
-          cd "${GITHUB_WORKSPACE:-$PWD}" && set -euo pipefail
+          cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && set -euo pipefail
           scripts_src='genie/ci-scripts'
           scripts_dst='${{ runner.temp }}/composition-state/ci-runtime'
           if [ ! -d "$scripts_src" ]; then
@@ -114,7 +114,7 @@ jobs:
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Use pinned devenv from lock
         run: |
-          cd "${GITHUB_WORKSPACE:-$PWD}" && DEVENV_REV=$(jq -r .nodes.devenv.locked.rev 'devenv.lock')
+          cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && DEVENV_REV=$(jq -r .nodes.devenv.locked.rev 'devenv.lock')
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             printf '::error::%s missing .nodes.devenv.locked.rev\n' 'devenv.lock'
             exit 1
@@ -125,7 +125,7 @@ jobs:
       - name: Isolate pnpm state
         shell: bash
         run: |
-          cd "${GITHUB_WORKSPACE:-$PWD}" && set -euo pipefail
+          cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && set -euo pipefail
           mkdir -p "${{ runner.temp }}/composition-state/pnpm-store-pure-v1" "${{ runner.temp }}/composition-state/pnpm-home" .devenv
           member_store=.devenv/pnpm-store-pure-v1
           if [ -L "$member_store" ]; then
@@ -156,7 +156,7 @@ jobs:
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Resolve devenv' '__genie_ci_retry_script='\''${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'\''
-          bash "$__genie_ci_retry_script" '\''resolve devenv (devenv.lock)'\'' '\''cd "${GITHUB_WORKSPACE:-$PWD}" && '\''"'\''"'\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\''"'\''"'\'' '\''"'\''"'\''devenv.lock'\''"'\''"'\'''\'''
+          bash "$__genie_ci_retry_script" '\''resolve devenv (devenv.lock)'\'' '\''cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && '\''"'\''"'\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\''"'\''"'\'' '\''"'\''"'\''devenv.lock'\''"'\''"'\'''\'''
         shell: bash
       - id: app-token
         name: Mint App token
@@ -168,19 +168,19 @@ jobs:
       - name: Apply ruleset
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'devenv tasks run github:rulesets:sync' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:rulesets:sync'
+          bash "$__genie_ci_retry_script" 'devenv tasks run github:rulesets:sync' 'cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:rulesets:sync'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
       - name: Verify ruleset
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'devenv tasks run github:rulesets:check' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:rulesets:check'
+          bash "$__genie_ci_retry_script" 'devenv tasks run github:rulesets:check' 'cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:rulesets:check'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
       - name: Check App definition drift
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'devenv tasks run github:app:check' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:app:check'
+          bash "$__genie_ci_retry_script" 'devenv tasks run github:app:check' 'cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:app:check'
         env:
           RECONCILE_APP_ID: '4312996'
           RECONCILE_APP_PRIVATE_KEY: ${{ secrets.LIVESTORE_RULESET_APP_KEY }}
@@ -211,7 +211,7 @@ jobs:
       - name: Prepare CI helper scripts
         shell: bash
         run: |
-          cd "${GITHUB_WORKSPACE:-$PWD}" && set -euo pipefail
+          cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && set -euo pipefail
           scripts_src='genie/ci-scripts'
           scripts_dst='${{ runner.temp }}/composition-state/ci-runtime'
           if [ ! -d "$scripts_src" ]; then
@@ -270,7 +270,7 @@ jobs:
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Use pinned devenv from lock
         run: |
-          cd "${GITHUB_WORKSPACE:-$PWD}" && DEVENV_REV=$(jq -r .nodes.devenv.locked.rev 'devenv.lock')
+          cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && DEVENV_REV=$(jq -r .nodes.devenv.locked.rev 'devenv.lock')
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             printf '::error::%s missing .nodes.devenv.locked.rev\n' 'devenv.lock'
             exit 1
@@ -281,7 +281,7 @@ jobs:
       - name: Isolate pnpm state
         shell: bash
         run: |
-          cd "${GITHUB_WORKSPACE:-$PWD}" && set -euo pipefail
+          cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && set -euo pipefail
           mkdir -p "${{ runner.temp }}/composition-state/pnpm-store-pure-v1" "${{ runner.temp }}/composition-state/pnpm-home" .devenv
           member_store=.devenv/pnpm-store-pure-v1
           if [ -L "$member_store" ]; then
@@ -312,7 +312,7 @@ jobs:
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Resolve devenv' '__genie_ci_retry_script='\''${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'\''
-          bash "$__genie_ci_retry_script" '\''resolve devenv (devenv.lock)'\'' '\''cd "${GITHUB_WORKSPACE:-$PWD}" && '\''"'\''"'\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\''"'\''"'\'' '\''"'\''"'\''devenv.lock'\''"'\''"'\'''\'''
+          bash "$__genie_ci_retry_script" '\''resolve devenv (devenv.lock)'\'' '\''cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && '\''"'\''"'\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\''"'\''"'\'' '\''"'\''"'\''devenv.lock'\''"'\''"'\'''\'''
         shell: bash
       - id: app-token
         name: Mint App token
@@ -324,6 +324,6 @@ jobs:
       - name: Plan ruleset
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
-          bash "$__genie_ci_retry_script" 'devenv tasks run github:rulesets:plan' 'cd "${GITHUB_WORKSPACE:-$PWD}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:rulesets:plan'
+          bash "$__genie_ci_retry_script" 'devenv tasks run github:rulesets:plan' 'cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DEVENV_TASK_PASSTHROUGH=1 DEVENV_TUI=false "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run github:rulesets:plan'
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}

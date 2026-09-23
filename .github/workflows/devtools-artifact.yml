@@ -470,7 +470,7 @@ jobs:
       - name: Prepare CI helper scripts
         shell: bash
         run: |
-          cd "${GITHUB_WORKSPACE:-$PWD}" && set -euo pipefail
+          cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && set -euo pipefail
           scripts_src='genie/ci-scripts'
           scripts_dst='${{ runner.temp }}/composition-state/ci-runtime'
           if [ ! -d "$scripts_src" ]; then
@@ -529,7 +529,7 @@ jobs:
           key: "megarepo-store-v1-${{ runner.os }}-full-${{ hashFiles('megarepo.lock') }}"
       - name: Use pinned devenv from lock
         run: |
-          cd "${GITHUB_WORKSPACE:-$PWD}" && DEVENV_REV=$(jq -r .nodes.devenv.locked.rev 'devenv.lock')
+          cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && DEVENV_REV=$(jq -r .nodes.devenv.locked.rev 'devenv.lock')
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
             printf '::error::%s missing .nodes.devenv.locked.rev\n' 'devenv.lock'
             exit 1
@@ -540,7 +540,7 @@ jobs:
       - name: Isolate pnpm state
         shell: bash
         run: |
-          cd "${GITHUB_WORKSPACE:-$PWD}" && set -euo pipefail
+          cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && set -euo pipefail
           mkdir -p "${{ runner.temp }}/composition-state/pnpm-store-pure-v1" "${{ runner.temp }}/composition-state/pnpm-home" .devenv
           member_store=.devenv/pnpm-store-pure-v1
           if [ -L "$member_store" ]; then
@@ -571,7 +571,7 @@ jobs:
         run: |
           __genie_ci_retry_script='${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'
           bash "$__genie_ci_retry_script" 'Resolve devenv' '__genie_ci_retry_script='\''${{ runner.temp }}/composition-state/ci-runtime/run-with-nix-gc-race-retry.sh'\''
-          bash "$__genie_ci_retry_script" '\''resolve devenv (devenv.lock)'\'' '\''cd "${GITHUB_WORKSPACE:-$PWD}" && '\''"'\''"'\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\''"'\''"'\'' '\''"'\''"'\''devenv.lock'\''"'\''"'\'''\'''
+          bash "$__genie_ci_retry_script" '\''resolve devenv (devenv.lock)'\'' '\''cd "${EFFECT_UTILS_MEMBER_ROOT:-${GITHUB_WORKSPACE:-$PWD}}" && '\''"'\''"'\''${{ runner.temp }}/composition-state/ci-runtime/resolve-devenv.sh'\''"'\''"'\'' '\''"'\''"'\''devenv.lock'\''"'\''"'\'''\'''
         shell: bash
       - name: Write artifact manifest
         run: |
