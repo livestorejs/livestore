@@ -11,10 +11,5 @@ inputs:
     inputs:
       nixpkgs:
         follows: nixpkgs
-      playwright-web-flake:
-        url: github:pietdevries94/playwright-web-flake/f4d253d83c1d4bdd54920730e569964949294308
-        inputs:
-          nixpkgs:
-            follows: playwright/nixpkgs
   effect-utils:
     url: github:overengineeringstudio/effect-utils/f11107985d77377db5b38216f203f3e2f4b94f02
