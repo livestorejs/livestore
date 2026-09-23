@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "schickling-assistant/2026-09-23-tsgo-upstream-refresh",
-      "commit": "f11107985d77377db5b38216f203f3e2f4b94f02",
+      "ref": "main",
+      "commit": "cb061694ebb79e56dda019fc438e22370b694fe9",
       "pinned": true,
-      "lockedAt": "2026-09-23T11:21:28.385Z"
+      "lockedAt": "2026-09-23T12:00:34.514Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
