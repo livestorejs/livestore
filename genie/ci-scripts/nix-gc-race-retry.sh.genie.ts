@@ -3,8 +3,8 @@ import { ciWorkflowSupportFiles } from '#mr/effect-utils/genie/ci-workflow.ts'
 const patchGitHubArchive503Retry = (script: string) => {
   const replacements = [
     [
-      'local log log_dir stdout_pipe stderr_pipe rc path missing_subpath start now elapsed hb_pid stdout_tee_pid stderr_tee_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature saw_daemon_socket_failure saw_missing_flake_subpath had_errexit',
-      'local log log_dir stdout_pipe stderr_pipe rc path missing_subpath start now elapsed hb_pid stdout_tee_pid stderr_tee_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature saw_github_archive_503 saw_daemon_socket_failure saw_missing_flake_subpath had_errexit',
+      'local log log_dir stdout_pipe stderr_pipe rc path missing_subpath repaired_missing_subpath start now elapsed hb_pid stdout_tee_pid stderr_tee_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature saw_daemon_socket_failure saw_missing_flake_subpath missing_subpath_was_repaired had_errexit',
+      'local log log_dir stdout_pipe stderr_pipe rc path missing_subpath repaired_missing_subpath start now elapsed hb_pid stdout_tee_pid stderr_tee_pid flattened saw_invalid_path saw_cachix_signature saw_fetch_signature saw_github_archive_503 saw_daemon_socket_failure saw_missing_flake_subpath missing_subpath_was_repaired had_errexit',
     ],
     [
       'saw_fetch_signature=false\n    saw_daemon_socket_failure=false\n    saw_missing_flake_subpath=false',
