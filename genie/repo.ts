@@ -323,9 +323,9 @@ const setupMegarepoRun = (run: string) =>
     'nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all',
     [
       'nix run --no-write-lock-file',
-      '--override-input flake-utils "https://codeload.github.com/numtide/flake-utils/tar.gz/11707dc2f618dd54ca8739b309ec4fc024de578b"',
-      '--override-input nixpkgs "https://codeload.github.com/NixOS/nixpkgs/tar.gz/5b63481602d9b0a714d5791c53bebe829d6b1a3c"',
-      '"https://codeload.github.com/overengineeringstudio/effect-utils/tar.gz/$EU_REV#megarepo" -- apply --all',
+      '--override-input flake-utils "github:numtide/flake-utils/11707dc2f618dd54ca8739b309ec4fc024de578b"',
+      '--override-input nixpkgs "github:NixOS/nixpkgs/5b63481602d9b0a714d5791c53bebe829d6b1a3c"',
+      '"github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all',
     ].join(' '),
   )
 

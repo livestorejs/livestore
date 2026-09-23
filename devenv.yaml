@@ -7,7 +7,7 @@ inputs:
       nixpkgs:
         follows: nixpkgs
   playwright:
-    url: github:overengineeringstudio/effect-utils/1b63d2bc2d9e95851dc616cfb89c709767eccf76?dir=nix/playwright-flake
+    url: github:overengineeringstudio/effect-utils/f11107985d77377db5b38216f203f3e2f4b94f02?dir=nix/playwright-flake
     inputs:
       nixpkgs:
         follows: nixpkgs
@@ -17,4 +17,4 @@ inputs:
           nixpkgs:
             follows: playwright/nixpkgs
   effect-utils:
-    url: github:overengineeringstudio/effect-utils/1b63d2bc2d9e95851dc616cfb89c709767eccf76
+    url: github:overengineeringstudio/effect-utils/f11107985d77377db5b38216f203f3e2f4b94f02
