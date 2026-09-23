@@ -34,7 +34,6 @@
       "original": {
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "cb061694ebb79e56dda019fc438e22370b694fe9",
         "type": "github"
       }
     },
@@ -201,7 +200,6 @@
         "dir": "nix/playwright-flake",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "cb061694ebb79e56dda019fc438e22370b694fe9",
         "type": "github"
       }
     },
