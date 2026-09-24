@@ -26,6 +26,19 @@ docs pages are derived views of this node (LS-R15).
   page and the community/support claims in the docs FAQ derive from this
   node and must not contradict it. `refines: LS-R15` Adopted 2026-07-16
   (interview).
+- **LS.CONTRIB.COMM-R04 Contributor meeting schedule:** The contributor meeting
+  has one versioned schedule in this repository. Its published dates use an
+  explicit time zone and distinguish a regular cadence from moved or skipped
+  occurrences. Public event listings and invitations must agree with the
+  schedule. `refines: LS-R15`
+- **LS.CONTRIB.COMM-R05 No paid publishing dependency:** Publishing the
+  contributor meeting must work without an additional paid subscription.
+  Any destination that cannot be updated automatically on the available free
+  tier has an explicit manual publishing and verification step.
+- **LS.CONTRIB.COMM-R06 Canonical meeting room:** Every published occurrence
+  points participants to one documented video meeting room. The join URL and
+  participant role are checked before announcement, and the room can be
+  changed without editing every previously shared event link.
 
 ## Open Design Questions
 

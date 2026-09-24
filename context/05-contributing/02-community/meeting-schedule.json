@@ -1,0 +1,9 @@
+{
+  "anchorDate": "2026-09-24",
+  "intervalDays": 14,
+  "localStart": "18:00",
+  "durationMinutes": 60,
+  "timeZone": "Europe/Berlin",
+  "joinUrl": "https://livestore.dev/meet",
+  "overrides": []
+}
