@@ -75,7 +75,7 @@ in
       description = "Validate contributor schedule and publication behavior";
       exec = ''
         node scripts/src/meetings/publish.ts --validate
-        node_modules/.bin/vitest run --config scripts/vitest.config.ts src/meetings/meeting.test.ts
+        node_modules/.bin/vitest run --config scripts/vitest.config.ts src/meetings
       '';
       after = [ "pnpm:install" ];
     };

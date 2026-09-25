@@ -46,7 +46,7 @@ export default githubWorkflow({
         ...setup,
         {
           name: 'Validate schedule and publisher',
-          run: 'node scripts/src/meetings/publish.ts --validate\nnode_modules/.bin/vitest run --config scripts/vitest.config.ts src/meetings/meeting.test.ts',
+          run: 'node scripts/src/meetings/publish.ts --validate\nnode_modules/.bin/vitest run --config scripts/vitest.config.ts src/meetings',
         },
       ],
     },
@@ -68,6 +68,28 @@ export default githubWorkflow({
           name: 'Reconcile and verify Google Calendar',
           run: 'node scripts/src/meetings/publish.ts --apply',
           env: { MEETING_GOOGLE_SERVICE_ACCOUNT_JSON: '${{ secrets.MEETING_GOOGLE_SERVICE_ACCOUNT_JSON }}' },
+        },
+      ],
+    },
+    report: {
+      needs: ['validate', 'publish'],
+      if: "always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.CONTRIBUTOR_MEETING_PUBLISHING_ENABLED == 'true'",
+      permissions: { contents: 'read', actions: 'read', issues: 'write' },
+      'runs-on': 'ubuntu-24.04',
+      'timeout-minutes': 5,
+      defaults: bashShellDefaults,
+      steps: [
+        { uses: 'actions/checkout@v6', with: { 'persist-credentials': false } },
+        { uses: 'actions/setup-node@v6', with: { 'node-version': '24' } },
+        {
+          name: 'Report publication status',
+          run: 'node scripts/src/meetings/report-status.ts',
+          env: {
+            GH_TOKEN: '${{ github.token }}',
+            CONTRIBUTOR_MEETING_PUBLISHING_ENABLED: '${{ vars.CONTRIBUTOR_MEETING_PUBLISHING_ENABLED }}',
+            MEETING_VALIDATION_RESULT: '${{ needs.validate.result }}',
+            MEETING_PUBLICATION_RESULT: '${{ needs.publish.result }}',
+          },
         },
       ],
     },
