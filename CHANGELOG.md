@@ -65,6 +65,7 @@
   rebase generation while stale epochs remain checked separately, avoiding
   duplicate materialization and ghost fences during multi-writer rebases
   ([#1530](https://github.com/livestorejs/livestore/pull/1530)).
+- **Store lifecycle:** Closing the scope a store was created in (for example when a store registry disposes an unused store) now sends events committed in the session to the leader before closing, like `store.shutdown()`. Previously such events could be dropped if the leader had not acknowledged them yet. Disposal can now wait up to one second ([#1437](https://github.com/livestorejs/livestore/issues/1437), [#1659](https://github.com/livestorejs/livestore/pull/1659)).
 - **State storage:** Rebases roll back state through a materialization journal table instead of SQLite changesets carried in event metadata. Because the state system tables changed, existing state databases are rebuilt from the eventlog once after upgrading ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
 - **Query cache:** Cached query results are discarded when a journal or savepoint rollback changes the session database, so reads after a rebase no longer return rolled-back rows ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
 
