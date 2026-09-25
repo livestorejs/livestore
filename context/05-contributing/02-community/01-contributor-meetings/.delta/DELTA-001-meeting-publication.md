@@ -8,10 +8,11 @@ The checked-in implementation does not establish production activation.
 
 The dedicated public Google calendar has been created and public subscription
 verified. The Google Cloud project `livestore-meetings` exists without billing.
-Calendar API activation is pending the user's Google terms confirmation.
+Calendar API activation is complete following the user's confirmation.
 The dedicated public calendar grants the publisher calendar-only writer access;
 its invitation setting is verified after reload as "Do not show invitations".
-Service-account credentials have not been created. The legacy series remains
+The service-account signing key has been created and stored in the GitHub
+Actions secret. Its shared 1Password backup is pending approval. The legacy series remains
 untouched. These provisioning steps do not establish event publication.
 
 Metadata access to the existing shared 1Password vault **LiveStore** is
@@ -19,9 +20,11 @@ confirmed. The disposable private test calendar
 `60dbecfd6343397d67788b5e29bca1cc0ce63888e37cfd448c14eecbc40f4f73@group.calendar.google.com`
 has been created. Its writer grant to
 `meeting-publisher@livestore-meetings.iam.gserviceaccount.com` is verified.
-No signing key exists yet, and API lifecycle tests have not run because API
-terms confirmation is still pending. Remove the disposable calendar after
-those tests and record cleanup before closing this delta.
+The real service account passed create, repeated publication, reschedule,
+cancellation, restoration with the original IDs, and repeated restoration.
+Readback after each scenario confirmed convergence and exactly two active
+events. Cleanup confirmed zero active test events; removal of the disposable
+calendar itself remains pending. See the [experiment evidence](../.experiments/meeting-publishing.md).
 
 The last inspected personal-calendar series was weekly at 18:00 Berlin.
 The intended schedule is biweekly at 19:00 Berlin. Do not retire that series

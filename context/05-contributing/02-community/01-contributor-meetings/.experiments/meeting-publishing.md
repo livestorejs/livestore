@@ -33,7 +33,7 @@ cannot serve as test-channel-only experiments.
 The existing weekly Google series must be reconciled carefully so its invited
 guests receive the change and no duplicate fortnightly events are created.
 
-## Validation still needed
+## Live Google lifecycle verification (2026-09-25)
 
 The local publisher tests exercise cancellation restoration and moving a
 previously past event into the future under its existing ID. The future-event
@@ -42,8 +42,31 @@ desired identity. The [Google event resource contract](https://developers.google
 documents that cancelled organizer events retain details for restoration and
 that direct event retrieval returns cancelled entries. The publisher patches
 owned entries to `confirmed` with their concurrency token. Missing ownership
-metadata fails closed. These tests verify transport behavior locally; live
-Google restoration remains part of activation verification.
+metadata fails closed.
+
+The actual publisher adapter ran against the disposable private calendar with
+the approved service-account signing key and enabled Calendar API. Every step
+read back Google state, required exactly two active events, and verified that
+replanning produced no further changes:
+
+| Scenario | Applied operations | Result |
+| --- | --- | --- |
+| Initial publication | Create two | Two expected stable IDs |
+| Repeat | None | Idempotent |
+| Reschedule | Update two | Original IDs retained |
+| Cancel with replacement dates | Update, create, delete | Two replacement occurrences |
+| Restore original schedule | Update two, delete | Original IDs restored after deletion |
+| Repeat restored schedule | None | Idempotent |
+
+Cleanup then deleted the remaining owned test events and confirmed zero active
+events. The disposable calendar container still requires removal. This directly
+verifies Google's organizer-calendar cancellation/restoration behavior with the
+same adapter used by the workflow; no production events were published. The
+local reproducible harness is `tmp/meeting-live-e2e.mjs` (ignored, receives its
+credential through the environment). The GitHub Actions credential is stored;
+backup into the shared LiveStore 1Password vault awaits approval.
+
+## Validation still needed
 
 The accepted cadence is 19:00 Europe/Berlin, every 14 days from 2026-09-24.
 Exercise create, reschedule, cancellation, and retry behavior, then verify
