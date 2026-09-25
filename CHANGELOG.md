@@ -35,6 +35,18 @@
   migration hooks finish. Browser fast-path startup waits for recovery when its
   snapshot is incomplete. The eventlog and pending events are preserved
   ([#1605](https://github.com/livestorejs/livestore/issues/1605)).
+- **Cloudflare sync (DO<>DO):** Live updates from the sync backend to a client
+  Durable Object now travel through a Cloudflare persistent stub the client
+  mints for its live pull, instead of a reverse RPC by binding name and DO id.
+  A subscription whose client is gone is dropped on the next publish, and the
+  backend no longer trusts a self-reported DO id. **Breaking:** `createStoreDo`
+  drops `durableObject.env` and `durableObject.bindingName`; client DOs
+  implement `[restore]` with `restoreStoreDoSyncTarget` instead of
+  `syncUpdateRpc`; every Worker in the restore chain needs the experimental
+  `allow_irrevocable_stub_storage` compatibility flag, and compatibility dates
+  before 2026-01-20 also need `rpc_params_dup_stubs`
+  ([#1601](https://github.com/livestorejs/livestore/issues/1601)).
+
 - **Cloudflare sync:** Serialize push admission through pull publication so an
   accepted event cannot advance the backend head without notifying subscribers
   ([#1537](https://github.com/livestorejs/livestore/pull/1537)).
