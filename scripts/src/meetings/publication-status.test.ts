@@ -17,7 +17,8 @@ const run: PublicationRun = {
 }
 
 test('one issue follows failures, changed failures, recovery, and recurrence over real HTTP', async () => {
-  const issues: { number: number; state: 'open' | 'closed'; body: string }[] = []
+  const issues: { number: number; state: 'open' | 'closed'; body: string; user: { id: number } }[] = []
+  const spoofedIssue = { number: 99, state: 'open', body: PUBLICATION_ISSUE_MARKER, user: { id: 123 } }
   const comments: string[] = []
   const writes: string[] = []
   let failedStep = 'Resolve locked browser runtime'
@@ -39,12 +40,12 @@ test('one issue follows failures, changed failures, recovery, and recurrence ove
       return
     }
     if (request.method === 'GET') {
-      response.end(JSON.stringify(issues))
+      response.end(JSON.stringify([spoofedIssue, ...issues]))
       return
     }
     writes.push(`${request.method} ${path}`)
     if (request.method === 'POST' && path.endsWith('/issues') === true) {
-      issues.push({ number: 7, state: 'open', body: body.body })
+      issues.push({ number: 7, state: 'open', body: body.body, user: { id: 41898282 } })
     } else if (path.endsWith('/comments') === true) {
       comments.push(body.body)
     } else if (request.method === 'PATCH') {
@@ -86,6 +87,7 @@ test('one issue follows failures, changed failures, recovery, and recurrence ove
     expect(issues).toHaveLength(1)
     expect(issues[0]?.number).toBe(7)
     expect(issues[0]?.state).toBe('open')
+    expect(writes.some((path) => path.includes('/issues/99'))).toBe(false)
     expect(comments).toHaveLength(3)
     expect(comments[2]).toContain('failed again')
     await reportPublicationStatus({ ...run, validation: 'failure', publication: 'skipped' }, 'test-token', apiUrl)

@@ -5,6 +5,8 @@ const paths = [
   'packages/@local/shared/src/contributor-meeting.ts',
   'scripts/src/meetings/**',
   'docs/src/components/ContributorMeetings.astro',
+  'docs/src/content/docs/misc/contributor-sync.mdx',
+  'docs/astro.config.ts',
   'docs/src/utils/verify-contributor-meeting.ts',
   '.github/workflows/contributor-meetings.yml',
   '.github/workflows/contributor-meetings.yml.genie.ts',

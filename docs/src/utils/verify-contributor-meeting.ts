@@ -55,8 +55,7 @@ try {
   if (
     room.status !== 302 ||
     location === null ||
-    new URL(location).hostname !== 'riverside.com' ||
-    new URL(location).pathname !== '/studio/livestore'
+    new URL(location).href !== 'https://riverside.com/studio/livestore?t=5e1a91673f40e01c9054'
   )
     throw new Error('Canonical room redirect is not the LiveStore Riverside Studio')
   if (schedule.calendarId === undefined) throw new Error('Public calendarId is required for the publication gate')

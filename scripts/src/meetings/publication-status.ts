@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 
 export const PUBLICATION_ISSUE_MARKER = '<!-- livestore-contributor-meeting-publishing:v1 -->'
+const GITHUB_ACTIONS_BOT_ID = 41898282
 
 export type PublicationRun = {
   repository: string
@@ -46,7 +47,10 @@ export const reportPublicationStatus = async (
     const batch = await request<PublicationIssue[]>(`issues?state=all&per_page=100&page=${page}`)
     issues.push(
       ...batch.filter(
-        (issue) => issue.pull_request === undefined && issue.body?.includes(PUBLICATION_ISSUE_MARKER) === true,
+        (issue) =>
+          issue.pull_request === undefined &&
+          issue.user?.id === GITHUB_ACTIONS_BOT_ID &&
+          issue.body?.includes(PUBLICATION_ISSUE_MARKER) === true,
       ),
     )
     if (batch.length < 100) break
@@ -94,6 +98,8 @@ type PublicationIssue = {
   number: number
   state: 'open' | 'closed'
   body: string | null
+  /** Immutable GitHub creator ID; the marker alone is user-controlled. */
+  user?: { id: number }
   pull_request?: unknown
 }
 

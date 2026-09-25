@@ -64,7 +64,11 @@ verifies Google's organizer-calendar cancellation/restoration behavior with the
 same adapter used by the workflow; no production events were published. The
 local reproducible harness is `tmp/meeting-live-e2e.mjs` (ignored, receives its
 credential through the environment). The GitHub Actions credential is stored;
-backup into the shared LiveStore 1Password vault awaits approval.
+backup into the shared LiveStore 1Password vault has been created, with the
+concealed field metadata verified. Exact JSON readback remains pending. The
+test calendar writer grant was revoked and verified after cleanup. A separate
+read-only production plan proposed exactly two creations, October 8 and 22
+at 17:00–18:00 UTC; it did not publish them.
 
 ## Validation still needed
 

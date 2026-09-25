@@ -12,7 +12,8 @@ Calendar API activation is complete following the user's confirmation.
 The dedicated public calendar grants the publisher calendar-only writer access;
 its invitation setting is verified after reload as "Do not show invitations".
 The service-account signing key has been created and stored in the GitHub
-Actions secret. Its shared 1Password backup is pending approval. The legacy series remains
+Actions secret. Its shared LiveStore 1Password backup has been created and its
+concealed field metadata verified; exact JSON readback is pending. The legacy series remains
 untouched. These provisioning steps do not establish event publication.
 
 Metadata access to the existing shared 1Password vault **LiveStore** is
@@ -24,7 +25,9 @@ The real service account passed create, repeated publication, reschedule,
 cancellation, restoration with the original IDs, and repeated restoration.
 Readback after each scenario confirmed convergence and exactly two active
 events. Cleanup confirmed zero active test events; removal of the disposable
-calendar itself remains pending. See the [experiment evidence](../.experiments/meeting-publishing.md).
+calendar itself remains pending. Its service-account writer access has been
+revoked and verified. A production read-only plan proposes exactly the October
+8 and 22 events at 17:00–18:00 UTC, without writing them. See the [experiment evidence](../.experiments/meeting-publishing.md).
 
 The last inspected personal-calendar series was weekly at 18:00 Berlin.
 The intended schedule is biweekly at 19:00 Berlin. Do not retire that series
