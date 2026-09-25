@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./contributor-meeting": "./src/contributor-meeting.ts"
   },
   "devDependencies": {
     "@types/node": "25.3.3"

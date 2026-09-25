@@ -34,6 +34,13 @@ const branch = getBranchName()
 const docsRedirect = (from: string, to: string) => [[from, to]] as const
 
 const docsRedirects = Object.fromEntries([
+  [
+    '/meet',
+    {
+      status: 302,
+      destination: 'https://riverside.com/studio/livestore?t=5e1a91673f40e01c9054',
+    },
+  ],
   ...docsRedirect('/getting-started', '/getting-started/react-web'),
   ...docsRedirect('/misc/sponsoring', '/sustainable-open-source/sponsoring'),
 
@@ -90,7 +97,7 @@ const docsRedirects = Object.fromEntries([
   ...docsRedirect('/contributing/contributing', '/sustainable-open-source/contributing/info'),
   ...docsRedirect('/contributing/docs', '/sustainable-open-source/contributing/docs'),
   ...docsRedirect('/contributing/monorepo', '/sustainable-open-source/contributing/monorepo'),
-]) satisfies Record<string, string>
+]) satisfies Record<string, string | { status: 302; destination: string }>
 
 // Netlify preview domain (see https://docs.netlify.com/configure-builds/environment-variables/#build-metadata)
 const domain =
