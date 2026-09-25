@@ -2,7 +2,7 @@
 
 Status: open.
 
-The Community [spec](../spec.md) defines the repository schedule, canonical
+The Contributor Meetings [spec](../spec.md) defines the repository schedule, canonical
 docs page, reusable Riverside alias, and a dedicated public Google calendar.
 The checked-in implementation does not establish production activation.
 
@@ -12,22 +12,33 @@ Calendar API activation is pending the user's Google terms confirmation;
 service-account credentials have not been created. The legacy series remains
 untouched. These provisioning steps do not establish event publication.
 
+Metadata access to the existing shared 1Password vault **LiveStore** is
+confirmed. The disposable private test calendar
+`60dbecfd6343397d67788b5e29bca1cc0ce63888e37cfd448c14eecbc40f4f73@group.calendar.google.com`
+has been created. Its writer grant to
+`meeting-publisher@livestore-meetings.iam.gserviceaccount.com` is verified.
+No signing key exists yet, and API lifecycle tests have not run because API
+terms confirmation is still pending. Remove the disposable calendar after
+those tests and record cleanup before closing this delta.
+
 The last inspected personal-calendar series was weekly at 18:00 Berlin.
 The intended schedule is biweekly at 19:00 Berlin. Do not retire that series
-until its replacement is verified. A Riverside welcome page was observed;
-a complete guest entry has not been verified by that observation.
+until its replacement is verified. Riverside verification covers the redirect
+target; guest entry is not a rollout prerequisite.
 
 Close this delta only after recording evidence that:
 
 - The dedicated stable docs release serves the contributor-sync page and
   `/meet` redirect, and the page reads the current `main` schedule revision.
-- A guest can enter the intended Riverside room when the host opens it.
+- The room alias redirects to the intended reusable Riverside Studio URL.
+- A temporary private calendar passes lifecycle tests and is cleaned up.
 - The dedicated Google calendar is publicly subscribable, its writer
-  credential is configured, and the workflow is enabled after the docs gate.
+  credential is configured with shared 1Password backup, and the workflow is
+  enabled after the docs gate. The reusable failure issue recovers correctly.
 - The next two events agree with the schedule and link back to the docs page
   and room. Repeated publication preserves their identities.
 - Future instances of the old weekly series have ended, its past instances
-  remain intact, and current invitees have received the replacement links.
+  remain intact, and Calendar notifications deliver the replacement links.
 
 Discord automation and contributor-sync Luma publishing are outside this
 rollout. Office-hours Luma use is unaffected. See the

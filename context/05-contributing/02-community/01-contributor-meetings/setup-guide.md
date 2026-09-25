@@ -1,6 +1,6 @@
 # Contributor meeting publishing — setup and operation
 
-This guide implements the Community [spec](./spec.md). Track unverified live
+This guide implements the Contributor Meetings [spec](./spec.md). Track unverified live
 steps in the [rollout delta](./.delta/DELTA-001-meeting-publication.md).
 
 ## Provision the calendar
@@ -15,7 +15,7 @@ steps in the [rollout delta](./.delta/DELTA-001-meeting-publication.md).
    Do not grant domain-wide delegation or project-wide administrator roles.
 3. Create a service-account JSON key and store it as the repository Actions
    secret `MEETING_GOOGLE_SERVICE_ACCOUNT_JSON`. Never commit or print it.
-   Keep a recoverable copy in the team's existing secret store. Rotate by
+   Keep a recoverable copy in shared 1Password. Rotate by
    replacing the secret and verifying a run before revoking the old key.
 4. Put the public calendar ID in `meeting-schedule.json` as `calendarId`.
    It is public configuration, not a secret. Verify that an anonymous viewer
@@ -37,8 +37,10 @@ billing dependency to make publication work.
    Verify the displayed meetings against the repository schedule, public
    change notes, and the calendar subscription link. Confirm `/meet` redirects
    to the intended LiveStore Riverside Studio.
-3. With the host opening the room, verify that a guest can enter. Merely
-   reaching Riverside's welcome page does not satisfy this check.
+3. Verify the create, move, cancel, restore, repeated-run, and cleanup lifecycle
+   on a temporary private calendar using the same publisher. Remove the test
+   calendar after recording results. Riverside verification is the redirect
+   target check above; entering a hosted room is not an activation gate.
 4. Run `node scripts/src/meetings/publish.ts --validate`, then
    `node docs/src/utils/verify-contributor-meeting.ts` to check the live page. Run
    `node scripts/src/meetings/publish.ts` with the publishing credential
@@ -52,7 +54,15 @@ billing dependency to make publication work.
 6. Verify subscription from a separate viewer. Only then end future instances
    of the old weekly personal-calendar series, preserving past instances.
    Notify its current invitees with the canonical page and new subscription
-   link. Record the verification evidence and close the rollout delta.
+   link through Calendar notifications. If truncating the series does not
+   deliver the migration links, update the next old occurrence with the note
+   and notify its invitees before retiring it. Do not send a separate email
+   or Discord announcement. Record evidence and close the rollout delta.
+
+Once these checks pass, activate without an additional discretionary rollout
+approval. A reusable GitHub issue opens or reopens on a publishing failure,
+updates only when that failure changes, and closes after successful recovery.
+Repeated unchanged failures do not produce repeated issue messages.
 
 ## Change the schedule
 
