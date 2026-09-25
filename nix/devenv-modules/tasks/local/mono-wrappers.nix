@@ -629,7 +629,7 @@ in
 
     "lint:full:fix" = {
       description = "Fix lint issues, then run full lint checks";
-      # CONTRIBUTING/CLAUDE.md point contributors at this task before committing, so it has to
+      # CONTRIBUTING/AGENTS.md point contributors at this task before committing, so it has to
       # cover what `lint:full` gates in CI — otherwise the documented pre-commit command passes
       # while CI fails. Nix formatting gets the fixing variant; the rest are check-only.
       after = [
