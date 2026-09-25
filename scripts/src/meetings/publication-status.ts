@@ -6,7 +6,7 @@ const GITHUB_ACTIONS_BOT_ID = 41898282
 // Keep this trust-boundary guard dependency-free: setup failures must be reportable.
 export const safeFailureCode = (value: string | undefined): string | undefined =>
   value !== undefined &&
-  /^(schedule|receipt|authorization|calendar-list|calendar-apply|calendar-readback|browser|page|room|feed|receipt-write):(failed|timeout|http-[45]\d{2})$/.test(
+  /^(schedule|receipt|authorization|calendar-list|calendar-apply|calendar-readback|browser|page|room|feed|receipt-write):(failed|timeout|http-[45]\d{2})$|^tests:([a-f0-9]{64}|runner-failed)$/.test(
     value,
   ) === true
     ? value

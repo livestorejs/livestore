@@ -70,6 +70,24 @@ describe('publication gate', () => {
 })
 
 describe('contributor schedule', () => {
+  test('rejects later DST gaps and overlaps across the supported cadence horizon', () => {
+    const moved = (date: string) => ({
+      ...base,
+      changes: [{ kind: 'reschedule', occurrence: 1, date, localStart: '02:30', note: 'New cadence.' }],
+    })
+    expect(() => decodeMeetingSchedule(moved('2026-11-08'))).toThrow('missing or ambiguous')
+    expect(() => decodeMeetingSchedule(moved('2027-04-04'))).toThrow('missing or ambiguous')
+    expect(() => decodeMeetingSchedule(moved('2026-11-05'))).not.toThrow()
+    expect(() =>
+      decodeMeetingSchedule({
+        ...moved('2026-11-08'),
+        changes: [
+          ...moved('2026-11-08').changes,
+          { kind: 'reschedule', occurrence: 2, date: '2026-11-22', localStart: '19:00', note: 'Return to evening.' },
+        ],
+      }),
+    ).not.toThrow()
+  })
   test('selects October 8 and 22 at 19:00 Berlin', () => {
     expect(getMeetingView(schedule, now).upcoming.map(({ start }) => start)).toEqual([
       '2026-10-08T17:00:00.000Z',

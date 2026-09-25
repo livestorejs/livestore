@@ -56,7 +56,7 @@ env:
 jobs:
   validate:
     outputs:
-      failure: ${{ steps.validate.outputs.failure }}
+      failure: ${{ steps.tests.outputs.failure || steps.validate.outputs.failure }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
@@ -80,9 +80,10 @@ jobs:
         run: ./scripts/bootstrap-minimal.sh
       - name: Validate schedule and publisher
         id: validate
-        run: |
-          node scripts/src/meetings/publish.ts --validate
-          node_modules/.bin/vitest run --config scripts/vitest.config.ts src/meetings
+        run: node scripts/src/meetings/publish.ts --validate
+      - name: Test schedule and publisher
+        id: tests
+        run: node scripts/src/meetings/check-tests.ts
   publish:
     outputs:
       failure: ${{ steps.calendar.outputs.failure || steps.site.outputs.failure }}

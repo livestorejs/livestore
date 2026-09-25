@@ -43,7 +43,7 @@ export default githubWorkflow({
   env: { CI: 'true' },
   jobs: {
     validate: {
-      outputs: { failure: '${{ steps.validate.outputs.failure }}' },
+      outputs: { failure: '${{ steps.tests.outputs.failure || steps.validate.outputs.failure }}' },
       'runs-on': 'ubuntu-24.04',
       'timeout-minutes': 10,
       defaults: bashShellDefaults,
@@ -52,7 +52,12 @@ export default githubWorkflow({
         {
           name: 'Validate schedule and publisher',
           id: 'validate',
-          run: 'node scripts/src/meetings/publish.ts --validate\nnode_modules/.bin/vitest run --config scripts/vitest.config.ts src/meetings',
+          run: 'node scripts/src/meetings/publish.ts --validate',
+        },
+        {
+          name: 'Test schedule and publisher',
+          id: 'tests',
+          run: 'node scripts/src/meetings/check-tests.ts',
         },
       ],
     },
