@@ -13,7 +13,8 @@ The dedicated public calendar grants the publisher calendar-only writer access;
 its invitation setting is verified after reload as "Do not show invitations".
 The service-account signing key has been created and stored in the GitHub
 Actions secret. Its shared LiveStore 1Password backup has been created and its
-concealed field metadata verified; exact JSON readback is pending. The legacy series remains
+concealed field metadata and exact JSON readback verified. The downloaded key
+copy was removed. The legacy series remains
 untouched. These provisioning steps do not establish event publication.
 
 Metadata access to the existing shared 1Password vault **LiveStore** is
@@ -29,8 +30,10 @@ calendar itself remains pending. Its service-account writer access has been
 revoked and verified. A production read-only plan proposes exactly the October
 8 and 22 events at 17:00–18:00 UTC, without writing them. See the [experiment evidence](../.experiments/meeting-publishing.md).
 
-The last inspected personal-calendar series was weekly at 18:00 Berlin.
-The intended schedule is biweekly at 19:00 Berlin. Do not retire that series
+Live inspection on September 25 confirmed the personal-calendar series already
+runs every two weeks at 19:00 Berlin, including October 8 and 22, with four
+invitees. The earlier weekly 18:00 observation is superseded. Migration changes
+the calendar ownership and subscription workflow, not the meeting time. Do not retire that series
 until its replacement is verified. Riverside verification covers the redirect
 target; guest entry is not a rollout prerequisite.
 
@@ -45,7 +48,7 @@ Close this delta only after recording evidence that:
   enabled after the docs gate. The reusable failure issue recovers correctly.
 - The next two events agree with the schedule and link back to the docs page
   and room. Repeated publication preserves their identities.
-- Future instances of the old weekly series have ended, its past instances
+- Future instances of the old personal-calendar series have ended, its past instances
   remain intact, and Calendar notifications deliver the replacement links.
 
 Discord automation and contributor-sync Luma publishing are outside this

@@ -52,7 +52,7 @@ billing dependency to make publication work.
    canonical-page backlink, and room link. Repeat once to confirm no duplicate
    events or unnecessary changes.
 6. Verify subscription from a separate viewer. Only then end future instances
-   of the old weekly personal-calendar series, preserving past instances.
+   of the old personal-calendar series, preserving past instances.
    Notify its current invitees with the canonical page and new subscription
    link through Calendar notifications. If truncating the series does not
    deliver the migration links, update the next old occurrence with the note
@@ -99,8 +99,12 @@ declared in `package.json`, using `scripts/bootstrap-minimal.sh`. Publication
 additionally builds the managed Playwright wrapper from `devenv.lock` through
 `scripts/src/meetings/resolve-playwright.sh`. A cold full development-environment
 bootstrap is not required for schedule updates. Job deadlines are ten minutes
-for validation and fifteen minutes for publication; investigate a slow setup
-phase before increasing either deadline.
+for validation and thirty minutes for publication. Publication phase limits are
+two minutes for dependencies, two for Nix setup, four for browser resolution,
+eight for site verification, and nine for Google reconciliation, leaving five
+minutes for other action setup and teardown. Site polling itself has a six-minute
+deadline to cover the raw-file cache window. Investigate a slow phase before
+increasing its deadline.
 
 Disable `CONTRIBUTOR_MEETING_PUBLISHING_ENABLED` to stop Google writes during
 an incident. Keep the public repository schedule accurate. Fix the reported

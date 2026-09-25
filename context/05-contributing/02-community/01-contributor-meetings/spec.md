@@ -136,7 +136,7 @@ failure and warns that calendar copies may lag. Standard Calendar API use at
 this scale must not introduce additional fees; if free access becomes
 unavailable, publication must fail rather than opt into a paid service.
 
-The existing weekly personal-calendar series is retired only after the page,
+The existing personal-calendar series is retired only after the page,
 room, public calendar subscription, event backlinks, and workflow are verified
 live. End future instances while preserving history, and notify its current
 invitees through Google Calendar with the canonical page and replacement

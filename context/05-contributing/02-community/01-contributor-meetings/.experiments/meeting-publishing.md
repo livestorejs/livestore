@@ -8,7 +8,7 @@ paid subscription or manual duplication?
 ## Evidence checked (2026-09-24)
 
 - The organizer's existing Google Calendar event, viewed in Notion Calendar,
-  is `LiveStore Contrib Sync`, 18:00–19:00 Europe/Berlin. It currently says
+  was `LiveStore Contrib Sync`, 18:00–19:00 Europe/Berlin. It then said
   "Every week on Thu" and includes the LiveStore Riverside Studio link. A
   separate browser visit reached the "Welcome to LiveStore" studio page; a
   full guest join was not attempted.
@@ -30,8 +30,15 @@ the requested operational simplicity. Office-hours use remains separate.
 Discord automation follows the contrib bot work; server-wide scheduled events
 cannot serve as test-channel-only experiments.
 
-The existing weekly Google series must be reconciled carefully so its invited
+The existing personal-calendar Google series must be reconciled carefully so its invited
 guests receive the change and no duplicate fortnightly events are created.
+
+## Refreshed legacy-series inspection (2026-09-25)
+
+The live personal-calendar series now runs every two weeks at 19:00 Berlin,
+with October 8 and 22 occurrences and four invitees. This supersedes the earlier
+weekly 18:00 observation. Retire its future invitations only after the replacement
+is verified; preserve history and notify invitees about the new calendar.
 
 ## Live Google lifecycle verification (2026-09-25)
 
@@ -65,7 +72,8 @@ same adapter used by the workflow; no production events were published. The
 local reproducible harness is `tmp/meeting-live-e2e.mjs` (ignored, receives its
 credential through the environment). The GitHub Actions credential is stored;
 backup into the shared LiveStore 1Password vault has been created, with the
-concealed field metadata verified. Exact JSON readback remains pending. The
+concealed field metadata and exact JSON readback verified. The downloaded key
+copy was removed. The
 test calendar writer grant was revoked and verified after cleanup. A separate
 read-only production plan proposed exactly two creations, October 8 and 22
 at 17:00–18:00 UTC; it did not publish them.
