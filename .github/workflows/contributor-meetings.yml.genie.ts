@@ -19,7 +19,7 @@ const setup = [
   { uses: 'actions/setup-node@v6', with: { 'node-version': '24' } },
   { uses: 'oven-sh/setup-bun@v2', with: { 'bun-version': '1.3.13' } },
   { uses: 'pnpm/action-setup@v4', with: { run_install: false } },
-  { name: 'Install locked workspace dependencies', run: './scripts/bootstrap-minimal.sh' },
+  { name: 'Install locked workspace dependencies', 'timeout-minutes': 2, run: './scripts/bootstrap-minimal.sh' },
 ]
 
 export default githubWorkflow({
@@ -54,18 +54,25 @@ export default githubWorkflow({
       needs: ['validate'],
       if: "github.ref == 'refs/heads/main' && vars.CONTRIBUTOR_MEETING_PUBLISHING_ENABLED == 'true'",
       'runs-on': 'ubuntu-24.04',
-      'timeout-minutes': 15,
+      // Explicit phase limits total 25 minutes; reserve five for action setup and teardown.
+      'timeout-minutes': 30,
       defaults: bashShellDefaults,
       steps: [
         ...setup,
-        { uses: 'DeterminateSystems/determinate-nix-action@v3' },
-        { name: 'Resolve locked browser runtime', run: 'bash scripts/src/meetings/resolve-playwright.sh' },
+        { uses: 'DeterminateSystems/determinate-nix-action@v3', 'timeout-minutes': 2 },
+        {
+          name: 'Resolve locked browser runtime',
+          'timeout-minutes': 4,
+          run: 'bash scripts/src/meetings/resolve-playwright.sh',
+        },
         {
           name: 'Verify canonical production page',
+          'timeout-minutes': 8,
           run: 'PLAYWRIGHT_BIN="$(command -v node)" "$MEETING_PLAYWRIGHT_WRAPPER" docs/src/utils/verify-contributor-meeting.ts',
         },
         {
           name: 'Reconcile and verify Google Calendar',
+          'timeout-minutes': 9,
           run: 'node scripts/src/meetings/publish.ts --apply',
           env: { MEETING_GOOGLE_SERVICE_ACCOUNT_JSON: '${{ secrets.MEETING_GOOGLE_SERVICE_ACCOUNT_JSON }}' },
         },

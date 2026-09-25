@@ -66,6 +66,7 @@ jobs:
         with:
           run_install: false
       - name: Install locked workspace dependencies
+        timeout-minutes: 2
         run: ./scripts/bootstrap-minimal.sh
       - name: Validate schedule and publisher
         run: |
@@ -75,7 +76,7 @@ jobs:
     needs: [validate]
     if: github.ref == 'refs/heads/main' && vars.CONTRIBUTOR_MEETING_PUBLISHING_ENABLED == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
@@ -93,13 +94,18 @@ jobs:
         with:
           run_install: false
       - name: Install locked workspace dependencies
+        timeout-minutes: 2
         run: ./scripts/bootstrap-minimal.sh
       - uses: DeterminateSystems/determinate-nix-action@v3
+        timeout-minutes: 2
       - name: Resolve locked browser runtime
+        timeout-minutes: 4
         run: bash scripts/src/meetings/resolve-playwright.sh
       - name: Verify canonical production page
+        timeout-minutes: 8
         run: PLAYWRIGHT_BIN="$(command -v node)" "$MEETING_PLAYWRIGHT_WRAPPER" docs/src/utils/verify-contributor-meeting.ts
       - name: Reconcile and verify Google Calendar
+        timeout-minutes: 9
         run: node scripts/src/meetings/publish.ts --apply
         env:
           MEETING_GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.MEETING_GOOGLE_SERVICE_ACCOUNT_JSON }}

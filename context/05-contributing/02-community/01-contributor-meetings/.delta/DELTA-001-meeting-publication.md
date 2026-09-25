@@ -8,8 +8,10 @@ The checked-in implementation does not establish production activation.
 
 The dedicated public Google calendar has been created and public subscription
 verified. The Google Cloud project `livestore-meetings` exists without billing.
-Calendar API activation is pending the user's Google terms confirmation;
-service-account credentials have not been created. The legacy series remains
+Calendar API activation is pending the user's Google terms confirmation.
+The dedicated public calendar grants the publisher calendar-only writer access;
+its invitation setting is verified after reload as "Do not show invitations".
+Service-account credentials have not been created. The legacy series remains
 untouched. These provisioning steps do not establish event publication.
 
 Metadata access to the existing shared 1Password vault **LiveStore** is

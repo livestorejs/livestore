@@ -38,7 +38,8 @@ import { MEETING_ROOM_URL, MEETING_SCHEDULE_URL } from '@local/shared/contributo
     minute: '2-digit',
     timeZoneName: 'short',
   })
-  const calendarTimestamp = (date: string) => new Date(date).toISOString().replace(/[-:]/g, '').replace('.000', '')
+  const calendarTimestamp = (date: string) =>
+    new Date(date).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')
   const calendarText = (value: string) =>
     value.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/;/g, '\\;').replace(/,/g, '\\,')
   const calendarLine = (value: string) => {

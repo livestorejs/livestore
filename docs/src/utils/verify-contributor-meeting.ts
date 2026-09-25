@@ -20,12 +20,15 @@ const browser = await chromium.launch({ headless: true })
 try {
   const page = await browser.newPage()
   let verified = false
-  for (let attempt = 0; attempt < 8; attempt++) {
+  // Cover the raw-file cache window without multiplying slow navigation timeouts.
+  const deadline = Date.now() + 6 * 60 * 1000
+  const remaining = () => Math.max(1, deadline - Date.now())
+  while (Date.now() < deadline) {
     try {
-      await page.goto(MEETING_PAGE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 })
+      await page.goto(MEETING_PAGE_URL, { waitUntil: 'domcontentloaded', timeout: Math.min(30000, remaining()) })
       await page
         .locator(`contributor-meetings[data-meeting-state="ready"][data-schedule-revision="${revision}"]`)
-        .waitFor({ timeout: 20000 })
+        .waitFor({ timeout: Math.min(20000, remaining()) })
       const expected = getMeetingView(schedule, new Date()).upcoming
       const shown = await page.locator('[data-meeting-id]').evaluateAll((elements) =>
         elements.map((element) => ({
@@ -42,7 +45,7 @@ try {
       verified = true
       break
     } catch {
-      if (attempt < 7) await new Promise((resolve) => setTimeout(resolve, 45000))
+      if (Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, Math.min(45000, remaining())))
     }
   }
   if (verified === false)
