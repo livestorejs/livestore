@@ -1,6 +1,6 @@
 import { createSign } from 'node:crypto'
 
-import { MEETING_PAGE_URL, MEETING_ROOM_URL } from '@local/shared/contributor-meeting'
+import { MEETING_CHAT_URL, MEETING_PAGE_URL, MEETING_ROOM_URL } from '@local/shared/contributor-meeting'
 import type { MeetingOccurrence } from '@local/shared/contributor-meeting'
 
 export const MEETING_OWNER = 'livestore-contributor-sync-v1'
@@ -33,6 +33,7 @@ export const desiredCalendarEvent = (meeting: MeetingOccurrence): CalendarEvent 
   description: [
     `Current meeting information: ${MEETING_PAGE_URL}`,
     `Join the conversation: ${MEETING_ROOM_URL}`,
+    `Contributor chat: ${MEETING_CHAT_URL}`,
     'Check the meeting page before joining. Saved one-off calendar copies do not update automatically; subscriptions may refresh slowly.',
     ...(meeting.note === undefined ? [] : [`Schedule note: ${meeting.note}`]),
   ].join('\n\n'),

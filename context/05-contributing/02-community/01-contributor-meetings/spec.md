@@ -3,6 +3,10 @@
 This document specifies contributor meeting scheduling and publication. It builds on
 [requirements.md](./requirements.md).
 
+The canonical contributor chat is the [LiveStore Discord contributor channel](https://discord.com/channels/1154415661842452532/1344991859805786142).
+The meeting page and calendar descriptions link there for discussion between meetings.
+This link does not enable Discord publishing or event automation.
+
 ## Status
 
 Draft.
