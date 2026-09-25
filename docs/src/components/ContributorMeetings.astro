@@ -18,6 +18,7 @@ import { MEETING_ROOM_URL, MEETING_SCHEDULE_URL } from '@local/shared/contributo
   import {
     decodeMeetingSchedule,
     getMeetingView,
+    MEETING_CHAT_URL,
     MEETING_PAGE_URL,
     MEETING_ROOM_URL,
     MEETING_SCHEDULE_URL,
@@ -60,7 +61,7 @@ import { MEETING_ROOM_URL, MEETING_SCHEDULE_URL } from '@local/shared/contributo
     return lines.join('\r\n')
   }
   const description = (meeting: Meeting) =>
-    `Current meeting information: ${MEETING_PAGE_URL}\nJoin: ${MEETING_ROOM_URL}${meeting.note !== undefined ? `\nUpdate: ${meeting.note}` : ''}\nThis calendar copy does not update automatically. Check the website for changes.`
+    `Current meeting information: ${MEETING_PAGE_URL}\nJoin: ${MEETING_ROOM_URL}\nContributor chat: ${MEETING_CHAT_URL}${meeting.note !== undefined ? `\nUpdate: ${meeting.note}` : ''}\nThis calendar copy does not update automatically. Check the website for changes.`
   const calendarFile = (meeting: Meeting) =>
     [
       'BEGIN:VCALENDAR',
