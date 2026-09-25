@@ -1,56 +1,71 @@
-# DELTA-001 — Contributor meeting publishing is not verified live
+# DELTA-001 — Contributor meeting publication verified live
 
-Status: open.
+Status: closed, 2026-09-25.
 
-The Contributor Meetings [spec](../spec.md) defines the repository schedule, canonical
-docs page, reusable Riverside alias, and a dedicated public Google calendar.
-The checked-in implementation does not establish production activation.
+The repository schedule, canonical docs page, Riverside alias, and dedicated
+public Google calendar now agree. The legacy personal-calendar invitations
+have been retired while historical occurrences remain.
 
-The dedicated public Google calendar has been created and public subscription
-verified. The Google Cloud project `livestore-meetings` exists without billing.
-Calendar API activation is complete following the user's confirmation.
-The dedicated public calendar grants the publisher calendar-only writer access;
-its invitation setting is verified after reload as "Do not show invitations".
-The service-account signing key has been created and stored in the GitHub
-Actions secret. Its shared LiveStore 1Password backup has been created and its
-concealed field metadata and exact JSON readback verified. The downloaded key
-copy was removed. The legacy series remains
-untouched. These provisioning steps do not establish event publication.
+## Production docs
 
-Metadata access to the existing shared 1Password vault **LiveStore** is
-confirmed. The disposable private test calendar
-`60dbecfd6343397d67788b5e29bca1cc0ce63888e37cfd448c14eecbc40f4f73@group.calendar.google.com`
-has been created. Its writer grant to
-`meeting-publisher@livestore-meetings.iam.gserviceaccount.com` is verified.
-The real service account passed create, repeated publication, reschedule,
-cancellation, restoration with the original IDs, and repeated restoration.
-Readback after each scenario confirmed convergence and exactly two active
-events. Cleanup confirmed zero active test events; removal of the disposable
-calendar itself remains pending. Its service-account writer access has been
-revoked and verified. A production read-only plan proposes exactly the October
-8 and 22 events at 17:00–18:00 UTC, without writing them. See the [experiment evidence](../.experiments/meeting-publishing.md).
+[Core PR #1635](https://github.com/livestorejs/livestore/pull/1635) merged as
+`1aab755c02a7492da844f665b6c3c115eef33f90` after required checks passed.
+[Stable docs PR #1639](https://github.com/livestorejs/livestore/pull/1639)
+merged as `3247f2bc9588f0d26501b92caa4497f2aa5efb81`.
+[Deployment 36173267083](https://github.com/livestorejs/livestore/actions/runs/36173267083)
+succeeded from that stable commit; its docs deployment job took 24m47s.
 
-Live inspection on September 25 confirmed the personal-calendar series already
-runs every two weeks at 19:00 Berlin, including October 8 and 22, with four
-invitees. The earlier weekly 18:00 observation is superseded. Migration changes
-the calendar ownership and subscription workflow, not the meeting time. Do not retire that series
-until its replacement is verified. Riverside verification covers the redirect
-target; guest entry is not a rollout prerequisite.
+The production page reports `Contributor Sync | LiveStore 0.4.0` and ready
+schedule SHA-256 `fc9f113d3b645b0c25545bc0df064d459c2927bf6707f8bd5f21b50e2e33a8d5`.
+It presents `lscontrib00000001` and `lscontrib00000002` on October 8 and 22,
+2026, at 17:00 UTC (19:00 Berlin). Google addition templates contain the
+canonical page, room, and [contributor chat](https://discord.com/channels/1154415661842452532/1344991859805786142).
+Subscription and iCal links use the expected public calendar ID. `/meet`
+returns HTTP 302 to exactly
+`https://riverside.com/studio/livestore?t=5e1a91673f40e01c9054`.
 
-Close this delta only after recording evidence that:
+## Publication and recovery
 
-- The dedicated stable docs release serves the contributor-sync page and
-  `/meet` redirect, and the page reads the current `main` schedule revision.
-- The room alias redirects to the intended reusable Riverside Studio URL.
-- A temporary private calendar passes lifecycle tests and is cleaned up.
-- The dedicated Google calendar is publicly subscribable, its writer
-  credential is configured with shared 1Password backup, and the workflow is
-  enabled after the docs gate. The reusable failure issue recovers correctly.
-- The next two events agree with the schedule and link back to the docs page
-  and room. Repeated publication preserves their identities.
-- Future instances of the old personal-calendar series have ended, its past instances
-  remain intact, and Calendar notifications deliver the replacement links.
+The publishing variable was enabled after the production checks.
+[Run 36176007769](https://github.com/livestorejs/livestore/actions/runs/36176007769)
+passed validation, publication, and reporting. It created the two expected
+IDs and reported `Verified 2` at 18:52:44 UTC. An anonymous ICS read confirmed
+exactly two events with UIDs `lscontrib00000001@google.com` and
+`lscontrib00000002@google.com`, October 8 and 22 at 17:00–18:00 UTC, with the
+canonical docs, room, and chat links in their descriptions.
 
-Discord automation and contributor-sync Luma publishing are outside this
-rollout. Office-hours Luma use is unaffected. See the
-[setup guide](../setup-guide.md) for the activation order.
+[Repeat run 36176299505](https://github.com/livestorejs/livestore/actions/runs/36176299505)
+passed all three jobs, reported `actions: []`, and verified two events at
+18:55:29 UTC. The reporting job demonstrated real GitHub API access. Automated
+tests cover failure-issue creation, reopening, unchanged-failure suppression,
+and closure; no public outage was manufactured to exercise that lifecycle.
+
+The Calendar API is enabled without an added billing dependency. The service
+account has calendar-only writer access, its key is in Actions secrets, and
+the shared LiveStore 1Password backup passed exact JSON readback verification.
+The downloaded copy was removed. Private-calendar tests verified create,
+repeat, reschedule, cancellation, restoration with original IDs, and repeated
+restoration. Cleanup verified zero active test events and revoked writer
+access. A later browser inspection found the disposable calendar absent while
+the production calendar remained; no agent-performed container deletion is
+claimed. See [experiment evidence](../.experiments/meeting-publishing.md).
+
+## Legacy invitation migration
+
+At approximately 19:00 UTC, the October 8 legacy occurrence was updated with
+a migration reason, canonical page, subscription, cadence, room, and chat.
+The Calendar **Send** action was selected, **Event saved** appeared, and a
+reload confirmed the description. That occurrence was then cancelled with
+**Send** and a note explicitly stating that the meeting still happens.
+
+The October 22 legacy occurrence was removed using **This and following
+events**, with **Send** and cancellation text containing the reason and
+replacement links. Calendar displayed **Event deleted** and **Open trash**.
+A fresh search for the legacy title returned only July 23, August 6, August
+20, September 3, and September 17, 2026, with no future legacy results.
+The historical series was distinct from the future series, and those past
+occurrences remained visible.
+
+These observations establish Calendar send actions and saved changes, not
+recipient delivery or read receipts. No separate emails or Discord posts were
+sent. Office-hours Luma use and deferred Discord automation are unchanged.

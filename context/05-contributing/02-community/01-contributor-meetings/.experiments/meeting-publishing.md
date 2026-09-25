@@ -78,12 +78,16 @@ test calendar writer grant was revoked and verified after cleanup. A separate
 read-only production plan proposed exactly two creations, October 8 and 22
 at 17:00–18:00 UTC; it did not publish them.
 
-## Validation still needed
+## Production verification (2026-09-25)
 
 The accepted cadence is 19:00 Europe/Berlin, every 14 days from 2026-09-24.
-Exercise create, reschedule, cancellation, and retry behavior, then verify
-production docs freshness, calendar permissions and subscription, event
-backlinks, and the Riverside redirect target. Hosted guest entry is not a
-rollout gate under the accepted interview decision. The
-[rollout delta](../.delta/DELTA-001-meeting-publication.md) remains open until
-live evidence establishes activation; local tests alone do not establish it.
+Private-calendar lifecycle verification was followed by successful production
+publication in run 36176007769 and an idempotent repeat in run 36176299505.
+Anonymous ICS readback confirmed the two expected events. Production docs,
+subscription links, event backlinks, and the Riverside redirect target were
+verified. Legacy future invitations were retired through Calendar send
+actions while past occurrences remained visible. The
+[closed rollout delta](../.delta/DELTA-001-meeting-publication.md) records the
+run links and browser evidence, including the limit that Calendar send actions
+do not establish recipient delivery or read receipts. Hosted guest entry is
+not a rollout gate under the accepted interview decision.
