@@ -2,6 +2,7 @@ import { createServer } from 'node:http'
 
 import { expect, test } from 'vitest'
 
+import { failureCode, safeFailureCode } from './failure-status.ts'
 import { PUBLICATION_ISSUE_MARKER, reportPublicationStatus } from './publication-status.ts'
 import type { PublicationRun } from './publication-status.ts'
 
@@ -96,11 +97,32 @@ test('one issue follows failures, changed failures, recovery, and recurrence ove
     expect(comments).toHaveLength(4)
     await reportPublicationStatus({ ...run, publication: 'skipped' }, 'test-token', apiUrl)
     expect(issues[0]?.state).toBe('open')
+    await reportPublicationStatus({ ...run, failure: 'page:failed' }, 'test-token', apiUrl)
+    const pageFailureComments = comments.length
+    await reportPublicationStatus({ ...run, runId: '125', failure: 'page:failed' }, 'test-token', apiUrl)
+    expect(comments).toHaveLength(pageFailureComments)
+    await reportPublicationStatus({ ...run, failure: 'feed:failed' }, 'test-token', apiUrl)
+    expect(comments).toHaveLength(pageFailureComments + 1)
+    expect(issues[0]?.body).toContain('feed:failed')
   } finally {
     await new Promise<void>((resolve, reject) =>
       server.close((error) => (error === undefined ? resolve() : reject(error))),
     )
   }
+})
+
+test('failure fingerprints retain bounded categories without carrying error text or secrets', () => {
+  expect(failureCode('authorization', new Error('Google authorization failed (403); secret-key'))).toBe(
+    'authorization:http-403',
+  )
+  expect(failureCode('calendar-apply', new Error('Calendar PATCH failed (429); secret-key'))).toBe(
+    'calendar-apply:http-429',
+  )
+  expect(failureCode('feed', new DOMException('secret-token', 'TimeoutError'))).toBe('feed:timeout')
+  expect(failureCode('feed', new Error('secret-token'))).toBe('feed:failed')
+  expect(safeFailureCode('authorization:http-403')).toBe('authorization:http-403')
+  expect(safeFailureCode('feed:failed\nsecret-token')).toBeUndefined()
+  expect(safeFailureCode('secret-token')).toBeUndefined()
 })
 
 test('PR, non-main, and disabled runs never contact GitHub', async () => {

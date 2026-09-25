@@ -10,14 +10,22 @@ import {
   MEETING_ROOM_URL,
 } from '@local/shared/contributor-meeting'
 
+import { clearFailure, recordFailure, type FailurePhase } from '../../../scripts/src/meetings/failure-status.ts'
+
+let phase: FailurePhase = 'schedule'
+await recordFailure(phase)
 const source = await readFile(
   new URL('../../../context/05-contributing/02-community/meeting-schedule.json', import.meta.url),
   'utf8',
 )
 const schedule = decodeMeetingSchedule(JSON.parse(source))
 const revision = createHash('sha256').update(source).digest('hex')
+phase = 'browser'
+await recordFailure(phase)
 const browser = await chromium.launch({ headless: true })
 try {
+  phase = 'page'
+  await recordFailure(phase)
   const page = await browser.newPage()
   let verified = false
   // Cover the raw-file cache window without multiplying slow navigation timeouts.
@@ -50,6 +58,8 @@ try {
   }
   if (verified === false)
     throw new Error('Production meeting page did not render this schedule revision within the cache-refresh window')
+  phase = 'room'
+  await recordFailure(phase)
   const room = await fetch(MEETING_ROOM_URL, { redirect: 'manual', signal: AbortSignal.timeout(15000) })
   const location = room.headers.get('location')
   if (
@@ -59,6 +69,8 @@ try {
   )
     throw new Error('Canonical room redirect is not the LiveStore Riverside Studio')
   if (schedule.calendarId === undefined) throw new Error('Public calendarId is required for the publication gate')
+  phase = 'feed'
+  await recordFailure(phase)
   const feed = await fetch(
     `https://calendar.google.com/calendar/ical/${encodeURIComponent(schedule.calendarId)}/public/basic.ics`,
     {
@@ -67,6 +79,8 @@ try {
   )
   if (feed.ok === false || (await feed.text()).includes('BEGIN:VCALENDAR') === false)
     throw new Error('Calendar is not publicly subscribable')
+  phase = 'receipt-write'
+  await recordFailure(phase)
   const directory = new URL('../../../tmp/', import.meta.url)
   await mkdir(directory, { recursive: true })
   await writeFile(
@@ -74,6 +88,10 @@ try {
     JSON.stringify({ revision, url: MEETING_PAGE_URL, verifiedAt: Date.now() }),
   )
   console.log(`Verified production page, room redirect and public calendar for ${revision}`)
+  await clearFailure()
+} catch (error) {
+  await recordFailure(phase, error)
+  throw error
 } finally {
   await browser.close()
 }

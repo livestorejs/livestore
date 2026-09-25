@@ -41,6 +41,7 @@ export default githubWorkflow({
   env: { CI: 'true' },
   jobs: {
     validate: {
+      outputs: { failure: '${{ steps.validate.outputs.failure }}' },
       'runs-on': 'ubuntu-24.04',
       'timeout-minutes': 10,
       defaults: bashShellDefaults,
@@ -48,11 +49,13 @@ export default githubWorkflow({
         ...setup,
         {
           name: 'Validate schedule and publisher',
+          id: 'validate',
           run: 'node scripts/src/meetings/publish.ts --validate\nnode_modules/.bin/vitest run --config scripts/vitest.config.ts src/meetings',
         },
       ],
     },
     publish: {
+      outputs: { failure: '${{ steps.calendar.outputs.failure || steps.site.outputs.failure }}' },
       needs: ['validate'],
       if: "github.ref == 'refs/heads/main' && vars.CONTRIBUTOR_MEETING_PUBLISHING_ENABLED == 'true'",
       'runs-on': 'ubuntu-24.04',
@@ -69,11 +72,13 @@ export default githubWorkflow({
         },
         {
           name: 'Verify canonical production page',
+          id: 'site',
           'timeout-minutes': 8,
           run: 'PLAYWRIGHT_BIN="$(command -v node)" "$MEETING_PLAYWRIGHT_WRAPPER" docs/src/utils/verify-contributor-meeting.ts',
         },
         {
           name: 'Reconcile and verify Google Calendar',
+          id: 'calendar',
           'timeout-minutes': 9,
           run: 'node scripts/src/meetings/publish.ts --apply',
           env: { MEETING_GOOGLE_SERVICE_ACCOUNT_JSON: '${{ secrets.MEETING_GOOGLE_SERVICE_ACCOUNT_JSON }}' },
@@ -98,6 +103,8 @@ export default githubWorkflow({
             CONTRIBUTOR_MEETING_PUBLISHING_ENABLED: '${{ vars.CONTRIBUTOR_MEETING_PUBLISHING_ENABLED }}',
             MEETING_VALIDATION_RESULT: '${{ needs.validate.result }}',
             MEETING_PUBLICATION_RESULT: '${{ needs.publish.result }}',
+            MEETING_FAILURE_CODE:
+              "${{ needs.validate.result != 'success' && needs.validate.outputs.failure || needs.publish.outputs.failure }}",
           },
         },
       ],

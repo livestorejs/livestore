@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto'
 
+import { safeFailureCode } from './failure-status.ts'
+
 export const PUBLICATION_ISSUE_MARKER = '<!-- livestore-contributor-meeting-publishing:v1 -->'
 const GITHUB_ACTIONS_BOT_ID = 41898282
 
@@ -12,6 +14,7 @@ export type PublicationRun = {
   enabled: boolean
   validation: string
   publication: string
+  failure?: string
 }
 
 export const reportPublicationStatus = async (
@@ -79,7 +82,8 @@ export const reportPublicationStatus = async (
   )
   const job = jobs.find((candidate) => candidate.name === jobName)
   const failedStep = job?.steps.find((step) => step.conclusion === 'failure' || step.conclusion === 'cancelled')?.name
-  const failure = `${jobName}: ${failedStep ?? 'job did not complete'} (${result})`
+  const code = safeFailureCode(run.failure)
+  const failure = `${jobName}: ${failedStep ?? 'job did not complete'} (${result})${code === undefined ? '' : ` [${code}]`}`
   const signature = createHash('sha256').update(failure).digest('hex')
   const stateMarker = `<!-- meeting-publication-state:${signature} -->`
   const body = `${PUBLICATION_ISSUE_MARKER}\n${stateMarker}\n\nContributor meeting publication needs attention.\n\nFailure: **${failure}**.\n\n[Inspect the workflow run](${runUrl}). The website remains the canonical schedule; Google Calendar may be stale. Fix the failing step and rerun the workflow. This issue closes after a verified successful publication.`

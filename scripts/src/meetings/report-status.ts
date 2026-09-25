@@ -21,6 +21,7 @@ if (
       enabled: true,
       validation: required('MEETING_VALIDATION_RESULT'),
       publication: required('MEETING_PUBLICATION_RESULT'),
+      ...(process.env.MEETING_FAILURE_CODE === undefined ? {} : { failure: process.env.MEETING_FAILURE_CODE }),
     },
     required('GH_TOKEN'),
   )
