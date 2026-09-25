@@ -56,17 +56,20 @@ the approved service-account signing key and enabled Calendar API. Every step
 read back Google state, required exactly two active events, and verified that
 replanning produced no further changes:
 
-| Scenario | Applied operations | Result |
-| --- | --- | --- |
-| Initial publication | Create two | Two expected stable IDs |
-| Repeat | None | Idempotent |
-| Reschedule | Update two | Original IDs retained |
-| Cancel with replacement dates | Update, create, delete | Two replacement occurrences |
-| Restore original schedule | Update two, delete | Original IDs restored after deletion |
-| Repeat restored schedule | None | Idempotent |
+| Scenario                      | Applied operations     | Result                               |
+| ----------------------------- | ---------------------- | ------------------------------------ |
+| Initial publication           | Create two             | Two expected stable IDs              |
+| Repeat                        | None                   | Idempotent                           |
+| Reschedule                    | Update two             | Original IDs retained                |
+| Cancel with replacement dates | Update, create, delete | Two replacement occurrences          |
+| Restore original schedule     | Update two, delete     | Original IDs restored after deletion |
+| Repeat restored schedule      | None                   | Idempotent                           |
 
 Cleanup then deleted the remaining owned test events and confirmed zero active
-events. The disposable calendar container still requires removal. This directly
+events. A later browser inspection found the disposable calendar absent from
+the owned-calendar list while the production calendar remained. No
+agent-performed container deletion is claimed, and no cleanup remains pending.
+This directly
 verifies Google's organizer-calendar cancellation/restoration behavior with the
 same adapter used by the workflow; no production events were published. The
 local reproducible harness is `tmp/meeting-live-e2e.mjs` (ignored, receives its
