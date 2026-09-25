@@ -139,6 +139,43 @@ describe('contributor schedule', () => {
 })
 
 describe('calendar reconciliation', () => {
+  test('moves published future occurrences into history without deleting or backfilling history', () => {
+    const currentTime = new Date('2026-10-07T12:00:00Z')
+    const moved = decodeMeetingSchedule({
+      ...base,
+      changes: [{ kind: 'reschedule', occurrence: 1, date: '2026-10-06', note: 'Met earlier.' }],
+    })
+    const existing = desired.map((event) => ({ ...event, etag: '"v1"' }))
+    const view = getMeetingView(moved, currentTime, new Set(existing.map(({ id }) => id)))
+    expect(view.upcoming).toHaveLength(2)
+    expect(view.retainedHistory.map(({ id }) => id)).toEqual([desired[0]?.id])
+    const publication = [...view.upcoming, ...view.retainedHistory].map(desiredCalendarEvent)
+    const actions = planCalendar(publication, existing)
+    expect(actions.map(({ kind }) => kind)).toEqual(['update', 'create', 'update'])
+    expect(actions.at(-1)).toMatchObject({
+      kind: 'update',
+      event: { id: desired[0]?.id, start: { dateTime: '2026-10-06T17:00:00.000Z' } },
+    })
+    expect(planCalendar(publication, publication)).toEqual([])
+    // Future-only listing on later runs omits the now historical event.
+    const future = view.upcoming.map(desiredCalendarEvent)
+    const repeated = getMeetingView(moved, currentTime, new Set(future.map(({ id }) => id)))
+    expect(repeated.retainedHistory).toEqual([])
+    expect(planCalendar(repeated.upcoming.map(desiredCalendarEvent), future)).toEqual([])
+    expect(getMeetingView(moved, currentTime).retainedHistory).toEqual([])
+    // Explicit cancellations still remove the formerly published occurrence.
+    const cancelled = decodeMeetingSchedule({
+      ...base,
+      changes: [{ kind: 'cancel', occurrence: 1, nextDates: ['2026-10-22', '2026-11-05'], note: 'Cancelled.' }],
+    })
+    const cancellationView = getMeetingView(cancelled, currentTime, new Set(existing.map(({ id }) => id)))
+    expect(cancellationView.retainedHistory).toEqual([])
+    expect(planCalendar(cancellationView.upcoming.map(desiredCalendarEvent), existing)).toContainEqual({
+      kind: 'delete',
+      id: desired[0]?.id,
+      etag: '"v1"',
+    })
+  })
   test('creates exactly two events and repeated runs are no-ops', () => {
     expect(planCalendar(desired, []).map(({ kind }) => kind)).toEqual(['create', 'create'])
     expect(planCalendar(desired, desired)).toEqual([])

@@ -59,7 +59,11 @@ Cancellation notices remain visible until the affected meeting's end time.
 Reschedule notices remain visible through the later of the original and new
 end times. The rolling public window contains two meetings whose end times
 have not passed, excluding cancelled occurrences, so a meeting in progress
-stays discoverable. Historical occurrences are retained.
+stays discoverable. Historical occurrences are retained. If a published future
+event is rescheduled into the past, reconciliation updates its existing ID
+before it leaves the future listing. Missing historical events are not backfilled;
+the two-event limit applies to upcoming events. Explicit cancellations still
+remove the cancelled occurrence from Google Calendar.
 
 Luma is excluded from contributor-sync publishing because its API requires
 a paid plan. The separate office-hours Luma calendar remains a community

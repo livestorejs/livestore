@@ -99,10 +99,12 @@ export const decodeMeetingSchedule = (input: unknown): MeetingSchedule => {
 export const getMeetingView = (
   schedule: MeetingSchedule,
   now: Date,
-): { upcoming: MeetingOccurrence[]; notices: MeetingNotice[] } => {
+  retainIds: ReadonlySet<string> = new Set(),
+): { upcoming: MeetingOccurrence[]; notices: MeetingNotice[]; retainedHistory: MeetingOccurrence[] } => {
   if (Number.isFinite(now.getTime()) === false) throw new MeetingScheduleError('Invalid current time')
   const upcoming: MeetingOccurrence[] = []
   const notices: MeetingNotice[] = []
+  const retainedHistory: MeetingOccurrence[] = []
   let cursorDate = schedule.anchor.date
   let localStart = schedule.localStart
   let previousDate: string | undefined
@@ -141,17 +143,21 @@ export const getMeetingView = (
     previousDate = cursorDate
     const start = localInstant(cursorDate, localStart, schedule.timeZone)
     const end = start + schedule.durationMinutes * 60000
-    if (end > now.getTime() && upcoming.length < 2) {
-      upcoming.push({
-        id: `lscontrib${occurrence.toString(16).padStart(8, '0')}`,
+    const id = `lscontrib${occurrence.toString(16).padStart(8, '0')}`
+    const retainHistory = end <= now.getTime() && retainIds.has(id) === true
+    if ((end > now.getTime() && upcoming.length < 2) || retainHistory === true) {
+      const meeting = {
+        id,
         occurrence,
         date: cursorDate,
         start: new Date(start).toISOString(),
         end: new Date(end).toISOString(),
         ...(note === undefined ? {} : { note }),
-      })
+      }
+      if (retainHistory === true) retainedHistory.push(meeting)
+      else upcoming.push(meeting)
     }
-    if (upcoming.length === 2 && occurrence >= lastChange + 2) return { upcoming, notices }
+    if (upcoming.length === 2 && occurrence >= lastChange + 2) return { upcoming, notices, retainedHistory }
     cursorDate = addDays(cursorDate, schedule.intervalDays)
   }
   throw new MeetingScheduleError('Schedule exceeds the supported 10,000-occurrence horizon')

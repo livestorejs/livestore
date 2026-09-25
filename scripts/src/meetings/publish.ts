@@ -41,7 +41,14 @@ try {
     phase = 'calendar-list'
     await recordFailure(phase)
     const desiredIds = desired.map(({ id }) => id)
-    const actions = planCalendar(desired, await client.list(now, desiredIds))
+    const existing = await client.list(now, desiredIds)
+    // A reschedule can move an already-published future event into history.
+    // Update that identity once; never backfill missing historical meetings.
+    const historical = getMeetingView(schedule, now, new Set(existing.map(({ id }) => id))).retainedHistory.map(
+      desiredCalendarEvent,
+    )
+    const publication = [...desired, ...historical]
+    const actions = planCalendar(publication, existing)
     console.log(JSON.stringify({ mode: args.includes('--apply') === true ? 'apply' : 'plan', actions }, null, 2))
     if (args.includes('--apply') === true) {
       phase = 'calendar-apply'
@@ -49,7 +56,13 @@ try {
       await client.apply(actions)
       phase = 'calendar-readback'
       await recordFailure(phase)
-      const remaining = planCalendar(desired, await client.list(now, desiredIds))
+      const remaining = planCalendar(
+        publication,
+        await client.list(
+          now,
+          publication.map(({ id }) => id),
+        ),
+      )
       if (remaining.length !== 0) throw new Error('Google Calendar read-back differs from the desired meetings')
       console.log(`Verified ${desired.length} upcoming Google events`)
     }
