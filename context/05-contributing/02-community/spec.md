@@ -128,6 +128,11 @@ events are updated or cancelled as required;
 unrelated calendar events and historical meetings are preserved.
 
 Publication is bounded and destination failures fail the workflow visibly.
+Validation and publication use the repository's Minimal Setup with a frozen
+dependency install. Only publication resolves the managed Playwright wrapper
+from the exact browser, Nixpkgs, and wrapper revisions in `devenv.lock`;
+it does not bootstrap the full development environment or megarepo. Browser
+resolution or production verification failure prevents calendar writes.
 The docs page remains the authoritative public schedule during a Google
 failure and warns that calendar copies may lag. Standard Calendar API use at
 this scale must not introduce additional fees; if free access becomes

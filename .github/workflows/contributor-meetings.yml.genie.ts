@@ -1,10 +1,4 @@
-import {
-  bashShellDefaults,
-  defaultActionlintConfig,
-  githubWorkflow,
-  livestoreSetupSteps,
-  runDevenvTasksBefore,
-} from '../../genie/repo.ts'
+import { bashShellDefaults, defaultActionlintConfig, githubWorkflow } from '../../genie/repo.ts'
 
 const paths = [
   'context/05-contributing/02-community/meeting-schedule.json',
@@ -14,6 +8,18 @@ const paths = [
   'docs/src/utils/verify-contributor-meeting.ts',
   '.github/workflows/contributor-meetings.yml',
   '.github/workflows/contributor-meetings.yml.genie.ts',
+  'scripts/bootstrap-minimal.sh',
+  'package.json',
+  'pnpm-lock.yaml',
+  'devenv.lock',
+]
+
+const setup = [
+  { uses: 'actions/checkout@v6', with: { 'persist-credentials': false } },
+  { uses: 'actions/setup-node@v6', with: { 'node-version': '24' } },
+  { uses: 'oven-sh/setup-bun@v2', with: { 'bun-version': '1.3.13' } },
+  { uses: 'pnpm/action-setup@v4', with: { run_install: false } },
+  { name: 'Install locked workspace dependencies', run: './scripts/bootstrap-minimal.sh' },
 ]
 
 export default githubWorkflow({
@@ -30,29 +36,37 @@ export default githubWorkflow({
     group: 'contributor-meetings-${{ github.event.pull_request.number || github.ref }}',
     'cancel-in-progress': false,
   },
-  env: { CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}', CI: 'true', FORCE_SETUP: '1' },
+  env: { CI: 'true' },
   jobs: {
     validate: {
       'runs-on': 'ubuntu-24.04',
-      'timeout-minutes': 30,
+      'timeout-minutes': 10,
       defaults: bashShellDefaults,
       steps: [
-        ...livestoreSetupSteps,
-        { name: 'Validate schedule and publisher', run: runDevenvTasksBefore('meetings:check') },
+        ...setup,
+        {
+          name: 'Validate schedule and publisher',
+          run: 'node scripts/src/meetings/publish.ts --validate\nnode_modules/.bin/vitest run --config scripts/vitest.config.ts src/meetings/meeting.test.ts',
+        },
       ],
     },
     publish: {
       needs: ['validate'],
       if: "github.ref == 'refs/heads/main' && vars.CONTRIBUTOR_MEETING_PUBLISHING_ENABLED == 'true'",
       'runs-on': 'ubuntu-24.04',
-      'timeout-minutes': 30,
+      'timeout-minutes': 15,
       defaults: bashShellDefaults,
       steps: [
-        ...livestoreSetupSteps,
-        { name: 'Verify canonical production page', run: runDevenvTasksBefore('meetings:verify-site') },
+        ...setup,
+        { uses: 'DeterminateSystems/determinate-nix-action@v3' },
+        { name: 'Resolve locked browser runtime', run: 'bash scripts/src/meetings/resolve-playwright.sh' },
+        {
+          name: 'Verify canonical production page',
+          run: 'PLAYWRIGHT_BIN="$(command -v node)" "$MEETING_PLAYWRIGHT_WRAPPER" docs/src/utils/verify-contributor-meeting.ts',
+        },
         {
           name: 'Reconcile and verify Google Calendar',
-          run: runDevenvTasksBefore('meetings:publish'),
+          run: 'node scripts/src/meetings/publish.ts --apply',
           env: { MEETING_GOOGLE_SERVICE_ACCOUNT_JSON: '${{ secrets.MEETING_GOOGLE_SERVICE_ACCOUNT_JSON }}' },
         },
       ],

@@ -84,6 +84,14 @@ details. Never edit the Google copy independently to change the schedule.
 
 ## Failures and recovery
 
+The workflow validates with Node.js 24, Bun 1.3.13, and the exact pnpm version
+declared in `package.json`, using `scripts/bootstrap-minimal.sh`. Publication
+additionally builds the managed Playwright wrapper from `devenv.lock` through
+`scripts/src/meetings/resolve-playwright.sh`. A cold full development-environment
+bootstrap is not required for schedule updates. Job deadlines are ten minutes
+for validation and fifteen minutes for publication; investigate a slow setup
+phase before increasing either deadline.
+
 Disable `CONTRIBUTOR_MEETING_PUBLISHING_ENABLED` to stop Google writes during
 an incident. Keep the public repository schedule accurate. Fix the reported
 failure and rerun manually; stable event identities make retries safe. A
