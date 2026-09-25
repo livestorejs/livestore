@@ -1,5 +1,6 @@
 export const MEETING_PAGE_URL = 'https://docs.livestore.dev/misc/contributor-sync/'
 export const MEETING_ROOM_URL = 'https://docs.livestore.dev/meet'
+export const MEETING_CHAT_URL = 'https://discord.com/channels/1154415661842452532/1344991859805786142'
 export const MEETING_SCHEDULE_URL =
   'https://raw.githubusercontent.com/livestorejs/livestore/main/context/05-contributing/02-community/meeting-schedule.json'
 

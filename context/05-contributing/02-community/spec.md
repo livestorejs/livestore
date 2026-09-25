@@ -12,6 +12,7 @@ Draft.
 | Surface | Where | Purpose |
 | --- | --- | --- |
 | Discord | invite via docs site (`DISCORD_INVITE_URL`) | community help, `#contrib` pre-coordination, sponsor channels |
+| Contributor chat | [LiveStore contributor chat on Discord](https://discord.com/channels/1154415661842452532/1344991859805786142) | canonical place for contributor discussion between meetings |
 | Office hours | `lu.ma/livestore`, recordings on the community page | live Q&A with the maintainer |
 | Contributor sync | `/misc/contributor-sync/`, recordings on the community page | contributor coordination |
 | Conference talks / podcasts | linked from the community page | outreach |
@@ -37,7 +38,7 @@ every 14 days from September 24, 2026 at 19:00 Europe/Berlin for one hour.
 The reusable `/meet` URL redirects to the existing LiveStore Riverside Studio.
 
 The schedule and Google Calendar publisher are maintained on `main` in
-[the current community specification](https://github.com/livestorejs/livestore/blob/main/context/05-contributing/02-community/spec.md).
+[the contributor meeting specification](https://github.com/livestorejs/livestore/blob/main/context/05-contributing/02-community/01-contributor-meetings/spec.md).
 This stable docs release contains only the page and its compatible schedule
 reader; changes to meeting dates do not require another docs deployment.
 The page explicitly reports an unavailable schedule rather than showing stale
