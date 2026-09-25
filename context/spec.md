@@ -70,6 +70,7 @@ context/                     root: LiveStore the product (this node)
   05-contributing/           RFC process + fold-in rule, governance, security
     01-collaboration/        day-to-day human/agent collaboration model
     02-community/            public community surfaces + support expectations
+      01-contributor-meetings/ schedule, public meeting page, calendar publication
   06-sustainability/         licensing, sponsorship, commercial surfaces,
                              brand
 ```
@@ -128,6 +129,7 @@ questions `DQ`, deltas `DELTA`, decisions by number):
 | `LS.DEL-*` / `LS.DEL.COMP-*`, `LS.DEL.COMP.DEV-*`, `LS.DEL.REL-*`, `LS.DEL.ART-*`, `LS.DEL.INFRA-*` | `03-delivery/` and children |
 | `LS.DOCS-*` / `LS.DOCS.EX-*`, `LS.DOCS.SEARCH-*`, `LS.DOCS.OPS-*` | `04-docs/` and children |
 | `LS.CONTRIB-*` / `LS.CONTRIB.COLLAB-*`, `LS.CONTRIB.COMM-*` | `05-contributing/` and children |
+| `LS.CONTRIB.COMM.MEET-*` | `05-contributing/02-community/01-contributor-meetings/` |
 | `LS.SUST-*` | `06-sustainability/` |
 
 Realization namespaces extend their dimension namespace with one more segment.

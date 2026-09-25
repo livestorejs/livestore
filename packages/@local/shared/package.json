@@ -11,7 +11,9 @@
   "type": "module",
   "private": true,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./contributor-meeting": "./src/contributor-meeting.ts",
+    "./contributor-meeting-failure": "./src/contributor-meeting-failure.ts"
   },
   "devDependencies": {
     "@types/node": "25.3.3"
