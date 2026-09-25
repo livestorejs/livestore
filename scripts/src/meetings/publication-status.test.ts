@@ -2,7 +2,8 @@ import { createServer } from 'node:http'
 
 import { expect, test } from 'vitest'
 
-import { failureCode, safeFailureCode } from './failure-status.ts'
+import { failureCode, safeFailureCode } from '@local/shared/contributor-meeting-failure'
+
 import { PUBLICATION_ISSUE_MARKER, reportPublicationStatus } from './publication-status.ts'
 import type { PublicationRun } from './publication-status.ts'
 

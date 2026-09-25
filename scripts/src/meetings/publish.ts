@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises'
 
 import { decodeMeetingSchedule, getMeetingView } from '@local/shared/contributor-meeting'
+import { clearFailure, recordFailure, type FailurePhase } from '@local/shared/contributor-meeting-failure'
 
-import { clearFailure, recordFailure, type FailurePhase } from './failure-status.ts'
 import { calendarClient, desiredCalendarEvent, planCalendar, serviceAccountToken } from './google-calendar.ts'
 import { verifySiteReceipt } from './site-receipt.ts'
 

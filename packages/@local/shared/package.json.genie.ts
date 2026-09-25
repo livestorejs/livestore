@@ -13,6 +13,7 @@ export default packageJson(
     exports: {
       '.': './src/index.ts',
       './contributor-meeting': './src/contributor-meeting.ts',
+      './contributor-meeting-failure': './src/contributor-meeting-failure.ts',
     },
     ...localPackageDefaults,
   },

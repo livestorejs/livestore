@@ -3,6 +3,8 @@ import { bashShellDefaults, defaultActionlintConfig, githubWorkflow } from '../.
 const paths = [
   'context/05-contributing/02-community/meeting-schedule.json',
   'packages/@local/shared/src/contributor-meeting.ts',
+  'packages/@local/shared/src/contributor-meeting-failure.ts',
+  'packages/@local/shared/package.json',
   'scripts/src/meetings/**',
   'docs/src/components/ContributorMeetings.astro',
   'docs/src/content/docs/misc/contributor-sync.mdx',

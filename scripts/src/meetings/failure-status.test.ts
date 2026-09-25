@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { expect, test } from 'vitest'
 
-import { clearFailure, recordFailure } from './failure-status.ts'
+import { clearFailure, recordFailure } from '@local/shared/contributor-meeting-failure'
 
 test('job output tracks the latest phase and clears after success', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'meeting-failure-'))

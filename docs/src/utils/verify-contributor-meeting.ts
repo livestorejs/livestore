@@ -9,8 +9,7 @@ import {
   MEETING_PAGE_URL,
   MEETING_ROOM_URL,
 } from '@local/shared/contributor-meeting'
-
-import { clearFailure, recordFailure, type FailurePhase } from '../../../scripts/src/meetings/failure-status.ts'
+import { clearFailure, recordFailure, type FailurePhase } from '@local/shared/contributor-meeting-failure'
 
 let phase: FailurePhase = 'schedule'
 await recordFailure(phase)

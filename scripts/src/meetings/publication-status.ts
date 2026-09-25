@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 
-import { safeFailureCode } from './failure-status.ts'
+import { safeFailureCode } from '@local/shared/contributor-meeting-failure'
 
 export const PUBLICATION_ISSUE_MARKER = '<!-- livestore-contributor-meeting-publishing:v1 -->'
 const GITHUB_ACTIONS_BOT_ID = 41898282
