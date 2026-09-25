@@ -1,10 +1,15 @@
+import { execFileSync } from 'node:child_process'
+import { copyFile, mkdtemp, rm } from 'node:fs/promises'
 import { createServer } from 'node:http'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { expect, test } from 'vitest'
 
-import { failureCode, safeFailureCode } from '@local/shared/contributor-meeting-failure'
+import { failureCode } from '@local/shared/contributor-meeting-failure'
 
-import { PUBLICATION_ISSUE_MARKER, reportPublicationStatus } from './publication-status.ts'
+import { PUBLICATION_ISSUE_MARKER, reportPublicationStatus, safeFailureCode } from './publication-status.ts'
 import type { PublicationRun } from './publication-status.ts'
 
 const run: PublicationRun = {
@@ -17,6 +22,21 @@ const run: PublicationRun = {
   validation: 'success',
   publication: 'failure',
 }
+
+test('reporter loads in an isolated checkout without workspace dependencies', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'meeting-reporter-'))
+  try {
+    const path = join(directory, 'publication-status.ts')
+    await copyFile(new URL('./publication-status.ts', import.meta.url), path)
+    execFileSync(
+      process.execPath,
+      ['--input-type=module', '-e', `await import(${JSON.stringify(pathToFileURL(path).href)})`],
+      { cwd: directory },
+    )
+  } finally {
+    await rm(directory, { recursive: true })
+  }
+})
 
 test('one issue follows failures, changed failures, recovery, and recurrence over real HTTP', async () => {
   const issues: { number: number; state: 'open' | 'closed'; body: string; user: { id: number } }[] = []

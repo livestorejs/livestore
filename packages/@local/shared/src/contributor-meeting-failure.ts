@@ -38,9 +38,3 @@ export const recordFailure = async (phase: FailurePhase, error?: unknown): Promi
 export const clearFailure = async (): Promise<void> => {
   if (process.env.GITHUB_OUTPUT !== undefined) await appendFile(process.env.GITHUB_OUTPUT, 'failure=\n')
 }
-
-export const safeFailureCode = (value: string | undefined): string | undefined =>
-  value !== undefined &&
-  FAILURE_PHASES.some((phase) => new RegExp(`^${phase}:(failed|timeout|http-[45]\\d{2})$`).test(value)) === true
-    ? value
-    : undefined

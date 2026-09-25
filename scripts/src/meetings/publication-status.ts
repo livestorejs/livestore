@@ -1,9 +1,16 @@
 import { createHash } from 'node:crypto'
 
-import { safeFailureCode } from '@local/shared/contributor-meeting-failure'
-
 export const PUBLICATION_ISSUE_MARKER = '<!-- livestore-contributor-meeting-publishing:v1 -->'
 const GITHUB_ACTIONS_BOT_ID = 41898282
+
+// Keep this trust-boundary guard dependency-free: setup failures must be reportable.
+export const safeFailureCode = (value: string | undefined): string | undefined =>
+  value !== undefined &&
+  /^(schedule|receipt|authorization|calendar-list|calendar-apply|calendar-readback|browser|page|room|feed|receipt-write):(failed|timeout|http-[45]\d{2})$/.test(
+    value,
+  ) === true
+    ? value
+    : undefined
 
 export type PublicationRun = {
   repository: string
