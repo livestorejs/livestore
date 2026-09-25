@@ -1,0 +1,220 @@
+---
+import { MEETING_ROOM_URL, MEETING_SCHEDULE_URL } from '@local/shared/contributor-meeting'
+---
+
+<contributor-meetings data-meeting-state="loading">
+  <p><a href={MEETING_ROOM_URL}>Join on Riverside</a></p>
+  <p data-status role="status" aria-live="polite">Loading the next contributor meetings…</p>
+  <div data-notices></div>
+  <ol data-meetings aria-label="Upcoming contributor meetings"></ol>
+  <div data-subscription></div>
+  <button type="button" data-retry hidden>Try again</button>
+  <noscript>
+    <p>Enable JavaScript to see the current meeting schedule, or <a href={MEETING_SCHEDULE_URL}>read the schedule</a>.</p>
+  </noscript>
+</contributor-meetings>
+
+<script>
+  import {
+    decodeMeetingSchedule,
+    getMeetingView,
+    MEETING_PAGE_URL,
+    MEETING_ROOM_URL,
+    MEETING_SCHEDULE_URL,
+  } from '@local/shared/contributor-meeting'
+
+  type Meeting = ReturnType<typeof getMeetingView>['upcoming'][number]
+
+  const berlinDate = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Berlin',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+  const berlinTime = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Berlin',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  })
+  const calendarTimestamp = (date: string) => new Date(date).toISOString().replace(/[-:]/g, '').replace('.000', '')
+  const calendarText = (value: string) =>
+    value.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/;/g, '\\;').replace(/,/g, '\\,')
+  const calendarLine = (value: string) => {
+    const lines: string[] = []
+    let line = ''
+    let bytes = 0
+    for (const character of value) {
+      const width = new TextEncoder().encode(character).length
+      if (bytes + width > 75) {
+        lines.push(line)
+        line = ' '
+        bytes = 1
+      }
+      line += character
+      bytes += width
+    }
+    lines.push(line)
+    return lines.join('\r\n')
+  }
+  const description = (meeting: Meeting) =>
+    `Current meeting information: ${MEETING_PAGE_URL}\nJoin: ${MEETING_ROOM_URL}${meeting.note !== undefined ? `\nUpdate: ${meeting.note}` : ''}\nThis calendar copy does not update automatically. Check the website for changes.`
+  const calendarFile = (meeting: Meeting) =>
+    [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//LiveStore//Contributor Sync//EN',
+      'CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      `UID:${meeting.id}@meetings.livestore.dev`,
+      `DTSTAMP:${calendarTimestamp(new Date().toISOString())}`,
+      `DTSTART:${calendarTimestamp(meeting.start)}`,
+      `DTEND:${calendarTimestamp(meeting.end)}`,
+      'SUMMARY:LiveStore Contributor Sync',
+      `DESCRIPTION:${calendarText(description(meeting))}`,
+      `LOCATION:${calendarText(MEETING_ROOM_URL)}`,
+      `URL:${MEETING_PAGE_URL}`,
+      'END:VEVENT',
+      'END:VCALENDAR',
+      '',
+    ].map(calendarLine).join('\r\n')
+
+  const element = <TTag extends keyof HTMLElementTagNameMap>(tag: TTag, text?: string) => {
+    const node = document.createElement(tag)
+    if (text !== undefined) node.textContent = text
+    return node
+  }
+  const link = (text: string, href: string) => {
+    const node = element('a', text)
+    node.href = href
+    return node
+  }
+
+  class ContributorMeetings extends HTMLElement {
+    private timer: ReturnType<typeof setInterval> | undefined
+    private loading = false
+    private downloads: string[] = []
+
+    connectedCallback() {
+      this.querySelector('[data-retry]')?.addEventListener('click', this.refresh)
+      document.addEventListener('visibilitychange', this.onVisibility)
+      this.timer = setInterval(this.onVisibility, 60_000)
+      void this.refresh()
+    }
+
+    disconnectedCallback() {
+      clearInterval(this.timer)
+      document.removeEventListener('visibilitychange', this.onVisibility)
+      this.querySelector('[data-retry]')?.removeEventListener('click', this.refresh)
+      this.clearDownloads()
+    }
+
+    private onVisibility = () => {
+      if (document.visibilityState === 'visible') void this.refresh()
+    }
+
+    private clearDownloads = () => {
+      for (const url of this.downloads) URL.revokeObjectURL(url)
+      this.downloads = []
+    }
+
+    private refresh = async () => {
+      if (this.loading === true) return
+      this.loading = true
+      const status = this.querySelector<HTMLElement>('[data-status]')
+      const meetings = this.querySelector<HTMLOListElement>('[data-meetings]')
+      const notices = this.querySelector<HTMLElement>('[data-notices]')
+      const subscription = this.querySelector<HTMLElement>('[data-subscription]')
+      const retry = this.querySelector<HTMLButtonElement>('[data-retry]')
+      if (status === null || meetings === null || notices === null || subscription === null || retry === null) {
+        this.loading = false
+        return
+      }
+      try {
+        const response = await fetch(MEETING_SCHEDULE_URL, { signal: AbortSignal.timeout(15_000), cache: 'no-cache' })
+        if (response.ok === false) throw new Error(`Schedule request failed: ${response.status}`)
+        const bytes = await response.arrayBuffer()
+        const schedule = decodeMeetingSchedule(JSON.parse(new TextDecoder().decode(bytes)))
+        const view = getMeetingView(schedule, new Date())
+        const digest = await crypto.subtle.digest('SHA-256', bytes)
+        const revision = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
+        if (this.isConnected === false) return
+        this.clearDownloads()
+        meetings.replaceChildren()
+        notices.replaceChildren()
+        subscription.replaceChildren()
+        for (const notice of view.notices) {
+          const action = notice.kind === 'cancel' ? `Cancelled: ${notice.date}` : `Moved: ${notice.date} → ${notice.newDate}`
+          notices.append(element('p', `${action}. ${notice.note}`))
+        }
+        for (const meeting of view.upcoming) {
+          const item = element('li')
+          item.dataset.meetingId = meeting.id
+          const start = new Date(meeting.start)
+          const end = new Date(meeting.end)
+          const time = element('time', `${berlinDate.format(start)}, ${berlinTime.format(start)}–${berlinTime.format(end)}`)
+          time.dateTime = meeting.start
+          item.append(time)
+          if (meeting.note !== undefined) item.append(element('p', meeting.note))
+          const parameters = new URLSearchParams({
+            action: 'TEMPLATE',
+            text: 'LiveStore Contributor Sync',
+            dates: `${calendarTimestamp(meeting.start)}/${calendarTimestamp(meeting.end)}`,
+            details: description(meeting),
+            location: MEETING_ROOM_URL,
+          })
+          const actions = element('p')
+          actions.append(link('Add this meeting to Google Calendar', `https://calendar.google.com/calendar/render?${parameters}`))
+          actions.append(document.createTextNode(' · '))
+          const downloadUrl = URL.createObjectURL(new Blob([calendarFile(meeting)], { type: 'text/calendar;charset=utf-8' }))
+          this.downloads.push(downloadUrl)
+          const download = link('Download calendar file (.ics)', downloadUrl)
+          download.download = `livestore-contributor-sync-${meeting.date}.ics`
+          actions.append(download)
+          item.append(actions)
+          meetings.append(item)
+        }
+        if (schedule.calendarId !== undefined) {
+          const calendarId = encodeURIComponent(schedule.calendarId)
+          subscription.append(link('Subscribe to the LiveStore calendar', `https://calendar.google.com/calendar/u/0/r?cid=${calendarId}`))
+          subscription.append(document.createTextNode(' · '))
+          subscription.append(link('iCal subscription feed', `https://calendar.google.com/calendar/ical/${calendarId}/public/basic.ics`))
+        } else {
+          subscription.append(element('p', 'Calendar subscription is being set up.'))
+        }
+        status.textContent = 'The next two meetings are shown below. All times are Europe/Berlin.'
+        retry.hidden = true
+        this.dataset.scheduleRevision = revision
+        this.dataset.meetingState = 'ready'
+      } catch {
+        if (this.isConnected === false) return
+        this.clearDownloads()
+        meetings.replaceChildren()
+        notices.replaceChildren()
+        subscription.replaceChildren()
+        status.textContent = 'The current meeting schedule is unavailable. Please try again before relying on a saved calendar event.'
+        retry.hidden = false
+        delete this.dataset.scheduleRevision
+        this.dataset.meetingState = 'error'
+      } finally {
+        this.loading = false
+      }
+    }
+  }
+
+  if (customElements.get('contributor-meetings') === undefined)
+    customElements.define('contributor-meetings', ContributorMeetings)
+</script>
+
+<style>
+  contributor-meetings {
+    display: block;
+  }
+  contributor-meetings :global(li) {
+    margin-block: 1.5rem;
+  }
+  contributor-meetings :global(time) {
+    font-weight: 600;
+  }
+</style>
