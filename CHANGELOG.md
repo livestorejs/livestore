@@ -10,8 +10,9 @@
 
 ### Changed
 
-- **Contributor meetings:** Documented the fortnightly 18:00 Berlin cadence,
-  LiveStore events calendar, and a stable Riverside room link
+- **Contributor meetings:** Added the canonical docs schedule for the next two
+  fortnightly meetings at 19:00 Berlin, automatic Google Calendar publishing,
+  and a stable Riverside room link
   ([#1635](https://github.com/livestorejs/livestore/pull/1635)).
 - **Store commits:** Fixed the callback form of `store.commit` and its TypeScript
   overloads, including calls with commit options. Synchronous callbacks return

@@ -2,8 +2,8 @@
 
 ## Question
 
-How can one schedule reach Google Calendar, Discord, and the LiveStore Luma
-calendar without an additional paid subscription?
+How can one schedule reach the required public surfaces without an additional
+paid subscription or manual duplication?
 
 ## Evidence checked (2026-09-24)
 
@@ -22,18 +22,32 @@ calendar without an additional paid subscription?
 
 ## Conclusion
 
-Keep the canonical cadence and exceptions in the Community VRS subtree. A
-free-tier workflow can reconcile Google and Discord through their APIs and
-make Luma a checked manual copy. Publish only a short horizon so a cadence
-change does not require canceling many future events. Do not infer success
-from creating an event in one destination; verify all published copies.
+The approved implementation keeps the canonical cadence and exceptions in
+the Community VRS subtree, exposes the next two meetings on the docs site,
+and reconciles a dedicated public Google calendar through its API. Luma is
+excluded from contributor-sync publishing because manual duplication violates
+the requested operational simplicity. Office-hours use remains separate.
+Discord automation follows the contrib bot work; server-wide scheduled events
+cannot serve as test-channel-only experiments.
 
 The existing weekly Google series must be reconciled carefully so its invited
 guests receive the change and no duplicate fortnightly events are created.
 
 ## Validation still needed
 
-Confirm the intended cadence anchor, calendar and Discord ownership, access
-to the chosen Google calendar and Discord bot, and the exact Luma calendar
-permissions. Then exercise create, move, and skip on the actual publishing
-surfaces before treating reconciliation as active.
+The local publisher tests exercise cancellation restoration and moving a
+previously past event into the future under its existing ID. The future-event
+listing alone misses both cases, so publication also looks up each absent
+desired identity. The [Google event resource contract](https://developers.google.com/workspace/calendar/api/v3/reference/events)
+documents that cancelled organizer events retain details for restoration and
+that direct event retrieval returns cancelled entries. The publisher patches
+owned entries to `confirmed` with their concurrency token. Missing ownership
+metadata fails closed. These tests verify transport behavior locally; live
+Google restoration remains part of activation verification.
+
+The accepted cadence is 19:00 Europe/Berlin, every 14 days from 2026-09-24.
+Exercise create, reschedule, cancellation, and retry behavior, then verify
+production docs freshness, calendar permissions and subscription, event
+backlinks, and guest room entry. The
+[rollout delta](../.delta/DELTA-001-meeting-publication.md) remains open until
+live evidence establishes activation; local tests alone do not establish it.

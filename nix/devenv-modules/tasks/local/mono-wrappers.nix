@@ -71,6 +71,24 @@ let
 in
 {
   tasks = {
+    "meetings:check" = {
+      description = "Validate contributor schedule and publication behavior";
+      exec = ''
+        node scripts/src/meetings/publish.ts --validate
+        node_modules/.bin/vitest run --config scripts/vitest.config.ts src/meetings/meeting.test.ts
+      '';
+      after = [ "pnpm:install" ];
+    };
+    "meetings:verify-site" = {
+      description = "Verify the production meeting page, room and public calendar";
+      exec = "node docs/src/utils/verify-contributor-meeting.ts";
+      after = [ "pnpm:install" ];
+    };
+    "meetings:publish" = {
+      description = "Reconcile Google events after production website verification";
+      exec = "node scripts/src/meetings/publish.ts --apply";
+      after = [ "pnpm:install" ];
+    };
     # =========================================================================
     # Testing
     # =========================================================================

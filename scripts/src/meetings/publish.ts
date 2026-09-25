@@ -1,0 +1,47 @@
+import { readFile } from 'node:fs/promises'
+
+import { decodeMeetingSchedule, getMeetingView } from '@local/shared/contributor-meeting'
+
+import { calendarClient, desiredCalendarEvent, planCalendar, serviceAccountToken } from './google-calendar.ts'
+import { verifySiteReceipt } from './site-receipt.ts'
+
+const schedulePath = new URL('../../../context/05-contributing/02-community/meeting-schedule.json', import.meta.url)
+const args = process.argv.slice(2)
+if (args.some((arg) => !['--apply', '--validate'].includes(arg)) === true)
+  throw new Error('Usage: publish.ts [--validate | --apply]')
+if (args.includes('--apply') === true && args.includes('--validate') === true)
+  throw new Error('Choose --validate or --apply')
+
+try {
+  const source = await readFile(schedulePath, 'utf8')
+  const schedule = decodeMeetingSchedule(JSON.parse(source))
+  const now = new Date()
+  const desired = getMeetingView(schedule, now).upcoming.map(desiredCalendarEvent)
+  if (args.includes('--validate') === true) {
+    console.log(JSON.stringify({ mode: 'validate', events: desired }, null, 2))
+  } else {
+    if (schedule.calendarId === undefined)
+      throw new Error('Provision the public calendar and set calendarId in meeting-schedule.json first')
+    if (args.includes('--apply') === true) {
+      const receipt: unknown = JSON.parse(
+        await readFile(new URL('../../../tmp/meeting-site-receipt.json', import.meta.url), 'utf8'),
+      )
+      verifySiteReceipt(receipt, source, now)
+    }
+    const key = process.env.MEETING_GOOGLE_SERVICE_ACCOUNT_JSON
+    if (key === undefined) throw new Error('MEETING_GOOGLE_SERVICE_ACCOUNT_JSON is required')
+    const client = calendarClient(schedule.calendarId, await serviceAccountToken(key))
+    const desiredIds = desired.map(({ id }) => id)
+    const actions = planCalendar(desired, await client.list(now, desiredIds))
+    console.log(JSON.stringify({ mode: args.includes('--apply') === true ? 'apply' : 'plan', actions }, null, 2))
+    if (args.includes('--apply') === true) {
+      await client.apply(actions)
+      const remaining = planCalendar(desired, await client.list(now, desiredIds))
+      if (remaining.length !== 0) throw new Error('Google Calendar read-back differs from the desired meetings')
+      console.log(`Verified ${desired.length} upcoming Google events`)
+    }
+  }
+} catch (error) {
+  console.error(error instanceof Error ? error.message : 'Meeting publication failed')
+  process.exitCode = 1
+}

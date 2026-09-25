@@ -33,12 +33,24 @@ docs pages are derived views of this node (LS-R15).
   schedule. `refines: LS-R15`
 - **LS.CONTRIB.COMM-R05 No paid publishing dependency:** Publishing the
   contributor meeting must work without an additional paid subscription.
-  Any destination that cannot be updated automatically on the available free
-  tier has an explicit manual publishing and verification step.
+  Required destinations must support automatic updates on the available free
+  tier. A destination requiring manual duplication is excluded.
 - **LS.CONTRIB.COMM-R06 Canonical meeting room:** Every published occurrence
   points participants to one documented video meeting room. The join URL and
   participant role are checked before announcement, and the room can be
   changed without editing every previously shared event link.
+- **LS.CONTRIB.COMM-R07 Canonical public information:** A docs page presents
+  the next two meetings from the repository schedule and is linked from each
+  calendar event. Schedule changes reach that page within minutes without a
+  full docs release. Failure to load the schedule is explicit.
+- **LS.CONTRIB.COMM-R08 Explained schedule changes:** Rescheduling and
+  cancellation require a short public reason. A rescheduled meeting retains
+  its identity and resets the cadence for subsequent meetings. Cancellation
+  requires the organizer to select the next two dates explicitly.
+- **LS.CONTRIB.COMM-R09 Observable publication:** Publication is repeatable
+  without duplicate events, reconciles two upcoming meetings, and reports
+  destination failures. Existing invitations are retired only after their
+  replacement is verified live.
 
 ## Open Design Questions
 

@@ -1,9 +1,10 @@
 {
-  "anchorDate": "2026-09-24",
+  "version": 1,
+  "anchor": { "occurrence": 0, "date": "2026-09-24" },
   "intervalDays": 14,
-  "localStart": "18:00",
+  "localStart": "19:00",
   "durationMinutes": 60,
   "timeZone": "Europe/Berlin",
-  "joinUrl": "https://livestore.dev/meet",
-  "overrides": []
+  "calendarId": "7e211081198a74eb05026acf366241172ff4351791b9c8ff0f055ec4c9e51ea0@group.calendar.google.com",
+  "changes": []
 }
