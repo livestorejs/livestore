@@ -1534,6 +1534,49 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
+  // Closing the scope a store was created in is an orderly shutdown: an event committed right before the close must
+  // reach the leader (and be acknowledged) before the close returns, instead of being dropped with the scope.
+  Vitest.live('drains a commit made right before its scope closes', (test) =>
+    Effect.gen(function* () {
+      const acknowledgedIds: string[] = []
+      const adapter = makeTestAdapter({
+        testing: {
+          overrides: {
+            clientSession: {
+              leaderThreadProxy: () => ({
+                events: {
+                  pull: () => Stream.never,
+                  // A slow leader makes the close observably wait for the acknowledgement.
+                  push: (batch) =>
+                    Effect.sleep(50).pipe(
+                      Effect.andThen(
+                        Effect.sync(() => acknowledgedIds.push(...batch.map((event) => event.args.id as string))),
+                      ),
+                    ),
+                  stream: () => Stream.empty,
+                },
+              }),
+            },
+          },
+        },
+      })
+
+      const storeScope = yield* Scope.make()
+      const store = yield* createStore({
+        schema: schema as LiveStoreSchema,
+        adapter,
+        storeId: 'drain-on-scope-close',
+      }).pipe(Scope.provide(storeScope))
+
+      store.commit(events.todoCreated({ id: 'last-commit', text: 'last', completed: false }))
+      expect(acknowledgedIds).toEqual([])
+
+      yield* Scope.close(storeScope, Exit.void)
+
+      expect(acknowledgedIds).toEqual(['last-commit'])
+    }).pipe(withTestCtx(test)),
+  )
+
   Vitest.live('push fiber triggers shutdown on non-RejectedPushError', (test) =>
     Effect.gen(function* () {
       const pushError = new Error('unexpected transport failure')

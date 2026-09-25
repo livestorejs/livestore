@@ -321,7 +321,31 @@ export const createStore = <
 
     yield* validateStoreId(storeId)
 
-    yield* Effect.addFinalizer((_) => Scope.close(lifetimeScope, _))
+    /**
+     * Started at most once by either `store.shutdown()` or the closing of the scope `createStore` runs in, so both
+     * paths share one bounded drain. See `startTeardown` below.
+     */
+    let teardownFiber: Fiber.Fiber<void> | undefined
+    let startTeardownRef: ((exit: Exit.Exit<unknown, unknown>) => Effect.Effect<Fiber.Fiber<void>>) | undefined
+
+    // Closing the caller's scope is an orderly shutdown too: queued session events are drained to the leader before
+    // the lifetime scope (and with it an in-process leader) closes. If creation failed before the teardown existed,
+    // there is nothing to drain and the lifetime scope is closed directly.
+    yield* Effect.addFinalizer((exit) => {
+      if (startTeardownRef === undefined) return Scope.close(lifetimeScope, exit)
+      // A teardown started earlier by `store.shutdown()` has already reported its outcome to that caller (and to
+      // `shutdownDeferred`). Only a drain started by this scope close is reported here, and never by failing the
+      // close itself.
+      const startedByScopeClose = teardownFiber === undefined
+      return startTeardownRef(exit).pipe(
+        Effect.flatMap(awaitTeardownWithSoftBound),
+        Effect.catchCause((cause) =>
+          startedByScopeClose === true
+            ? Effect.logError('@livestore/livestore:shutdown: drain on scope close failed', cause)
+            : Effect.void,
+        ),
+      )
+    })
 
     const debugInstanceId = debug?.instanceId ?? nanoid(10)
     const resolvedSyncPayloadSchema = (syncPayloadSchema ?? Schema.Json) as TSyncPayloadSchema
@@ -354,21 +378,18 @@ export const createStore = <
       const services = yield* Effect.context<Scope.Scope>()
       let shutdownSyncProcessor: ((exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>) | undefined
 
-      const shutdown = (
-        exit: Exit.Exit<
-          IntentionalShutdownCause,
-          UnknownError | MaterializeError | MaterializationJournal.MaterializationJournalError | BackendIdMismatchError
-        >,
-      ) =>
-        Effect.gen(function* () {
-          // Hard outer bound on the DETACHED teardown: the processor drain `awaitEmpty`s the
-          // leader-push worker, which never completes if the leader is dead/unresponsive. Without a
-          // bound the drain would block forever, so `Scope.close(lifetimeScope)` (in `ensuring`)
-          // would never run and the lifetime scope + its resources would leak indefinitely (a later
-          // `createStore`/registry dispose on the same `storeId` would observe a never-closed store).
-          // Drain up to the bound, then force-close the scope regardless. The bound exceeds the
-          // caller-side wait below so an in-flight (but progressing) push is not cut short.
-          const closeFiber = yield* (shutdownSyncProcessor?.(exit) ?? Effect.void).pipe(
+      /**
+       * Drains the session sync processor (for a successful exit) and then closes the lifetime scope, detached so the
+       * shutdown flow cannot interrupt itself. The processor drain waits for the leader-push worker, which never
+       * completes if the leader is dead or unresponsive. Without a bound `Scope.close(lifetimeScope)` would never
+       * run and the lifetime scope would leak (a later `createStore`/registry dispose on the same `storeId` would
+       * observe a never-closed store). The bound exceeds the caller-side soft wait so an in-flight but progressing
+       * push is not cut short.
+       */
+      const startTeardown = (exit: Exit.Exit<unknown, unknown>): Effect.Effect<Fiber.Fiber<void>> =>
+        Effect.suspend(() => {
+          if (teardownFiber !== undefined) return Effect.succeed(teardownFiber)
+          return (shutdownSyncProcessor?.(exit) ?? Effect.void).pipe(
             Effect.timeoutOrElse({
               duration: SHUTDOWN_DRAIN_HARD_TIMEOUT_MS,
               orElse: () =>
@@ -377,17 +398,25 @@ export const createStore = <
                 ),
             }),
             Effect.ensuring(Scope.close(lifetimeScope, exit)),
+            Effect.provide(services),
             Effect.forkDetach,
+            Effect.tap((fiber) =>
+              Effect.sync(() => {
+                teardownFiber = fiber
+              }),
+            ),
           )
-          // Caller-side soft wait: stop blocking the shutdown() caller after 1s without cancelling
-          // the detached teardown above (which remains bounded by SHUTDOWN_DRAIN_HARD_TIMEOUT_MS).
-          yield* Fiber.join(closeFiber).pipe(
-            Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
-            Effect.timeoutOrElse({
-              duration: 1000,
-              orElse: () => Effect.logError('@livestore/livestore:shutdown: Timed out after 1 second'),
-            }),
-          )
+        })
+      startTeardownRef = startTeardown
+
+      const shutdown = (
+        exit: Exit.Exit<
+          IntentionalShutdownCause,
+          UnknownError | MaterializeError | MaterializationJournal.MaterializationJournalError | BackendIdMismatchError
+        >,
+      ) =>
+        Effect.gen(function* () {
+          yield* awaitTeardownWithSoftBound(yield* startTeardown(exit))
 
           if (shutdownDeferred !== undefined) {
             yield* Deferred.done(shutdownDeferred, exit)
@@ -527,3 +556,16 @@ const getDevtoolsEnabled = (disableDevtools: boolean | 'auto' | undefined) => {
 
   return false
 }
+
+/**
+ * Caller-side soft wait: stops blocking whoever triggered the shutdown after 1s without cancelling the detached
+ * teardown, which remains bounded by `SHUTDOWN_DRAIN_HARD_TIMEOUT_MS`.
+ */
+const awaitTeardownWithSoftBound = (teardown: Fiber.Fiber<void>) =>
+  Fiber.join(teardown).pipe(
+    Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
+    Effect.timeoutOrElse({
+      duration: 1000,
+      orElse: () => Effect.logError('@livestore/livestore:shutdown: Timed out after 1 second'),
+    }),
+  )

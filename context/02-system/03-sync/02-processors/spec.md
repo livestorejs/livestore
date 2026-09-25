@@ -137,7 +137,8 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   this cleanup detached under a **hard bound**: the caller stops waiting after
   1s, and the detached drain is itself force-closed after
   `SHUTDOWN_DRAIN_HARD_TIMEOUT_MS` so an unresponsive leader cannot leak the
-  lifetime scope (LS.SYS.SYNC.PROC-R03, LS.SYS.STORE-R07).
+  lifetime scope (LS.SYS.SYNC.PROC-R03, LS.SYS.STORE-R07). A successful close of
+  the scope the Store was created in triggers the same drain.
 - **Observability** (`:98-99, 358-361`): sync-state updates surface via a
   separate queue explicitly not relied on for correctness; a devtools
   latch can pause upstream application (`:152-153`).

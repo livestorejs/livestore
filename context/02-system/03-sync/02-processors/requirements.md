@@ -27,7 +27,8 @@ Builds on [../requirements.md](../requirements.md) and
   Processor](./spec.md#leader-sync-processor)). Adopted 2026-07-16
   (interview). `refines: LS.SYS.SYNC-R01`
 - **LS.SYS.SYNC.PROC-R03 Orderly session drain:** Successful orderly Store
-  shutdown closes client-session admission and sends every admitted event to
+  shutdown (an explicit `shutdown()` or a successful close of the scope the
+  Store was created in) closes client-session admission and sends every admitted event to
   the leader in FIFO order within configured batch bounds. A rejected or fatal
   leader push fails the drain instead of claiming durability. Failed shutdown
   may interrupt blocked processor work. The drain must **not** block the
@@ -36,7 +37,9 @@ Builds on [../requirements.md](../requirements.md) and
   runs detached under a hard bound so an unresponsive leader cannot leak the
   lifetime scope. Adopted 2026-07-18 (#1437); non-blocking design + hard bound
   2026-07-19 (#1465, store
-  [`.decisions/0001`](../../05-store/.decisions/0001-client-session-shutdown-drain.md)).
+  [`.decisions/0001`](../../05-store/.decisions/0001-client-session-shutdown-drain.md));
+  scope close included 2026-09-25 (store
+  [`.decisions/0003`](../../05-store/.decisions/0003-scope-close-drains.md)).
   `refines: LS.SYS.STORE-R07`
 - **LS.SYS.SYNC.PROC-R04 Prefix-fenced upstream propagation:** At both the
   session→leader and leader→backend boundaries, a rejected push or an
