@@ -62,5 +62,4 @@ project's BDFL governance (see [../spec.md](../spec.md)); there is no
 required-approval count. External PRs are reviewed by a maintainer before
 merge. Contributor-side tooling conventions (which accounts or automation a
 contributor uses to author changes) are the contributor's own concern and out
-of scope for this layer; repo-level agent conventions live in `CLAUDE.md` and
-`AGENTS.md`.
+of scope for this layer; repo-level agent conventions live in `AGENTS.md`.

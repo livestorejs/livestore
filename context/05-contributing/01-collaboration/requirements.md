@@ -7,7 +7,7 @@ conventions.
 ## Context
 
 Builds on [../requirements.md](../requirements.md). Grounded in the repo
-conventions (`CLAUDE.md`/`AGENTS.md`) and
+conventions (`AGENTS.md`) and
 `contributor-docs/changelog-guide.md`.
 
 ## Requirements
