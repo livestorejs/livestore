@@ -34,7 +34,13 @@ billing dependency to make publication work.
    `meeting-schedule.json`, into `main` through a reviewed pull request
    before running the checks below. The production page and the publishing
    workflow both read `main`, and the raw-file cache can take roughly five
-   minutes to show the new revision.
+   minutes to show the new revision. When a rebuild replaces `calendarId`
+   while the previous public calendar still exists, first delete that
+   calendar's future publisher-managed events, whose IDs start with
+   `lscontrib`, or delete the old calendar, before merging. The publisher
+   targets only the current `calendarId` and never revisits a previous
+   calendar, so subscribers of the old calendar must resubscribe from the
+   canonical docs page.
 2. Open `https://docs.livestore.dev/misc/contributor-sync/` in a fresh browser.
    Verify the displayed meetings against the repository schedule, public
    change notes, and the calendar subscription link. Confirm `/meet` redirects
