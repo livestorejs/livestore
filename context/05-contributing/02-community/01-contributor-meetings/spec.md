@@ -13,8 +13,6 @@ Draft.
 
 ## Contributor Meeting Schedule (LS.CONTRIB.COMM.MEET-R01, R02, R05)
 
-**Maturity: experimental**
-
 ```text
 meeting-schedule.json on main
   ├──► docs page reads schedule on each visit
@@ -78,8 +76,6 @@ scheduled events are server-wide and cannot be confined to that channel.
 
 ## Public Page and Room (LS.CONTRIB.COMM.MEET-R03, R04)
 
-**Maturity: experimental**
-
 The community page links to
 `https://docs.livestore.dev/misc/contributor-sync/`. On each visit, this page
 reads the public schedule from the core repository's `main` branch. The raw
@@ -97,16 +93,13 @@ events so changing the room does not invalidate shared links. A Studio link
 supports participating guests; an audience link is not an equivalent room.
 Riverside scheduled-session links and paid custom URLs are unnecessary.
 Verification checks that the redirect reaches the intended Studio URL. Guest
-entry into a hosted room is not an activation gate.
+entry into a hosted room is not a verification requirement.
 
-Production docs follows stable releases. Bootstrap this page and redirect in
-a dedicated stable docs release; later schedule-only edits use the runtime
-read and do not require a new docs build or publication of unrelated `main`
-documentation.
+Production docs follows stable releases. This page and redirect ship with
+stable docs releases; schedule-only edits use the runtime read and do not
+require a new docs build or publication of unrelated `main` documentation.
 
 ## Calendar Publication (LS.CONTRIB.COMM.MEET-R02, R06)
-
-**Maturity: experimental**
 
 ```text
 schedule merge / daily timer / manual dispatch
@@ -116,8 +109,9 @@ schedule merge / daily timer / manual dispatch
   → verify destination state or fail the workflow
 ```
 
-The GitHub workflow is disabled until production bootstrap is verified. It
-uses a service-account credential stored in Actions secrets, with writer
+The repository variable `CONTRIBUTOR_MEETING_PUBLISHING_ENABLED` gates Google
+writes; it is enabled, and disabling it stops writes during an incident. The
+workflow uses a service-account credential stored in Actions secrets, with writer
 access only to the dedicated public calendar, with a recoverable backup in
 shared 1Password. It creates individual events
 without an attendee roster. Each description links to the canonical docs
@@ -133,7 +127,7 @@ A single reusable GitHub issue reports publication failures. Open or reopen it
 on failure, update it when the failure changes, suppress repeated unchanged
 failure reports, and close it after successful verification. Temporary private
 calendars exercise the full create, move, cancel, restore, retry, and cleanup
-lifecycle before production activation.
+lifecycle before activating publication on a new or rebuilt calendar.
 Validation and publication use the repository's Minimal Setup with a frozen
 dependency install. Only publication resolves the managed Playwright wrapper
 from the exact browser, Nixpkgs, and wrapper revisions in `devenv.lock`;
@@ -144,16 +138,10 @@ failure and warns that calendar copies may lag. Standard Calendar API use at
 this scale must not introduce additional fees; if free access becomes
 unavailable, publication must fail rather than opt into a paid service.
 
-The existing personal-calendar series is retired only after the page,
-room, public calendar subscription, event backlinks, and workflow are verified
-live. End future instances while preserving history, and notify its current
-invitees through Google Calendar with the canonical page and replacement
-subscription. If truncating the series does not deliver those links, update
-the next old occurrence with the migration note and notify its invitees before
-retiring it. No separate email or Discord announcement is required. Once these
-checks pass, activate without a discretionary rollout approval. Operational steps
-are in [setup-guide.md](./setup-guide.md). Unverified activation is tracked in
-[the rollout delta](./.delta/DELTA-001-meeting-publication.md).
+The former personal-calendar series has been retired with its history
+preserved; migration evidence is in
+[the closed rollout delta](./.delta/DELTA-001-meeting-publication.md).
+Operational steps are in [setup-guide.md](./setup-guide.md).
 
 ## Public Compatibility
 
