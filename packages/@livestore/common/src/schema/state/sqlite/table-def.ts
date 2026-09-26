@@ -265,20 +265,29 @@ export function table<
   return tableDef as any
 }
 
+/**
+ * The encoded side of the schema decides which columns exist (a transformation may flatten a nested
+ * type into columns). Where the schema itself declares a property of the same name, that property's
+ * own AST becomes the column schema: it still carries the field's encoding, so a codec such as
+ * `Schema.DateFromString` or `Schema.DateFromMillis` stores its encoded form and decodes back to
+ * its type. Substituting the type-side AST instead would strip that encoding and leave a `Date`
+ * with nothing SQLite can store natively, which is how date columns ended up JSON-encoded and
+ * unreadable.
+ */
 const getSqlitePropertySignatures = (schema: Schema.Top): ReadonlyArray<SchemaAST.PropertySignature> => {
   const encodedPropertySignatures = getPropertySignatures(SchemaAST.toEncoded(schema.ast))
-  const typePropertySignatures = getPropertySignatures(SchemaAST.toType(schema.ast))
+  const ownPropertySignatures = getPropertySignatures(schema.ast)
 
   return encodedPropertySignatures.map((encodedPropertySignature) => {
-    const typePropertySignature = typePropertySignatures.find(
+    const ownPropertySignature = ownPropertySignatures.find(
       (propertySignature) => propertySignature.name === encodedPropertySignature.name,
     )
 
-    if (typePropertySignature === undefined || hasLiveStoreSqliteAnnotation(encodedPropertySignature.type) === true) {
+    if (ownPropertySignature === undefined || hasLiveStoreSqliteAnnotation(encodedPropertySignature.type) === true) {
       return encodedPropertySignature
     }
 
-    return new SchemaAST.PropertySignature(encodedPropertySignature.name, typePropertySignature.type)
+    return ownPropertySignature
   })
 }
 
