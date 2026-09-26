@@ -163,7 +163,7 @@ In your `schema.ts` file, add another table definition to the `tables` object. T
 ```diff title="src/livestore/schema.ts" lang="ts"
 +import { Events, makeSchema, Schema, State, SessionIdSymbol } from '@livestore/livestore'
 
-+export const Filter = Schema.Literals(['All', 'Active', 'Completed'])
++export const Filter = Schema.Literals('All', 'Active', 'Completed')
 +export type Filter = typeof Filter.Type
 
 export const tables = {
@@ -176,7 +176,7 @@ export const tables = {
     },
   }),
 +  uiState: State.SQLite.clientDocument({
-+    name: 'uiState',
++    name: 'uistate',
 +    schema: Schema.Struct({ input: Schema.String, filter: Filter }),
 +    default: { id: SessionIdSymbol, value: { input: '', filter: 'All' } },
 +  }),
