@@ -40,6 +40,14 @@ passed all three jobs, reported `actions: []`, and verified two events at
 tests cover failure-issue creation, reopening, unchanged-failure suppression,
 and closure; no public outage was manufactured to exercise that lifecycle.
 
+The daily timer first fired in
+[scheduled run 36241425870](https://github.com/livestorejs/livestore/actions/runs/36241425870),
+created at 12:16:57 UTC on 2026-09-26 for the 07:23 UTC cron; this repository's
+scheduled workflows typically start five to six hours late. It passed all
+three jobs, verified the production page, room redirect, and public calendar
+for the same schedule SHA-256, reported `actions: []`, and verified two
+upcoming events.
+
 The Calendar API is enabled without an added billing dependency. The service
 account has calendar-only writer access, its key is in Actions secrets, and
 the shared LiveStore 1Password backup passed exact JSON readback verification.
