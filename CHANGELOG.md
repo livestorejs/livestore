@@ -1,5 +1,7 @@
 # Changelog
 
+- DevTools artifact manifest updates now verify canonical release provenance and forward-only transitions before entering the normal required-check auto-merge path (#1444).
+
 > NOTE: LiveStore is still in beta and releases can include breaking changes.
 > See
 > [state of the project](https://docs.livestore.dev/misc/state-of-the-project/)
