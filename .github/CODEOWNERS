@@ -1,5 +1,5 @@
 # Release-sensitive repository policy and release automation.
-/.github/ @schickling
+/.github/workflows/*.yml @schickling
 /release/ @schickling
 /scripts/src/commands/changesets.ts @schickling
 /scripts/src/commands/devtools-artifact.ts @schickling
