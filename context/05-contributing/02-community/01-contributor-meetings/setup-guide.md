@@ -30,26 +30,31 @@ billing dependency to make publication work.
 
 ## Verify and re-enable publication
 
-1. Open `https://docs.livestore.dev/misc/contributor-sync/` in a fresh browser.
+1. Merge any schedule change, such as a new `calendarId` in
+   `meeting-schedule.json`, into `main` through a reviewed pull request
+   before running the checks below. The production page and the publishing
+   workflow both read `main`, and the raw-file cache can take roughly five
+   minutes to show the new revision.
+2. Open `https://docs.livestore.dev/misc/contributor-sync/` in a fresh browser.
    Verify the displayed meetings against the repository schedule, public
    change notes, and the calendar subscription link. Confirm `/meet` redirects
    to the intended LiveStore Riverside Studio.
-2. When the calendar or publisher changed, verify the create, move, cancel,
+3. When the calendar or publisher changed, verify the create, move, cancel,
    restore, repeated-run, and cleanup lifecycle on a temporary private
    calendar using the same publisher. Remove the test calendar after recording
    results. Riverside verification is the redirect target check above;
    entering a hosted room is not an activation gate.
-3. Run `node scripts/src/meetings/publish.ts --validate`, then
+4. Run `node scripts/src/meetings/publish.ts --validate`, then
    `node docs/src/utils/verify-contributor-meeting.ts` to check the live page. Run
    `node scripts/src/meetings/publish.ts` with the publishing credential
    available to preview Google changes without writing. Review that
    it targets only the dedicated calendar and the expected next two meetings.
-4. Set `CONTRIBUTOR_MEETING_PUBLISHING_ENABLED` to `true` and manually dispatch
+5. Set `CONTRIBUTOR_MEETING_PUBLISHING_ENABLED` to `true` and manually dispatch
    the publishing workflow. Its production-page check must pass before Google
    writes. Verify the resulting public events, dates, duration, time zone,
    canonical-page backlink, and room link. Repeat once to confirm no duplicate
    events or unnecessary changes.
-5. Verify subscription from a separate viewer.
+6. Verify subscription from a separate viewer.
 
 A reusable GitHub issue opens or reopens on a publishing failure,
 updates only when that failure changes, and closes after successful recovery.
