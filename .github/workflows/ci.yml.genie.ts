@@ -30,6 +30,8 @@ import {
 // =============================================================================
 
 const GITHUB_RUN_ID = '${{ github.run_id }}'
+const CACHE_PUBLISHER_IF =
+  "github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')"
 const PR_HEAD_SHA = '${{ github.event.pull_request.head.sha || github.sha }}'
 const IS_NOT_FORK = 'github.event.pull_request.head.repo.fork != true'
 const DLX_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `--allow-build=${name}`).join(' ')
@@ -138,6 +140,43 @@ export default githubWorkflow({
 
   jobs: {
     'source-policy': livestoreDefaultRefPolicyJob,
+    'publish-nix-cache': standardCIJob({
+      if: CACHE_PUBLISHER_IF,
+      steps: [
+        ...livestoreSetupSteps,
+        {
+          name: 'Build pinned CI setup outputs',
+          run: [
+            'set -euo pipefail',
+            'effect_utils_rev=$(jq -r \'.members["effect-utils"].commit\' megarepo.lock)',
+            'effect_utils="github:overengineeringstudio/effect-utils/$effect_utils_rev"',
+            'nix build --no-link --print-out-paths "$effect_utils#megarepo" "$effect_utils#buck2-capabilities" "$effect_utils#oxlint-npm" nixpkgs#cachix > "$RUNNER_TEMP/livestore-cache-roots"',
+            'mapfile -t roots < "$RUNNER_TEMP/livestore-cache-roots"',
+            'mapfile -t derivations < <(nix-store -q --deriver "${roots[@]}")',
+            'nix-store -q -R "${derivations[@]}" > "$RUNNER_TEMP/livestore-cache-derivations"',
+            'while IFS= read -r drv; do',
+            '  case "$drv" in',
+            '    *-oxc-config*.drv|*-oxlint*.drv|*-closure-info.drv|*-buck2-capabilit*.drv|*-megarepo-buck2-candidate.drv|*-cabal2nix-cachix*.drv|*-mr.js.drv|*-binding-linux-x64-gnu*.drv)',
+            '      nix-store -q --outputs "$drv" ;;',
+            '  esac',
+            'done < "$RUNNER_TEMP/livestore-cache-derivations" | cat "$RUNNER_TEMP/livestore-cache-roots" - | sort -u | while IFS= read -r path; do',
+            '  if nix path-info --offline "$path" >/dev/null 2>&1; then printf "%s\\n" "$path"; fi',
+            'done > "$RUNNER_TEMP/livestore-cache-paths"',
+            'cat "$RUNNER_TEMP/livestore-cache-paths"',
+          ].join('\n'),
+        },
+        {
+          name: 'Push pinned setup outputs to livestore Cachix',
+          if: CACHE_PUBLISHER_IF,
+          env: { CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_PUSH_TOKEN }}' },
+          run: [
+            'set -euo pipefail',
+            'mapfile -t paths < "$RUNNER_TEMP/livestore-cache-paths"',
+            'cachix push livestore "${paths[@]}"',
+          ].join('\n'),
+        },
+      ],
+    }),
     [prReviewsResolvedJobId]: prReviewsResolvedJob(),
     'minimal-dev': {
       if: "github.event_name == 'pull_request'",
