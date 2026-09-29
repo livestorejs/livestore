@@ -323,8 +323,6 @@ const setupMegarepoRun = (run: string) =>
     'nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all',
     [
       'nix run --no-write-lock-file',
-      '--override-input flake-utils "github:numtide/flake-utils/11707dc2f618dd54ca8739b309ec4fc024de578b"',
-      '--override-input nixpkgs "github:NixOS/nixpkgs/5b63481602d9b0a714d5791c53bebe829d6b1a3c"',
       '"github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all',
     ].join(' '),
   )
@@ -348,8 +346,8 @@ const withNixSetupRetry = <TStep extends { readonly name: string; readonly run: 
  * {@link restoreMegarepoStoreStep} / {@link saveMegarepoStoreStep} (from effect-utils) it stops CI
  * from cold-cloning large members (e.g. `effect-ts/effect`) every run: the store lives at the
  * stable `cacheableMegarepoStore` path so the actions/cache version is stable across runs and
- * restores hit. `withNixSetupRetry` preserves the step's `env` (the cacheable path) while
- * rewriting the run for the codeload override.
+ * restores hit. `withNixSetupRetry` preserves the step's `env` (the cacheable path)
+ * and retries transient Nix store races without overriding the producer's flake inputs.
  */
 const stableStoreSyncStep = applyMegarepoLockStep({ cacheableStore: true })
 
