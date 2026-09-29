@@ -26,9 +26,8 @@ Durable Object (one client)
          └─ ClientSessionLeaderThreadProxy (in-process)
 ```
 
-Inputs: `schema`, `storeId`, `clientId`, `sessionId`, the DO's own
-`ctx`/`env`/`bindingName` (so the sync backend can call back for live pull),
-and `syncBackendStub` (`@livestore/sync-cf/cf-worker` RPC interface).
+Inputs: `schema`, `storeId`, `clientId`, `sessionId`, the DO's own `ctx`, and
+`syncBackendStub` (`@livestore/sync-cf/cf-worker` RPC interface).
 `livePull: false` is the default (LS.SYS.RT.CF-R03).
 
 `createStoreDo.params.stateRebuildBatchSize` forwards the per-client rebuild
@@ -104,17 +103,24 @@ through the ordinary leader boot rehydration path
 ([../spec.md](../spec.md) Leadership Handover): upstream head and pending
 events are re-derived from DO storage and pending events are re-pushed.
 
-Live-pull delivery has its own reconstruction path. The sync backend
-delivers updates by calling the client DO's `syncUpdateRpc(payload, storeId)`
-reverse-RPC (`ClientDoWithRpcCallback`), a call that also wakes an evicted
-DO. Because the backend passes the subscription's `storeId`, a store-less
-wake can re-boot its store (`getStore(storeId)`, idempotent; its boot runs a
-catch-up pull) before forwarding the payload to
-`handleSyncUpdateRpc(ctx, payload)` — so a reconstructed client recovers the
-pushed update rather than dropping it (LS.SYS.RT.CF-R03). Opting out (no
-re-boot) drops that one live update and recovers lazily on the next store
-access. The provider side that threads `storeId` is `03-sync/03-cf`'s concern
-([../../03-sync/03-cf/.decisions/0003-reverse-rpc-storeid-recovery.md](../../03-sync/03-cf/.decisions/0003-reverse-rpc-storeid-recovery.md)).
+**Maturity: experimental.** Live-pull delivery has its own reconstruction
+path. The client mints a persistent stub with
+`ctx.restore({ storeId, subscriptionId })`; the backend stores the stub and
+invokes it only when publishing an update. The client DO's `[restore]` returns
+`restoreStoreDoSyncTarget(ctx, params, { onUpdate })`. The target checks that
+the subscription is still current, runs `onUpdate(storeId)` so a store-less
+wake can re-boot and catch up, checks again in case boot superseded the old
+pull, and then routes the bytes to the live-pull queue. A stale target refuses
+delivery so the backend removes its row. This preserves eviction recovery
+without a forgeable DO id or an idle stub that pins either DO awake
+(LS.SYS.RT.CF-R03; [provider decision
+0006](../../03-sync/03-cf/.decisions/0006-persistent-stub-subscriptions.md)).
+Every Worker in the restore chain opts into
+`allow_irrevocable_stub_storage`; compatibility dates before 2026-01-20 also
+enable `rpc_params_dup_stubs` to retain and explicitly dispose the caller's
+copy. The persistent capability must not cross a trust boundary. Before
+removing the storage flag, delete backend `rpc-sub:*` rows while it remains
+enabled because disabling it breaks already-stored stubs.
 
 ## Open Design Questions
 

@@ -70,9 +70,9 @@ async rpc(payload: Uint8Array): Promise<Uint8Array | ReadableStream> {
 
 // Client setup
 const client = RpcClient.make(MyRpcs, {
-  layer: layerProtocolDurableObject(
-    (payload) => serverDO.rpc(payload)
-  )
+  layer: layerProtocolDurableObject({
+    callRpc: (payload) => serverDO.rpc(payload),
+  })
 })
 
 // Usage (client side)

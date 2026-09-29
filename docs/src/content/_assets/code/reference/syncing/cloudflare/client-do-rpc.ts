@@ -7,8 +7,4 @@ declare const syncBackendDurableObject: CfTypes.DurableObjectStub<SyncBackendRpc
 export const syncBackend = makeDoRpcSync({
   syncBackendStub: syncBackendDurableObject,
   durableObjectState: state,
-  durableObjectContext: {
-    bindingName: 'CLIENT_DO',
-    durableObjectId: state.id.toString(),
-  },
 })

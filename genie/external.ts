@@ -141,7 +141,7 @@ export const livestoreOnlyCatalog = {
   'expo-application': '7.0.7',
   'expo-sqlite': '16.0.8',
   'react-native': '0.81.4',
-  wrangler: '4.42.2',
+  wrangler: '4.128.0',
   '@cloudflare/workers-types': '4.20251118.0',
   husky: '9.1.7',
   madge: '8.0.0',

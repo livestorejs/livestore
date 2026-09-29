@@ -363,18 +363,33 @@ const runSyncProviderTests = Effect.fn(function* ({ provider }: { provider: Opti
   // previous run's data — the guard has to fail closed.
   fs.rmSync(reportPath, { force: true })
 
+  // Miniflare 5 locks the shared Wrangler persistence directory. Until each dev server has its own persist path,
+  // serialize files for Cloudflare providers (and for the full matrix, which includes them).
+  const fileParallelismArgs =
+    Option.isNone(provider) === true || provider.value.startsWith('cf-') === true ? ['--no-file-parallelism'] : []
+
   yield* TestPolicy.runTestTarget({
     label: Option.isSome(provider) === true ? `sync-provider:${provider.value}` : 'sync-provider',
     policy: TestPolicy.blocking,
-    run: cmd(['vitest', 'run', '--reporter=default', '--reporter=json', `--outputFile.json=${reportPath}`], {
-      // Selection happens at collection time via the registry rather than by matching test
-      // titles, so renaming a suite can no longer remove it from a CI cell (#1429).
-      //
-      // Explicitly cleared when no provider is pinned: CI sets TEST_SYNC_PROVIDER at step
-      // level, so inheriting it would silently collapse a full sweep to a single provider
-      // while still reporting success as a full run.
-      env: { [providerSelectionEnvVar]: Option.isSome(provider) === true ? provider.value : undefined },
-    }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/sync-provider'))),
+    run: cmd(
+      [
+        'vitest',
+        'run',
+        ...fileParallelismArgs,
+        '--reporter=default',
+        '--reporter=json',
+        `--outputFile.json=${reportPath}`,
+      ],
+      {
+        // Selection happens at collection time via the registry rather than by matching test
+        // titles, so renaming a suite can no longer remove it from a CI cell (#1429).
+        //
+        // Explicitly cleared when no provider is pinned: CI sets TEST_SYNC_PROVIDER at step
+        // level, so inheriting it would silently collapse a full sweep to a single provider
+        // while still reporting success as a full run.
+        env: { [providerSelectionEnvVar]: Option.isSome(provider) === true ? provider.value : undefined },
+      },
+    ).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/sync-provider'))),
   })
 
   yield* assertTestsExecuted({ reportPath, suiteFile: syncProviderConformanceSuite })

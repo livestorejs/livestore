@@ -43,13 +43,24 @@ const encodeBytes = (parser: RpcSerialization.Parser, value: unknown): Uint8Arra
   return new Uint8Array(encoded.buffer, encoded.byteOffset, encoded.byteLength)
 }
 
-export interface ClientDoWithRpcCallback {
-  __DURABLE_OBJECT_BRAND: never
-  /**
-   * The sync backend calls this to deliver a live update; `storeId` lets a rebuilt DO reload its
-   * store before delivering. See the Cloudflare Durable Object adapter docs for the recovery options.
-   */
-  syncUpdateRpc: (payload: Uint8Array<ArrayBuffer>, storeId: string) => Promise<void>
+// `Symbol.dispose` is missing from the repo's `ES2024` lib; declared here until the lib includes `esnext.disposable`.
+declare global {
+  interface SymbolConstructor {
+    readonly dispose: unique symbol
+  }
+}
+
+/** Answer to one live-update delivery. `refused` tells the sync backend to drop that subscription row. */
+export type SyncUpdateAck = { refused: boolean }
+
+/**
+ * Persistent stub (`ctx.restore`) a client DO mints for one live pull. The sync backend stores it in its KV and
+ * calls it on every publish; the client's `[restore]` re-derives the target on demand, so neither side stays pinned.
+ * Dispose it after use, or the session it opened keeps both DOs awake.
+ */
+export interface SyncUpdateCallback {
+  deliver(payload: Uint8Array<ArrayBuffer>): Promise<SyncUpdateAck>
+  [Symbol.dispose](): void
 }
 
 /**
@@ -211,33 +222,18 @@ export const toDurableObjectHandler =
       Uint8Array<ArrayBuffer> | CfTypes.ReadableStream
     >
 
-/** Out-of-band RPC stream response emission back to the caller DO */
+/** Out-of-band RPC stream chunk delivered to the subscriber's callback stub. Returns the subscriber's answer. */
 export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(function* ({
-  callerContext,
-  env,
+  callback,
   requestId,
   schema,
-  storeId,
   values,
 }: {
-  env: Record<string, any>
-  callerContext: { bindingName: string; durableObjectId: string }
+  callback: SyncUpdateCallback
   requestId: string
-  storeId: string
   schema: Schema.Top
   values: ReadonlyArray.NonEmptyReadonlyArray<unknown>
 }) {
-  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- CF worker env bindings are typed as Record<string, any>; narrowing to known DO namespace
-  const clientDoNamespace = env[callerContext.bindingName] as
-    | CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
-    | undefined
-
-  if (clientDoNamespace === undefined) {
-    throw new Error(`Client DO namespace not found: ${callerContext.bindingName}`)
-  }
-
-  const clientDo = clientDoNamespace.get(clientDoNamespace.idFromString(callerContext.durableObjectId))
-
   const serialization = yield* schemaBinarySerialization
   const parser = serialization.makeUnsafe()
   const encodedValues = yield* Schema.encodeUnknownEffect(
@@ -248,7 +244,7 @@ export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(functio
   // boundary clone-safe by sending the already-encoded Effect RPC message as bytes.
   const serializedRes = encodeBytes(parser, res)
 
-  yield* Effect.tryPromise(() => clientDo.syncUpdateRpc(serializedRes, storeId))
+  return yield* Effect.tryPromise(() => callback.deliver(serializedRes))
 })
 
 /**
