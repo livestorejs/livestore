@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "cb061694ebb79e56dda019fc438e22370b694fe9",
+      "ref": "schickling-assistant/2026-09-29-2026-09-29-fleet-no-tailwind",
+      "commit": "7fa1bbdc88cc496a50a2030a18bdaf41a5cad3ac",
       "pinned": true,
-      "lockedAt": "2026-09-23T12:00:34.514Z"
+      "lockedAt": "2026-09-29T12:32:05.909Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
