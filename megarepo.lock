@@ -4,9 +4,9 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "schickling-assistant/2026-09-29-2026-09-29-fleet-no-tailwind",
-      "commit": "7fa1bbdc88cc496a50a2030a18bdaf41a5cad3ac",
+      "commit": "0ab1b117c6a2c016678f06e895d919a4a4c7d339",
       "pinned": true,
-      "lockedAt": "2026-09-29T12:32:05.909Z"
+      "lockedAt": "2026-09-29T12:45:23.436Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
