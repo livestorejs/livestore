@@ -132,7 +132,6 @@ export default githubWorkflow({
 
   env: {
     GITHUB_BRANCH_NAME: '${{ github.head_ref || github.ref_name }}',
-    CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}',
     FORCE_SETUP: '1',
     CI: 'true',
   },

@@ -365,7 +365,7 @@ export const livestoreSetupStepsAfterCheckout = [
   prepareCiScriptsStep,
   cachixCliBuildStep,
   (() => {
-    const base = cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' })
+    const base = cachixStep({ name: 'livestore' })
     return { ...base, with: { ...base.with, skipPush: true } }
   })(),
   restoreMegarepoStoreStep(),
