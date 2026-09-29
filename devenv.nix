@@ -351,21 +351,6 @@ in
     # Gated through `extraChecks` above rather than run standalone.
     (taskModules.lint-nix { })
     (taskModules.lint-oxc {
-      # Permanent product/example exemptions; library packages remain guarded.
-      tailwindExceptions = [
-        {
-          path = "docs/**";
-          reason = "LiveStore documentation is a standalone Tailwind application";
-        }
-        {
-          path = "examples/**";
-          reason = "LiveStore examples are standalone Tailwind applications";
-        }
-        {
-          path = "packages/@local/**/example/**";
-          reason = "Standalone local-package example applications use Tailwind";
-        }
-      ];
       lintPaths = [
         "packages"
         "tests"
