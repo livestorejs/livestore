@@ -61,7 +61,6 @@ export default githubWorkflow({
   },
 
   env: {
-    CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}',
     CI: 'true',
     FORCE_SETUP: '1',
   },

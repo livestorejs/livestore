@@ -47,7 +47,6 @@ permissions:
   pull-requests: write
 
 env:
-  CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
   CI: 'true'
   FORCE_SETUP: '1'
   ARTIFACT_METADATA_URL: ${{ github.event.client_payload.artifactMetadataUrl || inputs.metadata_url }}
@@ -494,7 +493,6 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
           skipPush: true
       - name: Restore megarepo store
         id: restore-megarepo-store

@@ -23,7 +23,6 @@ permissions:
   contents: read
 
 env:
-  CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
   CI: 'true'
   FORCE_SETUP: '1'
 
@@ -79,7 +78,6 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
           skipPush: true
       - name: Restore megarepo store
         id: restore-megarepo-store
@@ -235,7 +233,6 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
           skipPush: true
       - name: Restore megarepo store
         id: restore-megarepo-store
