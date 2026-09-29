@@ -49,8 +49,9 @@
   ([#1418](https://github.com/livestorejs/livestore/issues/1418)).
 - **Effect v4 dependency cohort:** Updated the repository-wide Effect v4
   dependency family from `4.0.0-beta.99` to `4.0.0-rc.113`. Applications must
-  use rc.113 or a compatible later Effect 4 release. Effect removed
-  `Schema.isDateValid` because `Schema.DateFromString` and
+  use exactly `4.0.0-rc.113` for Effect prerelease peers; prerelease caret ranges
+  did not enforce that compatibility. Effect removed `Schema.isDateValid` because
+  `Schema.DateFromString` and
   `Schema.DateFromMillis` now reject invalid dates on their own, so
   `Schema.DateFromString.check(Schema.isDateValid())` becomes plain
   `Schema.DateFromString`. SQLite column inference also preserves INTEGER and
@@ -70,6 +71,9 @@
 
 ### Breaking Changes
 
+- **Effect prerelease peers:** Align applications to Effect `4.0.0-rc.113`
+  before upgrading LiveStore; other Effect prereleases no longer satisfy its
+  peer dependencies ([#1557](https://github.com/livestorejs/livestore/issues/1557)).
 - **Store commit callbacks:** Callbacks now synchronously return an event array.
   Replace `store.commit((commit) => { commit(event) })` with
   `store.commit(() => [event])` or `store.commit(event)`

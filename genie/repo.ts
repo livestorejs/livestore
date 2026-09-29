@@ -364,10 +364,7 @@ export const livestoreSetupStepsAfterCheckout = [
   }),
   prepareCiScriptsStep,
   cachixCliBuildStep,
-  (() => {
-    const base = cachixStep({ name: 'livestore' })
-    return { ...base, with: { ...base.with, skipPush: true } }
-  })(),
+  cachixStep({ name: 'livestore' }),
   restoreMegarepoStoreStep(),
   withNixSetupRetry(stableStoreSyncStep),
   saveMegarepoStoreStep(),

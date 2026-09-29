@@ -74,7 +74,6 @@ packageExtensions:
 peerDependencyRules:
   allowedVersions:
     typescript: '>=6.0.0'
-    eslint: '>=10.0.0'
     vitest: '>=4.0.0'
     unplugin: '>=3.0.0'
 

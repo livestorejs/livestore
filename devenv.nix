@@ -327,10 +327,6 @@ in
     (taskModules.flake-lock-duplicates {
       lockfiles = [ "packages/@livestore/wa-sqlite/flake.lock" ];
     })
-    (taskModules.ts {
-      tsconfigFile = "tsconfig.dev.json";
-      tsBinPkg = effectTsgo;
-    })
     (taskModules.check {
       hasTests = false;
       # `hasNixCheck` gates the nix-cli build tasks (nix:check:quick / nix:flake:check), which
@@ -405,6 +401,52 @@ in
     ./nix/devenv-modules/tasks/local/github-rulesets.nix
     ./nix/devenv-modules/tasks/local/quarantine.nix
   ];
+
+  # TypeScript tasks stay local until LiveStore adopts Buck TypeScript authority.
+  tasks."ts:check" = {
+    description = "Type check the whole workspace (tsgo --build)";
+    exec = "${effectTsgo}/bin/tsgo --build tsconfig.dev.json";
+    after = [
+      "genie:run"
+      "pnpm:install"
+    ];
+  };
+  tasks."ts:check:strict" = {
+    description = "Type check the whole workspace without incremental reuse";
+    exec = "${effectTsgo}/bin/tsgo --build --force tsconfig.dev.json";
+    after = [
+      "genie:run"
+      "pnpm:install"
+    ];
+  };
+  tasks."ts:build" = {
+    description = "Build all packages with type checking (tsgo --build)";
+    exec = "${effectTsgo}/bin/tsgo --build tsconfig.dev.json";
+    after = [
+      "genie:run"
+      "pnpm:install"
+    ];
+  };
+  tasks."ts:build-watch" = {
+    description = "Build all packages in watch mode (tsgo --build --watch)";
+    exec = "${effectTsgo}/bin/tsgo --build --watch tsconfig.dev.json";
+    after = [
+      "genie:run"
+      "pnpm:install"
+    ];
+  };
+  tasks."ts:emit" = {
+    description = "Emit build outputs without full type checking (tsgo --build --noCheck)";
+    exec = "${effectTsgo}/bin/tsgo --build tsconfig.emit.json --noCheck";
+    after = [
+      "genie:run"
+      "pnpm:install"
+    ];
+  };
+  tasks."ts:clean" = {
+    description = "Remove TypeScript build artifacts";
+    exec = "${effectTsgo}/bin/tsgo --build --clean tsconfig.dev.json";
+  };
 
   # Non-`.genie.ts` generator inputs (source-of-truth modules that the `.genie.ts`
   # files import: catalog/topology/validation helpers under genie/). These join the
