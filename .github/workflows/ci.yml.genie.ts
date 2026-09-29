@@ -1,5 +1,3 @@
-import { prReviewsResolvedJob, prReviewsResolvedJobId, prSnapshotPackJob } from '#mr/effect-utils/genie/ci-workflow.ts'
-
 import { playwrightSuites, syncProviderMatrix } from '../../genie/ci.ts'
 import { releaseTopologyPath } from '../../genie/pr-snapshot-paths.ts'
 import {
@@ -20,6 +18,12 @@ import {
   workflowReportCommentBodyStep,
   workflowReportPublisherStep,
 } from '../../genie/repo.ts'
+// Use the pinned member checkout so local generation and CI resolve the same snapshot helper.
+import {
+  prReviewsResolvedJob,
+  prReviewsResolvedJobId,
+  prSnapshotPackJob,
+} from '../../repos/effect-utils/genie/ci-workflow.ts'
 
 // =============================================================================
 // Shared Constants
