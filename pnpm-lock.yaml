@@ -144,8 +144,8 @@ importers:
         specifier: 2.3.2
         version: 2.3.2(supports-color@10.2.2)
       '@mixedbread/sdk':
-        specifier: 0.28.1
-        version: 0.28.1
+        specifier: 0.78.0
+        version: 0.78.0
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -5133,12 +5133,12 @@ packages:
     engines: {node: '>=20'}
     hasBin: true
 
-  '@mixedbread/sdk@0.28.1':
-    resolution: {integrity: sha512-+YMo8VoxnKS91WCG127fRmY1vM6Wj/AB7hIbruNRJa0gDwqhhUXwu+pSq7iKT1omqjaTz69giceB6bEVHIC/5g==}
-    hasBin: true
-
   '@mixedbread/sdk@0.57.1':
     resolution: {integrity: sha512-lMczeYXD2yhUomNseQURN/Wzm4aa5olu21s8/aoGbuLnxNMXEllAJatkvJvZUCdtw2hx0XW/Gfrjy6BMwlbpgQ==}
+    hasBin: true
+
+  '@mixedbread/sdk@0.78.0':
+    resolution: {integrity: sha512-gd5F8jaMt+mwRPzPBkLuXwP8jbR5dQQul5uuJomHrxGaO6Msff92Zu4rMXjZRyI8JYhQIDbzGqy9uSxjSz1YWA==}
     hasBin: true
 
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
@@ -19094,9 +19094,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@mixedbread/sdk@0.28.1': {}
-
   '@mixedbread/sdk@0.57.1': {}
+
+  '@mixedbread/sdk@0.78.0': {}
 
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
     optional: true

@@ -82,9 +82,9 @@ export const GET: APIRoute = async ({ url }) => {
   }
 
   try {
-    const response = await mxbai.vectorStores.search({
+    const response = await mxbai.stores.search({
       query,
-      vector_store_identifiers: [MXBAI_VECTOR_STORE_ID],
+      store_identifiers: [MXBAI_VECTOR_STORE_ID],
       top_k: 10,
       search_options: {
         return_metadata: true,
@@ -117,15 +117,16 @@ export const GET: APIRoute = async ({ url }) => {
         })
       }
 
-      const headingTitle = item.type === 'text' ? extractHeadingTitle(item.text) : undefined
+      const text = item.type === 'text' ? (item.text ?? undefined) : undefined
+      const headingTitle = text !== undefined ? extractHeadingTitle(text) : undefined
 
-      if (headingTitle !== undefined && item.type === 'text') {
+      if (headingTitle !== undefined && text !== undefined) {
         slugger.reset()
         results.push({
           id: `${item.file_id}-${index}-heading`,
           type: 'heading',
           title: headingTitle,
-          description: removeMd(item.text.substring(0, 200)).replace(headingTitle, '').trim(),
+          description: removeMd(text.substring(0, 200)).replace(headingTitle, '').trim(),
           url: `${url}#${slugger.slug(headingTitle)}`,
         })
       }

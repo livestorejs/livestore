@@ -49,7 +49,7 @@ const runtimeDeps = catalog.compose({
       '@astrojs/react': '5.0.7',
       '@astrojs/starlight-tailwind': '5.0.0',
       '@mixedbread/cli': '2.3.2',
-      '@mixedbread/sdk': '0.28.1',
+      '@mixedbread/sdk': '0.78.0',
       '@tailwindcss/vite': '4.1.18',
       'astro-d2': '0.11.0',
       'astro-og-canvas': '0.11.1',
