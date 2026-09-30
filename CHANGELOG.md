@@ -10,6 +10,8 @@
 
 ### Changed
 
+- **Contributor setup:** Align with pnpm 12.7.0 and run example installs and builds
+  from the workspace root so their dependencies use the shared lockfile.
 - **Contributor meetings:** Added the canonical docs schedule for the next two
   fortnightly meetings at 19:00 Berlin, automatic Google Calendar publishing,
   and a stable Riverside room link

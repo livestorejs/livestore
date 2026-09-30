@@ -437,7 +437,8 @@ in
       description = "Install examples workspace dependencies";
       exec = ''
         export npm_config_manage_package_manager_versions=false
-        ${pnpm} install --frozen-lockfile --dir examples
+        # examples/ is not a workspace member; install its children from the root lockfile.
+        ${pnpm} --filter './examples/*' install --frozen-lockfile
       '';
       after = [ "setup:strict" ];
     };
@@ -446,7 +447,7 @@ in
       description = "Build examples source bundles";
       exec = ''
         export npm_config_manage_package_manager_versions=false
-        ${pnpm} --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build
+        ${pnpm} --filter 'livestore-example-*' --workspace-concurrency=1 build
       '';
       after = [ "examples:install" ];
     };
