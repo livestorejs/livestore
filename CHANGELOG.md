@@ -52,7 +52,8 @@
   `overloaded`) now surfaces as `IsOfflineError`, so the leader retries the pull
   after a jittered exponential backoff (1 s doubling to 30 s) on a fresh stub.
   Overloaded and other failures keep their previous terminal handling
-  ([#1462](https://github.com/livestorejs/livestore/issues/1462)).
+  ([#1462](https://github.com/livestorejs/livestore/issues/1462),
+  [#1649](https://github.com/livestorejs/livestore/pull/1649)).
 - Removed redundant devenv package entries now owned by the task guard modules.
 - **Sync correctness:** Prevented later client-session events from crossing an
   older rejected pending prefix, and made leader admission retain explicit
@@ -70,7 +71,8 @@
   leaves a stub broken after many exceptions. Replace
   `syncBackendStub: env.SYNC_BACKEND_DO.getByName(storeId)` with
   `getSyncBackendStub: () => env.SYNC_BACKEND_DO.getByName(storeId)`
-  ([#1462](https://github.com/livestorejs/livestore/issues/1462)).
+  ([#1462](https://github.com/livestorejs/livestore/issues/1462),
+  [#1649](https://github.com/livestorejs/livestore/pull/1649)).
 - **Store commit callbacks:** Callbacks now synchronously return an event array.
   Replace `store.commit((commit) => { commit(event) })` with
   `store.commit(() => [event])` or `store.commit(event)`
