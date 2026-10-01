@@ -46,7 +46,7 @@
     },
     "packageManager": {
       "name": "pnpm",
-      "version": "12.4.1"
+      "version": "12.7.0"
     }
   },
   "dependencyMaterializationProfile": {
@@ -115,7 +115,6 @@
     },
     "peerDependencyRules": {
       "allowedVersions": {
-        "eslint": ">=10.0.0",
         "typescript": ">=6.0.0",
         "unplugin": ">=3.0.0",
         "vitest": ">=4.0.0"
@@ -150,7 +149,7 @@
   },
   "packageManager": {
     "name": "pnpm",
-    "version": "12.4.1"
+    "version": "12.7.0"
   },
   "schemaVersion": 2,
   "storeContract": {

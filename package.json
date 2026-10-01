@@ -36,7 +36,7 @@
     "tests/sync-provider",
     "tests/wa-sqlite"
   ],
-  "packageManager": "pnpm@12.4.1",
+  "packageManager": "pnpm@12.7.0",
   "scripts": {
     "changeset": "changeset",
     "changeset:status": "changeset status",
