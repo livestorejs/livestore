@@ -77,6 +77,15 @@ schema representation, LiveStore ignores the generated `annotations` and
 representation `payload` remain part of the fingerprint. Effect representation
 arrays retain their upstream order.
 
+Effect upgrades can change the public representation without changing which
+JSON a codec accepts. LiveStore normalizes those changes back to the form that
+existing fingerprints were computed from, so a dependency upgrade alone never
+rebuilds state. A Union without a `mode` field is hashed with `mode: "anyOf"`,
+which Effect `4.0.0-rc.113` removed. Check ids that Effect `4.0.0` renamed are
+hashed under their previous names, for example `effect/schema/isBetweenLength`
+as `effect/schema/isLengthBetween`. Removing a normalization changes the
+fingerprint of every schema that uses the affected representation.
+
 Canonical UTF-8 bytes are digested with one shared synchronous SHA-256
 implementation and encoded as an unpadded 43-character base64url string. The
 same implementation runs in every adapter. It is internal and has no

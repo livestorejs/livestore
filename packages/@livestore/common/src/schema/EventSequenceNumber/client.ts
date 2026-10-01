@@ -182,21 +182,8 @@ const CompositeSchema = S.Struct({
   .pipe(S.overrideToFormatter(() => (seqNum) => toString(seqNum)))
 
 /**
- * Creates a validated Composite sequence number from input.
- * If rebaseGeneration is omitted, defaults to REBASE_GENERATION_DEFAULT (0).
- */
-const makeComposite = (seqNum: CompositeInput): Composite => {
-  return S.is(CompositeSchema)(seqNum) === true
-    ? seqNum
-    : S.decodeSync(CompositeSchema)({
-        ...seqNum,
-        rebaseGeneration: seqNum.rebaseGeneration ?? REBASE_GENERATION_DEFAULT,
-      })
-}
-
-/**
  * Effect Schema for the composite event sequence number (global + client + rebaseGeneration).
- * Also includes a `make` helper for creating validated Composite values.
+ * Its `make` validates input and defaults an omitted rebaseGeneration to REBASE_GENERATION_DEFAULT (0).
  *
  * @example
  * ```ts
@@ -210,7 +197,14 @@ const makeComposite = (seqNum: CompositeInput): Composite => {
  * ```
  */
 export const Composite = class extends CompositeSchema {
-  static override make = makeComposite
+  static override make(seqNum: CompositeInput): Composite {
+    return S.is(CompositeSchema)(seqNum) === true
+      ? seqNum
+      : S.decodeSync(CompositeSchema)({
+          ...seqNum,
+          rebaseGeneration: seqNum.rebaseGeneration ?? REBASE_GENERATION_DEFAULT,
+        })
+  }
 }
 
 /** The root sequence number (global=0, client=0, rebaseGeneration=0). Parent of the first event. */
