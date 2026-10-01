@@ -131,10 +131,10 @@ const schemaRepresentationDescriptor = (value: unknown, parentKey?: string): Can
   if (Array.isArray(value) === true) return value.map((item) => schemaRepresentationDescriptor(item))
 
   if (value !== null && typeof value === 'object' && value instanceof Uint8Array === false) {
-    const sourceEntries = Object.entries(value).map(([key, entryValue]) =>
+    const sourceEntries = Object.entries(value).map(([key, entryValue]): [string, unknown] =>
       parentKey === 'representation' && key === 'id' && typeof entryValue === 'string'
-        ? ([key, renamedEffectCheckIds.get(entryValue) ?? entryValue] as const)
-        : ([key, entryValue] as const),
+        ? [key, renamedEffectCheckIds.get(entryValue) ?? entryValue]
+        : [key, entryValue],
     )
     const isUnion = sourceEntries.some(([key, entryValue]) => key === '_tag' && entryValue === 'Union')
     // Effect rc.113 removed this representation field because unions only support `anyOf`.

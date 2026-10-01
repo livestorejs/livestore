@@ -146,7 +146,7 @@ export const toDurableObjectHandler =
             }),
             rpc,
           })
-          const effectOrStream: Effect.Effect<any, any> | Stream.Stream<any, any> =
+          const effectOrStream: Effect.Effect<unknown, unknown> | Stream.Stream<unknown, unknown> =
             Rpc.isWrapper(handlerResult) === true ? handlerResult.value : handlerResult
 
           let value: any
@@ -275,12 +275,15 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
       }),
       rpc,
     })
-    const effectOrStream: Effect.Effect<any, any> | Stream.Stream<any, any> =
+    const effectOrStream: Effect.Effect<unknown, unknown> | Stream.Stream<unknown, unknown> =
       Rpc.isWrapper(handlerResult) === true ? handlerResult.value : handlerResult
 
-    const stream: Stream.Stream<any, any> =
-      // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch; orDie converts the error to a defect handled by the downstream catchCause
-      Effect.isEffect(effectOrStream) === true ? yield* Effect.orDie(effectOrStream) : effectOrStream
+    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- dynamically dispatched handlers have an unknown error; orDie converts it to a defect handled by the downstream catchCause
+    const result = Effect.isEffect(effectOrStream) === true ? yield* Effect.orDie(effectOrStream) : effectOrStream
+    if (Stream.isStream(result) === false) {
+      return yield* Effect.die(`Streaming RPC ${rpc._tag} did not produce a Stream`)
+    }
+    const stream = result
 
     // Get the stream schemas for proper chunk-level encoding
     // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.Handler doesn't expose successSchema publicly; see https://github.com/Effect-TS/effect/issues/6064
