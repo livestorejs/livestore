@@ -196,16 +196,17 @@ const CompositeSchema = S.Struct({
  * const validated = EventSequenceNumber.Client.Composite.make({ global: 5, client: 0, rebaseGeneration: 0 })
  * ```
  */
-export const Composite = class extends CompositeSchema {
-  static override make(seqNum: CompositeInput): Composite {
-    return S.is(CompositeSchema)(seqNum) === true
-      ? seqNum
-      : S.decodeSync(CompositeSchema)({
-          ...seqNum,
-          rebaseGeneration: seqNum.rebaseGeneration ?? REBASE_GENERATION_DEFAULT,
-        })
+export const Composite: typeof CompositeSchema & { make(seqNum: CompositeInput): Composite } =
+  class extends CompositeSchema {
+    static override make(seqNum: CompositeInput): Composite {
+      return S.is(CompositeSchema)(seqNum) === true
+        ? seqNum
+        : S.decodeSync(CompositeSchema)({
+            ...seqNum,
+            rebaseGeneration: seqNum.rebaseGeneration ?? REBASE_GENERATION_DEFAULT,
+          })
+    }
   }
-}
 
 /** The root sequence number (global=0, client=0, rebaseGeneration=0). Parent of the first event. */
 export const ROOT = {

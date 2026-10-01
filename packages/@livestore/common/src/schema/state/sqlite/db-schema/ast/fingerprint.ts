@@ -154,7 +154,7 @@ const schemaRepresentationDescriptor = (value: unknown, parentKey?: string): Can
 
 const effectIgnoredFields = new Set(['annotations', 'isMutable'])
 
-/** Effect 4.0.0 renamed these persisted check ids; hash the pre-rename ids so existing state fingerprints stay stable. */
+/** Maps renamed Effect check ids to the ids existing fingerprints were computed from, so the rename does not rebuild state. */
 const renamedEffectCheckIds = new Map([
   ['effect/schema/isBetweenLength', 'effect/schema/isLengthBetween'],
   ['effect/schema/isStartingWith', 'effect/schema/isStartsWith'],

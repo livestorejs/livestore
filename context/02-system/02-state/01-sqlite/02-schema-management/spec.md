@@ -80,11 +80,11 @@ arrays retain their upstream order.
 Effect upgrades can change the public representation without changing which
 JSON a codec accepts. LiveStore normalizes those changes back to the form that
 existing fingerprints were computed from, so a dependency upgrade alone never
-rebuilds state. A Union without a `mode` field is hashed with `mode: "anyOf"`,
-which Effect `4.0.0-rc.113` removed. Check ids that Effect `4.0.0` renamed are
-hashed under their previous names, for example `effect/schema/isBetweenLength`
-as `effect/schema/isLengthBetween`. Removing a normalization changes the
-fingerprint of every schema that uses the affected representation.
+rebuilds state. A Union without a `mode` field is hashed with `mode: "anyOf"`.
+Renamed check ids are hashed under their original names, for example
+`effect/schema/isBetweenLength` as `effect/schema/isLengthBetween`. Removing a
+normalization changes the fingerprint of every schema that uses the affected
+representation.
 
 Canonical UTF-8 bytes are digested with one shared synchronous SHA-256
 implementation and encoded as an unpadded 43-character base64url string. The
