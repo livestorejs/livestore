@@ -95,7 +95,7 @@ Effect Schema types are automatically mapped to SQLite column types:
 | `Schema.Date` | `text` | `Date` |
 | `Schema.BigInt` | `text` | `bigint` |
 | Complex types (Struct, Array, etc.) | `text` (JSON encoded) | Decoded type |
-| `Schema.optional(T)` | Nullable column | `T \| undefined` |
+| `Schema.optional(T)` | Nullable column | `T \| null` |
 | `Schema.NullOr(T)` | Nullable column | `T \| null` |
 
 ## Advanced examples
@@ -117,8 +117,7 @@ Effect Schema types are automatically mapped to SQLite column types:
 ### Schema Design
 
 - Always use `withPrimaryKey` for primary key columns - never combine it with nullable types
-- Use `Schema.optional()` for truly optional fields that can be undefined
-- Use `Schema.NullOr()` for fields that can explicitly be set to null
+- Use `Schema.NullOr()` for fields that can be null; SQLite stores the absent value as `NULL`, so a `Schema.optional()` field is read back as `T | null` too
 - Leverage schema annotations like `title` or `identifier` to avoid repeating table names
 - Group related schemas in the same module for better organization
 
