@@ -76,34 +76,23 @@
   plan for the corresponding row-write usage
   ([#1555](https://github.com/livestorejs/livestore/issues/1555)).
 
-- **Effect v4 dependency cohort:** Updated the repository-wide Effect v4
-  dependency family from `4.0.0-beta.99` to the stable `4.0.0` release.
-  Applications must use Effect `4.0.0` or a compatible later 4.x release.
-  To migrate:
-  - Drop the `unstable/` segment from Effect imports, for example
-    `effect/unstable/rpc` becomes `effect/rpc`, and use `effect/http-api`
-    instead of `effect/unstable/httpapi`.
-  - Replace `Encoding` from `@livestore/utils/effect` with the re-exported
-    `Base64Url` module (`Encoding.encodeBase64Url` becomes `Base64Url.encode`).
-  - Rename range and string checks such as `Schema.isLengthBetween` to
-    `Schema.isBetweenLength` and `Schema.isStartsWith` to
-    `Schema.isStartingWith`.
-  - Swap the destructuring of `Array.partition` results, which now return
-    `[passes, fails]`.
-  - Replace `Schema.DateFromString.check(Schema.isDateValid())` with plain
-    `Schema.DateFromString`, because `Schema.DateFromString` and
-    `Schema.DateFromMillis` now reject invalid dates on their own.
-
-  The renamed checks do not change state schema fingerprints. Event definitions
-  get new schema hashes, so the first rematerialization after upgrading can log
-  schema hash mismatch warnings
+- **Effect v4 dependency cohort:** LiveStore now requires the stable Effect
+  `4.0.0` release or a later 4.x release. The Effect peer range is `^4.0.0`,
+  which no longer accepts `4.0.0-rc.*` prereleases. Upgrading Effect brings
+  Effect's own breaking changes to application code, such as the move of
+  `effect/unstable/*` modules to `effect/*` and renamed schema checks; see the
+  [Effect changelog](https://github.com/Effect-TS/effect/blob/main/packages/effect/CHANGELOG.md).
+  `@livestore/utils/effect` no longer re-exports `Encoding`, so replace
+  `Encoding.encodeBase64Url` with the re-exported `Base64Url.encode`. The
+  upgrade does not change state schema fingerprints. Event definitions get new
+  schema hashes, so the first rematerialization after upgrading can log schema
+  hash mismatch warnings
   ([#63](https://github.com/livestorejs/livestore/issues/63)). SQLite column
   inference preserves INTEGER and BLOB storage for refined
   `Schema.DateFromMillis` and `Schema.Uint8Array`
   ([#1557](https://github.com/livestorejs/livestore/issues/1557),
   [#1606](https://github.com/livestorejs/livestore/pull/1606),
-  [#1647](https://github.com/livestorejs/livestore/pull/1647),
-  [Effect-TS/effect#6620](https://github.com/Effect-TS/effect/pull/6620)).
+  [#1647](https://github.com/livestorejs/livestore/pull/1647)).
   Thanks [@JamieMason](https://github.com/JamieMason) for the migration work.
 
 ### Internal Changes
