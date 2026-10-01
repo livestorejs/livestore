@@ -161,7 +161,7 @@ Creates an HTTP-based sync backend client with polling for live updates.
 Creates a Durable Object RPC-based sync backend (for internal use).
 
 **Options:**
-- `syncBackendStub` - Durable Object stub implementing `SyncBackendRpcInterface`
+- `getSyncBackendStub` - Returns a Durable Object stub implementing `SyncBackendRpcInterface`; called for every RPC call so a retry after a failure uses a fresh stub
 - `durableObjectState` - The client Durable Object's `ctx` (`DurableObjectState`); scopes live-pull routing to this instance so it resets on reconstruction
 - `durableObjectContext` - Context for RPC callbacks:
   - `bindingName` - Wrangler binding name for the client DO
@@ -171,6 +171,7 @@ Creates a Durable Object RPC-based sync backend (for internal use).
 - Direct RPC communication
 - Real-time live pull via callbacks
 - Hibernation support
+- Retries temporary failures: a call that Cloudflare marks `retryable` (and not `overloaded`) surfaces as `IsOfflineError`, and pulls back off exponentially (1 s doubling to 30 s, with jitter). Overloaded and other failures stop sync as before
 
 ### `handleSyncUpdateRpc(ctx, payload)`
 

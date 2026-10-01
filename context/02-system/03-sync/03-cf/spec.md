@@ -75,6 +75,18 @@ arbitrates pushes and fans out live pull streams to subscribers
 | HTTP | `http-rpc-schema.ts` | client-side polling (~5 s default) | 10 s hard request timeout; explicit `Ping` RPC |
 | DO-RPC | `do-rpc-schema.ts` | RPC callback queue (`rpcContext` presence = live) | for same-Cloudflare-app callers (`adapter-cloudflare`); explicit `Ping` |
 
+**DO-RPC transport failures** (`client/transport/do-rpc-client.ts`): a rejected
+stub call or stream read fails only its request, as an `RpcClientError` whose
+`RpcClientDefect.cause` is the original Cloudflare error. The client maps it by
+Cloudflare's runtime flags: `retryable` and not `overloaded` becomes
+`IsOfflineError`, which the leader retries; every other failure dies with the
+original error, so it keeps the store's existing error handling. A pull waits a
+jittered exponential backoff (1 s doubling to 30 s) before it surfaces
+`IsOfflineError`; the attempt count spans pull calls and resets only when a pull
+completes its catch-up. The client asks `getSyncBackendStub()` for a fresh stub
+on every call, because a stub can stay broken after an exception
+([.decisions/0006-do-rpc-transport-failures.md](./.decisions/0006-do-rpc-transport-failures.md)).
+
 All three transports thread the client `payload` (per-connection auth/multi-tenancy
 context) into the DO `onPush`/`onPull` callbacks.
 

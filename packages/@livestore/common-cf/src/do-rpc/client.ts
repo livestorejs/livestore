@@ -5,6 +5,7 @@ import {
   Layer,
   Option,
   RpcClient,
+  RpcClientError,
   RpcMessage,
   RpcSerialization,
   Schema,
@@ -32,13 +33,13 @@ const processReadableStream = (
   stream: CfTypes.ReadableStream,
   parser: RpcSerialization.Parser,
   writeResponse: (response: RpcMessage.FromServerEncoded) => Effect.Effect<void>,
-): Effect.Effect<void> =>
+): Effect.Effect<void, RpcClientError.RpcClientError> =>
   Effect.gen(function* () {
     const reader = stream.getReader()
 
     yield* Effect.gen(function* () {
       while (true) {
-        const { done, value } = yield* Effect.tryPromise(() => reader.read()).pipe(Effect.orDie)
+        const { done, value } = yield* Effect.tryPromise({ try: () => reader.read(), catch: transportFailure })
 
         if (done === true) {
           break
@@ -57,8 +58,12 @@ const processReadableStream = (
       }
     }).pipe(
       Effect.withSpan('do-rpc-client:processReadableStream'),
+      // Cancelling an errored stream rejects with that same error; ignore it so the original failure surfaces.
       Effect.ensuring(
-        Effect.promise(() => reader.cancel()).pipe(Effect.andThen(() => Effect.sync(() => reader.releaseLock()))),
+        Effect.tryPromise(() => reader.cancel()).pipe(
+          Effect.ignore,
+          Effect.andThen(() => Effect.sync(() => reader.releaseLock())),
+        ),
       ),
     )
   })
@@ -96,9 +101,12 @@ const makeProtocolDurableObject = ({
       const serialization = yield* RpcSerialization.RpcSerialization
       // Not using an actual `FiberMap` here because it seems to shutdown to early
       // const fiberMap = new Map<string, Fiber.Fiber<void, never>>()
-      const fiberMap = yield* FiberMap.make<string, void, never>()
+      const fiberMap = yield* FiberMap.make<string, void, RpcClientError.RpcClientError>()
 
-      const send = (clientId: number, message: RpcMessage.FromClientEncoded): Effect.Effect<void> => {
+      const send = (
+        clientId: number,
+        message: RpcMessage.FromClientEncoded,
+      ): Effect.Effect<void, RpcClientError.RpcClientError> => {
         if (message._tag !== 'Request') {
           if (message._tag === 'Interrupt') {
             return Effect.gen(function* () {
@@ -122,7 +130,10 @@ const makeProtocolDurableObject = ({
         }
 
         return Effect.gen(function* () {
-          const serializedResponse = yield* Effect.tryPromise(() => callRpc(serializedPayload)).pipe(Effect.orDie) // Convert errors to defects to match never error type
+          const serializedResponse = yield* Effect.tryPromise({
+            try: () => callRpc(serializedPayload),
+            catch: transportFailure,
+          })
 
           if (serializedResponse instanceof Uint8Array) {
             for (const response of parser.decode(serializedResponse)) {
@@ -140,7 +151,7 @@ const makeProtocolDurableObject = ({
 
           yield* FiberMap.set(fiberMap, message.id, fiber)
           yield* Fiber.join(fiber)
-        }).pipe(Effect.withSpan('do-rpc-client:send'), Effect.orDie) // Ensure never error type
+        }).pipe(Effect.withSpan('do-rpc-client:send'))
       }
 
       return {
@@ -151,3 +162,12 @@ const makeProtocolDurableObject = ({
       }
     }),
   )
+
+/**
+ * A rejected DO call or stream read fails only the request that made it (Effect RPC routes `send` failures per
+ * request). `RpcClientError` reasons are a closed union, so the original rejection rides as `RpcClientDefect.cause`.
+ */
+const transportFailure = (cause: unknown) =>
+  new RpcClientError.RpcClientError({
+    reason: new RpcClientError.RpcClientDefect({ message: 'Durable Object RPC call failed', cause }),
+  })

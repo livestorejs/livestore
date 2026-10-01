@@ -83,6 +83,7 @@ export {
   PubSub,
   pipe,
   Queue,
+  Random,
   RcMap,
   RcRef,
   Record as ReadonlyRecord,

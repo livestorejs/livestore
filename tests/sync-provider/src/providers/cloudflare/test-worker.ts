@@ -149,7 +149,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
               const { clientId, storeId, payload } = jsonParse(key) as SyncBackendArgs
 
               return yield* makeDoRpcSync({
-                syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
+                getSyncBackendStub: () => this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
                 durableObjectState: this.ctx,
                 durableObjectContext: { bindingName: 'TEST_CLIENT_DO', durableObjectId: this.ctx.id.toString() },
               })({ storeId, clientId, payload }).pipe(Scope.provide(syncBackendScope), Effect.orDie)
@@ -295,7 +295,7 @@ export class StoreClientDo extends DurableObjectBase implements ClientDoWithRpcC
       clientId: 'store-client-do',
       sessionId: 'store-client-do-session',
       durableObject: { ctx: this.ctx, env: this.env, bindingName: 'STORE_CLIENT_DO' },
-      syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
+      getSyncBackendStub: () => this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
       livePull: true,
     })
   }
