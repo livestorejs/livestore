@@ -15,6 +15,9 @@ describe('SQLite storage fingerprints', () => {
     expect(fingerprint(makeJsonTable('documents', representativeJsonSchema).ast)).toBe(
       'kUzaurzV2rcXYLljHOZ64TDR9c_RebqD7y5ZUM_nPBE',
     )
+    expect(fingerprint(makeJsonTable('documents', normalizedCheckIdsJsonSchema).ast)).toBe(
+      'I0XYuOUSYqWwG5Opxbc1u-TNNE3pFQCHzpBZ_ChYGaA',
+    )
     expect(makeState({ tables: [], materializers: {} }).sqlite.hash).toBe('o8mmnRDnhXhkgDpBybM3FK7S-PkaLEj_pKcnbzgg3TU')
   })
 
@@ -177,6 +180,19 @@ const representativeJsonSchema = Schema.Struct({
   status: Schema.Union([Schema.Literal('draft'), Schema.Literal('published')]),
   publishedAt: Schema.NullOr(Schema.DateFromString),
   metadata: Schema.Record(Schema.String, Schema.Json),
+})
+
+/** Uses the JSON-compatible checks whose representation ids the fingerprint normalizes. */
+const normalizedCheckIdsJsonSchema = Schema.Struct({
+  slug: Schema.String.check(
+    Schema.isBetweenLength(1, 64),
+    Schema.isStartingWith('a'),
+    Schema.isEndingWith('z'),
+    Schema.isIncluding('-'),
+  ),
+  tags: Schema.Array(Schema.String).check(Schema.isBetweenLength(0, 10)),
+  initial: Schema.Char,
+  labels: Schema.Record(Schema.String, Schema.String).check(Schema.isBetweenProperties(0, 5)),
 })
 
 interface TreeNode {

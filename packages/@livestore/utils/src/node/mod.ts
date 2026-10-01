@@ -6,8 +6,8 @@ import { Effect, FileSystem, Layer, Option } from 'effect'
 import { OtelTracer, Tracer, UnknownError } from '../effect/mod.ts'
 import { makeNoopTracer } from '../NoopTracer.ts'
 
-export * as Cli from 'effect/unstable/cli'
-export * as SocketServer from 'effect/unstable/socket/SocketServer'
+export * as Cli from 'effect/cli'
+export * as SocketServer from 'effect/socket/SocketServer'
 export * as PlatformNode from '@effect/platform-node'
 
 // Enable debug logging for OpenTelemetry

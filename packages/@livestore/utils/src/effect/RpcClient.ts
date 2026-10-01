@@ -1,10 +1,10 @@
-export * from 'effect/unstable/rpc/RpcClient'
+export * from 'effect/rpc/RpcClient'
 
 import { Cause, Deferred, Effect, Function, Latch, Layer, References, Result, Schedule, type Scope } from 'effect'
-import { RpcClient, RpcClientError, RpcSerialization } from 'effect/unstable/rpc'
-import { Protocol } from 'effect/unstable/rpc/RpcClient'
-import { constPing, type FromServerEncoded } from 'effect/unstable/rpc/RpcMessage'
-import { Socket } from 'effect/unstable/socket'
+import { RpcClient, RpcClientError, RpcSerialization } from 'effect/rpc'
+import { Protocol } from 'effect/rpc/RpcClient'
+import { constPing, type FromServerEncoded } from 'effect/rpc/RpcMessage'
+import { Socket } from 'effect/socket'
 
 import * as SubscriptionRef from './SubscriptionRef.ts'
 
