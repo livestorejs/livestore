@@ -316,7 +316,7 @@ export const make = Effect.fnUntraced(function* ({
 
         // Since the rebase generation might have changed since enqueuing, we need to filter out items with older generation
         // It's important that we filter after acquiring the localPushBackendPullMutex, otherwise we might filter with the old generation
-        const [droppedItems, filteredItems] = ReadonlyArray.partition(batchItems, (batchItem) =>
+        const [filteredItems, droppedItems] = ReadonlyArray.partition(batchItems, (batchItem) =>
           batchItem[0].seqNum.rebaseGeneration >= currentRebaseGeneration
             ? Result.succeed(batchItem)
             : Result.fail(batchItem),

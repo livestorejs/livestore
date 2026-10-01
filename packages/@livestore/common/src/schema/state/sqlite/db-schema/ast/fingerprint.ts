@@ -131,7 +131,11 @@ const schemaRepresentationDescriptor = (value: unknown, parentKey?: string): Can
   if (Array.isArray(value) === true) return value.map((item) => schemaRepresentationDescriptor(item))
 
   if (value !== null && typeof value === 'object' && value instanceof Uint8Array === false) {
-    const sourceEntries = Object.entries(value)
+    const sourceEntries = Object.entries(value).map(([key, entryValue]) =>
+      parentKey === 'representation' && key === 'id' && typeof entryValue === 'string'
+        ? ([key, renamedEffectCheckIds.get(entryValue) ?? entryValue] as const)
+        : ([key, entryValue] as const),
+    )
     const isUnion = sourceEntries.some(([key, entryValue]) => key === '_tag' && entryValue === 'Union')
     // Effect rc.113 removed this representation field because unions only support `anyOf`.
     // Restore the old default so dependency upgrades preserve existing state fingerprints.
@@ -149,6 +153,16 @@ const schemaRepresentationDescriptor = (value: unknown, parentKey?: string): Can
 }
 
 const effectIgnoredFields = new Set(['annotations', 'isMutable'])
+
+/** Effect 4.0.0 renamed these persisted check ids; hash the pre-rename ids so existing state fingerprints stay stable. */
+const renamedEffectCheckIds = new Map([
+  ['effect/schema/isBetweenLength', 'effect/schema/isLengthBetween'],
+  ['effect/schema/isStartingWith', 'effect/schema/isStartsWith'],
+  ['effect/schema/isEndingWith', 'effect/schema/isEndsWith'],
+  ['effect/schema/isIncluding', 'effect/schema/isIncludes'],
+  ['effect/schema/isBetweenSize', 'effect/schema/isSizeBetween'],
+  ['effect/schema/isBetweenProperties', 'effect/schema/isPropertiesLengthBetween'],
+])
 
 const canonicalValue = (value: unknown): CanonicalValue => {
   if (Array.isArray(value) === true) return value.map(canonicalValue)

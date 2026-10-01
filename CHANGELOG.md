@@ -48,8 +48,18 @@
   removed from persisted fan-out state
   ([#1418](https://github.com/livestorejs/livestore/issues/1418)).
 - **Effect v4 dependency cohort:** Updated the repository-wide Effect v4
-  dependency family from `4.0.0-beta.99` to `4.0.0-rc.113`. Applications must
-  use rc.113 or a compatible later Effect 4 release. Effect removed
+  dependency family from `4.0.0-beta.99` to the stable `4.0.0` release.
+  Applications must use Effect `4.0.0` or a compatible later 4.x release.
+  Effect moved its `effect/unstable/*` modules to `effect/*` (for example
+  `effect/rpc`, `effect/http`, and `effect/http-api`) and split `Encoding` into
+  `effect/encoding` modules, so `@livestore/utils/effect` now re-exports
+  `Base64Url` instead of `Encoding`. Effect also renamed range and string checks
+  such as `Schema.isLengthBetween` to `Schema.isBetweenLength`, and
+  `Array.partition` now returns `[passes, fails]`. State database fingerprints
+  stay stable across the renamed checks, so existing clients keep their state
+  databases. Event definitions get new schema hashes, so the first
+  rematerialization after upgrading can log schema hash mismatch warnings
+  ([#63](https://github.com/livestorejs/livestore/issues/63)). Effect removed
   `Schema.isDateValid` because `Schema.DateFromString` and
   `Schema.DateFromMillis` now reject invalid dates on their own, so
   `Schema.DateFromString.check(Schema.isDateValid())` becomes plain

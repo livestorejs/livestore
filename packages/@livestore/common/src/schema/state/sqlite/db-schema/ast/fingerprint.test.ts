@@ -18,6 +18,23 @@ describe('SQLite storage fingerprints', () => {
     expect(makeState({ tables: [], materializers: {} }).sqlite.hash).toBe('o8mmnRDnhXhkgDpBybM3FK7S-PkaLEj_pKcnbzgg3TU')
   })
 
+  test('keeps fingerprints stable across Effect check id renames', () => {
+    const schema = Schema.Struct({
+      slug: Schema.String.check(
+        Schema.isBetweenLength(1, 64),
+        Schema.isStartingWith('a'),
+        Schema.isEndingWith('z'),
+        Schema.isIncluding('-'),
+      ),
+      tags: Schema.Array(Schema.String).check(Schema.isBetweenLength(0, 10)),
+      initial: Schema.Char,
+      labels: Schema.Record(Schema.String, Schema.String).check(Schema.isBetweenProperties(0, 5)),
+    })
+
+    // Pinned from Effect 4.0.0-rc.113, before the check ids were renamed.
+    expect(fingerprint(makeJsonTable('documents', schema).ast)).toBe('I0XYuOUSYqWwG5Opxbc1u-TNNE3pFQCHzpBZ_ChYGaA')
+  })
+
   test('isolates pre-completion-marker state databases without changing the hash algorithm', () => {
     const state = makeState({ tables: [], materializers: {} })
     const legacyTables = [...state.sqlite.tables.values()]

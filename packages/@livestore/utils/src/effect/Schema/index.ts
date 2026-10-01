@@ -12,7 +12,7 @@ import {
   SchemaTransformation,
   Struct,
 } from 'effect'
-import { Transferable } from 'effect/unstable/workers'
+import { Transferable } from 'effect/workers'
 
 import { shouldNeverHappen } from '../../misc.ts'
 

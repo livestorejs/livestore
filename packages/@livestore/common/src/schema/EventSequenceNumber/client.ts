@@ -209,7 +209,11 @@ const makeComposite = (seqNum: CompositeInput): Composite => {
  * const validated = EventSequenceNumber.Client.Composite.make({ global: 5, client: 0, rebaseGeneration: 0 })
  * ```
  */
-export const Composite = Object.assign(CompositeSchema, { make: makeComposite })
+export const Composite = Object.assign(
+  // Effect schemas expose `make` as a prototype getter; an own writable slot lets the custom `make` shadow it.
+  Object.defineProperty(CompositeSchema, 'make', { writable: true }),
+  { make: makeComposite },
+)
 
 /** The root sequence number (global=0, client=0, rebaseGeneration=0). Parent of the first event. */
 export const ROOT = {
