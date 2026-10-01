@@ -59,7 +59,8 @@
   stay stable across the renamed checks, so existing clients keep their state
   databases. Event definitions get new schema hashes, so the first
   rematerialization after upgrading can log schema hash mismatch warnings
-  ([#63](https://github.com/livestorejs/livestore/issues/63)). Effect removed
+  ([#63](https://github.com/livestorejs/livestore/issues/63),
+  [#1647](https://github.com/livestorejs/livestore/pull/1647)). Effect removed
   `Schema.isDateValid` because `Schema.DateFromString` and
   `Schema.DateFromMillis` now reject invalid dates on their own, so
   `Schema.DateFromString.check(Schema.isDateValid())` becomes plain
