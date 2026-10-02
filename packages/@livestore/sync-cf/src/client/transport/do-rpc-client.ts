@@ -1,5 +1,5 @@
 import { IsOfflineError, SyncBackend, UnknownError } from '@livestore/common'
-import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
+import { type CfTypes, DoRpcReadError, layerProtocolDurableObject } from '@livestore/common-cf'
 import { splitArrayBySize } from '@livestore/common/sync'
 import { shouldNeverHappen } from '@livestore/utils'
 import {
@@ -94,6 +94,12 @@ export const makeDoRpcSync =
           storeId,
           rpcContext: options?.live === true ? { callerContext: durableObjectContext } : undefined,
         }).pipe(
+          // Catch-up must make progress. Live callbacks below may legitimately remain idle indefinitely.
+          Stream.timeoutOrElse({
+            duration: '60 seconds',
+            orElse: () =>
+              Stream.fail(new IsOfflineError({ cause: new Error('DO-RPC pull made no progress for 60 seconds') })),
+          }),
           options?.live === true
             ? Stream.concatWithLastElement((res) =>
                 Effect.gen(function* () {
@@ -124,8 +130,9 @@ export const makeDoRpcSync =
               )
             : identity,
           Stream.catchReason('RpcClientError', 'RpcClientDefect', (reason) =>
-            Stream.fromEffect(classifyTransportFailure(reason.cause).pipe(Effect.tapError(() => pullBackoff.wait))),
+            Stream.fromEffect(classifyTransportFailure(reason.cause)),
           ),
+          Stream.tapError((error) => (error._tag === 'IsOfflineError' ? pullBackoff.wait : Effect.void)),
           Stream.tap((res) => (res.pageInfo._tag === 'NoMore' ? pullBackoff.reset : Effect.void)),
           Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
           Stream.map((res) => Struct.omit(res, ['backendId'])),
@@ -273,19 +280,25 @@ const pullRoutingFor = (ctx: CfTypes.DurableObjectState): PullRouting => {
 }
 
 /**
- * Maps a rejected DO call by Cloudflare's runtime flags: only a retryable, non-overloaded failure becomes
- * `IsOfflineError` (which the leader retries). Overload must not be retried, and anything else keeps today's
- * terminal handling, so both die with the original error.
+ * Calls require Cloudflare's retryable flag. Transferred streams can lose those flags, so unflagged read
+ * failures are also offline (application failures arrive as encoded RPC exits). Explicit overload and
+ * non-retryable remote errors stay terminal.
  * https://developers.cloudflare.com/durable-objects/best-practices/error-handling/
  */
-const classifyTransportFailure = (cause: unknown) =>
-  Match.value({ retryable: hasTrueFlag(cause, 'retryable'), overloaded: hasTrueFlag(cause, 'overloaded') }).pipe(
+const classifyTransportFailure = (failure: unknown) => {
+  const cause = failure instanceof DoRpcReadError ? failure.cause : failure
+  return Match.value({
+    retryable:
+      hasTrueFlag(cause, 'retryable') || (failure instanceof DoRpcReadError && hasTrueFlag(cause, 'remote') === false),
+    overloaded: hasTrueFlag(cause, 'overloaded'),
+  }).pipe(
     Match.when({ overloaded: true }, () => Effect.die(cause)),
     Match.when({ retryable: true }, () => Effect.fail(new IsOfflineError({ cause }))),
     Match.orElse(() => Effect.die(cause)),
   )
+}
 
-const hasTrueFlag = (cause: unknown, flag: 'retryable' | 'overloaded') =>
+const hasTrueFlag = (cause: unknown, flag: 'retryable' | 'overloaded' | 'remote') =>
   Predicate.hasProperty(cause, flag) === true && cause[flag] === true
 
 /**

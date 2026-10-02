@@ -15,6 +15,7 @@ import {
   Layer,
   Option,
   Stream,
+  TestClock,
 } from '@livestore/utils/effect'
 
 import { SyncDoRpc } from '../../common/do-rpc-schema.ts'
@@ -145,7 +146,10 @@ Vitest.describe('DO-RPC sync client transport failures', () => {
           Stream.runCollect,
           Effect.provideService(Clock.Clock, {
             ...clock,
-            sleep: (duration) => Deferred.succeed(waiting, undefined).pipe(Effect.andThen(clock.sleep(duration))),
+            sleep: (duration) => {
+              if (Duration.toMillis(duration) >= 60_000) return clock.sleep(duration)
+              return Deferred.succeed(waiting, undefined).pipe(Effect.andThen(clock.sleep(duration)))
+            },
           }),
           Effect.forkChild,
         )
@@ -190,6 +194,94 @@ Vitest.describe('DO-RPC sync client transport failures', () => {
 
       Vitest.expect(failureOf(first.exit)).toBeInstanceOf(IsOfflineError)
       Vitest.expect(Exit.isSuccess(second.exit)).toBe(true)
+    }),
+  )
+
+  Vitest.effect('a stalled catch-up releases its producer and recovers on a fresh stub', () =>
+    Effect.gen(function* () {
+      const pageSeen = yield* Deferred.make<void>()
+      const cancelled = yield* Deferred.make<void>()
+      const { backend } = yield* makeBackend([
+        serve({
+          pull: () =>
+            Stream.make(pullResponse(SyncBackend.pageInfoMoreUnknown)).pipe(
+              Stream.concat(Stream.never),
+              Stream.ensuring(Deferred.succeed(cancelled, undefined)),
+            ),
+        }),
+        serve({ pull: () => Stream.make(pullResponse(SyncBackend.pageInfoNoMore)) }),
+      ])
+      const fiber = yield* backend.pull(Option.none()).pipe(
+        Stream.tap(() => Deferred.succeed(pageSeen, undefined)),
+        Stream.runCollect,
+        Effect.exit,
+        Effect.forkChild,
+      )
+      yield* Deferred.await(pageSeen)
+      yield* TestClock.adjust('62 seconds')
+      Vitest.expect(failureOf(yield* Fiber.join(fiber))).toBeInstanceOf(IsOfflineError)
+      yield* Deferred.await(cancelled)
+      const recovered = yield* backend.pull(Option.none()).pipe(Stream.runCollect)
+      Vitest.expect(recovered).toHaveLength(1)
+    }),
+  )
+
+  Vitest.effect('a live pull can remain idle after catch-up without reconnecting', () =>
+    Effect.gen(function* () {
+      const caughtUp = yield* Deferred.make<void>()
+      const healthy = serve({ pull: () => Stream.make(pullResponse(SyncBackend.pageInfoNoMore)) })
+      const { backend } = yield* makeBackend([healthy, healthy]) // second call is unsubscribe on interruption
+      const fiber = yield* backend.pull(Option.none(), { live: true }).pipe(
+        Stream.tap(() => Deferred.succeed(caughtUp, undefined)),
+        Stream.runDrain,
+        Effect.forkChild,
+      )
+      yield* Deferred.await(caughtUp)
+      yield* TestClock.adjust('2 minutes')
+      Vitest.expect(fiber.pollUnsafe()).toBeUndefined()
+      yield* Fiber.interrupt(fiber)
+    }),
+  )
+
+  Vitest.effect('the catch-up deadline restarts for each page', () =>
+    Effect.gen(function* () {
+      const sendFirst = yield* Deferred.make<void>()
+      const sendLast = yield* Deferred.make<void>()
+      const firstSeen = yield* Deferred.make<void>()
+      const { backend } = yield* makeBackend([
+        serve({
+          pull: () =>
+            Stream.fromEffect(Deferred.await(sendFirst)).pipe(
+              Stream.map(() => pullResponse(SyncBackend.pageInfoMoreUnknown)),
+              Stream.concat(
+                Stream.fromEffect(Deferred.await(sendLast)).pipe(
+                  Stream.map(() => pullResponse(SyncBackend.pageInfoNoMore)),
+                ),
+              ),
+            ),
+        }),
+      ])
+      const fiber = yield* backend.pull(Option.none()).pipe(
+        Stream.tap(() => Deferred.succeed(firstSeen, undefined)),
+        Stream.runCollect,
+        Effect.forkChild,
+      )
+      yield* TestClock.adjust('40 seconds')
+      yield* Deferred.succeed(sendFirst, undefined)
+      yield* Deferred.await(firstSeen)
+      yield* TestClock.adjust('40 seconds')
+      yield* Deferred.succeed(sendLast, undefined)
+      Vitest.expect(yield* Fiber.join(fiber)).toHaveLength(2)
+    }),
+  )
+
+  Vitest.effect('overload on a stream read remains terminal', () =>
+    Effect.gen(function* () {
+      const error = cloudflareError({ overloaded: true, retryable: true })
+      const { backend } = yield* makeBackend([pageThenRejectWith(error)])
+      const { exit, delays } = yield* runRecordingBackoff(backend.pull(Option.none()).pipe(Stream.runCollect))
+      Vitest.expect(defectOf(exit)).toBe(error)
+      Vitest.expect(delays).toEqual([])
     }),
   )
 })
@@ -293,10 +385,12 @@ const runRecordingBackoff = <A, E>(effect: Effect.Effect<A, E>) =>
     const exit = yield* effect.pipe(
       Effect.provideService(Clock.Clock, {
         ...clock,
-        sleep: (duration) =>
-          Effect.sync(() => {
+        sleep: (duration) => {
+          if (Duration.toMillis(duration) >= 60_000) return clock.sleep(duration)
+          return Effect.sync(() => {
             delays.push(Duration.toMillis(duration))
-          }),
+          })
+        },
       }),
       Effect.exit,
     )

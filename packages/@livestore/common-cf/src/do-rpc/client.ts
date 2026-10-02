@@ -1,4 +1,5 @@
 import {
+  Data,
   Effect,
   Fiber,
   FiberMap,
@@ -13,6 +14,9 @@ import {
 } from '@livestore/utils/effect'
 
 import type * as CfTypes from '../cf-types.ts'
+
+/** A transferred stream can lose Cloudflare's RPC error flags when its connection breaks. */
+export class DoRpcReadError extends Data.TaggedError('DoRpcReadError')<{ cause: unknown }> {}
 
 const isEncodedRpcMessage = Schema.is(RpcMessage.EncodedSchema)
 
@@ -39,10 +43,13 @@ const processReadableStream = (
 
     yield* Effect.gen(function* () {
       while (true) {
-        const { done, value } = yield* Effect.tryPromise({ try: () => reader.read(), catch: transportFailure })
+        const { done, value } = yield* Effect.tryPromise({
+          try: () => reader.read(),
+          catch: (cause) => transportFailure(new DoRpcReadError({ cause })),
+        })
 
         if (done === true) {
-          break
+          return yield* transportFailure(new DoRpcReadError({ cause: new Error('RPC stream ended before its exit') }))
         }
 
         if (value instanceof Uint8Array === false) {
@@ -54,16 +61,19 @@ const processReadableStream = (
             return yield* Effect.die('Received an invalid RPC response')
           }
           yield* writeResponse(message)
+          // The RPC exit completes the request; do not wait for the transferred stream to close too.
+          if (message._tag === 'Exit') return
         }
       }
     }).pipe(
       Effect.withSpan('do-rpc-client:processReadableStream'),
       // Cancelling an errored stream rejects with that same error; ignore it so the original failure surfaces.
       Effect.ensuring(
-        Effect.tryPromise(() => reader.cancel()).pipe(
-          Effect.ignore,
-          Effect.andThen(() => Effect.sync(() => reader.releaseLock())),
-        ),
+        Effect.sync(() => {
+          // Cancellation is best effort: a disconnected remote producer may never acknowledge it.
+          void reader.cancel().catch(() => {})
+          reader.releaseLock()
+        }),
       ),
     )
   })

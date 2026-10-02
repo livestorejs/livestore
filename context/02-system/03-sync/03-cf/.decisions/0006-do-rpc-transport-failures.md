@@ -1,6 +1,7 @@
-# 0006 — DO-RPC transport failures retry only when Cloudflare marks them retryable
+# 0006 — Recover DO-RPC calls and interrupted catch-up streams
 
-Status: accepted (recorded 2026-10-01).
+Status: accepted (recorded 2026-10-01; extended 2026-10-02 after local and
+deployed before/after experiments for PR #1649).
 
 ## Context
 
@@ -20,8 +21,12 @@ reconnects with its own backoff and maps the error to `IsOfflineError`.
 
 - **(a) Classify by Cloudflare's error flags in the DO-RPC client — chosen.**
   `retryable` and not `overloaded` maps to `IsOfflineError`; overload and every
-  other failure (including `remote`, which infrastructure errors can also
-  carry) die with the original error, keeping today's terminal handling. The
+  other call failure (including `remote`, which infrastructure errors can also
+  carry) die with the original error. For transferred streams, also retry
+  unflagged read failures and premature EOF: handler failures are encoded in
+  RPC exits, not read rejections. Explicit overload and non-retryable remote
+  errors remain terminal. A 60-second per-page catch-up deadline handles
+  connections that stall without rejecting; it never times out live idle queues. The
   pull backoff lives in the transport, like the WebSocket reconnect backoff,
   because the leader restarts a failed pull immediately. A required
   `getSyncBackendStub` factory gives each call a fresh stub.
@@ -51,7 +56,14 @@ pull failure recovers, and times out with the previous `orDie` client.
 
 - Breaking API: `createStoreDo`, `createStoreDoPromise` and `makeDoRpcSync`
   take `getSyncBackendStub: () => stub` instead of `syncBackendStub`.
-- Recovery depends on Cloudflare setting `retryable`. Cloudflare documents the
-  flags on rejected RPC calls; whether a failed stream read carries them is
-  unverified. Without the flag, a mid-stream failure stays terminal.
+- Deployed experiments showed native `retryable: true, remote: true` on an
+  initial call interrupted by a code update, but unflagged read errors after
+  `ctx.abort()` and stalled reads after a code update. A flags-only policy was
+  insufficient. Local and deployed harnesses use the actual transport and RPC
+  codec; committed leader tests additionally verify SQLite materialization.
+- A healthy catch-up taking over 60 seconds between pages is retried too. The
+  deadline measures waiting for pages, not total history length. Idle live
+  subscriptions are excluded; no heartbeat or recurring idle polling is added.
+- Stream cancellation is best effort across a broken connection. The client
+  releases its lock immediately; a reachable server interrupts its producer.
 - Push gets no transport backoff; the leader's push retry already backs off.

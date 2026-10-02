@@ -1,6 +1,7 @@
 import {
   Effect,
   Exit,
+  Fiber,
   Headers,
   type Layer,
   Option,
@@ -300,6 +301,8 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
         : Schema.encodeUnknownEffect(erasedCodec(codecFor, Schema.NonEmptyArray(Schema.Any)))
 
     // Convert stream to ReadableStream
+    let producer: Fiber.Fiber<void> | undefined
+    let cancelled = false
     const readableStream = new ReadableStream({
       start(controller) {
         // Run the stream and send chunks + final exit
@@ -339,6 +342,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
         }).pipe(
           Effect.catchCause((cause) =>
             Effect.gen(function* () {
+              if (cancelled === true) return
               // Send error exit with proper schema encoding
               const rawExit = Exit.failCause(cause)
               // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
@@ -358,13 +362,18 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
         )
 
         // Run the stream processing
-        runStream.pipe(
+        producer = runStream.pipe(
           Effect.provide(layer),
           Effect.scoped,
           Effect.tapCauseLogPretty,
           (_) => _ as Effect.Effect<void>,
-          Effect.runPromise,
+          Effect.runFork,
         )
+      },
+      cancel() {
+        cancelled = true
+        // @effect-diagnostics-next-line runEffectInsideEffect:off -- native stream callback runs outside Effect; interruption needs no services
+        return producer === undefined ? undefined : Effect.runPromise(Fiber.interrupt(producer))
       },
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridging standard Web API ReadableStream to Cloudflare Worker ReadableStream type
     }) as any as CfTypes.ReadableStream

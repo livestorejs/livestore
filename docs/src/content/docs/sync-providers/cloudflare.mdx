@@ -171,7 +171,7 @@ Creates a Durable Object RPC-based sync backend (for internal use).
 - Direct RPC communication
 - Real-time live pull via callbacks
 - Hibernation support
-- Retries temporary failures: a call that Cloudflare marks `retryable` (and not `overloaded`) surfaces as `IsOfflineError`, and pulls back off exponentially (1 s doubling to 30 s, with jitter). Overloaded and other failures stop sync as before
+- Retries temporary failures: a call that Cloudflare marks `retryable` (and not `overloaded`) surfaces as `IsOfflineError`, and pulls back off exponentially (1 s doubling to 30 s, with jitter). Catch-up also recovers from disconnected streams and from 60 seconds without a page or completion, resuming after the last applied event. Idle live subscriptions have no deadline. Explicit overload, non-retryable remote errors, and unknown call failures stop sync as before
 
 ### `handleSyncUpdateRpc(ctx, payload)`
 

@@ -14,7 +14,7 @@ import {
 } from '@livestore/utils/effect'
 
 import type * as CfTypes from '../cf-types.ts'
-import { layerProtocolDurableObject } from './client.ts'
+import { DoRpcReadError, layerProtocolDurableObject } from './client.ts'
 import { toDurableObjectHandler } from './server.ts'
 
 class Rpcs extends RpcGroup.make(
@@ -186,6 +186,35 @@ Vitest.describe('transport failures', () => {
       Vitest.expect(result.rows).toEqual(expectedRows)
     }),
   )
+
+  Vitest.live('interruption releases the reader even when remote cancellation never completes', () =>
+    Effect.gen(function* () {
+      const stream = new ReadableStream<Uint8Array>({ cancel: () => new Promise(() => {}) })
+      const exit = yield* RpcClient.make(Rpcs).pipe(
+        Effect.flatMap((client) => client.BigStream({ n: 1 }).pipe(Stream.runDrain, Effect.timeout('20 millis'))),
+        Effect.exit,
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridge the platform stream to the CF type
+        Effect.provide(protocolWith(async () => stream as unknown as CfTypes.ReadableStream)),
+        Effect.timeout('2 seconds'),
+      )
+      Vitest.expect(Exit.isFailure(exit)).toBe(true)
+      Vitest.expect(stream.locked).toBe(false)
+    }),
+  )
+
+  Vitest.live('reports a truncated response as a read failure instead of waiting forever for an RPC exit', () =>
+    Effect.gen(function* () {
+      const stream = new ReadableStream<Uint8Array>({ start: (controller) => controller.close() })
+      const exit = yield* RpcClient.make(Rpcs).pipe(
+        Effect.flatMap((client) => client.BigStream({ n: 1 }).pipe(Stream.runCollect)),
+        Effect.exit,
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridge the platform stream to the CF type
+        Effect.provide(protocolWith(async () => stream as unknown as CfTypes.ReadableStream)),
+        Effect.timeout('2 seconds'),
+      )
+      Vitest.expect(transportFailureCause(exit)).toEqual(new Error('RPC stream ended before its exit'))
+    }),
+  )
 })
 
 const cloudflareError = () => Object.assign(new Error('Network connection lost.'), { retryable: true })
@@ -198,7 +227,8 @@ const transportFailureCause = (exit: Exit.Exit<unknown, unknown>): unknown => {
   if (Exit.isSuccess(exit) === true) return undefined
   const error = Option.getOrUndefined(Cause.findErrorOption(exit.cause))
   if (error instanceof RpcClientError.RpcClientError === false) return undefined
-  return error.reason._tag === 'RpcClientDefect' ? error.reason.cause : undefined
+  if (error.reason._tag !== 'RpcClientDefect') return undefined
+  return error.reason.cause instanceof DoRpcReadError ? error.reason.cause.cause : error.reason.cause
 }
 
 const makeGatedCallRpc =

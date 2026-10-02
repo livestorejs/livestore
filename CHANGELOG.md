@@ -51,7 +51,10 @@
   stops replication for good. A call that Cloudflare marks `retryable` (and not
   `overloaded`) now surfaces as `IsOfflineError`, so the leader retries the pull
   after a jittered exponential backoff (1 s doubling to 30 s) on a fresh stub.
-  Overloaded and other failures keep their previous terminal handling
+  Interrupted catch-up streams also recover when Cloudflare drops the error
+  flags or the stream stalls for 60 seconds, resuming after the last applied
+  event. Idle live subscriptions do not time out. Explicit overload and
+  non-retryable remote failures keep their previous terminal handling
   ([#1462](https://github.com/livestorejs/livestore/issues/1462),
   [#1649](https://github.com/livestorejs/livestore/pull/1649)).
 - Removed redundant devenv package entries now owned by the task guard modules.

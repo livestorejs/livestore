@@ -140,7 +140,8 @@ const breakAfterFirstPage = async (response: CfTypes.ReadableStream): Promise<Cf
   let sentPage = false
   const stream = new ReadableStream<Uint8Array>({
     pull(controller) {
-      if (sentPage === true) return controller.error(Object.assign(new Error('Connection lost'), { retryable: true }))
+      if (sentPage === true)
+        return controller.error(new Error('ReadableStream received over RPC disconnected prematurely.'))
       sentPage = true
       controller.enqueue(value)
     },

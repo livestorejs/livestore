@@ -76,15 +76,22 @@ arbitrates pushes and fans out live pull streams to subscribers
 | DO-RPC | `do-rpc-schema.ts` | RPC callback queue (`rpcContext` presence = live) | for same-Cloudflare-app callers (`adapter-cloudflare`); explicit `Ping` |
 
 **DO-RPC transport failures** (`client/transport/do-rpc-client.ts`): a rejected
-stub call or stream read fails only its request, as an `RpcClientError` whose
-`RpcClientDefect.cause` is the original Cloudflare error. The client maps it by
-Cloudflare's runtime flags: `retryable` and not `overloaded` becomes
-`IsOfflineError`, which the leader retries; every other failure dies with the
-original error, so it keeps the store's existing error handling. A pull waits a
-jittered exponential backoff (1 s doubling to 30 s) before it surfaces
-`IsOfflineError`; the attempt count spans pull calls and resets only when a pull
-completes its catch-up. The client asks `getSyncBackendStub()` for a fresh stub
-on every call, because a stub can stay broken after an exception
+stub call or stream read fails only its request as an `RpcClientError`. Read
+failures additionally carry `DoRpcReadError`, preserving the original cause.
+A `retryable`, non-`overloaded` rejection becomes `IsOfflineError`. A transferred
+stream disconnect without flags also becomes offline: application errors travel
+in encoded RPC exits, whereas Cloudflare can strip flags from stream failures.
+Explicit overload and non-retryable `remote` errors remain terminal, as do
+unknown call rejections and malformed protocol data.
+
+Catch-up has a 60-second deadline for each awaited page or completion; a stall
+or EOF without an RPC exit becomes offline. The deadline excludes the subsequent
+live callback queue, which may remain idle indefinitely. Cancellation releases
+the reader without waiting for a remote acknowledgment and interrupts the server
+producer when it reaches the backend. A pull waits a jittered exponential backoff
+(1 s doubling to 30 s) before surfacing offline. Attempts span pull calls and
+reset on completed catch-up. The leader resumes from its last applied cursor.
+Every call gets a fresh stub from `getSyncBackendStub()`
 ([.decisions/0006-do-rpc-transport-failures.md](./.decisions/0006-do-rpc-transport-failures.md)).
 
 All three transports thread the client `payload` (per-connection auth/multi-tenancy
