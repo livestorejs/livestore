@@ -116,9 +116,10 @@ Vitest.describe('transport failures', () => {
     }),
   )
 
-  Vitest.live('fails a stream with an RpcClientError when a read rejects mid-stream', () =>
+  Vitest.live('preserves a read failure through rejected cancellation and releases the reader lock', () =>
     Effect.gen(function* () {
       const rejected = cloudflareError()
+      let failedStream: ReadableStream<Uint8Array> | undefined
       const failAfterFirstRead = (bytes: Uint8Array) => {
         let isFirstRead = true
         const stream = new ReadableStream<Uint8Array>({
@@ -128,6 +129,7 @@ Vitest.describe('transport failures', () => {
             controller.enqueue(bytes.subarray(0, READ_CHUNK_SIZE))
           },
         })
+        failedStream = stream
         // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridge platform ReadableStream to the CF type, like server.ts
         return stream as unknown as CfTypes.ReadableStream
       }
@@ -140,6 +142,7 @@ Vitest.describe('transport failures', () => {
       )
 
       Vitest.expect(transportFailureCause(exit)).toBe(rejected)
+      Vitest.expect(failedStream?.locked).toBe(false)
     }),
   )
 

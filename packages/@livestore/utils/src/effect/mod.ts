@@ -42,6 +42,7 @@ export {
   Cause,
   Channel,
   Chunk,
+  Clock,
   Config,
   ConfigProvider,
   Console,

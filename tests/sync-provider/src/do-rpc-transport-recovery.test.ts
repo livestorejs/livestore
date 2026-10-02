@@ -5,6 +5,7 @@ import {
   type MockSyncBackend,
   ServerAheadError,
   StateHead,
+  SyncBackend,
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
@@ -12,7 +13,7 @@ import { type CfTypes, toDurableObjectHandler } from '@livestore/common-cf'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
-import { events, schema } from '@livestore/livestore/internal/testing-utils'
+import { events, schema, tables } from '@livestore/livestore/internal/testing-utils'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { makeDoRpcSync, type SyncBackendRpcStub } from '@livestore/sync-cf/client'
@@ -38,6 +39,64 @@ const makeEventFactory = EventFactory.makeFactory(events)
  * client; only the backend Durable Object is replaced by a mock behind the real `SyncDoRpc` handler.
  */
 Vitest.describe('DO-RPC transport recovery', { timeout: 30_000 }, () => {
+  Vitest.live('resumes after the last applied event when a pull stream breaks', () =>
+    Effect.gen(function* () {
+      const remote = makeEventFactory({ client: EventFactory.clientIdentity('remote', 'session') })
+      const eventA = remote.todoCreated.next({ id: 'a', text: 'A', completed: false })
+      const eventB = remote.todoCreated.next({ id: 'b', text: 'B', completed: false })
+      const requestedCursors: Array<number | undefined> = []
+      const handle = toDurableObjectHandler(SyncDoRpc, {
+        layer: SyncDoRpc.toLayer({
+          'SyncDoRpc.Pull': ({ cursor }) => {
+            const after = Option.getOrUndefined(cursor)?.eventSequenceNumber
+            requestedCursors.push(after)
+            return Stream.make({
+              rpcRequestId: '0',
+              backendId,
+              batch: [{ eventEncoded: after === undefined ? eventA : eventB, metadata: Option.none() }],
+              pageInfo: after === undefined ? SyncBackend.pageInfoMoreUnknown : SyncBackend.pageInfoNoMore,
+            })
+          },
+          'SyncDoRpc.Push': () => Effect.succeed(SyncMessage.PushAck.make({})),
+          'SyncDoRpc.Ping': () => Effect.void,
+          'SyncDoRpc.Unsubscribe': () => Effect.void,
+        }),
+      })
+      let firstCall = true
+      const rpc = async (payload: Uint8Array): Promise<Uint8Array | CfTypes.ReadableStream> => {
+        const response = await handle(new Uint8Array(payload)).pipe(Effect.runPromise)
+        if (firstCall === false || response instanceof Uint8Array) return response
+        firstCall = false
+        return breakAfterFirstPage(response)
+      }
+      const makeBackend = makeDoRpcSync({
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- the test stub only needs rpc
+        getSyncBackendStub: () => ({ rpc }) as unknown as SyncBackendRpcStub,
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- this test does not use live callbacks
+        durableObjectState: {} as CfTypes.DurableObjectState,
+        durableObjectContext: { bindingName: 'CLIENT_DO', durableObjectId: 'client' },
+      })
+
+      yield* Effect.gen(function* () {
+        const leader = yield* LeaderThreadCtx
+        const appliedHeads = yield* leader.syncProcessor.syncState.changes.pipe(
+          Stream.map((state) => state.upstreamHead.global),
+          Stream.changes,
+          Stream.takeUntil((head) => head === eventB.seqNum),
+          Stream.runCollect,
+          Effect.timeout('5 seconds'),
+        )
+
+        expect(requestedCursors).toEqual([undefined, eventA.seqNum])
+        expect(appliedHeads.filter((head) => head > 0)).toEqual([eventA.seqNum, eventB.seqNum])
+        expect(leader.dbState.select(tables.todos.orderBy('id', 'asc'))).toEqual([
+          { id: 'a', text: 'A', completed: false },
+          { id: 'b', text: 'B', completed: false },
+        ])
+      }).pipe(Effect.provide(leaderLayer(makeBackend)))
+    }),
+  )
+
   Vitest.live('a push parked on ServerAheadError resumes once a retryable pull failure recovers', () =>
     Effect.gen(function* () {
       const mockBackend = yield* makeMockSyncBackend({ startConnected: true })
@@ -71,6 +130,24 @@ Vitest.describe('DO-RPC transport recovery', { timeout: 30_000 }, () => {
     }),
   )
 })
+
+/** Keep the first encoded page and replace the RPC exit with a connection failure. */
+const breakAfterFirstPage = async (response: CfTypes.ReadableStream): Promise<CfTypes.ReadableStream> => {
+  const reader = response.getReader()
+  const { value } = await reader.read()
+  await reader.cancel()
+  reader.releaseLock()
+  let sentPage = false
+  const stream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (sentPage === true) return controller.error(Object.assign(new Error('Connection lost'), { retryable: true }))
+      sentPage = true
+      controller.enqueue(value)
+    },
+  })
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridge the platform stream to the CF type
+  return stream as unknown as CfTypes.ReadableStream
+}
 
 const backendId = 'mock-backend'
 

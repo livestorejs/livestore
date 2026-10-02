@@ -4,14 +4,17 @@ import { EventSequenceNumber } from '@livestore/common/schema'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Cause,
+  Clock,
+  Deferred,
+  Duration,
   Effect,
   Exit,
   FetchHttpClient,
+  Fiber,
   KeyValueStore,
   Layer,
   Option,
   Stream,
-  TestClock,
 } from '@livestore/utils/effect'
 
 import { SyncDoRpc } from '../../common/do-rpc-schema.ts'
@@ -22,24 +25,10 @@ Vitest.describe('DO-RPC sync client transport failures', () => {
     Effect.gen(function* () {
       const { backend } = yield* makeBackend([rejectWith(cloudflareError({ retryable: true }))])
 
-      const { exit, elapsedMs } = yield* runAdvancingClock(backend.pull(Option.none()).pipe(Stream.runCollect))
+      const { exit, delays } = yield* runRecordingBackoff(backend.pull(Option.none()).pipe(Stream.runCollect))
 
       Vitest.expect(failureOf(exit)).toBeInstanceOf(IsOfflineError)
-      expectBackoff(elapsedMs, 1_000)
-    }),
-  )
-
-  Vitest.effect('a retryable mid-stream failure keeps the delivered page, then fails as offline', () =>
-    Effect.gen(function* () {
-      const { backend } = yield* makeBackend([pageThenRejectWith(cloudflareError({ retryable: true }))])
-
-      const pages: SyncBackend.PullResPageInfo[] = []
-      const { exit } = yield* runAdvancingClock(
-        backend.pull(Option.none()).pipe(Stream.runForEach(({ pageInfo }) => Effect.sync(() => pages.push(pageInfo)))),
-      )
-
-      Vitest.expect(pages).toEqual([SyncBackend.pageInfoMoreUnknown])
-      Vitest.expect(failureOf(exit)).toBeInstanceOf(IsOfflineError)
+      expectBackoff(delays[0]!, 1_000)
     }),
   )
 
@@ -47,7 +36,7 @@ Vitest.describe('DO-RPC sync client transport failures', () => {
     Effect.gen(function* () {
       const { backend } = yield* makeBackend([rejectWith(cloudflareError({ retryable: true }))])
 
-      const { exit } = yield* runAdvancingClock(backend.push([event]))
+      const { exit } = yield* runRecordingBackoff(backend.push([event]))
 
       Vitest.expect(failureOf(exit)).toBeInstanceOf(IsOfflineError)
     }),
@@ -57,7 +46,7 @@ Vitest.describe('DO-RPC sync client transport failures', () => {
     Effect.gen(function* () {
       const { backend } = yield* makeBackend([rejectWith(cloudflareError({ retryable: true }))])
 
-      const { exit } = yield* runAdvancingClock(backend.ping)
+      const { exit } = yield* runRecordingBackoff(backend.ping)
 
       Vitest.expect(failureOf(exit)).toBeInstanceOf(IsOfflineError)
     }),
@@ -68,6 +57,7 @@ Vitest.describe('DO-RPC sync client transport failures', () => {
     const terminal = [
       { name: 'overloaded and retryable', flags: { overloaded: true, retryable: true } },
       { name: 'remote only', flags: { remote: true } },
+      { name: 'unflagged', flags: {} },
     ]
 
     for (const { name, flags } of terminal) {
@@ -76,10 +66,10 @@ Vitest.describe('DO-RPC sync client transport failures', () => {
           const rejected = cloudflareError(flags)
           const { backend } = yield* makeBackend([rejectWith(rejected)])
 
-          const { exit, elapsedMs } = yield* runAdvancingClock(backend.pull(Option.none()).pipe(Stream.runCollect))
+          const { exit, delays } = yield* runRecordingBackoff(backend.pull(Option.none()).pipe(Stream.runCollect))
 
           Vitest.expect(defectOf(exit)).toBe(rejected)
-          Vitest.expect(elapsedMs).toBeLessThan(100)
+          Vitest.expect(delays).toEqual([])
         }),
       )
 
@@ -88,7 +78,7 @@ Vitest.describe('DO-RPC sync client transport failures', () => {
           const rejected = cloudflareError(flags)
           const { backend } = yield* makeBackend([rejectWith(rejected)])
 
-          const { exit } = yield* runAdvancingClock(backend.push([event]))
+          const { exit } = yield* runRecordingBackoff(backend.push([event]))
 
           Vitest.expect(defectOf(exit)).toBe(rejected)
         }),
@@ -103,7 +93,7 @@ Vitest.describe('DO-RPC sync client transport failures', () => {
           serve({ pull: () => Stream.fail(new BackendIdMismatchError({ expected: 'a', received: 'b' })) }),
         ])
 
-        const { exit } = yield* runAdvancingClock(backend.pull(Option.none()).pipe(Stream.runCollect))
+        const { exit } = yield* runRecordingBackoff(backend.pull(Option.none()).pipe(Stream.runCollect))
 
         Vitest.expect(failureOf(exit)).toBeInstanceOf(BackendIdMismatchError)
       }),
@@ -123,7 +113,7 @@ Vitest.describe('DO-RPC sync client transport failures', () => {
           }),
         ])
 
-        const { exit } = yield* runAdvancingClock(backend.push([event]))
+        const { exit } = yield* runRecordingBackoff(backend.push([event]))
 
         Vitest.expect(failureOf(exit)).toBeInstanceOf(ServerAheadError)
       }),
@@ -131,21 +121,39 @@ Vitest.describe('DO-RPC sync client transport failures', () => {
   })
 
   Vitest.describe('backoff', () => {
-    Vitest.effect('grows across pulls that each deliver a page and then fail', () =>
+    Vitest.effect('grows to the cap across pulls that each deliver a page and then fail', () =>
       Effect.gen(function* () {
         const failure = pageThenRejectWith(cloudflareError({ retryable: true }))
-        const { backend } = yield* makeBackend([failure, failure, failure])
+        const expectedDelays = [1_000, 2_000, 4_000, 8_000, 16_000, 30_000, 30_000]
+        const { backend } = yield* makeBackend(expectedDelays.map(() => failure))
 
-        const elapsed: number[] = []
-        for (let attempt = 0; attempt < 3; attempt++) {
-          const { exit, elapsedMs } = yield* runAdvancingClock(backend.pull(Option.none()).pipe(Stream.runCollect))
+        for (const expectedDelay of expectedDelays) {
+          const { exit, delays } = yield* runRecordingBackoff(backend.pull(Option.none()).pipe(Stream.runCollect))
           Vitest.expect(failureOf(exit)).toBeInstanceOf(IsOfflineError)
-          elapsed.push(elapsedMs)
+          Vitest.expect(delays).toHaveLength(1)
+          expectBackoff(delays[0]!, expectedDelay)
         }
+      }),
+    )
 
-        expectBackoff(elapsed[0]!, 1_000)
-        expectBackoff(elapsed[1]!, 2_000)
-        expectBackoff(elapsed[2]!, 4_000)
+    Vitest.effect('interrupts a pull while it is waiting to retry', () =>
+      Effect.gen(function* () {
+        const { backend } = yield* makeBackend([rejectWith(cloudflareError({ retryable: true }))])
+        const clock = yield* Clock.Clock
+        const waiting = yield* Deferred.make<void>()
+        const fiber = yield* backend.pull(Option.none()).pipe(
+          Stream.runCollect,
+          Effect.provideService(Clock.Clock, {
+            ...clock,
+            sleep: (duration) => Deferred.succeed(waiting, undefined).pipe(Effect.andThen(clock.sleep(duration))),
+          }),
+          Effect.forkChild,
+        )
+
+        yield* Deferred.await(waiting)
+        Vitest.expect(fiber.pollUnsafe()).toBeUndefined()
+        yield* Fiber.interrupt(fiber)
+        Vitest.expect(Exit.hasInterrupts(yield* Fiber.await(fiber))).toBe(true)
       }),
     )
 
@@ -158,7 +166,7 @@ Vitest.describe('DO-RPC sync client transport failures', () => {
           serve({ pull: () => Stream.make(pullResponse(SyncBackend.pageInfoNoMore)) }),
           failure,
         ])
-        const pull = runAdvancingClock(backend.pull(Option.none()).pipe(Stream.runCollect))
+        const pull = runRecordingBackoff(backend.pull(Option.none()).pipe(Stream.runCollect))
 
         yield* pull
         yield* pull
@@ -166,7 +174,7 @@ Vitest.describe('DO-RPC sync client transport failures', () => {
         const afterReset = yield* pull
 
         Vitest.expect(Exit.isSuccess(completed.exit)).toBe(true)
-        expectBackoff(afterReset.elapsedMs, 1_000)
+        expectBackoff(afterReset.delays[0]!, 1_000)
       }),
     )
   })
@@ -175,10 +183,10 @@ Vitest.describe('DO-RPC sync client transport failures', () => {
     Effect.gen(function* () {
       const broken = rejectWith(cloudflareError({ retryable: true }))
       const healthy = serve({ pull: () => Stream.make(pullResponse(SyncBackend.pageInfoNoMore)) })
-      const { backend } = yield* makeBackend([broken, healthy], { answerBy: 'stub' })
+      const { backend } = yield* makeBackend([broken, healthy])
 
-      const first = yield* runAdvancingClock(backend.pull(Option.none()).pipe(Stream.runCollect))
-      const second = yield* runAdvancingClock(backend.pull(Option.none()).pipe(Stream.runCollect))
+      const first = yield* runRecordingBackoff(backend.pull(Option.none()).pipe(Stream.runCollect))
+      const second = yield* runRecordingBackoff(backend.pull(Option.none()).pipe(Stream.runCollect))
 
       Vitest.expect(failureOf(first.exit)).toBeInstanceOf(IsOfflineError)
       Vitest.expect(Exit.isSuccess(second.exit)).toBe(true)
@@ -199,7 +207,12 @@ const event = {
   sessionId: 'session',
 }
 
-const pullResponse = (pageInfo: SyncBackend.PullResPageInfo) => ({ rpcRequestId: '0', batch: [], pageInfo, backendId })
+const pullResponse = (pageInfo: SyncBackend.PullResPageInfo) => ({
+  rpcRequestId: '0',
+  batch: [{ eventEncoded: event, metadata: Option.none() }],
+  pageInfo,
+  backendId,
+})
 
 /** A Cloudflare DO error carries runtime flags as own properties on the thrown `Error`. */
 const cloudflareError = (flags: { retryable?: boolean; overloaded?: boolean; remote?: boolean }) =>
@@ -231,16 +244,19 @@ const pageThenRejectWith =
   (error: Error): CallRpc =>
   async (payload) => {
     const response = await serve({
-      pull: () => Stream.make(pullResponse(SyncBackend.pageInfoMoreUnknown)).pipe(Stream.concat(Stream.never)),
+      pull: () => Stream.make(pullResponse(SyncBackend.pageInfoMoreUnknown)),
     })(payload)
     if (response instanceof Uint8Array) return response
     const source = response.getReader()
-    let isFirstRead = true
+    // Keep only the page frame; replace the normal RPC exit with a transport failure.
+    const { value } = await source.read()
+    await source.cancel()
+    source.releaseLock()
+    let sentPage = false
     const stream = new ReadableStream<Uint8Array>({
-      async pull(controller) {
-        if (isFirstRead === false) return controller.error(error)
-        isFirstRead = false
-        const { value } = await source.read()
+      pull(controller) {
+        if (sentPage === true) return controller.error(error)
+        sentPage = true
         controller.enqueue(value)
       },
     })
@@ -248,23 +264,14 @@ const pageThenRejectWith =
     return stream as unknown as CfTypes.ReadableStream
   }
 
-/**
- * Builds a backend whose n-th RPC call is answered by `calls[n]`. With `answerBy: 'stub'`, the n-th stub answers
- * every call made on it with `calls[n]`, which models a stub that stays broken.
- */
-const makeBackend = (calls: ReadonlyArray<CallRpc>, options?: { answerBy: 'call' | 'stub' }) =>
+/** Each supplied RPC implementation belongs to one stub, and stays attached if that stub is reused. */
+const makeBackend = (stubs: ReadonlyArray<CallRpc>) =>
   Effect.gen(function* () {
-    let call = 0
-    let stub = 0
-    const answer = (index: number, payload: Uint8Array) => {
-      const next = calls[index]
-      return next === undefined ? Promise.reject(new Error(`Unexpected RPC call ${index}`)) : next(payload)
-    }
-
+    let nextStub = 0
     const backend = yield* makeDoRpcSync({
       getSyncBackendStub: () => {
-        const stubIndex = stub++
-        const rpc: CallRpc = (payload) => answer(options?.answerBy === 'stub' ? stubIndex : call++, payload)
+        const rpc = stubs[nextStub++]
+        if (rpc === undefined) throw new Error('Unexpected extra stub')
         // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- a test double only needs `rpc`
         return { rpc } as unknown as SyncBackendRpcStub
       },
@@ -278,30 +285,27 @@ const makeBackend = (calls: ReadonlyArray<CallRpc>, options?: { answerBy: 'call'
     return { backend }
   })
 
-/** Lets real promises settle between simulated clock steps. */
-const flushIo = Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
-
-const CLOCK_STEP_MS = 50
-
-/** Runs `effect` while advancing the test clock in small steps, returning its exit and the simulated time it took. */
-const runAdvancingClock = <A, E>(effect: Effect.Effect<A, E>) =>
+/** Observe the waits requested by production code without polling fibers or waiting on wall-clock timers. */
+const runRecordingBackoff = <A, E>(effect: Effect.Effect<A, E>) =>
   Effect.gen(function* () {
-    const fiber = yield* Effect.forkChild(effect)
-    let elapsedMs = 0
-    yield* flushIo
-    while (fiber.pollUnsafe() === undefined) {
-      if (elapsedMs > 60_000) return yield* Effect.die(new Error('The effect did not finish within 60 s'))
-      yield* TestClock.adjust(`${CLOCK_STEP_MS} millis`)
-      elapsedMs += CLOCK_STEP_MS
-      yield* flushIo
-    }
-    return { exit: fiber.pollUnsafe()!, elapsedMs }
+    const clock = yield* Clock.Clock
+    const delays: number[] = []
+    const exit = yield* effect.pipe(
+      Effect.provideService(Clock.Clock, {
+        ...clock,
+        sleep: (duration) =>
+          Effect.sync(() => {
+            delays.push(Duration.toMillis(duration))
+          }),
+      }),
+      Effect.exit,
+    )
+    return { exit, delays }
   })
 
-/** Asserts a delay of `baseMs` with ±20 % jitter, allowing one clock step of measurement slack. */
-const expectBackoff = (elapsedMs: number, baseMs: number) => {
-  Vitest.expect(elapsedMs).toBeGreaterThanOrEqual(baseMs * 0.8)
-  Vitest.expect(elapsedMs).toBeLessThanOrEqual(baseMs * 1.2 + CLOCK_STEP_MS)
+const expectBackoff = (delay: number, baseMs: number) => {
+  Vitest.expect(delay).toBeGreaterThanOrEqual(baseMs * 0.8)
+  Vitest.expect(delay).toBeLessThanOrEqual(baseMs * 1.2)
 }
 
 const failureOf = (exit: Exit.Exit<unknown, unknown>): unknown =>
