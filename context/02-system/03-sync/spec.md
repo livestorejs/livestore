@@ -55,7 +55,7 @@ SyncBackend = {
   polled.
 - **Chunking (LS.SYS.SYNC-R04):** bounds live at the provider transport
   boundary, not the leader — the Cloudflare transports cap 100 events per
-  message and 900 kB per frame (`sync-cf/src/common/constants.ts`);
+  message and 28 MiB per transport payload (`sync-cf/src/common/constants.ts`);
   `transport-chunking.ts` splits oversized payloads
   (`OversizeChunkItemError` when a single item exceeds the cap). The
   leader's own batch sizes are smaller
