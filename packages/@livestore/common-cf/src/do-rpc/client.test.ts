@@ -1,8 +1,20 @@
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect, Fiber, Rpc, RpcClient, RpcGroup, Schema, Stream } from '@livestore/utils/effect'
+import {
+  Cause,
+  Effect,
+  Exit,
+  Fiber,
+  Option,
+  Rpc,
+  RpcClient,
+  RpcClientError,
+  RpcGroup,
+  Schema,
+  Stream,
+} from '@livestore/utils/effect'
 
 import type * as CfTypes from '../cf-types.ts'
-import { layerProtocolDurableObject } from './client.ts'
+import { DoRpcReadError, layerProtocolDurableObject } from './client.ts'
 import { toDurableObjectHandler } from './server.ts'
 
 class Rpcs extends RpcGroup.make(
@@ -87,6 +99,137 @@ Vitest.live('keeps a straddling stream frame isolated from a concurrent unary re
     Vitest.expect(result.rows).toEqual(expectedRows)
   }),
 )
+
+Vitest.describe('transport failures', () => {
+  Vitest.live('fails a unary call with an RpcClientError that keeps the rejected error', () =>
+    Effect.gen(function* () {
+      const rejected = cloudflareError()
+
+      const exit = yield* RpcClient.make(Rpcs).pipe(
+        Effect.flatMap((client) => client.Echo({ text: 'hi' })),
+        Effect.exit,
+        Effect.provide(protocolWith(() => Promise.reject(rejected))),
+        Effect.timeout('2 seconds'),
+      )
+
+      Vitest.expect(transportFailureCause(exit)).toBe(rejected)
+    }),
+  )
+
+  Vitest.live('preserves a read failure through rejected cancellation and releases the reader lock', () =>
+    Effect.gen(function* () {
+      const rejected = cloudflareError()
+      let failedStream: ReadableStream<Uint8Array> | undefined
+      const failAfterFirstRead = (bytes: Uint8Array) => {
+        let isFirstRead = true
+        const stream = new ReadableStream<Uint8Array>({
+          pull(controller) {
+            if (isFirstRead === false) return controller.error(rejected)
+            isFirstRead = false
+            controller.enqueue(bytes.subarray(0, READ_CHUNK_SIZE))
+          },
+        })
+        failedStream = stream
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridge platform ReadableStream to the CF type, like server.ts
+        return stream as unknown as CfTypes.ReadableStream
+      }
+
+      const exit = yield* RpcClient.make(Rpcs).pipe(
+        Effect.flatMap((client) => client.BigStream({ n: expectedRows.length }).pipe(Stream.runCollect)),
+        Effect.exit,
+        Effect.provide(protocolWith(makeGatedCallRpc(failAfterFirstRead))),
+        Effect.timeout('2 seconds'),
+      )
+
+      Vitest.expect(transportFailureCause(exit)).toBe(rejected)
+      Vitest.expect(failedStream?.locked).toBe(false)
+    }),
+  )
+
+  Vitest.live('fails only the request whose call rejected', () =>
+    Effect.gen(function* () {
+      let releaseStream = () => {}
+      const streamReleased = new Promise<void>((resolve) => {
+        releaseStream = resolve
+      })
+      const gatedUntilReleased = (bytes: Uint8Array) => {
+        const stream = new ReadableStream<Uint8Array>({
+          async start(controller) {
+            await streamReleased
+            controller.enqueue(bytes)
+            controller.close()
+          },
+        })
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridge platform ReadableStream to the CF type, like server.ts
+        return stream as unknown as CfTypes.ReadableStream
+      }
+      const callStream = makeGatedCallRpc(gatedUntilReleased)
+      let calls = 0
+      const callRpc = (payload: Uint8Array) => {
+        calls++
+        return calls === 1 ? callStream(payload) : Promise.reject(cloudflareError())
+      }
+
+      const result = yield* Effect.gen(function* () {
+        const client = yield* RpcClient.make(Rpcs)
+        const streamFiber = yield* client
+          .BigStream({ n: expectedRows.length })
+          .pipe(Stream.runCollect, Effect.forkChild)
+        yield* Effect.yieldNow
+        const echoExit = yield* client.Echo({ text: 'hi' }).pipe(Effect.exit)
+        yield* Effect.sync(() => releaseStream())
+        const rows = yield* Fiber.join(streamFiber)
+        return { echoExit, rows: Array.from(rows) }
+      }).pipe(Effect.provide(protocolWith(callRpc)), Effect.timeout('2 seconds'))
+
+      Vitest.expect(transportFailureCause(result.echoExit)).toBeInstanceOf(Error)
+      Vitest.expect(result.rows).toEqual(expectedRows)
+    }),
+  )
+
+  Vitest.live('interruption releases the reader even when remote cancellation never completes', () =>
+    Effect.gen(function* () {
+      const stream = new ReadableStream<Uint8Array>({ cancel: () => new Promise(() => {}) })
+      const exit = yield* RpcClient.make(Rpcs).pipe(
+        Effect.flatMap((client) => client.BigStream({ n: 1 }).pipe(Stream.runDrain, Effect.timeout('20 millis'))),
+        Effect.exit,
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridge the platform stream to the CF type
+        Effect.provide(protocolWith(async () => stream as unknown as CfTypes.ReadableStream)),
+        Effect.timeout('2 seconds'),
+      )
+      Vitest.expect(Exit.isFailure(exit)).toBe(true)
+      Vitest.expect(stream.locked).toBe(false)
+    }),
+  )
+
+  Vitest.live('reports a truncated response as a read failure instead of waiting forever for an RPC exit', () =>
+    Effect.gen(function* () {
+      const stream = new ReadableStream<Uint8Array>({ start: (controller) => controller.close() })
+      const exit = yield* RpcClient.make(Rpcs).pipe(
+        Effect.flatMap((client) => client.BigStream({ n: 1 }).pipe(Stream.runCollect)),
+        Effect.exit,
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridge the platform stream to the CF type
+        Effect.provide(protocolWith(async () => stream as unknown as CfTypes.ReadableStream)),
+        Effect.timeout('2 seconds'),
+      )
+      Vitest.expect(transportFailureCause(exit)).toEqual(new Error('RPC stream ended before its exit'))
+    }),
+  )
+})
+
+const cloudflareError = () => Object.assign(new Error('Network connection lost.'), { retryable: true })
+
+const protocolWith = (callRpc: (payload: Uint8Array) => Promise<Uint8Array | CfTypes.ReadableStream>) =>
+  layerProtocolDurableObject({ callRpc, callerContext: { bindingName: 'TEST', durableObjectId: 'id' } })
+
+/** The rejected error carried by a typed transport failure, or `undefined` for any other outcome (including a defect). */
+const transportFailureCause = (exit: Exit.Exit<unknown, unknown>): unknown => {
+  if (Exit.isSuccess(exit) === true) return undefined
+  const error = Option.getOrUndefined(Cause.findErrorOption(exit.cause))
+  if (error instanceof RpcClientError.RpcClientError === false) return undefined
+  if (error.reason._tag !== 'RpcClientDefect') return undefined
+  return error.reason.cause instanceof DoRpcReadError ? error.reason.cause.cause : error.reason.cause
+}
 
 const makeGatedCallRpc =
   (gateStream: (bytes: Uint8Array) => CfTypes.ReadableStream) =>

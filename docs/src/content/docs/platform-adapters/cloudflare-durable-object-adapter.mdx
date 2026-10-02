@@ -105,7 +105,7 @@ Creates a LiveStore instance inside a Durable Object.
   - `state` – Durable Object state handle (for example `this.ctx`)
   - `env` – Environment bindings for the Durable Object
   - `bindingName` – Name other workers use to reach this Durable Object
-- `syncBackendStub` – Durable Object stub used to reach the sync backend
+- `getSyncBackendStub` – Returns a Durable Object stub for the sync backend (for example `() => env.SYNC_BACKEND_DO.getByName(storeId)`). LiveStore calls it for every sync call, because Cloudflare leaves a stub broken after many exceptions; a temporary failure then retries on a fresh stub
 - `livePull` – Enable real-time updates (default: `false`)
 - `params?` – Advanced per-client runtime tuning, including `stateRebuildBatchSize`
 - `resetPersistence` – Drop LiveStore state/eventlog persistence before booting (development only, default: `false`)

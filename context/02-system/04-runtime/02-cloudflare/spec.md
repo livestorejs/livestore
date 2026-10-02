@@ -28,7 +28,9 @@ Durable Object (one client)
 
 Inputs: `schema`, `storeId`, `clientId`, `sessionId`, the DO's own
 `ctx`/`env`/`bindingName` (so the sync backend can call back for live pull),
-and `syncBackendStub` (`@livestore/sync-cf/cf-worker` RPC interface).
+and `getSyncBackendStub` (returns a `@livestore/sync-cf/cf-worker` RPC stub;
+called for every sync call so a retry gets a fresh stub, see sync
+[decision 0006](../../03-sync/03-cf/.decisions/0006-do-rpc-transport-failures.md)).
 `livePull: false` is the default (LS.SYS.RT.CF-R03).
 
 `createStoreDo.params.stateRebuildBatchSize` forwards the per-client rebuild

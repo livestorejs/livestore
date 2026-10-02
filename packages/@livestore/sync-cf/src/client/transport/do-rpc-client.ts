@@ -1,14 +1,19 @@
-import { SyncBackend, UnknownError } from '@livestore/common'
-import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
+import { IsOfflineError, SyncBackend, UnknownError } from '@livestore/common'
+import { type CfTypes, DoRpcReadError, layerProtocolDurableObject } from '@livestore/common-cf'
 import { splitArrayBySize } from '@livestore/common/sync'
 import { shouldNeverHappen } from '@livestore/utils'
 import {
+  Duration,
   Effect,
   identity,
   Layer,
+  Match,
   Option,
+  Predicate,
   Queue,
+  Random,
   ReadonlyArray as EffectArray,
+  Ref,
   RpcClient,
   RpcSerialization,
   Schema,
@@ -28,8 +33,11 @@ type PushBatchItem = SyncMessage.PushRequest['batch'][number]
 export interface SyncBackendRpcStub extends CfTypes.DurableObjectStub, SyncBackendRpcInterface {}
 
 export interface DoRpcSyncOptions {
-  /** Durable Object stub that implements the SyncDoRpc interface */
-  syncBackendStub: SyncBackendRpcStub
+  /**
+   * Returns a stub for the sync backend Durable Object. Called for every RPC call, because Cloudflare leaves a stub
+   * broken after many exceptions, so a retry needs a fresh one.
+   */
+  getSyncBackendStub: () => SyncBackendRpcStub
   /**
    * State handle of the client DurableObject running this sync backend. Scopes live-pull routing to
    * this instance so it resets when the DO is reconstructed (see {@link handleSyncUpdateRpc}).
@@ -51,7 +59,7 @@ export interface DoRpcSyncOptions {
  */
 export const makeDoRpcSync =
   ({
-    syncBackendStub,
+    getSyncBackendStub,
     durableObjectState,
     durableObjectContext,
   }: DoRpcSyncOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
@@ -60,13 +68,15 @@ export const makeDoRpcSync =
       const isConnected = yield* SubscriptionRef.make(true)
 
       const ProtocolLive = layerProtocolDurableObject({
-        callRpc: (payload) => syncBackendStub.rpc(payload),
+        callRpc: (payload) => getSyncBackendStub().rpc(payload),
         callerContext: durableObjectContext,
       })
 
       const context = yield* Layer.build(ProtocolLive)
 
       const rpcClient = yield* RpcClient.make(SyncDoRpc).pipe(Effect.provide(context))
+
+      const pullBackoff = yield* makePullBackoff
 
       // Nothing to do here
       const connect = Effect.void
@@ -84,6 +94,12 @@ export const makeDoRpcSync =
           storeId,
           rpcContext: options?.live === true ? { callerContext: durableObjectContext } : undefined,
         }).pipe(
+          // Catch-up must make progress. Live callbacks below may legitimately remain idle indefinitely.
+          Stream.timeoutOrElse({
+            duration: '60 seconds',
+            orElse: () =>
+              Stream.fail(new IsOfflineError({ cause: new Error('DO-RPC pull made no progress for 60 seconds') })),
+          }),
           options?.live === true
             ? Stream.concatWithLastElement((res) =>
                 Effect.gen(function* () {
@@ -113,10 +129,15 @@ export const makeDoRpcSync =
                 }).pipe(Stream.unwrap),
               )
             : identity,
+          Stream.catchReason('RpcClientError', 'RpcClientDefect', (reason) =>
+            Stream.fromEffect(classifyTransportFailure(reason.cause)),
+          ),
+          Stream.tapError((error) => (error._tag === 'IsOfflineError' ? pullBackoff.wait : Effect.void)),
+          Stream.tap((res) => (res.pageInfo._tag === 'NoMore' ? pullBackoff.reset : Effect.void)),
           Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
           Stream.map((res) => Struct.omit(res, ['backendId'])),
           Stream.mapError((cause) =>
-            cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
+            cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError' || cause._tag === 'IsOfflineError'
               ? cause
               : new UnknownError({ cause }),
           ),
@@ -148,8 +169,12 @@ export const makeDoRpcSync =
             yield* rpcClient['SyncDoRpc.Push']({ batch: batchChunk, storeId, backendId })
           }
         },
+        Effect.catchReason('RpcClientError', 'RpcClientDefect', (reason) => classifyTransportFailure(reason.cause)),
         Effect.mapError((cause) =>
-          cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
+          cause._tag === 'UnknownError' ||
+          cause._tag === 'ServerAheadError' ||
+          cause._tag === 'BackendIdMismatchError' ||
+          cause._tag === 'IsOfflineError'
             ? cause
             : new UnknownError({ cause }),
         ),
@@ -158,7 +183,11 @@ export const makeDoRpcSync =
       const ping: SyncBackend.SyncBackend<{ createdAt: string }>['ping'] = rpcClient['SyncDoRpc.Ping']({
         storeId,
         payload,
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('rpc-sync-client:ping'))
+      }).pipe(
+        Effect.catchReason('RpcClientError', 'RpcClientDefect', (reason) => classifyTransportFailure(reason.cause)),
+        Effect.mapError((cause) => (cause._tag === 'IsOfflineError' ? cause : new UnknownError({ cause }))),
+        Effect.withSpan('rpc-sync-client:ping'),
+      )
 
       return SyncBackend.of({
         connect,
@@ -249,3 +278,42 @@ const pullRoutingFor = (ctx: CfTypes.DurableObjectState): PullRouting => {
   pullRoutingByInstance.set(ctx, routing)
   return routing
 }
+
+/**
+ * Calls require Cloudflare's retryable flag. Transferred streams can lose those flags, so unflagged read
+ * failures are also offline (application failures arrive as encoded RPC exits). Explicit overload and
+ * non-retryable remote errors stay terminal.
+ * https://developers.cloudflare.com/durable-objects/best-practices/error-handling/
+ */
+const classifyTransportFailure = (failure: unknown) => {
+  const cause = failure instanceof DoRpcReadError ? failure.cause : failure
+  return Match.value({
+    retryable:
+      hasTrueFlag(cause, 'retryable') || (failure instanceof DoRpcReadError && hasTrueFlag(cause, 'remote') === false),
+    overloaded: hasTrueFlag(cause, 'overloaded'),
+  }).pipe(
+    Match.when({ overloaded: true }, () => Effect.die(cause)),
+    Match.when({ retryable: true }, () => Effect.fail(new IsOfflineError({ cause }))),
+    Match.orElse(() => Effect.die(cause)),
+  )
+}
+
+const hasTrueFlag = (cause: unknown, flag: 'retryable' | 'overloaded' | 'remote') =>
+  Predicate.hasProperty(cause, flag) === true && cause[flag] === true
+
+/**
+ * The leader restarts a failed pull at once, so the transport owns the delay (like the WebSocket reconnect backoff).
+ * The attempt count spans pull calls and resets only when a pull completes its catch-up, so a pull that delivers a
+ * page and then fails does not reset it.
+ */
+const makePullBackoff = Effect.gen(function* () {
+  const attempt = yield* Ref.make(0)
+  return {
+    wait: Effect.gen(function* () {
+      const n = yield* Ref.getAndUpdate(attempt, (n) => n + 1)
+      const jitter = yield* Random.nextBetween(0.8, 1.2)
+      yield* Effect.sleep(Duration.millis(Math.min(1_000 * 2 ** n, 30_000) * jitter))
+    }),
+    reset: Ref.set(attempt, 0),
+  }
+})

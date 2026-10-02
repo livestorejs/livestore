@@ -54,7 +54,7 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
         env: this.env,
         bindingName: 'CLIENT_DO',
       },
-      syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
+      getSyncBackendStub: () => this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
       livePull: true,
     })
 
