@@ -81,6 +81,47 @@ Vitest.describe.each(['raw', 'query-builder'] as const)('materializer', (queryTy
     }).pipe(Vitest.withTestCtx(test)),
   )
 
+  Vitest.live('void materializer is a no-op and does not shut down the store', (test) =>
+    Effect.gen(function* () {
+      const todoNoop = Events.synced({
+        name: 'todoNoop',
+        schema: Schema.Struct({ id: Schema.String }),
+      })
+      const todoCreated = Events.synced({
+        name: 'todoCreatedAfterNoop',
+        schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+      })
+      const todosTable = State.SQLite.table({
+        name: 'todos',
+        columns: {
+          id: State.SQLite.text({ primaryKey: true }),
+          text: State.SQLite.text({ default: '', nullable: false }),
+        },
+      })
+      const voidSchema = makeSchema({
+        events: { todoNoop, todoCreated },
+        state: State.SQLite.makeState({
+          tables: { todos: todosTable },
+          materializers: State.SQLite.materializers(
+            { todoNoop, todoCreated },
+            {
+              todoNoop: () => undefined,
+              todoCreatedAfterNoop: ({ id, text }) => todosTable.insert({ id, text }),
+            },
+          ),
+        }),
+      })
+      const store = yield* createStore({
+        schema: voidSchema,
+        adapter: makeInMemoryAdapter(),
+        storeId: 'test-void-materializer',
+      })
+      store.commit(todoNoop({ id: 'ghost' }))
+      store.commit(todoCreated({ id: 't1', text: 'after-void' }))
+      expect(store.query(todosTable)).toMatchObject([{ id: 't1', text: 'after-void' }])
+    }).pipe(Vitest.withTestCtx(test)),
+  )
+
   Vitest.live('should pass full event with clientId to materializer', (test) =>
     Effect.gen(function* () {
       const testClientId = 'test-client-123'
