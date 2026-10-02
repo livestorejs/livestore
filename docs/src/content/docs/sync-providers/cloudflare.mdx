@@ -342,6 +342,40 @@ npx wrangler dev
 # Located at: .wrangler/state/d1/miniflare-D1DatabaseObject/XXX.sqlite
 ```
 
+## Self-hosting with celld
+
+[celld](https://github.com/denoland/celld) runs Workers and Durable Objects on your own machines. The sync backend runs on it without code changes: the same `makeDurableObject` and `makeWorker` serve all three transports. LiveStore has been tested with celld v0.6.1. Earlier versions up to v0.4.1 stall WebSocket sync ([denoland/celld#189](https://github.com/denoland/celld/issues/189)). celld is alpha software, so test your own workload before you rely on it.
+
+celld reads only JSON configs. Convert the Wrangler configuration above to `wrangler.json`:
+
+```json
+{
+  "name": "livestore-sync",
+  "main": "./src/worker.ts",
+  "compatibility_date": "2025-05-07",
+  "compatibility_flags": ["enable_request_signal"],
+  "durable_objects": {
+    "bindings": [{ "name": "SYNC_BACKEND_DO", "class_name": "SyncBackendDO" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SyncBackendDO"] }]
+}
+```
+
+Run the backend locally. `celld dev` bundles the worker with esbuild, so `esbuild` must be on your `PATH`:
+
+```bash
+# Serves the worker on http://127.0.0.1:9876 and keeps state in .celld/dev
+celld dev .
+```
+
+Point the client at the celld origin, for example `makeWsSync({ url: 'ws://127.0.0.1:9876' })`, or proxy a same-origin path to it from your dev server.
+
+For production, run a fleet: several `celld` nodes that share one S3-compatible bucket. Deploy with `celld deploy . --bucket <bucket>` and start each node with `celld --bucket <bucket>`. Each Durable Object, and therefore each store's event log, lives on one node at a time. If that node fails, another node takes the store over from the bucket. See the [celld documentation](https://celld.dev/docs) for supported buckets, durability guarantees, and security.
+
+Moving an existing store from Cloudflare to celld does not copy its data. The new backend gets a new `backendId`, and existing clients reject it with `BackendIdMismatchError`.
+
+A complete example, [`web-todomvc-sync-celld`](https://github.com/livestorejs/livestore-contrib/tree/main/examples/web-todomvc-sync-celld), lives in the livestore-contrib repository.
+
 ## Examples
 
 ### Basic WebSocket client
