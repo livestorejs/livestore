@@ -172,6 +172,18 @@ cachixStep({ name: 'livestore-contrib', ... })
 It does not reuse `livestoreSetupSteps` wholesale because that composite
 carries core-specific cache names and pnpm state keys.
 
+### CI Run Supersession
+
+PR CI runs share a concurrency group by workflow, event, and PR number. Starting
+a run cancels other active runs for the same PR; different PRs remain independent.
+Main pushes and manual runs use unique run IDs and do not cancel each other.
+Every PR revision retains the full job matrix and required checks. GitHub does
+not guarantee commit-order scheduling, so rerunning an older revision can
+supersede a current run. Release promotion separately checks the current PR head.
+Cancelled runs cannot promote release snapshots. Preview deployments that have
+already completed remain visible until a later successful deployment replaces
+the PR alias.
+
 ### Developer Environment Readiness And Diagnostics
 
 The [developer-environment child](./01-developer-environment/spec.md) owns shell
