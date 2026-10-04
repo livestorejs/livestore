@@ -28,15 +28,15 @@ A materializer is always executed in a transaction. This transaction applies to:
 
 Materializers can return:
 - A single database write operation.
-- An array of database write operations.
-- `void` (i.e., no return value) if no database modifications are needed.
-- An `Effect` that resolves to one of the above (e.g., `Effect.succeed(writeOp)` or `Effect.void`).
+- An array of database write operations (use `[]` or `void` if no database modifications are needed).
+
+Materializers are synchronous. Returning an `Effect` is not supported; the function must return one of the values above.
 
 The `context` object passed to each materializer provides `query` for database reads and `event` for the full event details.
 
 ## Error handling
 
-If a materializer function throws an error, or if an `Effect` returned by a materializer fails, the entire transaction for that event will be rolled back. This means any database changes attempted by that materializer for the failing event will not be persisted. The error will be logged, and the system will typically halt or flag the event as problematic, depending on the specific LiveStore setup.
+If a materializer function throws an error, the entire transaction for that event will be rolled back. This means any database changes attempted by that materializer for the failing event will not be persisted. The error will be logged, and the system will typically halt or flag the event as problematic, depending on the specific LiveStore setup.
 
 If the error happens on the client which tries to commit the event, the event will never be committed and pushed to the sync backend.
 
