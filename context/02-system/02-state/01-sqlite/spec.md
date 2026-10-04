@@ -24,15 +24,32 @@ const todos = State.SQLite.table({
 })
 ```
 
-`table-def.ts` / `column-def.ts` / `column-spec.ts` build a SQLite AST
-(`db-schema/`) from which DDL, row schemas, and the query-builder types are
-derived (LS.SYS.STATE.SQLITE-R01). Column annotations carry
-schema-level metadata. Without an explicit column-type annotation, inference
-uses the schema's encoded shape: Date codecs encoded as milliseconds map to
-`INTEGER`, including when refined with additional checks, while `Uint8Array`
-codecs map to `BLOB`, also when refined. The inferred column retains the
-original schema so those refinements continue to validate values decoded from
-SQLite.
+A table definition is an Effect `Schema.Struct` whose fields encode to SQLite
+values (`table-def.ts`). `State.SQLite.text()` & co. return field schemas that
+carry the SQLite facets (column type, primary key, auto increment, default) as
+annotations, with `nullable` as `Schema.NullOr` and `default` as an Effect
+constructor default; `table({ columns })` is `Schema.Struct(columns)` with a
+name, and `table({ schema })` contributes a `Schema.Struct`/`Schema.Class`'s
+fields directly (other schemas contribute their encoded side's properties).
+`column-def.ts` derives one SQLite column per field and `column-spec.ts` /
+`db-schema/` build the SQLite AST from those, from which DDL and migrations are
+derived (LS.SYS.STATE.SQLITE-R01). The row schema is the struct of the derived
+field codecs, the insert schema makes nullable and defaulted fields optional,
+and the query-builder types read the row schema's fields. Column defaults are
+tracked on the type level through the constructor-default marker, so defaulted
+columns are omittable in `insert()`.
+
+A field that already encodes to a SQLite value (`string`, `number`,
+`Uint8Array`, `null`) is its own column codec. Without an explicit column-type
+annotation, inference uses the schema's encoded shape: Date codecs encoded as
+milliseconds map to `INTEGER`, including when refined with additional checks,
+while `Uint8Array` codecs map to `BLOB`, also when refined. The inferred column
+retains the original schema so those refinements continue to validate values
+decoded from SQLite. Fields SQLite cannot store natively are rewrapped:
+booleans as `0 | 1`, a bare `Schema.Date` (which has no encoding) as ISO text,
+and everything else as JSON text. An optional field (`| undefined`) becomes a
+nullable column and is read back as `| null`. Primary key columns cannot be
+nullable.
 
 ## Query Builder
 
