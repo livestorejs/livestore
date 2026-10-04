@@ -172,6 +172,26 @@ cachixStep({ name: 'livestore-contrib', ... })
 It does not reuse `livestoreSetupSteps` wholesale because that composite
 carries core-specific cache names and pnpm state keys.
 
+### Manual Runner Sizing Trials
+
+`namespace-sizing-benchmark.yml` is dispatch-only preparation for one selected
+source-policy, lint, or type-check lane at a time. It derives existing CI steps,
+preserving setup, retry wrappers, caches, diagnostics, and check coverage. Both
+dedicated profiles use an exact compiled-in source commit and run-ID affinity;
+normal CI runner selection remains unchanged. Profile settings and the sponsored
+allowance must be verified before dispatch. Trials must not incur paid overage.
+
+The pair identifier and declared warm/cold cache state identify later evidence;
+the workflow does not warm or clear caches and does not fabricate runtime,
+memory, or billing measurements. Changeset-check is excluded because dispatch
+has no authenticated PR comparison context or `github.base_ref`; substituting
+`origin/main` would change the checked diff. An audited pinned base/head harness
+is required before sizing that lane.
+
+GitHub requires a workflow_dispatch definition on the default branch before it
+can be dispatched. Publish this additive harness as its own PR and require a
+human merge before registering or running it; cancellation is independent.
+
 ### Developer Environment Readiness And Diagnostics
 
 The [developer-environment child](./01-developer-environment/spec.md) owns shell
