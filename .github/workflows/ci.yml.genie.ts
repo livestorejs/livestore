@@ -132,6 +132,11 @@ export default githubWorkflow({
     pull_request: {},
   },
 
+  concurrency: {
+    group: '${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}',
+    'cancel-in-progress': "${{ github.event_name == 'pull_request' }}",
+  },
+
   env: {
     GITHUB_BRANCH_NAME: '${{ github.head_ref || github.ref_name }}',
     FORCE_SETUP: '1',
