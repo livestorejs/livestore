@@ -344,22 +344,20 @@ npx wrangler dev
 
 ## Self-hosting with celld
 
-The sync backend also runs on [celld](https://github.com/denoland/celld), a self-hosted runtime for Workers and Durable Objects, without code changes. celld reads only JSON configs, so convert the Wrangler configuration above to `wrangler.json`:
+Run the sync backend on your own infrastructure with [celld](https://github.com/denoland/celld). celld reads the Wrangler configuration above in its JSON form (`wrangler.json`):
 
-```json
-{
-  "name": "livestore-sync",
-  "main": "./src/worker.ts",
-  "compatibility_date": "2025-05-07",
-  "compatibility_flags": ["enable_request_signal"],
-  "durable_objects": {
-    "bindings": [{ "name": "SYNC_BACKEND_DO", "class_name": "SyncBackendDO" }]
-  },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SyncBackendDO"] }]
-}
+```bash
+# Start local development server (http://127.0.0.1:9876)
+celld dev .
+
+# Deploy the worker to a storage bucket (S3, GCS or Azure)
+celld deploy . --bucket <bucket>
+
+# Start a node that serves the deployment
+celld --bucket <bucket>
 ```
 
-Then start the backend with `celld dev .` and point the client at it, for example `makeWsSync({ url: 'ws://127.0.0.1:9876' })`. For production deployments, see the [celld documentation](https://celld.dev/docs). The [`web-todomvc-sync-celld`](https://github.com/livestorejs/livestore-contrib/tree/main/examples/web-todomvc-sync-celld) example shows a complete setup.
+See the [`web-todomvc-sync-celld`](https://github.com/livestorejs/livestore-contrib/tree/main/examples/web-todomvc-sync-celld) example for a complete setup.
 
 ## Examples
 
