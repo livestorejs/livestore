@@ -13,6 +13,8 @@ export {
   type QueryBuilderAst,
   type RowQuery,
   SessionIdSymbol,
+  type SqlBindValue,
+  SqlBindValueSchema,
   type SqliteDb,
   StoreInterrupted,
   type SyncState,
