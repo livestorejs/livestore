@@ -120,6 +120,21 @@ hibernation or eviction. This integration does not join Cloudflare-native trace
 IDs to external traces or change the sync protocol. See
 [decision 0005](.decisions/0005-optional-telemetry-ownership.md).
 
+## Self-Hosted Runtime (celld)
+
+The worker and Durable Object run unchanged on
+[celld](https://github.com/denoland/celld), a self-hosted runtime for Workers
+and Durable Objects. celld reads only JSON Wrangler configs. Validated on
+2026-10-02 against celld v0.6.1 on macOS (local runs, not CI): the
+sync-provider suite for all three transports with DO SQLite and D1 storage,
+including the DO hibernation suites, on `celld dev`; acknowledged pushes
+surviving a SIGKILL and restart; takeover by a second node on an S3-compatible
+bucket (MinIO) with no lost acknowledged push; and two-browser sync of
+`web-todomvc-sync-celld` (livestore-contrib). celld v0.4.1 and earlier stall
+WebSocket sync because they drop timers pending after a hibernatable WebSocket
+handler returns ([denoland/celld#189](https://github.com/denoland/celld/issues/189)).
+LiveStore guarantees no compatibility with later celld versions.
+
 ## Known Gaps (Non-Obligations)
 
 Current reality a consumer must not read as guaranteed behavior:

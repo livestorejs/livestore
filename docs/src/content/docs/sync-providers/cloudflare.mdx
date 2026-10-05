@@ -342,6 +342,23 @@ npx wrangler dev
 # Located at: .wrangler/state/d1/miniflare-D1DatabaseObject/XXX.sqlite
 ```
 
+## Self-hosting with celld
+
+Run the sync backend on your own infrastructure with [celld](https://github.com/denoland/celld). celld reads the Wrangler configuration above in its JSON form (`wrangler.json`):
+
+```bash
+# Start local development server (http://127.0.0.1:9876)
+celld dev .
+
+# Deploy the worker to a storage bucket (S3, GCS or Azure)
+celld deploy . --bucket <bucket>
+
+# Start a node that serves the deployment
+celld --bucket <bucket>
+```
+
+See the [`web-todomvc-sync-celld`](https://github.com/livestorejs/livestore-contrib/tree/main/examples/web-todomvc-sync-celld) example for a complete setup.
+
 ## Examples
 
 ### Basic WebSocket client
