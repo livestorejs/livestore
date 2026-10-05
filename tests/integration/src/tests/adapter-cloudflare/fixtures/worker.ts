@@ -396,7 +396,7 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
           clientId: 'integration-client',
           sessionId: crypto.randomUUID(),
           durableObject: { ctx: this.ctx, env: this.env, bindingName: 'TEST_STORE_DO' },
-          syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
+          getSyncBackendStub: () => this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
           resetPersistence,
         })
 

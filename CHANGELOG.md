@@ -47,6 +47,16 @@
   behavior before hibernation. Completed and protocol-defected pulls are also
   removed from persisted fan-out state
   ([#1418](https://github.com/livestorejs/livestore/issues/1418)).
+- **Cloudflare DO-RPC sync:** A temporary Durable Object RPC failure no longer
+  stops replication for good. A call that Cloudflare marks `retryable` (and not
+  `overloaded`) now surfaces as `IsOfflineError`, so the leader retries the pull
+  after a jittered exponential backoff (1 s doubling to 30 s) on a fresh stub.
+  Interrupted catch-up streams also recover when Cloudflare drops the error
+  flags or the stream stalls for 60 seconds, resuming after the last applied
+  event. Idle live subscriptions do not time out. Explicit overload and
+  non-retryable remote failures keep their previous terminal handling
+  ([#1462](https://github.com/livestorejs/livestore/issues/1462),
+  [#1649](https://github.com/livestorejs/livestore/pull/1649)).
 - Removed redundant devenv package entries now owned by the task guard modules.
 - **Sync correctness:** Prevented later client-session events from crossing an
   older rejected pending prefix, and made leader admission retain explicit
@@ -58,6 +68,14 @@
 
 ### Breaking Changes
 
+- **Cloudflare adapter:** `createStoreDo`, `createStoreDoPromise` and
+  `makeDoRpcSync` take `getSyncBackendStub: () => stub` instead of
+  `syncBackendStub`. LiveStore calls it for every sync call, because Cloudflare
+  leaves a stub broken after many exceptions. Replace
+  `syncBackendStub: env.SYNC_BACKEND_DO.getByName(storeId)` with
+  `getSyncBackendStub: () => env.SYNC_BACKEND_DO.getByName(storeId)`
+  ([#1462](https://github.com/livestorejs/livestore/issues/1462),
+  [#1649](https://github.com/livestorejs/livestore/pull/1649)).
 - **Store commit callbacks:** Callbacks now synchronously return an event array.
   Replace `store.commit((commit) => { commit(event) })` with
   `store.commit(() => [event])` or `store.commit(event)`

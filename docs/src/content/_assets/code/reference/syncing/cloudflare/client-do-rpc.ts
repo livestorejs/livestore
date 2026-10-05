@@ -2,10 +2,10 @@ import type { CfTypes, SyncBackendRpcInterface } from '@livestore/sync-cf/cf-wor
 import { makeDoRpcSync } from '@livestore/sync-cf/client'
 
 declare const state: CfTypes.DurableObjectState
-declare const syncBackendDurableObject: CfTypes.DurableObjectStub<SyncBackendRpcInterface>
+declare const syncBackendNamespace: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface>
 
 export const syncBackend = makeDoRpcSync({
-  syncBackendStub: syncBackendDurableObject,
+  getSyncBackendStub: () => syncBackendNamespace.getByName('my-store'),
   durableObjectState: state,
   durableObjectContext: {
     bindingName: 'CLIENT_DO',
