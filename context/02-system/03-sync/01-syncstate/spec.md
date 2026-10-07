@@ -21,7 +21,7 @@ define: who drives merges and applies their results
 
 ```ts
 SyncState = {
-  pending:      EncodedWithMeta[]  // local events not yet upstream-confirmed
+  pending:      Client.Encoded[]   // local events not yet upstream-confirmed
   upstreamHead: SeqNum.Composite   // what this node expects upstream's local head to be
   localHead:    SeqNum.Composite   // = pending.at(-1)?.seqNum when pending non-empty
 }
@@ -106,7 +106,7 @@ rebase (see [../02-processors/](../02-processors/spec.md)).
 
 ## Client-Only Event Handling
 
-`EncodedWithMeta` does not carry the event definition's `clientOnly` flag,
+`Client.Encoded` does not carry the event definition's `clientOnly` flag,
 so `merge` takes the schema-aware predicate `isClientOnlyEvent`
 (`syncstate.ts:196-202`). `ignoreClientOnlyEvents: true` (leader side)
 filters client-only events from accepted local pushes (`:411-414`) and
