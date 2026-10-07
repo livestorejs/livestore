@@ -12,7 +12,7 @@ Draft.
 ```
 eventlog ──▶ materializer(event, ctx) ──▶ mutations ──▶ state ──▶ queries
    ▲              │ ctx.query (read current state)         │
-   └── rebuild ◀──┴──── rollback (session changesets) ◀────┘
+   └── rebuild ◀──┴─ rollback (materialization journal) ◀──┘
 ```
 
 ## Materializer Contract
@@ -75,7 +75,7 @@ A realization supplies (LS.SYS.STATE-R05):
 | Mutation format | What a `MaterializerResult` is (e.g. SQL statement) |
 | Query surface | Typed read-only queries for app + live queries |
 | Rebuild | Recreate state from the full eventlog |
-| Rollback | Undo recent materializations for rebase (e.g. SQLite session changesets) |
+| Rollback | Undo recent materializations for rebase (e.g. SQLite's materialization journal) |
 | Schema drift handling | Detect definition changes, trigger rebuild |
 
 Realizations: [01-sqlite](./01-sqlite/spec.md) (primary, shipping).

@@ -16,8 +16,8 @@ easy:
 
 - **Schema changes** — reshape tables and replay; no data migration of
   truth, because truth was never in the tables (rebuild beats migrate).
-- **Rebase** — undo the last few materializations (recorded as SQLite
-  session changesets), re-apply on the new history, done.
+- **Rebase** — undo the last few materializations (recorded in the
+  materialization journal), re-apply on the new history, done.
 - **Trust** — any state corruption is recoverable; the log is the backup.
 
 ## A materializer is a deterministic step function
