@@ -9,9 +9,6 @@ exports[`otel > QueryBuilder subscription - async iterator 1`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -22,6 +19,9 @@ exports[`otel > QueryBuilder subscription - async iterator 1`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -125,6 +125,33 @@ exports[`otel > QueryBuilder subscription - async iterator 2`] = `
                 },
               },
               {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "0",
+  "1",
+  "2"
+]",
+                  "span.label": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                  "sql": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                },
+              },
+              {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "$seqNumGlobal",
+  "$seqNumClient",
+  "$seqNumRebaseGeneration",
+  "$changeset"
+]",
+                  "span.label": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                  "sql": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                },
+              },
+              {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
                   "bindValueKeys": [
@@ -165,9 +192,6 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -178,6 +202,9 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -281,6 +308,33 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 2
                 },
               },
               {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "0",
+  "1",
+  "2"
+]",
+                  "span.label": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                  "sql": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                },
+              },
+              {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "$seqNumGlobal",
+  "$seqNumClient",
+  "$seqNumRebaseGeneration",
+  "$changeset"
+]",
+                  "span.label": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                  "sql": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                },
+              },
+              {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
                   "bindValueKeys": [
@@ -321,9 +375,6 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -334,6 +385,9 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -437,6 +491,33 @@ exports[`otel > QueryBuilder subscription - basic functionality 2`] = `
                 },
               },
               {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "0",
+  "1",
+  "2"
+]",
+                  "span.label": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                  "sql": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                },
+              },
+              {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "$seqNumGlobal",
+  "$seqNumClient",
+  "$seqNumRebaseGeneration",
+  "$changeset"
+]",
+                  "span.label": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                  "sql": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                },
+              },
+              {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
                   "bindValueKeys": [
@@ -477,9 +558,6 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -490,6 +568,9 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -593,6 +674,33 @@ exports[`otel > QueryBuilder subscription - direct table subscription 2`] = `
                 },
               },
               {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "0",
+  "1",
+  "2"
+]",
+                  "span.label": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                  "sql": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                },
+              },
+              {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "$seqNumGlobal",
+  "$seqNumClient",
+  "$seqNumRebaseGeneration",
+  "$changeset"
+]",
+                  "span.label": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                  "sql": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                },
+              },
+              {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
                   "bindValueKeys": [
@@ -633,9 +741,6 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -646,6 +751,9 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -749,6 +857,33 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 2`] = `
                 },
               },
               {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "0",
+  "1",
+  "2"
+]",
+                  "span.label": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                  "sql": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                },
+              },
+              {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "$seqNumGlobal",
+  "$seqNumClient",
+  "$seqNumRebaseGeneration",
+  "$changeset"
+]",
+                  "span.label": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                  "sql": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                },
+              },
+              {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
                   "bindValueKeys": [
@@ -789,9 +924,6 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -802,6 +934,9 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -931,6 +1066,33 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
                 },
               },
               {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "0",
+  "1",
+  "2"
+]",
+                  "span.label": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                  "sql": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                },
+              },
+              {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "$seqNumGlobal",
+  "$seqNumClient",
+  "$seqNumRebaseGeneration",
+  "$changeset"
+]",
+                  "span.label": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                  "sql": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                },
+              },
+              {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
                   "bindValueKeys": [
@@ -984,6 +1146,33 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
                 },
               },
               {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "0",
+  "1",
+  "2"
+]",
+                  "span.label": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                  "sql": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                },
+              },
+              {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "$seqNumGlobal",
+  "$seqNumClient",
+  "$seqNumRebaseGeneration",
+  "$changeset"
+]",
+                  "span.label": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                  "sql": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                },
+              },
+              {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
                   "bindValueKeys": [
@@ -1024,9 +1213,6 @@ exports[`otel > otel 3`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -1037,6 +1223,9 @@ exports[`otel > otel 3`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -1127,6 +1316,33 @@ exports[`otel > otel 4`] = `
                 "_name": "livestore.in-memory-db:execute",
                 "attributes": {
                   "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+              {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "0",
+  "1",
+  "2"
+]",
+                  "span.label": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                  "sql": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                },
+              },
+              {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "$seqNumGlobal",
+  "$seqNumClient",
+  "$seqNumRebaseGeneration",
+  "$changeset"
+]",
+                  "span.label": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                  "sql": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
                 },
               },
               {
@@ -1342,9 +1558,6 @@ exports[`otel > with thunks 7`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -1355,6 +1568,9 @@ exports[`otel > with thunks 7`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -1454,6 +1670,33 @@ exports[`otel > with thunks 8`] = `
                 },
               },
               {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "0",
+  "1",
+  "2"
+]",
+                  "span.label": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                  "sql": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                },
+              },
+              {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "$seqNumGlobal",
+  "$seqNumClient",
+  "$seqNumRebaseGeneration",
+  "$changeset"
+]",
+                  "span.label": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                  "sql": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                },
+              },
+              {
                 "_name": "@livestore/common:execSql",
                 "attributes": {
                   "bindValueKeys": [
@@ -1494,9 +1737,6 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
   },
   "children": [
     {
-      "_name": "makeClientSessionSyncProcessor",
-    },
-    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -1507,6 +1747,9 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
       },
+    },
+    {
+      "_name": "makeClientSessionSyncProcessor",
     },
     {
       "_name": "client-session-sync-processor:boot",
@@ -1603,6 +1846,33 @@ exports[`otel > with thunks with query builder and without labels 4`] = `
                 "_name": "livestore.in-memory-db:execute",
                 "attributes": {
                   "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+              {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "0",
+  "1",
+  "2"
+]",
+                  "span.label": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                  "sql": "DELETE FROM __livestore_materialization_journal
+                            WHERE (seqNumGlobal, seqNumClient, seqNumRebaseGeneration) IN ((?, ?, ?))",
+                },
+              },
+              {
+                "_name": "@livestore/common:execSqlPrepared",
+                "attributes": {
+                  "bindValueKeys": "[
+  "$seqNumGlobal",
+  "$seqNumClient",
+  "$seqNumRebaseGeneration",
+  "$changeset"
+]",
+                  "span.label": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
+                  "sql": "INSERT INTO __livestore_materialization_journal (seqNumGlobal, seqNumClient, seqNumRebaseGeneration, changeset) VALUES ($seqNumGlobal, $seqNumClient, $seqNumRebaseGeneration, $changeset)",
                 },
               },
               {

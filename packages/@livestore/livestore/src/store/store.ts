@@ -214,7 +214,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     const reactivityGraph = makeReactivityGraph()
     const sqliteDbWrapper = new SqliteDbWrapper({ otel: otelOptions, db: clientSession.sqliteDb })
-    const stateDbLayer = StateSqliteDb.layer(clientSession.sqliteDb)
+    const stateDbLayer = StateSqliteDb.layer(sqliteDbWrapper.serviceDb)
     const reactiveStateDbLayer = ReactiveStateSqliteDb.layer(sqliteDbWrapper)
     const stateServicesLayer = Layer.mergeAll(MaterializationJournal.layer, StateHead.layer).pipe(
       Layer.provide(stateDbLayer),

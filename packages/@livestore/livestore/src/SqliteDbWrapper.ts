@@ -1,4 +1,4 @@
-import type * as otel from '@opentelemetry/api'
+import * as otel from '@opentelemetry/api'
 
 import {
   BoundArray,
@@ -40,6 +40,11 @@ export class SqliteDbWrapper implements SqliteDb {
   private otelRootSpanContext: otel.Context
   private tablesUsedStmt
   public debugInfo: MutableDebugInfo = emptyDebugInfo()
+  /**
+   * The same database for LiveStore's SQLite services (`StateSqliteDb`). They trace their own statements, so this view
+   * skips the wrapper's spans. Writes and rollbacks still go through the query cache so cached reads stay coherent.
+   */
+  readonly serviceDb: SqliteDb
 
   constructor({
     db,
@@ -60,6 +65,29 @@ export class SqliteDbWrapper implements SqliteDb {
     )
 
     this.cachedStmts.onEvict = (_queryStr, stmt) => stmt.finalize()
+
+    this.serviceDb = {
+      _tag: 'SqliteDb',
+      get metadata() {
+        return db.metadata
+      },
+      get debug() {
+        return db.debug
+      },
+      prepare: (queryStr) => this.prepare(queryStr),
+      execute: SqliteDbHelper.makeExecute((queryStr, bindValues) =>
+        this.cachedExecute(queryStr, bindValues, { traced: false }),
+      ),
+      select: SqliteDbHelper.makeSelect((queryStr, bindValues) =>
+        this.cachedSelect(queryStr, bindValues, { traced: false }),
+      ),
+      export: () => this.export(),
+      import: (data) => this.import(data),
+      close: () => this.close(),
+      destroy: () => this.destroy(),
+      session: () => this.session(),
+      makeChangeset: (data) => this.makeChangeset(data),
+    }
 
     configureSQLite(this)
   }
@@ -85,7 +113,19 @@ export class SqliteDbWrapper implements SqliteDb {
     return this.db.session()
   }
   makeChangeset(data: Uint8Array<ArrayBuffer>): SqliteDbChangeset {
-    return this.db.makeChangeset(data)
+    const wrap = (changeset: SqliteDbChangeset): SqliteDbChangeset => ({
+      invert: () => wrap(changeset.invert()),
+      apply: () => {
+        try {
+          changeset.apply()
+        } finally {
+          // Journal rollback bypasses cachedExecute. SQLite doesn't report the touched tables here, so cached
+          // results must all be discarded, including when applying a changeset fails partway through.
+          this.resultCache = new QueryCache()
+        }
+      },
+    })
+    return wrap(this.db.makeChangeset(data))
   }
 
   txn<TRes>(callback: () => TRes): TRes {
@@ -159,13 +199,15 @@ export class SqliteDbWrapper implements SqliteDb {
     options?: {
       hasNoEffects?: boolean
       otelContext?: otel.Context
+      traced?: boolean
       writeTables?: ReadonlySet<string>
       onRowsChanged?: (rowsChanged: number) => void
     },
   ): { durationMs: number } {
     // console.debug('in-memory-db:execute', query, bindValues)
 
-    return this.otelTracer.startActiveSpan(
+    return this.withSpan(
+      options?.traced !== false,
       'livestore.in-memory-db:execute',
       // TODO truncate query string
       { attributes: { 'sql.query': queryStr } },
@@ -182,7 +224,10 @@ export class SqliteDbWrapper implements SqliteDb {
 
           stmt.execute(bindValues)
 
-          if (options?.hasNoEffects !== true && this.resultCache.ignoreQuery(queryStr) === false) {
+          if (/^\s*rollback\b/i.test(queryStr) === true) {
+            // A savepoint rollback can undo writes whose intermediate results were read by a materializer.
+            this.resultCache = new QueryCache()
+          } else if (options?.hasNoEffects !== true && this.resultCache.ignoreQuery(queryStr) === false) {
             // TODO use write tables instead
             // check what queries actually end up here.
             this.resultCache.invalidate(options?.writeTables ?? this.getTablesUsed(queryStr))
@@ -231,13 +276,15 @@ export class SqliteDbWrapper implements SqliteDb {
       queriedTables?: ReadonlySet<string>
       skipCache?: boolean
       otelContext?: otel.Context
+      traced?: boolean
     },
   ): ReadonlyArray<T> {
     const { queriedTables, skipCache = false, otelContext } = options ?? {}
 
     // console.debug('in-memory-db:select', query, bindValues)
 
-    return this.otelTracer.startActiveSpan(
+    return this.withSpan(
+      options?.traced !== false,
       'sql-in-memory-select',
       {},
       otelContext ?? this.otelRootSpanContext,
@@ -295,6 +342,19 @@ export class SqliteDbWrapper implements SqliteDb {
         }
       },
     )
+  }
+
+  /** Runs `fn` in a span, or with a non-recording span when the caller traces the statement itself. */
+  private withSpan<T>(
+    traced: boolean,
+    name: string,
+    options: otel.SpanOptions,
+    context: otel.Context,
+    fn: (span: otel.Span) => T,
+  ): T {
+    return traced === true
+      ? this.otelTracer.startActiveSpan(name, options, context, fn)
+      : fn(otel.trace.wrapSpanContext(otel.INVALID_SPAN_CONTEXT))
   }
 
   export() {
