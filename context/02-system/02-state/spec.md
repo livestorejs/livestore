@@ -46,9 +46,9 @@ type Materializer<TEventDef> = (
 ### Execution boundaries
 
 Leader-side batch materialization writes the state DB and the eventlog DB in
-two *coordinated* transactions — begun and committed in lockstep inside one
-uninterruptible Effect with a joint rollback finalizer
-(`LeaderSyncProcessor.ts:849-886`). This protects against errors and fiber
+two *coordinated* transactions — begun in lockstep and committed state-first
+inside one uninterruptible Effect with a joint rollback on failure
+(`LeaderPersistence.ts:184-224`). This protects against errors and fiber
 interruption, but is **not** atomic across the two databases under process
 crash; divergence heals via rebuild on next boot (state is derived). Batch
 mechanics live in `../03-sync/02-processors/`.
