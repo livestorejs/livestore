@@ -97,7 +97,8 @@ type ArtifactManifestV2 = {
 export type ArtifactManifest = ArtifactManifestV1 | ArtifactManifestV2
 
 const usage = `Usage:
-  bun scripts/src/commands/devtools-artifact.ts verify (--manifest <file> | --metadata <url-or-file> --tarball <url-or-file>)
+  bun scripts/src/commands/devtools-artifact.ts verify (--manifest <file> | --metadata <url-or-file> --tarball <url-or-file>) [--require-official-release]
+  bun scripts/src/commands/devtools-artifact.ts verify-transition --previous-manifest <file> --manifest <file>
   bun scripts/src/commands/devtools-artifact.ts certify --manifest <file> --version <version> --out <file> [--evidence <text>]
   bun scripts/src/commands/devtools-artifact.ts repack --manifest <file> --version <version> [--certification <file>|--allow-uncertified] [--dry-run|--publish]
 
@@ -112,6 +113,7 @@ Options:
   --out <file>              Certification output path for the certify command
   --dry-run                 Run npm publish dry-run for the repacked package
   --publish                 Publish the repacked package to npm
+  --require-official-release Require canonical assets from the official artifact release repository
 `
 
 const parseArgs = (argv: ReadonlyArray<string>) => {
@@ -144,6 +146,130 @@ const readFlag = (flags: Map<string, string | true>, name: string): string | und
 }
 
 const hasFlag = (flags: Map<string, string | true>, name: string): boolean => flags.get(name) === true
+
+const officialArtifactRepository = 'livestorejs/livestore-devtools-artifacts'
+const canonicalArtifactFiles = {
+  metadata: 'release-metadata.json',
+  tarball: 'livestore-devtools-vite.tgz',
+  chromeZip: 'livestore-devtools-chrome.zip',
+} as const
+const sha256Pattern = /^[a-f0-9]{64}$/
+const buildIdPattern = /^dt-[0-9]{8}-[a-f0-9]{8}$/
+
+const parseOfficialReleaseAssetUrl = (source: string) => {
+  let url: URL
+  try {
+    url = new URL(source)
+  } catch {
+    throw new Error(`Official artifact source must be an HTTPS URL: ${source}`)
+  }
+
+  if (
+    url.protocol !== 'https:' ||
+    url.hostname !== 'github.com' ||
+    url.port !== '' ||
+    url.username !== '' ||
+    url.password !== '' ||
+    url.search !== '' ||
+    url.hash !== ''
+  ) {
+    throw new Error(`Artifact source must use the canonical GitHub release URL: ${source}`)
+  }
+
+  const parts = url.pathname.split('/').filter((part) => part.length > 0)
+  const [owner, repo, releases, download, tag, file, ...extra] = parts
+  if (
+    `${owner}/${repo}` !== officialArtifactRepository ||
+    releases !== 'releases' ||
+    download !== 'download' ||
+    tag === undefined ||
+    file === undefined ||
+    extra.length > 0
+  ) {
+    throw new Error(`Artifact source must come from ${officialArtifactRepository} release assets: ${source}`)
+  }
+
+  return { tag, file }
+}
+
+export const assertOfficialArtifactRelease = ({
+  manifest,
+  metadata,
+}: {
+  readonly manifest: ArtifactManifest
+  readonly metadata: ArtifactMetadata
+}) => {
+  if (buildIdPattern.test(metadata.devtoolsBuildId) === false) {
+    throw new Error(`Invalid DevTools artifact build id: ${metadata.devtoolsBuildId}`)
+  }
+  if (metadata.sourceRevision === undefined || /^[a-f0-9]{40}$/.test(metadata.sourceRevision) === false) {
+    throw new Error('Official DevTools artifact metadata requires a full source revision')
+  }
+  if (metadata.builtAt === undefined || Number.isFinite(Date.parse(metadata.builtAt)) === false) {
+    throw new Error('Official DevTools artifact metadata requires a valid builtAt timestamp')
+  }
+
+  const expectedTag = `devtools-artifact-${metadata.devtoolsBuildId}`
+  const sources = [
+    [manifest.artifact.metadataUrl, canonicalArtifactFiles.metadata],
+    [manifest.artifact.tarballUrl, canonicalArtifactFiles.tarball],
+    ...(manifest.artifact.chromeZipUrl === undefined
+      ? []
+      : ([[manifest.artifact.chromeZipUrl, canonicalArtifactFiles.chromeZip]] as const)),
+  ] as const
+
+  for (const [source, expectedFile] of sources) {
+    const { tag, file } = parseOfficialReleaseAssetUrl(source)
+    if (tag !== expectedTag) throw new Error(`Artifact source tag ${tag} does not match ${expectedTag}`)
+    if (file !== expectedFile) throw new Error(`Artifact source file ${file} does not match ${expectedFile}`)
+  }
+
+  if (metadata.files.tarball.name !== canonicalArtifactFiles.tarball) {
+    throw new Error(`Unexpected metadata tarball filename: ${metadata.files.tarball.name}`)
+  }
+  if (manifest.artifact.sha256 === undefined || sha256Pattern.test(manifest.artifact.sha256) === false) {
+    throw new Error('Official artifact manifest requires a lowercase SHA-256 tarball digest')
+  }
+  if (manifest.artifact.sha256 !== metadata.files.tarball.sha256) {
+    throw new Error('Manifest tarball SHA-256 does not match release metadata')
+  }
+
+  const metadataChrome = metadata.files.chromeZip
+  const manifestChromeUrl = manifest.artifact.chromeZipUrl
+  const manifestChromeSha = manifest.artifact.chromeZipSha256
+  if (metadataChrome === undefined || manifestChromeUrl === undefined || manifestChromeSha === undefined) {
+    throw new Error('Official artifact release requires matching Chrome ZIP metadata, URL, and digest')
+  }
+  if (metadataChrome.name !== canonicalArtifactFiles.chromeZip) {
+    throw new Error(`Unexpected metadata Chrome ZIP filename: ${metadataChrome.name}`)
+  }
+  if (sha256Pattern.test(manifestChromeSha) === false) {
+    throw new Error('Official artifact manifest requires a lowercase SHA-256 Chrome ZIP digest')
+  }
+  if (manifestChromeSha !== metadataChrome.sha256) {
+    throw new Error('Manifest Chrome ZIP SHA-256 does not match release metadata')
+  }
+}
+
+export const assertMonotonicArtifactTransition = ({
+  previous,
+  next,
+}: {
+  readonly previous: ArtifactMetadata
+  readonly next: ArtifactMetadata
+}) => {
+  const previousBuiltAt = previous.builtAt === undefined ? Number.NaN : Date.parse(previous.builtAt)
+  const nextBuiltAt = next.builtAt === undefined ? Number.NaN : Date.parse(next.builtAt)
+  if (Number.isFinite(previousBuiltAt) === false || Number.isFinite(nextBuiltAt) === false) {
+    throw new Error('Artifact transition requires valid builtAt timestamps')
+  }
+  if (nextBuiltAt <= previousBuiltAt) {
+    throw new Error(`Artifact transition must move forward from ${previous.builtAt} to a newer build`)
+  }
+  if (next.devtoolsBuildId === previous.devtoolsBuildId) {
+    throw new Error(`Artifact transition must select a new build, not ${next.devtoolsBuildId}`)
+  }
+}
 
 const run = (command: ReadonlyArray<string>, options: { readonly cwd?: string } = {}) => {
   const result = spawnSync(command[0]!, command.slice(1), {
@@ -542,6 +668,10 @@ const assertNoForbiddenZipText = async (chromeZipPath: string) => {
 const verifyArtifact = async (flags: Map<string, string | true>) => {
   const { metadata, tarballPath, chromeZipPath, workDir, manifest } = await prepareInputs(flags)
   assertMetadata(metadata, tarballPath, chromeZipPath)
+  if (hasFlag(flags, 'require-official-release') === true) {
+    if (manifest === undefined) throw new Error('--require-official-release requires --manifest')
+    assertOfficialArtifactRelease({ manifest, metadata })
+  }
   assertTarballEntries(tarballPath)
   await assertNoForbiddenText(tarballPath)
   if (chromeZipPath !== undefined) {
@@ -549,6 +679,30 @@ const verifyArtifact = async (flags: Map<string, string | true>) => {
     await assertNoForbiddenZipText(chromeZipPath)
   }
   return { metadata, tarballPath, chromeZipPath, workDir, manifest }
+}
+
+const verifyArtifactTransition = async (flags: Map<string, string | true>) => {
+  const previousManifestSource = readFlag(flags, 'previous-manifest')
+  if (previousManifestSource === undefined) throw new Error('--previous-manifest is required')
+
+  const next = await verifyArtifact(new Map([...flags, ['require-official-release', true]]))
+  const previousManifest = JSON.parse(readFileSync(path.resolve(previousManifestSource), 'utf8')) as ArtifactManifest
+  if (previousManifest.schemaVersion !== 1 && previousManifest.schemaVersion !== 2) {
+    throw new Error('Unsupported previous artifact manifest schemaVersion')
+  }
+
+  const previousWorkDir = mkdtempSync(path.join(tmpdir(), 'livestore-devtools-previous-'))
+  try {
+    const previousMetadataPath = path.join(previousWorkDir, canonicalArtifactFiles.metadata)
+    await fetchToFile(previousManifest.artifact.metadataUrl, previousMetadataPath)
+    const previousMetadata = JSON.parse(readFileSync(previousMetadataPath, 'utf8')) as ArtifactMetadata
+    assertOfficialArtifactRelease({ manifest: previousManifest, metadata: previousMetadata })
+    assertMonotonicArtifactTransition({ previous: previousMetadata, next: next.metadata })
+  } finally {
+    rmSync(previousWorkDir, { recursive: true, force: true })
+  }
+
+  return next
 }
 
 const readCertification = (flags: Map<string, string | true>) => {
@@ -768,6 +922,17 @@ const main = async () => {
   if (command === 'verify') {
     const result = await verifyArtifact(flags)
     console.log(JSON.stringify({ devtoolsBuildId: result.metadata.devtoolsBuildId, workDir: result.workDir }, null, 2))
+    return
+  }
+  if (command === 'verify-transition') {
+    const result = await verifyArtifactTransition(flags)
+    console.log(
+      JSON.stringify(
+        { devtoolsBuildId: result.metadata.devtoolsBuildId, workDir: result.workDir, transition: 'valid' },
+        null,
+        2,
+      ),
+    )
     return
   }
   if (command === 'certify') {
