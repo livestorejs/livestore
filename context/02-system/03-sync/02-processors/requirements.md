@@ -11,6 +11,7 @@ precedence, and cursor semantics live here; _where_ the processors run is
 Builds on [../requirements.md](../requirements.md) and
 [../01-syncstate/requirements.md](../01-syncstate/requirements.md). Code:
 `packages/@livestore/common/src/leader-thread/LeaderSyncProcessor.ts`,
+`packages/@livestore/common/src/leader-thread/LeaderPersistence.ts`,
 `packages/@livestore/common/src/sync/ClientSessionSyncProcessor.ts`.
 
 ## Requirements
@@ -18,9 +19,12 @@ Builds on [../requirements.md](../requirements.md) and
 - **LS.SYS.SYNC.PROC-R01 Bounded transient-only retry:** Backend pushes are
   batch-bounded and retried with capped exponential backoff only on
   transient errors (offline/unknown); `ServerAheadError` is never retried in
-  place — the push fiber parks and yields to the pull-driven rebase restart
-  (spec: [Leader Sync Processor](./spec.md#leader-sync-processor)). Adopted
-  2026-07-16 (interview). `refines: LS.SYS.SYNC-R03`
+  place — the backend push enters the `awaiting-pull` state and yields to the
+  pull-driven rebuild of the push plan (spec: [Leader Sync
+  Processor](./spec.md#leader-sync-processor)). Adopted 2026-07-16
+  (interview); `awaiting-pull` wording 2026-10-07
+  ([decision 0003](./.decisions/0003-serialized-sync-processors.md)).
+  `refines: LS.SYS.SYNC-R03`
 - **LS.SYS.SYNC.PROC-R02 Pull precedence:** Backend-pull application and
   local-push application are mutually exclusive, and the pull side takes
   precedence when both contend (spec: [Leader Sync
@@ -51,7 +55,9 @@ Builds on [../requirements.md](../requirements.md) and
   upstream accepts or rejects a pushed batch as a unit and does not acknowledge
   success before admission is complete. Adopted 2026-07-31 from SF-03 reduction
   evidence and maintainer review; see
-  [decision 0001](./.decisions/0001-prefix-fence-unresolved-upstream.md).
+  [decision 0001](./.decisions/0001-prefix-fence-unresolved-upstream.md),
+  whose fence is carried forward by
+  [decision 0003](./.decisions/0003-serialized-sync-processors.md).
   `refines: LS.SYS.SYNC.SS-R03, LS.SYS.STORE-R04`
 
 Further processor requirements (e.g. the crash-atomicity contract of batch

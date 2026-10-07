@@ -35,10 +35,12 @@ type Materializer<TEventDef> = (
 - `context.currentFacts` is a constant empty `Map` today — facts are not
   wired into materialization (see the experimental marker in
   `../01-event-model/spec.md`).
-- In dev, materializer results are hashed; the leader compares an incoming
-  event's session hash against its own (`materialize-event.ts:78-84`) —
-  only when a session hash is present — raising
-  `MaterializerHashMismatchError` on divergence.
+- In dev, materializer results are hashed (`materialize-event.ts:89`). The
+  client session records its hash for each pending event and compares it
+  with the leader's hash when the leader confirms that event; it also
+  compares the leader's hash for events it materializes from a pull. Either
+  divergence raises `MaterializerHashMismatchError` (see
+  `../03-sync/02-processors/spec.md`).
 - Coverage is total at the type level: the `materializers()` builder
   requires a handler per non-derived event and excludes derived events
   (LS.SYS.STATE-R04).
@@ -58,7 +60,7 @@ mechanics live in `../03-sync/02-processors/`.
 The classification is contract (LS.SYS.STATE-R07):
 
 | Failure | Kind |
-| --- | --- |
+| ---------------------------------------------------------------------------- | ---------------------------- |
 | `MaterializeError` (materializer threw / bad SQL) | recoverable tagged error |
 | `MaterializerHashMismatchError` (dev determinism check) | recoverable tagged error |
 | Unknown event definition on **write** (`eventlog.ts:228`) | defect (`shouldNeverHappen`) |
