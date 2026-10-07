@@ -27,9 +27,9 @@ sessions ──push──▶ localPushesQueue ─(batch ≤10)─▶ merge+mater
 backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
 ```
 
-- **Local pushes** (`:235-239, 263-296`): `localPushesQueue` holds
+- **Local pushes** (`:249-252, 266-298`): `localPushesQueue` holds
   `[event, deferred]` items; a background fiber drains
-  `takeBetween(1, localPushBatchSize)` per cycle (default 10, `:214`).
+  `takeBetween(1, localPushBatchSize)` per cycle (default 10, `:235`).
   `validatePushBatch` requires strictly ascending batches
   (`NonMonotonicBatchError`) whose first event is ahead of
   `pushHeadRef.current` (`LeaderAheadError`) and whose complete sequence/parent
@@ -43,7 +43,7 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   so in-flight or old-generation suffixes cannot leave a ghost fence or expose
   an unfenced gap (see
   [.decisions/0002-explicit-leader-push-reservations.md](./.decisions/0002-explicit-leader-push-reservations.md)).
-- **Generations** (`:271-296, 321-366`): each queued item carries its
+- **Generations** (`:273-298, 314-418`): each queued item carries its
   seqNum's `rebaseGeneration`. After acquiring the mutex, items with a
   stale generation are dropped and their deferreds failed with
   `StaleRebaseGenerationError`. A merge `reject` fails the batch's
@@ -53,42 +53,50 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   leader-side contiguous-chain validation rejects a later suffix that bypasses
   the fence (see resolved
   [DELTA-001](./.delta/DELTA-001-session-rejection-prefix-bypass.md)).
-- **Backend pushing** (`:575-637`): drains
-  `takeBetween(1, backendPushBatchSize)` (default 50, `:215`), pushes
+- **Backend pushing** (`:622-683`): drains
+  `takeBetween(1, backendPushBatchSize)` (default 50, `:236`), pushes
   `toGlobal()` batches. Retry: `Schedule.exponential(1s)` clamped to 30s,
   no jitter, no attempt cap, and only for transient errors
-  (`IsOfflineError`/`UnknownError`, `:627-631`). `ServerAheadError` is NOT
-  retried in place: the push fiber parks on `Effect.never` (`:617-621`)
-  and the pull side interrupts it — `restartBackendPushing` (`:729-741`)
+  (`IsOfflineError`/`UnknownError`, `:674-680`). `ServerAheadError` is NOT
+  retried in place: the push fiber parks on `Effect.never` (`:663-666`)
+  and the pull side interrupts it — `restartBackendPushing` (`:776-787`)
   clears the fiber, re-seeds the queue from rebased pending, restarts.
-- **Backend pulling** (`:397-573`): cursor =
+- **Backend pulling** (`:466-620`): cursor =
   `Eventlog.getSyncBackendCursorInfo(remoteHead)` — the persisted backend
   head (`SYNC_STATUS_TABLE.head`) plus provider-opaque `syncMetadataJson`
   (`eventlog.ts:280-300`). Each chunk merges with
-  `ignoreClientOnlyEvents: true`; advance restarts backend pushing with
-  current pending, offers the payload to session pull queues, and persists
-  sync metadata for confirmed events; rebase additionally rolls back
-  state+eventlog rows and re-seeds pushing from rebased pending
-  (`:466-516`). Backend head advances via `Eventlog.updateBackendHead`
-  (`:462-464`).
-- **Pull precedence** (`:241, 393, 408-438`): a 1-permit semaphore
+  `ignoreClientOnlyEvents: true` and is persisted through
+  `LeaderPersistence.persistUpstream` (`:531-543`): an advance stores sync
+  metadata for confirmed events; a rebase additionally rolls back
+  state+eventlog rows; both prune the journal and advance the backend head in
+  the same commit. Only after that receipt does the processor restart backend
+  pushing with current (or rebased) pending and offer the receipt's events and
+  materializer hashes to session pull queues (`:545-577`).
+- **Pull precedence** (`:254, 477-481, 503-507`): a 1-permit semaphore
   (`localPushBackendPullMutex`) makes local-push application and pull-chunk
   application mutually exclusive; the pull side holds the permit for a
   whole chunk, so a rebase can never interleave a local-push apply.
-- **Materialization** (`:849-886`): `materializeEventsBatch` opens one
-  transaction on `dbState` and one on `dbEventlog` in lockstep, commits
-  them sequentially inside one uninterruptible effect with a joint
-  rollback finalizer. This protects against interruption and errors, but
-  is **not crash-atomic across the two databases**: a process death
-  between the two COMMITs can diverge state from eventlog (healed only by
-  state rebuild when the state DB is absent — see
-  `../../02-state/01-sqlite/`). Local push acknowledgements are completed only
-  after the batch is materialized, published in leader sync state, offered to
-  session pull queues, and queued for backend propagation.
-- **Boot** (`:684-755`): initial sync state rehydrates from the eventlog
+- **Durable writes** (`leader-thread/LeaderPersistence.ts`): the processor
+  writes no durable state itself. A local-push apply calls `persistLocal`
+  (`LeaderSyncProcessor.ts:435-436`) and a pull-chunk apply calls
+  `persistUpstream`; each performs rollback, materialization (including
+  eventlog inserts), journal maintenance, and state/backend heads inside one
+  transaction on `dbState` and one on `dbEventlog`, opened in lockstep and
+  committed state-first
+  inside one uninterruptible effect with a joint rollback on failure
+  (`LeaderPersistence.ts:184-224`). This protects against interruption and
+  errors, but is **not crash-atomic across the two databases**: a process
+  death between the two COMMITs can diverge state from eventlog (healed only
+  by state rebuild when the state DB is absent — see
+  `../../02-state/01-sqlite/`). Each call returns a receipt with the persisted
+  events and materializer hashes; the processor publishes only from it. Local
+  push acknowledgements are completed only after the receipt's batch is
+  published in leader sync state, offered to session pull queues, and queued
+  for backend propagation.
+- **Boot** (`:726-804`): initial sync state rehydrates from the eventlog
   (`../../04-runtime/spec.md` Leadership Handover); error routing via
   `onError: ignore|shutdown` and `BackendIdMismatchError` handling
-  (`reset|shutdown|ignore`; reset clears local databases, `:1060-1123`).
+  (`reset|shutdown|ignore`; reset clears local databases, `:1077-1142`).
 
 ## Client Session Sync Processor
 
@@ -148,5 +156,5 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   Anti-thrash relies on interrupt/clear on rebase and queue-clear on
   rejection.
 - `cachedPayloads` in the leader's session pull path can grow without
-  bound (TODO, `LeaderSyncProcessor.ts:912-913`; issue #1423).
-- Metrics for retry/queue health are an acknowledged TODO (`:599`).
+  bound (TODO, `LeaderSyncProcessor.ts:889-890`; issue #1423).
+- Metrics for retry/queue health are an acknowledged TODO (`:645`).
