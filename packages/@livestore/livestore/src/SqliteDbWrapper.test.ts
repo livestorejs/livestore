@@ -8,6 +8,27 @@ import { StoreInternalsSymbol } from './store/store-types.ts'
 import { makeTodoMvc } from './utils/tests/fixture.ts'
 
 Vitest.describe('SqliteDbWrapper', () => {
+  Vitest.live('invalidates cached reads after changeset and savepoint rollback', () =>
+    Effect.gen(function* () {
+      const store = yield* makeTodoMvc({})
+      const db = store[StoreInternalsSymbol].sqliteDbWrapper
+      db.execute('CREATE TABLE rollback_cache_test (id INTEGER PRIMARY KEY, value INTEGER)')
+      db.execute('INSERT INTO rollback_cache_test VALUES (1, 1)')
+      const read = () => db.select<{ value: number }>('SELECT value FROM rollback_cache_test')[0]!.value
+      const { changeset } = db.withChangeset(() => db.execute('UPDATE rollback_cache_test SET value = 2'))
+      expect(read()).toBe(2)
+      expect(changeset).not.toBeNull()
+      db.makeChangeset(changeset!).invert().apply()
+      expect(read()).toBe(1)
+      db.execute('SAVEPOINT cache_test')
+      db.execute('UPDATE rollback_cache_test SET value = 3')
+      expect(read()).toBe(3)
+      db.execute('ROLLBACK TO SAVEPOINT cache_test')
+      db.execute('RELEASE SAVEPOINT cache_test')
+      expect(read()).toBe(1)
+    }),
+  )
+
   Vitest.live('works with the OpenTelemetry API no-op tracer', (_test) =>
     Effect.gen(function* () {
       const otelTracer = otel.trace.getTracer('sqlite-wrapper-noop-test')
