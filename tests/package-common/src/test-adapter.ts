@@ -2,15 +2,11 @@ import {
   type Adapter,
   type AdapterArgs,
   ClientSessionLeaderThreadProxy,
-  EventlogSqliteDb,
   type LockStatus,
   type MakeSqliteDb,
   makeClientSession,
-  MaterializationJournal,
   migrateDb,
   type SqliteDb,
-  StateSqliteDb,
-  StateHead,
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
@@ -42,6 +38,8 @@ import {
   type Scope,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
+
+import { makeSqliteServicesLayer } from './leader-thread/fixture.ts'
 
 export type TestingOverrides = {
   clientSession?: {
@@ -168,10 +166,6 @@ const makeLocalLeaderThread = ({
     }
 
     const [dbState, dbEventlog] = yield* Effect.all([makeDb('state'), makeDb('eventlog')], { concurrency: 2 })
-    const sqliteDbLayer = Layer.mergeAll(StateSqliteDb.layer(dbState), EventlogSqliteDb.layer(dbEventlog))
-    const stateServicesLayer = Layer.mergeAll(StateHead.layer, MaterializationJournal.layer).pipe(
-      Layer.provide(sqliteDbLayer),
-    )
 
     const layer = yield* Layer.build(
       makeLeaderThreadLayer({
@@ -185,7 +179,7 @@ const makeLocalLeaderThread = ({
         syncPayloadEncoded,
         syncPayloadSchema,
         params,
-      }).pipe(Layer.provide(Layer.mergeAll(sqliteDbLayer, stateServicesLayer))),
+      }).pipe(Layer.provide(makeSqliteServicesLayer({ dbState, dbEventlog }))),
     )
 
     return yield* Effect.gen(function* () {
@@ -197,7 +191,7 @@ const makeLocalLeaderThread = ({
         {
           events: {
             pull: ({ cursor }) => syncProcessor.pull({ cursor }),
-            push: (batch) => syncProcessor.push(batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item))),
+            push: syncProcessor.push,
             stream: (options) =>
               streamEventsWithSyncState({
                 dbEventlog,

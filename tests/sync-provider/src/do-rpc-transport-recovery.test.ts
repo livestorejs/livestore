@@ -114,10 +114,8 @@ Vitest.describe('DO-RPC transport recovery', { timeout: 30_000 }, () => {
 
         // Same parent as the remote event, so the backend rejects this push until the leader pulls and rebases.
         yield* leader.syncProcessor.push([
-          new LiveStoreEvent.Client.EncodedWithMeta(
-            LiveStoreEvent.Global.toClientEncoded(
-              localClient.todoCreated.next({ id: 'local', text: 'local', completed: false }),
-            ),
+          LiveStoreEvent.Global.toClientEncoded(
+            localClient.todoCreated.next({ id: 'local', text: 'local', completed: false }),
           ),
         ])
 

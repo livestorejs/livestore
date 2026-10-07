@@ -1,7 +1,7 @@
 import { isDevEnv, shouldNeverHappen } from '@livestore/utils'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 
-import { MaterializeError, MaterializerHashMismatchError } from '../adapter-types.ts'
+import { MaterializeError } from '../adapter-types.ts'
 import * as EventlogSqliteDb from '../EventlogSqliteDb.ts'
 import * as MaterializationJournal from '../MaterializationJournal.ts'
 import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.ts'
@@ -43,6 +43,7 @@ export const makeMaterializeEvent = ({
     return (eventEncoded, options) =>
       Effect.gen(function* () {
         const skipEventlog = options?.skipEventlog ?? false
+        const syncMetadata = options?.syncMetadata ?? Option.none()
 
         const resolution = yield* resolveEventDef(schema, {
           operation: '@livestore/common:leader-thread:materializeEvent',
@@ -60,6 +61,7 @@ export const makeMaterializeEvent = ({
               UNKNOWN_EVENT_SCHEMA_HASH,
               eventEncoded.clientId,
               eventEncoded.sessionId,
+              syncMetadata,
             )
           }
 
@@ -85,14 +87,6 @@ export const makeMaterializeEvent = ({
         })
 
         const materializerHash = isDevEnv() === true ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
-
-        if (
-          materializerHash._tag === 'Some' &&
-          eventEncoded.meta.materializerHashSession._tag === 'Some' &&
-          eventEncoded.meta.materializerHashSession.value !== materializerHash.value
-        ) {
-          return yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
-        }
 
         // NOTE we might want to bring this back if we want to debug no-op events
         // const makeExecuteOptions = (statementSql: string, bindValues: any) => ({
@@ -137,6 +131,7 @@ export const makeMaterializeEvent = ({
             eventDefSchemaHash,
             eventEncoded.clientId,
             eventEncoded.sessionId,
+            syncMetadata,
           )
         } else {
           //   console.debug('[@livestore/common:leader-thread] skipping eventlog write', mutation, statementSql, bindValues)

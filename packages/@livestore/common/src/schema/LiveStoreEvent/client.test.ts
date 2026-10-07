@@ -1,28 +1,24 @@
 import { expect } from 'vitest'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Option, Schema } from '@livestore/utils/effect'
+import { Schema } from '@livestore/utils/effect'
 
 import * as EventSequenceNumber from '../EventSequenceNumber/mod.ts'
-import { type Encoded, EncodedWithMeta, isEqualEncoded } from './client.ts'
+import { Encoded, isEqualEncoded, toGlobal } from './client.ts'
+import type { Encoded as EncodedType } from './client.ts'
 
-Vitest.describe('EncodedWithMeta', () => {
+Vitest.describe('Encoded', () => {
   Vitest.test('toGlobal() produces numeric seqNums through JSON.stringify', () => {
-    const event = new EncodedWithMeta({
+    const event = Encoded.make({
       name: 'test-v1',
       args: { id: '1' },
       seqNum: EventSequenceNumber.Client.Composite.make({ global: 5, client: 0 }),
       parentSeqNum: EventSequenceNumber.Client.Composite.make({ global: 4, client: 0 }),
       clientId: 'client-1',
       sessionId: 'session-1',
-      meta: {
-        syncMetadata: Option.none(),
-        materializerHashLeader: Option.none(),
-        materializerHashSession: Option.none(),
-      },
     })
 
-    const global = event.toGlobal()
+    const global = toGlobal(event)
     const parsed = JSON.parse(JSON.stringify(global))
 
     expect(parsed.seqNum).toBe(5)
@@ -31,7 +27,7 @@ Vitest.describe('EncodedWithMeta', () => {
 })
 
 Vitest.describe('isEqualEncoded', () => {
-  const makeEncodedEvent = (args: unknown): Encoded => ({
+  const makeEncodedEvent = (args: unknown): EncodedType => ({
     name: 'testEvent-v1',
     args,
     seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),

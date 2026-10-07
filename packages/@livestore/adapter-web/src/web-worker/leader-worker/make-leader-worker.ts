@@ -338,9 +338,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
             // Stream.tapLogWithLabel('@livestore/adapter-web:worker:PullStream'),
           ),
         PushToLeader: ({ batch }) =>
-          Effect.andThen(LeaderThreadCtx, ({ syncProcessor }) =>
-            syncProcessor.push(batch.map((event) => new LiveStoreEvent.Client.EncodedWithMeta(event))),
-          ).pipe(
+          Effect.andThen(LeaderThreadCtx, ({ syncProcessor }) => syncProcessor.push(batch)).pipe(
             provideLeaderThread,
             Effect.uninterruptible,
             Effect.withSpan('@livestore/adapter-web:worker:PushToLeader'),

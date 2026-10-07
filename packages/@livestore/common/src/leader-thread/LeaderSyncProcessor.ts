@@ -33,7 +33,6 @@ import type { UnknownEventError } from '../errors.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
 import * as EventlogSqliteDb from '../EventlogSqliteDb.ts'
 import * as MaterializationJournal from '../MaterializationJournal.ts'
-import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
@@ -108,7 +107,7 @@ export interface Service {
    */
   readonly push: (
     /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
-    batch: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+    batch: ReadonlyArray<LiveStoreEvent.Client.Encoded>,
   ) => Effect.Effect<void, RejectedPushError>
 
   /** Currently only used by devtools which don't provide their own event numbers */
@@ -201,7 +200,7 @@ interface Options {
       readonly localPushProcessing?: Effect.Effect<void>
     }
     readonly hooks?: {
-      readonly localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
+      readonly localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.Encoded>) => Effect.Effect<void>
     }
   }
 }
@@ -234,20 +233,20 @@ export const make = Effect.fnUntraced(function* ({
   const materializationJournal = yield* MaterializationJournal.MaterializationJournal
   const stateHead = yield* StateHead.StateHead
   const { devtoolsLatch, materializeEvent, shutdownChannel, span, syncBackend } = runtime
-  const syncBackendPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
+  const syncBackendPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.Encoded>()
   const localPushBatchSize = params.localPushBatchSize ?? 10
   const backendPushBatchSize = params.backendPushBatchSize ?? 50
 
   const syncStateSref = yield* SubscriptionRef.make<SyncState.SyncState | undefined>(undefined)
 
-  const isClientOnlyEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
+  const isClientOnlyEvent = (eventEncoded: LiveStoreEvent.Client.Encoded) =>
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
   const connectedClientSessionPullQueues = yield* makePullQueueSet
   const materializeEventsBatch = makeMaterializeEventsBatch({ dbState, dbEventlog, materializeEvent })
 
   type LocalPushQueueItem = [
-    event: LiveStoreEvent.Client.EncodedWithMeta,
+    event: LiveStoreEvent.Client.Encoded,
     deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>,
   ]
   const localPushesQueue = yield* TxQueue.unbounded<LocalPushQueueItem>()
@@ -436,7 +435,7 @@ export const make = Effect.fnUntraced(function* ({
           return yield* Effect.dieDebugger('Local push events must be retained in pending state')
         }
 
-        yield* materializeEventsBatch({ batchItems: acceptedPendingEvents })
+        const materializerHashes = yield* materializeEventsBatch({ batchItems: acceptedPendingEvents })
 
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
@@ -444,6 +443,7 @@ export const make = Effect.fnUntraced(function* ({
           payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: acceptedPendingEvents }),
           globalHead: mergeResult.newSyncState.upstreamHead,
           leaderHead: mergeResult.newSyncState.localHead,
+          materializerHashes,
         })
 
         yield* Effect.spanEvent(`push:advance`, {
@@ -469,7 +469,7 @@ export const make = Effect.fnUntraced(function* ({
     restartBackendPushing,
   }: {
     restartBackendPushing: (
-      filteredRebasedPending: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+      filteredRebasedPending: ReadonlyArray<LiveStoreEvent.Client.Encoded>,
     ) => Effect.Effect<void, never, HttpClient.HttpClient>
   }) {
     if (syncBackend === undefined) return
@@ -484,11 +484,10 @@ export const make = Effect.fnUntraced(function* ({
 
     const isPullPaginationComplete = (pageInfo: SyncBackend.PullResPageInfo) => pageInfo._tag === 'NoMore'
 
-    const onNewPullChunk = (
-      newEvents: LiveStoreEvent.Client.EncodedWithMeta[],
-      pageInfo: SyncBackend.PullResPageInfo,
-    ) =>
+    const onNewPullChunk = (pulledEvents: ReadonlyArray<PulledEvent>, pageInfo: SyncBackend.PullResPageInfo) =>
       Effect.gen(function* () {
+        const newEvents = pulledEvents.map(({ event }) => event)
+
         if (devtoolsLatch !== undefined) {
           yield* devtoolsLatch.await
         }
@@ -565,12 +564,6 @@ export const make = Effect.fnUntraced(function* ({
                 Effect.mapError((cause) => MaterializeError.make({ cause })),
               )
             }
-
-            yield* connectedClientSessionPullQueues.offer({
-              payload: SyncState.payloadFromMergeResult(mergeResult),
-              globalHead: mergeResult.newSyncState.upstreamHead,
-              leaderHead: mergeResult.newSyncState.localHead,
-            })
           } else {
             yield* Effect.spanEvent(`pull:advance`, {
               newEventsCount: newEvents.length,
@@ -581,21 +574,15 @@ export const make = Effect.fnUntraced(function* ({
             const globalOrUnknownPendingEvents = mergeResult.newSyncState.pending.filter((e) => !isClientOnlyEvent(e))
             yield* restartBackendPushing(globalOrUnknownPendingEvents)
 
-            yield* connectedClientSessionPullQueues.offer({
-              payload: SyncState.payloadFromMergeResult(mergeResult),
-              globalHead: mergeResult.newSyncState.upstreamHead,
-              leaderHead: mergeResult.newSyncState.localHead,
-            })
-
             if (mergeResult.confirmedEvents.length > 0) {
-              // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
-              // `newEvents` instead which we filter via `mergeResult.confirmedEvents`
-              const confirmedNewEvents = newEvents.filter((event) =>
+              // Confirmed local events are already materialized. Only store the sync metadata learned from the backend.
+              // Pulled events carry the default rebase generation, so match confirmed events by position only.
+              const confirmedPulledEvents = pulledEvents.filter(({ event }) =>
                 mergeResult.confirmedEvents.some((confirmedEvent) =>
-                  EventSequenceNumber.Client.isEqual(event.seqNum, confirmedEvent.seqNum),
+                  isSameSequencePosition(event.seqNum, confirmedEvent.seqNum),
                 ),
               )
-              yield* Eventlog.updateSyncMetadataForDb(dbEventlog, confirmedNewEvents).pipe(Effect.orDieDebugger)
+              yield* Eventlog.updateSyncMetadataForDb(dbEventlog, confirmedPulledEvents).pipe(Effect.orDieDebugger)
             }
           }
 
@@ -604,8 +591,16 @@ export const make = Effect.fnUntraced(function* ({
           yield* reconcilePushHead(mergeResult.newSyncState.localHead)
 
           // Apply the merged events to storage before publishing the new sync state below, so readers
-          // cannot observe a leader head whose events have not yet been materialized.
-          yield* materializeEventsBatch({ batchItems: mergeResult.newEvents })
+          // cannot observe a leader head whose events have not yet been materialized. Sessions receive the
+          // payload only afterwards because it carries the leader's materializer hashes for these events.
+          const materializerHashes = yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, pulledEvents })
+
+          yield* connectedClientSessionPullQueues.offer({
+            payload: SyncState.payloadFromMergeResult(mergeResult),
+            globalHead: mergeResult.newSyncState.upstreamHead,
+            leaderHead: mergeResult.newSyncState.localHead,
+            materializerHashes,
+          })
 
           // Discard leader materialization journal records which are no longer needed as we'll never have to rollback beyond this point.
           yield* materializationJournal.discardUpTo(newBackendHead)
@@ -628,8 +623,6 @@ export const make = Effect.fnUntraced(function* ({
       remoteHead: syncState.upstreamHead.global,
     })
 
-    const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
-
     yield* syncBackend.pull(cursorInfo, { live: livePull }).pipe(
       // TODO only take from queue while connected
       Stream.tap(({ batch, pageInfo }) =>
@@ -639,15 +632,10 @@ export const make = Effect.fnUntraced(function* ({
           // TODO remove when there's a better way to handle this in stream above
           yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
           yield* onNewPullChunk(
-            batch.map((_) =>
-              LiveStoreEvent.Client.EncodedWithMeta.fromGlobal(_.eventEncoded, {
-                syncMetadata: _.metadata,
-                // TODO we can't really know the materializer result here yet beyond the first event batch item as we need to materialize it one by one first
-                // This is a bug and needs to be fixed https://github.com/livestorejs/livestore/issues/503#issuecomment-3114533165
-                materializerHashLeader: hashMaterializerResult(LiveStoreEvent.Global.toClientEncoded(_.eventEncoded)),
-                materializerHashSession: Option.none(),
-              }),
-            ),
+            batch.map((item) => ({
+              event: LiveStoreEvent.Client.fromGlobal(item.eventEncoded),
+              syncMetadata: item.metadata,
+            })),
             pageInfo,
           )
           yield* initialBlockingSyncContext.update({ processed: batch.length, pageInfo })
@@ -689,7 +677,7 @@ export const make = Effect.fnUntraced(function* ({
       yield* Effect.gen(function* () {
         const iteration = yield* Schedule.CurrentMetadata
 
-        const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.result)
+        const pushResult = yield* syncBackend.push(queueItems.map(LiveStoreEvent.Client.toGlobal)).pipe(Effect.result)
 
         const retries = iteration.attempt
         if (retries > 0 && Result.isSuccess(pushResult) === true) {
@@ -869,7 +857,7 @@ export const make = Effect.fnUntraced(function* ({
           return
         }
 
-        const eventEncoded = new LiveStoreEvent.Client.EncodedWithMeta({
+        const eventEncoded = LiveStoreEvent.Client.Encoded.make({
           name,
           args,
           clientId,
@@ -925,7 +913,14 @@ const makeMaterializeEventsBatch =
     dbEventlog: SqliteDb
     materializeEvent: MaterializeEvent
   }) =>
-  ({ batchItems }: { batchItems: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> }) =>
+  ({
+    batchItems,
+    pulledEvents = [],
+  }: {
+    batchItems: ReadonlyArray<LiveStoreEvent.Client.Encoded>
+    /** Backend events of the current pull chunk, used to persist their sync metadata alongside the eventlog rows. */
+    pulledEvents?: ReadonlyArray<PulledEvent>
+  }) =>
     Effect.gen(function* () {
       // NOTE We always start a transaction to ensure consistency between db and eventlog (even for single-item batches)
       dbState.execute('BEGIN TRANSACTION', undefined) // Start the transaction
@@ -941,13 +936,20 @@ const makeMaterializeEventsBatch =
         }),
       )
 
-      for (let i = 0; i < batchItems.length; i++) {
-        const { hash } = yield* materializeEvent(batchItems[i]!)
-        batchItems[i]!.meta.materializerHashLeader = hash
+      const materializerHashes: LiveStoreEvent.Client.MaterializerHash[] = []
+      for (const event of batchItems) {
+        const syncMetadata =
+          pulledEvents.find((pulled) => EventSequenceNumber.Client.isEqual(pulled.event.seqNum, event.seqNum))
+            ?.syncMetadata ?? Option.none()
+        const { hash } = yield* materializeEvent(event, { syncMetadata })
+        // Sessions compare these hashes with their own to detect side-effecting materializers during development.
+        materializerHashes.push(LiveStoreEvent.Client.MaterializerHash.make({ eventNum: event.seqNum, hash }))
       }
 
       dbState.execute('COMMIT', undefined) // Commit the transaction
       dbEventlog.execute('COMMIT', undefined) // Commit the transaction
+
+      return materializerHashes
     }).pipe(
       Effect.uninterruptible,
       Effect.scoped,
@@ -965,7 +967,14 @@ interface PullQueueSet {
     payload: typeof SyncState.PayloadUpstream.Type
     globalHead: EventSequenceNumber.Client.Composite
     leaderHead: EventSequenceNumber.Client.Composite
+    materializerHashes: ReadonlyArray<LiveStoreEvent.Client.MaterializerHash>
   }) => Effect.Effect<void, never>
+}
+
+/** A backend event paired with the sync metadata that is stored beside it, not inside the event value. */
+interface PulledEvent {
+  readonly event: LiveStoreEvent.Client.Encoded
+  readonly syncMetadata: Option.Option<Schema.Json>
 }
 
 const makePullQueueSet = Effect.gen(function* () {
@@ -1001,6 +1010,9 @@ const makePullQueueSet = Effect.gen(function* () {
           if (item.payload._tag === 'upstream-advance') {
             return PullItem.make({
               globalHead: item.globalHead,
+              materializerHashes: item.materializerHashes.filter(({ eventNum }) =>
+                EventSequenceNumber.Client.isGreaterThan(eventNum, cursor),
+              ),
               payload: {
                 _tag: 'upstream-advance' as const,
                 newEvents: ReadonlyArray.dropWhile(item.payload.newEvents, (eventEncoded) =>
@@ -1051,7 +1063,11 @@ const makePullQueueSet = Effect.gen(function* () {
   const offer: PullQueueSet['offer'] = (item) =>
     Effect.gen(function* () {
       const seqNumStr = EventSequenceNumber.Client.toString(item.leaderHead)
-      const pullItem = PullItem.make({ payload: item.payload, globalHead: item.globalHead })
+      const pullItem = PullItem.make({
+        payload: item.payload,
+        globalHead: item.globalHead,
+        materializerHashes: item.materializerHashes,
+      })
       if (cachedPullItems.has(seqNumStr) === true) {
         cachedPullItems.get(seqNumStr)!.push(pullItem)
       } else {
@@ -1077,9 +1093,9 @@ const makePullQueueSet = Effect.gen(function* () {
  * event sits ahead of the current push head.
  */
 const validatePushBatch = (
-  batch: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+  batch: ReadonlyArray<LiveStoreEvent.Client.Encoded>,
   pushHead: EventSequenceNumber.Client.Composite,
-  isClientOnlyEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean,
+  isClientOnlyEvent: (event: LiveStoreEvent.Client.Encoded) => boolean,
 ) =>
   Effect.gen(function* () {
     if (batch.length === 0) {
