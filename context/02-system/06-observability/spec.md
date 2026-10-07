@@ -37,16 +37,17 @@ Draft.
 
 ## Span Inventory
 
-Current span names as emitted (2026-07-16). Four incompatible naming
+Current span names as emitted (2026-07-16; sync-processor spans re-checked
+2026-10-07). Four incompatible naming
 conventions coexist; bare names (`LiveStore`, `createStore`) can collide
 with app spans in a shared trace — a violation of LS.SYS.OBS-R05, tracked
 in [.delta/DELTA-001-span-naming-conventions.md](./.delta/DELTA-001-span-naming-conventions.md).
 
 | Convention | Examples | Emitting package |
-| --- | --- | --- |
-| Namespaced `@livestore/<pkg>:<area>:<op>` | `@livestore/common:leader-thread:boot`, `@livestore/common:LeaderSyncProcessor:push`, `@livestore/common:eventlog:getEventsFromEventlog`, `@livestore/common:execSql(Prepared)`, `@livestore/common:migrateTable`, `@livestore/livestore:shutdown`, `@livestore/effect:Store.Tag:<storeId>` | common, livestore |
-| Bare generic | `LiveStore`, `LiveStore:<storeId>`, `createStore`, `createStore:boot`, `createStore:makeAdapter`, `LiveStore:commits`, `LiveStore:queries` (long-lived parents), `LiveStore:commit` | livestore |
-| Colon-lowercase | `client-session-sync-processor:pull`, `localPushProcessingDelay` | common |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| Namespaced `@livestore/<pkg>:<area>:<op>` | `@livestore/common:leader-thread:boot`, `@livestore/common:LeaderSyncProcessor:{boot,push,backend-pulling,handleBackendIdMismatch}`, `@livestore/common:LeaderPersistence:{persistLocal,persistUpstream}`, `@livestore/common:eventlog:getEventsFromEventlog`, `@livestore/common:execSql(Prepared)`, `@livestore/common:migrateTable`, `@livestore/livestore:shutdown`, `@livestore/effect:Store.Tag:<storeId>` | common, livestore |
+| Bare generic                              | `LiveStore`, `LiveStore:<storeId>`, `createStore`, `createStore:boot`, `createStore:makeAdapter`, `LiveStore:commits`, `LiveStore:queries` (long-lived parents), `LiveStore:commit`, `makeClientSessionSyncProcessor`                                                                                                                                                                                            | livestore, common |
+| Colon-lowercase                           | `client-session-sync-processor:{boot,pull,commit,encode-events,materialize-events,shutdown}`, `client-session-sync-processor:materialize-event` (emitted from `livestore`'s Store), `localPushProcessingDelay` (test delay)                                                                                                                                                                                      | common, livestore |
 | CamelDot | `StoreRegistry.getOrLoad:<storeId>`, `StoreRegistry.lookup:<storeId>`, `LSD.devtools.onMessage` | livestore |
 
 Test-only spans (`MockSyncBackend:*`) are excluded from the contract.
@@ -56,12 +57,14 @@ Test-only spans (`MockSyncBackend:*`) are excluded from the contract.
 Attribute keys currently emitted (unnamespaced unless shown):
 
 | Key | Where | Note |
-| --- | --- | --- |
+| --------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `sql.query` | `SqliteDbWrapper` query spans | carries full query text — a PII/exposure surface when apps export traces; ungated today, violating LS.SYS.OBS-R06 ([DELTA-002](./.delta/DELTA-002-attribute-contract-gaps.md)) |
 | `sql.rowsCount`, `sql.cached` | `SqliteDbWrapper` | result size / cache hit |
 | `span.label` | leader connection | human label |
 | `livestore.manualRefreshLabel` | store manual refresh | only `livestore.`-namespaced key today |
-| `batchSize` | leader sync processing, stream-events, store commit | unnamespaced |
+| `batchSize`                       | leader sync push, `LeaderPersistence`, stream-events, session processor commit | unnamespaced                                                                                                                                                                   |
+| `rollbackCount`, `confirmedCount` | `LeaderPersistence:persistUpstream`                                            | unnamespaced                                                                                                                                                                   |
+| `mergeResultTag`, `eventCounts`   | session processor commit                                                       | unnamespaced                                                                                                                                                                   |
 
 ## Relationship to devtools
 

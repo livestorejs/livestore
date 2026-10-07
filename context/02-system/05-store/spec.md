@@ -64,30 +64,31 @@ are rejected. The callback does not receive an event emitter
 ([decision 0002](./.decisions/0002-commit-callback-return-array.md)).
 
 The pipeline is fully synchronous, run via `Effect.runSyncWith`
-(`store.ts:945`). **This synchronicity is an invariant** (Q1, see
+(`store.ts:927`). **This synchronicity is an invariant** (Q1, see
 [`.decisions/0001-client-session-shutdown-drain.md`](./.decisions/0001-client-session-shutdown-drain.md)):
-no step on the commit path — including the `ClientSessionSyncProcessor.push`
-enqueue (step 3) — may block or suspend on a lock/permit, because a suspension
-turns the commit effect async and makes `runSyncWith` throw `AsyncFiberError`
-out of `store.commit`. This is why `push` serializes against rebase by
-non-blocking reconciliation rather than a permit
-([`../03-sync/02-processors/spec.md`](../03-sync/02-processors/spec.md), #1465).
+no step on the commit path may block or suspend on a lock/permit, because a
+suspension turns the commit effect async and makes `runSyncWith` throw
+`AsyncFiberError` out of `store.commit`. This is why the session sync processor
+runs every state change in one synchronous owner and moves all waiting to its
+runner ([`../03-sync/02-processors/spec.md`](../03-sync/02-processors/spec.md)).
 The steps:
 
-1. Validate and encode events against their definitions; assign client
-   sequence numbers.
-2. Materialize into the session SQLite database — wrapped in a SQLite
-   transaction only when the batch has more than one event (`store.ts:899`);
-   single events rely on per-statement atomicity (LS.SYS.STORE-R04).
-3. Push the batch to the `ClientSessionSyncProcessor` (leader forwarding,
-   `../03-sync/`).
-4. Refresh the reactivity graph (`setRefs`; guarantees in
-   [01-reactivity/](./01-reactivity/spec.md)). The push precedes the local
-   refresh (`store.ts:891-921`).
+1. `store.commit` → `processor.commit` (`store.ts:886`): one call into the
+   `ClientSessionSyncProcessor`'s synchronous owner, which checks admission,
+   validates and encodes events against their definitions, assigns client
+   sequence numbers, and merges them into the session's sync state as pending.
+2. Inside that call, materialize the batch into the session SQLite database in
+   one savepoint (LS.SYS.STORE-R04), then install the new sync state and
+   schedule leader propagation; the processor delivers its outbox before
+   returning the written tables (`ClientSessionSyncProcessor.ts:212-251`).
+3. Refresh the reactivity graph (`setRefs`; guarantees in
+   [01-reactivity/](./01-reactivity/spec.md)) for the returned tables
+   (`store.ts:888-907`). Code resumed by the processor's outbox may run, or
+   commit again, before this refresh.
 
 **A failed local commit is fatal to the store**: the commit path catches the
 cause and forks `store.shutdown` rather than throwing a recoverable error to
-the caller (`store.ts:944`; LS.SYS.STORE-R09).
+the caller (`store.ts:926`; LS.SYS.STORE-R09).
 
 Telemetry: long-lived `LiveStore:commits`/`LiveStore:queries` spans plus a
 per-commit root span with links.
