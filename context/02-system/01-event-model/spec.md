@@ -52,7 +52,6 @@ processors, and rebase actually move around. Its `meta` carries:
 
 | Field | Purpose |
 | --- | --- |
-| `sessionChangeset` | `sessionChangeset(data) \| no-op \| unset` — the SQLite session changeset recorded at materialization; consumed by rebase rollback |
 | `syncMetadata` | provider-opaque per-event sync metadata (persisted as `syncMetadataJson`) |
 | `materializerHashLeader` / `materializerHashSession` | dev-mode determinism hashes compared across materialization sites |
 
@@ -104,7 +103,7 @@ row completeness contracted by LS.SYS.EVT-R09):
 
 - **`eventlog`** — one row per event: composite seqNum triple (3-column PK)
   + parent triple, `name`, `argsJson` (note: `undefined` args are stored as
-  `{}` — `eventlog.ts:248`), `clientId`, `sessionId`, per-row `schemaHash`,
+  `{}` — `eventlog.ts:258`), `clientId`, `sessionId`, per-row `schemaHash`,
   `syncMetadataJson`; indexed on `seqNumGlobal` and the full triple.
 - **`__livestore_sync_status`** — the upstream head plus `backendId`, used
   to detect a changed backend identity (`BackendIdMismatchError` handling).
@@ -113,20 +112,22 @@ Properties:
 
 - Logically append-only: confirmed history is immutable (LS.SYS.EVT-R07).
   Mechanically, rebase is implemented as delete + reinsert of the *pending*
-  tail — `rollback()` physically `DELETE`s pending eventlog and changeset
-  rows (`materialize-event.ts:210-219`) before the re-parented events are
-  appended. The append-only contract holds for events at or below the
+  tail — rollback runs `MaterializationJournal.rollback` (state DB; see
+  `../02-state/01-sqlite/spec.md`) plus `Eventlog.deleteEvents`
+  (`eventlog.ts:89`), which physically `DELETE`s every rebase generation at
+  each rolled-back `(global, client)` position, before the re-parented events
+  are appended. The append-only contract holds for events at or below the
   upstream head.
 - Each row is self-decoding: name, encoded args, composite position, and
   per-row schema hash — sufficient for drift detection and full rebuild
   (LS.SYS.EVT-R08). Unknown schema hashes are tolerated on read
   (`UNKNOWN_EVENT_SCHEMA_HASH`) so logs written by newer app versions do
   not brick older readers.
-- `getEventsSince(seqNum)` (`eventlog.ts:47`) joins eventlog rows
-  (eventlog DB) with their session-changeset rows (state DB) so the tail
-  carries its rollback data — rebase state spans both databases.
+- `getEventsSince(seqNum)` (`eventlog.ts:47`) reads the eventlog DB only.
+  Rollback data lives in the materialization journal (state DB), keyed by
+  sequence number, so events carry no rollback payload.
 - Writing an event whose definition is unknown is a defect
-  (`shouldNeverHappen`, `eventlog.ts:228`); tolerance applies to reads
+  (`shouldNeverHappen`, `eventlog.ts:238`); tolerance applies to reads
   only.
 
 ## Facts
