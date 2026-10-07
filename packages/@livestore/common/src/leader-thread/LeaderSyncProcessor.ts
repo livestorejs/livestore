@@ -27,22 +27,21 @@ import {
   TxQueue,
 } from '@livestore/utils/effect'
 
-import { MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
+import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import { PullItem } from '../ClientSessionLeaderThreadProxy.ts'
 import type { UnknownEventError } from '../errors.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
 import * as EventlogSqliteDb from '../EventlogSqliteDb.ts'
-import * as MaterializationJournal from '../MaterializationJournal.ts'
+import type * as MaterializationJournal from '../MaterializationJournal.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
-import * as SqliteDbHelper from '../sqlite-db-helper.ts'
-import * as StateHead from '../StateHead.ts'
 import * as StateSqliteDb from '../StateSqliteDb.ts'
 import type { BackendIdMismatchError, IsOfflineError, SyncBackend } from '../sync/sync.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
+import * as LeaderPersistence from './LeaderPersistence.ts'
 import {
   isRejectedPushError,
   LeaderAheadError,
@@ -52,7 +51,7 @@ import {
   StaleRebaseGenerationError,
 } from './RejectedPushError.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
-import type { InitialBlockingSyncContext, MaterializeEvent } from './types.ts'
+import type { InitialBlockingSyncContext } from './types.ts'
 
 export const TypeId = '~@livestore/common/LeaderSyncProcessor' as const
 export type TypeId = typeof TypeId
@@ -210,7 +209,6 @@ interface Options {
  * depending on the outward-facing leader aggregate that contains the processor itself.
  */
 interface Runtime {
-  readonly materializeEvent: MaterializeEvent
   readonly syncBackend: SyncBackend.SyncBackend | undefined
   readonly shutdownChannel: ShutdownChannel
   readonly devtoolsLatch: Latch.Latch | undefined
@@ -230,9 +228,9 @@ export const make = Effect.fnUntraced(function* ({
 }: Options) {
   const dbState = yield* StateSqliteDb.StateSqliteDb
   const dbEventlog = yield* EventlogSqliteDb.EventlogSqliteDb
-  const materializationJournal = yield* MaterializationJournal.MaterializationJournal
-  const stateHead = yield* StateHead.StateHead
-  const { devtoolsLatch, materializeEvent, shutdownChannel, span, syncBackend } = runtime
+  // Every durable leader write (rollback, materialization, eventlog, journal and heads) goes through this seam.
+  const persistence = yield* LeaderPersistence.LeaderPersistence
+  const { devtoolsLatch, shutdownChannel, span, syncBackend } = runtime
   const syncBackendPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.Encoded>()
   const localPushBatchSize = params.localPushBatchSize ?? 10
   const backendPushBatchSize = params.backendPushBatchSize ?? 50
@@ -243,7 +241,6 @@ export const make = Effect.fnUntraced(function* ({
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
   const connectedClientSessionPullQueues = yield* makePullQueueSet
-  const materializeEventsBatch = makeMaterializeEventsBatch({ dbState, dbEventlog, materializeEvent })
 
   type LocalPushQueueItem = [
     event: LiveStoreEvent.Client.Encoded,
@@ -435,15 +432,16 @@ export const make = Effect.fnUntraced(function* ({
           return yield* Effect.dieDebugger('Local push events must be retained in pending state')
         }
 
-        const materializerHashes = yield* materializeEventsBatch({ batchItems: acceptedPendingEvents })
+        // The batch becomes durable as a whole or not at all. Everything below publishes only what the receipt reports.
+        const receipt = yield* persistence.persistLocal({ events: acceptedPendingEvents })
 
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
         yield* connectedClientSessionPullQueues.offer({
-          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: acceptedPendingEvents }),
+          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: receipt.persistedEvents }),
           globalHead: mergeResult.newSyncState.upstreamHead,
           leaderHead: mergeResult.newSyncState.localHead,
-          materializerHashes,
+          materializerHashes: receipt.materializerHashes,
         })
 
         yield* Effect.spanEvent(`push:advance`, {
@@ -452,7 +450,7 @@ export const make = Effect.fnUntraced(function* ({
         })
 
         // Don't sync client-only events
-        const globalOrUnknownEvents = acceptedPendingEvents.filter((e) => !isClientOnlyEvent(e))
+        const globalOrUnknownEvents = receipt.persistedEvents.filter((e) => !isClientOnlyEvent(e))
 
         yield* TxQueue.offerAll(syncBackendPushQueue, globalOrUnknownEvents)
 
@@ -484,7 +482,10 @@ export const make = Effect.fnUntraced(function* ({
 
     const isPullPaginationComplete = (pageInfo: SyncBackend.PullResPageInfo) => pageInfo._tag === 'NoMore'
 
-    const onNewPullChunk = (pulledEvents: ReadonlyArray<PulledEvent>, pageInfo: SyncBackend.PullResPageInfo) =>
+    const onNewPullChunk = (
+      pulledEvents: ReadonlyArray<LeaderPersistence.PulledEvent>,
+      pageInfo: SyncBackend.PullResPageInfo,
+    ) =>
       Effect.gen(function* () {
         const newEvents = pulledEvents.map(({ event }) => event)
 
@@ -528,82 +529,50 @@ export const make = Effect.fnUntraced(function* ({
           }
 
           const newBackendHead = newEvents.at(-1)!.seqNum
+          const rollbackEvents = mergeResult._tag === 'rebase' ? mergeResult.rollbackEvents : []
 
-          Eventlog.updateBackendHead(dbEventlog, newBackendHead)
+          // Rollback, materialization, confirmation metadata, journal pruning and the backend head commit together,
+          // so readers cannot observe a leader head whose events are not durable. Everything below publishes only
+          // what the receipt reports; sessions need its materializer hashes for these events.
+          const receipt = yield* persistence.persistUpstream({
+            pulledEvents,
+            events: mergeResult.newEvents,
+            rollbackEvents,
+            confirmedEvents: mergeResult._tag === 'advance' ? mergeResult.confirmedEvents : [],
+            backendHead: newBackendHead,
+          })
 
           if (mergeResult._tag === 'rebase') {
             yield* Effect.spanEvent(`pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`, {
               newEventsCount: newEvents.length,
               ...(TRACE_VERBOSE === true ? { newEvents: jsonStringify(newEvents) } : {}),
-              rollbackCount: mergeResult.rollbackEvents.length,
+              rollbackCount: rollbackEvents.length,
               ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
             })
-
-            const globalOrUnknownRebasedPendingEvents = mergeResult.newSyncState.pending.filter(
-              (e) => !isClientOnlyEvent(e),
-            )
-            yield* restartBackendPushing(globalOrUnknownRebasedPendingEvents)
-
-            if (mergeResult.rollbackEvents.length > 0) {
-              const rollbackSeqNums = mergeResult.rollbackEvents.map((_) => _.seqNum)
-              const headAfterRollback = mergeResult.rollbackEvents[0]!.parentSeqNum
-
-              yield* Effect.gen(function* () {
-                yield* materializationJournal.rollback(rollbackSeqNums)
-                yield* stateHead.set(headAfterRollback)
-              }).pipe(
-                SqliteDbHelper.withSavepoint(dbState),
-                Effect.mapError((cause) =>
-                  MaterializationJournal.isMaterializationJournalError(cause) === true
-                    ? cause
-                    : MaterializeError.make({ cause }),
-                ),
-              )
-
-              yield* Eventlog.deleteEvents(dbEventlog, rollbackSeqNums).pipe(
-                Effect.mapError((cause) => MaterializeError.make({ cause })),
-              )
-            }
           } else {
             yield* Effect.spanEvent(`pull:advance`, {
               newEventsCount: newEvents.length,
               ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
             })
-
-            // Ensure push fiber is active after advance by restarting with current pending (non-client-only) events
-            const globalOrUnknownPendingEvents = mergeResult.newSyncState.pending.filter((e) => !isClientOnlyEvent(e))
-            yield* restartBackendPushing(globalOrUnknownPendingEvents)
-
-            if (mergeResult.confirmedEvents.length > 0) {
-              // Confirmed local events are already materialized. Only store the sync metadata learned from the backend.
-              // Pulled events carry the default rebase generation, so match confirmed events by position only.
-              const confirmedPulledEvents = pulledEvents.filter(({ event }) =>
-                mergeResult.confirmedEvents.some((confirmedEvent) =>
-                  isSameSequencePosition(event.seqNum, confirmedEvent.seqNum),
-                ),
-              )
-              yield* Eventlog.updateSyncMetadataForDb(dbEventlog, confirmedPulledEvents).pipe(Effect.orDieDebugger)
-            }
           }
+
+          // Restart the push fiber with the current pending (non-client-only) events. After a rebase these are the
+          // rebased events; after an advance this ensures the push fiber is active again.
+          yield* restartBackendPushing(mergeResult.newSyncState.pending.filter((e) => !isClientOnlyEvent(e)))
 
           // The backend merge may advance or rebase the authoritative head. Realign the admission
           // fence now so newly arriving pushes are validated against that history, not the pre-pull head.
           yield* reconcilePushHead(mergeResult.newSyncState.localHead)
 
-          // Apply the merged events to storage before publishing the new sync state below, so readers
-          // cannot observe a leader head whose events have not yet been materialized. Sessions receive the
-          // payload only afterwards because it carries the leader's materializer hashes for these events.
-          const materializerHashes = yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, pulledEvents })
-
           yield* connectedClientSessionPullQueues.offer({
-            payload: SyncState.payloadFromMergeResult(mergeResult),
+            payload:
+              mergeResult._tag === 'rebase'
+                ? SyncState.PayloadUpstreamRebase.make({ rollbackEvents, newEvents: receipt.persistedEvents })
+                : SyncState.PayloadUpstreamAdvance.make({ newEvents: receipt.persistedEvents }),
             globalHead: mergeResult.newSyncState.upstreamHead,
             leaderHead: mergeResult.newSyncState.localHead,
-            materializerHashes,
+            materializerHashes: receipt.materializerHashes,
           })
-
-          // Discard leader materialization journal records which are no longer needed as we'll never have to rollback beyond this point.
-          yield* materializationJournal.discardUpTo(newBackendHead)
 
           yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
         }).pipe(Effect.exit)
@@ -902,63 +871,6 @@ export const make = Effect.fnUntraced(function* ({
 
 export const layer = (options: Options) => Layer.effect(LeaderSyncProcessor, make(options))
 
-// TODO how to handle errors gracefully
-const makeMaterializeEventsBatch =
-  ({
-    dbState,
-    dbEventlog,
-    materializeEvent,
-  }: {
-    dbState: SqliteDb
-    dbEventlog: SqliteDb
-    materializeEvent: MaterializeEvent
-  }) =>
-  ({
-    batchItems,
-    pulledEvents = [],
-  }: {
-    batchItems: ReadonlyArray<LiveStoreEvent.Client.Encoded>
-    /** Backend events of the current pull chunk, used to persist their sync metadata alongside the eventlog rows. */
-    pulledEvents?: ReadonlyArray<PulledEvent>
-  }) =>
-    Effect.gen(function* () {
-      // NOTE We always start a transaction to ensure consistency between db and eventlog (even for single-item batches)
-      dbState.execute('BEGIN TRANSACTION', undefined) // Start the transaction
-      dbEventlog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
-
-      yield* Effect.addFinalizer((exit) =>
-        Effect.gen(function* () {
-          if (Exit.isSuccess(exit) === true) return
-
-          // Rollback in case of an error
-          dbState.execute('ROLLBACK', undefined)
-          dbEventlog.execute('ROLLBACK', undefined)
-        }),
-      )
-
-      const materializerHashes: LiveStoreEvent.Client.MaterializerHash[] = []
-      for (const event of batchItems) {
-        const syncMetadata =
-          pulledEvents.find((pulled) => EventSequenceNumber.Client.isEqual(pulled.event.seqNum, event.seqNum))
-            ?.syncMetadata ?? Option.none()
-        const { hash } = yield* materializeEvent(event, { syncMetadata })
-        // Sessions compare these hashes with their own to detect side-effecting materializers during development.
-        materializerHashes.push(LiveStoreEvent.Client.MaterializerHash.make({ eventNum: event.seqNum, hash }))
-      }
-
-      dbState.execute('COMMIT', undefined) // Commit the transaction
-      dbEventlog.execute('COMMIT', undefined) // Commit the transaction
-
-      return materializerHashes
-    }).pipe(
-      Effect.uninterruptible,
-      Effect.scoped,
-      Effect.withSpan('@livestore/common:LeaderSyncProcessor:materializeEventItems', {
-        attributes: { batchSize: batchItems.length },
-      }),
-      Effect.tapCauseLogPretty,
-    )
-
 interface PullQueueSet {
   makeQueue: (
     cursor: EventSequenceNumber.Client.Composite,
@@ -969,12 +881,6 @@ interface PullQueueSet {
     leaderHead: EventSequenceNumber.Client.Composite
     materializerHashes: ReadonlyArray<LiveStoreEvent.Client.MaterializerHash>
   }) => Effect.Effect<void, never>
-}
-
-/** A backend event paired with the sync metadata that is stored beside it, not inside the event value. */
-interface PulledEvent {
-  readonly event: LiveStoreEvent.Client.Encoded
-  readonly syncMetadata: Option.Option<Schema.Json>
 }
 
 const makePullQueueSet = Effect.gen(function* () {
@@ -1148,7 +1054,7 @@ const validatePushBatch = (
 
       if (
         EventSequenceNumber.Client.isEqual(event.seqNum, expectedPair.seqNum) === false ||
-        isSameSequencePosition(event.parentSeqNum, expectedPair.parentSeqNum) === false
+        LeaderPersistence.isSameSequencePosition(event.parentSeqNum, expectedPair.parentSeqNum) === false
       ) {
         return yield* NonContiguousBatchError.make({
           expectedSeqNum: expectedPair.seqNum,
@@ -1163,15 +1069,6 @@ const validatePushBatch = (
       precedingSeqNum = event.seqNum
     }
   })
-
-/**
- * Parent linkage identifies a position in the event chain. Rebase generation describes the version
- * of optimistic history, so it is validated on the event itself rather than as part of parent identity.
- */
-const isSameSequencePosition = (
-  left: EventSequenceNumber.Client.Composite,
-  right: EventSequenceNumber.Client.Composite,
-) => left.global === right.global && left.client === right.client
 
 /**
  * Handles a BackendIdMismatchError based on the configured behavior.

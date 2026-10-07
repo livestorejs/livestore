@@ -123,6 +123,7 @@ For maintainers and contributors:
 
 - **SQLite services:** Leader and client-session code reach SQLite through the `StateSqliteDb`, `EventlogSqliteDb`, `StateHead` and `MaterializationJournal` Effect services ([#1658](https://github.com/livestorejs/livestore/pull/1658)). Thanks [@IGassmann](https://github.com/IGassmann).
 - **Events:** `LiveStoreEvent.Client.EncodedWithMeta` is removed and events are plain values. Sync metadata travels beside events, and leader materializer hashes travel in `PullItem.materializerHashes`. Custom adapters that wrapped pushed events must pass them through unchanged ([#1660](https://github.com/livestorejs/livestore/pull/1660)).
+- **Leader persistence:** A `LeaderPersistence` service makes each leader transition durable as a whole (rollback, materialization, journal, state and backend heads, eventlog inserts) and returns a receipt that the processor publishes ([#1661](https://github.com/livestorejs/livestore/pull/1661)).
 
 - **CI composition:** Aligned the megarepo setup with the automatic CI worktree
   policy and consolidated devenv resolver from
