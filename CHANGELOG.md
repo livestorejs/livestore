@@ -68,6 +68,7 @@
 - **Store lifecycle:** Closing the scope a store was created in (for example when a store registry disposes an unused store) now sends events committed in the session to the leader before closing, like `store.shutdown()`. Previously such events could be dropped if the leader had not acknowledged them yet. Disposal can now wait up to one second ([#1437](https://github.com/livestorejs/livestore/issues/1437), [#1659](https://github.com/livestorejs/livestore/pull/1659)).
 - **State storage:** Rebases roll back state through a materialization journal table instead of SQLite changesets carried in event metadata. Because the state system tables changed, existing state databases are rebuilt from the eventlog once after upgrading ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
 - **Query cache:** Cached query results are discarded when a journal or savepoint rollback changes the session database, so reads after a rebase no longer return rolled-back rows ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
+- **Development checks:** Side-effecting materializers are detected when the leader confirms a session's own event, including in web-worker adapters, where the previous leader-side check never ran ([#1660](https://github.com/livestorejs/livestore/pull/1660)).
 
 ### Breaking Changes
 
@@ -121,6 +122,7 @@
 For maintainers and contributors:
 
 - **SQLite services:** Leader and client-session code reach SQLite through the `StateSqliteDb`, `EventlogSqliteDb`, `StateHead` and `MaterializationJournal` Effect services ([#1658](https://github.com/livestorejs/livestore/pull/1658)). Thanks [@IGassmann](https://github.com/IGassmann).
+- **Events:** `LiveStoreEvent.Client.EncodedWithMeta` is removed and events are plain values. Sync metadata travels beside events, and leader materializer hashes travel in `PullItem.materializerHashes`. Custom adapters that wrapped pushed events must pass them through unchanged ([#1660](https://github.com/livestorejs/livestore/pull/1660)).
 
 - **CI composition:** Aligned the megarepo setup with the automatic CI worktree
   policy and consolidated devenv resolver from
