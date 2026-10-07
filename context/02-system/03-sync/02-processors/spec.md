@@ -158,3 +158,18 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
 - `cachedPayloads` in the leader's session pull path can grow without
   bound (TODO, `LeaderSyncProcessor.ts:889-890`; issue #1423).
 - Metrics for retry/queue health are an acknowledged TODO (`:645`).
+
+## Open Design Questions
+
+- **LS.SYS.SYNC.PROC-DQ1 Serialized processors:** Each processor's coordination
+  state is spread across independent queues, mutexes, flags and restartable
+  workers, so no single value says whether a push may run now. Recurring
+  failures (lock lifetimes, rebase-generation bookkeeping, worker lifecycles,
+  shutdown loss) follow from this. The session pull path also
+  installs the merged sync state before rolling back and materializing SQLite,
+  which leaves a window where a synchronous commit lands on stale rows (found by
+  reading the code, not yet reproduced in a test).
+  [RFC 0004](../../../../contributor-docs/rfcs/0004-serialized-sync-processors.md)
+  proposes one owner per processor. Its design and terms live in the RFC until
+  it is accepted ([decision 0004](../../../.decisions/0004-rfc-vrs-boundary.md)).
+  Unresolved: acceptance.
