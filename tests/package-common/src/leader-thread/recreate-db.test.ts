@@ -1,6 +1,6 @@
 import { expect } from 'vitest'
 
-import { type BootStatus, StateHead } from '@livestore/common'
+import type { BootStatus } from '@livestore/common'
 import {
   configureConnection,
   Eventlog,
@@ -28,6 +28,8 @@ import {
   WebChannel,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
+
+import { getStateHead, makeSqliteServicesLayer } from './fixture.ts'
 
 for (const failure of ['init', 'pre', 'replay', 'replay-after-batch', 'post', 'interrupt'] as const) {
   Vitest.live(`rebuilds surviving partial state after ${failure} failure on common leader boot (#1605)`, (test) =>
@@ -147,12 +149,13 @@ for (const failure of ['init', 'pre', 'replay', 'replay-after-batch', 'post', 'i
               syncPayloadSchema: undefined,
               makeSqliteDb,
               syncOptions: undefined,
-              dbState,
-              dbEventlog,
               devtoolsOptions: { enabled: false },
               shutdownChannel: shutdown.webChannel,
               ...(failure === 'replay-after-batch' ? { params: { stateRebuildBatchSize: 2 } } : {}),
-            }).pipe(Layer.provide(StateHead.layer({ dbState })), Layer.provide(FetchHttpClient.layer)),
+            }).pipe(
+              Layer.provide(makeSqliteServicesLayer({ dbState, dbEventlog })),
+              Layer.provide(FetchHttpClient.layer),
+            ),
           ),
         )
       }).pipe(Effect.scoped)
@@ -172,7 +175,7 @@ for (const failure of ['init', 'pre', 'replay', 'replay-after-batch', 'post', 'i
           const committedEvents = failure === 'replay' ? 0 : 2
           expect(partial.select(todos)).toHaveLength(committedEvents)
           expect(partial.select(SystemTables.materializationJournalMetaTable)).toHaveLength(committedEvents)
-          expect((yield* StateHead.make({ dbState: partial }).get).global).toBe(committedEvents)
+          expect((yield* getStateHead(partial)).global).toBe(committedEvents)
         }
         if (failure === 'post' || failure === 'interrupt') expect(partial.select(todos)).toHaveLength(5)
       }).pipe(Effect.scoped)
@@ -232,10 +235,10 @@ Vitest.live('publishes rebuild completion only after an async post hook finishes
     })
     yield* Eventlog.initEventlogDb(dbEventlog)
     const bootStatusQueue = yield* Effect.acquireRelease(Queue.unbounded<BootStatus>(), Queue.shutdown)
-    const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog }).pipe(
-      Effect.provide(StateHead.layer({ dbState })),
-    )
-    const rebuild = yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent }).pipe(
+    const servicesLayer = makeSqliteServicesLayer({ dbState, dbEventlog })
+    const materializeEvent = yield* makeMaterializeEvent({ schema }).pipe(Effect.provide(servicesLayer))
+    const rebuild = yield* recreateDb({ schema, bootStatusQueue, materializeEvent }).pipe(
+      Effect.provide(servicesLayer),
       Effect.forkScoped,
     )
     yield* Deferred.await(enteredPost)

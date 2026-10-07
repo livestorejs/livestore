@@ -27,7 +27,7 @@ import {
   TxQueue,
 } from '@livestore/utils/effect'
 
-import { MaterializeError, UnknownError } from '../adapter-types.ts'
+import { MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import { PullItem } from '../ClientSessionLeaderThreadProxy.ts'
 import type { UnknownEventError } from '../errors.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
@@ -1181,7 +1181,7 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
     )
 
     // Clear local databases so the client can start fresh on next boot
-    yield* clearLocalDatabases
+    yield* clearLocalDatabases({ dbEventlog, dbState })
 
     // Send shutdown signal with special reason
     yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'backend-id-mismatch' })).pipe(Effect.orDie)
@@ -1213,11 +1213,8 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
  * Clears local databases (eventlog and state) so the client can start fresh on next boot.
  * This is used when the sync backend identity has changed (i.e. backend was reset).
  */
-const clearLocalDatabases = Effect.gen(function* () {
-  const dbState = yield* StateSqliteDb.StateSqliteDb
-  const dbEventlog = yield* EventlogSqliteDb.EventlogSqliteDb
-
-  yield* Effect.sync(() => {
+const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; dbState: SqliteDb }) =>
+  Effect.sync(() => {
     // Clear eventlog tables
     dbEventlog.execute(sql`DELETE FROM ${EVENTLOG_META_TABLE}`)
     dbEventlog.execute(sql`DELETE FROM ${SYNC_STATUS_TABLE}`)
@@ -1230,7 +1227,6 @@ const clearLocalDatabases = Effect.gen(function* () {
       dbState.execute(`DROP TABLE IF EXISTS "${name}"`)
     }
   })
-})
 
 const snapshotTxQueue = <A>(queue: TxQueue.TxQueue<A>): Effect.Effect<ReadonlyArray<A>> =>
   Effect.tx(
