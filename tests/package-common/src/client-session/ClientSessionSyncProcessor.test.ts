@@ -234,7 +234,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
             clientSession: {
               leaderThreadProxy: () => ({
                 events: {
-                  pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+                  pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload, globalHead: EventSequenceNumber.Client.ROOT }))),
                   push: (batch) =>
                     Effect.gen(function* () {
                       pushCount++
@@ -1063,7 +1063,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       })
       let pushCount = 0
       const { processor, pushIds, close } = yield* makeClientProcessorHarness({
-        pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+        pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload, globalHead: EventSequenceNumber.Client.ROOT }))),
         push: () => {
           pushCount++
           return pushCount === 1
@@ -1110,7 +1110,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       })
       let pushCount = 0
       const { processor, pushIds, close } = yield* makeClientProcessorHarness({
-        pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload }))),
+        pull: () => Stream.fromQueue(pullQueue).pipe(Stream.map((payload) => ({ payload, globalHead: EventSequenceNumber.Client.ROOT }))),
         push: (batch) => {
           pushCount++
           if (pushCount === 1) {

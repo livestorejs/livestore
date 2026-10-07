@@ -8,6 +8,7 @@ import {
   type MaterializationJournal,
   migrateDb,
   rematerializeFromEventlog,
+  type SqliteDb,
   type SqliteError,
   UnknownError,
 } from '../index.ts'
