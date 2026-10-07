@@ -292,7 +292,9 @@ export const updateSyncMetadataForDb = (
   })
 
 export const getSyncBackendCursorInfo = (args: { remoteHead: EventSequenceNumber.Global.Type }) =>
-  EventlogSqliteDb.EventlogSqliteDb.pipe(Effect.flatMap((dbEventlog) => getSyncBackendCursorInfoForDb(dbEventlog, args)))
+  EventlogSqliteDb.EventlogSqliteDb.pipe(
+    Effect.flatMap((dbEventlog) => getSyncBackendCursorInfoForDb(dbEventlog, args)),
+  )
 
 export const getSyncBackendCursorInfoForDb = (
   dbEventlog: SqliteDb,
