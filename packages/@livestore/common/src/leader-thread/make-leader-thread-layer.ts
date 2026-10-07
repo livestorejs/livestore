@@ -74,7 +74,7 @@ export interface MakeLeaderThreadLayerParams {
         backendPullReconnect?: (fallbackMs: number) => number
       }
       hooks?: {
-        localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
+        localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.Encoded>) => Effect.Effect<void>
         backendPullReconnectWait?: (state: { isConnected: boolean; fallbackMs: number }) => Effect.Effect<void>
       }
     }

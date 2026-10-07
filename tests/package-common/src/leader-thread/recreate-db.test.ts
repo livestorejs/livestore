@@ -60,9 +60,7 @@ for (const failure of ['init', 'pre', 'replay', 'replay-after-batch', 'post', 'i
       const eventIds = Array.from({ length: 5 }, (_, i) => `todo-${i + 1}`)
       yield* Eventlog.initEventlogDb(dbEventlog)
       for (const id of eventIds) {
-        const event = new LiveStoreEvent.Client.EncodedWithMeta({
-          ...LiveStoreEvent.Global.toClientEncoded(factory.created.next({ id })),
-        })
+        const event = LiveStoreEvent.Client.fromGlobal(factory.created.next({ id }))
         yield* Eventlog.insertIntoEventlog(
           event,
           dbEventlog,

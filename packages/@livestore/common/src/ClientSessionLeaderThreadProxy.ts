@@ -1,4 +1,4 @@
-import { type Effect, Schema, type Stream, type Subscribable } from '@livestore/utils/effect'
+import { Effect, Schema, type Stream, type Subscribable } from '@livestore/utils/effect'
 
 import type { StorageMode } from './adapter-types.ts'
 import type { MigrationsReport } from './defs.ts'
@@ -6,7 +6,7 @@ import type * as Devtools from './devtools/mod.ts'
 import type { RejectedPushError } from './leader-thread/RejectedPushError.ts'
 import type { StreamEventsOptions } from './leader-thread/types.ts'
 import * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
-import type { LiveStoreEvent } from './schema/mod.ts'
+import { LiveStoreEvent } from './schema/mod.ts'
 import type { SyncBackend } from './sync/sync.ts'
 import { PayloadUpstream, type SyncState } from './sync/syncstate.ts'
 
@@ -14,6 +14,11 @@ export const PullItem = Schema.Struct({
   payload: PayloadUpstream,
   /** The globally confirmed prefix after `payload` has been fully applied. */
   globalHead: EventSequenceNumber.Client.Composite,
+  /** Dev-only hashes are transported beside events so event values stay metadata-free. */
+  materializerHashes: Schema.Array(LiveStoreEvent.Client.MaterializerHash).pipe(
+    Schema.withDecodingDefaultType(Effect.succeed([])),
+    Schema.withConstructorDefault(Effect.succeed([])),
+  ),
 })
 
 export interface ClientSessionLeaderThreadProxy {

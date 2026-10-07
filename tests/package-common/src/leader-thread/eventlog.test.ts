@@ -18,7 +18,7 @@ Vitest.describe.concurrent('deleteEvents', () => {
       yield* Eventlog.initEventlogDb(dbEventlog)
 
       const makeEvent = (rebaseGeneration: number) =>
-        LiveStoreEvent.Client.EncodedWithMeta.make({
+        LiveStoreEvent.Client.Encoded.make({
           name: 'todoCreated',
           args: { id: `todo-${rebaseGeneration}`, text: 'todo', completed: false },
           seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 1, rebaseGeneration }),
@@ -48,7 +48,7 @@ Vitest.describe.concurrent('deleteEvents', () => {
       yield* Eventlog.initEventlogDb(dbEventlog)
 
       const events = Array.from({ length: 101 }, (_, index) =>
-        LiveStoreEvent.Client.EncodedWithMeta.make({
+        LiveStoreEvent.Client.Encoded.make({
           name: 'todoCreated',
           args: { id: `todo-${index}`, text: 'todo', completed: false },
           seqNum: EventSequenceNumber.Client.Composite.make({ global: index + 1, client: 1 }),

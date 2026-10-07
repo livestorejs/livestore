@@ -1,11 +1,11 @@
 import { deepEqual, memoizeByRef } from '@livestore/utils'
-import { Effect, Option, Schema, Struct } from '@livestore/utils/effect'
+import { Schema } from '@livestore/utils/effect'
 
 import type { EventDef } from '../EventDef/mod.ts'
 import * as EventSequenceNumber from '../EventSequenceNumber/mod.ts'
 import type { LiveStoreSchema } from '../schema.ts'
 import type * as ForEventDef from './for-event-def.ts'
-import type * as Global from './global.ts'
+import * as Global from './global.ts'
 
 /** Effect Schema for client events with decoded args. */
 export const Decoded = Schema.Struct({
@@ -58,73 +58,25 @@ export type ForSchema<TSchema extends LiveStoreSchema> = {
   [K in keyof TSchema['_EventDefMapType']]: ForEventDef.Decoded<TSchema['_EventDefMapType'][K]>
 }[keyof TSchema['_EventDefMapType']]
 
-/**
- * Internal event representation with metadata for sync processing.
- * Includes materializer hashes for conflict detection and rebasing.
- *
- * Note: This class is exported for internal use. The preferred access is via `LiveStoreEvent.Client.EncodedWithMeta`.
- */
-export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEvent.Client.EncodedWithMeta')({
-  name: Schema.String,
-  args: Schema.Any,
-  seqNum: EventSequenceNumber.Client.Composite,
-  parentSeqNum: EventSequenceNumber.Client.Composite,
-  clientId: Schema.String,
-  sessionId: Schema.String,
-  // TODO get rid of `meta` again by cleaning up the usage implementations
-  meta: Schema.Struct({
-    syncMetadata: Schema.Option(Schema.Json),
-    /** Used to detect if the materializer is side effecting (during dev) */
-    materializerHashLeader: Schema.Option(Schema.Finite),
-    materializerHashSession: Schema.Option(Schema.Finite),
-  })
-    .mapFields(Struct.map(Schema.mutableKey))
-    .pipe(
-      Schema.withDecodingDefaultType(
-        Effect.succeed({
-          syncMetadata: Option.none(),
-          materializerHashLeader: Option.none(),
-          materializerHashSession: Option.none(),
-        }),
-      ),
-      Schema.withConstructorDefault(
-        Effect.succeed({
-          syncMetadata: Option.none(),
-          materializerHashLeader: Option.none(),
-          materializerHashSession: Option.none(),
-        }),
-      ),
-    ),
-}) {
-  toJSON = (): any => {
-    // Only used for logging/debugging
-    // - More readable way to print the seqNum + parentSeqNum
-    // - not including `meta`, `clientId`, `sessionId`
-    return {
-      seqNum: `${EventSequenceNumber.Client.toString(this.seqNum)} → ${EventSequenceNumber.Client.toString(this.parentSeqNum)} (${this.clientId}, ${this.sessionId})`,
-      name: this.name,
-      args: this.args,
-    }
-  }
+/** A dev-only materializer hash associated with one immutable event value. */
+export const MaterializerHash = Schema.Struct({
+  eventNum: EventSequenceNumber.Client.Composite,
+  hash: Schema.Option(Schema.Finite),
+})
 
-  /**
-   * Example: (global event)
-   * For event e2 → e1 which should be rebased on event e3 → e2
-   * the resulting event num will be e4 → e3
-   *
-   * Example: (client event)
-   * For event e2.1 → e2 which should be rebased on event e3 → e2
-   * the resulting event num will be e3.1 → e3
-   *
-   * Syntax: e2.2 → e2.1
-   *          ^ ^    ^ ^
-   *          | |    | +- client parent number
-   *          | |    +--- global parent number
-   *          | +-- client number
-   *          +---- global number
-   * Client num is omitted for global events
-   */
-  rebase = ({
+export type MaterializerHash = typeof MaterializerHash.Type
+
+/** More readable event shape used only for diagnostics and trace attributes. */
+export const toJSON = (event: Encoded): unknown => ({
+  seqNum: `${EventSequenceNumber.Client.toString(event.seqNum)} → ${EventSequenceNumber.Client.toString(event.parentSeqNum)} (${event.clientId}, ${event.sessionId})`,
+  name: event.name,
+  args: event.args,
+})
+
+/** Returns a new event at the next position without mutating the original event. */
+export const rebase = (
+  event: Encoded,
+  {
     parentSeqNum,
     isClientOnly,
     rebaseGeneration,
@@ -132,52 +84,27 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
     parentSeqNum: EventSequenceNumber.Client.Composite
     isClientOnly: boolean
     rebaseGeneration: number
-  }) =>
-    new EncodedWithMeta({
-      ...this,
-      ...EventSequenceNumber.Client.nextPair({ seqNum: parentSeqNum, isClientOnly, rebaseGeneration }),
-    })
-
-  static fromGlobal = (
-    event: Global.Encoded,
-    meta: {
-      syncMetadata: Option.Option<Schema.Json>
-      materializerHashLeader: Option.Option<number>
-      materializerHashSession: Option.Option<number>
-    },
-  ) =>
-    new EncodedWithMeta({
-      ...event,
-      seqNum: {
-        global: event.seqNum,
-        client: EventSequenceNumber.Client.DEFAULT,
-        rebaseGeneration: EventSequenceNumber.Client.REBASE_GENERATION_DEFAULT,
-      },
-      parentSeqNum: {
-        global: event.parentSeqNum,
-        client: EventSequenceNumber.Client.DEFAULT,
-        rebaseGeneration: EventSequenceNumber.Client.REBASE_GENERATION_DEFAULT,
-      },
-      meta: {
-        syncMetadata: meta.syncMetadata,
-        materializerHashLeader: meta.materializerHashLeader,
-        materializerHashSession: meta.materializerHashSession,
-      },
-    })
-
-  toGlobal = (): Global.Encoded => ({
-    name: this.name,
-    args: this.args,
-    seqNum: this.seqNum.global,
-    parentSeqNum: this.parentSeqNum.global,
-    clientId: this.clientId,
-    sessionId: this.sessionId,
+  },
+): Encoded =>
+  Encoded.make({
+    ...event,
+    ...EventSequenceNumber.Client.nextPair({ seqNum: parentSeqNum, isClientOnly, rebaseGeneration }),
   })
-}
+
+export const fromGlobal = (event: Global.Encoded): Encoded => Encoded.make(Global.toClientEncoded(event))
+
+export const toGlobal = (event: Encoded): Global.Encoded => ({
+  name: event.name,
+  args: event.args,
+  seqNum: event.seqNum.global,
+  parentSeqNum: event.parentSeqNum.global,
+  clientId: event.clientId,
+  sessionId: event.sessionId,
+})
 
 /**
  * Structural equality check for client events. Compares seqNum (global + client),
- * name, clientId, sessionId, and args. The `meta` field is ignored.
+ * name, clientId, sessionId, and args.
  *
  * Args are compared in their JSON-canonical form: locally-encoded events with
  * `Schema.UndefinedOr` (or loose `Schema.optional`) fields produce

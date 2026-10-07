@@ -236,7 +236,12 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
                 events: {
                   pull: () =>
                     Stream.fromQueue(pullQueue).pipe(
-                      Stream.map((payload) => ({ payload, globalHead: EventSequenceNumber.Client.ROOT })),
+                      Stream.map((payload) =>
+                        ClientSessionLeaderThreadProxy.PullItem.make({
+                          payload,
+                          globalHead: EventSequenceNumber.Client.ROOT,
+                        }),
+                      ),
                     ),
                   push: (batch) =>
                     Effect.gen(function* () {
@@ -460,7 +465,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
   Vitest.live('should fail for event that is not larger than expected upstream', (test) =>
     Effect.gen(function* () {
       const shutdownDeferred = yield* makeShutdownDeferred
-      const pullQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
+      const pullQueue = yield* Queue.unbounded<LiveStoreEvent.Client.Encoded>()
 
       const adapter = makeTestAdapter({
         testing: {
@@ -497,7 +502,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       yield* Queue.offer(
         pullQueue,
-        LiveStoreEvent.Client.EncodedWithMeta.make({
+        LiveStoreEvent.Client.Encoded.make({
           ...(yield* Schema.encodeEffect(eventSchema)(events.todoCreated({ id: `id_0`, text: '', completed: false }))),
           seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
           parentSeqNum: EventSequenceNumber.Client.ROOT,
@@ -567,7 +572,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
             yield* Eventlog.initEventlogDb(dbEventlog)
 
             yield* Eventlog.insertIntoEventlog(
-              LiveStoreEvent.Client.EncodedWithMeta.make({
+              LiveStoreEvent.Client.Encoded.make({
                 ...encode(events.todoCreated({ id: `client_0`, text: 't1', completed: false })),
                 clientId: 'client',
                 seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
@@ -803,7 +808,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     const [remoteBase] = yield* processor.encodeEvents([
       events.todoCreated({ id: 'remote', text: 'remote', completed: false }),
     ])
-    const remoteEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
+    const remoteEvent = LiveStoreEvent.Client.Encoded.make({
       ...remoteBase!,
       seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
       parentSeqNum: EventSequenceNumber.Client.ROOT,
@@ -1068,7 +1073,9 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const { processor, pushIds, close } = yield* makeClientProcessorHarness({
         pull: () =>
           Stream.fromQueue(pullQueue).pipe(
-            Stream.map((payload) => ({ payload, globalHead: EventSequenceNumber.Client.ROOT })),
+            Stream.map((payload) =>
+              ClientSessionLeaderThreadProxy.PullItem.make({ payload, globalHead: EventSequenceNumber.Client.ROOT }),
+            ),
           ),
         push: () => {
           pushCount++
@@ -1118,7 +1125,9 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const { processor, pushIds, close } = yield* makeClientProcessorHarness({
         pull: () =>
           Stream.fromQueue(pullQueue).pipe(
-            Stream.map((payload) => ({ payload, globalHead: EventSequenceNumber.Client.ROOT })),
+            Stream.map((payload) =>
+              ClientSessionLeaderThreadProxy.PullItem.make({ payload, globalHead: EventSequenceNumber.Client.ROOT }),
+            ),
           ),
         push: (batch) => {
           pushCount++
@@ -1283,7 +1292,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
       const baseHead = EventSequenceNumber.Client.Composite.make({ global: 10, client: 0, rebaseGeneration: 4 })
-      const recordedEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
+      const recordedEvents: LiveStoreEvent.Client.Encoded[] = []
 
       const leaderThread: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy = {
         events: {
@@ -1354,10 +1363,49 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  // In cases where the materializer is non-pure (e.g. for events.todoDeletedNonPure calling `new Date()`),
-  // the ClientSessionSyncProcessor will fail gracefully when detecting a materializer hash mismatch.
-  // This covers the leader-side hash mismatch detection, which occurs during the push path (when sending events to the leader)
+  // A non-pure materializer (`todoDeletedNonPure`) yields different statements on the leader and in the session. The
+  // leader publishes its hash beside the pulled event, and the session must fail when its own hash differs.
   Vitest.live('should fail gracefully if materializer is side effecting', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, mockSyncBackend, shutdownDeferred } = yield* TestContext
+      const publishedHashes: LiveStoreEvent.Client.MaterializerHash[] = []
+      yield* makeStore({
+        testing: {
+          overrides: {
+            clientSession: {
+              leaderThreadProxy: (leader) => ({
+                events: {
+                  ...leader.events,
+                  pull: (args) =>
+                    leader.events
+                      .pull(args)
+                      .pipe(Stream.tap((item) => Effect.sync(() => publishedHashes.push(...item.materializerHashes)))),
+                },
+              }),
+            },
+          },
+        },
+      })
+      const otherClient = EventFactory.makeFactory(events)({
+        client: EventFactory.clientIdentity('other-client', 'other-session'),
+      })
+
+      yield* mockSyncBackend.advance(otherClient.todoDeletedNonPure.next({ id: '1' }))
+
+      const error = yield* Deferred.await(shutdownDeferred).pipe(Effect.flip)
+      expect(error._tag).toEqual('MaterializeError')
+      expect(publishedHashes).toEqual([
+        expect.objectContaining({
+          eventNum: expect.objectContaining({ global: 1 }),
+          hash: Option.some(expect.any(Number)),
+        }),
+      ])
+    }).pipe(withTestCtx(test)),
+  )
+
+  // A confirmed local event is not re-materialized, so the session compares the hash it recorded at commit time with
+  // the hash the leader publishes when it confirms the event.
+  Vitest.live('should fail when the leader confirms a local event with a different materializer hash', (test) =>
     Effect.gen(function* () {
       const { makeStore, shutdownDeferred } = yield* TestContext
       const store = yield* makeStore()
@@ -1365,15 +1413,17 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       store.commit(events.todoDeletedNonPure({ id: '1' }))
 
       const error = yield* Deferred.await(shutdownDeferred).pipe(Effect.flip)
-
-      expect(error._tag).toEqual('MaterializeError')
+      expect(error).toMatchObject({
+        _tag: 'MaterializeError',
+        cause: { _tag: 'MaterializerHashMismatchError', eventName: 'todoDeletedNonPure' },
+      })
     }).pipe(withTestCtx(test)),
   )
 
-  // This test covers the client-session-side hash mismatch detection, which occurs during the pull path (when receiving events from the leader).
+  // Materializer hashes are leader publication metadata rather than mutable event fields.
   Vitest.live('should fail gracefully if client-session-side materializer hash mismatch is detected', (test) =>
     Effect.gen(function* () {
-      const pullQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
+      const pullQueue = yield* Queue.unbounded<LiveStoreEvent.Client.Encoded>()
 
       const { makeStore, shutdownDeferred } = yield* TestContext
 
@@ -1389,6 +1439,12 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
                         ClientSessionLeaderThreadProxy.PullItem.make({
                           payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [item] }),
                           globalHead: EventSequenceNumber.Client.ROOT,
+                          materializerHashes: [
+                            LiveStoreEvent.Client.MaterializerHash.make({
+                              eventNum: item.seqNum,
+                              hash: Option.some(99),
+                            }),
+                          ],
                         }),
                       ),
                     ),
@@ -1404,7 +1460,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const eventSchema = LiveStoreEvent.Input.makeSchema(schema)
 
       // Create an event that comes from the leader with a specific hash that won't match the client-side materializer's computed hash.
-      const eventFromLeader = LiveStoreEvent.Client.EncodedWithMeta.make({
+      const eventFromLeader = LiveStoreEvent.Client.Encoded.make({
         ...(yield* Schema.encodeEffect(eventSchema)(
           events.todoCreated({ id: 'test-id', text: 'from-leader', completed: false }),
         )),
@@ -1412,12 +1468,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         parentSeqNum: EventSequenceNumber.Client.ROOT,
         clientId: 'this-client',
         sessionId: 'static-session-id',
-        meta: {
-          syncMetadata: Option.none(),
-          materializerHashSession: Option.none(),
-          // Set a leader hash that won't match what our non-deterministic materializer computes
-          materializerHashLeader: Option.some(99), // This hash will not match the computed hash
-        },
       })
 
       // Send the event from the leader to trigger the pull path
@@ -1432,8 +1482,8 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
   Vitest.live('unknown upstream events still invoke materializeEvent', (test) =>
     Effect.gen(function* () {
-      const upstreamQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
-      const materializedEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
+      const upstreamQueue = yield* Queue.unbounded<LiveStoreEvent.Client.Encoded>()
+      const materializedEvents: LiveStoreEvent.Client.Encoded[] = []
 
       const lockStatus = yield* SubscriptionRef.make<'has-lock' | 'no-lock'>('has-lock')
 
@@ -1447,7 +1497,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       })
 
       const materializeEvent = Effect.fn('test:materialize-event')(
-        (event: LiveStoreEvent.Client.EncodedWithMeta, _options: { materializerHashLeader: Option.Option<number> }) =>
+        (event: LiveStoreEvent.Client.Encoded, _options: { materializerHashLeader: Option.Option<number> }) =>
           Effect.gen(function* () {
             materializedEvents.push(event)
             return {
@@ -1505,7 +1555,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         confirmUnsavedChanges: false,
       }).pipe(Effect.provide(Layer.mergeAll(materializationLayerTest, StateSqliteDb.layer(clientSession.sqliteDb))))
 
-      const unknownEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
+      const unknownEvent = LiveStoreEvent.Client.Encoded.make({
         name: 'unknown_event_test',
         args: { foo: 'bar' },
         seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
