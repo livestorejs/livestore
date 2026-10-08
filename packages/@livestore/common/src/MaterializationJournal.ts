@@ -4,7 +4,7 @@ import { SqliteError } from './adapter-types.ts'
 import { execSql, execSqlPrepared } from './leader-thread/connection.ts'
 import * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
 import { SystemTables } from './schema/mod.ts'
-import { findManyRows, insertRow } from './sql-queries/index.ts'
+import { findManyRows, insertRowPrepared } from './sql-queries/index.ts'
 import * as SqliteDbHelper from './sqlite-db-helper.ts'
 import * as StateSqliteDb from './StateSqliteDb.ts'
 import { prepareBindValues, sql } from './util.ts'
@@ -51,6 +51,7 @@ export class MaterializationJournal extends Context.Service<MaterializationJourn
 export const make = Effect.gen(function* () {
   const dbState = yield* StateSqliteDb.StateSqliteDb
 
+  /** Runs inside the savepoint of `record` or `rollback`, which keeps a multi-chunk delete atomic. */
   const deleteByKeys = Effect.fnUntraced(function* (keys: ReadonlyArray<EventSequenceNumber.Client.Composite>) {
     // Keep DELETE statements below SQLite's bound-parameter limit.
     const keyChunks = ReadonlyArray.chunksOf(100)(keys)
@@ -63,7 +64,13 @@ export const make = Effect.gen(function* () {
 
       yield* execSqlPrepared(dbState, statement, prepareBindValues(bindValues, statement))
     }
-  }, SqliteDbHelper.withSavepoint(dbState))
+  })
+
+  // `record` runs for every materialized event, so its statement is built once.
+  const insertStatement = insertRowPrepared({
+    tableName: SystemTables.MATERIALIZATION_JOURNAL_META_TABLE,
+    columns: SystemTables.materializationJournalMetaTable.sqliteDef.columns,
+  })
 
   return MaterializationJournal.of({
     [TypeId]: TypeId,
@@ -71,19 +78,14 @@ export const make = Effect.gen(function* () {
       function* (record: MaterializationRecord) {
         yield* deleteByKeys([record.key])
 
-        // Generate the parameterized INSERT statement
-        const [statement, bindValues] = insertRow({
-          tableName: SystemTables.MATERIALIZATION_JOURNAL_META_TABLE,
-          columns: SystemTables.materializationJournalMetaTable.sqliteDef.columns,
-          values: {
-            seqNumGlobal: record.key.global,
-            seqNumClient: record.key.client,
-            seqNumRebaseGeneration: record.key.rebaseGeneration,
-            changeset: record.changeset,
-          },
-        })
-
-        yield* execSqlPrepared(dbState, statement, prepareBindValues(bindValues, statement))
+        // The columns are plain integers and a blob, so the values bind without schema encoding.
+        const bindValues = {
+          seqNumGlobal: record.key.global,
+          seqNumClient: record.key.client,
+          seqNumRebaseGeneration: record.key.rebaseGeneration,
+          changeset: record.changeset,
+        }
+        yield* execSqlPrepared(dbState, insertStatement, prepareBindValues(bindValues, insertStatement))
       },
       SqliteDbHelper.withSavepoint(dbState),
       Effect.mapError((cause) => new MaterializationJournalError({ method: 'record', cause })),
