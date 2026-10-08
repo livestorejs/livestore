@@ -102,6 +102,24 @@ const rebaseTestEvent = ({
 
 /** Verifies: LS.SYS.SYNC.SS-R01, LS.SYS.SYNC.SS-R02, LS.SYS.SYNC.SS-R03, LS.SYS.SYNC.SS-R05, LS.SYS.SYNC.SS-R06 */
 Vitest.describe('syncstate', () => {
+  Vitest.describe('SyncState schema', () => {
+    Vitest.it('round-trips pending events through its encoded form', () => {
+      const syncState = new SyncState.SyncState({
+        pending: [e1_0],
+        upstreamHead: EventSequenceNumber.Client.ROOT,
+        localHead: e1_0.seqNum,
+      })
+      const decoded = Schema.decodeUnknownSync(SyncState.SyncState)(Schema.encodeSync(SyncState.SyncState)(syncState))
+      expect(decoded.pending).toEqual([e1_0])
+    })
+
+    // Construction skips the per-event check for speed; transport decoding must not.
+    Vitest.it('rejects malformed pending events when decoding', () => {
+      const malformed = { pending: [{ name: 'a' }], upstreamHead: e1_0.seqNum, localHead: e1_0.seqNum }
+      expect(() => Schema.decodeUnknownSync(SyncState.SyncState)(malformed)).toThrow()
+    })
+  })
+
   Vitest.describe('merge', () => {
     const merge = ({
       syncState,

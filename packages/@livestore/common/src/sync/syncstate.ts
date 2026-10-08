@@ -5,6 +5,18 @@ import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 
 /**
+ * Event arrays held by sync states, payloads and merge results. Their events were validated when they were created or
+ * decoded, and `merge` builds these values on every commit and pull. Schema class and struct constructors only check the
+ * decoded side, so a cheap object check there keeps construction from re-validating every pending event (O(pending) per
+ * commit). Decoding from a transport, such as worker RPC or devtools, still validates each event's full shape.
+ */
+const EventArray = Schema.Array(
+  LiveStoreEvent.Client.Encoded.pipe(
+    Schema.decodeTo(Schema.declare((u): u is LiveStoreEvent.Client.Encoded => typeof u === 'object' && u !== null)),
+  ),
+)
+
+/**
  * SyncState represents the current sync state of a sync node relative to an upstream node.
  * Events flow from local to upstream, with each state maintaining its own event head.
  *
@@ -42,7 +54,7 @@ import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
  * handling cases such as upstream rebase, advance and local push.
  */
 export class SyncState extends Schema.Class<SyncState>('SyncState')({
-  pending: Schema.Array(LiveStoreEvent.Client.Encoded),
+  pending: EventArray,
   /** What this node expects the next upstream node to have as its own local head */
   upstreamHead: EventSequenceNumber.Client.Composite,
   /** Equivalent to `pending.at(-1)?.id` if there are pending events */
@@ -60,17 +72,17 @@ export class SyncState extends Schema.Class<SyncState>('SyncState')({
  */
 export const PayloadUpstreamRebase = Schema.TaggedStruct('upstream-rebase', {
   /** Events which need to be rolled back */
-  rollbackEvents: Schema.Array(LiveStoreEvent.Client.Encoded),
+  rollbackEvents: EventArray,
   /** Events which need to be applied after the rollback (already rebased by the upstream node) */
-  newEvents: Schema.Array(LiveStoreEvent.Client.Encoded),
+  newEvents: EventArray,
 })
 
 export const PayloadUpstreamAdvance = Schema.TaggedStruct('upstream-advance', {
-  newEvents: Schema.Array(LiveStoreEvent.Client.Encoded),
+  newEvents: EventArray,
 })
 
 export const PayloadLocalPush = Schema.TaggedStruct('local-push', {
-  newEvents: Schema.Array(LiveStoreEvent.Client.Encoded),
+  newEvents: EventArray,
 })
 
 export const Payload = Schema.Union([PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush])
@@ -109,9 +121,9 @@ export class MergeContext extends Schema.Class<MergeContext>('MergeContext')({
 export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeResultAdvance')({
   _tag: Schema.Literal('advance'),
   newSyncState: SyncState,
-  newEvents: Schema.Array(LiveStoreEvent.Client.Encoded),
+  newEvents: EventArray,
   /** Events which were previously pending but are now confirmed */
-  confirmedEvents: Schema.Array(LiveStoreEvent.Client.Encoded),
+  confirmedEvents: EventArray,
   mergeContext: MergeContext,
 }) {
   toJSON = (): any => {
@@ -128,9 +140,9 @@ export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeR
 export class MergeResultRebase extends Schema.Class<MergeResultRebase>('MergeResultRebase')({
   _tag: Schema.Literal('rebase'),
   newSyncState: SyncState,
-  newEvents: Schema.Array(LiveStoreEvent.Client.Encoded),
+  newEvents: EventArray,
   /** Events which need to be rolled back */
-  rollbackEvents: Schema.Array(LiveStoreEvent.Client.Encoded),
+  rollbackEvents: EventArray,
   mergeContext: MergeContext,
 }) {
   toJSON = (): any => {
