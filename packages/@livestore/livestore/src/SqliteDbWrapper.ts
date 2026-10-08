@@ -216,13 +216,19 @@ export class SqliteDbWrapper implements SqliteDb {
         const startTimePerfNow = performance.now()
 
         try {
-          let stmt = this.cachedStmts.get(queryStr)
-          if (stmt === undefined) {
-            stmt = this.db.prepare(queryStr)
-            this.cachedStmts.set(queryStr, stmt)
-          }
+          if (isSavepointStatement(queryStr) === true) {
+            // Savepoint statements carry a unique name per use (see `SqliteDbHelper.withSavepoint`). Caching them
+            // would fill the bounded statement cache with single-use entries and evict the reusable statements.
+            this.db.execute(queryStr, bindValues)
+          } else {
+            let stmt = this.cachedStmts.get(queryStr)
+            if (stmt === undefined) {
+              stmt = this.db.prepare(queryStr)
+              this.cachedStmts.set(queryStr, stmt)
+            }
 
-          stmt.execute(bindValues)
+            stmt.execute(bindValues)
+          }
 
           if (/^\s*rollback\b/i.test(queryStr) === true) {
             // A savepoint rollback can undo writes whose intermediate results were read by a materializer.
@@ -385,3 +391,5 @@ const tryGetTableNameFromPlainDeleteQuery = (query: string) => {
   const [_, tableName] = query.trim().match(/^delete\s+from\s+(\w+)$/i) ?? []
   return tableName
 }
+
+const isSavepointStatement = (query: string) => /^\s*(?:savepoint|release|rollback\s+to)\b/i.test(query)
