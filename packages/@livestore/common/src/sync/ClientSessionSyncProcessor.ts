@@ -628,12 +628,28 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     })
   const report = (message: SessionMessage) => dispatch(message).pipe(Effect.catchCause(reportFailure), Effect.asVoid)
 
+  /**
+   * A step that rebases replays every pending event, so it costs O(pending) however few incoming events it applies.
+   * Such a step takes at least as many incoming events as there are pending events. This keeps the replay work of a
+   * whole pull proportional to its size, instead of replaying the pending suffix once per `PULL_CHUNK_SIZE` events.
+   * A step that starts by confirming the oldest pending event replays nothing, so it keeps the normal size. The
+   * choice only affects step size: each step still merges against the live pending events.
+   */
+  const stepSize = (firstIncoming: LiveStoreEvent.Client.Encoded | undefined): number => {
+    const oldestPending = model.syncState.pending[0]
+    const replaysPending =
+      oldestPending !== undefined &&
+      firstIncoming !== undefined &&
+      LiveStoreEvent.Client.isEqualEncoded(firstIncoming, oldestPending) === false
+    return replaysPending === true ? Math.max(PULL_CHUNK_SIZE, model.syncState.pending.length) : PULL_CHUNK_SIZE
+  }
+
   const reconcile = (job: Extract<RunnerJob, { _tag: 'Reconcile' }>, pushHandle: RunnerHandles['push']) =>
     Effect.gen(function* () {
       const newEvents = job.item.payload.newEvents
       let offset = 0
       while (true) {
-        const chunk = newEvents.slice(offset, Math.max(offset + PULL_CHUNK_SIZE, job.minimumEnd))
+        const chunk = newEvents.slice(offset, Math.max(offset + stepSize(newEvents[offset]), job.minimumEnd))
         const last = offset + chunk.length === newEvents.length
         const result = yield* owned(
           applyPullStep({

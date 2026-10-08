@@ -239,6 +239,45 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
+  Vitest.it.effect('sizes rebasing pull steps by the pending events they replay', (test) =>
+    Effect.gen(function* () {
+      const pullQueue = yield* Queue.unbounded<typeof SyncState.PayloadUpstream.Type>()
+      let materialized = 0
+      const { processor, pushIds, close } = yield* makeClientProcessorHarness({
+        push: () => Effect.void,
+        pull: () => pullFromQueue(pullQueue),
+        materializeEvent: () =>
+          Effect.sync(() => {
+            materialized++
+            return { writeTables: new Set<string>(), materializerHash: Option.none<number>() }
+          }),
+      })
+      const pendingCount = 3 * PULL_CHUNK_SIZE
+      yield* pushIds(Array.from({ length: pendingCount }, (_, i) => `local-${i}`))
+      const remoteCount = 2 * pendingCount
+      const remoteEvents = Array.from({ length: remoteCount }, (_, i) =>
+        LiveStoreEvent.Client.Encoded.make({
+          name: 'todoCreated',
+          args: { id: `remote-${i}`, text: 'remote', completed: false },
+          seqNum: EventSequenceNumber.Client.Composite.make({ global: i + 1, client: 0 }),
+          parentSeqNum: EventSequenceNumber.Client.Composite.make({ global: i, client: 0 }),
+          clientId: 'remote-client',
+          sessionId: 'remote-session',
+        }),
+      )
+      materialized = 0
+      yield* Queue.offer(pullQueue, SyncState.PayloadUpstreamAdvance.make({ newEvents: remoteEvents }))
+      yield* processor.syncState.changes.pipe(
+        Stream.takeUntil((state) => state.upstreamHead.global === remoteCount),
+        Stream.runDrain,
+      )
+      // Two steps of `pendingCount` incoming events, each replaying the pending events once. Steps of
+      // PULL_CHUNK_SIZE would replay them six times.
+      expect(materialized).toBe(remoteCount + 2 * pendingCount)
+      expect(Exit.isSuccess(yield* close().pipe(Effect.exit))).toBe(true)
+    }).pipe(withTestCtx(test)),
+  )
+
   Vitest.live('from scratch', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
