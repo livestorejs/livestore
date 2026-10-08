@@ -133,7 +133,7 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   clear. This replaces the earlier design where `push` acquired the pull-
   reconciliation mutex, which violated the synchronous-commit invariant
   (LS.SYS.STORE-R09) by suspending the commit path (see `.decisions/`, #1465). Deterministic
-  `rebaseBarriers` hooks at 3 labeled points let tests inject a concurrent
+  `rebaseBarriers` hooks at 2 labeled points let tests inject a concurrent
   push/shutdown into this window (the F1 no-loss oracle).
 - **Shutdown drain:** orderly shutdown closes new `push()` admission, stops
   pull processing while holding the state-ownership permit (which still

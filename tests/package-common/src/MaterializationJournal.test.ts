@@ -1,16 +1,6 @@
 import { expect } from 'vitest'
 
-import {
-  MATERIALIZATION_JOURNAL_META_TABLE,
-  MaterializationJournal,
-  migrateDb,
-  prepareBindValues,
-  SqliteError,
-  StateSqliteDb,
-  sql,
-  type MaterializationJournalMetaRow,
-  type SqliteDb,
-} from '@livestore/common'
+import { MaterializationJournal, migrateDb, SqliteError, StateSqliteDb, type SqliteDb } from '@livestore/common'
 import { EventSequenceNumber } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
@@ -18,7 +8,7 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
-import { schema } from './leader-thread/fixture.ts'
+import { getJournalChangeset, schema } from './leader-thread/fixture.ts'
 
 const setup = Effect.gen(function* () {
   const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
@@ -189,29 +179,8 @@ const getRecord = (
   dbState: SqliteDb,
   key: EventSequenceNumber.Client.Composite,
 ): MaterializationJournal.MaterializationRecord | undefined => {
-  const statement = sql`SELECT * FROM ${MATERIALIZATION_JOURNAL_META_TABLE}
-    WHERE seqNumGlobal = $global
-      AND seqNumClient = $client
-      AND seqNumRebaseGeneration = $rebaseGeneration
-    LIMIT 1`
-  const row = dbState.select<MaterializationJournalMetaRow>(
-    statement,
-    prepareBindValues(
-      {
-        global: key.global,
-        client: key.client,
-        rebaseGeneration: key.rebaseGeneration,
-      },
-      statement,
-    ),
-  )[0]
-
-  if (row === undefined) return undefined
-
-  return {
-    key,
-    changeset: row.changeset,
-  }
+  const changeset = getJournalChangeset(dbState, key)
+  return changeset === undefined ? undefined : { key, changeset }
 }
 
 const captureChangeset = (dbState: SqliteDb, mutation: () => void): Uint8Array<ArrayBuffer> => {
