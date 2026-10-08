@@ -220,6 +220,13 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       Layer.provide(stateDbLayer),
     )
     const materializationLayer = Layer.mergeAll(stateDbLayer, reactiveStateDbLayer, stateServicesLayer)
+    // Build the services once: `materializeEvent` runs for every committed and replayed event, and providing the layer
+    // there rebuilt the journal and state-head services each time. None of them owns resources, so the build scope can
+    // close right away.
+    const materializationContext = Layer.build(materializationLayer).pipe(
+      Effect.scoped,
+      Effect.runSyncWith(effectContext.services),
+    )
 
     const syncProcessor = makeClientSessionSyncProcessor({
       schema,
@@ -310,7 +317,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             return { writeTables: writeTablesForEvent, materializerHash }
           }).pipe(
             SqliteDbHelper.withStateDbSavepoint,
-            Effect.provide(materializationLayer),
+            Effect.provideContext(materializationContext),
             Effect.mapError((cause) =>
               MaterializationJournal.isMaterializationJournalError(cause) === true
                 ? cause
@@ -333,7 +340,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         }),
       },
       confirmUnsavedChanges,
-    }).pipe(Effect.provide(materializationLayer), Effect.runSyncWith(effectContext.services))
+    }).pipe(Effect.provideContext(materializationContext), Effect.runSyncWith(effectContext.services))
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     const tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> } = {}
