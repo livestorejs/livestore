@@ -112,6 +112,25 @@ rows. On the leader the three commit in one state-DB savepoint
 - `discardUpTo(key)` deletes records at or below `(global, client)` regardless
   of rebase generation, once those events are confirmed upstream.
 
+The client session records an entry for every committed and replayed event,
+so `record` is on the commit path: a savepoint, a delete of any record at the
+key, and an insert. It is most of what a session commit costs beyond `main`'s
+in-memory changesets (in a 400-commit loop, a no-op `record` matched `main`'s
+time). Possible follow-up improvements:
+
+- Give the journal table a primary key on the sequence-number triple (the
+  table definition still carries a TODO for it). `record` could then be one
+  `INSERT OR REPLACE`, without the delete and its savepoint. The key changes
+  state-DB layout, so it is cheapest while this release already rebuilds state
+  for the renamed table.
+- Savepoint names are unique per use (`SqliteDbHelper.withSavepoint`), so the
+  Store runs each savepoint statement uncached. A reused name would make them
+  cacheable, but only if every savepoint stays strictly nested.
+- `discardUpTo` interpolates its key into the SQL, so each call prepares a new
+  statement; bound parameters would make it reusable.
+- Each journal statement creates an Effect span through `execSqlPrepared` or
+  `execSql`; the hot journal writes could skip per-statement spans.
+
 The client session's Store provides `StateSqliteDb` from its cache-aware
 wrapper rather than the raw connection
 (`../../05-store/01-reactivity/spec.md`).
