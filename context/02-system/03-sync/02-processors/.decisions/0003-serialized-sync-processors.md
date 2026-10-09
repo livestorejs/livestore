@@ -83,9 +83,23 @@ pairs each after a warmup, Chromium 147 on an Apple M1 Pro, with a real
 - **Earlier run:** a whole-batch synchronous owner delayed input by up to
   497 ms on the same 1,000-event rebase, against 15.7 ms for a split owner; that
   split owner failed the durable-head check in 60 of 60 non-idle samples.
-- **Not measured:** the previous implementation on `main`, OPFS, workers,
-  multiple tabs, the network, and tail latency. Replaying a large pending
-  suffix at every step remains a long task (maximum frame gaps of about 68 ms).
+- **Against `main` (2026-10-08):** the livestore-contrib scenario benchmark ran
+  `main` and this stack in alternating pairs, 10 samples each, on the 426-event
+  two-writer and 400-event pending-tail scenarios. The first measurement was
+  1.50 s vs 2.53 s (+69%) for two writers in one process. Profiling found
+  overhead, not more sync work: savepoint statements evicting the session's
+  statement cache, per-event service construction, re-validating every pending
+  event on each merge, and replaying pending events once per 32-event step.
+  After those fixes, medians were within 3% of `main` for two writers in one
+  process or in separate processes and 17% slower in the browser, where
+  `main`'s samples varied widely and 2 of 10 failed. The pending tail was 17%
+  slower in one process, 8% slower in separate processes and 11% faster in the
+  browser. All stack samples passed. The
+  remaining commit cost is the session's per-event journal record (see the
+  journal follow-ups in `../../../02-state/01-sqlite/spec.md`).
+- **Not measured:** OPFS, workers, multiple tabs, the network, and tail
+  latency. Replaying a large pending suffix in a step remains a long task
+  (maximum frame gaps of about 68 ms).
 
 ## Consequences
 

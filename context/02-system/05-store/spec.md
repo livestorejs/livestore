@@ -64,7 +64,7 @@ are rejected. The callback does not receive an event emitter
 ([decision 0002](./.decisions/0002-commit-callback-return-array.md)).
 
 The pipeline is fully synchronous, run via `Effect.runSyncWith`
-(`store.ts:927`). **This synchronicity is an invariant** (Q1, see
+(`store.ts:934`). **This synchronicity is an invariant** (Q1, see
 [`.decisions/0001-client-session-shutdown-drain.md`](./.decisions/0001-client-session-shutdown-drain.md)):
 no step on the commit path may block or suspend on a lock/permit, because a
 suspension turns the commit effect async and makes `runSyncWith` throw
@@ -73,7 +73,7 @@ runs every state change in one synchronous owner and moves all waiting to its
 runner ([`../03-sync/02-processors/spec.md`](../03-sync/02-processors/spec.md)).
 The steps:
 
-1. `store.commit` → `processor.commit` (`store.ts:886`): one call into the
+1. `store.commit` → `processor.commit` (`store.ts:893`): one call into the
    `ClientSessionSyncProcessor`'s synchronous owner, which checks admission,
    validates and encodes events against their definitions, assigns client
    sequence numbers, and merges them into the session's sync state as pending.
@@ -83,12 +83,12 @@ The steps:
    returning the written tables (`ClientSessionSyncProcessor.ts:212-251`).
 3. Refresh the reactivity graph (`setRefs`; guarantees in
    [01-reactivity/](./01-reactivity/spec.md)) for the returned tables
-   (`store.ts:888-907`). Code resumed by the processor's outbox may run, or
+   (`store.ts:895-914`). Code resumed by the processor's outbox may run, or
    commit again, before this refresh.
 
 **A failed local commit is fatal to the store**: the commit path catches the
 cause and forks `store.shutdown` rather than throwing a recoverable error to
-the caller (`store.ts:926`; LS.SYS.STORE-R09).
+the caller (`store.ts:933`; LS.SYS.STORE-R09).
 
 Telemetry: long-lived `LiveStore:commits`/`LiveStore:queries` spans plus a
 per-commit root span with links.
@@ -119,7 +119,7 @@ per-commit root span with links.
   events committed during boot are unbatched.
 - `setSignal` before/while the reactive graph is externally retained relies
   on an `rc > 1` guard to avoid losing the set value
-  (`store.ts:797-804`; acknowledged fragile in code, issue #1419).
+  (`store.ts:804-811`; acknowledged fragile in code, issue #1419).
 
 ## Multi-Store (StoreRegistry)
 
