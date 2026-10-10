@@ -1,6 +1,7 @@
 export * from './connection.ts'
 export * as Eventlog from './eventlog.ts'
 export * from './leader-worker-devtools.ts'
+export * as LeaderPersistence from './LeaderPersistence.ts'
 export * from './make-leader-thread-layer.ts'
 export * from './materialize-event.ts'
 export * from './recreate-db.ts'

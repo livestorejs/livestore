@@ -513,8 +513,8 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         undefined,
       )
 
+      // The pulled rebase fails inside LeaderPersistence, so the processor never restarts backend pushing for it.
       yield* testContext.mockSyncBackend.connect
-      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(3000))
       const shutdownError = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
 
       expect(shutdownError._tag).toEqual('MaterializeError')
@@ -524,6 +524,61 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         dbState.select<{ count: number }>(sql`SELECT COUNT(*) AS count FROM ${MATERIALIZATION_JOURNAL_META_TABLE}`)[0]!
           .count,
       ).toEqual(1)
+    }).pipe(withTestCtx({ syncOptions: { onSyncError: 'shutdown' }, captureShutdown: true })(test)),
+  )
+
+  // The backend confirms events without their local rebase generation. A pending event that the leader rebased
+  // before the backend accepted it must still be confirmed, even though the persisted state head keeps the local
+  // generation (e2 with generation 1) while the backend reports e2 (generation 0).
+  Vitest.live('confirms a pending event that was rebased before the backend accepted it', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+      const backendFactory = makeEventFactory({
+        client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
+      })
+
+      // Commit a local event at e1 while the leader cannot see the remote e1 yet.
+      yield* testContext.mockSyncBackend.disconnect
+      yield* testContext.mockSyncBackend.advance(
+        backendFactory.todoCreated.next({ id: 'remote', text: 'remote', completed: false }),
+      )
+      yield* testContext.pushEncoded(
+        testContext.eventFactory.todoCreated.next({ id: 'local', text: 'local', completed: false }),
+      )
+
+      // Reconnecting rebases the local event onto the remote e1 (as e2, generation 1). It is then pushed and the
+      // backend confirms it as e2.
+      yield* testContext.mockSyncBackend.connect
+      const confirmedState = yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.filter((state) => state.upstreamHead.global === 2 && state.pending.length === 0),
+        Stream.runHead,
+        Effect.timeout(3000),
+      )
+
+      assert(confirmedState._tag === 'Some')
+      expect(yield* Deferred.isDone(testContext.shutdownDeferred)).toBe(false)
+
+      const dbState = yield* StateSqliteDb.StateSqliteDb
+      const stateHead = yield* getStateHead(dbState)
+      expect({ global: stateHead.global, client: stateHead.client }).toEqual({ global: 2, client: 0 })
+      expect(stateHead.rebaseGeneration).toBe(1)
+      expect(
+        (yield* EventlogSqliteDb.EventlogSqliteDb)
+          .select(SystemTables.eventlogMetaTable)
+          .map(({ seqNumGlobal, seqNumRebaseGeneration, name }) => ({ seqNumGlobal, seqNumRebaseGeneration, name })),
+      ).toEqual([
+        { seqNumGlobal: 1, seqNumRebaseGeneration: 0, name: 'todoCreated' },
+        { seqNumGlobal: 2, seqNumRebaseGeneration: 1, name: 'todoCreated' },
+      ])
+      expect(
+        dbState
+          .select<{ id: string }>(tables.todos.asSql().query)
+          .map(({ id }) => id)
+          .toSorted(),
+      ).toEqual(['local', 'remote'])
+      // Confirmation prunes the journal although the confirmed key keeps its local rebase generation.
+      expect(dbState.select(SystemTables.materializationJournalMetaTable)).toEqual([])
     }).pipe(withTestCtx({ syncOptions: { onSyncError: 'shutdown' }, captureShutdown: true })(test)),
   )
 
