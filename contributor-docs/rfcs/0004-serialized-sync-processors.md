@@ -1,14 +1,13 @@
 # Serialized Sync Processors
 
-> **Status: draft.** This proposal has not been accepted. An implementation is available for review. Until the RFC is
-> accepted, its design and the terms it coins (owner, outbox, job, runner, `LeaderPersistence`, persist receipt) live
-> only here. On acceptance they fold into
-> [`context/02-system/03-sync/02-processors/`](../../context/02-system/03-sync/02-processors/spec.md), with the commit
-> path in [`05-store/`](../../context/02-system/05-store/spec.md) and the terms in
-> [`ontology.md`](../../context/ontology.md). The session uses approach C: one synchronous owner with yielding
-> reconciliation, including the readability refactor at `66ca5d3e0` and the explicit-state follow-up of September 24,
-> 2026 (tagged lifecycle, a `cancelling` push state, enforced synchronous owner). The leader is a serialized mailbox that
-> writes through `LeaderPersistence`. Alternatives remain preserved on named branches.
+> **Status: accepted — folded into the intent layer (2026-10-07).** The durable contract lives in
+> [`context/02-system/03-sync/02-processors/spec.md`](../../context/02-system/03-sync/02-processors/spec.md), with the
+> decision and rejected alternatives in
+> [`.decisions/0003-serialized-sync-processors.md`](../../context/02-system/03-sync/02-processors/.decisions/0003-serialized-sync-processors.md),
+> the commit path in [`05-store/spec.md`](../../context/02-system/05-store/spec.md), the leader's coordinated
+> transactions in [`02-state/spec.md`](../../context/02-system/02-state/spec.md), and the coined terms in
+> [`ontology.md`](../../context/ontology.md). Where the shipped code differs from this text, the intent layer records
+> the code. This RFC is retained as a historical record (see the fold-in rule in `context/05-contributing/`).
 
 This work builds on Igor Gassmann's `MaterializationJournal` (the service landed in #1531) and role-specific SQLite
 Effect service extraction (`StateSqliteDb`, `EventlogSqliteDb`, `StateHead`). It

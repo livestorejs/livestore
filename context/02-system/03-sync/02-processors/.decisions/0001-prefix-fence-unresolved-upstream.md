@@ -1,7 +1,14 @@
 # 0001 — Fence unresolved upstream prefixes before sending later events
 
-Status: accepted (SF-03 reduction evidence and maintainer confirmation,
-2026-07-31).
+Status: superseded by
+[0003](./0003-serialized-sync-processors.md) (2026-10-07). Originally accepted
+(SF-03 reduction evidence and maintainer confirmation, 2026-07-31).
+
+The fence chosen here (option a) still holds as LS.SYS.SYNC.PROC-R04; 0003
+restates it in the serialized processors. What 0003 replaces is the mechanism
+named in the consequences below: parked push workers and FIFO reseeding become
+the explicit `awaiting-reconciliation` and `awaiting-pull` states, and the
+receiver fence becomes validation against the leader's admitted queue tail.
 
 ## Context
 

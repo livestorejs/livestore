@@ -62,6 +62,31 @@
   events for a `storeId`.
 - **Sync processor** — The component reconciling local pending events with
   upstream events; one runs session-side and one leader-side.
+- **Owner (sync processor)** — The only code allowed to change a sync
+  processor's model: the leader's mailbox loop, or the session's synchronous
+  `owned` body. _Avoid:_ lock holder.
+- **`LeaderMessage`** — A tagged input to the leader sync processor's mailbox
+  (local push, backend page, push/pull result, retry, shutdown), handled one at
+  a time. _Avoid:_ unqualified "message" (collides with wire-protocol and
+  devtools messages).
+- **`SessionMessage`** — A tagged input that changes the session sync
+  processor's model without returning a result to its sender. _Avoid:_
+  unqualified "message".
+- **Runner (sync processor)** — The session sync processor's asynchronous
+  side: it does all waiting (leader push, cancellation, refresh, yield,
+  shutdown) and reports outcomes back to the owner as `SessionMessage`s.
+- **Job (sync processor)** — A unit of work the session owner hands to the
+  runner (`Push`, `Reconcile`, `BeginShutdown`, `FinishShutdown`,
+  `NotifyFailure`).
+- **Outbox (sync processor)** — Where the session owner holds jobs and
+  notifications during a transition; delivered after the owner is released,
+  dropped if the transition fails.
+- **`LeaderPersistence`** — The leader's durable seam: rollback,
+  materialization, eventlog writes, journal maintenance, and heads, committed
+  as coordinated state and eventlog transactions.
+- **Persist receipt** — What a successful `LeaderPersistence` call returns:
+  the persisted events, their materializer hashes, and the resulting heads.
+  The leader publishes and acknowledges only what a receipt reports.
 - **Rebase** — Re-parenting local pending events onto newly pulled upstream
   events, incrementing their rebase generation.
 - **Live query** — A reactive query over state (`queryDb`, `computed`,
@@ -118,7 +143,7 @@ The **event** is the spine: every other concept produces events, orders
 them, derives from them, or observes the result.
 
 | Relation to the spine | Terms |
-| --- | --- |
+| --------------------- | ----------------------------------------------------------------------------- |
 | Produce | Store (commit), Client session |
 | Order | Eventlog, Event sequence number, Sync backend, Rebase, Facts _(experimental)_ |
 | Derive | Materializer, State, Client document |
@@ -138,6 +163,10 @@ in their name:
   Sync backend, Sync processor share the leitwort. Rebase, Rebase
   generation, Upstream head, and Local head are its operation/position
   vocabulary (no leitwort — they name acts and places, not sync parts).
+  Owner, Runner, Job, Outbox, `LeaderMessage`, `SessionMessage`,
+  `LeaderPersistence`, and Persist receipt are Sync processor's internal
+  vocabulary; generic nouns carry the "(sync processor)" qualifier, and code
+  names stay qualified rather than shortened to "message".
 - **State family** — anchor **State**; Materializer, Materialization
   journal, Changeset (SQLite session), Schema hash, and Storage format version
   are its derivation and versioning vocabulary (mechanism names, no shared leitwort).
