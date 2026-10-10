@@ -10,14 +10,14 @@
 
 ### Changed
 
-- **State storage:** Rebases roll back state through a materialization journal table instead of SQLite changesets carried in event metadata. Because the state system tables changed, existing state databases are rebuilt from the eventlog once after upgrading.
-- **Query cache:** Cached query results are discarded when a journal or savepoint rollback changes the session database, so reads after a rebase no longer return rolled-back rows.
+- **State storage:** Rebases roll back state through a materialization journal table instead of SQLite changesets carried in event metadata. Because the state system tables changed, existing state databases are rebuilt from the eventlog once after upgrading ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
+- **Query cache:** Cached query results are discarded when a journal or savepoint rollback changes the session database, so reads after a rebase no longer return rolled-back rows ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
 
 ### Internal Changes
 
 For maintainers and contributors:
 
-- **SQLite services:** Leader and client-session code reach SQLite through the `StateSqliteDb`, `EventlogSqliteDb`, `StateHead` and `MaterializationJournal` Effect services. Thanks [@IGassmann](https://github.com/IGassmann).
+- **SQLite services:** Leader and client-session code reach SQLite through the `StateSqliteDb`, `EventlogSqliteDb`, `StateHead` and `MaterializationJournal` Effect services ([#1658](https://github.com/livestorejs/livestore/pull/1658)). Thanks [@IGassmann](https://github.com/IGassmann).
 
 ## 0.5.0
 
