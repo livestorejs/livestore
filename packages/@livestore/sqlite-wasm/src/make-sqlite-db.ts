@@ -227,7 +227,7 @@ export const makeSqliteDb = <
       return {
         changeset: () => {
           const res = sqlite3.session_changeset(sessionPointer)
-          return res.changeset ?? undefined
+          return res.changeset
         },
         finish: () => {
           sqlite3.session_delete(sessionPointer)

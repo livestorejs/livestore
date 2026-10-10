@@ -1,11 +1,12 @@
 import { Context, Effect, Layer, Predicate, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import { SqliteError, type SqliteDb } from './adapter-types.ts'
+import { SqliteError } from './adapter-types.ts'
 import { execSql, execSqlPrepared } from './leader-thread/connection.ts'
 import * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
 import { SystemTables } from './schema/mod.ts'
-import { findManyRows, insertRow } from './sql-queries/index.ts'
+import { findManyRows, insertRowPrepared } from './sql-queries/index.ts'
 import * as SqliteDbHelper from './sqlite-db-helper.ts'
+import * as StateSqliteDb from './StateSqliteDb.ts'
 import { prepareBindValues, sql } from './util.ts'
 
 export const TypeId = '~@livestore/common/MaterializationJournal' as const
@@ -25,11 +26,10 @@ export class MaterializationJournalError extends Schema.TaggedError<Materializat
   readonly [MaterializationJournalErrorTypeId] = MaterializationJournalErrorTypeId
 }
 
-export type MaterializationChangeset = { _tag: 'changeset'; data: Uint8Array<ArrayBuffer> } | { _tag: 'no-op' }
-
 export type MaterializationRecord = {
   key: EventSequenceNumber.Client.Composite
-  changeset: MaterializationChangeset
+  /** Changes recorded while materializing the event, or `null` when materialization did not change state. */
+  changeset: Uint8Array<ArrayBuffer> | null
 }
 
 export interface Service {
@@ -48,11 +48,10 @@ export class MaterializationJournal extends Context.Service<MaterializationJourn
   '@livestore/common/MaterializationJournal',
 ) {}
 
-interface Options {
-  readonly dbState: SqliteDb
-}
+export const make = Effect.gen(function* () {
+  const dbState = yield* StateSqliteDb.StateSqliteDb
 
-export const make = ({ dbState }: Options) => {
+  /** Runs inside the savepoint of `record` or `rollback`, which keeps a multi-chunk delete atomic. */
   const deleteByKeys = Effect.fnUntraced(function* (keys: ReadonlyArray<EventSequenceNumber.Client.Composite>) {
     // Keep DELETE statements below SQLite's bound-parameter limit.
     const keyChunks = ReadonlyArray.chunksOf(100)(keys)
@@ -65,7 +64,13 @@ export const make = ({ dbState }: Options) => {
 
       yield* execSqlPrepared(dbState, statement, prepareBindValues(bindValues, statement))
     }
-  }, SqliteDbHelper.withSavepoint(dbState))
+  })
+
+  // `record` runs for every materialized event, so its statement is built once.
+  const insertStatement = insertRowPrepared({
+    tableName: SystemTables.MATERIALIZATION_JOURNAL_META_TABLE,
+    columns: SystemTables.materializationJournalMetaTable.sqliteDef.columns,
+  })
 
   return MaterializationJournal.of({
     [TypeId]: TypeId,
@@ -73,21 +78,14 @@ export const make = ({ dbState }: Options) => {
       function* (record: MaterializationRecord) {
         yield* deleteByKeys([record.key])
 
-        // Generate the parameterized INSERT statement
-        const [statement, bindValues] = insertRow({
-          tableName: SystemTables.MATERIALIZATION_JOURNAL_META_TABLE,
-          columns: SystemTables.materializationJournalMetaTable.sqliteDef.columns,
-          values: {
-            seqNumGlobal: record.key.global,
-            seqNumClient: record.key.client,
-            seqNumRebaseGeneration: record.key.rebaseGeneration,
-            changeset: record.changeset._tag === 'changeset' ? record.changeset.data : null,
-            // Legacy processors still expose this column for development diagnostics.
-            debug: null,
-          },
-        })
-
-        yield* execSqlPrepared(dbState, statement, prepareBindValues(bindValues, statement))
+        // The columns are plain integers and a blob, so the values bind without schema encoding.
+        const bindValues = {
+          seqNumGlobal: record.key.global,
+          seqNumClient: record.key.client,
+          seqNumRebaseGeneration: record.key.rebaseGeneration,
+          changeset: record.changeset,
+        }
+        yield* execSqlPrepared(dbState, insertStatement, prepareBindValues(bindValues, insertStatement))
       },
       SqliteDbHelper.withSavepoint(dbState),
       Effect.mapError((cause) => new MaterializationJournalError({ method: 'record', cause })),
@@ -95,7 +93,7 @@ export const make = ({ dbState }: Options) => {
     rollback: Effect.fnUntraced(
       function* (keys: ReadonlyArray<EventSequenceNumber.Client.Composite>) {
         const sortedKeys = keys.toSorted((a, b) => EventSequenceNumber.Client.compare(b, a))
-        const rollbackRecords = yield* Effect.forEach(
+        const rollbackChangesets = yield* Effect.forEach(
           sortedKeys,
           Effect.fnUntraced(function* (key) {
             const [statement, bindValues] = findManyRows({
@@ -123,21 +121,14 @@ export const make = ({ dbState }: Options) => {
               })
             }
 
-            return {
-              key,
-              changeset:
-                row.changeset === null
-                  ? { _tag: 'no-op' as const }
-                  : { _tag: 'changeset' as const, data: row.changeset },
-            }
+            return row.changeset
           }),
         )
 
-        for (const record of rollbackRecords) {
-          if (record.changeset._tag === 'changeset') {
-            const data = record.changeset.data
+        for (const changeset of rollbackChangesets) {
+          if (changeset !== null) {
             yield* Effect.try({
-              try: () => dbState.makeChangeset(data).invert().apply(),
+              try: () => dbState.makeChangeset(changeset).invert().apply(),
               catch: (cause) => new SqliteError({ cause }),
             })
           }
@@ -169,9 +160,9 @@ export const make = ({ dbState }: Options) => {
       Effect.mapError((cause) => new MaterializationJournalError({ method: 'discardUpTo', cause })),
     ),
   })
-}
+})
 
-export const layer = (options: Options) => Layer.succeed(MaterializationJournal, make(options))
+export const layer = Layer.effect(MaterializationJournal, make)
 
 export const layerTest = Layer.succeed(
   MaterializationJournal,

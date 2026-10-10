@@ -73,17 +73,67 @@ materializer; `get(id?)` is a typed query. Mechanics:
 
 ## System Tables
 
-| Group              | Tables                                                                    | Purpose                                                                                                                                                                   |
-| ------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Eventlog           | `eventlog` (`eventlog-tables.ts`)                                         | one row per event: composite seqNum triple (PK) + parent triple, `name`, `argsJson`, `clientId`, `sessionId`, per-row `schemaHash`, `syncMetadataJson`; indexed on seqNum |
-| Sync status        | `__livestore_sync_status`                                                 | upstream head + `backendId` (backend-identity change detection)                                                                                                           |
-| Schema meta        | `__livestore_schema`, `__livestore_schema_event_defs` (`state-tables.ts`) | table-AST and event-definition hashes for drift detection                                                                                                                 |
-| Changeset/rollback | `__livestore_session_changeset` (`state-tables.ts`)                       | per-event SQLite session changesets enabling rebase rollback (LS.SYS.STATE.SQLITE-R06)                                                                                    |
+| Group                   | Tables                                                                    | Purpose                                                                                                                                                                                                                                                       |
+| ----------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Eventlog                | `eventlog` (`eventlog-tables.ts`)                                         | one row per event: composite seqNum triple (PK) + parent triple, `name`, `argsJson`, `clientId`, `sessionId`, per-row `schemaHash`, `syncMetadataJson`; indexed on seqNum                                                                                     |
+| Sync status             | `__livestore_sync_status`                                                 | upstream head + `backendId` (backend-identity change detection)                                                                                                                                                                                               |
+| Schema meta             | `__livestore_schema`, `__livestore_schema_event_defs` (`state-tables.ts`) | table-AST and event-definition hashes for drift detection                                                                                                                                                                                                     |
+| Materialization journal | `__livestore_materialization_journal` (`state-tables.ts`)                 | one record per materialized event, keyed by the full seqNum triple: the SQLite session changeset, or `null` when materialization changed nothing. Rollback inverts records in reverse order; `discardUpTo` prunes confirmed records (LS.SYS.STATE.SQLITE-R06) |
+| State head              | `__livestore_state_head` (`state-tables.ts`)                              | single row: the latest event sequence number the state DB reflects. Kept apart from the journal, whose records are pruned                                                                                                                                     |
+| Rebuild marker          | `__livestore_rebuild` (`state-tables.ts`)                                 | singleton row written only after a completed rebuild; a state DB without it, or missing any state system table, is rebuilt (`recreate-db.ts`)                                                                                                                 |
 
-(LS.SYS.STATE.SQLITE-R04.) Note the eventlog and changeset groups span two
-databases: changeset rows live in the _state_ DB while event rows live in
-the _eventlog_ DB; `getEventsSince` joins across both to serve rebase
-rollback.
+(LS.SYS.STATE.SQLITE-R04.) Note the eventlog and the journal span two
+databases: journal and head rows live in the _state_ DB while event rows live
+in the _eventlog_ DB. Rebase rollback touches both (journal rollback, then
+eventlog deletion); no read joins across them.
+
+## SQLite Services
+
+Leader and client-session code reach these databases through four Effect
+services (`packages/@livestore/common/src/`):
+
+| Service                                                | Role                                                                              |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| `StateSqliteDb` (`StateSqliteDb.ts`)                   | the state DB under a role-specific service identity                               |
+| `EventlogSqliteDb` (`EventlogSqliteDb.ts`)             | the eventlog DB under a role-specific service identity                            |
+| `StateHead` (`StateHead.ts`)                           | `get`/`set` for `__livestore_state_head`; `get` returns `ROOT` when no row exists |
+| `MaterializationJournal` (`MaterializationJournal.ts`) | `record`, `rollback`, `discardUpTo` over `__livestore_materialization_journal`    |
+
+`StateHead` and `MaterializationJournal` are built on `StateSqliteDb`; every
+materialization writes its journal record and the state head next to its state
+rows. On the leader the three commit in one state-DB savepoint
+(`materialize-event.ts`). Journal semantics:
+
+- `record` replaces any record at the same key. Events whose definition is
+  unknown are recorded with a `null` changeset.
+- `rollback(keys)` runs in one savepoint: it fails with
+  `MaterializationJournalError` and leaves state unchanged if any key has no
+  record, applies inverse changesets newest-first, then deletes the records.
+- `discardUpTo(key)` deletes records at or below `(global, client)` regardless
+  of rebase generation, once those events are confirmed upstream.
+
+The client session records an entry for every committed and replayed event,
+so `record` is on the commit path: a savepoint, a delete of any record at the
+key, and an insert. It is most of what a session commit costs beyond `main`'s
+in-memory changesets (in a 400-commit loop, a no-op `record` matched `main`'s
+time). Possible follow-up improvements:
+
+- Give the journal table a primary key on the sequence-number triple (the
+  table definition still carries a TODO for it). `record` could then be one
+  `INSERT OR REPLACE`, without the delete and its savepoint. The key changes
+  state-DB layout, so it is cheapest while this release already rebuilds state
+  for the renamed table.
+- Savepoint names are unique per use (`SqliteDbHelper.withSavepoint`), so the
+  Store runs each savepoint statement uncached. A reused name would make them
+  cacheable, but only if every savepoint stays strictly nested.
+- `discardUpTo` interpolates its key into the SQL, so each call prepares a new
+  statement; bound parameters would make it reusable.
+- Each journal statement creates an Effect span through `execSqlPrepared` or
+  `execSql`; the hot journal writes could skip per-statement spans.
+
+The client session's Store provides `StateSqliteDb` from its cache-aware
+wrapper rather than the raw connection
+(`../../05-store/01-reactivity/spec.md`).
 
 ## Schema Change
 

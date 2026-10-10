@@ -28,18 +28,22 @@ import {
 } from '@livestore/utils/effect'
 
 import { MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
+import { PullItem } from '../ClientSessionLeaderThreadProxy.ts'
 import type { UnknownEventError } from '../errors.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
+import * as EventlogSqliteDb from '../EventlogSqliteDb.ts'
+import * as MaterializationJournal from '../MaterializationJournal.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
+import * as SqliteDbHelper from '../sqlite-db-helper.ts'
 import * as StateHead from '../StateHead.ts'
+import * as StateSqliteDb from '../StateSqliteDb.ts'
 import type { BackendIdMismatchError, IsOfflineError, SyncBackend } from '../sync/sync.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
-import { rollback } from './materialize-event.ts'
 import {
   isRejectedPushError,
   LeaderAheadError,
@@ -91,13 +95,11 @@ export class LeaderSyncProcessor extends Context.Service<LeaderSyncProcessor, Se
 export interface Service {
   readonly [TypeId]: TypeId
   /** Used by client sessions to subscribe to upstream sync state changes */
-  readonly pull: (args: {
-    cursor: EventSequenceNumber.Client.Composite
-  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }>
+  readonly pull: (args: { cursor: EventSequenceNumber.Client.Composite }) => Stream.Stream<typeof PullItem.Type>
   /** The `pullQueue` API can be used instead of `pull` when more convenient */
   readonly pullQueue: (args: {
     cursor: EventSequenceNumber.Client.Composite
-  }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, never, Scope.Scope>
+  }) => Effect.Effect<Queue.Queue<typeof PullItem.Type>, never, Scope.Scope>
 
   /**
    * Used by client sessions to push events to the leader thread.
@@ -209,8 +211,6 @@ interface Options {
  * depending on the outward-facing leader aggregate that contains the processor itself.
  */
 interface Runtime {
-  readonly dbState: SqliteDb
-  readonly dbEventlog: SqliteDb
   readonly materializeEvent: MaterializeEvent
   readonly syncBackend: SyncBackend.SyncBackend | undefined
   readonly shutdownChannel: ShutdownChannel
@@ -229,8 +229,11 @@ export const make = Effect.fnUntraced(function* ({
   params,
   testing,
 }: Options) {
+  const dbState = yield* StateSqliteDb.StateSqliteDb
+  const dbEventlog = yield* EventlogSqliteDb.EventlogSqliteDb
+  const materializationJournal = yield* MaterializationJournal.MaterializationJournal
   const stateHead = yield* StateHead.StateHead
-  const { dbState, dbEventlog, devtoolsLatch, materializeEvent, shutdownChannel, span, syncBackend } = runtime
+  const { devtoolsLatch, materializeEvent, shutdownChannel, span, syncBackend } = runtime
   const syncBackendPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
   const localPushBatchSize = params.localPushBatchSize ?? 10
   const backendPushBatchSize = params.backendPushBatchSize ?? 50
@@ -439,6 +442,7 @@ export const make = Effect.fnUntraced(function* ({
 
         yield* connectedClientSessionPullQueues.offer({
           payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: acceptedPendingEvents }),
+          globalHead: mergeResult.newSyncState.upstreamHead,
           leaderHead: mergeResult.newSyncState.localHead,
         })
 
@@ -542,18 +546,29 @@ export const make = Effect.fnUntraced(function* ({
             yield* restartBackendPushing(globalOrUnknownRebasedPendingEvents)
 
             if (mergeResult.rollbackEvents.length > 0) {
-              yield* rollback({
-                dbState,
-                dbEventlog,
-                eventNumsToRollback: mergeResult.rollbackEvents.map((_) => _.seqNum),
-              })
-              yield* stateHead
-                .set(mergeResult.rollbackEvents[0]!.parentSeqNum)
-                .pipe(Effect.mapError((cause) => MaterializeError.make({ cause })))
+              const rollbackSeqNums = mergeResult.rollbackEvents.map((_) => _.seqNum)
+              const headAfterRollback = mergeResult.rollbackEvents[0]!.parentSeqNum
+
+              yield* Effect.gen(function* () {
+                yield* materializationJournal.rollback(rollbackSeqNums)
+                yield* stateHead.set(headAfterRollback)
+              }).pipe(
+                SqliteDbHelper.withSavepoint(dbState),
+                Effect.mapError((cause) =>
+                  MaterializationJournal.isMaterializationJournalError(cause) === true
+                    ? cause
+                    : MaterializeError.make({ cause }),
+                ),
+              )
+
+              yield* Eventlog.deleteEvents(dbEventlog, rollbackSeqNums).pipe(
+                Effect.mapError((cause) => MaterializeError.make({ cause })),
+              )
             }
 
             yield* connectedClientSessionPullQueues.offer({
               payload: SyncState.payloadFromMergeResult(mergeResult),
+              globalHead: mergeResult.newSyncState.upstreamHead,
               leaderHead: mergeResult.newSyncState.localHead,
             })
           } else {
@@ -568,6 +583,7 @@ export const make = Effect.fnUntraced(function* ({
 
             yield* connectedClientSessionPullQueues.offer({
               payload: SyncState.payloadFromMergeResult(mergeResult),
+              globalHead: mergeResult.newSyncState.upstreamHead,
               leaderHead: mergeResult.newSyncState.localHead,
             })
 
@@ -583,9 +599,6 @@ export const make = Effect.fnUntraced(function* ({
             }
           }
 
-          // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
-          trimChangesetRows(dbState, newBackendHead)
-
           // The backend merge may advance or rebase the authoritative head. Realign the admission
           // fence now so newly arriving pushes are validated against that history, not the pre-pull head.
           yield* reconcilePushHead(mergeResult.newSyncState.localHead)
@@ -593,6 +606,9 @@ export const make = Effect.fnUntraced(function* ({
           // Apply the merged events to storage before publishing the new sync state below, so readers
           // cannot observe a leader head whose events have not yet been materialized.
           yield* materializeEventsBatch({ batchItems: mergeResult.newEvents })
+
+          // Discard leader materialization journal records which are no longer needed as we'll never have to rollback beyond this point.
+          yield* materializationJournal.discardUpTo(newBackendHead)
 
           yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
         }).pipe(Effect.exit)
@@ -768,7 +784,9 @@ export const make = Effect.fnUntraced(function* ({
       const handleBackendIdMismatchError = (error: BackendIdMismatchError) =>
         handleBackendIdMismatch({ error, onBackendIdMismatch, shutdownChannel, dbEventlog, dbState })
 
-      const maybeShutdownOnError = (cause: Cause.Cause<UnknownError | MaterializeError>) =>
+      const maybeShutdownOnError = (
+        cause: Cause.Cause<UnknownError | MaterializeError | MaterializationJournal.MaterializationJournalError>,
+      ) =>
         Effect.gen(function* () {
           if (onError === 'ignore') {
             if (LS_DEV === true) {
@@ -924,8 +942,7 @@ const makeMaterializeEventsBatch =
       )
 
       for (let i = 0; i < batchItems.length; i++) {
-        const { sessionChangeset, hash } = yield* materializeEvent(batchItems[i]!)
-        batchItems[i]!.meta.sessionChangeset = sessionChangeset
+        const { hash } = yield* materializeEvent(batchItems[i]!)
         batchItems[i]!.meta.materializerHashLeader = hash
       }
 
@@ -940,28 +957,23 @@ const makeMaterializeEventsBatch =
       Effect.tapCauseLogPretty,
     )
 
-const trimChangesetRows = (db: SqliteDb, newHead: EventSequenceNumber.Client.Composite) => {
-  // Since we're using the session changeset rows to query for the current head,
-  // we're keeping at least one row for the current head, and thus are using `<` instead of `<=`
-  db.execute(sql`DELETE FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE seqNumGlobal < ${newHead.global}`)
-}
-
 interface PullQueueSet {
   makeQueue: (
     cursor: EventSequenceNumber.Client.Composite,
-  ) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, never, Scope.Scope>
+  ) => Effect.Effect<Queue.Queue<typeof PullItem.Type>, never, Scope.Scope>
   offer: (item: {
     payload: typeof SyncState.PayloadUpstream.Type
+    globalHead: EventSequenceNumber.Client.Composite
     leaderHead: EventSequenceNumber.Client.Composite
   }) => Effect.Effect<void, never>
 }
 
 const makePullQueueSet = Effect.gen(function* () {
-  const set = new Set<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>>()
+  const set = new Set<Queue.Queue<typeof PullItem.Type>>()
 
   type StringifiedSeqNum = string
   // NOTE this could grow unbounded for long running sessions
-  const cachedPayloads = new Map<StringifiedSeqNum, (typeof SyncState.PayloadUpstream.Type)[]>()
+  const cachedPullItems = new Map<StringifiedSeqNum, (typeof PullItem.Type)[]>()
 
   yield* Effect.addFinalizer(() =>
     Effect.gen(function* () {
@@ -975,33 +987,29 @@ const makePullQueueSet = Effect.gen(function* () {
 
   const makeQueue: PullQueueSet['makeQueue'] = (cursor) =>
     Effect.gen(function* () {
-      const queue = yield* Effect.acquireRelease(
-        Queue.unbounded<{
-          payload: typeof SyncState.PayloadUpstream.Type
-        }>(),
-        Queue.shutdown,
-      )
+      const queue = yield* Effect.acquireRelease(Queue.unbounded<typeof PullItem.Type>(), Queue.shutdown)
 
       yield* Effect.addFinalizer(() => Effect.sync(() => set.delete(queue)))
 
-      const payloadsSinceCursor = Array.from(cachedPayloads.entries())
-        .flatMap(([seqNumStr, payloads]) =>
-          payloads.map((payload) => ({ payload, seqNum: EventSequenceNumber.Client.fromString(seqNumStr) })),
+      const pullItemsSinceCursor = Array.from(cachedPullItems.entries())
+        .flatMap(([seqNumStr, items]) =>
+          items.map((item) => ({ item, seqNum: EventSequenceNumber.Client.fromString(seqNumStr) })),
         )
         .filter(({ seqNum }) => EventSequenceNumber.Client.isGreaterThan(seqNum, cursor))
         .toSorted((a, b) => EventSequenceNumber.Client.compare(a.seqNum, b.seqNum))
-        .map(({ payload }) => {
-          if (payload._tag === 'upstream-advance') {
-            return {
+        .map(({ item }) => {
+          if (item.payload._tag === 'upstream-advance') {
+            return PullItem.make({
+              globalHead: item.globalHead,
               payload: {
                 _tag: 'upstream-advance' as const,
-                newEvents: ReadonlyArray.dropWhile(payload.newEvents, (eventEncoded) =>
+                newEvents: ReadonlyArray.dropWhile(item.payload.newEvents, (eventEncoded) =>
                   EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, eventEncoded.seqNum),
                 ),
               },
-            }
+            })
           } else {
-            return { payload }
+            return item
           }
         })
 
@@ -1011,9 +1019,9 @@ const makePullQueueSet = Effect.gen(function* () {
       //     cursor,
       //   },
       //   '\n  mergePayloads',
-      //   ...Array.from(cachedPayloads.entries())
-      //     .flatMap(([seqNumStr, payloads]) =>
-      //       payloads.map((payload) => ({ payload, seqNum: EventSequenceNumber.fromString(seqNumStr) })),
+      //   ...Array.from(cachedPullItems.entries())
+      //     .flatMap(([seqNumStr, items]) =>
+      //       items.map(({ payload }) => ({ payload, seqNum: EventSequenceNumber.fromString(seqNumStr) })),
       //     )
       //     .map(({ payload, seqNum }) => [
       //       seqNum,
@@ -1023,8 +1031,8 @@ const makePullQueueSet = Effect.gen(function* () {
       //       'rollbackEvents',
       //       ...(payload._tag === 'upstream-rebase' ? payload.rollbackEvents.map((_) => _.toJSON()) : []),
       //     ]),
-      //   '\n  payloadsSinceCursor',
-      //   ...payloadsSinceCursor.map(({ payload }) => [
+      //   '\n  pullItemsSinceCursor',
+      //   ...pullItemsSinceCursor.map(({ payload }) => [
       //     payload._tag,
       //     'newEvents',
       //     ...payload.newEvents.map((_) => _.toJSON()),
@@ -1033,7 +1041,7 @@ const makePullQueueSet = Effect.gen(function* () {
       //   ]),
       // )
 
-      yield* Queue.offerAll(queue, payloadsSinceCursor)
+      yield* Queue.offerAll(queue, pullItemsSinceCursor)
 
       set.add(queue)
 
@@ -1043,21 +1051,17 @@ const makePullQueueSet = Effect.gen(function* () {
   const offer: PullQueueSet['offer'] = (item) =>
     Effect.gen(function* () {
       const seqNumStr = EventSequenceNumber.Client.toString(item.leaderHead)
-      if (cachedPayloads.has(seqNumStr) === true) {
-        cachedPayloads.get(seqNumStr)!.push(item.payload)
+      const pullItem = PullItem.make({ payload: item.payload, globalHead: item.globalHead })
+      if (cachedPullItems.has(seqNumStr) === true) {
+        cachedPullItems.get(seqNumStr)!.push(pullItem)
       } else {
-        cachedPayloads.set(seqNumStr, [item.payload])
+        cachedPullItems.set(seqNumStr, [pullItem])
       }
 
       // console.debug(`offering to ${set.size} queues`, item.leaderHead, JSON.stringify(item.payload, null, 2))
 
-      // Short-circuit if the payload is an empty upstream advance
-      if (item.payload._tag === 'upstream-advance' && item.payload.newEvents.length === 0) {
-        return
-      }
-
       for (const queue of set) {
-        yield* Queue.offer(queue, item)
+        yield* Queue.offer(queue, pullItem)
       }
     })
 

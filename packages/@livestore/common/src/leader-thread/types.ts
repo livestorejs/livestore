@@ -25,6 +25,7 @@ import type {
   SyncBackend,
   UnknownError,
 } from '../index.ts'
+import type * as MaterializationJournal from '../MaterializationJournal.ts'
 import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import type * as LeaderSyncProcessor from './LeaderSyncProcessor.ts'
@@ -92,8 +93,6 @@ export class LeaderThreadCtx extends Context.Service<
     storeId: string
     clientId: string
     makeSqliteDb: MakeSqliteDb
-    dbState: LeaderSqliteDb
-    dbEventlog: LeaderSqliteDb
     bootStatusQueue: Queue.Queue<BootStatus>
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
@@ -124,11 +123,8 @@ export type MaterializeEvent = (
     skipEventlog?: boolean
   },
 ) => Effect.Effect<
-  {
-    sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any } | { _tag: 'no-op' }
-    hash: Option.Option<number>
-  },
-  MaterializeError
+  { hash: Option.Option<number> },
+  MaterializeError | MaterializationJournal.MaterializationJournalError
 >
 
 export type InitialBlockingSyncContext = {

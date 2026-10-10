@@ -222,7 +222,7 @@ export const makeSqliteDb_ = <
       //   cause: 'Session tracking not supported with public SqlStorage API',
       // })
       return {
-        changeset: () => new Uint8Array(),
+        changeset: () => null,
         finish: () => {},
       } satisfies SqliteDbSession
     },

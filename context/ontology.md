@@ -34,6 +34,9 @@
 - **Materializer** — A pure function of an event and current state, producing
   state changes; runs identically on every client. _Avoid:_ projector, event
   handler.
+- **Materialization journal** — The per-event record of how materialization
+  changed state (a SQLite session changeset, or none), kept until the event is
+  confirmed so rebase can roll state back. _Avoid:_ session changeset table.
 - **State** — Data derived from the eventlog via materializers and queryable
   by the app. "Read model" is the event-sourcing literature term for the same
   thing; State is canonical in LiveStore.
@@ -68,8 +71,8 @@
 - **Query instance** — A live, reference-counted node in the reactivity
   graph, created from a query definition.
 - **Result cache** — The bounded SQL-result cache keyed by statement and
-  bind values, invalidated per written table; distinct from query-instance
-  dedup.
+  bind values, invalidated per written table and cleared on rollback;
+  distinct from query-instance dedup.
 - **Reactivity graph** — The incremental computation graph that propagates
   state changes to live queries.
 - **Store registry** — The `storeId`-keyed manager of store lifecycles:
@@ -100,7 +103,8 @@
 - **Control operation** — A devtools message that mutates engine state
   (reset, import, event injection) rather than inspecting it.
 - **Changeset (SQLite session)** — A SQLite session-extension changeset
-  recorded per materialization, used to roll back state during rebase.
+  captured per materialization; the payload of a materialization journal
+  record, inverted to roll back state during rebase.
 - **Changeset (release)** — A pnpm changeset file describing a package-level
   change, folded into release notes.
 - **BDFL** — Benevolent Dictator For Life: the project creator holds final
@@ -134,9 +138,9 @@ in their name:
   Sync backend, Sync processor share the leitwort. Rebase, Rebase
   generation, Upstream head, and Local head are its operation/position
   vocabulary (no leitwort — they name acts and places, not sync parts).
-- **State family** — anchor **State**; Materializer, Changeset (SQLite
-  session), Schema hash, and Storage format version are its derivation and
-  versioning vocabulary (mechanism names, no shared leitwort).
+- **State family** — anchor **State**; Materializer, Materialization
+  journal, Changeset (SQLite session), Schema hash, and Storage format version
+  are its derivation and versioning vocabulary (mechanism names, no shared leitwort).
 - **Store family** (leitwort "store") — anchor **Store**; followers storeId,
   Store registry. Live query, Query definition, Query instance, Result
   cache, and Reactivity graph are its observation vocabulary.

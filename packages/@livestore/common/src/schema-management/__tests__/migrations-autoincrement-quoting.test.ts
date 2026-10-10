@@ -32,7 +32,7 @@ const makeStubDb = () => {
     import: () => {},
     close: () => {},
     destroy: () => {},
-    session: () => ({ changeset: () => undefined, finish: () => {} }),
+    session: () => ({ changeset: () => null, finish: () => {} }),
     makeChangeset: () => ({ invert: () => ({ invert: () => ({}) as any, apply: () => {} }) as any, apply: () => {} }),
   }
 

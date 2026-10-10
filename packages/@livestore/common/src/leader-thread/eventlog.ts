@@ -1,7 +1,8 @@
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Option, Schema } from '@livestore/utils/effect'
+import { Effect, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
+import * as EventlogSqliteDb from '../EventlogSqliteDb.ts'
 import { migrateTable } from '../schema-management/migrations.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
@@ -11,13 +12,13 @@ import {
   eventlogSystemTables,
   SYNC_STATUS_TABLE,
 } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
-import { sessionChangesetMetaTable } from '../schema/state/sqlite/system-tables/state-tables.ts'
 import { insertRow, updateRows } from '../sql-queries/sql-queries.ts'
+import * as SqliteDbHelper from '../sqlite-db-helper.ts'
 import type { PreparedBindValues } from '../util.ts'
 import { sql } from '../util.ts'
 import { execSql } from './connection.ts'
 import type { InitialSyncInfo, StreamEventsOptions } from './types.ts'
-import { LeaderThreadCtx, STREAM_EVENTS_BATCH_SIZE_DEFAULT } from './types.ts'
+import { STREAM_EVENTS_BATCH_SIZE_DEFAULT } from './types.ts'
 
 export const initEventlogDb = (dbEventlog: SqliteDb) =>
   Effect.gen(function* () {
@@ -42,31 +43,18 @@ export const initEventlogDb = (dbEventlog: SqliteDb) =>
 
 /**
  * Exclusive of the "since event"
- * Also queries the state db in order to get the SQLite session changeset data.
  */
 export const getEventsSince = ({
   dbEventlog,
-  dbState,
   since,
 }: {
   dbEventlog: SqliteDb
-  dbState: SqliteDb
   since: EventSequenceNumber.Client.Composite
 }): ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> => {
   const pendingEvents = dbEventlog.select(eventlogMetaTable.where('seqNumGlobal', '>=', since.global))
 
-  const sessionChangesetRowsDecoded = dbState.select(
-    sessionChangesetMetaTable.where('seqNumGlobal', '>=', since.global),
-  )
-
-  // Create a Map for O(1) lookup instead of O(n) find
-  const sessionChangesetMap = new Map(
-    sessionChangesetRowsDecoded.map((row) => [`${row.seqNumGlobal}:${row.seqNumClient}`, row]),
-  )
-
   return pendingEvents
     .map((eventlogEvent) => {
-      const sessionChangeset = sessionChangesetMap.get(`${eventlogEvent.seqNumGlobal}:${eventlogEvent.seqNumClient}`)
       return LiveStoreEvent.Client.EncodedWithMeta.make({
         name: eventlogEvent.name,
         args: eventlogEvent.argsJson,
@@ -83,14 +71,6 @@ export const getEventsSince = ({
         clientId: eventlogEvent.clientId,
         sessionId: eventlogEvent.sessionId,
         meta: {
-          sessionChangeset:
-            sessionChangeset !== undefined && sessionChangeset.changeset !== null
-              ? {
-                  _tag: 'sessionChangeset' as const,
-                  data: sessionChangeset.changeset,
-                  debug: sessionChangeset.debug,
-                }
-              : { _tag: 'unset' as const },
           syncMetadata: eventlogEvent.syncMetadataJson,
           materializerHashLeader: Option.none(),
           materializerHashSession: Option.none(),
@@ -100,6 +80,36 @@ export const getEventsSince = ({
     .filter((_) => EventSequenceNumber.Client.compare(_.seqNum, since) > 0)
     .toSorted((a, b) => EventSequenceNumber.Client.compare(a.seqNum, b.seqNum))
 }
+
+/**
+ * Deletes eventlog entries at the requested logical event positions.
+ *
+ * @remarks
+ * Positions are matched by their global and client components, so every rebase-generation incarnation at a matching
+ * position is removed. Deletions are batched within one savepoint; if any batch fails, earlier batches are rolled back.
+ *
+ * @param dbEventlog - Eventlog database whose entries should be removed
+ * @param eventNums - Logical event positions to remove
+ */
+export const deleteEvents = (dbEventlog: SqliteDb, eventNums: ReadonlyArray<EventSequenceNumber.Client.Composite>) =>
+  Effect.gen(function* () {
+    // Split into batches to keep each DELETE statement and its bound parameter count manageable.
+    const eventNumChunks = ReadonlyArray.chunksOf(100)(eventNums)
+
+    for (const eventNumChunk of eventNumChunks) {
+      // A global/client pair identifies the logical event position. Deleting it intentionally purges
+      // every rebase-generation incarnation that may remain at that position.
+      const placeholders = eventNumChunk.map(() => '(?, ?)').join(', ')
+      const bindValues = eventNumChunk.flatMap((key) => [key.global, key.client])
+
+      yield* execSql(
+        dbEventlog,
+        sql`DELETE FROM ${EVENTLOG_META_TABLE}
+            WHERE (seqNumGlobal, seqNumClient) IN (${placeholders})`,
+        bindValues,
+      )
+    }
+  }).pipe(SqliteDbHelper.withSavepoint(dbEventlog))
 
 export const getEventsFromEventlog = ({
   dbEventlog,
@@ -258,7 +268,7 @@ export const insertIntoEventlog = (
   })
 
 export const updateSyncMetadata = (items: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) =>
-  LeaderThreadCtx.pipe(Effect.flatMap(({ dbEventlog }) => updateSyncMetadataForDb(dbEventlog, items)))
+  EventlogSqliteDb.EventlogSqliteDb.pipe(Effect.flatMap((dbEventlog) => updateSyncMetadataForDb(dbEventlog, items)))
 
 export const updateSyncMetadataForDb = (
   dbEventlog: SqliteDb,
@@ -282,7 +292,9 @@ export const updateSyncMetadataForDb = (
   })
 
 export const getSyncBackendCursorInfo = (args: { remoteHead: EventSequenceNumber.Global.Type }) =>
-  LeaderThreadCtx.pipe(Effect.flatMap(({ dbEventlog }) => getSyncBackendCursorInfoForDb(dbEventlog, args)))
+  EventlogSqliteDb.EventlogSqliteDb.pipe(
+    Effect.flatMap((dbEventlog) => getSyncBackendCursorInfoForDb(dbEventlog, args)),
+  )
 
 export const getSyncBackendCursorInfoForDb = (
   dbEventlog: SqliteDb,

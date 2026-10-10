@@ -2,6 +2,7 @@ import { Effect, Exit, Function, Schema } from '@livestore/utils/effect'
 
 import { type SqliteDb, SqliteError } from './adapter-types.ts'
 import { getResultSchema, isQueryBuilder } from './schema/state/sqlite/query-builder/mod.ts'
+import * as StateSqliteDb from './StateSqliteDb.ts'
 import type { PreparedBindValues } from './util.ts'
 
 export const makeExecute = (
@@ -90,6 +91,12 @@ export const withSavepoint: {
       ),
     ),
 )
+
+/** Runs an Effect in a savepoint on the materialized-state database service. */
+export const withStateDbSavepoint = <A, E, R>(
+  self: Effect.Effect<A, E, R>,
+): Effect.Effect<A, E | SqliteError, R | StateSqliteDb.StateSqliteDb> =>
+  Effect.flatMap(StateSqliteDb.StateSqliteDb, (dbState) => withSavepoint(self, dbState))
 
 let nextSavepointId = 0
 
