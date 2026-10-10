@@ -21,13 +21,13 @@ define: who drives merges and applies their results
 
 ```ts
 SyncState = {
-  pending:      EncodedWithMeta[]  // local events not yet upstream-confirmed
+  pending:      Client.Encoded[]   // local events not yet upstream-confirmed
   upstreamHead: SeqNum.Composite   // what this node expects upstream's local head to be
   localHead:    SeqNum.Composite   // = pending.at(-1)?.seqNum when pending non-empty
 }
 ```
 
-(`syncstate.ts:44-56`.) Heads are composite sequence numbers
+(`syncstate.ts:56-68`.) Heads are composite sequence numbers
 (`{global, client, rebaseGeneration}`, see `../../01-event-model/`).
 
 Total-order rebase as the default conflict model is a founding decision —
@@ -45,25 +45,25 @@ merge(state, payload, { isEqualEvent, isClientOnlyEvent, ignoreClientOnlyEvents 
    | reject  { expectedMinimumId }
 ```
 
-(`syncstate.ts:61-78, 109-162, 187-438`.) There is no returned fourth
+(`syncstate.ts:73-90, 121-174, 199-450`.) There is no returned fourth
 outcome: invariant violations die as defects via `Effect.dieDebugger`
-(`syncstate.ts:274, 285, 525, 539-560, 580-606`) — they indicate a broken
+(`syncstate.ts:286, 297, 537, 551-572, 592-618`) — they indicate a broken
 caller, not a mergeable condition. Every non-reject result is re-validated
-before it is returned (`validateMergeResult`, `syncstate.ts:568-613`).
+before it is returned (`validateMergeResult`, `syncstate.ts:580-625`).
 
 Branch semantics:
 
-- **local-push** (`:379-433`): first new event must be strictly greater
+- **local-push** (`:391-445`): first new event must be strictly greater
   than `localHead`, else `reject` with `expectedMinimumId` (the next valid
   client-only pair). Accepted events append to `pending` (the leader drops
   client-only events from `pending` when `ignoreClientOnlyEvents` is set).
-  Mirrors what the sync backend runs on push (comment `:378`).
-- **upstream-advance** (`:251-375`): empty payload is a no-op advance.
-  Otherwise `findDivergencePoint` (`:444-481`) compares pending against
+  Mirrors what the sync backend runs on push (comment `:390`).
+- **upstream-advance** (`:263-387`): empty payload is a no-op advance.
+  Otherwise `findDivergencePoint` (`:456-493`) compares pending against
   incoming via `isEqualEvent`. No divergence → `advance`, splitting pending
   into `confirmedEvents` (matched prefix) and remaining pending. Divergence
   → `rebase` of the divergent suffix.
-- **upstream-rebase** (`:222-248`): rolls back `payload.rollbackEvents`
+- **upstream-rebase** (`:234-260`): rolls back `payload.rollbackEvents`
   plus all local pending, then re-parents pending onto the new upstream
   head; propagates an upstream-initiated rebase downstream.
 
@@ -85,7 +85,7 @@ The processor implementation and its resolved divergence are recorded in
 
 ## Invariants
 
-`validateSyncState` (`:532-566`) and `validateMergeResult` (`:568-613`)
+`validateSyncState` (`:544-578`) and `validateMergeResult` (`:580-625`)
 enforce, dying on violation:
 
 1. Pending is strictly ascending by sequence number.
@@ -97,32 +97,32 @@ enforce, dying on violation:
 
 ## Rebase Generations
 
-`rebaseEvents` (`:483-505`) re-parents each event onto the new base,
+`rebaseEvents` (`:495-517`) re-parents each event onto the new base,
 setting `rebaseGeneration = base.rebaseGeneration + 1`. Rebasing preserves
 sync scope: client-only events keep advancing the client component
-(`eN.k`), synced events the global component (comment `:495-496`). The
+(`eN.k`), synced events the global component (comment `:507-508`). The
 generation lets processors detect and drop stale in-flight pushes after a
 rebase (see [../02-processors/](../02-processors/spec.md)).
 
 ## Client-Only Event Handling
 
-`EncodedWithMeta` does not carry the event definition's `clientOnly` flag,
+`Client.Encoded` does not carry the event definition's `clientOnly` flag,
 so `merge` takes the schema-aware predicate `isClientOnlyEvent`
-(`syncstate.ts:196-202`). `ignoreClientOnlyEvents: true` (leader side)
-filters client-only events from accepted local pushes (`:411-414`) and
-from divergence comparison (`:457-464`) — the leader's pending list and
+(`syncstate.ts:208-214`). `ignoreClientOnlyEvents: true` (leader side)
+filters client-only events from accepted local pushes (`:423-426`) and
+from divergence comparison (`:469-476`) — the leader's pending list and
 upstream comparisons deal in synced events only, while sessions keep
 client-only events pending toward their leader.
 
 ## Purity Caveat
 
 `merge` is deterministic given (state, payload) and the two injected
-predicates `isEqualEvent`/`isClientOnlyEvent` (`syncstate.ts:187-215`) —
+predicates `isEqualEvent`/`isClientOnlyEvent` (`syncstate.ts:199-227`) —
 "pure" holds only modulo these; callers must supply pure predicates.
 `isEqualEvent` compares logical encoded identity and must ignore
-transport/runtime metadata (comment `:203-208`).
+transport/runtime metadata (comment `:215-220`).
 
 ## Known Non-Features
 
-- `_flattenMergeResults` (`:507-514`) — coalescing queued merge results to
+- `_flattenMergeResults` (`:519-526`) — coalescing queued merge results to
   avoid push-threshing is an acknowledged TODO, not implemented.

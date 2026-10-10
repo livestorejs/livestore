@@ -18,7 +18,7 @@ import {
 } from '@livestore/utils/effect'
 
 import type { ClientSession } from '../adapter-types.ts'
-import type { MaterializeError } from '../errors.ts'
+import { MaterializeError, MaterializerHashMismatchError } from '../errors.ts'
 import { isRejectedPushError } from '../leader-thread/RejectedPushError.ts'
 import * as MaterializationJournal from '../MaterializationJournal.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
@@ -59,7 +59,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   schema: LiveStoreSchema
   clientSession: ClientSession
   materializeEvent: (
-    eventEncoded: LiveStoreEvent.Client.EncodedWithMeta,
+    eventEncoded: LiveStoreEvent.Client.Encoded,
     options: { materializerHashLeader: Option.Option<number> },
   ) => Effect.Effect<
     {
@@ -103,13 +103,24 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     }),
   }
 
+  /**
+   * Dev-only materializer hashes of pending events, keyed by their stringified sequence number. When the leader
+   * confirms one of these events, its own hash must match; a mismatch means the materializer is side-effecting.
+   * Events are plain values, so the hashes are tracked beside them instead of on the events themselves.
+   */
+  const pendingMaterializerHashes = new Map<string, number>()
+  const recordPendingHash = (event: LiveStoreEvent.Client.Encoded, hash: Option.Option<number>) => {
+    if (hash._tag === 'Some')
+      pendingMaterializerHashes.set(EventSequenceNumber.Client.toString(event.seqNum), hash.value)
+  }
+
   /** Only used for debugging / observability / testing, it's not relied upon for correctness of the sync processor. */
   const syncStateUpdateQueue = yield* Queue.unbounded<SyncState.SyncState>()
-  const isClientOnlyEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
+  const isClientOnlyEvent = (eventEncoded: LiveStoreEvent.Client.Encoded) =>
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
-  const leaderPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.EncodedWithMeta, Cause.Done>()
+  const leaderPushQueue = yield* TxQueue.unbounded<LiveStoreEvent.Client.Encoded, Cause.Done>()
   /**
    * Prevents pull reconciliation, push-rejection handling, and shutdown from running concurrently.
    * These transitions inspect or update the pending events, leader push queue, and rejection state,
@@ -127,7 +138,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   let unresolvedRejection:
     | {
         readonly error: Error
-        readonly events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
+        readonly events: ReadonlyArray<LiveStoreEvent.Client.Encoded>
       }
     | undefined
   let leaderPushingFiberHandle: FiberHandle.FiberHandle<void, never> | undefined
@@ -231,9 +242,13 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       Stream.tap(() =>
         clientSession.devtools.enabled === true ? clientSession.devtools.pullLatch.await : Effect.void,
       ),
-      Stream.tap(({ payload, globalHead }) =>
+      Stream.tap(({ payload, globalHead, materializerHashes }) =>
         Effect.gen(function* () {
           // yield* Effect.logDebug('ClientSessionSyncProcessor:pull', payload)
+
+          const leaderHashOf = (event: LiveStoreEvent.Client.Encoded) =>
+            materializerHashes.find(({ eventNum }) => EventSequenceNumber.Client.isEqual(eventNum, event.seqNum))
+              ?.hash ?? Option.none()
 
           const rejectionAtPullStart = unresolvedRejection
           const mergeResult = yield* SyncState.merge({
@@ -275,8 +290,13 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
               yield* Effect.logDebug(
                 'merge:pull:rebase: rollback',
                 mergeResult.rollbackEvents.length,
-                ...mergeResult.rollbackEvents.slice(0, 10).map((_) => _.toJSON()),
+                ...mergeResult.rollbackEvents.slice(0, 10).map(LiveStoreEvent.Client.toJSON),
               )
+            }
+
+            // Rolled-back events will be replayed under new sequence numbers (and re-recorded below) or dropped.
+            for (const event of mergeResult.rollbackEvents) {
+              pendingMaterializerHashes.delete(EventSequenceNumber.Client.toString(event.seqNum))
             }
 
             if (mergeResult.rollbackEvents.length > 0) {
@@ -330,6 +350,20 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
             debugInfo.advanceCount++
 
+            // The leader has now materialized our pending events itself. Comparing both hashes detects materializers
+            // whose output depends on something other than the event (e.g. `Date.now()` or `Math.random()`).
+            for (const event of mergeResult.confirmedEvents) {
+              const key = EventSequenceNumber.Client.toString(event.seqNum)
+              const sessionHash = pendingMaterializerHashes.get(key)
+              pendingMaterializerHashes.delete(key)
+              const leaderHash = leaderHashOf(event)
+              if (sessionHash !== undefined && leaderHash._tag === 'Some' && leaderHash.value !== sessionHash) {
+                return yield* new MaterializeError({
+                  cause: MaterializerHashMismatchError.make({ eventName: event.name }),
+                })
+              }
+            }
+
             if (recoveredRejection === true) {
               yield* FiberHandle.clear(leaderPushingHandle)
               yield* reconcileLeaderPushQueue
@@ -341,13 +375,19 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           if (mergeResult.newEvents.length > 0) {
             const writeTables = new Set<string>()
             for (const event of mergeResult.newEvents) {
+              // A rebase replays pending events next to the incoming ones. Only incoming events have a leader hash to
+              // compare now; replayed pending events are recorded and compared once the leader confirms them.
+              // A replayed pending event can temporarily share a sequence number with a later incoming event.
+              const incoming = payload.newEvents.some((incomingEvent) =>
+                LiveStoreEvent.Client.isEqualEncoded(incomingEvent, event),
+              )
               const { writeTables: newWriteTables, materializerHash } = yield* materializeEvent(event, {
-                materializerHashLeader: event.meta.materializerHashLeader,
+                materializerHashLeader: incoming === true ? leaderHashOf(event) : Option.none(),
               })
+              if (incoming === false) recordPendingHash(event, materializerHash)
               for (const table of newWriteTables) {
                 writeTables.add(table)
               }
-              event.meta.materializerHashSession = materializerHash
             }
 
             refreshTables(writeTables)
@@ -438,7 +478,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           clientId: clientSession.clientId,
           sessionId: clientSession.sessionId,
         }).pipe(Effect.orDie)
-        return new LiveStoreEvent.Client.EncodedWithMeta(encoded)
+        return LiveStoreEvent.Client.Encoded.make(encoded)
       }),
     )
   })
@@ -451,10 +491,10 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       const { writeTables: newWriteTables, materializerHash } = yield* materializeEvent(event, {
         materializerHashLeader: Option.none(),
       })
+      recordPendingHash(event, materializerHash)
       for (const table of newWriteTables) {
         writeTables.add(table)
       }
-      event.meta.materializerHashSession = materializerHash
     }
     return { writeTables }
   })
@@ -522,10 +562,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           console.log('syncState', syncStateRef.current)
           const pushQueueItems = yield* snapshotTxQueue(leaderPushQueue)
           console.log('pushQueueSize', pushQueueItems.length)
-          console.log(
-            'pushQueueItems',
-            pushQueueItems.map((_) => _.toJSON()),
-          )
+          console.log('pushQueueItems', pushQueueItems.map(LiveStoreEvent.Client.toJSON))
         }).pipe(Effect.runSync),
       debugInfo: () => debugInfo,
     },
@@ -544,8 +581,8 @@ const snapshotTxQueue = <A, E>(queue: TxQueue.TxQueue<A, E>): Effect.Effect<Read
   )
 
 const isRejectedBatchRecovered = (
-  rejectedEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
-  pendingEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+  rejectedEvents: ReadonlyArray<LiveStoreEvent.Client.Encoded>,
+  pendingEvents: ReadonlyArray<LiveStoreEvent.Client.Encoded>,
 ): boolean =>
   rejectedEvents.every(
     (rejectedEvent) =>
@@ -557,10 +594,10 @@ export interface ClientSessionSyncProcessor {
   shutdown: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<void>
   encodeEvents: (
     events: ReadonlyArray<LiveStoreEvent.Input.Decoded>,
-  ) => Effect.Effect<ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>>
-  push: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
+  ) => Effect.Effect<ReadonlyArray<LiveStoreEvent.Client.Encoded>>
+  push: (events: ReadonlyArray<LiveStoreEvent.Client.Encoded>) => Effect.Effect<void>
   materializeEvents: (
-    events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+    events: ReadonlyArray<LiveStoreEvent.Client.Encoded>,
   ) => Effect.Effect<
     { writeTables: Set<string> },
     MaterializeError | MaterializationJournal.MaterializationJournalError

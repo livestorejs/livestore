@@ -114,11 +114,10 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   materializer hashes written back, then `refreshTables` runs once per
   merge (`:232-250`).
 - **Rebase critical section** (`:209-272`): interrupt the push fiber → roll
-  back session changesets in reverse order (`meta.sessionChangeset`, then mark
-  `unset`) → **atomically reconcile** the push queue (clear + re-offer the
-  _live_ `syncStateRef.current.pending` inside one `Effect.tx`, with no async
-  park between the read, clear, and offer) → restart the push fiber. Re-reading
-  the live pending (rather than the stale merge-time snapshot) is what
+  back session changesets in reverse order → **atomically reconcile** the
+  push queue (clear + re-offer the _live_ `syncStateRef.current.pending`
+  inside one `Effect.tx`, with no async park between the read, clear, and
+  offer) → restart the push fiber. Re-reading the live pending (rather than the stale merge-time snapshot) is what
   serializes `push` against rebase **without blocking it**: `push` runs via
   `Effect.runSyncWith` as an indivisible unit that can only interleave in the
   pull fiber's async gaps, so a synchronous commit admitted during a rebase
@@ -150,6 +149,4 @@ backend ──pull stream──▶ onNewPullChunk (precedence via semaphore)
   rejection.
 - `cachedPayloads` in the leader's session pull path can grow without
   bound (TODO, `LeaderSyncProcessor.ts:912-913`; issue #1423).
-- Per-event `materializerHashLeader` beyond the first item of a pull chunk
-  is unknown (TODO, `:555-556`, issue #503).
 - Metrics for retry/queue health are an acknowledged TODO (`:599`).

@@ -35,30 +35,34 @@ derived client-only set-events with implicit materializers.
 
 ## Event Shape Lifecycle
 
-An event passes through four shapes on its way from `commit()` to the sync
+An event passes through three shapes on its way from `commit()` to the sync
 backend (`schema/LiveStoreEvent/{client,global}.ts`):
 
 ```
 Partial {name, args}                       calling an EventDef
   └─▶ Client.Decoded / Client.Encoded     + seqNum, parentSeqNum,
        (payload decoded vs encoded)          clientId, sessionId
-        └─▶ Client.EncodedWithMeta        + mutable meta (internal workhorse)
-             └─▶ Global.Encoded           upstream wire/stored form
-                 (client component dropped)
+        └─▶ Global.Encoded                upstream wire/stored form
+            (client component dropped)
 ```
 
-`EncodedWithMeta` (`client.ts:67`) is the shape the eventlog, both sync
-processors, and rebase actually move around. Its `meta` carries:
+`Client.Encoded` (`client.ts:41`) is the shape the eventlog, both sync
+processors, and rebase move around. It is a plain, immutable value: rebasing
+returns a new event (`Client.rebase`, `client.ts:77`) instead of changing the
+existing one, and equality (`isEqualEncoded`) covers the whole event.
 
-| Field | Purpose |
+Data that belongs to one processing step rather than to the event travels
+beside it:
+
+| Data | Where it travels |
 | --- | --- |
-| `syncMetadata` | provider-opaque per-event sync metadata (persisted as `syncMetadataJson`) |
-| `materializerHashLeader` / `materializerHashSession` | dev-mode determinism hashes compared across materialization sites |
+| Sync metadata | Provider-opaque per-event metadata pulled with backend events. The leader passes it beside the event to `materializeEvent` / `updateSyncMetadata`, which persist it as `syncMetadataJson`. |
+| Materializer hashes | Dev-mode determinism hashes (`Client.MaterializerHash`, `client.ts:62`). The leader publishes its hashes in `PullItem.materializerHashes` (`ClientSessionLeaderThreadProxy.ts:18`). The session compares them with its own hashes for events it re-materializes and for its pending events when the leader confirms them. |
 
-Conversions: `toGlobal()` / `EncodedWithMeta.fromGlobal` and
+Conversions: `Client.toGlobal` / `Client.fromGlobal` and
 `Global.toClientEncoded` (`global.ts:32`, mapping global seqNums into
-composite ones via `Client.fromGlobal`). All shapes are Effect Schema
-structs; encoding happens at the boundary (LS.SYS.EVT-R03).
+composite ones via `EventSequenceNumber.Client.fromGlobal`). All shapes are
+Effect Schema structs; encoding happens at the boundary (LS.SYS.EVT-R03).
 
 ## Sequence Numbers
 
@@ -103,7 +107,7 @@ row completeness contracted by LS.SYS.EVT-R09):
 
 - **`eventlog`** — one row per event: composite seqNum triple (3-column PK)
   + parent triple, `name`, `argsJson` (note: `undefined` args are stored as
-  `{}` — `eventlog.ts:258`), `clientId`, `sessionId`, per-row `schemaHash`,
+  `{}` — `eventlog.ts:254`), `clientId`, `sessionId`, per-row `schemaHash`,
   `syncMetadataJson`; indexed on `seqNumGlobal` and the full triple.
 - **`__livestore_sync_status`** — the upstream head plus `backendId`, used
   to detect a changed backend identity (`BackendIdMismatchError` handling).
@@ -127,7 +131,7 @@ Properties:
   Rollback data lives in the materialization journal (state DB), keyed by
   sequence number, so events carry no rollback payload.
 - Writing an event whose definition is unknown is a defect
-  (`shouldNeverHappen`, `eventlog.ts:238`); tolerance applies to reads
+  (`shouldNeverHappen`, `eventlog.ts:234`); tolerance applies to reads
   only.
 
 ## Facts

@@ -5,6 +5,18 @@ import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 
 /**
+ * Event arrays held by sync states, payloads and merge results. Their events were validated when they were created or
+ * decoded, and `merge` builds these values on every commit and pull. Schema class and struct constructors only check the
+ * decoded side, so a cheap object check there keeps construction from re-validating every pending event (O(pending) per
+ * commit). Decoding from a transport, such as worker RPC or devtools, still validates each event's full shape.
+ */
+const EventArray = Schema.Array(
+  LiveStoreEvent.Client.Encoded.pipe(
+    Schema.decodeTo(Schema.declare((u): u is LiveStoreEvent.Client.Encoded => typeof u === 'object' && u !== null)),
+  ),
+)
+
+/**
  * SyncState represents the current sync state of a sync node relative to an upstream node.
  * Events flow from local to upstream, with each state maintaining its own event head.
  *
@@ -42,14 +54,14 @@ import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
  * handling cases such as upstream rebase, advance and local push.
  */
 export class SyncState extends Schema.Class<SyncState>('SyncState')({
-  pending: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  pending: EventArray,
   /** What this node expects the next upstream node to have as its own local head */
   upstreamHead: EventSequenceNumber.Client.Composite,
   /** Equivalent to `pending.at(-1)?.id` if there are pending events */
   localHead: EventSequenceNumber.Client.Composite,
 }) {
   toJSON = (): any => ({
-    pending: this.pending.map((e) => e.toJSON()),
+    pending: this.pending.map(LiveStoreEvent.Client.toJSON),
     upstreamHead: EventSequenceNumber.Client.toString(this.upstreamHead),
     localHead: EventSequenceNumber.Client.toString(this.localHead),
   })
@@ -60,17 +72,17 @@ export class SyncState extends Schema.Class<SyncState>('SyncState')({
  */
 export const PayloadUpstreamRebase = Schema.TaggedStruct('upstream-rebase', {
   /** Events which need to be rolled back */
-  rollbackEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  rollbackEvents: EventArray,
   /** Events which need to be applied after the rollback (already rebased by the upstream node) */
-  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  newEvents: EventArray,
 })
 
 export const PayloadUpstreamAdvance = Schema.TaggedStruct('upstream-advance', {
-  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  newEvents: EventArray,
 })
 
 export const PayloadLocalPush = Schema.TaggedStruct('local-push', {
-  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  newEvents: EventArray,
 })
 
 export const Payload = Schema.Union([PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush])
@@ -86,16 +98,16 @@ export class MergeContext extends Schema.Class<MergeContext>('MergeContext')({
     const payload = Match.value(this.payload).pipe(
       Match.tag('local-push', () => ({
         _tag: 'local-push',
-        newEvents: this.payload.newEvents.map((e) => e.toJSON()),
+        newEvents: this.payload.newEvents.map(LiveStoreEvent.Client.toJSON),
       })),
       Match.tag('upstream-advance', () => ({
         _tag: 'upstream-advance',
-        newEvents: this.payload.newEvents.map((e) => e.toJSON()),
+        newEvents: this.payload.newEvents.map(LiveStoreEvent.Client.toJSON),
       })),
       Match.tag('upstream-rebase', (payload) => ({
         _tag: 'upstream-rebase',
-        newEvents: payload.newEvents.map((e) => e.toJSON()),
-        rollbackEvents: payload.rollbackEvents.map((e) => e.toJSON()),
+        newEvents: payload.newEvents.map(LiveStoreEvent.Client.toJSON),
+        rollbackEvents: payload.rollbackEvents.map(LiveStoreEvent.Client.toJSON),
       })),
       Match.exhaustive,
     )
@@ -109,17 +121,17 @@ export class MergeContext extends Schema.Class<MergeContext>('MergeContext')({
 export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeResultAdvance')({
   _tag: Schema.Literal('advance'),
   newSyncState: SyncState,
-  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  newEvents: EventArray,
   /** Events which were previously pending but are now confirmed */
-  confirmedEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  confirmedEvents: EventArray,
   mergeContext: MergeContext,
 }) {
   toJSON = (): any => {
     return {
       _tag: this._tag,
       newSyncState: this.newSyncState.toJSON(),
-      newEvents: this.newEvents.map((e) => e.toJSON()),
-      confirmedEvents: this.confirmedEvents.map((e) => e.toJSON()),
+      newEvents: this.newEvents.map(LiveStoreEvent.Client.toJSON),
+      confirmedEvents: this.confirmedEvents.map(LiveStoreEvent.Client.toJSON),
       mergeContext: this.mergeContext.toJSON(),
     }
   }
@@ -128,17 +140,17 @@ export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeR
 export class MergeResultRebase extends Schema.Class<MergeResultRebase>('MergeResultRebase')({
   _tag: Schema.Literal('rebase'),
   newSyncState: SyncState,
-  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  newEvents: EventArray,
   /** Events which need to be rolled back */
-  rollbackEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  rollbackEvents: EventArray,
   mergeContext: MergeContext,
 }) {
   toJSON = (): any => {
     return {
       _tag: this._tag,
       newSyncState: this.newSyncState.toJSON(),
-      newEvents: this.newEvents.map((e) => e.toJSON()),
-      rollbackEvents: this.rollbackEvents.map((e) => e.toJSON()),
+      newEvents: this.newEvents.map(LiveStoreEvent.Client.toJSON),
+      rollbackEvents: this.rollbackEvents.map(LiveStoreEvent.Client.toJSON),
       mergeContext: this.mergeContext.toJSON(),
     }
   }
@@ -194,19 +206,19 @@ export const merge = Effect.fnUntraced(function* ({
   syncState: SyncState
   payload: typeof Payload.Type
   /**
-   * `LiveStoreEvent.Client.EncodedWithMeta` does not carry the event definition's
+   * `LiveStoreEvent.Client.Encoded` does not carry the event definition's
    * `clientOnly` flag. The caller supplies this schema-aware predicate so `merge`
    * can preserve the correct sequence-number shape when rebasing: client-only
    * events advance the client component, synced events advance the global component.
    */
-  isClientOnlyEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
+  isClientOnlyEvent: (event: LiveStoreEvent.Client.Encoded) => boolean
   /**
    * Pending events are confirmed by comparing their logical encoded identity with
    * upstream events. This is caller-supplied because comparing encoded args may
    * require event-schema knowledge that the generic merge algorithm does not own.
    * Implementations should ignore transport/runtime metadata.
    */
-  isEqualEvent: (a: LiveStoreEvent.Client.EncodedWithMeta, b: LiveStoreEvent.Client.EncodedWithMeta) => boolean
+  isEqualEvent: (a: LiveStoreEvent.Client.Encoded, b: LiveStoreEvent.Client.Encoded) => boolean
   /**
    * This is used in the leader which should ignore client events when
    * receiving an upstream-advance payload
@@ -448,10 +460,10 @@ export const findDivergencePoint = ({
   isClientOnlyEvent,
   ignoreClientOnlyEvents,
 }: {
-  existingEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
-  incomingEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
-  isEqualEvent: (a: LiveStoreEvent.Client.EncodedWithMeta, b: LiveStoreEvent.Client.EncodedWithMeta) => boolean
-  isClientOnlyEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
+  existingEvents: ReadonlyArray<LiveStoreEvent.Client.Encoded>
+  incomingEvents: ReadonlyArray<LiveStoreEvent.Client.Encoded>
+  isEqualEvent: (a: LiveStoreEvent.Client.Encoded, b: LiveStoreEvent.Client.Encoded) => boolean
+  isClientOnlyEvent: (event: LiveStoreEvent.Client.Encoded) => boolean
   ignoreClientOnlyEvents: boolean
 }): number => {
   if (ignoreClientOnlyEvents === true) {
@@ -485,16 +497,16 @@ const rebaseEvents = ({
   baseEventSequenceNumber,
   isClientOnlyEvent,
 }: {
-  events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
+  events: ReadonlyArray<LiveStoreEvent.Client.Encoded>
   baseEventSequenceNumber: EventSequenceNumber.Client.Composite
-  isClientOnlyEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
-}): ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> => {
+  isClientOnlyEvent: (event: LiveStoreEvent.Client.Encoded) => boolean
+}): ReadonlyArray<LiveStoreEvent.Client.Encoded> => {
   let prevEventSequenceNumber = baseEventSequenceNumber
   const rebaseGeneration = baseEventSequenceNumber.rebaseGeneration + 1
   return events.map((event) => {
     // Rebasing must preserve whether an event is client-only: client-only
     // events become eN.1/eN.2, while synced events become eN+1.
-    const newEvent = event.rebase({
+    const newEvent = LiveStoreEvent.Client.rebase(event, {
       parentSeqNum: prevEventSequenceNumber,
       isClientOnly: isClientOnlyEvent(event),
       rebaseGeneration,

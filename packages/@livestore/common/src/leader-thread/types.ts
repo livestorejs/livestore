@@ -117,10 +117,12 @@ export class LeaderThreadCtx extends Context.Service<
 >()('LeaderThreadCtx') {}
 
 export type MaterializeEvent = (
-  eventEncoded: LiveStoreEvent.Client.EncodedWithMeta,
+  eventEncoded: LiveStoreEvent.Client.Encoded,
   options?: {
     /** Needed for rematerializeFromEventlog */
     skipEventlog?: boolean
+    /** Backend cursor metadata stored with a pulled event, but not part of the event value. */
+    syncMetadata?: Option.Option<Schema.Json>
   },
 ) => Effect.Effect<
   { hash: Option.Option<number> },

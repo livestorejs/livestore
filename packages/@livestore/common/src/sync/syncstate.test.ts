@@ -22,12 +22,12 @@ const makeTestEvent = ({
   payload: string
   isClientOnly: boolean
 }) =>
-  new LiveStoreEvent.Client.EncodedWithMeta({
+  LiveStoreEvent.Client.Encoded.make({
     seqNum: EventSequenceNumber.Client.Composite.make(seqNum),
     parentSeqNum: EventSequenceNumber.Client.Composite.make(parentSeqNum),
     name: 'a',
     // Effect v4 normalizes nested Schema.Class values to their declared schema fields.
-    // Keep this test-only flag inside `args`, which is part of EncodedWithMeta,
+    // Keep this test-only flag inside `args`, which is part of Encoded,
     // instead of relying on subclass fields that are stripped during parsing.
     args: { payload, isClientOnly },
     clientId: 'static-local-id',
@@ -79,7 +79,7 @@ const e2_1 = makeTestEvent({
 
 const isEqualEvent = LiveStoreEvent.Client.isEqualEncoded
 
-const isClientOnlyEvent = (event: LiveStoreEvent.Client.EncodedWithMeta) =>
+const isClientOnlyEvent = (event: LiveStoreEvent.Client.Encoded) =>
   typeof event.args === 'object' &&
   event.args !== null &&
   'isClientOnly' in event.args &&
@@ -90,13 +90,36 @@ const rebaseTestEvent = ({
   parentSeqNum,
   rebaseGeneration,
 }: {
-  event: LiveStoreEvent.Client.EncodedWithMeta
+  event: LiveStoreEvent.Client.Encoded
   parentSeqNum: EventSequenceNumber.Client.Composite
   rebaseGeneration: number
-}) => event.rebase({ parentSeqNum, isClientOnly: isClientOnlyEvent(event), rebaseGeneration })
+}) =>
+  LiveStoreEvent.Client.rebase(event, {
+    parentSeqNum,
+    isClientOnly: isClientOnlyEvent(event),
+    rebaseGeneration,
+  })
 
 /** Verifies: LS.SYS.SYNC.SS-R01, LS.SYS.SYNC.SS-R02, LS.SYS.SYNC.SS-R03, LS.SYS.SYNC.SS-R05, LS.SYS.SYNC.SS-R06 */
 Vitest.describe('syncstate', () => {
+  Vitest.describe('SyncState schema', () => {
+    Vitest.it('round-trips pending events through its encoded form', () => {
+      const syncState = new SyncState.SyncState({
+        pending: [e1_0],
+        upstreamHead: EventSequenceNumber.Client.ROOT,
+        localHead: e1_0.seqNum,
+      })
+      const decoded = Schema.decodeUnknownSync(SyncState.SyncState)(Schema.encodeSync(SyncState.SyncState)(syncState))
+      expect(decoded.pending).toEqual([e1_0])
+    })
+
+    // Construction skips the per-event check for speed; transport decoding must not.
+    Vitest.it('rejects malformed pending events when decoding', () => {
+      const malformed = { pending: [{ name: 'a' }], upstreamHead: e1_0.seqNum, localHead: e1_0.seqNum }
+      expect(() => Schema.decodeUnknownSync(SyncState.SyncState)(malformed)).toThrow()
+    })
+  })
+
   Vitest.describe('merge', () => {
     const merge = ({
       syncState,
@@ -430,7 +453,7 @@ Vitest.describe('syncstate', () => {
             const localArgs = yield* Schema.encodeUnknownEffect(argsSchema)({ id: 'abc' } as any).pipe(Effect.orDie)
             const wireArgs = jsonParse(jsonStringify(localArgs))
 
-            const localPending = new LiveStoreEvent.Client.EncodedWithMeta({
+            const localPending = LiveStoreEvent.Client.Encoded.make({
               seqNum: e1_0.seqNum,
               parentSeqNum: e1_0.parentSeqNum,
               name: e1_0.name,
@@ -438,7 +461,7 @@ Vitest.describe('syncstate', () => {
               clientId: e1_0.clientId,
               sessionId: e1_0.sessionId,
             })
-            const fromUpstream = new LiveStoreEvent.Client.EncodedWithMeta({
+            const fromUpstream = LiveStoreEvent.Client.Encoded.make({
               seqNum: e1_0.seqNum,
               parentSeqNum: e1_0.parentSeqNum,
               name: e1_0.name,
@@ -678,8 +701,8 @@ Vitest.describe('syncstate', () => {
 })
 
 const expectEventArraysEqual = (
-  actual: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
-  expected: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+  actual: ReadonlyArray<LiveStoreEvent.Client.Encoded>,
+  expected: ReadonlyArray<LiveStoreEvent.Client.Encoded>,
 ) => {
   expect(actual.length).toBe(expected.length)
   actual.forEach((event, i) => {

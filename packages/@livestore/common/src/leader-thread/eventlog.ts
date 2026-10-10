@@ -50,12 +50,12 @@ export const getEventsSince = ({
 }: {
   dbEventlog: SqliteDb
   since: EventSequenceNumber.Client.Composite
-}): ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> => {
+}): ReadonlyArray<LiveStoreEvent.Client.Encoded> => {
   const pendingEvents = dbEventlog.select(eventlogMetaTable.where('seqNumGlobal', '>=', since.global))
 
   return pendingEvents
     .map((eventlogEvent) => {
-      return LiveStoreEvent.Client.EncodedWithMeta.make({
+      return LiveStoreEvent.Client.Encoded.make({
         name: eventlogEvent.name,
         args: eventlogEvent.argsJson,
         seqNum: {
@@ -70,11 +70,6 @@ export const getEventsSince = ({
         },
         clientId: eventlogEvent.clientId,
         sessionId: eventlogEvent.sessionId,
-        meta: {
-          syncMetadata: eventlogEvent.syncMetadataJson,
-          materializerHashLeader: Option.none(),
-          materializerHashSession: Option.none(),
-        },
       })
     })
     .filter((_) => EventSequenceNumber.Client.compare(_.seqNum, since) > 0)
@@ -219,11 +214,12 @@ export const updateBackendId = (dbEventlog: SqliteDb, backendId: string) =>
   dbEventlog.execute(sql`UPDATE ${SYNC_STATUS_TABLE} SET backendId = '${backendId}'`)
 
 export const insertIntoEventlog = (
-  eventEncoded: LiveStoreEvent.Client.EncodedWithMeta,
+  eventEncoded: LiveStoreEvent.Client.Encoded,
   dbEventlog: SqliteDb,
   eventDefSchemaHash: number,
   clientId: string,
   sessionId: string,
+  syncMetadata: Option.Option<Schema.Json> = Option.none(),
 ) =>
   Effect.gen(function* () {
     // Check history consistency during LS_DEV
@@ -259,7 +255,7 @@ export const insertIntoEventlog = (
           clientId,
           sessionId,
           schemaHash: eventDefSchemaHash,
-          syncMetadataJson: eventEncoded.meta.syncMetadata,
+          syncMetadataJson: syncMetadata,
         },
       }),
     )
@@ -267,17 +263,24 @@ export const insertIntoEventlog = (
     dbEventlog.debug.head = eventEncoded.seqNum
   })
 
-export const updateSyncMetadata = (items: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) =>
-  EventlogSqliteDb.EventlogSqliteDb.pipe(Effect.flatMap((dbEventlog) => updateSyncMetadataForDb(dbEventlog, items)))
+export const updateSyncMetadata = (
+  items: ReadonlyArray<{
+    readonly event: LiveStoreEvent.Client.Encoded
+    readonly syncMetadata: Option.Option<Schema.Json>
+  }>,
+) => EventlogSqliteDb.EventlogSqliteDb.pipe(Effect.flatMap((dbEventlog) => updateSyncMetadataForDb(dbEventlog, items)))
 
 export const updateSyncMetadataForDb = (
   dbEventlog: SqliteDb,
-  items: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+  items: ReadonlyArray<{
+    readonly event: LiveStoreEvent.Client.Encoded
+    readonly syncMetadata: Option.Option<Schema.Json>
+  }>,
 ) =>
   Effect.gen(function* () {
     // TODO try to do this in a single query
     for (let i = 0; i < items.length; i++) {
-      const event = items[i]!
+      const { event, syncMetadata } = items[i]!
 
       yield* execSql(
         dbEventlog,
@@ -285,7 +288,7 @@ export const updateSyncMetadataForDb = (
           tableName: EVENTLOG_META_TABLE,
           columns: eventlogMetaTable.sqliteDef.columns,
           where: { seqNumGlobal: event.seqNum.global, seqNumClient: event.seqNum.client },
-          updateValues: { syncMetadataJson: event.meta.syncMetadata },
+          updateValues: { syncMetadataJson: syncMetadata },
         }),
       )
     }
