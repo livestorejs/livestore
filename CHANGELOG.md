@@ -69,6 +69,7 @@
 - **State storage:** Rebases roll back state through a materialization journal table instead of SQLite changesets carried in event metadata. Because the state system tables changed, existing state databases are rebuilt from the eventlog once after upgrading ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
 - **Query cache:** Cached query results are discarded when a journal or savepoint rollback changes the session database, so reads after a rebase no longer return rolled-back rows ([#1658](https://github.com/livestorejs/livestore/pull/1658)).
 - **Development checks:** Side-effecting materializers are detected when the leader confirms a session's own event, including in web-worker adapters, where the previous leader-side check never ran ([#1660](https://github.com/livestorejs/livestore/pull/1660)).
+- **Session sync:** Keep local edits and persisted state heads consistent during concurrent reconciliation by yielding between complete SQLite/model steps. Failed-processor admission no longer materializes events. Large pull batches can publish complete intermediate prefixes ([#1465](https://github.com/livestorejs/livestore/issues/1465), [#1663](https://github.com/livestorejs/livestore/pull/1663)).
 
 ### Breaking Changes
 
@@ -124,6 +125,7 @@ For maintainers and contributors:
 - **SQLite services:** Leader and client-session code reach SQLite through the `StateSqliteDb`, `EventlogSqliteDb`, `StateHead` and `MaterializationJournal` Effect services ([#1658](https://github.com/livestorejs/livestore/pull/1658)). Thanks [@IGassmann](https://github.com/IGassmann).
 - **Events:** `LiveStoreEvent.Client.EncodedWithMeta` is removed and events are plain values. Sync metadata travels beside events, and leader materializer hashes travel in `PullItem.materializerHashes`. Custom adapters that wrapped pushed events must pass them through unchanged ([#1660](https://github.com/livestorejs/livestore/pull/1660)).
 - **Leader persistence:** A `LeaderPersistence` service makes each leader transition durable as a whole (rollback, materialization, journal, state and backend heads, eventlog inserts) and returns a receipt that the processor publishes ([#1661](https://github.com/livestorejs/livestore/pull/1661)).
+- **Sync processors:** The leader and client-session sync processors are serialized single-owner state machines, as described in [RFC 0004](./contributor-docs/rfcs/0004-serialized-sync-processors.md) ([#1663](https://github.com/livestorejs/livestore/pull/1663)).
 
 - **CI composition:** Aligned the megarepo setup with the automatic CI worktree
   policy and consolidated devenv resolver from

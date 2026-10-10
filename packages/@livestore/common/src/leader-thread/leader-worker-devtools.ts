@@ -11,8 +11,15 @@ import {
   resolveDevtoolsProtocolVersion,
   UnknownError,
 } from '../index.ts'
-import { SystemTables } from '../schema/mod.ts'
+import {
+  EventSequenceNumber,
+  LiveStoreEvent,
+  type LiveStoreSchema,
+  resolveEventDef,
+  SystemTables,
+} from '../schema/mod.ts'
 import * as StateSqliteDb from '../StateSqliteDb.ts'
+import type * as LeaderSyncProcessor from './LeaderSyncProcessor.ts'
 import type { DevtoolsOptions, PersistenceInfoPair } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
 
@@ -117,8 +124,16 @@ const listenToDevtools = ({
   Effect.gen(function* () {
     const dbState = yield* StateSqliteDb.StateSqliteDb
     const dbEventlog = yield* EventlogSqliteDb.EventlogSqliteDb
-    const { syncBackend, makeSqliteDb, shutdownStateSubRef, shutdownChannel, syncProcessor, clientId, devtools } =
-      yield* LeaderThreadCtx
+    const {
+      schema,
+      syncBackend,
+      makeSqliteDb,
+      shutdownStateSubRef,
+      shutdownChannel,
+      syncProcessor,
+      clientId,
+      devtools,
+    } = yield* LeaderThreadCtx
 
     type SubscriptionId = string
     const subscriptionFiberMap = yield* FiberMap.make<SubscriptionId>()
@@ -335,7 +350,9 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.Leader.CommitEventReq': {
-              yield* syncProcessor.pushPartial({
+              yield* pushDevtoolsEvent({
+                schema,
+                syncProcessor,
                 event: decodedEvent.eventEncoded,
                 clientId: `devtools-${clientId}`,
                 sessionId: `devtools-${clientId}`,
@@ -493,3 +510,60 @@ const listenToDevtools = ({
       Stream.runDrain,
     )
   })
+
+/** Devtools events do not have sequence numbers, so derive them here before using the normal leader push API. */
+const pushDevtoolsEvent = Effect.fnUntraced(function* ({
+  schema,
+  syncProcessor,
+  event: { name, args },
+  clientId,
+  sessionId,
+}: {
+  schema: LiveStoreSchema
+  syncProcessor: LeaderSyncProcessor.Service
+  event: LiveStoreEvent.Input.Encoded
+  clientId: string
+  sessionId: string
+}) {
+  while (true) {
+    const syncState = yield* syncProcessor.syncState
+    const resolution = yield* resolveEventDef(schema, {
+      operation: '@livestore/common:leader-thread:devtools:commitEvent',
+      event: { name, args, clientId, sessionId, seqNum: syncState.localHead },
+    })
+    if (resolution._tag === 'unknown') return
+
+    const pushResult = yield* syncProcessor
+      .push([
+        LiveStoreEvent.Client.Encoded.make({
+          name,
+          args,
+          clientId,
+          sessionId,
+          ...EventSequenceNumber.Client.nextPair({
+            seqNum: syncState.localHead,
+            isClientOnly: resolution.eventDef.options.clientOnly,
+          }),
+        }),
+      ])
+      .pipe(
+        Effect.matchEffect({
+          onFailure: (error) => Effect.succeed({ _tag: 'rejected' as const, error }),
+          onSuccess: () => Effect.succeed({ _tag: 'pushed' as const }),
+        }),
+      )
+
+    if (pushResult._tag === 'pushed') return
+    if (pushResult.error._tag === 'NonMonotonicBatchError') return yield* Effect.die(pushResult.error)
+
+    // Another push may have advanced the leader after we chose a sequence number. Wait for that commit to become
+    // visible, then build this devtools event again on top of the new head.
+    yield* syncProcessor.syncState.changes.pipe(
+      Stream.filter(
+        (nextSyncState) => EventSequenceNumber.Client.isEqual(nextSyncState.localHead, syncState.localHead) === false,
+      ),
+      Stream.take(1),
+      Stream.runDrain,
+    )
+  }
+})

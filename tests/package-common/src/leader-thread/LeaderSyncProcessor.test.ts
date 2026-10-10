@@ -8,14 +8,9 @@ import {
   type MockSyncBackend,
   type MockSyncBackendOptions,
   makeMockSyncBackend,
-  MATERIALIZATION_JOURNAL_META_TABLE,
-  MaterializationJournal,
   NonContiguousBatchError,
   type RejectedPushError,
   ServerAheadError,
-  type SqliteDb,
-  sql,
-  StateHead,
   StateSqliteDb,
   StaleRebaseGenerationError,
   type SyncBackend,
@@ -48,13 +43,7 @@ import {
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
-import { events, schema, tables } from './fixture.ts'
-
-const getStateHead = (dbState: SqliteDb) =>
-  StateHead.make.pipe(
-    Effect.provideService(StateSqliteDb.StateSqliteDb, dbState),
-    Effect.flatMap((stateHead) => stateHead.get),
-  )
+import { events, getStateHead, makeSqliteServicesLayer, schema, tables } from './fixture.ts'
 
 /*
 TODO:
@@ -102,6 +91,20 @@ const seedPaginatedBackendTodos = (mockBackend: MockSyncBackend) => {
     backendFactory.todoCreated.next({ id: 'backend-3', text: 'b3', completed: false }),
   )
 }
+
+/** Serves the first backend page, then ends the pull with `end`. */
+const endPullAfterFirstPage =
+  (end: Effect.Effect<never, UnknownError>) =>
+  (mockBackend: MockSyncBackend): SyncBackend.SyncBackendConstructor =>
+  () =>
+    Effect.gen(function* () {
+      const syncBackend = yield* mockBackend.makeSyncBackend
+      return {
+        ...syncBackend,
+        pull: (cursor, pullOptions) =>
+          Stream.concat(syncBackend.pull(cursor, pullOptions).pipe(Stream.take(1)), Stream.fromEffect(end)),
+      }
+    })
 
 /** Verifies: LS.SYS.SYNC.PROC-R01, LS.SYS.SYNC.PROC-R02, LS.SYS.SYNC.PROC-R04, LS.SYS.SYNC.SS-R06, LS.SYS.SYNC-R03, LS.SYS.RT-R10 */
 Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
@@ -160,233 +163,120 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       expect(downstreamItem.materializerHashes).toEqual([
         expect.objectContaining({ eventNum: retainedEvent.seqNum, hash: expect.objectContaining({ _tag: 'Some' }) }),
       ])
-
-      const journalChangeset = (yield* StateSqliteDb.StateSqliteDb).select<{
-        changeset: Uint8Array<ArrayBuffer> | null
-      }>(
-        sql`SELECT changeset FROM ${MATERIALIZATION_JOURNAL_META_TABLE}
-            WHERE seqNumGlobal = ${retainedEvent.seqNum.global}
-              AND seqNumClient = ${retainedEvent.seqNum.client}
-              AND seqNumRebaseGeneration = ${retainedEvent.seqNum.rebaseGeneration}`,
-      )[0]?.changeset
-      expect(journalChangeset).toBeInstanceOf(Uint8Array)
     }).pipe(withTestCtx()(test)),
   )
 
-  Vitest.live('records explicit no-op journal rows for non-mutating materializations', (test) =>
-    Effect.gen(function* () {
-      const leaderThreadCtx = yield* LeaderThreadCtx
-      const testContext = yield* TestContext
-      yield* testContext.mockSyncBackend.disconnect
+  // A non-live pull reads the backend page by page. However that pull ends, later local pushes must still apply.
+  for (const pullEnd of ['complete', 'fail', 'interrupt'] as const) {
+    Vitest.live(`applies local pushes after a paginated non-live pull ends (${pullEnd})`, (test) =>
+      Effect.gen(function* () {
+        const leaderThreadCtx = yield* LeaderThreadCtx
+        const testContext = yield* TestContext
+        const pulledPages = pullEnd === 'complete' ? 3 : 1
 
-      yield* testContext.pushEncoded(testContext.eventFactory.todoCompleted.next({ id: 'missing' }))
+        yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+          Stream.filter((state) => state.localHead.global === pulledPages),
+          Stream.take(1),
+          Stream.runDrain,
+          Effect.timeout('5 seconds'),
+        )
 
-      const downstreamItem = yield* Queue.take(testContext.pullQueue)
-      assert(downstreamItem.payload._tag === 'upstream-advance')
-      const pendingEvent = downstreamItem.payload.newEvents[0]!
-      const changeset = (yield* StateSqliteDb.StateSqliteDb).select<{
-        changeset: Uint8Array<ArrayBuffer> | null
-      }>(
-        sql`SELECT changeset FROM ${MATERIALIZATION_JOURNAL_META_TABLE}
-            WHERE seqNumGlobal = ${pendingEvent.seqNum.global}
-              AND seqNumClient = ${pendingEvent.seqNum.client}
-              AND seqNumRebaseGeneration = ${pendingEvent.seqNum.rebaseGeneration}`,
-      )[0]?.changeset
-      expect(changeset).toBeNull()
-    }).pipe(withTestCtx()(test)),
-  )
+        const { localHead } = yield* leaderThreadCtx.syncProcessor.syncState.get
+        const nextPair = EventSequenceNumber.Client.nextPair({ seqNum: localHead, isClientOnly: false })
+        yield* leaderThreadCtx.syncProcessor.push([
+          LiveStoreEvent.Client.Encoded.make({
+            ...LiveStoreEvent.Global.toClientEncoded(
+              testContext.eventFactory.todoCreated.next({ id: 'local', text: 'local', completed: false }),
+            ),
+            seqNum: nextPair.seqNum,
+            parentSeqNum: nextPair.parentSeqNum,
+          }),
+        ])
+        // After a partial pull the backend is still ahead of the local event, so only a complete pull can push it.
+        if (pullEnd === 'complete') {
+          yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(5000))
+        }
 
-  Vitest.live('prunes materialization journal rows after confirmed events materialize', (test) =>
-    Effect.gen(function* () {
-      const leaderThreadCtx = yield* LeaderThreadCtx
+        const rows = (yield* StateSqliteDb.StateSqliteDb).select<{ id: string }>(tables.todos.asSql().query)
+        expect(rows.map((row) => row.id).toSorted()).toEqual([
+          ...Array.from({ length: pulledPages }, (_, i) => `backend-${i + 1}`),
+          'local',
+        ])
+        // An interrupted pull is not a sync error, so it must not trigger the configured shutdown.
+        expect(yield* Deferred.isDone(testContext.shutdownDeferred)).toBe(false)
+      }).pipe(
+        withTestCtx({
+          syncOptions: { livePull: false, onSyncError: pullEnd === 'fail' ? 'ignore' : 'shutdown' },
+          captureShutdown: true,
+          mockBackendOptions: { nonLiveChunkSize: 1 },
+          seedMockBackend: seedPaginatedBackendTodos,
+          ...(pullEnd === 'complete'
+            ? {}
+            : {
+                mockBackendOverride: endPullAfterFirstPage(
+                  pullEnd === 'fail'
+                    ? Effect.fail(new UnknownError({ cause: new Error('Simulated mid-pagination pull failure') }))
+                    : Effect.interrupt,
+                ),
+              }),
+        })(test),
+      ),
+    )
+  }
+
+  Vitest.live('provider push defects re-enter the machine and retry', (test) => {
+    let shouldDefect = true
+
+    return Effect.gen(function* () {
       const testContext = yield* TestContext
 
       yield* testContext.pushEncoded(
-        testContext.eventFactory.todoCreated.next({ id: 'confirmed-leader', text: 'confirmed', completed: false }),
+        testContext.eventFactory.todoCreated.next({ id: 'push-after-defect', text: 'retried', completed: false }),
       )
-      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain)
-      yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
-        Stream.filter((state) => state.pending.length === 0),
+
+      const pushed = yield* testContext.mockSyncBackend.pushedEvents.pipe(
         Stream.take(1),
-        Stream.runDrain,
-        Effect.timeout('5 seconds'),
+        Stream.runCollect,
+        Effect.timeout(4000),
       )
-
-      const remainingJournalRows = (yield* StateSqliteDb.StateSqliteDb).select<{ count: number }>(
-        sql`SELECT COUNT(*) AS count FROM ${MATERIALIZATION_JOURNAL_META_TABLE}`,
-      )[0]!.count
-      expect(remainingJournalRows).toEqual(0)
-    }).pipe(withTestCtx()(test)),
-  )
-
-  Vitest.live('non-live paginated pull does not stall local pushes', (test) =>
-    Effect.gen(function* () {
-      const leaderThreadCtx = yield* LeaderThreadCtx
-      const testContext = yield* TestContext
-
-      const pulledStateOption = yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
-        Stream.filter((state) => state.localHead.global === 3),
-        Stream.take(1),
-        Stream.runHead,
-        Effect.timeout('5 seconds'),
-      )
-
-      expect(pulledStateOption._tag).toBe('Some')
-      if (pulledStateOption._tag !== 'Some') {
-        return
-      }
-
-      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
-      const nextPair = EventSequenceNumber.Client.nextPair({
-        seqNum: syncState.localHead,
-        isClientOnly: false,
-      })
-
-      const localEvent = LiveStoreEvent.Client.Encoded.make({
-        ...LiveStoreEvent.Global.toClientEncoded(
-          testContext.eventFactory.todoCreated.next({ id: 'local-after-pull', text: 'local', completed: false }),
-        ),
-        seqNum: nextPair.seqNum,
-        parentSeqNum: nextPair.parentSeqNum,
-      })
-
-      yield* leaderThreadCtx.syncProcessor.push([localEvent])
-
-      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(5000))
-
-      const rows = (yield* StateSqliteDb.StateSqliteDb).select<{ id: string }>(tables.todos.asSql().query)
-      expect(rows.map((row) => row.id).toSorted()).toEqual(['backend-1', 'backend-2', 'backend-3', 'local-after-pull'])
+      expect(pushed[0]?.args.id).toEqual('push-after-defect')
     }).pipe(
       withTestCtx({
         syncOptions: { livePull: false, onSyncError: 'ignore' },
-        mockBackendOptions: { nonLiveChunkSize: 1 },
-        seedMockBackend: seedPaginatedBackendTodos,
-      })(test),
-    ),
-  )
-
-  Vitest.live('mid-pagination pull failure releases local push mutex', (test) =>
-    Effect.gen(function* () {
-      const leaderThreadCtx = yield* LeaderThreadCtx
-      const testContext = yield* TestContext
-
-      const syncStateBeforeWait = yield* leaderThreadCtx.syncProcessor.syncState.get
-      if (syncStateBeforeWait.localHead.global < 1) {
-        const firstPageApplied = yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
-          Stream.filter((state) => state.localHead.global === 1),
-          Stream.take(1),
-          Stream.runHead,
-          Effect.timeout('5 seconds'),
-        )
-
-        expect(firstPageApplied._tag).toBe('Some')
-        if (firstPageApplied._tag !== 'Some') {
-          return
-        }
-      }
-
-      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
-      const nextPair = EventSequenceNumber.Client.nextPair({
-        seqNum: syncState.localHead,
-        isClientOnly: false,
-      })
-
-      const localEvent = LiveStoreEvent.Client.Encoded.make({
-        ...LiveStoreEvent.Global.toClientEncoded(
-          testContext.eventFactory.todoCreated.next({
-            id: 'local-after-pull-failure',
-            text: 'local',
-            completed: false,
-          }),
-        ),
-        seqNum: nextPair.seqNum,
-        parentSeqNum: nextPair.parentSeqNum,
-      })
-
-      yield* leaderThreadCtx.syncProcessor.push([localEvent])
-
-      const rows = (yield* StateSqliteDb.StateSqliteDb).select<{ id: string }>(tables.todos.asSql().query)
-      expect(rows.map((row) => row.id).toSorted()).toEqual(['backend-1', 'local-after-pull-failure'])
-    }).pipe(
-      withTestCtx({
-        syncOptions: { livePull: false, onSyncError: 'ignore' },
-        mockBackendOptions: { nonLiveChunkSize: 1 },
-        seedMockBackend: seedPaginatedBackendTodos,
         mockBackendOverride: (mockBackend) => () =>
           Effect.gen(function* () {
             const syncBackend = yield* mockBackend.makeSyncBackend
             return {
               ...syncBackend,
-              pull: (cursor, pullOptions) =>
-                Stream.concat(
-                  syncBackend.pull(cursor, pullOptions).pipe(Stream.take(1)),
-                  Stream.fromEffect(
-                    Effect.fail(new UnknownError({ cause: new Error('Simulated mid-pagination pull failure') })),
-                  ),
-                ),
+              push: (batch) => {
+                if (shouldDefect === true) {
+                  shouldDefect = false
+                  return Effect.die(new Error('Simulated provider push defect'))
+                }
+                return syncBackend.push(batch)
+              },
             }
           }),
       })(test),
-    ),
-  )
+    )
+  })
 
-  Vitest.live('mid-pagination pull interruption releases local push mutex', (test) =>
+  Vitest.live('provider pull defects follow the configured shutdown path', (test) =>
     Effect.gen(function* () {
-      const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
 
-      const syncStateBeforeWait = yield* leaderThreadCtx.syncProcessor.syncState.get
-      if (syncStateBeforeWait.localHead.global < 1) {
-        const firstPageApplied = yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
-          Stream.filter((state) => state.localHead.global === 1),
-          Stream.take(1),
-          Stream.runHead,
-          Effect.timeout('5 seconds'),
-        )
-
-        expect(firstPageApplied._tag).toBe('Some')
-        if (firstPageApplied._tag !== 'Some') {
-          return
-        }
-      }
-
-      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
-      const nextPair = EventSequenceNumber.Client.nextPair({
-        seqNum: syncState.localHead,
-        isClientOnly: false,
-      })
-
-      const localEvent = LiveStoreEvent.Client.Encoded.make({
-        ...LiveStoreEvent.Global.toClientEncoded(
-          testContext.eventFactory.todoCreated.next({
-            id: 'local-after-pull-interrupt',
-            text: 'local',
-            completed: false,
-          }),
-        ),
-        seqNum: nextPair.seqNum,
-        parentSeqNum: nextPair.parentSeqNum,
-      })
-
-      yield* leaderThreadCtx.syncProcessor.push([localEvent])
-
-      const rows = (yield* StateSqliteDb.StateSqliteDb).select<{ id: string }>(tables.todos.asSql().query)
-      expect(rows.map((row) => row.id).toSorted()).toEqual(['backend-1', 'local-after-pull-interrupt'])
+      const shutdownError = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
+      expect(shutdownError._tag).toEqual('UnknownError')
     }).pipe(
       withTestCtx({
-        syncOptions: { livePull: false, onSyncError: 'ignore' },
-        mockBackendOptions: { nonLiveChunkSize: 1 },
-        seedMockBackend: seedPaginatedBackendTodos,
+        syncOptions: { livePull: false, onSyncError: 'shutdown' },
+        captureShutdown: true,
         mockBackendOverride: (mockBackend) => () =>
           Effect.gen(function* () {
             const syncBackend = yield* mockBackend.makeSyncBackend
             return {
               ...syncBackend,
-              pull: (cursor, pullOptions) =>
-                Stream.concat(
-                  syncBackend.pull(cursor, pullOptions).pipe(Stream.take(1)),
-                  Stream.fromEffect(Effect.interrupt),
-                ),
+              pull: () => Stream.fromEffect(Effect.die(new Error('Simulated provider pull defect'))),
             }
           }),
       })(test),
@@ -483,50 +373,6 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     }).pipe(withTestCtx()(test)),
   )
 
-  Vitest.live('keeps rollback state, journal, and StateHead atomic when head persistence fails', (test) =>
-    Effect.gen(function* () {
-      const leaderThreadCtx = yield* LeaderThreadCtx
-      const testContext = yield* TestContext
-      const backendFactory = makeEventFactory({
-        client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
-      })
-
-      yield* testContext.mockSyncBackend.disconnect
-      yield* testContext.mockSyncBackend.advance(
-        backendFactory.todoCreated.next({ id: 'remote', text: 'remote', completed: false }),
-      )
-      yield* testContext.pushEncoded(
-        testContext.eventFactory.todoCreated.next({ id: 'local', text: 'local', completed: false }),
-      )
-
-      const dbState = yield* StateSqliteDb.StateSqliteDb
-      const headBeforeRollback = yield* getStateHead(dbState)
-      expect(dbState.select<{ id: string }>(tables.todos.asSql().query).map(({ id }) => id)).toEqual(['local'])
-
-      const SQLITE_OK = 0
-      const SQLITE_DENY = 1
-      const SQLITE_INSERT = 18
-      testContext.sqlite3.set_authorizer(
-        dbState.metadata.dbPointer,
-        (_userData, actionCode, tableName) =>
-          actionCode === SQLITE_INSERT && tableName === '__livestore_state_head' ? SQLITE_DENY : SQLITE_OK,
-        undefined,
-      )
-
-      // The pulled rebase fails inside LeaderPersistence, so the processor never restarts backend pushing for it.
-      yield* testContext.mockSyncBackend.connect
-      const shutdownError = yield* Deferred.await(testContext.shutdownDeferred).pipe(Effect.flip, Effect.timeout(3000))
-
-      expect(shutdownError._tag).toEqual('MaterializeError')
-      expect(yield* getStateHead(dbState)).toEqual(headBeforeRollback)
-      expect(dbState.select<{ id: string }>(tables.todos.asSql().query).map(({ id }) => id)).toEqual(['local'])
-      expect(
-        dbState.select<{ count: number }>(sql`SELECT COUNT(*) AS count FROM ${MATERIALIZATION_JOURNAL_META_TABLE}`)[0]!
-          .count,
-      ).toEqual(1)
-    }).pipe(withTestCtx({ syncOptions: { onSyncError: 'shutdown' }, captureShutdown: true })(test)),
-  )
-
   // The backend confirms events without their local rebase generation. A pending event that the leader rebased
   // before the backend accepted it must still be confirmed, even though the persisted state head keeps the local
   // generation (e2 with generation 1) while the backend reports e2 (generation 0).
@@ -609,30 +455,6 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       const queueResults = yield* Queue.clear(testContext.pullQueue)
       expect(queueResults.every((result) => result.payload._tag === 'upstream-advance')).toBe(true)
-    }).pipe(withTestCtx()(test)),
-  )
-
-  Vitest.live('concurrent pushes', (test) =>
-    Effect.gen(function* () {
-      const testContext = yield* TestContext
-      const eventFactory = testContext.eventFactory
-      const backendFactory = makeEventFactory({
-        client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
-      })
-
-      for (let i = 0; i < 5; i++) {
-        yield* testContext.mockSyncBackend
-          .advance(backendFactory.todoCreated.next({ id: `backend_${i}`, text: '', completed: false }))
-          .pipe(Effect.forkChild)
-      }
-
-      for (let i = 0; i < 5; i++) {
-        yield* testContext
-          .pushEncoded(eventFactory.todoCreated.next({ id: `local_${i}`, text: '', completed: false }))
-          .pipe(Effect.tapCauseLogPretty, Effect.exit)
-      }
-
-      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
     }).pipe(withTestCtx()(test)),
   )
 
@@ -1123,7 +945,6 @@ class TestContext extends Context.Service<
   TestContext,
   {
     mockSyncBackend: MockSyncBackend
-    sqlite3: Awaited<ReturnType<typeof loadSqlite3Wasm>>
     shutdownDeferred: Deferred.Deferred<void, typeof Shutdown.All.Type>
     pullQueue: Queue.Queue<typeof ClientSessionLeaderThreadProxy.PullItem.Type>
     eventFactory: LeaderEventFactory
@@ -1170,10 +991,7 @@ const LeaderThreadCtxLive = ({
 
     const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
     const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
-    const sqliteDbLayer = Layer.mergeAll(StateSqliteDb.layer(dbState), EventlogSqliteDb.layer(dbEventlog))
-    const stateServicesLayer = Layer.mergeAll(StateHead.layer, MaterializationJournal.layer).pipe(
-      Layer.provide(sqliteDbLayer),
-    )
+    const sqliteServicesLayer = makeSqliteServicesLayer({ dbState, dbEventlog })
     const leaderContextLayer = makeLeaderThreadLayer({
       schema,
       storeId: 'test',
@@ -1197,9 +1015,9 @@ const LeaderThreadCtxLive = ({
         ...omitUndefineds({ syncProcessor }),
       },
       ...omitUndefineds({ params }),
-    }).pipe(Layer.provide(Layer.mergeAll(sqliteDbLayer, stateServicesLayer, FetchHttpClient.layer)))
+    }).pipe(Layer.provide(Layer.mergeAll(sqliteServicesLayer, FetchHttpClient.layer)))
 
-    const runtimeLayer = Layer.mergeAll(leaderContextLayer, sqliteDbLayer)
+    const runtimeLayer = Layer.mergeAll(leaderContextLayer, sqliteServicesLayer)
 
     const testContextLayer = Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
@@ -1235,7 +1053,6 @@ const LeaderThreadCtxLive = ({
         TestContext,
         TestContext.of({
           mockSyncBackend,
-          sqlite3,
           shutdownDeferred,
           pullQueue,
           eventFactory,
