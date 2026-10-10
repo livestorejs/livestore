@@ -51,6 +51,8 @@ LiveStore provides two APIs for shutting down a store:
 
 <ShutdownSnippet />
 
+Shutting down sends every event committed in this session to the leader, which persists it, before the store closes. The same happens when the scope a store was created in closes, for example when a store registry disposes an unused store. Shutdown waits for this up to one second and then finishes it in the background. Closing a browser tab or killing the process gives LiveStore no time to do this, so events committed in the last moments may be lost; with `confirmUnsavedChanges` (on by default) the browser asks before leaving while such events are pending.
+
 ## Effect integration
 
 For applications using [Effect](https://effect.website), LiveStore provides a type-safe way to access stores through the Effect layer system via `makeStoreContext()`.

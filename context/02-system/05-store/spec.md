@@ -106,6 +106,13 @@ per-commit root span with links.
   after which the lifetime scope is force-closed so an unresponsive leader
   cannot leak it. Intentional shutdown is distinguished from failure via the
   Exit cause (LS.SYS.STORE-R07, LS.SYS.SYNC.PROC-R03).
+- Closing the scope `createStore` runs in is an orderly shutdown too: for a
+  successful exit the finalizer runs the same bounded drain before closing
+  `lifetimeScope`, so integrations that dispose stores by scope (the
+  `StoreRegistry`, Effect programs, Durable Objects) get the same flush-on-shutdown
+  contract. `shutdown()` and scope close share one teardown that starts at most
+  once; a drain failure on scope close is logged rather than raised from the
+  finalizer ([`.decisions/0003`](./.decisions/0003-scope-close-drains.md)).
 - During boot, `batchUpdates` is the identity function and is swapped to the
   adapter-provided implementation after boot (`create-store.ts:399,430`) —
   events committed during boot are unbatched.
