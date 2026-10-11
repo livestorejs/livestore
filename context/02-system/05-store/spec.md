@@ -80,7 +80,7 @@ The steps:
 2. Inside that call, materialize the batch into the session SQLite database in
    one savepoint (LS.SYS.STORE-R04), then install the new sync state and
    schedule leader propagation; the processor delivers its outbox before
-   returning the written tables (`ClientSessionSyncProcessor.ts:212-251`).
+   returning the written tables (`ClientSessionSyncProcessor.ts:212-249`).
 3. Refresh the reactivity graph (`setRefs`; guarantees in
    [01-reactivity/](./01-reactivity/spec.md)) for the returned tables
    (`store.ts:895-914`). Code resumed by the processor's outbox may run, or
