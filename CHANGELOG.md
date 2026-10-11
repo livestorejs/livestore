@@ -68,6 +68,13 @@
 
 ### Breaking Changes
 
+- **Effect 4 / LiveStore 0.5:** Upgrade application dependencies and schema APIs
+  from Effect 3 to stable Effect 4. Follow the
+  [0.4 to 0.5 upgrade guide](https://dev.docs.livestore.dev/misc/upgrading-0.4-to-0.5/)
+  for peer packages, schema substitutions, removed utilities, commit callbacks
+  and Cloudflare DO-RPC changes
+  ([#1310](https://github.com/livestorejs/livestore/issues/1310),
+  [#1647](https://github.com/livestorejs/livestore/pull/1647)).
 - **Cloudflare adapter:** `createStoreDo`, `createStoreDoPromise` and
   `makeDoRpcSync` take `getSyncBackendStub: () => stub` instead of
   `syncBackendStub`. LiveStore calls it for every sync call, because Cloudflare
@@ -94,20 +101,11 @@
   plan for the corresponding row-write usage
   ([#1555](https://github.com/livestorejs/livestore/issues/1555)).
 
-- **Effect v4 dependency cohort:** LiveStore now requires the stable Effect
-  `4.0.0` release or a later 4.x release. The Effect peer range is `^4.0.0`,
-  which no longer accepts `4.0.0-rc.*` prereleases. Upgrading Effect brings
-  Effect's own breaking changes to application code, such as the move of
-  `effect/unstable/*` modules to `effect/*` and renamed schema checks; see the
-  [Effect changelog](https://github.com/Effect-TS/effect/blob/main/packages/effect/CHANGELOG.md).
-  `@livestore/utils/effect` no longer re-exports `Encoding`, so replace
-  `Encoding.encodeBase64Url` with the re-exported `Base64Url.encode`. The
-  upgrade does not change state schema fingerprints. Event definitions get new
-  schema hashes, so the first rematerialization after upgrading can log schema
-  hash mismatch warnings
-  ([#63](https://github.com/livestorejs/livestore/issues/63)). SQLite column
-  inference preserves INTEGER and BLOB storage for refined
-  `Schema.DateFromMillis` and `Schema.Uint8Array`
+- **Effect dependency compatibility:** The peer range is `^4.0.0`, excluding
+  beta/RC releases. Effect-only upgrades preserve state schema fingerprints,
+  but changed event schema hashes can produce warnings on rematerialization
+  ([#63](https://github.com/livestorejs/livestore/issues/63)). Refined
+  `Schema.DateFromMillis` and `Schema.Uint8Array` retain INTEGER and BLOB storage
   ([#1557](https://github.com/livestorejs/livestore/issues/1557),
   [#1606](https://github.com/livestorejs/livestore/pull/1606),
   [#1647](https://github.com/livestorejs/livestore/pull/1647)).
