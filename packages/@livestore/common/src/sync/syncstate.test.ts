@@ -109,7 +109,7 @@ Vitest.describe('syncstate', () => {
         upstreamHead: EventSequenceNumber.Client.ROOT,
         localHead: e1_0.seqNum,
       })
-      const decoded = Schema.decodeUnknownSync(SyncState.SyncState)(Schema.encodeSync(SyncState.SyncState)(syncState))
+      const decoded = Schema.decodeSync(SyncState.SyncState)(Schema.encodeSync(SyncState.SyncState)(syncState))
       expect(decoded.pending).toEqual([e1_0])
     })
 
