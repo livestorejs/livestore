@@ -37,6 +37,7 @@
     "check": "tsc --noEmit",
     "dev": "vite dev",
     "preview": "vite preview",
+    "test": "playwright test",
     "test:e2e": "playwright test",
     "test:e2e:dev": "playwright test --config playwright.dev.config.ts",
     "test:e2e:preview": "playwright test --config playwright.config.ts"

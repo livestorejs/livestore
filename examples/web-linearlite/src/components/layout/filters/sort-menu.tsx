@@ -82,7 +82,7 @@ export const SortMenu = ({ type }: { type?: 'status' | 'priority' }) => {
                         {filterState.orderDirection === 'desc' && <BarsArrowUpIcon className="size-4" />}
                       </div>
                     )}
-                    <Shortcut keys={shortcutKeysBySortingOption[sortingOption]} className="absolute right-3" />
+                    <Shortcut keys={shortcutKeysBySortingOption[sortingOption] ?? []} className="absolute right-3" />
                   </MenuItem>
                 )
               })}

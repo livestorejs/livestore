@@ -1,4 +1,4 @@
-export const Shortcut = ({ keys, className }: { keys: string[]; className?: string }) => {
+export const Shortcut = ({ keys, className }: { keys: readonly string[]; className?: string }) => {
   return (
     <div className={`flex items-center gap-1 ${className}`}>
       {keys.map((key) => (
