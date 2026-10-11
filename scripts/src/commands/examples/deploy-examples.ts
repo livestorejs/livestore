@@ -1,3 +1,4 @@
+import { homedir } from 'node:os'
 import process from 'node:process'
 
 import { liveStoreVersion } from '@livestore/common'
@@ -97,6 +98,11 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
 
     const skipMissing = options.skipMissing ?? true
     const fs = yield* FileSystem.FileSystem
+    // Standalone examples pin their own Playwright version, not the root Nix browser revision.
+    const testEnv = {
+      CI: '1',
+      PLAYWRIGHT_BROWSERS_PATH: `${process.env.XDG_CACHE_HOME ?? `${homedir()}/.cache`}/ms-playwright`,
+    }
 
     for (const example of examples) {
       const isDirectory = yield* fs.stat(`${examplesDir}/${example}`).pipe(
@@ -143,9 +149,12 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
         return yield* new ScriptError({ message: `Cannot run tests for ${example}: no test script defined` })
       }
 
+      yield* cmd('bunx playwright install chromium', { env: testEnv }).pipe(
+        Effect.provide(LivestoreWorkspace.toCwd(`examples/${example}`)),
+      )
       yield* Effect.log(`Running tests for ${example}`)
       yield* cmd('pnpm test', {
-        env: { CI: '1' },
+        env: testEnv,
       }).pipe(Effect.provide(LivestoreWorkspace.toCwd(`examples/${example}`)))
     }
   })
