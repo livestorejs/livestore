@@ -8,7 +8,7 @@ interface MenuContextInterface {
 type IssueStatus = 0 | 1 | 2 | 3 | 4
 
 interface NewIssueModalContextInterface {
-  newIssueModalStatus: IssueStatus | boolean
+  newIssueModalStatus: IssueStatus | false
   setNewIssueModalStatus: (status: IssueStatus | false) => void
 }
 

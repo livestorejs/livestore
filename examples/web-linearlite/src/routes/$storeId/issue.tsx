@@ -4,10 +4,6 @@ import { shouldNeverHappen } from '@livestore/utils'
 
 import { Issue } from '../../components/layout/issue/index.tsx'
 
-export const Route = createFileRoute('/$storeId/issue')({
-  component: IssueRoute,
-})
-
 const IssueRoute = () => {
   const search = Route.useSearch() as Record<string, unknown>
   const issueIdValue = search.issueId
@@ -24,3 +20,7 @@ const IssueRoute = () => {
 
   return <Issue issueId={numericId} />
 }
+
+export const Route = createFileRoute('/$storeId/issue')({
+  component: IssueRoute,
+})

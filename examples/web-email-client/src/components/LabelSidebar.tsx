@@ -45,7 +45,7 @@ export const LabelSidebar: React.FC = () => {
       new Map(
         labels
           .filter((label) => label.color !== null)
-          .map((label) => [label.id, { backgroundColor: label.color }] as const),
+          .map((label) => [label.id, { backgroundColor: label.color ?? undefined }] as const),
       ),
     [labels],
   )

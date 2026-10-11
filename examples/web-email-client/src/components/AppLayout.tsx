@@ -11,8 +11,6 @@ import { ThreadList } from './ThreadList.tsx'
 import { ThreadView } from './ThreadView.tsx'
 
 const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
-const threadErrorFallback = <ThreadError />
-const threadLoadingFallback = <ThreadLoading />
 
 export const AppLayout: React.FC = () => {
   const mailboxStore = useMailboxStore()
@@ -71,3 +69,6 @@ const ThreadLoading: React.FC = () => (
     <p className="text-gray-500">Loading thread...</p>
   </div>
 )
+
+const threadErrorFallback = <ThreadError />
+const threadLoadingFallback = <ThreadLoading />

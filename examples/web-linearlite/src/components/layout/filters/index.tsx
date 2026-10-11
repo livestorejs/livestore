@@ -26,6 +26,7 @@ export const Filters = ({
   const store = useAppStore()
   const totalCount = store.useQuery(issueCount$)
   const [filterState] = useFilterState()
+  const selectedStatus = filterState.status?.length === 1 ? filterState.status[0] : undefined
 
   return (
     <>
@@ -35,7 +36,7 @@ export const Filters = ({
         <Header
           totalCount={totalCount}
           filteredCount={filteredCount}
-          heading={filterState?.status?.length === 1 ? statusOptions[filterState.status[0]]!.name : 'Issues'}
+          heading={selectedStatus === undefined ? 'Issues' : statusOptions[selectedStatus]!.name}
         />
       )}
       <div className="h-12 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between text-sm px-4 gap-8">

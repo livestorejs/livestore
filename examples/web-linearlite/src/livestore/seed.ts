@@ -7,9 +7,9 @@ import { statusOptions } from '../data/status-options.ts'
 import type { Priority } from '../types/priority.ts'
 import type { Status } from '../types/status.ts'
 import { highestIssueId$, highestKanbanOrder$ } from './queries.ts'
-import { events } from './schema/index.ts'
+import { events, type schema } from './schema/index.ts'
 
-export const seed = (store: Store, count: number) => {
+export const seed = (store: Store<typeof schema>, count: number) => {
   try {
     if (count <= 0) return
     const highestId = store.query(highestIssueId$)
