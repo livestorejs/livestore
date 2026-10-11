@@ -1,4 +1,3 @@
-import { queryDb } from '@livestore/livestore'
 import { generateKeyBetween } from 'fractional-indexing'
 import React from 'react'
 import {
@@ -12,7 +11,9 @@ import {
   useDragAndDrop,
   Virtualizer,
 } from 'react-aria-components'
-import { AutoSizer } from 'react-virtualized-auto-sizer'
+import AutoSizer from 'react-virtualized-auto-sizer'
+
+import { queryDb } from '@livestore/livestore'
 
 import type { StatusDetails } from '../../../data/status-options.ts'
 import { filterState$, useDebouncedScrollState, useFilterState } from '../../../livestore/queries.ts'
@@ -56,7 +57,7 @@ const ColumnGridList = ({
       style={listStyle}
       onScroll={handleScroll}
     >
-      {(issue: (typeof tables.issue.Type)) => (
+      {(issue) => (
         <GridListItem
           textValue={issue.id.toString()}
           aria-label={`Issue ${issue.id}: ${issue.title}`}
@@ -159,8 +160,8 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
         <NewIssueButton status={status} />
       </div>
       <div className="grow">
-        <AutoSizer
-          renderProp={({ width = 0, height = 0 }) => (
+        <AutoSizer>
+          {({ width, height }: { width: number; height: number }) => (
             <Virtualizer layout={layout}>
               <ColumnGridList
                 width={width}
@@ -172,7 +173,7 @@ export const Column = ({ status, statusDetails }: { status: Status; statusDetail
               />
             </Virtualizer>
           )}
-        />
+        </AutoSizer>
       </div>
     </div>
   )

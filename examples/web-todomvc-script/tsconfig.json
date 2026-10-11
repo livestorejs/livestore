@@ -2,19 +2,22 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
 
     /* Bundler mode */
+    "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "verbatimModuleSyntax": true,
-    "types": ["vite/client", "@cloudflare/workers-types"],
+    "types": ["vite/client", "@cloudflare/workers-types", "wicg-file-system-access"],
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
 
     /* Linting */
+    "strict": true,
     "strictNullChecks": true,
     "noUncheckedIndexedAccess": true,
     // "noUnusedLocals": true,
@@ -22,10 +25,5 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["./src"],
-  "exclude": ["node_modules"],
-  "references": [
-    { "path": "../../packages/@livestore/adapter-web" },
-    { "path": "../../packages/@livestore/livestore" },
-    { "path": "../../packages/@livestore/sync-cf" }
-  ]
+  "exclude": ["node_modules"]
 }

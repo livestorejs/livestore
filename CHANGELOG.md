@@ -10,6 +10,8 @@
 
 ### Changed
 
+- Stable documentation examples use published LiveStore 0.4.0 packages and standalone npm installs rather than the development workspace.
+
 - Added a canonical contributor meeting page with upcoming dates, calendar links, and the reusable video room. ([#1635](https://github.com/livestorejs/livestore/pull/1635))
 
 - Removed redundant devenv package entries now owned by the task guard modules.

@@ -1,5 +1,6 @@
-import { queryDb } from '@livestore/livestore'
 import { useCallback } from 'react'
+
+import { queryDb } from '@livestore/livestore'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'
@@ -30,16 +31,19 @@ export const Footer = () => {
       <span className="todo-count">{incompleteCount} items left</span>
       <ul className="filters">
         <li>
+          {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}
           <a href="#/" className={filter === 'all' ? 'selected' : ''} onClick={handleAllClick}>
             All
           </a>
         </li>
         <li>
+          {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}
           <a href="#/" className={filter === 'active' ? 'selected' : ''} onClick={handleActiveClick}>
             Active
           </a>
         </li>
         <li>
+          {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}
           <a href="#/" className={filter === 'completed' ? 'selected' : ''} onClick={handleCompletedClick}>
             Completed
           </a>

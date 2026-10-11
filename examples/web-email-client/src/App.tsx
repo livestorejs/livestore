@@ -1,27 +1,12 @@
-import { StoreRegistry } from '@livestore/livestore'
-import { StoreRegistryProvider } from '@livestore/react'
 import { Suspense, useEffect, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
+
 import { AppLayout } from './components/AppLayout.tsx'
 import { mailboxStoreId } from './stores/mailbox/index.ts'
-
-const AppError: React.FC = () => {
-  return (
-    <div className="grid place-items-center h-full">
-      <p className="text-gray-500">Something went wrong</p>
-    </div>
-  )
-}
-
-const AppLoading: React.FC = () => {
-  return (
-    <div className="grid place-items-center h-full">
-      <p className="text-gray-500">Loading...</p>
-    </div>
-  )
-}
 
 const appErrorFallback = <AppError />
 const appLoadingFallback = <AppLoading />
@@ -50,4 +35,20 @@ const useInitializeMailboxStore = () => {
       console.error('Failed to initialize Durable Mailbox Client Durable Object:', error)
     })
   }, [])
+}
+
+const AppError: React.FC = () => {
+  return (
+    <div className="grid place-items-center h-full">
+      <p className="text-gray-500">Something went wrong</p>
+    </div>
+  )
+}
+
+const AppLoading: React.FC = () => {
+  return (
+    <div className="grid place-items-center h-full">
+      <p className="text-gray-500">Loading...</p>
+    </div>
+  )
 }

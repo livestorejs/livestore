@@ -21,7 +21,6 @@ export const NewIssueModal = () => {
   const [description, setDescription] = React.useState('')
   const [priority, setPriority] = React.useState<Priority>(0)
   const store = useAppStore()
-  const status = newIssueModalStatus === false ? 0 : newIssueModalStatus
 
   const closeModal = React.useCallback(() => {
     setTitle('')
@@ -38,7 +37,7 @@ export const NewIssueModal = () => {
     const highestKanbanOrder = store.query(
       tables.issue
         .select('kanbanorder')
-        .where({ status })
+        .where({ status: newIssueModalStatus === false ? 0 : newIssueModalStatus })
         .orderBy('kanbanorder', 'desc')
         .first({ behaviour: 'fallback', fallback: () => 'a1' }),
     )
@@ -48,7 +47,7 @@ export const NewIssueModal = () => {
         id: highestIssueId + 1,
         title,
         priority,
-        status,
+        status: newIssueModalStatus,
         modified: date,
         created: date,
         creator: frontendState.user,
@@ -57,7 +56,7 @@ export const NewIssueModal = () => {
       }),
     )
     closeModal()
-  }, [closeModal, frontendState.user, priority, store, title, description, status])
+  }, [closeModal, frontendState.user, newIssueModalStatus, priority, store, title, description])
 
   return (
     <Modal show={newIssueModalStatus !== false} setShow={closeModal}>
@@ -72,7 +71,11 @@ export const NewIssueModal = () => {
           className="focus:!bg-transparent -mt-2"
         />
         <div className="mt-2 flex gap-px w-full">
-          <StatusMenu showLabel status={status} onStatusChange={setNewIssueModalStatus} />
+          <StatusMenu
+            showLabel
+            status={newIssueModalStatus === false ? 0 : newIssueModalStatus}
+            onStatusChange={setNewIssueModalStatus}
+          />
           <PriorityMenu showLabel priority={priority} onPriorityChange={setPriority} />
           <Button
             onPress={createIssue}

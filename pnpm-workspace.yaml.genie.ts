@@ -77,7 +77,6 @@ export const repoPackageExtensions = {
 export default pnpmWorkspaceYaml.root({
   packages: rootWorkspacePackages,
   repoName: 'livestore',
-  extraMembers: ['examples/*'],
   ...livestorePnpmPolicySettings,
   /**
    * LiveStore's live CI/dev workspace typechecks package source and generated

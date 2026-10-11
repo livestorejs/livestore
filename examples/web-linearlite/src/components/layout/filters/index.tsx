@@ -3,6 +3,7 @@ import { Button } from 'react-aria-components'
 import { statusOptions } from '../../../data/status-options.ts'
 import { issueCount$, useFilterState } from '../../../livestore/queries.ts'
 import { useAppStore } from '../../../livestore/store.ts'
+import type { Status } from '../../../types/status.ts'
 import { Icon } from '../../icons/index.tsx'
 import { SearchBar } from '../search/search-bar.tsx'
 import { FilterMenu } from './filter-menu.tsx'
@@ -25,7 +26,6 @@ export const Filters = ({
   const store = useAppStore()
   const totalCount = store.useQuery(issueCount$)
   const [filterState] = useFilterState()
-  const selectedStatus = filterState.status?.length === 1 ? filterState.status[0] : undefined
 
   return (
     <>
@@ -35,7 +35,7 @@ export const Filters = ({
         <Header
           totalCount={totalCount}
           filteredCount={filteredCount}
-          heading={selectedStatus === undefined ? 'Issues' : statusOptions[selectedStatus]!.name}
+          heading={filterState?.status?.length === 1 ? statusOptions[filterState.status[0]]!.name : 'Issues'}
         />
       )}
       <div className="h-12 border-b border-neutral-200 dark:border-neutral-700 flex items-center justify-between text-sm px-4 gap-8">

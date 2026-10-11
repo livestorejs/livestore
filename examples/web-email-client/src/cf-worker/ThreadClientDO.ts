@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers'
 
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
-import { nanoid, type Store } from '@livestore/livestore'
+import { nanoid } from '@livestore/livestore'
 import type * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 
@@ -11,7 +11,7 @@ import type { Env } from './shared.ts'
 
 // Scoped by storeId
 export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
-  private store!: Store<typeof threadSchema>
+  private store!: Awaited<ReturnType<typeof createStoreDoPromise>>
   private hasStore = false
   private threadLabelsSubscription: (() => void) | undefined
   private threadSubscription: (() => void) | undefined
@@ -146,7 +146,7 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
     return this.subscribeToStore()
   }
 
-  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
+  async syncUpdateRpc(payload: unknown) {
     // Make sure to wake up the store before processing the sync update
     await this.subscribeToStore()
     await handleSyncUpdateRpc(payload)

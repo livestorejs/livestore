@@ -379,10 +379,12 @@ in
     };
 
     "examples:install" = {
-      description = "Install examples workspace dependencies";
+      description = "Install standalone examples from npm";
       exec = ''
-        export npm_config_manage_package_manager_versions=false
-        ${pnpm} install --frozen-lockfile --dir examples
+        set -euo pipefail
+        for manifest in "$DEVENV_ROOT"/examples/*/package.json; do
+          (cd "$(dirname "$manifest")" && ${pkgs.bun}/bin/bun install)
+        done
       '';
       after = [ "setup:strict" ];
     };
@@ -390,8 +392,10 @@ in
     "examples:build:src" = {
       description = "Build examples source bundles";
       exec = ''
-        export npm_config_manage_package_manager_versions=false
-        ${pnpm} --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build
+        set -euo pipefail
+        for manifest in "$DEVENV_ROOT"/examples/*/package.json; do
+          (cd "$(dirname "$manifest")" && ${pkgs.bun}/bin/bun run build)
+        done
       '';
       after = [ "examples:install" ];
     };

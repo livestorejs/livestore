@@ -36,14 +36,6 @@ let
     "."
     "docs"
     "docs/src/content/_assets/code"
-    # examples
-    "examples/cloudflare-todomvc"
-    "examples/tutorial-starter"
-    "examples/web-email-client"
-    "examples/web-linearlite"
-    "examples/web-todomvc"
-    "examples/web-todomvc-script"
-    "examples/web-todomvc-sync-cf"
     # packages/@livestore
     "packages/@livestore/adapter-cloudflare"
     "packages/@livestore/adapter-web"

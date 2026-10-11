@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "dependencies": {
+    "effect": "^3.21.2",
     "@headlessui/react": "2.2.7",
     "@heroicons/react": "2.2.0",
     "@livestore/adapter-web": "0.4.0",
@@ -35,13 +36,13 @@
     "react-dom": "19.2.3",
     "react-icons": "5.5.0",
     "react-markdown": "10.1.0",
-    "react-virtualized-auto-sizer": "2.0.3",
+    "react-virtualized-auto-sizer": "1.0.26",
     "react-window": "1.8.11"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.13.12",
-    "@livestore/devtools-vite": "0.4.0-dev.25",
-    "@playwright/test": "1.61.0",
+    "@livestore/devtools-vite": "0.4.0",
+    "@playwright/test": "1.59.1",
     "@svgr/plugin-jsx": "^8.1.0",
     "@svgr/plugin-svgo": "^8.1.0",
     "@tailwindcss/typography": "^0.5.16",
@@ -54,7 +55,7 @@
     "@vitejs/plugin-react": "5.1.2",
     "prompt": "^1.3.0",
     "tailwindcss": "4.1.18",
-    "typescript": "6.0.3",
+    "typescript": "5.9.3",
     "vite": "7.3.1",
     "vite-plugin-devtools-json": "^1.0.0",
     "vite-plugin-svgr": "^4.3.0",
@@ -67,6 +68,7 @@
     "build": "vite build",
     "deploy": "pnpm run build && bunx wrangler deploy",
     "dev": "vite --force",
+    "lint": "biome lint .",
     "preview": "vite preview",
     "test": "playwright test",
     "wrangler:deploy": "wrangler deploy -c dist/server/wrangler.json",
@@ -87,16 +89,26 @@
       "workerd"
     ],
     "overrides": {
-      "@effect/opentelemetry": "4.0.0-beta.99",
-      "@effect/platform-browser": "4.0.0-beta.99",
-      "@effect/platform-bun": "4.0.0-beta.99",
-      "@effect/platform-node": "4.0.0-beta.99",
-      "@effect/vitest": "4.0.0-beta.99",
+      "@effect/ai": "0.35.0",
+      "@effect/cli": "0.75.0",
+      "@effect/cluster": "0.58.0",
+      "@effect/experimental": "0.60.0",
+      "@effect/opentelemetry": "0.63.0",
+      "@effect/platform": "0.96.0",
+      "@effect/platform-browser": "0.73.0",
+      "@effect/platform-bun": "0.86.0",
+      "@effect/platform-node": "0.106.0",
+      "@effect/printer": "0.49.0",
+      "@effect/printer-ansi": "0.49.0",
+      "@effect/rpc": "0.75.0",
+      "@effect/sql": "0.51.0",
+      "@effect/typeclass": "0.40.0",
+      "@effect/vitest": "0.29.0",
       "@opentelemetry/api": "1.9.0",
       "@opentelemetry/resources": "2.2.0",
       "@standard-schema/spec": "1.0.0",
-      "effect": "4.0.0-beta.99",
-      "@effect/platform-node-shared": "4.0.0-beta.99"
+      "effect": "^3.21.2",
+      "@effect/workflow": "0.16.0"
     }
   }
 }

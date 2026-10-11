@@ -1,5 +1,6 @@
-import { queryDb } from '@livestore/livestore'
 import React from 'react'
+
+import { queryDb } from '@livestore/livestore'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'
@@ -61,6 +62,7 @@ export const MainSection: React.FC = () => {
                 data-todo-id={todo.id}
                 onChange={handleTodoToggle}
               />
+              {/** biome-ignore lint/a11y/noLabelWithoutControl: otherwise breaks TODO MVC CSS 🙈 */}
               <label>{todo.text}</label>
               <button type="button" className="destroy" data-todo-id={todo.id} onClick={handleTodoDelete} />
             </div>
