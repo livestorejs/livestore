@@ -3,11 +3,14 @@ import { rootWorkspacePackages } from './package.json.genie.ts'
 
 const effectV4MinimumReleaseAgeExclude = Object.entries(
   catalog.pick(
+    'effect',
+    '@effect/ai-openai',
     '@effect/opentelemetry',
     '@effect/platform-browser',
     '@effect/platform-bun',
     '@effect/platform-node',
     '@effect/platform-node-shared',
+    '@effect/sql-sqlite-node',
     '@effect/vitest',
   ),
 ).map(([name, version]) => `${name}@${version}`)
