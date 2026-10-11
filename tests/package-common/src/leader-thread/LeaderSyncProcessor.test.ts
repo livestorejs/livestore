@@ -3,6 +3,7 @@ import { assert, expect } from 'vitest'
 import {
   BackendIdMismatchError,
   type IntentionalShutdownCause,
+  IsOfflineError,
   type MockSyncBackend,
   type MockSyncBackendOptions,
   makeMockSyncBackend,
@@ -65,9 +66,11 @@ const withTestCtx = (
     mockBackendOptions?: MockSyncBackendOptions
     seedMockBackend?: (mockBackend: MockSyncBackend) => Effect.Effect<void>
     mockBackendOverride?: (mock: MockSyncBackend) => SyncBackend.SyncBackendConstructor
+    timeout?: Duration.Input
   } = {},
 ) =>
   Vitest.makeWithTestCtx({
+    timeout: args.timeout,
     makeLayer: () =>
       Layer.provideMerge(
         LeaderThreadCtxLive({ ...args, syncProcessor: args.testing?.syncProcessor }),
@@ -92,6 +95,68 @@ const seedPaginatedBackendTodos = (mockBackend: MockSyncBackend) => {
 
 /** Verifies: LS.SYS.SYNC.PROC-R01, LS.SYS.SYNC.PROC-R02, LS.SYS.SYNC.PROC-R04, LS.SYS.SYNC.SS-R06, LS.SYS.SYNC-R03, LS.SYS.RT-R10 */
 Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
+  Vitest.live('backs off offline pulls and resumes replication after a prolonged outage', (test) => {
+    const disconnect = Deferred.makeUnsafe<void>()
+    let unavailable = false
+    let recovered = false
+    let pullAttempts = 0
+
+    return Effect.gen(function* () {
+      const leader = yield* LeaderThreadCtx
+      const context = yield* TestContext
+      unavailable = true
+      yield* Deferred.succeed(disconnect, undefined)
+      yield* Effect.sleep('20 seconds')
+      yield* Effect.logInfo('20-second leader outage retry counts', { pullAttempts })
+      expect(pullAttempts).toBeGreaterThan(1)
+      expect(pullAttempts).toBeLessThanOrEqual(12)
+
+      yield* context.mockSyncBackend.advance(
+        context.eventFactory.todoCreated.next({ id: 'after-outage', text: 'Recovered', completed: false }),
+      )
+      unavailable = false
+      recovered = true
+      yield* leader.syncProcessor.syncState.changes.pipe(
+        Stream.takeUntil((state) => state.localHead.global === 1),
+        Stream.runDrain,
+        Effect.timeout('40 seconds'),
+      )
+      expect(leader.dbState.select<{ id: string }>(tables.todos.asSql().query).map((row) => row.id)).toEqual([
+        'after-outage',
+      ])
+    }).pipe(
+      withTestCtx({
+        timeout: '60 seconds',
+        syncOptions: { livePull: true },
+        mockBackendOverride: (mock) => () =>
+          Effect.gen(function* () {
+            const backend = yield* mock.makeSyncBackend
+            return {
+              ...backend,
+              pull: (cursor, options) =>
+                options?.live === true
+                  ? Stream.suspend(() => {
+                      pullAttempts++
+                      if (pullAttempts > 1_000) return Stream.die('Pull retry loop exceeded 1,000 attempts')
+                      const offline = new IsOfflineError({ cause: new Error('Test backend unavailable') })
+                      if (unavailable === true) return Stream.fail(offline)
+                      if (recovered === true) return backend.pull(cursor, options)
+                      return backend
+                        .pull(cursor, options)
+                        .pipe(
+                          Stream.take(1),
+                          Stream.concat(
+                            Stream.fromEffect(Effect.andThen(Deferred.await(disconnect), Effect.fail(offline))),
+                          ),
+                        )
+                    })
+                  : backend.pull(cursor, options),
+            }
+          }),
+      })(test),
+    )
+  })
+
   Vitest.live('sync', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx

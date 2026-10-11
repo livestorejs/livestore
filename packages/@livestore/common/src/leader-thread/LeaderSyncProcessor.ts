@@ -768,7 +768,7 @@ export const make = Effect.fnUntraced(function* ({
       const handleBackendIdMismatchError = (error: BackendIdMismatchError) =>
         handleBackendIdMismatch({ error, onBackendIdMismatch, shutdownChannel, dbEventlog, dbState })
 
-      const maybeShutdownOnError = (cause: Cause.Cause<UnknownError | MaterializeError>) =>
+      const maybeShutdownOnError = (cause: Cause.Cause<UnknownError | MaterializeError | IsOfflineError>) =>
         Effect.gen(function* () {
           if (onError === 'ignore') {
             if (LS_DEV === true) {
@@ -781,7 +781,8 @@ export const make = Effect.fnUntraced(function* ({
           }
 
           const error = Option.getOrUndefined(Cause.findErrorOption(cause))
-          const errorToSend = error === undefined ? UnknownError.make({ cause }) : error
+          const errorToSend =
+            error === undefined || error._tag === 'IsOfflineError' ? UnknownError.make({ cause }) : error
           yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
 
           return yield* Effect.failCause(cause).pipe(Effect.orDie)
@@ -813,9 +814,13 @@ export const make = Effect.fnUntraced(function* ({
       }).pipe(
         Effect.retry({
           // Retry pulling when we've lost connection to the sync backend
-          // We're using `until` with a refinement instead of `while` to narrow `IsOfflineError` out of the error type.
-          // See https://github.com/Effect-TS/effect/issues/6122
-          until: (error): error is Exclude<typeof error, IsOfflineError> => error._tag !== 'IsOfflineError',
+          // A schedule conservatively retains IsOfflineError in Effect's error type even though it retries indefinitely.
+          until: (error) => error._tag !== 'IsOfflineError',
+          // The transport may immediately reject new calls while its reconnect loop is backing off.
+          schedule: Schedule.exponential('1 seconds').pipe(
+            Schedule.modifyDelay(({ duration }) => Effect.succeed(Duration.min(duration, Duration.seconds(30)))),
+            Schedule.jittered,
+          ),
         }),
         Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
         Effect.catchCause(maybeShutdownOnError),

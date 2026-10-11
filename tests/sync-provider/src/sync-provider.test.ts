@@ -188,15 +188,27 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
           const reader = yield* makeProvider(test.task.name)
           const responses = yield* Queue.unbounded<SyncBackend.PullResItem<unknown>>()
           const offline = yield* Deferred.make<void>()
-          const pull = yield* reader.pull(Option.none(), { live: true }).pipe(
-            Stream.tapError((error) =>
-              error._tag === 'IsOfflineError' ? Deferred.succeed(offline, undefined) : Effect.void,
-            ),
-            // Mirror the leader: only transport loss permits restarting the pull.
-            Stream.retry(($) =>
-              $(Schedule.spaced('50 millis')).pipe(Schedule.while(({ input }) => input._tag === 'IsOfflineError')),
-            ),
-            Stream.runForEach((response) => Queue.offer(responses, response)),
+          let pullAttempts = 0
+          const pullOnce = Effect.suspend(() => {
+            pullAttempts++
+            // Bound a broken retry loop so the regression cannot flood tracing or exhaust memory.
+            if (pullAttempts > 1_000) return Effect.die('Pull retry loop exceeded 1,000 attempts')
+            return reader.pull(Option.none(), { live: true }).pipe(
+              Stream.tapError((error) =>
+                error._tag === 'IsOfflineError' ? Deferred.succeed(offline, undefined) : Effect.void,
+              ),
+              Stream.runForEach((response) => Queue.offer(responses, response)),
+            )
+          })
+          // Mirror the leader's offline-only Effect retry, including its retry timing.
+          const pull = yield* pullOnce.pipe(
+            Effect.retry({
+              until: (error) => error._tag !== 'IsOfflineError',
+              schedule: Schedule.exponential('1 seconds').pipe(
+                Schedule.modifyDelay(({ duration }) => Effect.succeed(Duration.min(duration, Duration.seconds(30)))),
+                Schedule.jittered,
+              ),
+            }),
             Effect.forkChild,
           )
           expect((yield* Queue.take(responses)).batch).toHaveLength(0)
@@ -210,6 +222,21 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
           expect(closed).toEqual({ count: 1 })
           // Joining with the pull surfaces a terminal error immediately instead of timing out.
           yield* Effect.raceFirst(Deferred.await(offline), Fiber.join(pull))
+          yield* Effect.sleep('20 seconds')
+          url.pathname = '/instance/websocket-outage'
+          const outage = yield* client.execute(HttpClientRequest.get(url.toString())).pipe(
+            Effect.flatMap((response) => response.json),
+            Effect.flatMap(
+              Schema.decodeUnknownEffect(Schema.Struct({ until: Schema.Finite, openAttempts: Schema.Finite })),
+            ),
+          )
+          yield* Effect.logInfo('20-second WebSocket outage retry counts', {
+            pullAttempts,
+            openAttempts: outage.openAttempts,
+          })
+          expect(pullAttempts).toBeLessThanOrEqual(12)
+          expect(outage.openAttempts).toBeGreaterThan(0)
+          expect(outage.openAttempts).toBeLessThanOrEqual(12)
           expect((yield* Queue.take(responses)).batch).toHaveLength(0)
 
           const writer = yield* makeProvider(test.task.name)
@@ -219,7 +246,8 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
           const result = yield* Queue.take(responses)
           expect(result.batch).toHaveLength(1)
           expect(result.batch[0]!.eventEncoded).toEqual(event)
-        }).pipe(Effect.provide(runtimeContext), withTestCtx({ timeout: '20 seconds' })(test)),
+        }).pipe(Effect.provide(runtimeContext), withTestCtx({ timeout: '90 seconds' })(test)),
+      { timeout: 90_000 },
     )
   })
 
