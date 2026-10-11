@@ -47,6 +47,11 @@
   behavior before hibernation. Completed and protocol-defected pulls are also
   removed from persisted fan-out state
   ([#1418](https://github.com/livestorejs/livestore/issues/1418)).
+- **Cloudflare sync:** Fixed live WebSocket pulls stopping permanently after a
+  disconnect. Pulls now resume after reconnect without reloading the client,
+  and HTTP transport failures also remain retryable. Protocol failures stay
+  terminal ([#1650](https://github.com/livestorejs/livestore/issues/1650)).
+  For the root-cause analysis, thanks @bohdanbirdie.
 - **Cloudflare DO-RPC sync:** A temporary Durable Object RPC failure no longer
   stops replication for good. A call that Cloudflare marks `retryable` (and not
   `overloaded`) now surfaces as `IsOfflineError`, so the leader retries the pull

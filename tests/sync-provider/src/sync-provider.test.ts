@@ -14,7 +14,8 @@ import {
   Effect,
   FetchHttpClient,
   Fiber,
-  type HttpClient,
+  HttpClient,
+  HttpClientRequest,
   KeyValueStore,
   Layer,
   Logger,
@@ -178,6 +179,47 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         const result = yield* Fiber.join(fiber)
         expect(result.batch.length).toBe(1)
       }).pipe(withTestCtx()(test)),
+    )
+
+    Vitest.live.skipIf(key !== 'cf-ws-d1' && key !== 'cf-ws-do')(
+      'resumes pulling events pushed after a socket drop',
+      (test) =>
+        Effect.gen(function* () {
+          const reader = yield* makeProvider(test.task.name)
+          const responses = yield* Queue.unbounded<SyncBackend.PullResItem<unknown>>()
+          const offline = yield* Deferred.make<void>()
+          const pull = yield* reader.pull(Option.none(), { live: true }).pipe(
+            Stream.tapError((error) =>
+              error._tag === 'IsOfflineError' ? Deferred.succeed(offline, undefined) : Effect.void,
+            ),
+            // Mirror the leader: only transport loss permits restarting the pull.
+            Stream.retry(($) =>
+              $(Schedule.spaced('50 millis')).pipe(Schedule.while(({ input }) => input._tag === 'IsOfflineError')),
+            ),
+            Stream.runForEach((response) => Queue.offer(responses, response)),
+            Effect.forkChild,
+          )
+          expect((yield* Queue.take(responses)).batch).toHaveLength(0)
+
+          const client = yield* HttpClient.HttpClient
+          const url = new URL('/instance/close-websockets', reader.metadata.url as string)
+          url.searchParams.set('storeId', `test-store-${name}-${test.task.name}-${testId}`)
+          const closed = yield* client
+            .execute(HttpClientRequest.post(url.toString()))
+            .pipe(Effect.flatMap((response) => response.json))
+          expect(closed).toEqual({ count: 1 })
+          // Joining with the pull surfaces a terminal error immediately instead of timing out.
+          yield* Effect.raceFirst(Deferred.await(offline), Fiber.join(pull))
+          expect((yield* Queue.take(responses)).batch).toHaveLength(0)
+
+          const writer = yield* makeProvider(test.task.name)
+          const factory = makeFactory({ client: defaultClient, startSeq: 1, initialParent: 'root' })
+          const event = factory.todoCreated.next({ id: 'after-reconnect', text: 'After reconnect', completed: false })
+          yield* writer.push([event])
+          const result = yield* Queue.take(responses)
+          expect(result.batch).toHaveLength(1)
+          expect(result.batch[0]!.eventEncoded).toEqual(event)
+        }).pipe(Effect.provide(runtimeContext), withTestCtx({ timeout: '20 seconds' })(test)),
     )
   })
 

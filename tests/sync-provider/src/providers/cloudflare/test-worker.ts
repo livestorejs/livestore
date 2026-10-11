@@ -54,6 +54,7 @@ interface SyncDoProbe {
   }
   getPushProbe(storeId: string): { observed: boolean; payload: Schema.Json | null }
   getRpcSubscriptionCount(storeId: string): number
+  closeWebSockets(): number
 }
 
 interface TestClientDoProbe {
@@ -104,6 +105,12 @@ export class SyncBackendDO extends makeDurableObject({
       (ws) => Schema.decodeUnknownSync(WebSocketAttachmentSchema)(ws.deserializeAttachment()).pullRequestIds,
     )
     return { instanceId: this.instanceId, webSocketCount: webSockets.length, pullRequestIds }
+  }
+
+  closeWebSockets(): number {
+    const sockets = this.#state.getWebSockets()
+    for (const socket of sockets) socket.close(1012, 'Test backend restart')
+    return sockets.length
   }
 
   getPushProbe(storeId: string): { observed: boolean; payload: Schema.Json | null } {
@@ -312,6 +319,13 @@ export default {
       }
       const probe = await env.SYNC_BACKEND_DO.get(env.SYNC_BACKEND_DO.idFromName(storeId)).getHibernationProbe()
       return new Response(JSON.stringify(probe), { headers: { 'content-type': 'application/json' } })
+    }
+
+    if (url.pathname.endsWith('/instance/close-websockets') === true && request.method === 'POST') {
+      const storeId = url.searchParams.get('storeId')
+      if (storeId === null) return new Response('storeId required', { status: 400 })
+      const count = await env.SYNC_BACKEND_DO.get(env.SYNC_BACKEND_DO.idFromName(storeId)).closeWebSockets()
+      return new Response(JSON.stringify({ count }), { headers: { 'content-type': 'application/json' } })
     }
 
     if (url.pathname.endsWith('/instance/push-probe') === true) {

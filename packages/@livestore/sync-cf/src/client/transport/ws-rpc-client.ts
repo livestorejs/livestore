@@ -1,4 +1,4 @@
-import { IsOfflineError, SyncBackend, UnknownError } from '@livestore/common'
+import { SyncBackend, UnknownError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/common/schema'
 import { splitArrayBySize } from '@livestore/common/sync'
 import {
@@ -24,6 +24,7 @@ import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/
 import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'
 import { SyncWsRpc } from '../../common/ws-rpc-schema.ts'
+import { mapRpcClientError } from './rpc-client-error.ts'
 
 export interface WsSyncOptions {
   /**
@@ -149,8 +150,8 @@ export const makeWsSync =
             Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
             Stream.map((res) => Struct.omit(res, ['backendId'])),
             Stream.mapError((cause) =>
-              cause._tag === 'RpcClientError' && Socket.isSocketError(cause.cause) === true
-                ? new IsOfflineError({ cause: cause.cause })
+              cause._tag === 'RpcClientError'
+                ? mapRpcClientError(cause)
                 : cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
                   ? cause
                   : new UnknownError({ cause }),
@@ -186,11 +187,13 @@ export const makeWsSync =
               backendId: backendIdHelper.get(),
             }).pipe(
               Effect.mapError((cause) =>
-                cause._tag === 'UnknownError' ||
-                cause._tag === 'ServerAheadError' ||
-                cause._tag === 'BackendIdMismatchError'
-                  ? cause
-                  : new UnknownError({ cause }),
+                cause._tag === 'RpcClientError'
+                  ? mapRpcClientError(cause)
+                  : cause._tag === 'UnknownError' ||
+                      cause._tag === 'ServerAheadError' ||
+                      cause._tag === 'BackendIdMismatchError'
+                    ? cause
+                    : new UnknownError({ cause }),
               ),
             )
           }
