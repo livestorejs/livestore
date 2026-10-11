@@ -1,7 +1,7 @@
 import { TestSchema } from 'effect/testing'
 import { assert, describe, expect, it } from 'vitest'
 
-import { Schema, SchemaAST, Struct } from '@livestore/utils/effect'
+import { Schema, SchemaAST, SchemaTransformation, Struct } from '@livestore/utils/effect'
 
 import * as State from '../mod.ts'
 import { withAutoIncrement, withColumnType, withDefault, withPrimaryKey, withUnique } from './column-annotations.ts'
@@ -28,7 +28,7 @@ describe('getColumnDefForSchema', () => {
       expect(columnDef.columnType).toBe('text')
       const date = new Date('2026-01-02T03:04:05.678Z')
       expect(Schema.encodeUnknownSync(columnDef.schema)(date)).toBe(date.toISOString())
-      expect(Schema.decodeUnknownSync(columnDef.schema)(date.toISOString())).toEqual(date)
+      expect(Schema.decodeSync(columnDef.schema)(date.toISOString())).toEqual(date)
       expect(Schema.toEncoded(columnDef.schema).ast._tag).toBe('String')
       expect(
         SchemaAST.resolveAt<{ readonly id: string }>('representation')(Schema.toType(columnDef.schema).ast)?.id,
@@ -48,6 +48,35 @@ describe('getColumnDefForSchema', () => {
       const schema = Schema.DateFromMillis.check(Schema.isGreaterThanDate(new Date(0)))
 
       expect(State.SQLite.getColumnDefForSchema(schema).columnType).toBe('integer')
+    })
+
+    it('should preserve bare Date checks on encoding and decoding', () => {
+      const schema = Schema.Date.check(Schema.isGreaterThanDate(new Date(0)))
+      const columnDef = State.SQLite.getColumnDefForSchema(schema)
+      const date = new Date('2026-01-02T03:04:05.678Z')
+
+      expect(Schema.encodeUnknownSync(columnDef.schema)(date)).toBe(date.toISOString())
+      expect(Schema.decodeSync(columnDef.schema)(date.toISOString())).toEqual(date)
+      expect(() => Schema.encodeUnknownSync(columnDef.schema)(new Date(0))).toThrow()
+      expect(() => Schema.decodeSync(columnDef.schema)(new Date(0).toISOString())).toThrow()
+    })
+
+    it('should round-trip transformations with an encoded Date', () => {
+      const schema = Schema.Date.pipe(
+        Schema.decodeTo(
+          Schema.String,
+          SchemaTransformation.transform({
+            decode: (date) => date.toISOString(),
+            encode: (value) => new Date(value),
+          }),
+        ),
+      )
+      const columnDef = State.SQLite.getColumnDefForSchema(schema)
+      const value = '2026-01-02T03:04:05.678Z'
+
+      expect(columnDef.columnType).toBe('text')
+      expect(Schema.encodeUnknownSync(columnDef.schema)(value)).toBe(value)
+      expect(Schema.decodeSync(columnDef.schema)(value)).toBe(value)
     })
 
     it('should map Schema.BigInt to text column', () => {

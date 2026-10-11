@@ -227,7 +227,7 @@ describe('table function overloads', () => {
 
     expect(columns.count.columnType).toBe('text')
     expect(Schema.encodeUnknownSync(columns.count.schema)(42)).toBe('42')
-    expect(Schema.decodeUnknownSync(columns.count.schema)('42')).toBe(42)
+    expect(Schema.decodeSync(columns.count.schema)('42')).toBe(42)
   })
 
   it('should handle Schema.Int as integer column', () => {

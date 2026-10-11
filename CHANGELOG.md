@@ -10,6 +10,11 @@
 
 ### Changed
 
+- **SQLite schema tables:** Fixed Date fields in `State.SQLite.table({ schema })`
+  so their codecs round-trip through SQLite while preserving Date checks and
+  transformations. Thanks @acusti for the original fix
+  ([#1596](https://github.com/livestorejs/livestore/issues/1596),
+  [#1597](https://github.com/livestorejs/livestore/pull/1597)).
 - **Contributor meetings:** Added the canonical docs schedule for the next two
   fortnightly meetings at 19:00 Berlin, automatic Google Calendar publishing,
   and a stable Riverside room link
