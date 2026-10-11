@@ -18,6 +18,7 @@
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
+    "@types/wicg-file-system-access": "2023.10.6",
     "@cloudflare/vite-plugin": "1.13.12",
     "@cloudflare/workers-types": "4.20251118.0",
     "@livestore/devtools-vite": "0.4.0",

@@ -18,7 +18,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "build": "wrangler build",
+    "build": "wrangler deploy --dry-run --outdir dist",
     "dev": "wrangler dev",
     "wrangler:deploy": "wrangler deploy"
   },

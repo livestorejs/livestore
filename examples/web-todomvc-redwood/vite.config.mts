@@ -13,7 +13,7 @@ export default defineConfig({
     alias: {
       '@livestore/sqlite-wasm/load-wasm': path.resolve(
         path.dirname(fileURLToPath(import.meta.url)),
-        '../../packages/@livestore/sqlite-wasm/dist/load-wasm/mod.browser.js',
+        './node_modules/@livestore/sqlite-wasm/dist/load-wasm/mod.browser.js',
       ),
     },
   },
