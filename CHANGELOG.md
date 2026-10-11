@@ -68,7 +68,8 @@
 - **Expo getting-started docs:** The manual install command now installs
   `@livestore/sync-cf` instead of the import subpath `@livestore/sync-cf/client`,
   which package managers resolved as a git URL and failed to install
-  ([#1657](https://github.com/livestorejs/livestore/issues/1657)).
+  ([#1657](https://github.com/livestorejs/livestore/issues/1657),
+  [#1667](https://github.com/livestorejs/livestore/pull/1667)).
 
 ### Breaking Changes
 
