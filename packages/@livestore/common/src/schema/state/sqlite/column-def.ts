@@ -169,11 +169,17 @@ const getColumnForSchema = (schema: Schema.Top, nullable = false): SqliteDsl.Col
 
   // Adapt Date values on the encoded side to ISO text, then run the original
   // codec so its checks and transformations are preserved in both directions.
-  if (hasDateRepresentation(encodedAst) === true) {
-    return SqliteDsl.text({
-      schema: Schema.DateFromString.pipe(Schema.decodeTo(coreSchema)),
-      nullable,
-    })
+  if (hasDateRepresentation(stripNullable(encodedAst)) === true) {
+    const encodedNullable = hasNull(encodedAst)
+    const dateStorage = encodedNullable === true ? Schema.NullOr(Schema.DateFromString) : Schema.DateFromString
+    const adaptedSchema = dateStorage.pipe(Schema.decodeTo(coreSchema))
+    return {
+      ...SqliteDsl.text(),
+      schema: nullable === true ? Schema.NullOr(adaptedSchema) : adaptedSchema,
+      // Encoded nulls may decode to non-null values, so allow SQL NULL without
+      // bypassing the original codec's null transformation.
+      nullable: nullable === true || encodedNullable === true,
+    }
   }
 
   // Check if the encoded type matches SQLite native types

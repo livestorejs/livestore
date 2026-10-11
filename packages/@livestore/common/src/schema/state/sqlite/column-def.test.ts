@@ -79,6 +79,55 @@ describe('getColumnDefForSchema', () => {
       expect(Schema.decodeSync(columnDef.schema)(value)).toBe(value)
     })
 
+    it.each(['nullable', 'optional'] as const)(
+      'should round-trip %s transformations with an encoded Date',
+      (wrapper) => {
+        const schema = Schema.Date.pipe(
+          Schema.decodeTo(
+            Schema.String,
+            SchemaTransformation.transform({
+              decode: (date) => date.toISOString(),
+              encode: (value) => new Date(value),
+            }),
+          ),
+        )
+        const field = wrapper === 'nullable' ? Schema.NullOr(schema) : Schema.optional(schema)
+        const { columns } = State.SQLite.table({ name: 'stamps', schema: Schema.Struct({ value: field }) }).sqliteDef
+        const columnDef = columns.value
+        const value = '2026-01-02T03:04:05.678Z'
+
+        expect(columnDef.nullable).toBe(true)
+        expect(columnDef.columnType).toBe('text')
+        const encoded = Schema.encodeUnknownSync(columnDef.schema)(value)
+        expect(Schema.decodeSync(columnDef.schema)(encoded)).toBe(value)
+        expect(encoded).toBe(value)
+        expect(Schema.encodeUnknownSync(columnDef.schema)(null)).toBeNull()
+        expect(Schema.decodeSync(columnDef.schema)(null)).toBeNull()
+      },
+    )
+
+    it('should round-trip transformations with an encoded nullable Date', () => {
+      const schema = Schema.NullOr(Schema.Date).pipe(
+        Schema.decodeTo(
+          Schema.String,
+          SchemaTransformation.transform({
+            decode: (date) => (date === null ? 'none' : date.toISOString()),
+            encode: (value) => (value === 'none' ? null : new Date(value)),
+          }),
+        ),
+      )
+      const { columns } = State.SQLite.table({ name: 'stamps', schema: Schema.Struct({ value: schema }) }).sqliteDef
+      const columnDef = columns.value
+      const value = '2026-01-02T03:04:05.678Z'
+      const encoded = Schema.encodeUnknownSync(columnDef.schema)(value)
+
+      expect(Schema.decodeSync(columnDef.schema)(encoded)).toBe(value)
+      expect(encoded).toBe(value)
+      expect(columnDef.nullable).toBe(true)
+      expect(Schema.encodeUnknownSync(columnDef.schema)('none')).toBeNull()
+      expect(Schema.decodeSync(columnDef.schema)(null)).toBe('none')
+    })
+
     it('should map Schema.BigInt to text column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.BigInt)
       expect(columnDef.columnType).toBe('text')
