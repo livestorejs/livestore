@@ -547,9 +547,9 @@ const pushDevtoolsEvent = Effect.fnUntraced(function* ({
         }),
       ])
       .pipe(
-        Effect.matchEffect({
-          onFailure: (error) => Effect.succeed({ _tag: 'rejected' as const, error }),
-          onSuccess: () => Effect.succeed({ _tag: 'pushed' as const }),
+        Effect.match({
+          onFailure: (error) => ({ _tag: 'rejected' as const, error }),
+          onSuccess: () => ({ _tag: 'pushed' as const }),
         }),
       )
 

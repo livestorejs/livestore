@@ -228,9 +228,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           counts[item.name] = (counts[item.name] ?? 0) + 1
           return counts
         }, {}),
-        ...(TRACE_VERBOSE === true
-          ? { mergeResult: Schema.encodeSync(Schema.fromJsonString(Schema.Unknown))(result) }
-          : {}),
+        ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(result) } : {}),
       })
       const { writeTables } = yield* materializeEvents(encoded).pipe(
         SqliteDbHelper.withSavepoint(dbState),
@@ -908,6 +906,7 @@ interface Model {
 /** Pulled events applied per reconciliation step before subscribers run and the runner yields. */
 export const PULL_CHUNK_SIZE = 32
 const REENTRANT_OWNER_MESSAGE = 'Reentrant session transition from materialization'
+const jsonStringify = Schema.encodeSync(Schema.fromJsonString(Schema.Unknown))
 const suspendedOwnerError = () =>
   new Error('Session owner work suspended; materializers and SQLite services must be synchronous')
 /** Whether leader pushes may still start or complete in this lifecycle state. */

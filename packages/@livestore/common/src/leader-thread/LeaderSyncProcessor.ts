@@ -430,43 +430,45 @@ export const make = Effect.fnUntraced(function* ({
       return yield* processLocalBatch(activeItems)
     })
 
-  const handleBackendMismatch = (error: BackendIdMismatchError, direction: 'pull' | 'push') =>
-    Effect.gen(function* () {
-      switch (config.onBackendIdMismatch) {
-        case 'ignore':
-          model = {
-            ...model,
-            ...(direction === 'pull'
-              ? { pull: { _tag: 'completed' } as const }
-              : { push: { _tag: 'disabled' } as const }),
-          }
-          if (direction === 'pull') yield* send({ _tag: 'ContinueWork' })
-          return true
-        case 'shutdown':
-          yield* Effect.logWarning(
-            'Sync backend identity changed (backend was reset). Shutting down without clearing local storage.',
-            error,
-          )
-          return yield* stop({ lifecycle: 'failed', error, notify: true })
-        case 'reset': {
-          yield* Effect.logWarning(
-            'Sync backend identity changed (backend was reset). Clearing local storage and shutting down.',
-            error,
-          )
-          // Stop all work that could still touch the databases before clearing them.
-          model = { ...model, lifecycle: 'stopping' }
-          yield* interruptAllWork
-          const resetExit = yield* clearLocalDatabases({ dbEventlog, dbState }).pipe(Effect.exit)
-          const cause =
-            Exit.isFailure(resetExit) === true
-              ? Cause.squash(resetExit.cause)
-              : IntentionalShutdownCause.make({ reason: 'backend-id-mismatch' })
-          return yield* stop({ lifecycle: 'failed', error: cause, notify: true })
+  const handleBackendMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor:handleBackendIdMismatch')(function* (
+    error: BackendIdMismatchError,
+    direction: 'pull' | 'push',
+  ) {
+    switch (config.onBackendIdMismatch) {
+      case 'ignore':
+        model = {
+          ...model,
+          ...(direction === 'pull'
+            ? { pull: { _tag: 'completed' } as const }
+            : { push: { _tag: 'disabled' } as const }),
         }
-        default:
-          return casesHandled(config.onBackendIdMismatch)
+        if (direction === 'pull') yield* send({ _tag: 'ContinueWork' })
+        return true
+      case 'shutdown':
+        yield* Effect.logWarning(
+          'Sync backend identity changed (backend was reset). Shutting down without clearing local storage.',
+          error,
+        )
+        return yield* stop({ lifecycle: 'failed', error, notify: true })
+      case 'reset': {
+        yield* Effect.logWarning(
+          'Sync backend identity changed (backend was reset). Clearing local storage and shutting down.',
+          error,
+        )
+        // Stop all work that could still touch the databases before clearing them.
+        model = { ...model, lifecycle: 'stopping' }
+        yield* interruptAllWork
+        const resetExit = yield* clearLocalDatabases({ dbEventlog, dbState }).pipe(Effect.exit)
+        const cause =
+          Exit.isFailure(resetExit) === true
+            ? Cause.squash(resetExit.cause)
+            : IntentionalShutdownCause.make({ reason: 'backend-id-mismatch' })
+        return yield* stop({ lifecycle: 'failed', error: cause, notify: true })
       }
-    }).pipe(Effect.withSpan('@livestore/common:LeaderSyncProcessor:handleBackendIdMismatch'))
+      default:
+        return casesHandled(config.onBackendIdMismatch)
+    }
+  })
 
   const handleMessage = (message: LeaderMessage): Effect.Effect<boolean> =>
     Effect.gen(function* () {
@@ -930,10 +932,10 @@ const runProviderPull = ({
       onFailure: (error) => send({ _tag: 'PullFailed', pullId, error }),
       onSuccess: () => Effect.void,
     }),
-    Effect.catchCause((cause) =>
-      Cause.hasInterruptsOnly(cause) === true
-        ? Effect.failCause(cause)
-        : send({ _tag: 'PullFailed', pullId, error: UnknownError.make({ cause, note: 'Sync backend pull defected' }) }),
+    Effect.catchCauseIf(
+      (cause) => Cause.hasInterruptsOnly(cause) === false,
+      (cause) =>
+        send({ _tag: 'PullFailed', pullId, error: UnknownError.make({ cause, note: 'Sync backend pull defected' }) }),
     ),
     Effect.ensuring(send({ _tag: 'PullCompleted', pullId })),
     Effect.interruptible,

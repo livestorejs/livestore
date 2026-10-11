@@ -83,7 +83,7 @@ Vitest.describe('Client session reconciliation through Store', () => {
       const observed: number[] = []
       const unsubscribe = store.subscribe(tables.todos, (rows) => {
         observed.push(rows.length)
-        if (rows.length === step) Effect.runSync(Deferred.succeed(failPush, undefined))
+        if (rows.length === step) Deferred.doneUnsafe(failPush, Exit.void)
       })
       // Confirm the in-flight local event so the pull can advance without cancelling that push first.
       yield* deliver([local, ...Array.from({ length: 2 * step - 1 }, (_, i) => remoteCreated(i + 2))]).pipe(
@@ -125,7 +125,7 @@ Vitest.describe('Client session reconciliation through Store', () => {
         const completed = yield* deliver([remoteCreated(1)])
         yield* Deferred.await(cancelling)
         // Cancellation is a genuine async wait, not permission to advertise an unapplied new head.
-        expect(readHead(store)).toEqual(Effect.runSync(store[StoreInternalsSymbol].syncProcessor.syncState).localHead)
+        expect(readHead(store)).toEqual((yield* store[StoreInternalsSymbol].syncProcessor.syncState).localHead)
         store.commit(
           updateSameRow === true
             ? events.todoCompleted({ id: 'local' })
@@ -133,7 +133,7 @@ Vitest.describe('Client session reconciliation through Store', () => {
         )
         yield* Deferred.succeed(release, undefined)
         yield* completed
-        expect(readHead(store)).toEqual(Effect.runSync(store[StoreInternalsSymbol].syncProcessor.syncState).localHead)
+        expect(readHead(store)).toEqual((yield* store[StoreInternalsSymbol].syncProcessor.syncState).localHead)
         expect(store.query(tables.todos).find((row) => row.id === 'local')?.completed).toBe(updateSameRow)
         expect(store.query(tables.todos)).toHaveLength(updateSameRow === true ? 2 : 3)
         yield* store[StoreInternalsSymbol].syncProcessor.shutdown(Exit.void)
@@ -153,7 +153,7 @@ Vitest.describe('Client session reconciliation through Store', () => {
           }),
         counterSchema,
       )
-      const syncState = () => Effect.runSync(store[StoreInternalsSymbol].syncProcessor.syncState)
+      const syncState = () => readSyncState(store)
       const total = 4 * step
       // A fiber scheduled between pull steps commits against the applied prefix.
       const input = yield* Deferred.await(firstPrefix).pipe(
@@ -182,7 +182,7 @@ Vitest.describe('Client session reconciliation through Store', () => {
           subscriberCommitted = true
           store.commit(counterEvents.increment({}))
         }
-        Effect.runSync(Deferred.succeed(firstPrefix, undefined))
+        Deferred.doneUnsafe(firstPrefix, Exit.void)
       })
       yield* yield* deliver(counterBatch(total))
       yield* Fiber.join(input)
@@ -221,7 +221,7 @@ Vitest.describe('Client session reconciliation through Store', () => {
         const prefix = failingEvent === 2 ? 0 : step
         expect(store.query(tables.todos)).toHaveLength(prefix)
         expect(readHead(store).global).toBe(prefix)
-        expect(readHead(store)).toEqual(Effect.runSync(store[StoreInternalsSymbol].syncProcessor.syncState).localHead)
+        expect(readHead(store)).toEqual((yield* store[StoreInternalsSymbol].syncProcessor.syncState).localHead)
         expect(journalCount(store)).toBe(prefix)
         expect(published).toEqual(prefix === 0 ? [0] : [0, step])
         unsubscribe()
@@ -242,7 +242,7 @@ Vitest.describe('Client session reconciliation through Store', () => {
       )
       store.commit(events.todoCreated({ id: 'local', text: 'local' }))
       yield* Deferred.await(started)
-      const state = Effect.runSync(store[StoreInternalsSymbol].syncProcessor.syncState)
+      const state = yield* store[StoreInternalsSymbol].syncProcessor.syncState
       // Confirmation doesn't require cancellation, but the following duplicate INSERT fails materialization.
       yield* deliver([
         state.pending[0]!,
@@ -260,7 +260,7 @@ Vitest.describe('Client session reconciliation through Store', () => {
         expect(readHead(store)).toEqual(state.localHead)
         expect(journalCount(store)).toBe(1)
       } finally {
-        Effect.runSync(Deferred.succeed(release, undefined))
+        yield* Deferred.succeed(release, undefined)
       }
     }).pipe(Effect.provide(environment), Vitest.withTestCtx(test)),
   )
@@ -322,7 +322,7 @@ Vitest.describe('Client session reconciliation through Store', () => {
     Effect.gen(function* () {
       const { store, deliver } = yield* makeStoreHarness(() => Effect.void)
       store.commit(events.todoCreated({ id: 'local', text: 'local' }))
-      const pending = Effect.runSync(store[StoreInternalsSymbol].syncProcessor.syncState).pending[0]!
+      const pending = (yield* store[StoreInternalsSymbol].syncProcessor.syncState).pending[0]!
       const batch = Array.from({ length: 2 * step }, (_, i) => remoteCreated(i + 1))
       batch[step] = LiveStoreEvent.Client.Encoded.make({
         ...pending,
@@ -330,7 +330,7 @@ Vitest.describe('Client session reconciliation through Store', () => {
         parentSeqNum: batch[step]!.parentSeqNum,
       })
       yield* yield* deliver(batch)
-      expect(Effect.runSync(store[StoreInternalsSymbol].syncProcessor.syncState).pending).toEqual([])
+      expect((yield* store[StoreInternalsSymbol].syncProcessor.syncState).pending).toEqual([])
       expect(store.query(tables.todos)).toHaveLength(batch.length)
       expect(readHead(store).global).toBe(batch.length)
       expect(journalCount(store)).toBe(0)
@@ -346,6 +346,11 @@ const journalCount = (store: StoreDb) =>
   )[0]!.count
 
 const readHead = (store: StoreDb) => Effect.runSync(getStateHead(store[StoreInternalsSymbol].clientSession.sqliteDb))
+
+/** Reads the processor sync state from synchronous callbacks such as Store subscribers. */
+const readSyncState = (store: {
+  [StoreInternalsSymbol]: { syncProcessor: { syncState: Effect.Effect<SyncState.SyncState> } }
+}) => Effect.runSync(store[StoreInternalsSymbol].syncProcessor.syncState)
 
 const remoteCreated = (global: number) =>
   LiveStoreEvent.Client.Encoded.make({
@@ -424,6 +429,7 @@ const makeStoreHarness = Effect.fn(function* (
       }),
       completed,
     })
+    // @effect-diagnostics-next-line returnEffectInGen:off -- callers decide whether and when to await the pull completion
     return Deferred.await(completed)
   })
   return { store, deliver, failed }
@@ -438,7 +444,7 @@ const counter = State.SQLite.table({
 })
 const counterEvents = {
   increment: Events.synced({ name: 'increment', schema: Schema.Struct({}) }),
-  multiply: Events.synced({ name: 'multiply', schema: Schema.Struct({ factor: Schema.Number }) }),
+  multiply: Events.synced({ name: 'multiply', schema: Schema.Struct({ factor: Schema.Finite }) }),
 }
 const counterSchema = makeSchema({
   events: counterEvents,
