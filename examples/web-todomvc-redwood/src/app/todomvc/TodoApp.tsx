@@ -2,8 +2,7 @@
 
 import 'todomvc-app-css/index.css'
 import { FPSMeter } from '@overengineering/fps-meter'
-import type React from 'react'
-import { Suspense, useState } from 'react'
+import * as React from 'react'
 
 import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
@@ -16,6 +15,10 @@ import { VersionBadge } from './components/VersionBadge.tsx'
 const suspenseFallback = <div>Loading LiveStore...</div>
 const fpsContainerStyle = { top: 0, right: 0, position: 'absolute', background: '#333' } as const
 
+const subscribeToHydration = () => () => {}
+const getClientSnapshot = () => true
+const getServerSnapshot = () => false
+
 const AppBody: React.FC = () => (
   <section className="todoapp">
     <Header />
@@ -24,11 +27,11 @@ const AppBody: React.FC = () => (
   </section>
 )
 
-export const TodoApp: React.FC = () => {
-  const [storeRegistry] = useState(() => new StoreRegistry())
+const ClientTodoApp: React.FC = () => {
+  const [storeRegistry] = React.useState(() => new StoreRegistry())
 
   return (
-    <Suspense fallback={suspenseFallback}>
+    <React.Suspense fallback={suspenseFallback}>
       <StoreRegistryProvider storeRegistry={storeRegistry}>
         <div style={fpsContainerStyle}>
           <FPSMeter height={40} />
@@ -36,6 +39,12 @@ export const TodoApp: React.FC = () => {
         <AppBody />
         <VersionBadge />
       </StoreRegistryProvider>
-    </Suspense>
+    </React.Suspense>
   )
+}
+
+export const TodoApp: React.FC = () => {
+  // Redwood also SSR-renders 'use client' components. OPFS and workers must only start after hydration.
+  const isHydrated = React.useSyncExternalStore(subscribeToHydration, getClientSnapshot, getServerSnapshot)
+  return isHydrated ? <ClientTodoApp /> : suspenseFallback
 }

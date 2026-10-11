@@ -10,7 +10,7 @@
 
 ### Changed
 
-- Stable documentation examples use published LiveStore 0.4.0 packages and standalone npm installs rather than the development workspace.
+- Stable documentation examples use published LiveStore 0.4.0 packages and standalone npm installs rather than the development workspace, with browser-only Redwood store initialization after hydration.
 
 - Added a canonical contributor meeting page with upcoming dates, calendar links, and the reusable video room. ([#1635](https://github.com/livestorejs/livestore/pull/1635))
 
