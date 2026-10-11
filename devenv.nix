@@ -568,7 +568,7 @@ in
       # (see the header comment in docs/src/data/examples.ts).
       bun scripts/screenshots.ts
     '';
-    after = [ "pnpm:install" ];
+    after = [ "examples:install" ];
   };
 
   # NOTE: check:quick is provided by effect-utils taskModules.check.

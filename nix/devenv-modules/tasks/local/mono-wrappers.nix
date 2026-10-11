@@ -361,16 +361,19 @@ in
     "examples:test" = {
       description = "Test examples";
       exec = "mono examples test";
+      after = [ "examples:install" ];
     };
 
     "examples:deploy" = {
       description = "Deploy examples to Cloudflare";
       exec = "mono examples deploy";
+      after = [ "examples:install" ];
     };
 
     "examples:deploy:prod" = {
       description = "Deploy examples to production Cloudflare Workers";
       exec = "mono examples deploy --prod";
+      after = [ "examples:install" ];
     };
 
     "examples:validate-links" = {
