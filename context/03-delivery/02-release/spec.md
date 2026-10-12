@@ -104,14 +104,16 @@ publication. Decision and rejected alternatives:
 Beta releases may break in three distinct ways (user-facing promise:
 `../../01-product/spec.md` §Maturity & Stability Promise):
 
-| Kind | Mechanism | Consequence |
-| --- | --- | --- |
-| API | public API change in a minor release | code migration, guided by release notes |
-| Client storage format | `liveStoreStorageFormatVersion` bump | persisted client state resets (see `02-system/02-state/01-sqlite/02-schema-management/`) |
-| Sync backend storage format | provider persistence change (e.g. `PERSISTENCE_FORMAT_VERSION`) | backend soft-reset per provider (see `02-system/03-sync/03-cf/`) |
+| Kind                        | Mechanism                                                       | Consequence                                                                              |
+| --------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| API                         | public API change in a minor release                            | code migration, guided by release notes                                                  |
+| Client storage format       | `liveStoreStorageFormatVersion` bump                            | persisted client state resets (see `02-system/02-state/01-sqlite/02-schema-management/`) |
+| Sync backend storage format | provider persistence change (e.g. `PERSISTENCE_FORMAT_VERSION`) | backend soft-reset per provider (see `02-system/03-sync/03-cf/`)                         |
 
 Release notes classify each breaking change by kind and include a migration
-path where feasible.
+path where feasible. The application-facing
+[0.4 to 0.5 upgrade guide](../../../docs/src/content/docs/misc/upgrading-0.4-to-0.5.md)
+collects the Effect dependency/API migration and deployment implications.
 
 ## Dependency-Update Policy
 

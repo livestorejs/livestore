@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
@@ -244,27 +244,28 @@ const runUnitTests = Effect.fn(function* ({ filter }: { filter: Option.Option<st
   } else {
     // For local development, run all in parallel (including sequential packages)
     const sequentialTargets: TestTarget[] = sequentialPackages.map((pkg) => ({ path: pkg }))
-    yield* Effect.forEach(
-      [...sequentialTargets, ...allPackagesWithTests],
-      (target) => {
-        const args =
-          target.config !== undefined
-            ? ['vitest', 'run', '--config', target.config]
-            : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
-        const label = target.config ?? target.path
-        // TODO use this https://x.com/luxdav/status/1942532247833436656
-        return TestPolicy.runTestTarget({
-          label,
-          policy: TestPolicy.blocking,
-          run: cmdText(args.join(' '), { stderr: 'pipe' }).pipe(
-            Effect.provide(LivestoreWorkspace.toCwd()),
-            Effect.tap((text) => Effect.sync(() => console.log(`Output for ${label}:\n\n${text}\n\n`))),
-          ),
-        })
-      },
-      { concurrency: 'unbounded' },
-    )
+    yield* runLocalUnitTests([...sequentialTargets, ...allPackagesWithTests])
   }
+})
+
+/** Local package failures must reach the CLI just as they do in the CI runner. */
+export const runLocalUnitTests = Effect.fn(function* (targets: readonly TestTarget[]) {
+  const workspaceRoot = yield* LivestoreWorkspace
+  yield* Effect.forEach(
+    targets,
+    (target) => {
+      const args =
+        target.config !== undefined
+          ? ['vitest', 'run', '--config', target.config]
+          : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
+      return TestPolicy.runTestTarget({
+        label: target.config ?? target.path,
+        policy: TestPolicy.blocking,
+        run: cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+      })
+    },
+    { concurrency: 'unbounded' },
+  )
 })
 
 export const testUnitCommand = Cli.Command.make(
