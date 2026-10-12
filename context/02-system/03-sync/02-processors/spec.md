@@ -53,15 +53,15 @@ Store.commit ─► ClientSessionSyncProcessor
 
 ## Leader Sync Processor
 
-`leader-thread/LeaderSyncProcessor.ts` (`:53-62`).
+`leader-thread/LeaderSyncProcessor.ts` (`:54-63`).
 
 ### Mailbox and model
 
-One loop (`run`, `:623-636`) takes a `LeaderMessage` from an unbounded mailbox
-(`:123`) and handles it completely before taking the next (`handleMessage`,
-`:473-621`). `model` is a local variable rather than a `Ref`; only the loop
+One loop (`run`, `:658-671`) takes a `LeaderMessage` from an unbounded mailbox
+(`:129`) and handles it completely before taking the next (`handleMessage`,
+`:504-656`). `model` is a local variable rather than a `Ref`; only the loop
 changes it, apart from boot and operation startup in the same scope
-(`:148-150`). `LeaderMessage` is a closed union of 11 tags (`:744-759`):
+(`:154-156`). `LeaderMessage` is a closed union of 11 tags (`:779-794`):
 `LocalPushRequested`, `UpstreamBatchReceived`, `PullCompleted`, `PullFailed`,
 `PullRetryElapsed`, `PushSucceeded`, `PushFailed`, `PushRetryElapsed`,
 `ContinueWork`, `LocalWorkEnabled` (test-delay release only) and
@@ -77,17 +77,17 @@ push:       disabled | idle { queued } | in-flight { operationId, attempt, batch
 plus:       syncState, localQueue, upstreamQueue, localWorkEnabled, nextOperationId
 ```
 
-(`:761-802`.) Operation, pull, and retry ids come from one counter
-(`allocateOperationId`, `:154-159`).
+(`:796-837`.) Operation, pull, and retry ids come from one counter
+(`allocateOperationId`, `:160-165`).
 
 ### Admission
 
-`push` (`:638-664`) registers one request-level acknowledgement with a
+`push` (`:673-699`) registers one request-level acknowledgement with a
 remaining-event count before waiting for boot, so shutdown can interrupt every
-admitted caller (`:643-655`), then sends `LocalPushRequested`. The handler
-(`:484-505`) validates the batch against the tail of `localQueue`, or the
+admitted caller (`:678-690`), then sends `LocalPushRequested`. The handler
+(`:515-536`) validates the batch against the tail of `localQueue`, or the
 local head when the queue is empty, so it checks committed plus admitted
-history, then appends it to `localQueue`. `validatePushBatch` (`:944-1019`)
+history, then appends it to `localQueue`. `validatePushBatch` (`:979-1054`)
 requires a strictly ascending batch (`NonMonotonicBatchError`), a first event
 ahead of that head (`LeaderAheadError`), a first event no older than the head's
 rebase generation (`StaleRebaseGenerationError`), and an exact sequence/parent
@@ -98,76 +98,80 @@ head can name the same position with different local generations. This chain
 check is the receiver-side prefix fence of LS.SYS.SYNC.PROC-R04.
 
 A `ContinueWork` turn selects up to `localPushBatchSize` admitted items
-(default 10, `:140`). Items whose generation is older than the current local
-head's are rejected with `StaleRebaseGenerationError` (`:410-429`). If merge
+(default 10, `:146`). Items whose generation is older than the current local
+head's are rejected with `StaleRebaseGenerationError` (`:441-460`). If merge
 rejects the batch, the turn fails its acknowledgements with `LeaderAheadError`
 together with every queued item of the same rebase generation, because those
 were numbered on top of the rejected batch; the session rebases and re-pushes
-(`:277-304`). A local push that merge would rebase is a defect (`:305`).
+(`:308-335`). A local push that merge would rebase is a defect (`:336`).
 
 ### Precedence
 
 A `ContinueWork` turn always applies queued upstream pages before local work
-(`:395-401`). While the current page reports `more-expected`, local work waits
-until the paginated advance is complete (`:402-404`, LS.SYS.SYNC.PROC-R02).
+(`:426-432`). While the current page reports `more-expected`, local work waits
+until the paginated advance is complete (`:433-435`, LS.SYS.SYNC.PROC-R02).
 
 ### Durability inside the turn
 
-`processLocalBatch` (`:267-337`) and `processUpstreamBatch` (`:339-390`) merge,
+`processLocalBatch` (`:298-368`) and `processUpstreamBatch` (`:370-421`) merge,
 then await `LeaderPersistence`. Only after a successful receipt does the turn
 publish (update `syncState`, its `SubscriptionRef`, and every session pull
-queue; `:251-265`), update the backend push plan, and resolve acknowledgements
+queue; `:282-296`), update the backend push plan, and resolve acknowledgements
 or release the provider page. Nothing can observe a half-applied transition.
 The processor checks each receipt against the merge: a local receipt's state
-head must equal the new local head exactly (`:316-322`); an upstream receipt is
-compared by global/client position and backend head (`:367-379`), because the
+head must equal the new local head exactly (`:347-353`); an upstream receipt is
+compared by global/client position and backend head (`:398-410`), because the
 backend does not preserve the leader's local rebase generation — a pending
 event the leader rebased (`e1` → `e2`, generation 1) is confirmed as `e2`. A
 mismatch stops the processor as a sync failure.
 
 A push acknowledgement therefore means durable, published, and scheduled for
-the backend — not backend-accepted (`:74`).
+the backend — not backend-accepted (`:75`).
 
 ### Backend push and retry
 
 At most one provider push runs (`pushHandle`). `startProviderPush` takes up to
-`backendPushBatchSize` events (default 50, `:141`) from `push.queued` and
-records `in-flight { operationId }` before forking the call (`:195-216`). The
+`backendPushBatchSize` events (default 50, `:147`) from `push.queued` and
+records `in-flight { operationId }` before forking the call (`:201-222`). The
 fiber waits for the backend to be connected and for the devtools latch, then
-pushes `toGlobal()` events (`:837-878`). Results come back as `PushSucceeded`
-or `PushFailed` carrying the operation id; a stale id is ignored (`:569-611`).
+pushes `toGlobal()` events (`:872-913`). Results come back as `PushSucceeded`
+or `PushFailed` carrying the operation id; a stale id is ignored (`:604-646`).
 
 - `ServerAheadError` moves the push to `awaiting-pull`, keeping batch and queue
-  but never retrying the stale batch in place (`:580-591`, LS.SYS.SYNC.PROC-R01,
+  but never retrying the stale batch in place (`:615-626`, LS.SYS.SYNC.PROC-R01,
   PROC-R04). The next upstream page rebuilds the plan.
-- `BackendIdMismatchError` applies `onBackendIdMismatch` (`:433-471`): `ignore`
+- `BackendIdMismatchError` applies `onBackendIdMismatch` (`:464-502`): `ignore`
   disables pushing (or completes pulling), `shutdown` stops the leader, and
-  `reset` interrupts all work, clears both databases (`:1236-1256`), and stops.
+  `reset` interrupts all work, clears both databases (`:1271-1291`), and stops.
 - Any other failure (`IsOfflineError`, `UnknownError`, including a defect
-  wrapped as `UnknownError`, `:870-876`) moves the push to `retry-wait` with
+  wrapped as `UnknownError`, `:905-911`) moves the push to `retry-wait` with
   capped exponential backoff: `min(30s, 1s · 2^(attempt-1))`, no jitter, no
-  attempt cap (`:594-611`, `:1259`). `PushRetryElapsed` with the current
-  `retryId` re-runs the same batch (`:612-617`).
+  attempt cap (`:629-646`, `:1294`). `PushRetryElapsed` with the current
+  `retryId` re-runs the same batch (`:647-652`).
 
 Each upstream page rebuilds the push plan from committed non-client-only
-pending events (`replacePushPlan`, `:240-249`, called at `:387`): any push
+pending events (`replacePushPlan`, `:271-280`, called at `:418`): any push
 state becomes `idle` with the new queue, and an in-flight push is interrupted;
 that interruption is awaited inside the turn.
 
 ### Backend pull
 
-At most one provider pull runs (`pullHandle`, `:218-238`). Its cursor is
+At most one provider pull runs (`pullHandle`, `:249-269`). Its cursor is
 `Eventlog.getSyncBackendCursorInfoForDb` for the current upstream head — the
-persisted backend head plus provider-opaque sync metadata (`:904`). Each page
+persisted backend head plus provider-opaque sync metadata (`:939`). Each page
 becomes one `UpstreamBatchReceived` with its pull id; the stream then waits
 until the turn durably commits or deliberately discards that page before it
 delivers the next, so later pages cannot race ahead of the persisted cursor
-(`:906-926`). A page from a superseded pull is released without changing the
-model (`:513-518`). Pages merge with `ignoreClientOnlyEvents: true`
-(`:341-347`). `IsOfflineError` moves the pull to `retry-wait` with the same
-backoff (`:546-556`); other failures stop the leader when `onError: 'shutdown'`,
-otherwise the pull is marked `completed` (`:559-563`). The stream end sends
-`PullCompleted` (`:940`).
+(`:941-961`). A page from a superseded pull is released without changing the
+model (`:544-549`). Pages merge with `ignoreClientOnlyEvents: true`
+(`:372-378`). `IsOfflineError` moves the pull to `retry-wait` (`:580-590`). The retry waits for
+whichever comes first: a false→true transition of `syncBackend.isConnected`, or
+a jittered fallback timer on the same 1 s → 30 s backoff, which also covers
+connectivity that stays stale-true (`awaitPullRetry`, `:224-247`). Waking on a
+reconnect, or receiving any page (even an empty one), resets the backoff
+(`:550-552`, `:600-601`); other failures stop the leader when `onError: 'shutdown'`,
+otherwise the pull is marked `completed` (`:593-597`). The stream end sends
+`PullCompleted` (`:975`).
 
 ### What waits concurrently, and why
 
@@ -180,7 +184,7 @@ indefinitely:
 - **Backend push** (at most one): a round trip that can hang or fail
   repeatedly while offline. Awaiting it inside a turn would stop local pushes
   from becoming durable and stop shutdown from proceeding.
-- **Retry timers**: backoff sleeps in `backgroundFibers` (`:153`). Each
+- **Retry timers**: backoff sleeps in `backgroundFibers` (`:159`). Each
   completion carries its `retryId`, so superseded timers are ignored.
 
 A fully serial leader would need a polling sync-provider contract, would block
@@ -191,28 +195,28 @@ state, and interruption.
 
 ### Boot
 
-`boot` (`:666-693`) runs once: it forks the loop, sets `running`, and starts
+`boot` (`:701-728`) runs once: it forks the loop, sets `running`, and starts
 the provider pull and push. The initial sync state is rehydrated from the
 eventlog by the leader layer (`getInitialSyncState`,
 `make-leader-thread-layer.ts:288-326`; see `../../04-runtime/spec.md`
 Leadership Handover), and the initial push plan is its non-client-only pending
-suffix (`:813-830`).
+suffix (`:848-865`).
 
 ### Failure and shutdown
 
-- `ShutdownRequested`, sent by the boot scope's finalizer (`:686-691`), stops
+- `ShutdownRequested`, sent by the boot scope's finalizer (`:721-726`), stops
   the processor as `stopping`: it interrupts the provider pull and push, retry
   timers, every registered acknowledgement (closing the registry so later
   `push` calls are interrupted at admission), and every waiting provider page
-  (`stop` and `interruptAllWork`, `:161-190`). Admitted but unprocessed local
+  (`stop` and `interruptAllWork`, `:167-196`). Admitted but unprocessed local
   pushes are interrupted, not drained.
 - A message that arrives once the lifecycle is no longer `running` changes
-  nothing; a late `LocalPushRequested` is interrupted (`:478-481`).
+  nothing; a late `LocalPushRequested` is interrupted (`:509-512`).
 - A merge failure, persist failure, or receipt mismatch is a sync failure
-  (`stopForSyncFailure`, `:192-193`): the processor stops as `failed` and
+  (`stopForSyncFailure`, `:198-199`): the processor stops as `failed` and
   notifies the shutdown channel only when `onError: 'shutdown'`.
 - A defect in a handler stops the processor as `failed` and always notifies
-  the shutdown channel (`:628-630`).
+  the shutdown channel (`:663-665`).
 
 ## LeaderPersistence: the Durable Seam
 
@@ -462,5 +466,5 @@ checks it.
 - With `onError: 'ignore'` (the leader layer's default), a leader sync failure
   stops the processor without notifying the shutdown channel.
 - `cachedPullItems` in the leader's session pull path can grow without bound
-  (`:1129-1131`; issue #1423).
+  (`:1164-1166`; issue #1423).
 - Metrics for retry/queue health are not emitted (LS.SYS.OBS-DQ2).
