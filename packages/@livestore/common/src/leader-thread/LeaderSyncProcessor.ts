@@ -819,16 +819,17 @@ export const make = Effect.fnUntraced(function* ({
           const isConnected = syncBackend.isConnected
           return Effect.gen(function* () {
             // Wake immediately on reconnection. Probe on a capped fallback timer if connectivity is stale.
-            const connected = yield* SubscriptionRef.get(isConnected)
             const jitter = yield* Random.nextBetween(0.8, 1.2)
             const fallbackMs = offlinePullFallbackMs * jitter
             offlinePullFallbackMs = Math.min(offlinePullFallbackMs * 2, 30_000)
-            const reconnected =
-              connected === false
-                ? yield* SubscriptionRef.waitUntil(isConnected, (value) => value === true).pipe(
-                    Effect.timeoutOrElse({ duration: fallbackMs, orElse: () => Effect.succeed(false) }),
-                  )
-                : yield* Effect.sleep(fallbackMs).pipe(Effect.as(false))
+            // A stale initial true is not a reconnect. Watch false→true even while the fallback timer is pending.
+            const reconnected = yield* SubscriptionRef.changes(isConnected).pipe(
+              Stream.dropWhile((value) => value === true),
+              Stream.filter((value) => value === true),
+              Stream.runHead,
+              Effect.as(true),
+              Effect.timeoutOrElse({ duration: fallbackMs, orElse: () => Effect.succeed(false) }),
+            )
             if (reconnected === true) offlinePullFallbackMs = 1_000
           })
         }),

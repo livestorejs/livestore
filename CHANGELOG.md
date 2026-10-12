@@ -51,7 +51,8 @@
   disconnect. Pulls now resume after reconnect without reloading the client,
   and HTTP transport failures also remain retryable. Offline pulls wait for
   reconnection rather than spinning, and resume as soon as the backend reports
-  connected. Capped fallback probes cover stale connectivity signals.
+  connected. Capped fallback probes cover stale connectivity signals and still
+  wake immediately on later disconnect/reconnect transitions.
   Protocol failures stay terminal
   ([#1650](https://github.com/livestorejs/livestore/issues/1650)).
   For the root-cause analysis, thanks @bohdanbirdie.
