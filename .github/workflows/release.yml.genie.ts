@@ -36,6 +36,8 @@ const releasePlanPaths = [
   '.github/workflows/release.yml.genie.ts',
   '.github/workflows/deploy-prod.yml',
   '.github/workflows/deploy-prod.yml.genie.ts',
+  '.github/scripts/validate-stable-docs-release.mjs',
+  '.github/scripts/validate-stable-docs-release.test.mjs',
   'genie/repo.ts',
   'nix/devenv-modules/tasks/local/mono-wrappers.nix',
   'release/release-plan.json',
@@ -242,6 +244,9 @@ fi`,
 use_synthetic_plan=false
 
 if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+  if [ "$GITHUB_BASE_REF" = "docs/stable" ]; then
+    exit 0
+  fi
   git fetch origin "\${{ github.base_ref }}" --depth=1
   if ! git diff --name-only "origin/\${{ github.base_ref }}...HEAD" | grep -qx 'release/release-plan.json'; then
     use_synthetic_plan=true
@@ -274,7 +279,20 @@ jq -n \\
         },
         {
           name: 'Dry-run stable package publish',
+          if: "github.event_name != 'pull_request' || github.base_ref != 'docs/stable'",
           run: runDevenvTasksBefore('release:stable:dryrun'),
+        },
+        {
+          name: 'Validate published stable docs release',
+          if: "github.event_name == 'pull_request' && github.base_ref == 'docs/stable'",
+          run: 'node .github/scripts/validate-stable-docs-release.mjs "$PR_HEAD_SHA"',
+          env: {
+            PR_HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
+          },
+        },
+        {
+          name: 'Test stable docs release validation',
+          run: 'node --test .github/scripts/validate-stable-docs-release.test.mjs',
         },
         {
           name: 'Read release plan',

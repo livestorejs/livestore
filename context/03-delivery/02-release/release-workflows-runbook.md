@@ -191,6 +191,11 @@ reviewed promotion:
    fixes that are still applicable, and confirm `release/version.json` and the
    package graph identify the published stable version. Wait for CI and required
    approvals, then merge the PR. Do not force-push or reset `docs/stable`.
+   Promotion PR CI validates the existing stable plan rather than synthesizing
+   an unpublished version or rehearsing publication: every topology package
+   must exist at the plan version with npm `latest` pointing to it, and the
+   published `v<version>` tag's commit must be an ancestor of the exact PR head.
+   PRs against `main` retain the unpublished-version dry run.
 3. Record the merged `docs/stable` SHA. Keep the branch unchanged throughout
    the following dispatches and confirm each run's head SHA equals it:
 
@@ -215,6 +220,10 @@ Verify the public docs version, example URLs, and production search results
 before declaring the release complete. `target=all` is also supported from
 `docs/stable`; its search job waits for a successful docs job. Separate target
 dispatches make each promotion/recovery stage explicit.
+
+The ref guard and combined-target search ordering are provided by the workflow
+files on the dispatch ref. They take effect on `docs/stable` only once the
+promotion PR carries these workflow files onto that branch.
 
 The branch was established from the deployed stable baseline in
 [#1637](https://github.com/livestorejs/livestore/pull/1637), allowing reviewed

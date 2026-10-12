@@ -65,6 +65,11 @@ For each successful `latest` release, a maintainer opens a PR advancing
 `docs/stable` to the exact published release commit, preserving applicable
 stable-only documentation fixes. The merged branch must identify the published
 stable version; it is not advanced for prereleases or snapshots.
+Promotion PR validation is scoped by the PR base ref: `docs/stable` checks every
+release-topology package's published version and `latest` dist-tag, and proves
+that the published `v<version>` tag's commit is an ancestor of the exact PR
+head. It uses the checked-in stable plan without synthesizing a prerelease.
+PRs against `main` retain the unpublished-package rehearsal.
 
 The maintainer dispatches `deploy-prod.yml --ref docs/stable` for docs, then
 examples and search from the same recorded, unchanged stable SHA. Search must
@@ -78,7 +83,6 @@ This explicit approval boundary preserves the stable baseline established in
 production docs to a moving development head or automatically advancing a
 branch with stable-only fixes. Commands and recovery:
 [release-workflows-runbook.md](./release-workflows-runbook.md).
-
 
 ## Pull-Request Snapshot Promotion (LS.DEL.REL-R08)
 
@@ -127,11 +131,11 @@ publication. Decision and rejected alternatives:
 Beta releases may break in three distinct ways (user-facing promise:
 `../../01-product/spec.md` §Maturity & Stability Promise):
 
-| Kind | Mechanism | Consequence |
-| --- | --- | --- |
-| API | public API change in a minor release | code migration, guided by release notes |
-| Client storage format | `liveStoreStorageFormatVersion` bump | persisted client state resets (see `02-system/02-state/01-sqlite/02-schema-management/`) |
-| Sync backend storage format | provider persistence change (e.g. `PERSISTENCE_FORMAT_VERSION`) | backend soft-reset per provider (see `02-system/03-sync/03-cf/`) |
+| Kind                        | Mechanism                                                       | Consequence                                                                              |
+| --------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| API                         | public API change in a minor release                            | code migration, guided by release notes                                                  |
+| Client storage format       | `liveStoreStorageFormatVersion` bump                            | persisted client state resets (see `02-system/02-state/01-sqlite/02-schema-management/`) |
+| Sync backend storage format | provider persistence change (e.g. `PERSISTENCE_FORMAT_VERSION`) | backend soft-reset per provider (see `02-system/03-sync/03-cf/`)                         |
 
 Release notes classify each breaking change by kind and include a migration
 path where feasible.
