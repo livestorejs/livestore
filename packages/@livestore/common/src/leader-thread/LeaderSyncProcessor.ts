@@ -14,6 +14,7 @@ import {
   FiberSet,
   Layer,
   Queue,
+  Random,
   ReadonlyArray,
   Ref,
   Result,
@@ -90,9 +91,14 @@ interface Options {
   readonly params: { readonly localPushBatchSize?: number; readonly backendPushBatchSize?: number }
   readonly livePull: boolean
   readonly testing: {
-    readonly delays?: { readonly localPushProcessing?: Effect.Effect<void> }
+    readonly delays?: {
+      readonly localPushProcessing?: Effect.Effect<void>
+      readonly backendPullReconnect?: (fallbackMs: number) => number
+    }
     readonly hooks?: {
       readonly localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.Encoded>) => Effect.Effect<void>
+      /** Observes connectivity after the offline wait has subscribed, allowing tests to synchronize without sleeps. */
+      readonly backendPullReconnectWait?: (state: { isConnected: boolean; fallbackMs: number }) => Effect.Effect<void>
     }
   }
 }
@@ -213,6 +219,31 @@ export const make = Effect.fnUntraced(function* ({
         pushHandle,
         runProviderPush({ operationId, attempt: push.attempt, batch: push.batch }, syncBackend, devtoolsLatch, send),
       ).pipe(Effect.asVoid)
+    })
+
+  /**
+   * Waits before retrying an offline pull. A false→true connectivity transition wakes the retry immediately; a jittered,
+   * capped fallback timer covers connectivity that stays stale-true. Resolves `true` when woken by a reconnect.
+   */
+  const awaitPullRetry = (attempt: number) =>
+    Effect.gen(function* () {
+      const jitteredMs = retryDelay(attempt) * (yield* Random.nextBetween(0.8, 1.2))
+      const fallbackMs = testing.delays?.backendPullReconnect?.(jitteredMs) ?? jitteredMs
+      if (syncBackend === undefined) return yield* Effect.sleep(Duration.millis(fallbackMs)).pipe(Effect.as(false))
+      const waitHook = testing.hooks?.backendPullReconnectWait
+      const changes = SubscriptionRef.changes(syncBackend.isConnected)
+      const observed =
+        waitHook === undefined
+          ? changes
+          : changes.pipe(Stream.tap((isConnected) => waitHook({ isConnected, fallbackMs })))
+      // A stale initial `true` is not a reconnect: wait for false→true, even while the fallback timer is pending.
+      return yield* observed.pipe(
+        Stream.dropWhile((isConnected) => isConnected === true),
+        Stream.filter((isConnected) => isConnected === true),
+        Stream.runHead,
+        Effect.as(true),
+        Effect.timeoutOrElse({ duration: Duration.millis(fallbackMs), orElse: () => Effect.succeed(false) }),
+      )
     })
 
   const startProviderPull = (attempt: number) =>
@@ -516,9 +547,12 @@ export const make = Effect.fnUntraced(function* ({
             yield* completePullBatch(pullBatches, message.batch.batchId)
             return true
           }
+          // Any response, including an empty page, proves backend contact even when connectivity is reported stale.
+          const pull = { ...model.pull, attempt: 0 }
+          model = { ...model, pull }
           if (message.batch.events.length === 0) {
             if (message.batch.pageInfo._tag === 'NoMore') {
-              model = { ...model, pull: { ...model.pull, pagination: 'between-pages' } }
+              model = { ...model, pull: { ...pull, pagination: 'between-pages' } }
             }
             yield* completePullBatch(pullBatches, message.batch.batchId)
             yield* send({ _tag: 'ContinueWork' })
@@ -527,7 +561,7 @@ export const make = Effect.fnUntraced(function* ({
           model = {
             ...model,
             pull: {
-              ...model.pull,
+              ...pull,
               pagination: message.batch.pageInfo._tag === 'NoMore' ? 'between-pages' : 'more-expected',
             },
             upstreamQueue: [...model.upstreamQueue, message.batch],
@@ -548,8 +582,8 @@ export const make = Effect.fnUntraced(function* ({
             const attempt = model.pull.attempt + 1
             model = { ...model, pull: { _tag: 'retry-wait', retryId, attempt } }
             yield* fork(
-              Effect.sleep(Duration.millis(retryDelay(attempt))).pipe(
-                Effect.andThen(send({ _tag: 'PullRetryElapsed', retryId })),
+              awaitPullRetry(attempt).pipe(
+                Effect.flatMap((reconnected) => send({ _tag: 'PullRetryElapsed', retryId, reconnected })),
               ),
             )
             return true
@@ -563,7 +597,8 @@ export const make = Effect.fnUntraced(function* ({
           return true
         case 'PullRetryElapsed':
           if (model.pull._tag === 'retry-wait' && model.pull.retryId === message.retryId) {
-            yield* startProviderPull(model.pull.attempt)
+            // A reconnect proves the backend is reachable again, so the next outage starts from the shortest delay.
+            yield* startProviderPull(message.reconnected === true ? 0 : model.pull.attempt)
           }
           return true
         case 'PushSucceeded':
@@ -752,7 +787,7 @@ type LeaderMessage =
   | { readonly _tag: 'UpstreamBatchReceived'; readonly batch: UpstreamBatch }
   | { readonly _tag: 'PullCompleted'; readonly pullId: OperationId }
   | { readonly _tag: 'PullFailed'; readonly pullId: OperationId; readonly error: ProviderPullError }
-  | { readonly _tag: 'PullRetryElapsed'; readonly retryId: OperationId }
+  | { readonly _tag: 'PullRetryElapsed'; readonly retryId: OperationId; readonly reconnected: boolean }
   | { readonly _tag: 'PushSucceeded'; readonly operationId: OperationId }
   | { readonly _tag: 'PushFailed'; readonly operationId: OperationId; readonly error: ProviderPushError }
   | { readonly _tag: 'PushRetryElapsed'; readonly retryId: OperationId }
