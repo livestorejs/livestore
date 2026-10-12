@@ -201,6 +201,8 @@ interface Options {
     }
     readonly hooks?: {
       readonly localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
+      /** Observes connectivity after the offline wait has subscribed, allowing tests to synchronize without sleeps. */
+      readonly backendPullReconnectWait?: (state: { isConnected: boolean; fallbackMs: number }) => Effect.Effect<void>
     }
   }
 }
@@ -823,7 +825,13 @@ export const make = Effect.fnUntraced(function* ({
             const fallbackMs = offlinePullFallbackMs * jitter
             offlinePullFallbackMs = Math.min(offlinePullFallbackMs * 2, 30_000)
             // A stale initial true is not a reconnect. Watch false→true even while the fallback timer is pending.
-            const reconnected = yield* SubscriptionRef.changes(isConnected).pipe(
+            const waitHook = testing.hooks?.backendPullReconnectWait
+            const changes = SubscriptionRef.changes(isConnected)
+            const observedChanges =
+              waitHook === undefined
+                ? changes
+                : changes.pipe(Stream.tap((value) => waitHook({ isConnected: value, fallbackMs })))
+            const reconnected = yield* observedChanges.pipe(
               Stream.dropWhile((value) => value === true),
               Stream.filter((value) => value === true),
               Stream.runHead,

@@ -179,72 +179,89 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     let pullAttempts = 0
 
     return Effect.gen(function* () {
-      const leader = yield* LeaderThreadCtx
-      const context = yield* TestContext
-      unavailable = true
-      yield* Deferred.succeed(disconnect, undefined)
+      const waits = yield* Queue.unbounded<{ isConnected: boolean; fallbackMs: number }>()
+      yield* Effect.gen(function* () {
+        const leader = yield* LeaderThreadCtx
+        const context = yield* TestContext
+        unavailable = true
+        yield* Deferred.succeed(disconnect, undefined)
 
-      // Enter the fifth offline wait with a stale true signal. Its fallback is
-      // 16 seconds before jitter, so a 2-second catch-up cannot come from that timer.
-      for (let seconds = 0; seconds < 20; seconds++) {
-        if (pullAttempts >= 5) break
-        yield* TestClock.adjust('1 second')
-      }
-      expect(pullAttempts).toBe(5)
-      yield* context.mockSyncBackend.disconnect
-      yield* TestClock.adjust(0)
-      yield* context.mockSyncBackend.advance(
-        context.eventFactory.todoCreated.next({ id: 'after-stale-true', text: 'Recovered', completed: false }),
+        // Each probe confirms the actual wait has subscribed before advancing its timer.
+        let wait = yield* Queue.take(waits)
+        for (let attempt = 1; attempt < 5; attempt++) {
+          expect(wait.isConnected).toBe(true)
+          expect(pullAttempts).toBe(attempt)
+          yield* TestClock.adjust(wait.fallbackMs)
+          wait = yield* Queue.take(waits)
+        }
+        expect(pullAttempts).toBe(5)
+        expect(wait.isConnected).toBe(true)
+        expect(wait.fallbackMs).toBeGreaterThanOrEqual(12_800)
+        yield* context.mockSyncBackend.disconnect
+        expect((yield* Queue.take(waits)).isConnected).toBe(false)
+        yield* context.mockSyncBackend.advance(
+          context.eventFactory.todoCreated.next({ id: 'after-stale-true', text: 'Recovered', completed: false }),
+        )
+        unavailable = false
+        recovered = true
+        const connectedAt = yield* TestClock.withLive(Clock.currentTimeMillis)
+        yield* context.mockSyncBackend.connect
+        // Freeze the fallback clock: only the connectivity transition can resume the pull.
+        // A live deadline cannot be stranded by advancing time before a timeout fiber registers.
+        const result = yield* leader.syncProcessor.syncState.changes.pipe(
+          Stream.takeUntil((state) => state.localHead.global === 1),
+          Stream.runDrain,
+          Effect.andThen(Clock.currentTimeMillis),
+          Effect.timeout('2 seconds'),
+          Effect.result,
+          TestClock.withLive,
+        )
+        expect(Result.isSuccess(result)).toBe(true)
+        if (Result.isSuccess(result) === true) expect(result.success - connectedAt).toBeLessThanOrEqual(2_000)
+        expect(leader.dbState.select<{ id: string }>(tables.todos.asSql().query).map((row) => row.id)).toEqual([
+          'after-stale-true',
+        ])
+      }).pipe(
+        withTestCtx({
+          timeout: '60 seconds',
+          syncOptions: { livePull: true },
+          testing: {
+            syncProcessor: {
+              hooks: {
+                backendPullReconnectWait: (state) => Queue.offer(waits, state).pipe(Effect.as(undefined)),
+              },
+            },
+          },
+          mockBackendOverride: (mock) => () =>
+            Effect.gen(function* () {
+              const backend = yield* mock.makeSyncBackend
+              return {
+                ...backend,
+                pull: (cursor, options) =>
+                  options?.live === true
+                    ? Stream.suspend(() => {
+                        pullAttempts++
+                        if (pullAttempts > 1_000) return Stream.die('Pull retry loop exceeded 1,000 attempts')
+                        const offline = new IsOfflineError({ cause: new Error('Test backend unavailable') })
+                        if (unavailable === true) return Stream.fail(offline)
+                        if (recovered === true) return backend.pull(cursor, options)
+                        return backend
+                          .pull(cursor, options)
+                          .pipe(
+                            Stream.take(1),
+                            Stream.concat(
+                              Stream.fromEffect(Effect.andThen(Deferred.await(disconnect), Effect.fail(offline))),
+                            ),
+                          )
+                      })
+                    : backend.pull(cursor, options),
+              }
+            }),
+        })(test),
       )
-      unavailable = false
-      recovered = true
-      const connectedAt = yield* Clock.currentTimeMillis
-      const applied = yield* leader.syncProcessor.syncState.changes.pipe(
-        Stream.takeUntil((state) => state.localHead.global === 1),
-        Stream.runDrain,
-        Effect.andThen(Clock.currentTimeMillis),
-        Effect.timeout('2 seconds'),
-        Effect.result,
-        Effect.forkChild,
-      )
-      yield* context.mockSyncBackend.connect
-      yield* TestClock.adjust('2 seconds')
-      const result = yield* Fiber.join(applied)
-      expect(Result.isSuccess(result)).toBe(true)
-      if (Result.isSuccess(result) === true) expect(result.success - connectedAt).toBeLessThanOrEqual(2_000)
-      expect(leader.dbState.select<{ id: string }>(tables.todos.asSql().query).map((row) => row.id)).toEqual([
-        'after-stale-true',
-      ])
     }).pipe(
-      withTestCtx({
-        timeout: '60 seconds',
-        syncOptions: { livePull: true },
-        mockBackendOverride: (mock) => () =>
-          Effect.gen(function* () {
-            const backend = yield* mock.makeSyncBackend
-            return {
-              ...backend,
-              pull: (cursor, options) =>
-                options?.live === true
-                  ? Stream.suspend(() => {
-                      pullAttempts++
-                      if (pullAttempts > 1_000) return Stream.die('Pull retry loop exceeded 1,000 attempts')
-                      const offline = new IsOfflineError({ cause: new Error('Test backend unavailable') })
-                      if (unavailable === true) return Stream.fail(offline)
-                      if (recovered === true) return backend.pull(cursor, options)
-                      return backend
-                        .pull(cursor, options)
-                        .pipe(
-                          Stream.take(1),
-                          Stream.concat(
-                            Stream.fromEffect(Effect.andThen(Deferred.await(disconnect), Effect.fail(offline))),
-                          ),
-                        )
-                    })
-                  : backend.pull(cursor, options),
-            }
-          }),
-      })(test),
+      // Exercise registration ordering under cooperative preemption, not just the default fast scheduler.
+      Effect.provideService(References.MaxOpsBeforeYield, 64),
     )
   })
 
