@@ -294,6 +294,13 @@ const getSqlitePropertySignatures = (schema: Schema.Top): ReadonlyArray<SchemaAS
 const getPropertySignatures = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.PropertySignature> => {
   if (SchemaAST.isObjects(ast) === true) return ast.propertySignatures
 
+  // Class declarations encode through their fields object. Inspect that first
+  // link before toEncoded strips the individual field codecs.
+  if (SchemaAST.isDeclaration(ast) === true) {
+    const fieldsAst = ast.encoding?.[0]?.to
+    if (fieldsAst !== undefined) return getPropertySignatures(fieldsAst)
+  }
+
   if (SchemaAST.isUnion(ast) === true) {
     const members = ast.types.map(getPropertySignatures)
     const [head, ...tail] = members

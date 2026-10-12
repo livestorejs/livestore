@@ -271,6 +271,24 @@ describe('table function overloads', () => {
     expect(userTable.sqliteDef.columns.age.columnType).toBe('integer')
   })
 
+  it('preserves Date field codecs in Schema.Class tables', () => {
+    class Stamp extends Schema.Class<Stamp>('Stamp')({
+      id: Schema.String,
+      createdAt: Schema.DateFromString,
+      seenAt: Schema.DateFromMillis,
+    }) {}
+
+    const { columns } = State.SQLite.table({ name: 'stamps', schema: Stamp }).sqliteDef
+    const date = new Date('2026-01-02T03:04:05.678Z')
+
+    expect(columns.createdAt.columnType).toBe('text')
+    expect(Schema.decodeSync(columns.createdAt.schema)(date.toISOString())).toEqual(date)
+    expect(Schema.encodeUnknownSync(columns.createdAt.schema)(date)).toBe(date.toISOString())
+    expect(columns.seenAt.columnType).toBe('integer')
+    expect(Schema.decodeSync(columns.seenAt.schema)(date.getTime())).toEqual(date)
+    expect(Schema.encodeUnknownSync(columns.seenAt.schema)(date)).toBe(date.getTime())
+  })
+
   it('should support schemas that transform flat columns into nested types', () => {
     const Flat = Schema.Struct({
       id: Schema.String.pipe(State.SQLite.withPrimaryKey),
