@@ -415,6 +415,13 @@ jobs:
       run:
         shell: bash
     steps:
+      - name: Require stable docs source
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/docs/stable" ]; then
+            echo "Production docs, examples, and search must be deployed from docs/stable." >&2
+            exit 1
+          fi
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
@@ -602,6 +609,13 @@ jobs:
       run:
         shell: bash
     steps:
+      - name: Require stable docs source
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/docs/stable" ]; then
+            echo "Production docs, examples, and search must be deployed from docs/stable." >&2
+            exit 1
+          fi
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
@@ -758,13 +772,21 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   deploy-search:
-    if: ${{ inputs.target == 'search' || inputs.target == 'all' }}
+    needs: [deploy-docs]
+    if: ${{ !cancelled() && (needs.deploy-docs.result == 'success' || needs.deploy-docs.result == 'skipped') && (inputs.target == 'search' || inputs.target == 'all') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
       run:
         shell: bash
     steps:
+      - name: Require stable docs source
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/docs/stable" ]; then
+            echo "Production docs, examples, and search must be deployed from docs/stable." >&2
+            exit 1
+          fi
       - uses: actions/checkout@v6
         with:
           persist-credentials: false

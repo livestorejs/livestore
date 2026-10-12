@@ -57,6 +57,29 @@ sequenceDiagram
 Manual contrib release dispatch accepts an explicit version but must use a
 version already published by core (LS.DEL.REL-R05).
 
+## Stable Production Surface Promotion
+
+Package and DevTools artifact publication runs from `main`. Production docs,
+examples, and search run separately from the reviewed `docs/stable` branch.
+For each successful `latest` release, a maintainer opens a PR advancing
+`docs/stable` to the exact published release commit, preserving applicable
+stable-only documentation fixes. The merged branch must identify the published
+stable version; it is not advanced for prereleases or snapshots.
+
+The maintainer dispatches `deploy-prod.yml --ref docs/stable` for docs, then
+examples and search from the same recorded, unchanged stable SHA. Search must
+follow successful docs deployment, including verification and CDN purge; the
+workflow enforces this ordering for `target=all`. Every production target
+rejects other refs. Stable-only docs backports are reviewed against this branch
+and deployed with the same docs/search sequence.
+
+This explicit approval boundary preserves the stable baseline established in
+[#1637](https://github.com/livestorejs/livestore/pull/1637), rather than coupling
+production docs to a moving development head or automatically advancing a
+branch with stable-only fixes. Commands and recovery:
+[release-workflows-runbook.md](./release-workflows-runbook.md).
+
+
 ## Pull-Request Snapshot Promotion (LS.DEL.REL-R08)
 
 ```text
