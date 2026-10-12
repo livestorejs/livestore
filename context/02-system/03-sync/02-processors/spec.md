@@ -57,15 +57,14 @@ Store.commit ─► ClientSessionSyncProcessor
 
 ### Mailbox and model
 
-One loop (`run`, `:658-671`) takes a `LeaderMessage` from an unbounded mailbox
+One loop (`run`, `:668-681`) takes a `LeaderMessage` from an unbounded mailbox
 (`:129`) and handles it completely before taking the next (`handleMessage`,
-`:504-656`). `model` is a local variable rather than a `Ref`; only the loop
-changes it, apart from boot and operation startup in the same scope
-(`:154-156`). `LeaderMessage` is a closed union of 11 tags (`:779-794`):
-`LocalPushRequested`, `UpstreamBatchReceived`, `PullCompleted`, `PullFailed`,
-`PullRetryElapsed`, `PushSucceeded`, `PushFailed`, `PushRetryElapsed`,
-`ContinueWork`, `LocalWorkEnabled` (test-delay release only) and
-`ShutdownRequested`.
+`:504-666`). `model` is a local variable rather than a `Ref`; only the loop
+changes it, including at boot (`:154-156`). `LeaderMessage` is a closed union of 12
+tags (`:786-802`): `Started` (sent once by boot), `LocalPushRequested`,
+`UpstreamBatchReceived`, `PullCompleted`, `PullFailed`, `PullRetryElapsed`,
+`PushSucceeded`, `PushFailed`, `PushRetryElapsed`, `ContinueWork`,
+`LocalWorkEnabled` (test-delay release only) and `ShutdownRequested`.
 
 ```text
 lifecycle:  starting ─► running ─► stopping
@@ -77,17 +76,17 @@ push:       disabled | idle { queued } | in-flight { operationId, attempt, batch
 plus:       syncState, localQueue, upstreamQueue, localWorkEnabled, nextOperationId
 ```
 
-(`:796-837`.) Operation, pull, and retry ids come from one counter
+(`:804-845`.) Operation, pull, and retry ids come from one counter
 (`allocateOperationId`, `:160-165`).
 
 ### Admission
 
-`push` (`:673-699`) registers one request-level acknowledgement with a
+`push` (`:683-709`) registers one request-level acknowledgement with a
 remaining-event count before waiting for boot, so shutdown can interrupt every
-admitted caller (`:678-690`), then sends `LocalPushRequested`. The handler
-(`:515-536`) validates the batch against the tail of `localQueue`, or the
+admitted caller (`:688-700`), then sends `LocalPushRequested`. The handler
+(`:525-546`) validates the batch against the tail of `localQueue`, or the
 local head when the queue is empty, so it checks committed plus admitted
-history, then appends it to `localQueue`. `validatePushBatch` (`:979-1054`)
+history, then appends it to `localQueue`. `validatePushBatch` (`:987-1062`)
 requires a strictly ascending batch (`NonMonotonicBatchError`), a first event
 ahead of that head (`LeaderAheadError`), a first event no older than the head's
 rebase generation (`StaleRebaseGenerationError`), and an exact sequence/parent
@@ -134,20 +133,20 @@ At most one provider push runs (`pushHandle`). `startProviderPush` takes up to
 `backendPushBatchSize` events (default 50, `:147`) from `push.queued` and
 records `in-flight { operationId }` before forking the call (`:201-222`). The
 fiber waits for the backend to be connected and for the devtools latch, then
-pushes `toGlobal()` events (`:872-913`). Results come back as `PushSucceeded`
-or `PushFailed` carrying the operation id; a stale id is ignored (`:604-646`).
+pushes `toGlobal()` events (`:880-921`). Results come back as `PushSucceeded`
+or `PushFailed` carrying the operation id; a stale id is ignored (`:614-656`).
 
 - `ServerAheadError` moves the push to `awaiting-pull`, keeping batch and queue
-  but never retrying the stale batch in place (`:615-626`, LS.SYS.SYNC.PROC-R01,
+  but never retrying the stale batch in place (`:625-636`, LS.SYS.SYNC.PROC-R01,
   PROC-R04). The next upstream page rebuilds the plan.
 - `BackendIdMismatchError` applies `onBackendIdMismatch` (`:464-502`): `ignore`
   disables pushing (or completes pulling), `shutdown` stops the leader, and
-  `reset` interrupts all work, clears both databases (`:1271-1291`), and stops.
+  `reset` interrupts all work, clears both databases (`:1279-1299`), and stops.
 - Any other failure (`IsOfflineError`, `UnknownError`, including a defect
-  wrapped as `UnknownError`, `:905-911`) moves the push to `retry-wait` with
+  wrapped as `UnknownError`, `:913-919`) moves the push to `retry-wait` with
   capped exponential backoff: `min(30s, 1s · 2^(attempt-1))`, no jitter, no
-  attempt cap (`:629-646`, `:1294`). `PushRetryElapsed` with the current
-  `retryId` re-runs the same batch (`:647-652`).
+  attempt cap (`:639-656`, `:1302`). `PushRetryElapsed` with the current
+  `retryId` re-runs the same batch (`:657-662`).
 
 Each upstream page rebuilds the push plan from committed non-client-only
 pending events (`replacePushPlan`, `:271-280`, called at `:418`): any push
@@ -158,20 +157,20 @@ that interruption is awaited inside the turn.
 
 At most one provider pull runs (`pullHandle`, `:249-269`). Its cursor is
 `Eventlog.getSyncBackendCursorInfoForDb` for the current upstream head — the
-persisted backend head plus provider-opaque sync metadata (`:939`). Each page
+persisted backend head plus provider-opaque sync metadata (`:947`). Each page
 becomes one `UpstreamBatchReceived` with its pull id; the stream then waits
 until the turn durably commits or deliberately discards that page before it
 delivers the next, so later pages cannot race ahead of the persisted cursor
-(`:941-961`). A page from a superseded pull is released without changing the
-model (`:544-549`). Pages merge with `ignoreClientOnlyEvents: true`
-(`:372-378`). `IsOfflineError` moves the pull to `retry-wait` (`:580-590`). The retry waits for
+(`:949-969`). A page from a superseded pull is released without changing the
+model (`:554-559`). Pages merge with `ignoreClientOnlyEvents: true`
+(`:372-378`). `IsOfflineError` moves the pull to `retry-wait` (`:590-600`). The retry waits for
 whichever comes first: a false→true transition of `syncBackend.isConnected`, or
 a jittered fallback timer on the same 1 s → 30 s backoff, which also covers
 connectivity that stays stale-true (`awaitPullRetry`, `:224-247`). Waking on a
 reconnect, or receiving any page (even an empty one), resets the backoff
-(`:550-552`, `:600-601`); other failures stop the leader when `onError: 'shutdown'`,
-otherwise the pull is marked `completed` (`:593-597`). The stream end sends
-`PullCompleted` (`:975`).
+(`:560-562`, `:610-611`); other failures stop the leader when `onError: 'shutdown'`,
+otherwise the pull is marked `completed` (`:603-607`). The stream end sends
+`PullCompleted` (`:983`).
 
 ### What waits concurrently, and why
 
@@ -195,28 +194,30 @@ state, and interruption.
 
 ### Boot
 
-`boot` (`:701-728`) runs once: it forks the loop, sets `running`, and starts
-the provider pull and push. The initial sync state is rehydrated from the
+`boot` (`:711-735`) runs once: it forks the loop and enqueues `Started` before
+releasing pushes that were waiting for boot. The mailbox is FIFO, so the
+`Started` turn (`:509-518`) sets `running` and starts the provider pull and push
+before any push or page is handled; boot itself never changes the model. The initial sync state is rehydrated from the
 eventlog by the leader layer (`getInitialSyncState`,
 `make-leader-thread-layer.ts:288-326`; see `../../04-runtime/spec.md`
 Leadership Handover), and the initial push plan is its non-client-only pending
-suffix (`:848-865`).
+suffix (`:856-873`).
 
 ### Failure and shutdown
 
-- `ShutdownRequested`, sent by the boot scope's finalizer (`:721-726`), stops
+- `ShutdownRequested`, sent by the boot scope's finalizer (`:728-733`), stops
   the processor as `stopping`: it interrupts the provider pull and push, retry
   timers, every registered acknowledgement (closing the registry so later
   `push` calls are interrupted at admission), and every waiting provider page
   (`stop` and `interruptAllWork`, `:167-196`). Admitted but unprocessed local
   pushes are interrupted, not drained.
 - A message that arrives once the lifecycle is no longer `running` changes
-  nothing; a late `LocalPushRequested` is interrupted (`:509-512`).
+  nothing; a late `LocalPushRequested` is interrupted (`:519-522`).
 - A merge failure, persist failure, or receipt mismatch is a sync failure
   (`stopForSyncFailure`, `:198-199`): the processor stops as `failed` and
   notifies the shutdown channel only when `onError: 'shutdown'`.
 - A defect in a handler stops the processor as `failed` and always notifies
-  the shutdown channel (`:663-665`).
+  the shutdown channel (`:673-675`).
 
 ## LeaderPersistence: the Durable Seam
 
@@ -466,5 +467,5 @@ checks it.
 - With `onError: 'ignore'` (the leader layer's default), a leader sync failure
   stops the processor without notifying the shutdown channel.
 - `cachedPullItems` in the leader's session pull path can grow without bound
-  (`:1164-1166`; issue #1423).
+  (`:1172-1174`; issue #1423).
 - Metrics for retry/queue health are not emitted (LS.SYS.OBS-DQ2).
