@@ -198,6 +198,7 @@ interface Options {
   readonly testing: {
     readonly delays?: {
       readonly localPushProcessing?: Effect.Effect<void>
+      readonly backendPullReconnect?: (fallbackMs: number) => number
     }
     readonly hooks?: {
       readonly localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
@@ -822,7 +823,8 @@ export const make = Effect.fnUntraced(function* ({
           return Effect.gen(function* () {
             // Wake immediately on reconnection. Probe on a capped fallback timer if connectivity is stale.
             const jitter = yield* Random.nextBetween(0.8, 1.2)
-            const fallbackMs = offlinePullFallbackMs * jitter
+            const fallbackMs =
+              testing.delays?.backendPullReconnect?.(offlinePullFallbackMs * jitter) ?? offlinePullFallbackMs * jitter
             offlinePullFallbackMs = Math.min(offlinePullFallbackMs * 2, 30_000)
             // A stale initial true is not a reconnect. Watch false→true even while the fallback timer is pending.
             const waitHook = testing.hooks?.backendPullReconnectWait

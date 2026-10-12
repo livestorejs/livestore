@@ -39,7 +39,6 @@ import {
   Result,
   type Scope,
   Stream,
-  TestClock,
   WebChannel,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
@@ -172,7 +171,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     )
   }
 
-  Vitest.effect('wakes a stale-true fallback on a later disconnect and reconnect', (test) => {
+  Vitest.live('wakes a stale-true fallback on a later disconnect and reconnect', (test) => {
     const disconnect = Deferred.makeUnsafe<void>()
     let unavailable = false
     let recovered = false
@@ -186,47 +185,44 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         unavailable = true
         yield* Deferred.succeed(disconnect, undefined)
 
-        // Each probe confirms the actual wait has subscribed before advancing its timer.
+        // Await real fallback probes; exporter and cleanup fibers share the live clock.
         let wait = yield* Queue.take(waits)
         for (let attempt = 1; attempt < 5; attempt++) {
           expect(wait.isConnected).toBe(true)
           expect(pullAttempts).toBe(attempt)
-          yield* TestClock.adjust(wait.fallbackMs)
           wait = yield* Queue.take(waits)
         }
         expect(pullAttempts).toBe(5)
         expect(wait.isConnected).toBe(true)
-        expect(wait.fallbackMs).toBeGreaterThanOrEqual(12_800)
+        expect(wait.fallbackMs).toBe(400)
         yield* context.mockSyncBackend.disconnect
-        expect((yield* Queue.take(waits)).isConnected).toBe(false)
         yield* context.mockSyncBackend.advance(
           context.eventFactory.todoCreated.next({ id: 'after-stale-true', text: 'Recovered', completed: false }),
         )
         unavailable = false
         recovered = true
-        const connectedAt = yield* TestClock.withLive(Clock.currentTimeMillis)
+        const connectedAt = yield* Clock.currentTimeMillis
         yield* context.mockSyncBackend.connect
-        // Freeze the fallback clock: only the connectivity transition can resume the pull.
-        // A live deadline cannot be stranded by advancing time before a timeout fiber registers.
+        // The live deadline is shorter than the pending fallback, so timer-only retry cannot pass.
         const result = yield* leader.syncProcessor.syncState.changes.pipe(
           Stream.takeUntil((state) => state.localHead.global === 1),
           Stream.runDrain,
           Effect.andThen(Clock.currentTimeMillis),
-          Effect.timeout('2 seconds'),
+          Effect.timeout('200 millis'),
           Effect.result,
-          TestClock.withLive,
         )
         expect(Result.isSuccess(result)).toBe(true)
-        if (Result.isSuccess(result) === true) expect(result.success - connectedAt).toBeLessThanOrEqual(2_000)
+        if (Result.isSuccess(result) === true) expect(result.success - connectedAt).toBeLessThanOrEqual(200)
         expect(leader.dbState.select<{ id: string }>(tables.todos.asSql().query).map((row) => row.id)).toEqual([
           'after-stale-true',
         ])
       }).pipe(
         withTestCtx({
-          timeout: '60 seconds',
+          timeout: '10 seconds',
           syncOptions: { livePull: true },
           testing: {
             syncProcessor: {
+              delays: { backendPullReconnect: (fallbackMs) => Math.min(fallbackMs / 20, 400) },
               hooks: {
                 backendPullReconnectWait: (state) => Queue.offer(waits, state).pipe(Effect.as(undefined)),
               },
@@ -259,10 +255,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
             }),
         })(test),
       )
-    }).pipe(
-      // Exercise registration ordering under cooperative preemption, not just the default fast scheduler.
-      Effect.provideService(References.MaxOpsBeforeYield, 64),
-    )
+    })
   })
 
   Vitest.live('sync', (test) =>

@@ -71,6 +71,7 @@ export interface MakeLeaderThreadLayerParams {
     syncProcessor?: {
       delays?: {
         localPushProcessing?: Effect.Effect<void>
+        backendPullReconnect?: (fallbackMs: number) => number
       }
       hooks?: {
         localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
