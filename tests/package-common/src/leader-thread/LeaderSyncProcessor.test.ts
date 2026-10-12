@@ -189,6 +189,76 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     )
   }
 
+  // Events pending across a restart must reach the backend exactly once, even when the first page rebases them. Boot
+  // starts backend work inside the mailbox for this path; the interleaving it rules out is timing-dependent and is not
+  // forced here.
+  Vitest.live('pushes events pending across a restart exactly once when the first page rebases them', (test) =>
+    Effect.gen(function* () {
+      const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
+      const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
+      const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
+      const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
+      const mockBackend = yield* makeMockSyncBackend({ startConnected: false })
+      const shutdownChannel = yield* WebChannel.noopChannel<any, any>()
+      const leaderLayer = makeLeaderThreadLayer({
+        schema,
+        storeId: 'boot-race',
+        clientId: 'local',
+        syncPayloadEncoded: undefined,
+        syncPayloadSchema: undefined,
+        makeSqliteDb,
+        syncOptions: { backend: () => mockBackend.makeSyncBackend, livePull: true },
+        devtoolsOptions: { enabled: false },
+        shutdownChannel,
+      }).pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            makeSqliteServicesLayer({ dbState, dbEventlog }),
+            FetchHttpClient.layer,
+            PlatformNode.NodeFileSystem.layer,
+          ),
+        ),
+      )
+      const local = makeEventFactory({ client: EventFactory.clientIdentity('local', 'session') })
+      const remote = makeEventFactory({ client: EventFactory.clientIdentity('remote', 'session') })
+      const ids = ['local-1', 'local-2', 'local-3']
+
+      // Commit while the backend is unreachable, so the events are still pending after the restart.
+      yield* Effect.gen(function* () {
+        const leader = yield* LeaderThreadCtx
+        yield* leader.syncProcessor.push(
+          ids.map((id) =>
+            LiveStoreEvent.Global.toClientEncoded(local.todoCreated.next({ id, text: 'local', completed: false })),
+          ),
+        )
+      }).pipe(Effect.provide(leaderLayer), Effect.scoped)
+
+      // The first page after the restart carries a remote event, so its rebase competes with starting the pending push.
+      yield* mockBackend.advance(remote.todoCreated.next({ id: 'remote-1', text: 'remote', completed: false }))
+      yield* mockBackend.connect
+      const pushed = yield* mockBackend.pushedEvents.pipe(Stream.take(ids.length), Stream.runCollect, Effect.forkChild)
+
+      yield* Effect.gen(function* () {
+        const leader = yield* LeaderThreadCtx
+        yield* leader.syncProcessor.syncState.changes.pipe(
+          Stream.takeUntil((state) => state.pending.length === 0 && state.upstreamHead.global === ids.length + 1),
+          Stream.runDrain,
+          Effect.timeout('10 seconds'),
+        )
+      }).pipe(
+        Effect.provide(leaderLayer),
+        // Yield often so work outside the mailbox would be likely to interleave with mailbox turns.
+        Effect.provideService(References.MaxOpsBeforeYield, 8),
+        Effect.scoped,
+      )
+
+      const pushedEvents = yield* Fiber.join(pushed).pipe(Effect.timeout('5 seconds'))
+      expect(pushedEvents.map((event) => [event.args.id, event.seqNum])).toEqual(
+        ids.map((id, index) => [id, index + 2]),
+      )
+    }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
+  )
+
   Vitest.live('wakes a stale-true fallback on a later disconnect and reconnect', (test) => {
     const disconnect = Deferred.makeUnsafe<void>()
     let unavailable = false

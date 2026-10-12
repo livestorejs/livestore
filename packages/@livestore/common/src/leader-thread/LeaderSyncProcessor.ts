@@ -506,6 +506,16 @@ export const make = Effect.fnUntraced(function* ({
       if (message._tag === 'ShutdownRequested') {
         return yield* stop({ lifecycle: 'stopping', notify: false })
       }
+      if (message._tag === 'Started') {
+        if (model.lifecycle !== 'starting') return true
+        // Provider work starts inside a turn, so it cannot interleave with pushes or pages that change the model.
+        model = { ...model, lifecycle: 'running' }
+        if (syncBackend !== undefined) {
+          yield* startProviderPull(0)
+          yield* startProviderPush()
+        }
+        return true
+      }
       if (model.lifecycle !== 'running') {
         if (message._tag === 'LocalPushRequested') yield* interruptLocalRequests(localRequests, [message.requestId])
         return true
@@ -702,13 +712,10 @@ export const make = Effect.fnUntraced(function* ({
     const shouldStart = yield* Ref.modify(bootStarted, (started) => [started === false, true])
     if (shouldStart === false) return { initialLeaderHead: yield* Deferred.await(bootDeferred) }
     yield* run.pipe(Effect.forkScoped)
-    model = { ...model, lifecycle: 'running' }
     yield* SubscriptionRef.set(syncStateRef, initialSyncState)
+    // The mailbox is FIFO: `Started` is handled before any push released below, and only the mailbox changes the model.
+    yield* send({ _tag: 'Started' })
     yield* Deferred.succeed(startedDeferred, void 0)
-    if (syncBackend !== undefined) {
-      yield* startProviderPull(0)
-      yield* startProviderPush()
-    }
     if (testing.delays?.localPushProcessing !== undefined) {
       yield* fork(
         testing.delays.localPushProcessing.pipe(
@@ -791,6 +798,7 @@ type LeaderMessage =
   | { readonly _tag: 'PushSucceeded'; readonly operationId: OperationId }
   | { readonly _tag: 'PushFailed'; readonly operationId: OperationId; readonly error: ProviderPushError }
   | { readonly _tag: 'PushRetryElapsed'; readonly retryId: OperationId }
+  | { readonly _tag: 'Started' }
   | { readonly _tag: 'ShutdownRequested'; readonly reason: string }
 
 type PullState =
