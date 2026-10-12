@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 
 export const assertStablePlan = (plan) => {
-  if (plan.schemaVersion !== 1 || plan.npmTag !== 'latest' || !/^\d+\.\d+\.\d+$/.test(plan.version)) {
+  if (plan.schemaVersion !== 1 || plan.npmTag !== 'latest' || /^\d+\.\d+\.\d+$/.test(plan.version) === false) {
     throw new Error('Stable docs promotion requires a schemaVersion 1 stable latest release plan')
   }
 }
@@ -24,7 +24,7 @@ export const validateStableDocsRelease = (head) => {
   const plan = JSON.parse(readFileSync('release/release-plan.json', 'utf8'))
   const topology = JSON.parse(readFileSync('scripts/src/generated/release-topology.json', 'utf8'))
   assertStablePlan(plan)
-  if (!/^[a-f0-9]{40}$/.test(head)) throw new Error('Expected the exact 40-character PR head SHA')
+  if (/^[a-f0-9]{40}$/.test(head) === false) throw new Error('Expected the exact 40-character PR head SHA')
   if (topology.publishablePackages.length === 0) throw new Error('Release topology has no publishable packages')
 
   // The plan has no commit field: the published version's release tag identifies
@@ -45,6 +45,6 @@ export const validateStableDocsRelease = (head) => {
   )
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
   validateStableDocsRelease(process.argv[2])
 }
