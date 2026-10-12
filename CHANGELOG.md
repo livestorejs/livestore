@@ -120,6 +120,11 @@
 
 For maintainers and contributors:
 
+- **Unit-test tooling:** Local `mono test unit` and `devenv tasks run test:unit`
+  now fail when any package's Vitest process exits nonzero, matching CI.
+  Package output streams directly to the terminal instead of being buffered
+  ([#683](https://github.com/livestorejs/livestore/issues/683)).
+
 - **CI composition:** Aligned the megarepo setup with the automatic CI worktree
   policy and consolidated devenv resolver from
   [effect-utils#1207](https://github.com/overengineeringstudio/effect-utils/pull/1207).
