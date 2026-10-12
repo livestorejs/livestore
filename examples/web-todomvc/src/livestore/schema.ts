@@ -8,13 +8,13 @@ export const tables = {
       id: State.SQLite.text({ primaryKey: true }),
       text: State.SQLite.text({ default: '' }),
       completed: State.SQLite.boolean({ default: false }),
-      deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
+      deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
     },
   }),
   // Client documents can be used for local-only state (e.g. form inputs)
   uiState: State.SQLite.clientDocument({
     name: 'uiState',
-    schema: Schema.Struct({ newTodoText: Schema.String, filter: Schema.Literals(['all', 'active', 'completed']) }),
+    schema: Schema.Struct({ newTodoText: Schema.String, filter: Schema.Literal('all', 'active', 'completed') }),
     default: { id: SessionIdSymbol, value: { newTodoText: '', filter: 'all' } },
   }),
 }
@@ -35,14 +35,11 @@ export const events = {
   }),
   todoDeleted: Events.synced({
     name: 'v1.TodoDeleted',
-    schema: Schema.Struct({
-      id: Schema.String,
-      deletedAt: Schema.DateFromString.check(Schema.isDateValid()),
-    }),
+    schema: Schema.Struct({ id: Schema.String, deletedAt: Schema.Date }),
   }),
   todoClearedCompleted: Events.synced({
     name: 'v1.TodoClearedCompleted',
-    schema: Schema.Struct({ deletedAt: Schema.DateFromString.check(Schema.isDateValid()) }),
+    schema: Schema.Struct({ deletedAt: Schema.Date }),
   }),
   uiStateSet: tables.uiState.set,
 }

@@ -4,7 +4,6 @@
 packages:
   - docs
   - docs/src/content/_assets/code
-  - examples/*
   - packages/@livestore/adapter-cloudflare
   - packages/@livestore/adapter-web
   - packages/@livestore/common

@@ -361,16 +361,19 @@ in
     "examples:test" = {
       description = "Test examples";
       exec = "mono examples test";
+      after = [ "examples:install" ];
     };
 
     "examples:deploy" = {
       description = "Deploy examples to Cloudflare";
       exec = "mono examples deploy";
+      after = [ "examples:install" ];
     };
 
     "examples:deploy:prod" = {
       description = "Deploy examples to production Cloudflare Workers";
       exec = "mono examples deploy --prod";
+      after = [ "examples:install" ];
     };
 
     "examples:validate-links" = {
@@ -379,10 +382,12 @@ in
     };
 
     "examples:install" = {
-      description = "Install examples workspace dependencies";
+      description = "Install standalone examples from npm";
       exec = ''
-        export npm_config_manage_package_manager_versions=false
-        ${pnpm} install --frozen-lockfile --dir examples
+        set -euo pipefail
+        for manifest in "$DEVENV_ROOT"/examples/*/package.json; do
+          (cd "$(dirname "$manifest")" && ${pkgs.bun}/bin/bun install)
+        done
       '';
       after = [ "setup:strict" ];
     };
@@ -390,8 +395,10 @@ in
     "examples:build:src" = {
       description = "Build examples source bundles";
       exec = ''
-        export npm_config_manage_package_manager_versions=false
-        ${pnpm} --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build
+        set -euo pipefail
+        for manifest in "$DEVENV_ROOT"/examples/*/package.json; do
+          (cd "$(dirname "$manifest")" && ${pkgs.bun}/bin/bun run build)
+        done
       '';
       after = [ "examples:install" ];
     };

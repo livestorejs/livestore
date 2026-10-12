@@ -107,7 +107,6 @@ const rootWorkspaceBase = packageJson.aggregateFromPackages({
   packages: rootWorkspacePackages,
   name: 'livestore-workspace',
   repoName: 'livestore',
-  extraMembers: ['examples/*'],
 })
 
 const rootWorkspaceExtraFields = {

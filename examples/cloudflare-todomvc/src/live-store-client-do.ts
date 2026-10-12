@@ -1,5 +1,5 @@
-import { DurableObject } from 'cloudflare:workers'
 import type { AlarmInvocationInfo } from '@cloudflare/workers-types'
+import { DurableObject } from 'cloudflare:workers'
 
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { nanoid, type Store } from '@livestore/livestore'
@@ -71,7 +71,7 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
     this.subscribeToStore()
   }
 
-  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
+  async syncUpdateRpc(payload: unknown) {
     await handleSyncUpdateRpc(payload)
   }
 }

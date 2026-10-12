@@ -49,6 +49,7 @@ export const Row = memo(({ issue, style }: { issue: Issue; style: CSSProperties 
   )
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: complex layout with multiple interactive elements
     <div
       key={issue.id}
       id={issue.id.toString()}

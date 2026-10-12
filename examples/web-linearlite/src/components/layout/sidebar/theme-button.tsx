@@ -8,10 +8,7 @@ import { type Theme, themeOptions } from '../../../data/theme-options.ts'
 import { useFrontendState } from '../../../livestore/queries.ts'
 import { Shortcut } from '../../common/shortcut.tsx'
 
-const shortcutKeysByThemeId = themeOptions.reduce<Record<Theme, readonly string[]>>(
-  (shortcutKeys, { id, shortcut }) => ({ ...shortcutKeys, [id]: [shortcut] }),
-  { dark: [], light: [], system: [] },
-)
+const shortcutKeysByThemeId = Object.fromEntries(themeOptions.map(({ id, shortcut }) => [id, [shortcut]]))
 
 export const ThemeButton = () => {
   const [theme, setTheme] = React.useState<Theme | undefined>(undefined)
@@ -86,7 +83,7 @@ export const ThemeButton = () => {
                 {id === 'system' && <ComputerDesktopIcon className="size-3.5" />}
                 <span>{label}</span>
                 {id === theme && <CheckIcon className="size-4 absolute right-9" />}
-                <Shortcut keys={shortcutKeysByThemeId[id]} className="absolute right-3" />
+                <Shortcut keys={shortcutKeysByThemeId[id] ?? []} className="absolute right-3" />
               </MenuItem>
             )
           })}

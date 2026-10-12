@@ -119,7 +119,7 @@ export class MailboxClientDO extends DurableObject<Env> implements ClientDoWithR
     }
   }
 
-  async syncUpdateRpc(payload: Uint8Array<ArrayBuffer>) {
+  async syncUpdateRpc(payload: unknown) {
     // Make sure to wake up the store before processing the sync update
     await handleSyncUpdateRpc(payload)
   }

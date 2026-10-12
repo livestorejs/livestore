@@ -8,7 +8,7 @@ export const tables = {
       id: State.SQLite.text({ primaryKey: true }),
       text: State.SQLite.text({ default: '' }),
       completed: State.SQLite.boolean({ default: false }),
-      deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromMillis }),
+      deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
     },
   }),
 }
@@ -29,14 +29,11 @@ export const events = {
   }),
   todoDeleted: Events.synced({
     name: 'v1.TodoDeleted',
-    schema: Schema.Struct({
-      id: Schema.String,
-      deletedAt: Schema.DateFromString.check(Schema.isDateValid()),
-    }),
+    schema: Schema.Struct({ id: Schema.String, deletedAt: Schema.Date }),
   }),
   todoClearedCompleted: Events.synced({
     name: 'v1.TodoClearedCompleted',
-    schema: Schema.Struct({ deletedAt: Schema.DateFromString.check(Schema.isDateValid()) }),
+    schema: Schema.Struct({ deletedAt: Schema.Date }),
   }),
 }
 

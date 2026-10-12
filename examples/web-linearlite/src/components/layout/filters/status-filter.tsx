@@ -30,12 +30,12 @@ export const StatusFilter = () => {
               />
             </div>
           ))}
-          {selectedStatus === undefined ? (
-            <span>{filterState.status.length} statuses</span>
-          ) : (
+          {selectedStatus !== undefined ? (
             <span className="font-medium text-neutral-600 dark:text-neutral-200">
               {statusOptions[selectedStatus]!.name}
             </span>
+          ) : (
+            <span>{filterState.status.length} statuses</span>
           )}
         </Button>
       </FilterMenu>

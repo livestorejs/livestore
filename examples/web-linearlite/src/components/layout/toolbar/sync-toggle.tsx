@@ -1,7 +1,8 @@
-import { StoreInternalsSymbol } from '@livestore/livestore'
-import { Effect, Stream } from '@livestore/utils/effect'
 import React from 'react'
 import { Switch } from 'react-aria-components'
+
+import { StoreInternalsSymbol } from '@livestore/livestore'
+import { Effect, Stream } from '@livestore/utils/effect'
 
 import { useAppStore } from '../../../livestore/store.ts'
 

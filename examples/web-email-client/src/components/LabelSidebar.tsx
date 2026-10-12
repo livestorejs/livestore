@@ -1,6 +1,7 @@
-import { queryDb } from '@livestore/livestore'
 import type React from 'react'
 import { useCallback, useMemo } from 'react'
+
+import { queryDb } from '@livestore/livestore'
 
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
@@ -42,9 +43,9 @@ export const LabelSidebar: React.FC = () => {
   const labelColorStyles = useMemo(
     () =>
       new Map(
-        labels.flatMap((label) =>
-          label.color === null ? [] : ([[label.id, { backgroundColor: label.color }]] as const),
-        ),
+        labels
+          .filter((label) => label.color !== null)
+          .map((label) => [label.id, { backgroundColor: label.color ?? undefined }] as const),
       ),
     [labels],
   )

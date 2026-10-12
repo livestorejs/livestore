@@ -47,6 +47,7 @@ export const Card = ({ issue, className }: { issue: Issue; className?: string })
   )
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: complex layout with multiple interactive elements
     <div
       role="button"
       tabIndex={0}

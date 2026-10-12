@@ -4,6 +4,7 @@ import { Button } from 'react-aria-components'
 
 import { priorityOptions } from '../../../data/priority-options.ts'
 import { useFilterState } from '../../../livestore/queries.ts'
+import type { Priority } from '../../../types/priority.ts'
 import { Icon } from '../../icons/index.tsx'
 import { FilterMenu } from './filter-menu.tsx'
 
@@ -21,9 +22,7 @@ export const PriorityFilter = () => {
       </div>
       <FilterMenu type="priority">
         <Button className="px-2 flex items-center h-full hover:bg-neutral-50 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800 gap-1.5">
-          {selectedPriority === undefined ? (
-            <span>{filterState.priority.length} priorities</span>
-          ) : (
+          {selectedPriority !== undefined ? (
             <>
               <Icon
                 name={priorityOptions[selectedPriority]!.icon}
@@ -33,6 +32,8 @@ export const PriorityFilter = () => {
                 {priorityOptions[selectedPriority]!.name}
               </span>
             </>
+          ) : (
+            <span>{filterState.priority.length} priorities</span>
           )}
         </Button>
       </FilterMenu>

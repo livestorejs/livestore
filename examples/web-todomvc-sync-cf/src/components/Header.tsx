@@ -1,4 +1,4 @@
-import { type ChangeEvent, type KeyboardEvent, useCallback } from 'react'
+import { useCallback, type ChangeEvent, type KeyboardEvent } from 'react'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events } from '../livestore/schema.ts'
