@@ -1,20 +1,29 @@
 import { expect } from 'vitest'
 
-import { BackendIdMismatchError, SyncBackend } from '@livestore/common'
+import { BackendIdMismatchError, StateHead, SyncBackend } from '@livestore/common'
+import {
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  type ShutdownChannel as Shutdown,
+} from '@livestore/common/leader-thread'
 import { EventFactory } from '@livestore/common/testing'
 import type { LiveStoreEvent } from '@livestore/livestore'
 import { EventSequenceNumber, nanoid } from '@livestore/livestore'
-import { events } from '@livestore/livestore/internal/testing-utils'
+import { events, schema, tables } from '@livestore/livestore/internal/testing-utils'
+import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
+import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
-  type Context,
+  Clock,
+  Context,
   Deferred,
   Duration,
   Effect,
   FetchHttpClient,
   Fiber,
-  type HttpClient,
+  HttpClient,
+  HttpClientRequest,
   KeyValueStore,
   Layer,
   Logger,
@@ -27,7 +36,9 @@ import {
   Schema,
   Stream,
   SubscriptionRef,
+  WebChannel,
 } from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
 
 import { providerRegistry, selectedProviderKeys } from './providers/registry.ts'
 import { HOOK_TIMEOUT_MS, SyncProviderImpl, type SyncProviderOptions } from './types.ts'
@@ -178,6 +189,120 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         const result = yield* Fiber.join(fiber)
         expect(result.batch.length).toBe(1)
       }).pipe(withTestCtx()(test)),
+    )
+
+    Vitest.live.skipIf(key !== 'cf-ws-d1' && key !== 'cf-ws-do')(
+      'resumes pulling events pushed after a socket drop',
+      (test) =>
+        Effect.gen(function* () {
+          const reader = yield* makeProvider(test.task.name)
+          const subscribed = yield* Deferred.make<void>()
+          const offline = yield* Deferred.make<void>()
+          let pullAttempts = 0
+          const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
+          const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
+          const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
+          const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
+          const leaderContext = yield* Layer.build(
+            makeLeaderThreadLayer({
+              schema,
+              storeId: `test-store-${name}-${test.task.name}-${testId}`,
+              clientId: 'reader',
+              syncPayloadEncoded: undefined,
+              syncPayloadSchema: undefined,
+              makeSqliteDb,
+              syncOptions: {
+                livePull: true,
+                backend: () =>
+                  Effect.succeed({
+                    ...reader,
+                    pull: (cursor, options) =>
+                      Stream.suspend(() => {
+                        pullAttempts++
+                        // Stop a broken production retry loop before it can flood tracing or exhaust memory.
+                        if (pullAttempts > 1_000) return Stream.die('Pull retry loop exceeded 1,000 attempts')
+                        return reader.pull(cursor, options).pipe(
+                          Stream.tap(() => Deferred.succeed(subscribed, undefined)),
+                          Stream.tapError((error) =>
+                            error._tag === 'IsOfflineError' ? Deferred.succeed(offline, undefined) : Effect.void,
+                          ),
+                        )
+                      }),
+                  }),
+              },
+              dbState,
+              dbEventlog,
+              devtoolsOptions: { enabled: false },
+              shutdownChannel: yield* WebChannel.noopChannel<typeof Shutdown.All.Type, typeof Shutdown.All.Type>(),
+            }).pipe(
+              Layer.provide(StateHead.layer({ dbState })),
+              Layer.provide(FetchHttpClient.layer),
+              Layer.provide(PlatformNode.NodeFileSystem.layer),
+            ),
+          )
+          const leader = Context.get(leaderContext, LeaderThreadCtx)
+          yield* Deferred.await(subscribed)
+          const reconnected = yield* SubscriptionRef.changes(reader.isConnected).pipe(
+            Stream.dropWhile((connected) => connected === true),
+            Stream.filter((connected) => connected === true),
+            Stream.runFirstUnsafe,
+            Effect.andThen(Clock.currentTimeMillis),
+            Effect.forkChild,
+          )
+          const applied = yield* leader.syncProcessor.syncState.changes.pipe(
+            Stream.filter((state) => state.upstreamHead.global === 1),
+            Stream.runFirstUnsafe,
+            Effect.andThen(Clock.currentTimeMillis),
+            Effect.forkChild,
+          )
+
+          const client = yield* HttpClient.HttpClient
+          const url = new URL('/instance/close-websockets', reader.metadata.url as string)
+          url.searchParams.set('storeId', `test-store-${name}-${test.task.name}-${testId}`)
+          const closed = yield* client
+            .execute(HttpClientRequest.post(url.toString()))
+            .pipe(Effect.flatMap((response) => response.json))
+          expect(closed).toEqual({ count: 1 })
+          yield* Deferred.await(offline)
+          yield* Effect.sleep('20 seconds')
+          url.pathname = '/instance/websocket-outage'
+          const outage = yield* client.execute(HttpClientRequest.get(url.toString())).pipe(
+            Effect.flatMap((response) => response.json),
+            Effect.flatMap(
+              Schema.decodeUnknownEffect(Schema.Struct({ until: Schema.Finite, openAttempts: Schema.Finite })),
+            ),
+          )
+          yield* Effect.logInfo('20-second WebSocket outage retry counts', {
+            pullAttempts,
+            openAttempts: outage.openAttempts,
+          })
+          expect.soft(pullAttempts).toBeLessThanOrEqual(12)
+          expect.soft(outage.openAttempts).toBeGreaterThan(0)
+          expect.soft(outage.openAttempts).toBeLessThanOrEqual(12)
+
+          const writer = yield* makeProvider(test.task.name)
+          const factory = makeFactory({ client: defaultClient, startSeq: 1, initialParent: 'root' })
+          const event = factory.todoCreated.next({ id: 'after-reconnect', text: 'After reconnect', completed: false })
+          yield* writer.push([event])
+          const connectedAt = yield* Fiber.join(reconnected).pipe(Effect.timeout('40 seconds'))
+          const caughtUp = yield* Fiber.join(applied).pipe(Effect.timeout('2 seconds'), Effect.result)
+          const catchUpMs = Result.isSuccess(caughtUp) === true ? caughtUp.success - connectedAt : null
+          yield* Effect.logInfo('WebSocket leader catch-up latency', {
+            pullAttempts,
+            serverAvailableToConnectedMs: connectedAt - outage.until,
+            connectedToAppliedMs: catchUpMs,
+          })
+          expect.soft(Result.isSuccess(caughtUp)).toBe(true)
+          if (Result.isSuccess(caughtUp) === true) expect.soft(catchUpMs).toBeLessThanOrEqual(2_000)
+          expect
+            .soft(leader.dbState.select<{ id: string }>(tables.todos.asSql().query).map((row) => row.id))
+            .toEqual(['after-reconnect'])
+        }).pipe(
+          Effect.provide(PlatformNode.NodeFileSystem.layer),
+          Effect.provide(runtimeContext),
+          withTestCtx({ timeout: '90 seconds' })(test),
+        ),
+      { timeout: 90_000 },
     )
   })
 

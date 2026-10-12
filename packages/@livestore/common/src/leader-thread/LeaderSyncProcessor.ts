@@ -15,6 +15,7 @@ import {
   Option,
   Predicate,
   Queue,
+  Random,
   ReadonlyArray,
   References,
   Result,
@@ -197,9 +198,12 @@ interface Options {
   readonly testing: {
     readonly delays?: {
       readonly localPushProcessing?: Effect.Effect<void>
+      readonly backendPullReconnect?: (fallbackMs: number) => number
     }
     readonly hooks?: {
       readonly localPushAdmitted?: (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) => Effect.Effect<void>
+      /** Observes connectivity after the offline wait has subscribed, allowing tests to synchronize without sleeps. */
+      readonly backendPullReconnectWait?: (state: { isConnected: boolean; fallbackMs: number }) => Effect.Effect<void>
     }
   }
 }
@@ -463,10 +467,12 @@ export const make = Effect.fnUntraced(function* ({
 
   const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcessor:backend-pulling')(function* ({
     restartBackendPushing,
+    onPullSuccess,
   }: {
     restartBackendPushing: (
       filteredRebasedPending: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
     ) => Effect.Effect<void, never, HttpClient.HttpClient>
+    onPullSuccess: () => void
   }) {
     if (syncBackend === undefined) return
 
@@ -618,6 +624,8 @@ export const make = Effect.fnUntraced(function* ({
       // TODO only take from queue while connected
       Stream.tap(({ batch, pageInfo }) =>
         Effect.gen(function* () {
+          // Any response (including an empty batch) proves backend contact, even with stale connectivity.
+          onPullSuccess()
           // NOTE we only want to take process events when the sync backend is connected
           // (e.g. needed for simulating being offline)
           // TODO remove when there's a better way to handle this in stream above
@@ -797,7 +805,12 @@ export const make = Effect.fnUntraced(function* ({
 
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 
+      let offlinePullFallbackMs = 1_000
+
       yield* backgroundBackendPulling({
+        onPullSuccess: () => {
+          offlinePullFallbackMs = 1_000
+        },
         restartBackendPushing: (filteredRebasedPending) =>
           Effect.gen(function* () {
             // Stop current pushing fiber
@@ -811,10 +824,34 @@ export const make = Effect.fnUntraced(function* ({
             yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
           }),
       }).pipe(
+        Effect.tapError((error) => {
+          if (error._tag !== 'IsOfflineError' || syncBackend === undefined) return Effect.void
+          const isConnected = syncBackend.isConnected
+          return Effect.gen(function* () {
+            // Wake immediately on reconnection. Probe on a capped fallback timer if connectivity is stale.
+            const jitter = yield* Random.nextBetween(0.8, 1.2)
+            const fallbackMs =
+              testing.delays?.backendPullReconnect?.(offlinePullFallbackMs * jitter) ?? offlinePullFallbackMs * jitter
+            offlinePullFallbackMs = Math.min(offlinePullFallbackMs * 2, 30_000)
+            // A stale initial true is not a reconnect. Watch false→true even while the fallback timer is pending.
+            const waitHook = testing.hooks?.backendPullReconnectWait
+            const changes = SubscriptionRef.changes(isConnected)
+            const observedChanges =
+              waitHook === undefined
+                ? changes
+                : changes.pipe(Stream.tap((value) => waitHook({ isConnected: value, fallbackMs })))
+            const reconnected = yield* observedChanges.pipe(
+              Stream.dropWhile((value) => value === true),
+              Stream.filter((value) => value === true),
+              Stream.runHead,
+              Effect.as(true),
+              Effect.timeoutOrElse({ duration: fallbackMs, orElse: () => Effect.succeed(false) }),
+            )
+            if (reconnected === true) offlinePullFallbackMs = 1_000
+          })
+        }),
         Effect.retry({
-          // Retry pulling when we've lost connection to the sync backend
-          // We're using `until` with a refinement instead of `while` to narrow `IsOfflineError` out of the error type.
-          // See https://github.com/Effect-TS/effect/issues/6122
+          // The unbounded offline-only retry keeps IsOfflineError out of the terminal error channel.
           until: (error): error is Exclude<typeof error, IsOfflineError> => error._tag !== 'IsOfflineError',
         }),
         Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
