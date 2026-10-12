@@ -10,6 +10,12 @@
 
 ### Changed
 
+- **SQLite schema tables:** Fixed Date fields in `State.SQLite.table({ schema })`
+  so their codecs round-trip through SQLite in structs and `Schema.Class` rows
+  while preserving Date checks and transformations, including nullable encoded
+  Dates. Thanks @acusti for the original fix
+  ([#1596](https://github.com/livestorejs/livestore/issues/1596),
+  [#1597](https://github.com/livestorejs/livestore/pull/1597)).
 - **Effect dependencies:** Updated the aligned Effect 4 dependency cohort from
   `4.0.0` to `4.0.3`, including its AI, OpenTelemetry, platform, SQLite, and
   Vitest packages. Applications using Effect should align their dependencies
