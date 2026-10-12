@@ -302,7 +302,7 @@ const hasTrueFlag = (cause: unknown, flag: 'retryable' | 'overloaded' | 'remote'
   Predicate.hasProperty(cause, flag) === true && cause[flag] === true
 
 /**
- * This transport also delays retryable failures before surfacing them, independently of the leader's pull backoff.
+ * This transport delays retryable failures before surfacing them, independently of the leader's connectivity gate.
  * The attempt count spans pull calls and resets only when a pull completes its catch-up, so a pull that delivers a
  * page and then fails does not reset it.
  */

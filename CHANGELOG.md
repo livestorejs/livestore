@@ -49,9 +49,10 @@
   ([#1418](https://github.com/livestorejs/livestore/issues/1418)).
 - **Cloudflare sync:** Fixed live WebSocket pulls stopping permanently after a
   disconnect. Pulls now resume after reconnect without reloading the client,
-  and HTTP transport failures also remain retryable. Offline pull retries use
-  jittered exponential backoff (1 s doubling to 30 s) rather than spinning while
-  the transport reconnects. Protocol failures stay terminal
+  and HTTP transport failures also remain retryable. Offline pulls wait for
+  reconnection rather than spinning, and resume as soon as the backend reports
+  connected. Capped fallback probes cover stale connectivity signals.
+  Protocol failures stay terminal
   ([#1650](https://github.com/livestorejs/livestore/issues/1650)).
   For the root-cause analysis, thanks @bohdanbirdie.
 - **Cloudflare DO-RPC sync:** A temporary Durable Object RPC failure no longer

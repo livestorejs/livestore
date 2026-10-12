@@ -15,6 +15,7 @@ import {
   Option,
   Predicate,
   Queue,
+  Random,
   ReadonlyArray,
   References,
   Result,
@@ -768,7 +769,7 @@ export const make = Effect.fnUntraced(function* ({
       const handleBackendIdMismatchError = (error: BackendIdMismatchError) =>
         handleBackendIdMismatch({ error, onBackendIdMismatch, shutdownChannel, dbEventlog, dbState })
 
-      const maybeShutdownOnError = (cause: Cause.Cause<UnknownError | MaterializeError | IsOfflineError>) =>
+      const maybeShutdownOnError = (cause: Cause.Cause<UnknownError | MaterializeError>) =>
         Effect.gen(function* () {
           if (onError === 'ignore') {
             if (LS_DEV === true) {
@@ -781,8 +782,7 @@ export const make = Effect.fnUntraced(function* ({
           }
 
           const error = Option.getOrUndefined(Cause.findErrorOption(cause))
-          const errorToSend =
-            error === undefined || error._tag === 'IsOfflineError' ? UnknownError.make({ cause }) : error
+          const errorToSend = error === undefined ? UnknownError.make({ cause }) : error
           yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
 
           return yield* Effect.failCause(cause).pipe(Effect.orDie)
@@ -798,6 +798,8 @@ export const make = Effect.fnUntraced(function* ({
 
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 
+      let offlinePullFallbackMs = 1_000
+
       yield* backgroundBackendPulling({
         restartBackendPushing: (filteredRebasedPending) =>
           Effect.gen(function* () {
@@ -812,15 +814,27 @@ export const make = Effect.fnUntraced(function* ({
             yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
           }),
       }).pipe(
+        Effect.tapError((error) => {
+          if (error._tag !== 'IsOfflineError' || syncBackend === undefined) return Effect.void
+          const isConnected = syncBackend.isConnected
+          return Effect.gen(function* () {
+            // Wake immediately on reconnection. Probe on a capped fallback timer if connectivity is stale.
+            const connected = yield* SubscriptionRef.get(isConnected)
+            const jitter = yield* Random.nextBetween(0.8, 1.2)
+            const fallbackMs = offlinePullFallbackMs * jitter
+            offlinePullFallbackMs = Math.min(offlinePullFallbackMs * 2, 30_000)
+            const reconnected =
+              connected === false
+                ? yield* SubscriptionRef.waitUntil(isConnected, (value) => value === true).pipe(
+                    Effect.timeoutOrElse({ duration: fallbackMs, orElse: () => Effect.succeed(false) }),
+                  )
+                : yield* Effect.sleep(fallbackMs).pipe(Effect.as(false))
+            if (reconnected === true) offlinePullFallbackMs = 1_000
+          })
+        }),
         Effect.retry({
-          // Retry pulling when we've lost connection to the sync backend
-          // A schedule conservatively retains IsOfflineError in Effect's error type even though it retries indefinitely.
-          until: (error) => error._tag !== 'IsOfflineError',
-          // The transport may immediately reject new calls while its reconnect loop is backing off.
-          schedule: Schedule.exponential('1 seconds').pipe(
-            Schedule.modifyDelay(({ duration }) => Effect.succeed(Duration.min(duration, Duration.seconds(30)))),
-            Schedule.jittered,
-          ),
+          // The unbounded offline-only retry keeps IsOfflineError out of the terminal error channel.
+          until: (error): error is Exclude<typeof error, IsOfflineError> => error._tag !== 'IsOfflineError',
         }),
         Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
         Effect.catchCause(maybeShutdownOnError),
