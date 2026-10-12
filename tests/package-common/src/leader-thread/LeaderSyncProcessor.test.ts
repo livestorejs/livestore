@@ -146,9 +146,11 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
           const catchUpMs = (yield* Clock.currentTimeMillis) - connectedAt
           yield* Effect.logInfo('Leader reconnect-to-catch-up latency', { reportsConnectivity, catchUpMs })
           if (reportsConnectivity === true) expect(catchUpMs).toBeLessThanOrEqual(2_000)
-          expect(leader.dbState.select<{ id: string }>(tables.todos.asSql().query).map((row) => row.id)).toEqual([
-            'after-outage',
-          ])
+          expect(
+            (yield* StateSqliteDb.StateSqliteDb)
+              .select<{ id: string }>(tables.todos.asSql().query)
+              .map((row) => row.id),
+          ).toEqual(['after-outage'])
         }).pipe(
           withTestCtx({
             timeout: '60 seconds',
@@ -226,9 +228,9 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         )
         expect(Result.isSuccess(result)).toBe(true)
         if (Result.isSuccess(result) === true) expect(result.success - connectedAt).toBeLessThanOrEqual(200)
-        expect(leader.dbState.select<{ id: string }>(tables.todos.asSql().query).map((row) => row.id)).toEqual([
-          'after-stale-true',
-        ])
+        expect(
+          (yield* StateSqliteDb.StateSqliteDb).select<{ id: string }>(tables.todos.asSql().query).map((row) => row.id),
+        ).toEqual(['after-stale-true'])
       }).pipe(
         withTestCtx({
           timeout: '10 seconds',
