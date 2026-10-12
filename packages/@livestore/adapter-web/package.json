@@ -14,7 +14,7 @@
     ]
   },
   "name": "@livestore/adapter-web",
-  "version": "0.5.0-dev.0",
+  "version": "0.5.0-dev.1",
   "type": "module",
   "sideEffects": false,
   "license": "Apache-2.0",
