@@ -311,11 +311,15 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
                         const offline = new IsOfflineError({ cause: new Error('Test backend unavailable') })
                         if (unavailable === true) return Stream.fail(offline)
                         const currentDisconnect = disconnect
-                        return backend.pull(cursor, options).pipe(
-                          Stream.merge(
-                            Stream.fromEffect(Effect.andThen(Deferred.await(currentDisconnect), Effect.fail(offline))),
-                          ),
-                        )
+                        return backend
+                          .pull(cursor, options)
+                          .pipe(
+                            Stream.merge(
+                              Stream.fromEffect(
+                                Effect.andThen(Deferred.await(currentDisconnect), Effect.fail(offline)),
+                              ),
+                            ),
+                          )
                       })
                     : backend.pull(cursor, options),
               }
