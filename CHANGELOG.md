@@ -10,6 +10,11 @@
 
 ### Changed
 
+- **Effect dependencies:** Updated the aligned Effect 4 dependency cohort from
+  `4.0.0` to `4.0.3`, including its AI, OpenTelemetry, platform, SQLite, and
+  Vitest packages. Applications using Effect should align their dependencies
+  to `4.0.3` or a compatible later 4.x release
+  ([#1669](https://github.com/livestorejs/livestore/pull/1669)).
 - **Contributor meetings:** Added the canonical docs schedule for the next two
   fortnightly meetings at 19:00 Berlin, automatic Google Calendar publishing,
   and a stable Riverside room link
