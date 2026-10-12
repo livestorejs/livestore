@@ -27,9 +27,10 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "_name": "client-session-sync-processor:boot",
       "children": [
         {
-          "_name": "client-session-sync-processor:pull",
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
           "attributes": {
-            "effect.fiber.interrupted": true,
+            "batch": "undefined",
+            "batchSize": 1,
           },
         },
         {
@@ -37,10 +38,56 @@ exports[`useClientDocument > otel > should update the data based on component ke
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "effect.fiber.interrupted": true,
           },
         },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "effect.fiber.interrupted": true,
+          },
+          "children": [
+            {
+              "_name": "@livestore/common:execSql",
+              "attributes": {
+                "bindValueKeys": "",
+                "span.label": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+                "sql": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+              },
+            },
+            {
+              "_name": "@livestore/common:execSql",
+              "attributes": {
+                "bindValueKeys": "",
+                "span.label": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+                "sql": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+              },
+            },
+          ],
+        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -351,9 +398,10 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "_name": "client-session-sync-processor:boot",
       "children": [
         {
-          "_name": "client-session-sync-processor:pull",
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
           "attributes": {
-            "effect.fiber.interrupted": true,
+            "batch": "undefined",
+            "batchSize": 1,
           },
         },
         {
@@ -361,10 +409,56 @@ exports[`useClientDocument > otel > should update the data based on component ke
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "effect.fiber.interrupted": true,
           },
         },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "effect.fiber.interrupted": true,
+          },
+          "children": [
+            {
+              "_name": "@livestore/common:execSql",
+              "attributes": {
+                "bindValueKeys": "",
+                "span.label": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+                "sql": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+              },
+            },
+            {
+              "_name": "@livestore/common:execSql",
+              "attributes": {
+                "bindValueKeys": "",
+                "span.label": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+                "sql": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+              },
+            },
+          ],
+        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",

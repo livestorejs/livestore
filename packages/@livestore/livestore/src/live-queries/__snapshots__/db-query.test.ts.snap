@@ -27,20 +27,42 @@ exports[`otel > QueryBuilder subscription - async iterator 1`] = `
       "_name": "client-session-sync-processor:boot",
       "children": [
         {
-          "_name": "client-session-sync-processor:pull",
-          "attributes": {
-            "effect.fiber.interrupted": true,
-          },
-        },
-        {
           "_name": "@livestore/common:LeaderSyncProcessor:push",
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "effect.fiber.interrupted": true,
           },
         },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "effect.fiber.interrupted": true,
+          },
+          "children": [
+            {
+              "_name": "@livestore/common:execSql",
+              "attributes": {
+                "bindValueKeys": "",
+                "span.label": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+                "sql": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+              },
+            },
+          ],
+        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -196,20 +218,42 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1
       "_name": "client-session-sync-processor:boot",
       "children": [
         {
-          "_name": "client-session-sync-processor:pull",
-          "attributes": {
-            "effect.fiber.interrupted": true,
-          },
-        },
-        {
           "_name": "@livestore/common:LeaderSyncProcessor:push",
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "effect.fiber.interrupted": true,
           },
         },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "effect.fiber.interrupted": true,
+          },
+          "children": [
+            {
+              "_name": "@livestore/common:execSql",
+              "attributes": {
+                "bindValueKeys": "",
+                "span.label": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+                "sql": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+              },
+            },
+          ],
+        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -365,20 +409,42 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
       "_name": "client-session-sync-processor:boot",
       "children": [
         {
-          "_name": "client-session-sync-processor:pull",
-          "attributes": {
-            "effect.fiber.interrupted": true,
-          },
-        },
-        {
           "_name": "@livestore/common:LeaderSyncProcessor:push",
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "effect.fiber.interrupted": true,
           },
         },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "effect.fiber.interrupted": true,
+          },
+          "children": [
+            {
+              "_name": "@livestore/common:execSql",
+              "attributes": {
+                "bindValueKeys": "",
+                "span.label": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+                "sql": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+              },
+            },
+          ],
+        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -534,20 +600,42 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
       "_name": "client-session-sync-processor:boot",
       "children": [
         {
-          "_name": "client-session-sync-processor:pull",
-          "attributes": {
-            "effect.fiber.interrupted": true,
-          },
-        },
-        {
           "_name": "@livestore/common:LeaderSyncProcessor:push",
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "effect.fiber.interrupted": true,
           },
         },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "effect.fiber.interrupted": true,
+          },
+          "children": [
+            {
+              "_name": "@livestore/common:execSql",
+              "attributes": {
+                "bindValueKeys": "",
+                "span.label": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+                "sql": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+              },
+            },
+          ],
+        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -703,20 +791,42 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
       "_name": "client-session-sync-processor:boot",
       "children": [
         {
-          "_name": "client-session-sync-processor:pull",
-          "attributes": {
-            "effect.fiber.interrupted": true,
-          },
-        },
-        {
           "_name": "@livestore/common:LeaderSyncProcessor:push",
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "effect.fiber.interrupted": true,
           },
         },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "effect.fiber.interrupted": true,
+          },
+          "children": [
+            {
+              "_name": "@livestore/common:execSql",
+              "attributes": {
+                "bindValueKeys": "",
+                "span.label": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+                "sql": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+              },
+            },
+          ],
+        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -872,9 +982,10 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
       "_name": "client-session-sync-processor:boot",
       "children": [
         {
-          "_name": "client-session-sync-processor:pull",
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
           "attributes": {
-            "effect.fiber.interrupted": true,
+            "batch": "undefined",
+            "batchSize": 1,
           },
         },
         {
@@ -882,10 +993,56 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "effect.fiber.interrupted": true,
           },
         },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "effect.fiber.interrupted": true,
+          },
+          "children": [
+            {
+              "_name": "@livestore/common:execSql",
+              "attributes": {
+                "bindValueKeys": "",
+                "span.label": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+                "sql": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+              },
+            },
+            {
+              "_name": "@livestore/common:execSql",
+              "attributes": {
+                "bindValueKeys": "",
+                "span.label": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+                "sql": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+              },
+            },
+          ],
+        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -1133,20 +1290,42 @@ exports[`otel > otel 3`] = `
       "_name": "client-session-sync-processor:boot",
       "children": [
         {
-          "_name": "client-session-sync-processor:pull",
-          "attributes": {
-            "effect.fiber.interrupted": true,
-          },
-        },
-        {
           "_name": "@livestore/common:LeaderSyncProcessor:push",
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "effect.fiber.interrupted": true,
           },
         },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "effect.fiber.interrupted": true,
+          },
+          "children": [
+            {
+              "_name": "@livestore/common:execSql",
+              "attributes": {
+                "bindValueKeys": "",
+                "span.label": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+                "sql": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+              },
+            },
+          ],
+        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -1464,20 +1643,42 @@ exports[`otel > with thunks 7`] = `
       "_name": "client-session-sync-processor:boot",
       "children": [
         {
-          "_name": "client-session-sync-processor:pull",
-          "attributes": {
-            "effect.fiber.interrupted": true,
-          },
-        },
-        {
           "_name": "@livestore/common:LeaderSyncProcessor:push",
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "effect.fiber.interrupted": true,
           },
         },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "effect.fiber.interrupted": true,
+          },
+          "children": [
+            {
+              "_name": "@livestore/common:execSql",
+              "attributes": {
+                "bindValueKeys": "",
+                "span.label": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+                "sql": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+              },
+            },
+          ],
+        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
@@ -1629,20 +1830,42 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       "_name": "client-session-sync-processor:boot",
       "children": [
         {
-          "_name": "client-session-sync-processor:pull",
-          "attributes": {
-            "effect.fiber.interrupted": true,
-          },
-        },
-        {
           "_name": "@livestore/common:LeaderSyncProcessor:push",
           "attributes": {
             "batch": "undefined",
             "batchSize": 1,
-            "effect.fiber.interrupted": true,
           },
         },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "effect.fiber.interrupted": true,
+          },
+          "children": [
+            {
+              "_name": "@livestore/common:execSql",
+              "attributes": {
+                "bindValueKeys": "",
+                "span.label": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+                "sql": "DELETE FROM __livestore_materialization_journal
+              WHERE seqNumGlobal < 0
+                 OR (
+                  seqNumGlobal = 0
+                      AND seqNumClient <= 0
+                  )",
+              },
+            },
+          ],
+        },
       ],
+    },
+    {
+      "_name": "client-session-sync-processor:shutdown",
     },
     {
       "_name": "LiveStore:commits",
