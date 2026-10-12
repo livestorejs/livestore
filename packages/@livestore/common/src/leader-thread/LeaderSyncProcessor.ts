@@ -467,10 +467,12 @@ export const make = Effect.fnUntraced(function* ({
 
   const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcessor:backend-pulling')(function* ({
     restartBackendPushing,
+    onPullSuccess,
   }: {
     restartBackendPushing: (
       filteredRebasedPending: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
     ) => Effect.Effect<void, never, HttpClient.HttpClient>
+    onPullSuccess: () => void
   }) {
     if (syncBackend === undefined) return
 
@@ -622,6 +624,8 @@ export const make = Effect.fnUntraced(function* ({
       // TODO only take from queue while connected
       Stream.tap(({ batch, pageInfo }) =>
         Effect.gen(function* () {
+          // Any response (including an empty batch) proves backend contact, even with stale connectivity.
+          onPullSuccess()
           // NOTE we only want to take process events when the sync backend is connected
           // (e.g. needed for simulating being offline)
           // TODO remove when there's a better way to handle this in stream above
@@ -804,6 +808,9 @@ export const make = Effect.fnUntraced(function* ({
       let offlinePullFallbackMs = 1_000
 
       yield* backgroundBackendPulling({
+        onPullSuccess: () => {
+          offlinePullFallbackMs = 1_000
+        },
         restartBackendPushing: (filteredRebasedPending) =>
           Effect.gen(function* () {
             // Stop current pushing fiber

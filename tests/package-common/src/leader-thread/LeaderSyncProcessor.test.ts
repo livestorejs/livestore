@@ -258,6 +258,73 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     })
   })
 
+  Vitest.live('resets offline backoff after a healthy fallback pull', (test) => {
+    let disconnect = Deferred.makeUnsafe<void>()
+    let unavailable = false
+    return Effect.gen(function* () {
+      const waits = yield* Queue.unbounded<{ isConnected: boolean; fallbackMs: number }>()
+      yield* Effect.gen(function* () {
+        const leader = yield* LeaderThreadCtx
+        const context = yield* TestContext
+        unavailable = true
+        yield* Deferred.succeed(disconnect, undefined)
+        for (let attempt = 0; attempt < 3; attempt++) {
+          expect((yield* Queue.take(waits)).isConnected).toBe(true)
+        }
+        // Keep connectivity stale-true: recovery must be discovered by the fallback timer.
+        disconnect = Deferred.makeUnsafe<void>()
+        yield* context.mockSyncBackend.advance(
+          context.eventFactory.todoCreated.next({ id: 'fallback-recovery', text: 'Recovered', completed: false }),
+        )
+        unavailable = false
+        yield* leader.syncProcessor.syncState.changes.pipe(
+          Stream.takeUntil((state) => state.localHead.global === 1),
+          Stream.runDrain,
+        )
+        unavailable = true
+        yield* Deferred.succeed(disconnect, undefined)
+        const nextWait = yield* Queue.take(waits)
+        expect(nextWait.isConnected).toBe(true)
+        // The test transform divides production's jittered one-second delay by twenty.
+        expect(nextWait.fallbackMs).toBeGreaterThanOrEqual(40)
+        expect(nextWait.fallbackMs).toBeLessThanOrEqual(60)
+      }).pipe(
+        withTestCtx({
+          timeout: '10 seconds',
+          syncOptions: { livePull: true },
+          testing: {
+            syncProcessor: {
+              delays: { backendPullReconnect: (fallbackMs) => Math.min(fallbackMs / 20, 400) },
+              hooks: {
+                backendPullReconnectWait: (state) => Queue.offer(waits, state).pipe(Effect.as(undefined)),
+              },
+            },
+          },
+          mockBackendOverride: (mock) => () =>
+            Effect.gen(function* () {
+              const backend = yield* mock.makeSyncBackend
+              return {
+                ...backend,
+                pull: (cursor, options) =>
+                  options?.live === true
+                    ? Stream.suspend(() => {
+                        const offline = new IsOfflineError({ cause: new Error('Test backend unavailable') })
+                        if (unavailable === true) return Stream.fail(offline)
+                        const currentDisconnect = disconnect
+                        return backend.pull(cursor, options).pipe(
+                          Stream.merge(
+                            Stream.fromEffect(Effect.andThen(Deferred.await(currentDisconnect), Effect.fail(offline))),
+                          ),
+                        )
+                      })
+                    : backend.pull(cursor, options),
+              }
+            }),
+        })(test),
+      )
+    })
+  })
+
   Vitest.live('sync', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
