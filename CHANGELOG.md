@@ -6,7 +6,7 @@
 > for more info. LiveStore is following a semver-like release strategy where
 > breaking changes are released in minor versions before the 1.0 release.
 
-## Unreleased
+## 0.5.0
 
 ### Changed
 
@@ -147,7 +147,7 @@
 
 - **Effect 4 / LiveStore 0.5:** Upgrade application dependencies and schema APIs
   from Effect 3 to stable Effect 4. Follow the
-  [0.4 to 0.5 upgrade guide](https://dev.docs.livestore.dev/misc/upgrading-0.4-to-0.5/)
+  [0.4 to 0.5 upgrade guide](https://docs.livestore.dev/misc/upgrading-0.4-to-0.5/)
   for peer packages, schema substitutions, removed utilities, commit callbacks
   and Cloudflare DO-RPC changes
   ([#1310](https://github.com/livestorejs/livestore/issues/1310),
