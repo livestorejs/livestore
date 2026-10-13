@@ -177,8 +177,60 @@ After merge to `main`, the push-triggered workflow runs:
 
 - `release:stable:publish`
 - `release:devtools-artifact:publish:no-install`
-- For stable `latest` releases only: docs prod deploy (phase-split, see below),
-  `examples:deploy:prod`, and the production docs search sync.
+
+### Promote stable production surfaces
+
+Publishing packages and artifacts does not deploy production docs, examples, or
+search. For a successful `latest` release, the maintainer completes this separate
+reviewed promotion:
+
+1. Record the exact commit published by the successful `Release` run and its
+   release version. Do not use a moving `main` head.
+2. Open a PR targeting `docs/stable` from a branch at that release commit.
+   Review the complete diff against `docs/stable`, retain any stable-only docs
+   fixes that are still applicable, and confirm `release/version.json` and the
+   package graph identify the published stable version. Wait for CI and required
+   approvals, then merge the PR. Do not force-push or reset `docs/stable`.
+   Promotion PR CI validates the existing stable plan rather than synthesizing
+   an unpublished version or rehearsing publication: every topology package
+   must exist at the plan version with npm `latest` pointing to it, and the
+   published `v<version>` tag's commit must be an ancestor of the exact PR head.
+   PRs against `main` retain the unpublished-version dry run.
+3. Record the merged `docs/stable` SHA. Keep the branch unchanged throughout
+   the following dispatches and confirm each run's head SHA equals it:
+
+   ```bash
+   gh workflow run deploy-prod.yml --ref docs/stable -f target=docs
+   ```
+
+4. Wait for the docs build/deploy, verification, and CDN purge to succeed. Then
+   deploy examples from the same branch and SHA:
+
+   ```bash
+   gh workflow run deploy-prod.yml --ref docs/stable -f target=examples
+   ```
+
+5. After successful docs deployment, sync production search from that same SHA:
+
+   ```bash
+   gh workflow run deploy-prod.yml --ref docs/stable -f target=search
+   ```
+
+Verify the public docs version, example URLs, and production search results
+before declaring the release complete. `target=all` is also supported from
+`docs/stable`; its search job waits for a successful docs job. Separate target
+dispatches make each promotion/recovery stage explicit.
+
+The ref guard and combined-target search ordering are provided by the workflow
+files on the dispatch ref. They take effect on `docs/stable` only once the
+promotion PR carries these workflow files onto that branch.
+
+The branch was established from the deployed stable baseline in
+[#1637](https://github.com/livestorejs/livestore/pull/1637), allowing reviewed
+documentation backports without publishing unrelated development content.
+Stable docs-only updates use the same PR and deploy/search sequence; examples
+need redeployment only when their source changes. Prereleases and snapshots
+never advance `docs/stable` or deploy production surfaces.
 
 ### Prod docs deploy phase split
 
@@ -229,12 +281,13 @@ just the failing target via `.github/workflows/deploy-prod.yml` instead of
 re-running the entire publish chain:
 
 ```bash
-gh workflow run deploy-prod.yml -f target=docs    # or examples / search / all
+gh workflow run deploy-prod.yml --ref docs/stable -f target=docs    # or examples / search / all
 ```
 
-This workflow is `workflow_dispatch`-only. The forward path during a release
-still runs inline in `release.yml#publish-release` so dev-tag and stable
-releases share the same per-phase task definitions.
+This workflow is `workflow_dispatch`-only and rejects refs other than
+`docs/stable` for every production target. Retry from the reviewed stable SHA;
+never re-run npm publication merely to repair docs. After a successful docs
+retry, sync search from the same unchanged branch so its index matches the site.
 
 CI snapshot publishing still republishes the public DevTools npm package for
 the exact snapshot version. Snapshot Chrome ZIPs are retained as workflow
@@ -243,8 +296,8 @@ GitHub Releases are reserved for dev and stable release versions that users may
 need to download directly.
 
 Normal CI deploys docs/examples to the dev surfaces. Production docs, examples,
-and search are only updated by an explicit stable release publish so regular
-`main` integration work cannot accidentally update the public latest surfaces.
+and search are updated only by explicit dispatches from reviewed `docs/stable`
+state, so regular `main` integration cannot update the public latest surfaces.
 
 ## Local stable release checks
 

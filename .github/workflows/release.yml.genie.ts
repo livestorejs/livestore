@@ -36,6 +36,8 @@ const releasePlanPaths = [
   '.github/workflows/release.yml.genie.ts',
   '.github/workflows/deploy-prod.yml',
   '.github/workflows/deploy-prod.yml.genie.ts',
+  '.github/scripts/validate-stable-docs-release.mjs',
+  '.github/scripts/validate-stable-docs-release.test.mjs',
   'genie/repo.ts',
   'nix/devenv-modules/tasks/local/mono-wrappers.nix',
   'release/release-plan.json',
@@ -242,6 +244,9 @@ fi`,
 use_synthetic_plan=false
 
 if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+  if [ "$GITHUB_BASE_REF" = "docs/stable" ]; then
+    exit 0
+  fi
   git fetch origin "\${{ github.base_ref }}" --depth=1
   if ! git diff --name-only "origin/\${{ github.base_ref }}...HEAD" | grep -qx 'release/release-plan.json'; then
     use_synthetic_plan=true
@@ -274,7 +279,20 @@ jq -n \\
         },
         {
           name: 'Dry-run stable package publish',
+          if: "github.event_name != 'pull_request' || github.base_ref != 'docs/stable'",
           run: runDevenvTasksBefore('release:stable:dryrun'),
+        },
+        {
+          name: 'Validate published stable docs release',
+          if: "github.event_name == 'pull_request' && github.base_ref == 'docs/stable'",
+          run: 'node .github/scripts/validate-stable-docs-release.mjs "$PR_HEAD_SHA"',
+          env: {
+            PR_HEAD_SHA: '${{ github.event.pull_request.head.sha }}',
+          },
+        },
+        {
+          name: 'Test stable docs release validation',
+          run: 'node --test .github/scripts/validate-stable-docs-release.test.mjs',
         },
         {
           name: 'Read release plan',
@@ -284,12 +302,7 @@ npm_tag="$(jq -r '.npmTag' release/release-plan.json)"
 : "\${release_version:?Missing release version}"
 : "\${npm_tag:?Missing npm tag}"
 echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
-echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
-if [ "$npm_tag" = "latest" ]; then
-  echo "LIVESTORE_RELEASE_DEPLOY_TARGET=prod" >> "$GITHUB_ENV"
-else
-  echo "LIVESTORE_RELEASE_DEPLOY_TARGET=dev" >> "$GITHUB_ENV"
-fi`,
+echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"`,
         },
         {
           name: 'Certify DevTools artifact liveness',
@@ -324,15 +337,7 @@ npm_tag="$(jq -r '.npmTag' release/release-plan.json)"
 : "\${release_version:?Missing release version}"
 : "\${npm_tag:?Missing npm tag}"
 echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"
-echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"
-# Env vars do not carry across jobs in GitHub Actions, so the deploy-target
-# gate that the validate-release-plan job sets must be re-derived here for the
-# Deploy production docs/examples and Sync production docs search steps below.
-if [ "$npm_tag" = "latest" ]; then
-  echo "LIVESTORE_RELEASE_DEPLOY_TARGET=prod" >> "$GITHUB_ENV"
-else
-  echo "LIVESTORE_RELEASE_DEPLOY_TARGET=dev" >> "$GITHUB_ENV"
-fi`,
+echo "LIVESTORE_NPM_TAG=$npm_tag" >> "$GITHUB_ENV"`,
         },
         {
           name: 'Assert tokenless npm trusted publishing',
@@ -355,82 +360,6 @@ fi`,
         {
           name: 'Publish DevTools artifact release',
           run: runDevenvTasksBefore('release:devtools-artifact:publish:no-install'),
-        },
-        /*
-         * Prod docs deploy — phase-split with OS-level shell timeouts +
-         * heartbeats to cap orphan Chromium children from the tldraw render
-         * step (livestorejs/livestore#1279). Each phase has its own
-         * `timeout-minutes` backstop above the per-task `timeout(1)` wrapper.
-         *
-         * If a phase fails or hangs, an operator can recover with
-         * `gh workflow run deploy-prod.yml -f target=docs` instead of
-         * re-running the entire publish chain.
-         */
-        {
-          // Option A: a single `netlify deploy --build` runs the full
-          // `@netlify/build` pipeline (framework build incl. snippets/diagrams +
-          // serverless/edge bundling) and uploads, then writes deploy-state.json.
-          name: 'Deploy production docs — build + deploy',
-          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
-          'timeout-minutes': 30,
-          run: runDevenvTasksBefore('docs:deploy:prod:phase:build-deploy'),
-          env: {
-            NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
-          },
-        },
-        {
-          name: 'Deploy production docs — verify',
-          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
-          'timeout-minutes': 15,
-          run: runDevenvTasksBefore('docs:deploy:prod:phase:verify'),
-          env: {
-            NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
-          },
-        },
-        {
-          name: 'Deploy production docs — purge CDN',
-          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
-          'timeout-minutes': 15,
-          run: runDevenvTasksBefore('docs:deploy:prod:phase:purge'),
-          env: {
-            NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
-          },
-        },
-        {
-          name: 'Collect docs deploy diagnostics on failure',
-          if: "${{ failure() && env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod' }}",
-          run: runDevenvTasksBefore('docs:deploy:prod:diagnostics'),
-        },
-        {
-          name: 'Upload docs prod deploy logs',
-          if: "${{ always() && env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod' }}",
-          uses: 'actions/upload-artifact@v4',
-          with: {
-            name: 'docs-prod-deploy-logs-${{ github.run_id }}-${{ github.run_attempt }}',
-            path: 'tmp/ci-docs-prod/',
-            'if-no-files-found': 'ignore',
-            'retention-days': 14,
-          },
-        },
-        {
-          name: 'Deploy production examples',
-          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
-          'timeout-minutes': 30,
-          run: runDevenvTasksBefore('examples:deploy:prod'),
-          env: {
-            CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
-            CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
-          },
-        },
-        {
-          name: 'Sync production docs search',
-          if: "env.LIVESTORE_RELEASE_DEPLOY_TARGET == 'prod'",
-          'timeout-minutes': 15,
-          run: runDevenvTasksBefore('docs:search:sync:prod'),
-          env: {
-            MXBAI_API_KEY: '${{ secrets.MXBAI_API_KEY }}',
-            MXBAI_VECTOR_STORE_ID_PROD: '${{ secrets.MXBAI_VECTOR_STORE_ID_PROD }}',
-          },
         },
       ]),
     },
