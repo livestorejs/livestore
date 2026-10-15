@@ -426,6 +426,7 @@ in
     "examples:deploy:prod" = {
       description = "Deploy examples to production Cloudflare Workers";
       exec = "mono examples deploy --prod";
+      after = [ "pnpm:install" ];
     };
 
     "examples:validate-links" = {
