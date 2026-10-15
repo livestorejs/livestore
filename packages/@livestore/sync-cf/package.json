@@ -12,7 +12,7 @@
     ]
   },
   "name": "@livestore/sync-cf",
-  "version": "0.5.0-dev.1",
+  "version": "0.5.0",
   "type": "module",
   "sideEffects": false,
   "license": "Apache-2.0",

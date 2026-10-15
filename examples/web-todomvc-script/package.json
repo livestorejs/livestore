@@ -1,14 +1,14 @@
 {
   "name": "livestore-example-web-todomvc-script",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-web": "0.5.0-dev.1",
-    "@livestore/livestore": "0.5.0-dev.1",
-    "@livestore/peer-deps": "0.5.0-dev.1",
-    "@livestore/sync-cf": "0.5.0-dev.1",
-    "@livestore/wa-sqlite": "0.5.0-dev.1"
+    "@livestore/adapter-web": "0.5.0",
+    "@livestore/livestore": "0.5.0",
+    "@livestore/peer-deps": "0.5.0",
+    "@livestore/sync-cf": "0.5.0",
+    "@livestore/wa-sqlite": "0.5.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.13.12",
