@@ -52,10 +52,17 @@ const priorityErrors = (input: typeof workflows) => {
       const key = `${filename}/${id}`
       seen.add(key)
       const expected = expectedPriorities.get(key)
-      if (expected === undefined || labels[0] !== `namespace-profile-linux-x86-64;job.priority=${expected}`) {
+      if (
+        expected === undefined ||
+        labels[0] !== `namespace-profile-linux-x86-64;job.priority=${expected};github.run-id=\${{ github.run_id }}`
+      ) {
         errors.push(`${key}: missing, incorrect or unclassified priority`)
       }
-      if (labels.length !== 2 || labels[1] !== 'namespace-features:github.run-id=${{ github.run_id }}') {
+      if (
+        labels.length !== 1 ||
+        typeof labels[0] !== 'string' ||
+        labels[0].endsWith(';github.run-id=${{ github.run_id }}') === false
+      ) {
         errors.push(`${key}: run affinity changed`)
       }
     }
@@ -102,15 +109,13 @@ describe('Namespace generated workflow priorities', () => {
   })
 
   it.each([
+    ['wrong priority', ['namespace-profile-linux-x86-64;job.priority=6;github.run-id=${{ github.run_id }}']],
+    ['missing priority', ['namespace-profile-linux-x86-64;github.run-id=${{ github.run_id }}']],
     [
-      'wrong priority',
-      ['namespace-profile-linux-x86-64;job.priority=6', 'namespace-features:github.run-id=${{ github.run_id }}'],
+      'split profile features',
+      ['namespace-profile-linux-x86-64;job.priority=3', 'namespace-features:github.run-id=${{ github.run_id }}'],
     ],
-    ['missing priority', ['namespace-profile-linux-x86-64', 'namespace-features:github.run-id=${{ github.run_id }}']],
-    [
-      'changed affinity',
-      ['namespace-profile-linux-x86-64;job.priority=3', 'namespace-features:github.run-id=other-run'],
-    ],
+    ['changed affinity', ['namespace-profile-linux-x86-64;job.priority=3;github.run-id=other-run']],
   ])('rejects %s in emitted delivery labels', (_, labels) => {
     const input = structuredClone(workflows)
     const sourcePolicy = input['ci.yml']!['source-policy']

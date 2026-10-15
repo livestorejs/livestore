@@ -266,7 +266,6 @@ import {
   cachixStep,
   defaultActionlintConfig as defaultActionlintConfigBase,
   dispatchAlignmentStep,
-  namespaceRunner as namespaceRunnerBase,
   installNixStep,
   applyMegarepoLockStep,
   checkoutStep,
@@ -323,8 +322,7 @@ export const defaultActionlintConfig = {
 
 /** LiveStore delivery is priority 3; optional background work is priority 6. */
 export const namespaceRunner = (runId: string, priority: 3 | 6 = 3) => {
-  const [profile, features] = namespaceRunnerBase({ profile: 'namespace-profile-linux-x86-64', runId })
-  return [`${profile};job.priority=${priority}`, features] as const
+  return [`namespace-profile-linux-x86-64;job.priority=${priority};github.run-id=${runId}`] as const
 }
 
 const shellSingleQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`
