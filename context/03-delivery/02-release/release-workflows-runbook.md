@@ -178,6 +178,121 @@ After merge to `main`, the push-triggered workflow runs:
 - `release:stable:publish`
 - `release:devtools-artifact:publish:no-install`
 
+### npm visibility and staged-publish recovery
+
+Audience: release maintainers who have the original release run and its exact
+commit, version, and npm tag. These steps apply to both the core package
+publisher and the repacked `@livestore/devtools-vite` publisher.
+
+A successful npm upload is not proof that a version is publicly installable.
+Staged versions reserve the same package/version identity as published
+versions, but are not publicly available until approved. A retry can therefore
+receive npm `E409` / `409 Conflict` with `Cannot publish over previously staged
+version` while `npm view <package>@<version> version --json` still cannot find
+the version. Treat that specific conflict as pending visibility, not as a
+successful release or a reason to change the release version. Other publish
+errors are not evidence of staging.
+
+Both publishers make an initial public visibility check followed by up to 60
+retries at five-second intervals, logging each missing-package attempt. This is
+a bounded wait of roughly five minutes plus registry request time, not an
+unbounded approval wait. Already-visible versions are skipped on reruns.
+If any required version is still missing when the attempts are exhausted,
+verification fails and reports the missing package/version and approval
+instructions. Do not mark the release green or advance production promotion
+while verification is failing. Missing visibility alone does not prove that
+a maintainer-approvable stage exists.
+
+#### Find and approve the exact staged version
+
+Use a trusted local terminal, npm CLI 11.15.0 or newer, Node 22.14.0 or newer,
+and a maintainer account with package publish access and 2FA enabled.
+For each missing package, substitute its package name (without `@<version>`)
+and inspect the returned records for the exact intended version and tag:
+
+```bash
+npm stage list <package> --json
+npm stage view <stage-id> --json
+```
+
+Check the record's `id`, `packageName`, `version`, `tag`, `status`, actor, and
+`shasum` against the reviewed release and original run. If needed, use
+`npm stage download <stage-id>` to inspect the tarball. Do not approve an
+unrelated candidate merely because its package name matches.
+
+Once the expected candidate has completed npm's malware scan, a human
+maintainer approves that stage and completes the interactive 2FA challenge:
+
+```bash
+npm stage approve <stage-id>
+```
+
+The npmjs.com package **Staged Packages** tab also supports review and approval
+with 2FA. Approval publishes the staged version. Staging, listing, and viewing
+do not require a 2FA challenge, but approval does. Each staged package version
+needs approval, including each affected package in a release group. Neither
+the release workflow nor an agent should auto-approve or handle the
+maintainer's OTP.
+
+After approval, rerun the original failed release workflow/job for the same
+commit, version, and npm tag. Do not generate a new release plan, bump the
+version, or rebuild a different candidate to evade the conflict. The publishers
+skip visible versions and finish the remaining publication/verification work.
+If the stage list is empty, the candidate differs, or the approved version
+remains unavailable, retain the failed state and investigate npm scanning,
+registry/authentication, and the original publish logs. An `E409` can also
+occur without an approvable stage, as reported in
+[npm/cli#9889](https://github.com/npm/cli/issues/9889).
+
+#### Trusted publishing: staging is not an OIDC requirement
+
+OIDC authenticates the CI workflow; it does not itself require human approval
+for every release. npm's current trusted-publisher configuration always allows
+`npm stage publish`, while direct `npm publish` and dist-tag management are
+independent allowed actions. Configurations created after September 3, 2026
+default to staging, with direct publishing opt-in. Older configurations retain
+their documented existing permissions rather than being silently migrated.
+Multiple matching configurations are additive, not restrictive.
+
+For intentionally unattended direct publication, a maintainer must ensure that
+the matching package **Settings → Trusted publishing → Allowed actions**
+permits `npm publish` for the intended repository, workflow, and environment.
+Do not broaden unrelated configurations or introduce a long-lived token to
+bypass an approval gate. Changing allowed actions does not approve or clear an
+already-staged version. Direct OIDC publishing remains the existing code path
+and needs no per-release npm 2FA approval when authorized; choosing staging
+means human 2FA approval for every staged package version.
+
+The inspected npm CLI 11.21.0 implementation does not automatically convert a
+failed direct publish into a stage: `npm publish` uses a package `PUT`, while
+`npm stage publish` uses `POST /-/stage/package/<escaped-package-name>` and
+returns `stageId` (also included in its JSON output). The OIDC helper exchanges
+credentials, not publish mode. Do not infer an automatic CLI stage fallback
+from an upload's exit status or a later staged-version conflict.
+
+For exact stage detection, the CLI's authenticated `npm stage list <package>
+--json` paginates `GET /-/stage?package=<package>&page=0&perPage=100`, collecting
+`items` until `total` is reached. Match `packageName` and `version`, then use
+the record's `id` with `GET /-/stage/<stage-id>` (`npm stage view`). Approval
+uses `POST /-/stage/<stage-id>/approve` with the CLI's interactive 2FA handling.
+These are implementation references, not a substitute for public visibility
+verification or a reason to add approval to CI.
+
+Primary references:
+
+- [npm staged publishing](https://docs.npmjs.com/staged-publishing/) and
+  [`npm stage` CLI commands](https://docs.npmjs.com/cli/v11/commands/npm-stage).
+- [Trusted-publisher allowed actions and configuration defaults](https://docs.npmjs.com/trusted-publishers/).
+- [Staged publishing announcement (May 22, 2026)](https://github.blog/changelog/2026-05-22-staged-publishing-and-new-install-time-controls-for-npm/)
+  and [multiple publishers, opt-in direct publish, and scan-gated approval (September 3, 2026)](https://github.blog/changelog/2026-09-03-multiple-trusted-publishing-configurations-for-npm/).
+- npm CLI 11.21.0 implementation:
+  [publish mode and stage output](https://github.com/npm/cli/blob/v11.21.0/lib/commands/publish.js),
+  [registry publish routes](https://github.com/npm/cli/blob/v11.21.0/workspaces/libnpmpublish/lib/publish.js),
+  [OIDC exchange](https://github.com/npm/cli/blob/v11.21.0/lib/utils/oidc.js),
+  [stage listing](https://github.com/npm/cli/blob/v11.21.0/lib/commands/stage/list.js),
+  [stage details](https://github.com/npm/cli/blob/v11.21.0/lib/commands/stage/view.js),
+  and [2FA approval](https://github.com/npm/cli/blob/v11.21.0/lib/commands/stage/approve.js).
+
 ### Promote stable production surfaces
 
 Publishing packages and artifacts does not deploy production docs, examples, or
