@@ -20,10 +20,11 @@ the production docs domain. Use `mono docs deploy --plan` when changing deploy
 routing logic; it prints the resolved site and target without building or
 deploying.
 
-Manual `workflow_dispatch` is used by the release workflow for generated release
-PR branches. GitHub does not recursively trigger PR workflows from branches
-pushed with `GITHUB_TOKEN`, so release automation explicitly dispatches CI for
-the generated release branch.
+Generated release PRs use the dedicated `livestore-release` GitHub App for both
+branch pushes and PR API calls. Their `pull_request` events (including
+`synchronize` on later pushes) run normal CI and release-plan validation without
+explicit workflow dispatches. Using `GITHUB_TOKEN` for this automation can
+suppress recursive events or leave PR runs awaiting approval instead.
 
 ## `release.yml`
 
@@ -34,6 +35,13 @@ Manual dispatch with `mode=create-release-pr` runs Changesets versioning on
 lockfile, and opens or updates a draft release PR such as
 `automation/release-0.4.0`. The generated PR is the human review gate. Keep it
 as draft until the release is intentionally ready to publish.
+
+Before generating a release PR, install `livestore-release` on
+`livestorejs/livestore` with Contents and Pull requests write permissions, set
+the repository variable `LIVESTORE_RELEASE_APP_ID`, and set the repository secret
+`LIVESTORE_RELEASE_APP_PRIVATE_KEY`. The job fails with a configuration error
+when the App ID is missing; token creation fails if the installation or private
+key is unavailable. There is no fallback to `GITHUB_TOKEN`.
 
 Manual dispatch with `mode=validate-release-plan`, or a PR that touches release
 pipeline files, dry-runs the package publisher and public DevTools artifact
